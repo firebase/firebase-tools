@@ -84,7 +84,7 @@ jobs:
   #     - name: Setup Java JDK
   #       uses: actions/setup-java@v3.3.0
   #       with:
-  #         java-version: 17
+  #         java-version: 21
   #         distribution: temurin
 
   #     - uses: actions/checkout@v4
@@ -247,7 +247,7 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
-          java-version: 17
+          java-version: 21
           distribution: temurin
 
       - uses: actions/checkout@v4
