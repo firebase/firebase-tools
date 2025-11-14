@@ -2,7 +2,7 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import { generateOperation } from "../../../gemini/fdcExperience";
-import { pickService } from "../../../dataconnect/load";
+import { pickOneService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
   {
@@ -20,7 +20,13 @@ export const generate_operation = tool(
         .string()
         .optional()
         .describe(
-          "Optional: Uses the service ID from the firebase.json file if nothing provided. The service ID of the deployed Firebase resource.",
+          `Data Connect Service ID to disambiguate if there are multiple Data Connect services.`,
+        ),
+      location_id: z
+        .string()
+        .optional()
+        .describe(
+          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
         ),
     }),
     annotations: {
@@ -33,8 +39,13 @@ export const generate_operation = tool(
       requiresGemini: true,
     },
   },
-  async ({ prompt, service_id }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+  async ({ prompt, service_id, location_id }, { projectId, config }) => {
+    const serviceInfo = await pickOneService(
+      projectId,
+      config,
+      service_id || undefined,
+      location_id || undefined,
+    );
     const schema = await generateOperation(prompt, serviceInfo.serviceName, projectId);
     return toContent(schema);
   },
