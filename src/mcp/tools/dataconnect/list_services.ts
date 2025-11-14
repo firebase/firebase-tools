@@ -4,7 +4,13 @@ import { tool } from "../../tool";
 import { toContent } from "../../util";
 import * as client from "../../../dataconnect/client";
 import { loadAll } from "../../../dataconnect/load";
-import { Service, Schema, ServiceInfo, Connector } from "../../../dataconnect/types";
+import {
+  Service,
+  Schema,
+  ServiceInfo,
+  Connector,
+  mainSchemaYaml,
+} from "../../../dataconnect/types";
 import { dump } from "js-yaml";
 import { logger } from "../../../logger";
 
@@ -108,7 +114,11 @@ export const list_services = tool(
       for (const s of localServices) {
         const local = s.local!;
         output.push(dump(local.dataConnectYaml));
-        const schemaDir = path.join(local.sourceDirectory, local.dataConnectYaml.schema.source);
+        // TODO: Include secondary schema sources here as well.
+        const schemaDir = path.join(
+          local.sourceDirectory,
+          mainSchemaYaml(local.dataConnectYaml).source,
+        );
         output.push(`You can find all of schema sources under ${schemaDir}/`);
         if (s.deployed) {
           output.push(`It's already deployed in the backend:\n`);

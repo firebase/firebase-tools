@@ -1,7 +1,7 @@
 import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
-import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
+import { Service, ServiceInfo, mainSchema, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
 import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
@@ -88,7 +88,7 @@ export default async function (context: Context, options: Options): Promise<void
         );
       })
       .map(async (s) => {
-        const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
+        const postgresDatasource = mainSchema(s.schemas).datasources.find((d) => d.postgresql);
         if (postgresDatasource) {
           const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
           const databaseId = postgresDatasource.postgresql?.database;

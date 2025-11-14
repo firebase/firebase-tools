@@ -1,5 +1,5 @@
-// Schema is a singleton, so we always call it 'main'
-export const SCHEMA_ID = "main";
+// The database schema ID is always 'main'
+export const MAIN_SCHEMA_ID = "main";
 
 // API Types
 interface BaseResource {
@@ -26,7 +26,9 @@ export interface Connector extends BaseResource {
 }
 
 export interface Datasource {
+  // One of postgresql or httpGraphql must be set.
   postgresql?: PostgreSql;
+  httpGraphql?: HttpGraphql;
 }
 
 export type SchemaValidation = "STRICT" | "COMPATIBLE";
@@ -37,6 +39,11 @@ export interface PostgreSql {
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
+}
+
+export interface HttpGraphql {
+  uri: string;
+  timeout?: string;
 }
 
 export interface CloudSqlInstance {
@@ -116,13 +123,16 @@ export function requiresVector(dm?: DeploymentMetadata): boolean {
 export interface DataConnectYaml {
   specVersion?: string;
   serviceId: string;
-  schema: SchemaYaml;
+  // One of `schema` or `schemas` is required.
+  schema?: SchemaYaml;
+  schemas?: SchemaYaml[];
   location: string;
   connectorDirs: string[];
 }
 
 export interface SchemaYaml {
   source: string;
+  id?: string;
   datasource: DatasourceYaml;
 }
 
@@ -133,6 +143,10 @@ export interface DatasourceYaml {
       instanceId: string;
     };
     schemaValidation?: SchemaValidation;
+  };
+  httpGraphql?: {
+    uri: string;
+    timeout?: string;
   };
 }
 
@@ -183,7 +197,7 @@ export interface DartSDK {
 export interface ServiceInfo {
   serviceName: string;
   sourceDirectory: string;
-  schema: Schema;
+  schemas: Schema[];
   connectorInfo: ConnectorInfo[];
   dataConnectYaml: DataConnectYaml;
   deploymentMetadata?: DeploymentMetadata;
@@ -211,7 +225,41 @@ export function toDatasource(
       },
     };
   }
+  if (ds?.httpGraphql) {
+    return {
+      httpGraphql: {
+        uri: ds.httpGraphql.uri,
+        timeout: ds.httpGraphql.timeout,
+      },
+    };
+  }
   return {};
+}
+
+/** Returns the main schema YAML for a Data Connect YAML */
+export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
+  if (dataconnectYaml.schema) {
+    return dataconnectYaml.schema;
+  }
+  const mainSch = dataconnectYaml.schemas?.find((s) => s.id === MAIN_SCHEMA_ID || !s.id);
+  if (!mainSch) {
+    throw new Error(`Service ${dataconnectYaml.serviceId} has no main schema defined`);
+  }
+  return mainSch;
+}
+
+/** Returns the main schema from a list of schemas */
+export function mainSchema(schemas: Schema[]): Schema {
+  const mainSch = schemas.find((s) => isMainSchema(s));
+  if (!mainSch) {
+    throw new Error(`No main schema is defined`);
+  }
+  return mainSch;
+}
+
+/** Returns true if the schema is the main schema */
+export function isMainSchema(schema: Schema): boolean {
+  return schema.name.endsWith(`/schemas/${MAIN_SCHEMA_ID}`);
 }
 
 /** Start Dataplane Client Types */

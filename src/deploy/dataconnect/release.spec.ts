@@ -50,7 +50,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -88,7 +88,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -124,7 +124,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -163,7 +163,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },

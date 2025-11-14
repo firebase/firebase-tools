@@ -148,6 +148,11 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
