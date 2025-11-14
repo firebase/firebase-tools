@@ -604,7 +604,7 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     } else if (endpoint.scheduleTrigger.retryConfig === null) {
       bkSchedule.retryConfig = null;
     }
-    if (endpoint.scheduleTrigger.attemptDeadlineSeconds) {
+    if (typeof endpoint.scheduleTrigger.attemptDeadlineSeconds !== "undefined") {
       bkSchedule.attemptDeadlineSeconds = r.resolveInt(
         endpoint.scheduleTrigger.attemptDeadlineSeconds,
       );
