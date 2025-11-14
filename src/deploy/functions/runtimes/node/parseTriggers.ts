@@ -290,11 +290,10 @@ export function addResourcesToBuild(
     const scheduleTrigger: build.ScheduleTrigger = {
       schedule: annotation.schedule.schedule,
       timeZone: annotation.schedule.timeZone ?? null,
-      retryConfig: {},
-      attemptDeadlineSeconds: annotation.schedule.attemptDeadlineSeconds,
     };
     triggered = { scheduleTrigger };
     if (annotation.schedule.retryConfig) {
+      scheduleTrigger.retryConfig = {};
       proto.copyIfPresent(
         scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
