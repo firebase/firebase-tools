@@ -147,6 +147,7 @@ export interface ScheduleTrigger {
   schedule: string | Expression<string>;
   timeZone?: Field<string>;
   retryConfig?: ScheduleRetryConfig | null;
+  attemptDeadlineSeconds?: Field<number>;
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
@@ -602,6 +603,11 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       bkSchedule.retryConfig = bkRetry;
     } else if (endpoint.scheduleTrigger.retryConfig === null) {
       bkSchedule.retryConfig = null;
+    }
+    if (endpoint.scheduleTrigger.attemptDeadlineSeconds) {
+      bkSchedule.attemptDeadlineSeconds = r.resolveInt(
+        endpoint.scheduleTrigger.attemptDeadlineSeconds,
+      );
     }
     return { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {
