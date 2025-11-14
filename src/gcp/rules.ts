@@ -274,17 +274,62 @@ export async function updateOrCreateRelease(
 }
 
 export interface RulesTestSuite {
-      testCases: RulesTestCase[],
+  testCases: RulesTestCase[];
+}
+
+export enum RulesTestCaseExpectation {
+  EXPECTATION_UNSPECIFIED = 0,
+  ALLOW = 1,
+  DENY = 2,
+}
+
+export interface RulesTestCaseFunctionMockArg {
+  exactValue?: any; // google.protobuf.Value
+  anyValue?: {}; // google.protobuf.Empty
+}
+
+export interface RulesTestCaseFunctionMockResult {
+  value?: any; // google.protobuf.Value
+  undefined?: {}; // google.protobuf.Empty
+}
+
+export interface RulesTestCaseFunctionMock {
+  function: string;
+  args: RulesTestCaseFunctionMockArg[];
+  result: RulesTestCaseFunctionMockResult;
+}
+
+export enum RulesTestCasePathEncoding {
+  ENCODING_UNSPECIFIED = 0,
+  URL_ENCODED = 1,
+  PLAIN = 2,
+}
+
+export enum RulesTestCaseExpressionReportLevel {
+  LEVEL_UNSPECIFIED = 0,
+  NONE = 1,
+  FULL = 2,
+  VISITED = 3,
 }
 
 export interface RulesTestCase {
+  expectation?: RulesTestCaseExpectation;
+  request?: any; // google.protobuf.Value
+  resource?: any; // google.protobuf.Value
+  functionMocks?: RulesTestCaseFunctionMock[];
+  pathEncoding?: RulesTestCasePathEncoding;
+  expressionReportLevel?: RulesTestCaseExpressionReportLevel;
 }
 
-export function testRuleset(projectId: string, files: RulesetFile[], testSuite?: RulesTestSuite): Promise<any> {
+export function testRuleset(
+  projectId: string,
+  files: RulesetFile[],
+  testCases?: RulesTestCase[],
+): Promise<any> {
+  let testSuite = testCases ? { testSuite: { testCases } } : undefined;
   return apiClient.post(
     `/projects/${encodeURIComponent(projectId)}:test`,
-    { source: { files } },
+    { source: { files }, ...testSuite },
     { skipLog: { body: true } },
-    ...(testSuite ? {testSuite} : undefined)
   );
 }
