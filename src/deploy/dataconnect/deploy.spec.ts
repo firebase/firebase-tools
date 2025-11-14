@@ -44,7 +44,10 @@ describe("dataconnect deploy", () => {
       {
         serviceName: "projects/test-project/locations/l/services/s1",
         deploymentMetadata: {},
-        schema: { datasources: [] },
+        schema: {
+          name: "projects/test-project/locations/l/services/s1/schemas/main",
+          datasources: [],
+        },
         dataConnectYaml: { serviceId: "s1" },
       },
     ];
@@ -104,6 +107,7 @@ describe("dataconnect deploy", () => {
       {
         serviceName: "projects/test-project/locations/l/services/s1",
         schema: {
+          name: "projects/test-project/locations/l/services/s1/schemas/main",
           datasources: [
             {
               postgresql: {

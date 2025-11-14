@@ -105,6 +105,7 @@ describe("dataconnect prepare", () => {
       const serviceInfos = [
         {
           schema: {
+            name: "projects/p/locations/l/services/s/schemas/main",
             datasources: [
               {
                 postgresql: {
