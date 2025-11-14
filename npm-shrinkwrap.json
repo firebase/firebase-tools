@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "14.24.2",
+  "version": "14.25.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "14.24.2",
+      "version": "14.25.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.6",
@@ -71,7 +71,7 @@
         "sql-formatter": "^15.3.0",
         "stream-chain": "^2.2.4",
         "stream-json": "^1.7.3",
-        "superstatic": "^9.2.0",
+        "superstatic": "^10.0.0",
         "tar": "^6.1.11",
         "tcp-port-used": "^1.0.2",
         "tmp": "^0.2.3",
@@ -178,7 +178,7 @@
         "vite": "^4.2.1"
       },
       "engines": {
-        "node": ">=20.0.0 || >=22.0.0"
+        "node": ">=20.0.0 || >=22.0.0 || >=24.0.0"
       }
     },
     "node_modules/@aashutoshrathi/word-wrap": {
@@ -20038,9 +20038,10 @@
       "dev": true
     },
     "node_modules/superstatic": {
-      "version": "9.2.0",
-      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.2.0.tgz",
-      "integrity": "sha512-QrJAJIpAij0jJT1nEwYTB0SzDi4k0wYygu6GxK0ko8twiQgfgaOAZ7Hu99p02MTAsGho753zhzSvsw8We4PBEQ==",
+      "version": "10.0.0",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-10.0.0.tgz",
+      "integrity": "sha512-4xIenBdrIIYuqXrIVx/lejyCh4EJwEMPCwfk9VGFfRlhZcdvzTd3oVOUILrAGfC4pFUWixzPgaOVzAEZgeYI3w==",
+      "license": "MIT",
       "dependencies": {
         "basic-auth-connect": "^1.1.0",
         "commander": "^10.0.0",
@@ -20064,7 +20065,7 @@
         "superstatic": "lib/bin/server.js"
       },
       "engines": {
-        "node": "18 || 20 || 22"
+        "node": "20 || 22 || 24"
       },
       "optionalDependencies": {
         "re2": "^1.17.7"
@@ -36947,9 +36948,9 @@
       }
     },
     "superstatic": {
-      "version": "9.2.0",
-      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-9.2.0.tgz",
-      "integrity": "sha512-QrJAJIpAij0jJT1nEwYTB0SzDi4k0wYygu6GxK0ko8twiQgfgaOAZ7Hu99p02MTAsGho753zhzSvsw8We4PBEQ==",
+      "version": "10.0.0",
+      "resolved": "https://registry.npmjs.org/superstatic/-/superstatic-10.0.0.tgz",
+      "integrity": "sha512-4xIenBdrIIYuqXrIVx/lejyCh4EJwEMPCwfk9VGFfRlhZcdvzTd3oVOUILrAGfC4pFUWixzPgaOVzAEZgeYI3w==",
       "requires": {
         "basic-auth-connect": "^1.1.0",
         "commander": "^10.0.0",
