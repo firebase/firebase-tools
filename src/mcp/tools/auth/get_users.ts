@@ -4,9 +4,11 @@ import { toContent } from "../../util";
 import { findUser, listUsers, UserInfo } from "../../../gcp/auth";
 
 export const get_users = tool(
+  "auth",
   {
-    name: "auth_get_users",
-    description: "Retrieves users based on a list of UIDs or a list of emails.",
+    name: "get_users",
+    description:
+      "Use this to retrieve one or more Firebase Auth users based on a list of UIDs or a list of emails.",
     inputSchema: z.object({
       uids: z.array(z.string()).optional().describe("A list of user UIDs to retrieve."),
       emails: z.array(z.string()).optional().describe("A list of user emails to retrieve."),

@@ -1,10 +1,11 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
 import { createNote, listNotes, deleteNote } from "../../../crashlytics/notes";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
+import { mcpError, toContent } from "../../util";
 
 export const create_note = tool(
+  "crashlytics",
   {
     name: "create_note",
     description: "Add a note to an issue from crashlytics.",
@@ -31,9 +32,10 @@ export const create_note = tool(
 );
 
 export const list_notes = tool(
+  "crashlytics",
   {
     name: "list_notes",
-    description: "List all notes for an issue in Crashlytics.",
+    description: "Use this to list all notes for an issue in Crashlytics.",
     inputSchema: z.object({
       appId: ApplicationIdSchema,
       issueId: IssueIdSchema,
@@ -56,6 +58,7 @@ export const list_notes = tool(
 );
 
 export const delete_note = tool(
+  "crashlytics",
   {
     name: "delete_note",
     description: "Delete a note from a Crashlytics issue.",

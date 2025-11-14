@@ -1,18 +1,21 @@
-import { ServerFeature } from "../types";
+import { McpContext, ServerFeature } from "../types";
 import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
+import { apptestingPrompts } from "./apptesting";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
-  core: corePrompts,
+  core: namespacePrompts(corePrompts, "core"),
   firestore: [],
   storage: [],
-  dataconnect: dataconnectPrompts,
+  dataconnect: namespacePrompts(dataconnectPrompts, "dataconnect"),
   auth: [],
   messaging: [],
+  functions: [],
   remoteconfig: [],
-  crashlytics: crashlyticsPrompts,
+  crashlytics: namespacePrompts(crashlyticsPrompts, "crashlytics"),
+  apptesting: namespacePrompts(apptestingPrompts, "apptesting"),
   apphosting: [],
   database: [],
 };
@@ -39,17 +42,59 @@ function namespacePrompts(
 /**
  * Return available prompts based on the list of registered features.
  */
-export function availablePrompts(features?: ServerFeature[]): ServerPrompt[] {
-  const allPrompts: ServerPrompt[] = namespacePrompts(prompts["core"], "core");
+export async function availablePrompts(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+): Promise<ServerPrompt[]> {
+  const allPrompts = getAllPrompts(activeFeatures);
 
-  if (!features) {
-    features = Object.keys(prompts).filter((f) => f !== "core") as ServerFeature[];
+  const availabilities = await Promise.all(
+    allPrompts.map((p) => {
+      if (p.isAvailable) {
+        return p.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allPrompts.filter((_, i) => availabilities[i]);
+}
+
+function getAllPrompts(activeFeatures?: ServerFeature[]): ServerPrompt[] {
+  const promptDefs: ServerPrompt[] = [];
+  if (!activeFeatures?.length) {
+    activeFeatures = Object.keys(prompts) as ServerFeature[];
   }
+  if (!activeFeatures.includes("core")) {
+    activeFeatures.unshift("core");
+  }
+  for (const feature of activeFeatures) {
+    promptDefs.push(...prompts[feature]);
+  }
+  return promptDefs;
+}
 
-  for (const feature of features) {
-    if (prompts[feature] && feature !== "core") {
-      allPrompts.push(...namespacePrompts(prompts[feature], feature));
+/**
+ * Generates a markdown table of all available prompts and their descriptions.
+ * This is used for generating documentation.
+ */
+export function markdownDocsOfPrompts(): string {
+  const allPrompts = getAllPrompts();
+  let doc = `
+| Prompt Name | Feature Group | Description |
+| ----------- | ------------- | ----------- |`;
+  for (const prompt of allPrompts) {
+    const feature = prompt.mcp._meta?.feature || "";
+    let description = prompt.mcp.description || "";
+    if (prompt.mcp.arguments?.length) {
+      const argsList = prompt.mcp.arguments.map(
+        (arg) =>
+          ` <br>&lt;${arg.name}&gt;${arg.required ? "" : " (optional)"}: ${arg.description || ""}`,
+      );
+      description += ` <br><br>Arguments:${argsList.join("")}`;
     }
+    description = description.replaceAll("\n", "<br>");
+    doc += `
+| ${prompt.mcp.name} | ${feature} | ${description} |`;
   }
-  return allPrompts;
+  return doc;
 }

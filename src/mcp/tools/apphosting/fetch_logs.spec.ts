@@ -98,7 +98,7 @@ describe("fetch_logs tool", () => {
       getBackendStub.resolves(backend);
       getTrafficStub.resolves(traffic);
       listBuildsStub.resolves(builds);
-      listEntriesStub.resolves(logEntries);
+      listEntriesStub.resolves({ entries: logEntries });
 
       const result = await fetch_logs.fn({ buildLogs: true, backendId, location }, {
         projectId,
@@ -119,7 +119,7 @@ describe("fetch_logs tool", () => {
       getBackendStub.resolves(backend);
       getTrafficStub.resolves(traffic);
       listBuildsStub.resolves(builds);
-      listEntriesStub.resolves([]);
+      listEntriesStub.resolves({ entries: [] });
 
       const result = await fetch_logs.fn({ buildLogs: true, backendId, location }, {
         projectId,

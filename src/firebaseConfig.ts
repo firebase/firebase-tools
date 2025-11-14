@@ -188,6 +188,10 @@ type FunctionConfigBase = {
 export type LocalFunctionConfig = FunctionConfigBase & {
   // Directory containing the Cloud Functions source code.
   source: string;
+  // Optional: When true, prevents the Firebase CLI from fetching and including legacy
+  // Runtime Config values for this codebase during deployment. This has no effect on
+  // remote sources, which never use runtime config. Defaults to false for backward compatibility.
+  disallowLegacyRuntimeConfig?: boolean;
   // Forbid remoteSource when local source is provided
   remoteSource?: never;
 };
@@ -308,6 +312,7 @@ export type AppHostingSingle = {
   rootDir: string;
   ignore: string[];
   alwaysDeployFromSource?: boolean;
+  localBuild?: boolean;
 };
 
 export type AppHostingMultiple = AppHostingSingle[];
@@ -315,9 +320,6 @@ export type AppHostingMultiple = AppHostingSingle[];
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
 export type FirebaseConfig = {
-  /**
-   * @TJS-format uri
-   */
   $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;

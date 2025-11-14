@@ -5,10 +5,11 @@ import { listCollectionIds } from "../../../gcp/firestore";
 import { Emulators } from "../../../emulator/types";
 
 export const list_collections = tool(
+  "firestore",
   {
     name: "list_collections",
     description:
-      "Retrieves a list of collections from a Firestore database in the current project.",
+      "Use this to retrieve a list of collections from a Firestore database in the current project.",
     inputSchema: z.object({
       // TODO: support multiple databases
       database: z

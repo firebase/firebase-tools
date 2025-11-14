@@ -66,11 +66,13 @@ describe("deploy", () => {
       haveBackend = backend.of(endpoint1InHaveBackend, endpoint2InHaveBackend);
     });
 
-    it("should skip if all endpoints are identical", () => {
+    it("should skip if all endpoints are identical and ACTIVE", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";
       endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
       endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
 
       // Execute
       const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
@@ -140,6 +142,19 @@ describe("deploy", () => {
       // Expect
       expect(result).to.be.false;
     });
+
+    it("should not skip if state is not ACTIVE", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "FAILED";
+
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+
+      expect(result).to.be.false;
+    });
   });
 
   describe("uploadSourceV2", () => {
@@ -153,8 +168,6 @@ describe("deploy", () => {
       functionsSourceV2: "source.zip",
       functionsSourceV2Hash: "source-hash",
     };
-    const CREATE_MESSAGE =
-      "Creating Cloud Storage bucket in region to store Functions source code uploads at firebase-functions-src-123456...";
 
     before(() => {
       experimentEnabled = experiments.isEnabled("runfunctions");
@@ -163,7 +176,7 @@ describe("deploy", () => {
 
     beforeEach(() => {
       gcsUploadStub = sinon.stub(gcs, "upload").resolves({ generation: "1" });
-      gcsUpsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves();
+      gcsUpsertBucketStub = sinon.stub(gcs, "upsertBucket");
       gcfv2GenerateUploadUrlStub = sinon.stub(gcfv2, "generateUploadUrl").resolves({
         uploadUrl: "https://storage.googleapis.com/upload/url",
         storageSource: {
@@ -179,27 +192,32 @@ describe("deploy", () => {
     });
 
     describe("with runfunctions experiment enabled", () => {
+      const PROJECT_NUMBER = "123456";
+      const BUCKET_NAME = `firebase-functions-src-${PROJECT_NUMBER}`;
+
       before(() => experiments.setEnabled("runfunctions", true));
 
       it("should call gcs.upsertBucket and gcs.upload for gcfv2 functions", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
+        gcsUpsertBucketStub.resolves(BUCKET_NAME);
 
-        await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
+        await deploy.uploadSourceV2("project", PROJECT_NUMBER, SOURCE, wantBackend);
 
         expect(gcsUpsertBucketStub).to.be.calledOnceWith({
           product: "functions",
           projectId: "project",
-          createMessage: CREATE_MESSAGE,
+          createMessage: `Creating Cloud Storage bucket in region to store Functions source code uploads at ${BUCKET_NAME}...`,
           req: {
-            name: "firebase-functions-src-123456",
+            baseName: BUCKET_NAME,
             location: "region",
+            purposeLabel: "functions-source-region",
             lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
           },
         });
         expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
         expect(gcsUploadStub).to.be.calledOnceWith(
           { file: "source.zip", stream: "stream" },
-          "firebase-functions-src-123456/source-hash.zip",
+          `${BUCKET_NAME}/source-hash.zip`,
           undefined,
           true,
         );
@@ -208,23 +226,25 @@ describe("deploy", () => {
 
       it("should call gcs.upsertBucket and gcs.upload for run functions", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "run" });
+        gcsUpsertBucketStub.resolves(BUCKET_NAME);
 
-        await deploy.uploadSourceV2("project", "123456", SOURCE, wantBackend);
+        await deploy.uploadSourceV2("project", PROJECT_NUMBER, SOURCE, wantBackend);
 
         expect(gcsUpsertBucketStub).to.be.calledOnceWith({
           product: "functions",
           projectId: "project",
-          createMessage: CREATE_MESSAGE,
+          createMessage: `Creating Cloud Storage bucket in region to store Functions source code uploads at ${BUCKET_NAME}...`,
           req: {
-            name: "firebase-functions-src-123456",
+            baseName: BUCKET_NAME,
             location: "region",
+            purposeLabel: "functions-source-region",
             lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
           },
         });
         expect(createReadStreamStub).to.be.calledOnceWith("source.zip");
         expect(gcsUploadStub).to.be.calledOnceWith(
           { file: "source.zip", stream: "stream" },
-          "firebase-functions-src-123456/source-hash.zip",
+          `${BUCKET_NAME}/source-hash.zip`,
           undefined,
           true,
         );

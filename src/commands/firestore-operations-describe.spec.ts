@@ -57,10 +57,9 @@ describe("firestore:operations:describe", () => {
     const operation = { name: "op1", done: false, metadata: {} };
     firestoreApiStub.describeOperation.resolves(operation);
 
-    await command.runner()(operationName, options);
+    const jsonResult = await command.runner()(operationName, options);
 
-    expect(loggerInfoStub).to.be.calledOnceWith(JSON.stringify(operation, undefined, 2));
-    expect(prettyPrintStub).to.not.be.called;
+    expect(jsonResult).to.eql(operation);
   });
 
   it("should pretty-print the operation when --json is not specified", async () => {
@@ -86,9 +85,9 @@ describe("firestore:operations:describe", () => {
 
   it("should throw a FirebaseError if operation name is invalid", async () => {
     const options = { project: "test-project" };
-    await expect(command.runner()("", options)).to.be.rejectedWith(
+    await expect(command.runner()("/databases/blah", options)).to.be.rejectedWith(
       FirebaseError,
-      '"" is not a valid operation name.',
+      '"/databases/blah" is not a valid operation name.',
     );
     await expect(command.runner()("projects/p/databases/d", options)).to.be.rejectedWith(
       FirebaseError,

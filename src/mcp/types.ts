@@ -9,8 +9,10 @@ export const SERVER_FEATURES = [
   "dataconnect",
   "auth",
   "messaging",
+  "functions",
   "remoteconfig",
   "crashlytics",
+  "apptesting",
   "apphosting",
   "database",
 ] as const;
@@ -27,4 +29,5 @@ export interface McpContext {
   config: Config;
   host: FirebaseMcpServer;
   rc: RC;
+  firebaseCliCommand: string;
 }

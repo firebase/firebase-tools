@@ -872,6 +872,9 @@
                 "configDir": {
                     "type": "string"
                 },
+                "disallowLegacyRuntimeConfig": {
+                    "type": "boolean"
+                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -1087,7 +1090,6 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
         "apphosting": {
@@ -1106,6 +1108,9 @@
                                 "type": "string"
                             },
                             "type": "array"
+                        },
+                        "localBuild": {
+                            "type": "boolean"
                         },
                         "rootDir": {
                             "type": "string"
@@ -1133,6 +1138,9 @@
                                     "type": "string"
                                 },
                                 "type": "array"
+                            },
+                            "localBuild": {
+                                "type": "boolean"
                             },
                             "rootDir": {
                                 "type": "string"

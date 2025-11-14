@@ -1,5 +1,4 @@
 import { z } from "zod";
-import * as clc from "colorette";
 import { tool } from "../../tool";
 import { toContent } from "../../util";
 import {
@@ -12,9 +11,10 @@ import {
 import { logger } from "../../../logger";
 
 export const logout = tool(
+  "core",
   {
     name: "logout",
-    description: "Log the CLI out of Firebase",
+    description: "Use this to sign the user out of the Firebase CLI and Firebase MCP server.",
     inputSchema: z.object({
       email: z
         .string()
@@ -60,7 +60,7 @@ export const logout = tool(
       if (token) {
         try {
           await authLogout(token);
-          logoutMessages.push(`Logged out from ${clc.bold(account.user.email)}`);
+          logoutMessages.push(`Logged out from ${account.user.email}`);
         } catch (e: unknown) {
           if (e instanceof Error) {
             logger.debug(e.message);

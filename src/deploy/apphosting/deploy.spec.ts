@@ -15,11 +15,9 @@ const BASE_OPTS = {
   except: "",
   force: false,
   nonInteractive: false,
-  interactive: false,
   debug: false,
   filteredTargets: [],
   rc: new RC(),
-  json: false,
 };
 
 function initializeContext(): Context {
@@ -30,9 +28,22 @@ function initializeContext(): Context {
         rootDir: "/",
         ignore: [],
       },
+      fooLocalBuild: {
+        backendId: "fooLocalBuild",
+        rootDir: "/",
+        ignore: [],
+        localBuild: true,
+      },
     },
-    backendLocations: { foo: "us-central1" },
+    backendLocations: { foo: "us-central1", fooLocalBuild: "us-central1" },
     backendStorageUris: {},
+    backendLocalBuilds: {
+      fooLocalBuild: {
+        buildDir: "./nextjs/standalone",
+        buildConfig: {},
+        annotations: {},
+      },
+    },
   };
 }
 
@@ -59,40 +70,81 @@ describe("apphosting", () => {
     sinon.verifyAndRestore();
   });
 
-  describe("deploy", () => {
+  describe("deploy local source", () => {
     const opts = {
       ...BASE_OPTS,
       projectId: "my-project",
       only: "apphosting",
       config: new Config({
-        apphosting: {
-          backendId: "foo",
-          rootDir: "/",
-          ignore: [],
-        },
+        apphosting: [
+          {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+          },
+          {
+            backendId: "fooLocalBuild",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        ],
       }),
     };
 
     it("upserts regional GCS bucket", async () => {
       const context = initializeContext();
-      getProjectNumberStub.resolves("000000000000");
-      upsertBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves({
-        bucket: "firebaseapphosting-sources-12345678-us-central1",
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+
+      uploadObjectStub.onFirstCall().resolves({
+        bucket: bucketName,
         object: "foo-1234",
       });
-      createReadStreamStub.resolves();
+      uploadObjectStub.onSecondCall().resolves({
+        bucket: bucketName,
+        object: "foo-local-build-1234",
+      });
+
+      createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
 
+      // assert backend foo calls
+
+      expect(upsertBucketStub).to.be.calledWith({
+        product: "apphosting",
+        createMessage: `Creating Cloud Storage bucket in ${location} to store App Hosting source code uploads at ${bucketName}...`,
+        projectId: "my-project",
+        req: {
+          baseName: bucketName,
+          purposeLabel: `apphosting-source-${location}`,
+          location: location,
+          lifecycle: {
+            rule: [
+              {
+                action: { type: "Delete" },
+                condition: { age: 30 },
+              },
+            ],
+          },
+        },
+      });
+
+      // assert backend fooLocalBuild calls
       expect(upsertBucketStub).to.be.calledWith({
         product: "apphosting",
         createMessage:
           "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
         projectId: "my-project",
         req: {
-          name: "firebaseapphosting-sources-000000000000-us-central1",
+          baseName: "firebaseapphosting-sources-000000000000-us-central1",
+          purposeLabel: `apphosting-source-${location}`,
           location: "us-central1",
           lifecycle: {
             rule: [
@@ -104,23 +156,43 @@ describe("apphosting", () => {
           },
         },
       });
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+      );
     });
 
     it("correctly creates and sets storage URIs", async () => {
       const context = initializeContext();
-      getProjectNumberStub.resolves("000000000000");
-      upsertBucketStub.resolves();
-      createArchiveStub.resolves("path/to/foo-1234.zip");
-      uploadObjectStub.resolves({
-        bucket: "firebaseapphosting-sources-12345678-us-central1",
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+
+      uploadObjectStub.onFirstCall().resolves({
+        bucket: bucketName,
         object: "foo-1234",
       });
-      createReadStreamStub.resolves();
+
+      uploadObjectStub.onSecondCall().resolves({
+        bucket: bucketName,
+        object: "foo-local-build-1234",
+      });
+      createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris["foo"]).to.equal(
-        "gs://firebaseapphosting-sources-000000000000-us-central1/foo-1234.zip",
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
+      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
+        `gs://${bucketName}/foo-local-build-1234.zip`,
       );
     });
   });

@@ -89,3 +89,14 @@ export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQ
     toString,
   };
 }
+
+// https://spec.graphql.org/September2025/#sec-Names
+const graphqlNameRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Returns whether the string is a valid GraphQL Name (a.k.a. identifier).
+ * @param name the string to test
+ */
+export function isGraphqlName(name: string): boolean {
+  return graphqlNameRegex.test(name);
+}

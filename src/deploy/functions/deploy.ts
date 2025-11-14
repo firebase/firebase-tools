@@ -95,14 +95,15 @@ export async function uploadSourceV2(
   // Future behavior: BYO bucket if we're using the Cloud Run API directly because it does not provide a source upload API.
   // We use this behavior whenever the "runfunctions" experiment is enabled for now just to help vet the codepath incrementally.
   // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
-  const bucketName = `firebase-functions-src-${projectNumber}`;
-  await gcs.upsertBucket({
+  const baseName = `firebase-functions-src-${projectNumber}`;
+  const bucketName = await gcs.upsertBucket({
     product: "functions",
     projectId,
-    createMessage: `Creating Cloud Storage bucket in ${region} to store Functions source code uploads at ${bucketName}...`,
+    createMessage: `Creating Cloud Storage bucket in ${region} to store Functions source code uploads at ${baseName}...`,
     req: {
-      name: bucketName,
+      baseName,
       location: region,
+      purposeLabel: `functions-source-${region.toLowerCase()}`,
       lifecycle: {
         rule: [
           {
@@ -220,6 +221,11 @@ export function shouldUploadBeSkipped(
     if (!haveEndpoint) {
       return false;
     }
-    return haveEndpoint.hash && wantEndpoint.hash && haveEndpoint.hash === wantEndpoint.hash;
+    return (
+      haveEndpoint.hash &&
+      wantEndpoint.hash &&
+      haveEndpoint.hash === wantEndpoint.hash &&
+      haveEndpoint.state === "ACTIVE"
+    );
   });
 }

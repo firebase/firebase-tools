@@ -8,7 +8,7 @@ import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
 import {
   listLocations,
   listAllServices,
@@ -40,15 +40,27 @@ import {
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
 
+// Default GCP region for Data Connect
+export const FDC_DEFAULT_REGION = "us-east4";
+
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
+
+export type Source =
+  | "mcp_init"
+  | "init"
+  | "init_sdk"
+  | "gen_sdk_init"
+  | "gen_sdk_init_sdk"
+  | "deploy";
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  analyticsFlow: string;
+  flow: string;
   appDescription: string;
   serviceId: string;
   locationId: string;
@@ -88,13 +100,14 @@ const templateServiceInfo: ServiceGQL = {
       ],
     },
   ],
+  seedDataGql: SEED_DATA_TEMPLATE,
 };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
-    analyticsFlow: "cli",
+    flow: "",
     appDescription: "",
     serviceId: "",
     locationId: "",
@@ -113,16 +126,28 @@ export async function askQuestions(setup: Setup): Promise<void> {
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
+      const wantToGenerate = await confirm({
+        message: "Do you want to generate schema and queries with Gemini?",
+        default: false,
       });
-      if (info.appDescription) {
+      if (wantToGenerate) {
         configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
+        await ensureGIFApiTos(setup.projectId);
+        info.appDescription = await input({
+          message: `Describe your app idea:`,
+          validate: async (s: string) => {
+            if (s.length > 0) {
+              return true;
+            }
+            return "Please enter a description for your app idea.";
+          },
+        });
       }
     }
     if (hasBilling) {
       await promptForCloudSQL(setup, info);
+    } else if (info.appDescription) {
+      await promptForLocation(setup, info);
     }
   }
   setup.featureInfo = setup.featureInfo || {};
@@ -146,18 +171,32 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   // Populate the default values of required fields.
   info.serviceId = info.serviceId || defaultServiceId();
   info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
-  info.locationId = info.locationId || `us-central1`;
+  info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
-    void trackGA4("dataconnect_init", {
-      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-      flow: info.analyticsFlow,
-      provision_cloud_sql: String(info.shouldProvisionCSQL),
-    });
+    const sdkInfo = setup.featureInfo?.dataconnectSdk;
+    const source: Source = setup.featureInfo?.dataconnectSource || "init";
+    void trackGA4(
+      "dataconnect_init",
+      {
+        source,
+        flow: info.flow.substring(1), // Trim the leading `_`
+        project_status: setup.projectId
+          ? (await isBillingEnabled(setup))
+            ? info.shouldProvisionCSQL
+              ? "blaze_provisioned_csql"
+              : "blaze"
+            : "spark"
+          : "missing",
+        ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
+      },
+      Date.now() - startTime,
+    );
   }
 
   if (info.appDescription) {
@@ -167,7 +206,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
   }
-  if (!setup.isBillingEnabled) {
+  if (!(await isBillingEnabled(setup))) {
     setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
   }
   setup.instructions.push(
@@ -184,7 +223,7 @@ async function actuateWithInfo(
   const projectId = setup.projectId;
   if (!projectId) {
     // If no project is present, just save the template files.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
 
@@ -198,6 +237,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
+      source: setup.featureInfo?.dataconnectSource || "init",
     });
   }
 
@@ -210,11 +250,11 @@ async function actuateWithInfo(
     }
     if (info.serviceGql) {
       // Save the downloaded service from the backend.
-      info.analyticsFlow += "_save_downloaded";
+      info.flow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
@@ -236,7 +276,7 @@ async function actuateWithInfo(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
-    info.analyticsFlow += "_save_gemini_service_already_exists";
+    info.flow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -278,7 +318,7 @@ async function actuateWithInfo(
         ],
       },
     ];
-    info.analyticsFlow += "_save_gemini";
+    info.flow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -289,7 +329,7 @@ async function actuateWithInfo(
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
-    info.analyticsFlow += "_save_gemini_operation_error";
+    info.flow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -433,10 +473,10 @@ function subDataconnectYamlValues(replacementValues: {
 }): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
+    locationId: "__location__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorDirs: "__connectorDirs__",
-    locationId: "__location__",
   };
   let replaced = DATACONNECT_YAML_TEMPLATE;
   for (const [k, v] of Object.entries(replacementValues)) {
@@ -469,11 +509,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
-    info.analyticsFlow += "_pick_new_service";
+    info.flow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
-  info.analyticsFlow += "_pick_existing_service";
+  info.flow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
@@ -595,11 +635,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         choices,
       });
       if (info.cloudSqlInstanceId !== "") {
-        info.analyticsFlow += "_pick_existing_csql";
+        info.flow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
-        info.analyticsFlow += "_pick_new_csql";
+        info.flow += "_pick_new_csql";
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
@@ -612,12 +652,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   }
 
   if (info.locationId === "") {
-    const choices = await locationChoices(setup);
-    info.locationId = await select<string>({
-      message: "What location would like to use?",
-      choices,
-      default: "us-east4",
-    });
+    await promptForLocation(setup, info);
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your Cloud SQL instance and database now?`,
       default: true,
@@ -638,6 +673,17 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     }
   }
   return;
+}
+
+async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void> {
+  if (info.locationId === "") {
+    const choices = await locationChoices(setup);
+    info.locationId = await select<string>({
+      message: "What location would you like to use?",
+      choices,
+      default: FDC_DEFAULT_REGION,
+    });
+  }
 }
 
 async function locationChoices(setup: Setup) {

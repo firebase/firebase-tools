@@ -146,6 +146,7 @@ export interface Generate {
   swiftSdk?: SwiftSDK | SwiftSDK[];
   kotlinSdk?: KotlinSDK | KotlinSDK[];
   dartSdk?: DartSDK | DartSDK[];
+  adminNodeSdk?: AdminNodeSDK | AdminNodeSDK[];
 }
 
 export interface SupportedFrameworks {
@@ -153,7 +154,11 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
-export type Framework = keyof SupportedFrameworks;
+export interface AdminNodeSDK {
+  outputDir: string;
+  package: string;
+  packageJsonDir?: string;
+}
 
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
@@ -172,15 +177,6 @@ export interface KotlinSDK {
 export interface DartSDK {
   outputDir: string;
   package: string;
-}
-
-export enum Platform {
-  NONE = "NONE",
-  ANDROID = "ANDROID",
-  WEB = "WEB",
-  IOS = "IOS",
-  FLUTTER = "FLUTTER",
-  MULTIPLE = "MULTIPLE",
 }
 
 // Helper types && converters
@@ -220,7 +216,6 @@ export function toDatasource(
 
 /** Start Dataplane Client Types */
 export interface ExecuteGraphqlRequest {
-  name: string;
   query: string;
   operationName?: string;
   variables?: { [key: string]: string };

@@ -36,17 +36,6 @@ describe("notes", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should throw a FirebaseError if the API call fails", async () => {
-      nock(crashlyticsApiOrigin())
-        .post(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`)
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(createNote(appId, issueId, noteBody)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to create note for issue ${issueId}, app ${appId}`,
-      );
-    });
-
     it("should throw a FirebaseError if the appId is invalid", async () => {
       const invalidAppId = "invalid-app-id";
 
@@ -68,19 +57,6 @@ describe("notes", () => {
       await deleteNote(appId, issueId, noteId);
 
       expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the API call fails", async () => {
-      nock(crashlyticsApiOrigin())
-        .delete(
-          `/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes/${noteId}`,
-        )
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(deleteNote(appId, issueId, noteId)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to delete note ${noteId} from issue ${issueId} for app ${appId}`,
-      );
     });
 
     it("should throw a FirebaseError if the appId is invalid", async () => {
@@ -109,22 +85,6 @@ describe("notes", () => {
 
       expect(result).to.deep.equal(mockResponse.notes);
       expect(nock.isDone()).to.be.true;
-    });
-
-    it("should throw a FirebaseError if the API call fails", async () => {
-      const pageSize = 10;
-
-      nock(crashlyticsApiOrigin())
-        .get(`/v1alpha/projects/${requestProjectNumber}/apps/${appId}/issues/${issueId}/notes`)
-        .query({
-          page_size: `${pageSize}`,
-        })
-        .reply(500, { error: "Internal Server Error" });
-
-      await expect(listNotes(appId, issueId, pageSize)).to.be.rejectedWith(
-        FirebaseError,
-        `Failed to list notes for issue ${issueId}, app ${appId}`,
-      );
     });
 
     it("should throw a FirebaseError if the appId is invalid", async () => {

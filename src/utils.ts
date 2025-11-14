@@ -566,7 +566,12 @@ export function datetimeString(d: Date): string {
  * Indicates whether the end-user is running the CLI from a cloud-based environment.
  */
 export function isCloudEnvironment() {
-  return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
+  return (
+    !!process.env.CODESPACES ||
+    !!process.env.GOOGLE_CLOUD_WORKSTATIONS ||
+    !!process.env.CLOUD_SHELL ||
+    !!process.env.GOOGLE_CLOUD_SHELL
+  );
 }
 
 /**
@@ -890,7 +895,7 @@ export function generatePassword(n = 20): string {
 
 /**
  * Reads a secret value from either a file or a prompt.
- * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is falsy and this is a tty, uses prompt. Otherwise reads from dataFile.
  * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
  */
 export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {

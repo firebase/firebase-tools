@@ -358,8 +358,8 @@ export async function fetchServiceLogs(projectId: string, serviceId: string): Pr
   const order = "desc";
 
   try {
-    const entries = await listEntries(projectId, filter, pageSize, order);
-    return entries || [];
+    const { entries } = await listEntries(projectId, filter, pageSize, order);
+    return entries;
   } catch (err: any) {
     throw new FirebaseError(`Failed to fetch logs for Cloud Run service ${serviceId}`, {
       original: err,

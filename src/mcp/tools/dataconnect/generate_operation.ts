@@ -5,10 +5,11 @@ import { generateOperation } from "../../../gemini/fdcExperience";
 import { pickService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
+  "dataconnect",
   {
     name: "generate_operation",
     description:
-      "Generates a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
+      "Use this to generate a single Firebase Data Connect query or mutation based on the currently deployed schema and the provided prompt.",
     inputSchema: z.object({
       // Lifted guidance from : https://cloud.google.com/gemini/docs/discover/write-prompts
       prompt: z

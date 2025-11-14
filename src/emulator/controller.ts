@@ -295,10 +295,11 @@ export async function startAll(
       `No emulators to start, run ${clc.bold("firebase init emulators")} to get started.`,
     );
   }
+  const deprecationNotices: string[] = [];
   if (targets.some(requiresJava)) {
     if ((await commandUtils.checkJavaMajorVersion()) < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
       utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
-      throw new FirebaseError(JAVA_DEPRECATION_WARNING);
+      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
     }
   }
   if (options.logVerbosity) {
@@ -754,7 +755,7 @@ export async function startAll(
     // can't because the user may be using a fake project.
     try {
       if (!options.instance) {
-        options.instance = await getDefaultDatabaseInstance(options);
+        options.instance = await getDefaultDatabaseInstance(projectId);
       }
     } catch (e: any) {
       databaseLogger.log(
@@ -1039,7 +1040,7 @@ export async function startAll(
     is_demo_project: String(isDemoProject),
   });
 
-  return { deprecationNotices: [] };
+  return { deprecationNotices };
 }
 
 function getListenConfig(
