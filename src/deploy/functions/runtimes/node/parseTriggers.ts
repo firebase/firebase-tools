@@ -295,7 +295,6 @@ export function addResourcesToBuild(
     };
     triggered = { scheduleTrigger };
     if (annotation.schedule.retryConfig) {
-      scheduleTrigger.retryConfig = {};
       proto.copyIfPresent(
         scheduleTrigger.retryConfig,
         annotation.schedule.retryConfig,
