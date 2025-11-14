@@ -346,7 +346,6 @@ describe("Backend", () => {
           httpsTrigger: {},
         });
 
-        // Manually set the run region as unreachable to simulate unavailability
         const context = newContext();
         await backend.existingBackend(context);
         if (!context.unreachableRegions) {
