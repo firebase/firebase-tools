@@ -273,10 +273,18 @@ export async function updateOrCreateRelease(
   });
 }
 
-export function testRuleset(projectId: string, files: RulesetFile[]): Promise<any> {
+export interface RulesTestSuite {
+      testCases: RulesTestCase[],
+}
+
+export interface RulesTestCase {
+}
+
+export function testRuleset(projectId: string, files: RulesetFile[], testSuite?: RulesTestSuite): Promise<any> {
   return apiClient.post(
     `/projects/${encodeURIComponent(projectId)}:test`,
     { source: { files } },
     { skipLog: { body: true } },
+    ...(testSuite ? {testSuite} : undefined)
   );
 }

@@ -128,6 +128,8 @@ export function load(client: any): any {
   client.firestore.backups.schedules.create = loadCommand("firestore-backups-schedules-create");
   client.firestore.backups.schedules.update = loadCommand("firestore-backups-schedules-update");
   client.firestore.backups.schedules.delete = loadCommand("firestore-backups-schedules-delete");
+  client.firestore.rules = {};
+  client.firestore.rules.test = loadCommand("firestore-rules-test");
   client.functions = {};
   client.functions.config = {};
   client.functions.config.clone = loadCommand("functions-config-clone");
