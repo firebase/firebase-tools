@@ -24,14 +24,8 @@ export const command = new Command("functions:list")
       projectId,
     } as args.Context;
 
-    let endpoints: backend.Endpoint[] = [];
-    try {
-      const existing = await backend.existingBackend(context);
-      endpoints = backend.allEndpoints(existing);
-    } catch (err: any) {
-      logger.debug(`Failed to list functions:`, err);
-      logger.warn(err.message);
-    }
+    const existing = await backend.existingBackend(context);
+    const endpoints = backend.allEndpoints(existing);
 
     endpoints.sort(backend.compareFunctions);
 

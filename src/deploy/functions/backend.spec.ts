@@ -5,7 +5,6 @@ import { FirebaseError } from "../../error";
 import * as args from "./args";
 import * as backend from "./backend";
 import * as gcf from "../../gcp/cloudfunctions";
-import * as gcfV2 from "../../gcp/cloudfunctionsv2";
 import * as runv2 from "../../gcp/runv2";
 import * as utils from "../../utils";
 import * as projectConfig from "../../functions/projectConfig";
@@ -90,20 +89,17 @@ describe("Backend", () => {
 
   describe("existing backend", () => {
     let listAllFunctions: sinon.SinonStub;
-    let listAllFunctionsV2: sinon.SinonStub;
     let listServices: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
 
     beforeEach(() => {
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
-      listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
-      listServices = sinon.stub(runv2, "listServices").resolves([]);
+      listServices = sinon.stub(runv2, "listServices").rejects("Unexpected call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
     });
 
     afterEach(() => {
       listAllFunctions.restore();
-      listAllFunctionsV2.restore();
       listServices.restore();
       logLabeledWarning.restore();
     });
@@ -162,6 +158,7 @@ describe("Backend", () => {
           functions: [],
           unreachable: [],
         });
+        listServices.onFirstCall().resolves([]);
         listServices.throws(new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }));
 
         const context = newContext();
@@ -182,25 +179,6 @@ describe("Backend", () => {
           unreachable: [],
         });
         listServices.throws(
-          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
-        );
-
-        const have = await backend.existingBackend(newContext());
-
-        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
-      });
-
-      it("should read v1 functions only when user is not allowlisted for v2", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [
-            {
-              ...HAVE_CLOUD_FUNCTION,
-              httpsTrigger: {},
-            },
-          ],
-          unreachable: [],
-        });
-        listAllFunctionsV2.throws(
           new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
         );
 
