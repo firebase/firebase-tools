@@ -200,6 +200,49 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   return svc;
 }
 
+/**
+ * Lists Cloud Run services in the given project.
+ *
+ * This method only returns services with the "goog-managed-by" label set to
+ * "cloud-functions" or "firebase-functions".
+ */
+export async function listServices(projectId: string): Promise<Service[]> {
+  const allServices: Service[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams["pageToken"] = pageToken;
+    }
+
+    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/-/services`,
+      { queryParams },
+    );
+
+    if (res.status !== 200) {
+      throw new FirebaseError(`Failed to list services. HTTP Error: ${res.status}`, {
+        original: res.body as any,
+      });
+    }
+
+    if (res.body.services) {
+      for (const service of res.body.services) {
+        if (
+          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
+        ) {
+          allServices.push(service);
+        }
+      }
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return allServices;
+}
+
 // TODO: Replace with real version:
 function functionNameToServiceName(id: string): string {
   return id.toLowerCase().replace(/_/g, "-");
@@ -487,9 +530,14 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
-
-    // TODO: trigger types.
-    httpsTrigger: {},
+    ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+      ? { httpsTrigger: {} }
+      : {
+          eventTrigger: {
+            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            retry: false,
+          },
+        }),
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
