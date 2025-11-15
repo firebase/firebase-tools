@@ -50,7 +50,6 @@ export interface Context {
   existingBackendPromise?: Promise<backend.Backend>;
   unreachableRegions?: {
     gcfV1: string[];
-    gcfV2: string[];
     run: string[];
   };
 

@@ -1,9 +1,12 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import * as runv2 from "./runv2";
 import * as backend from "../deploy/functions/backend";
 import { latest } from "../deploy/functions/runtimes/supported";
 import { CODEBASE_LABEL } from "../functions/constants";
+import { Client } from "../apiv2";
+import { FirebaseError } from "../error";
 
 describe("runv2", () => {
   const PROJECT_ID = "project-id";
@@ -201,13 +204,11 @@ describe("runv2", () => {
       const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
         ...BASE_RUN_SERVICE,
         name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
-        labels: {
-          [runv2.RUNTIME_LABEL]: latest("nodejs"),
-        },
         annotations: {
           ...BASE_RUN_SERVICE.annotations,
           [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
           [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
+          [runv2.TRIGGER_TYPE_ANNOTATION]: "HTTP_TRIGGER",
         },
         template: {
           containers: [
@@ -239,6 +240,7 @@ describe("runv2", () => {
         httpsTrigger: {},
         labels: {
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
+          [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
         },
         environmentVariables: {},
         secretEnvironmentVariables: [],
@@ -259,6 +261,7 @@ describe("runv2", () => {
           ...BASE_RUN_SERVICE.annotations,
           [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
           [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
+          [runv2.TRIGGER_TYPE_ANNOTATION]: "HTTP_TRIGGER",
         },
         template: {
           containers: [
@@ -442,7 +445,7 @@ describe("runv2", () => {
         entryPoint: SERVICE_ID, // No FUNCTION_TARGET_ANNOTATION
         availableMemoryMb: 128,
         cpu: 0.5,
-        httpsTrigger: {},
+        eventTrigger: { eventType: "unknown", retry: false },
         labels: {},
         environmentVariables: {},
         secretEnvironmentVariables: [],
@@ -450,6 +453,116 @@ describe("runv2", () => {
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
+    });
+  });
+
+  describe("listServices", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getStub = sandbox.stub(Client.prototype, "get");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return a list of services", async () => {
+      const mockServices = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+      ];
+      getStub.resolves({ status: 200, body: { services: mockServices } });
+
+      const services = await runv2.listServices(PROJECT_ID);
+
+      expect(services).to.deep.equal(mockServices);
+      expect(getStub).to.have.been.calledOnceWithExactly(
+        `/projects/${PROJECT_ID}/locations/-/services`,
+        { queryParams: {} },
+      );
+    });
+
+    it("should handle pagination", async () => {
+      const mockServices1 = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+      ];
+      const mockServices2 = [
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+      ];
+      getStub
+        .onFirstCall()
+        .resolves({ status: 200, body: { services: mockServices1, nextPageToken: "nextPage" } });
+      getStub.onSecondCall().resolves({ status: 200, body: { services: mockServices2 } });
+
+      const services = await runv2.listServices(PROJECT_ID);
+
+      expect(services).to.deep.equal([...mockServices1, ...mockServices2]);
+      expect(getStub).to.have.been.calledTwice;
+      expect(getStub.firstCall).to.have.been.calledWithExactly(
+        `/projects/${PROJECT_ID}/locations/-/services`,
+        { queryParams: {} },
+      );
+      expect(getStub.secondCall).to.have.been.calledWithExactly(
+        `/projects/${PROJECT_ID}/locations/-/services`,
+        { queryParams: { pageToken: "nextPage" } },
+      );
+    });
+
+    it("should throw an error if the API call fails", async () => {
+      getStub.resolves({ status: 500, body: "Internal Server Error" });
+
+      try {
+        await runv2.listServices(PROJECT_ID);
+        expect.fail("Should have thrown an error");
+      } catch (err: any) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err.message).to.contain('Failed to list services: 500 "Internal Server Error"');
+      }
+    });
+
+    it("should filter for gcfv2 and firebase-managed services", async () => {
+      const mockServices = [
+        {
+          name: "service1",
+          labels: { "goog-managed-by": "cloud-functions" },
+        },
+        {
+          name: "service2",
+          labels: { "goog-managed-by": "firebase-functions" },
+        },
+        {
+          name: "service3",
+          labels: { "goog-managed-by": "other" },
+        },
+        {
+          name: "service4",
+          labels: {},
+        },
+      ];
+      getStub.resolves({ status: 200, body: { services: mockServices } });
+
+      const services = await runv2.listServices(PROJECT_ID);
+
+      expect(services).to.deep.equal([mockServices[0], mockServices[1]]);
+      expect(getStub).to.have.been.calledOnceWithExactly(
+        `/projects/${PROJECT_ID}/locations/-/services`,
+        { queryParams: {} },
+      );
     });
   });
 });
