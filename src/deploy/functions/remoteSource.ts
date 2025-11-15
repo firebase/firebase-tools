@@ -1,206 +1,127 @@
 import * as fs from "fs";
 import * as path from "path";
-import { spawnSync, SpawnSyncReturns } from "child_process";
+
+import { URL } from "url";
 
 import * as tmp from "tmp";
 
-import { FirebaseError, hasMessage } from "../../error";
+import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet } from "../../utils";
 import { resolveWithin } from "../../pathUtils";
+import * as downloadUtils from "../../downloadUtils";
+import * as unzipModule from "../../unzip";
 
-export interface GitClient {
-  clone(repository: string, destination: string): SpawnSyncReturns<string>;
-  fetch(ref: string, cwd: string): SpawnSyncReturns<string>;
-  checkout(ref: string, cwd: string): SpawnSyncReturns<string>;
-}
-
-export class DefaultGitClient implements GitClient {
-  clone(repository: string, destination: string): SpawnSyncReturns<string> {
-    return spawnSync(
-      "git",
-      ["clone", "--filter=blob:none", "--no-checkout", "--depth=1", repository, destination],
-      { encoding: "utf8" },
-    );
-  }
-
-  fetch(ref: string, cwd: string): SpawnSyncReturns<string> {
-    return spawnSync("git", ["fetch", "--depth=1", "--filter=blob:none", "origin", ref], {
-      cwd,
-      encoding: "utf8",
-    });
-  }
-
-  checkout(ref: string, cwd: string): SpawnSyncReturns<string> {
-    return spawnSync("git", ["checkout", ref], { cwd, encoding: "utf8" });
-  }
-}
-
-export async function cloneRemoteSource(
+/**
+ * Downloads a GitHub repository to a temporary directory and returns the absolute path
+ * to the source directory. Verifies that a `functions.yaml` manifest exists
+ * before returning.
+ *
+ * @param repository Remote GitHub URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
+ * @param ref GitHub ref to fetch (tag/branch/commit)
+ * @param dir Optional subdirectory within the repo to use
+ * @returns Absolute path to the checked‑out source directory
+ */
+export async function downloadGitHubSource(
   repository: string,
   ref: string,
   dir?: string,
-  gitClient: GitClient = new DefaultGitClient(),
 ): Promise<string> {
-  /**
-   * Clones a Git repo to a temporary directory and returns the absolute path
-   * to the source directory. Verifies that a `functions.yaml` manifest exists
-   * before returning.
-   *
-   * @param repository Remote Git URL (e.g. https://github.com/org/repo)
-   * @param ref Git ref to fetch (tag/branch/commit)
-   * @param dir Optional subdirectory within the repo to use
-   * @param gitClient Optional Git client for testing/injection
-   * @returns Absolute path to the checked‑out source directory
-   */
-  logger.debug(`Cloning remote source: ${repository}@${ref} (dir: ${dir || "."})`);
+  logger.debug(`Downloading remote source: ${repository}@${ref} (dir: ${dir || "."})`);
 
   const tmpDir = tmp.dirSync({
     prefix: "firebase-functions-remote-",
     unsafeCleanup: true,
   });
 
-  if (!isGitAvailable()) {
+  const gitHubInfo = parseGitHubUrl(repository);
+  if (!gitHubInfo) {
     throw new FirebaseError(
-      "Git is required to deploy functions from a remote source. " +
-        "Please install Git from https://git-scm.com/downloads and try again.",
+      `Could not parse GitHub repository URL: ${repository}. ` +
+        `Only GitHub repositories are supported.`,
     );
   }
 
+  let rootDir = tmpDir.name;
   try {
-    logger.debug(`Fetching remote source for ${repository}@${ref}...`);
+    logger.debug(`Attempting to download via GitHub Archive API for ${repository}@${ref}...`);
+    const archiveUrl = `https://github.com/${gitHubInfo.owner}/${gitHubInfo.repo}/archive/${ref}.zip`;
+    const archivePath = await downloadUtils.downloadToTmp(archiveUrl);
+    logger.debug(`Downloaded archive to ${archivePath}, unzipping...`);
 
-    const cloneResult = await runGitWithRetry(() => gitClient.clone(repository, tmpDir.name));
-    if (cloneResult.error || cloneResult.status !== 0) {
-      throw (
-        cloneResult.error ||
-        new Error(
-          cloneResult.stderr ||
-            cloneResult.stdout ||
-            `Clone failed with status ${cloneResult.status}`,
-        )
-      );
-    }
+    await unzipModule.unzip(archivePath, tmpDir.name);
 
-    const fetchResult = await runGitWithRetry(() => gitClient.fetch(ref, tmpDir.name));
-    if (fetchResult.error || fetchResult.status !== 0) {
-      throw (
-        fetchResult.error ||
-        new Error(
-          fetchResult.stderr ||
-            fetchResult.stdout ||
-            `Fetch failed with status ${fetchResult.status}`,
-        )
-      );
-    }
+    // GitHub archives usually wrap content in a top-level directory (e.g. repo-ref).
+    // We need to find it and use it as the root.
+    const files = fs.readdirSync(tmpDir.name);
 
-    const checkoutResult = gitClient.checkout("FETCH_HEAD", tmpDir.name);
-    if (checkoutResult.error || checkoutResult.status !== 0) {
-      throw (
-        checkoutResult.error ||
-        new Error(
-          checkoutResult.stderr ||
-            checkoutResult.stdout ||
-            `Checkout failed with status ${checkoutResult.status}`,
-        )
-      );
+    if (files.length === 1 && fs.statSync(path.join(tmpDir.name, files[0])).isDirectory()) {
+      rootDir = path.join(tmpDir.name, files[0]);
+      logger.debug(`Found top-level directory in archive: ${files[0]}`);
     }
-
-    const sourceDir = dir
-      ? resolveWithin(
-          tmpDir.name,
-          dir,
-          `Subdirectory '${dir}' in remote source must not escape the repository root.`,
-        )
-      : tmpDir.name;
-
-    if (dir && !fs.existsSync(sourceDir)) {
-      throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
-    }
-
-    requireFunctionsYaml(sourceDir);
-    const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
-    logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
-    return sourceDir;
-  } catch (error: unknown) {
-    if (error instanceof FirebaseError) {
-      throw error;
-    }
-
-    const errorMessage = hasMessage(error) ? error.message : String(error);
-    if (
-      errorMessage.includes("Could not resolve host") ||
-      errorMessage.includes("unable to access")
-    ) {
-      throw new FirebaseError(
-        `Unable to access repository '${repository}'. ` +
-          `Please check the repository URL and your network connection.`,
-      );
-    }
-    if (errorMessage.includes("pathspec") || errorMessage.includes("did not match")) {
-      throw new FirebaseError(
-        `Git ref '${ref}' not found in repository '${repository}'. ` +
-          `Please check that the ref (tag, branch, or commit) exists.`,
-      );
-    }
-    if (
-      errorMessage.includes("Permission denied") ||
-      errorMessage.includes("Authentication failed")
-    ) {
-      throw new FirebaseError(
-        `Authentication failed for repository '${repository}'. ` +
-          `For private repositories, please ensure you have configured Git authentication.`,
-      );
-    }
-
-    throw new FirebaseError(`Failed to clone repository '${repository}@${ref}': ${errorMessage}`);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to download GitHub archive for ${repository}@${ref}. ` +
+        `Make sure the repository is public and the ref exists. ` +
+        `Private repositories are not supported via this method.`,
+      { original: err as Error },
+    );
   }
+
+  const sourceDir = dir
+    ? resolveWithin(
+        rootDir,
+        dir,
+        `Subdirectory '${dir}' in remote source must not escape the repository root.`,
+      )
+    : rootDir;
+
+  if (dir && !fs.existsSync(sourceDir)) {
+    throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
+  }
+
+  requireFunctionsYaml(sourceDir);
+  const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
+  logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
+  return sourceDir;
 }
 
 /**
- * Checks whether the `git` binary is available in the current environment.
- * @returns true if `git --version` runs successfully; false otherwise.
+ * Parses a GitHub repository URL or shorthand string into its owner and repo components.
+ *
+ * Valid inputs include:
+ * - "https://github.com/owner/repo"
+ * - "https://github.com/owner/repo.git"
+ * - "owner/repo"
+ *
+ * @param url The URL or shorthand string to parse.
+ * @returns An object containing the owner and repo, or undefined if parsing fails.
  */
-export function isGitAvailable(): boolean {
-  const result = spawnSync("git", ["--version"], { encoding: "utf8" });
-  return !result.error && result.status === 0;
-}
+function parseGitHubUrl(url: string): { owner: string; repo: string } | undefined {
+  // Handle "org/repo" shorthand
+  const shorthandMatch = /^[a-zA-Z0-9-]+\/[a-zA-Z0-9-_.]+$/.exec(url);
+  if (shorthandMatch) {
+    const [owner, repo] = url.split("/");
+    return { owner, repo };
+  }
 
-async function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isTransientGitError(message: string): boolean {
-  const m = message.toLowerCase();
-  return (
-    m.includes("could not resolve host") ||
-    m.includes("unable to access") ||
-    m.includes("connection reset") ||
-    m.includes("timed out") ||
-    m.includes("temporary failure in name resolution") ||
-    m.includes("ssl_read") ||
-    m.includes("network is unreachable")
-  );
-}
-
-async function runGitWithRetry(
-  cmd: () => SpawnSyncReturns<string>,
-  retries = 1,
-  backoffMs = 200,
-): Promise<SpawnSyncReturns<string>> {
-  let attempt = 0;
-  while (true) {
-    const res = cmd();
-    if (!res.error && res.status === 0) {
-      return res;
+  try {
+    const u = new URL(url);
+    if (u.hostname !== "github.com") {
+      return undefined;
     }
-    const stderr = (res.stderr || res.stdout || "").toString();
-    if (attempt < retries && isTransientGitError(stderr)) {
-      await delay(backoffMs * (attempt + 1));
-      attempt++;
-      continue;
+    const parts = u.pathname.split("/").filter((p) => !!p);
+    if (parts.length < 2) {
+      return undefined;
     }
-    return res;
+    const owner = parts[0];
+    let repo = parts[1];
+    if (repo.endsWith(".git")) {
+      repo = repo.slice(0, -4);
+    }
+    return { owner, repo };
+  } catch {
+    return undefined;
   }
 }
 
