@@ -17,8 +17,12 @@ export const templates = [
     name: "next-app-hello-world",
     platform: TemplatePlatform.NODE,
   },
-    {
+  {
     name: "next-app-rules-simple",
+    platform: TemplatePlatform.NODE,
+  },
+  {
+    name: "next-app-rules-medium-task-master",
     platform: TemplatePlatform.NODE,
   },
 ] as const;

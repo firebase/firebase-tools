@@ -1,0 +1,96 @@
+/**
+ * @file Firestore Security Rules for TaskMaster Application
+ * @description This ruleset enforces a strict user-ownership model for data access, with an exception for publicly shared, read-only task lists and a global admin role.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles, accessible only to the user themselves.
+ * - /users/{userId}/tasks/{taskId}: Stores tasks associated with a specific user. Writable only by the owner, but readable by the owner, an admin, or anyone if a corresponding share link exists.
+ * - /users/{userId}/categories/{categoryId}: Stores task categories for a user. Writable only by the owner.
+ * - /shared/{shareId}: Maps a public share ID to a user ID. Publicly readable, but only writable by the user who is sharing their list.
+ * - /admins/{userId}: Stores a list of admin users. The existence of a user's UID as a document ID in this collection grants them admin privileges.
+ *
+ * Key Security Decisions:
+ * - Users can only access and manage their own data.
+ * - An admin user can read any user's tasks.
+ * - Read-only access to a user's tasks can be granted via a public share link.
+ * - Users cannot list all users in the /users collection.
+ *
+ * Denormalization for Authorization:
+ * - The `shared` collection is used to enable public read access to a user's tasks without exposing the user's ID directly. The existence of a document in `/shared/{shareId}` pointing to a `userId` is the condition for allowing public reads on that user's tasks.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    /**
+     * @description Controls access to user profiles. Users can only read and write their own profile.
+     */
+    match /users/{userId} {
+      allow get, update, delete: if isOwner(userId);
+      allow list: if false; // Prevent listing all users
+      allow create: if isOwner(userId);
+    }
+
+    /**
+     * @description Controls access to tasks. Only the owner can write. Reads are allowed by the owner, an admin, or publicly if the list is shared.
+     */
+    match /users/{userId}/tasks/{taskId} {
+        function isSharedList() {
+          // This function checks for a corresponding document in the /shared collection
+          // to determine if the task list is public. It queries the collection for a document
+          // where the 'userId' field matches the user whose tasks are being accessed.
+          // This is a more performant way to check for public access than scanning the whole collection.
+          return exists(/databases/$(database)/documents/shared) &&
+                 !firestore.query(/databases/$(database)/documents/shared)
+                           .where("userId", "==", userId)
+                           .get()
+                           .empty();
+        }
+        
+        function hasValidTaskData() {
+            let data = request.resource.data;
+            return data.description is string && data.description.size() >= 3 &&
+                   data.completed is bool &&
+                   (data.dueDate == null || data.dueDate is timestamp) &&
+                   (data.categoryId == null || data.categoryId is string) &&
+                   data.createdAt is timestamp;
+        }
+
+        allow read: if isOwner(userId) || isAdmin() || isSharedList();
+        allow create: if isOwner(userId) && hasValidTaskData();
+        allow update: if isOwner(userId) && hasValidTaskData();
+        allow delete: if isOwner(userId);
+    }
+    
+    /**
+     * @description Controls access to categories. Only the owner can manage their own categories.
+     */
+    match /users/{userId}/categories/{categoryId} {
+        allow read, write: if isOwner(userId);
+    }
+    
+    /**
+     * @description Controls access to share link documents. Publicly readable, but only the user can create their own share link.
+     */
+    match /shared/{shareId} {
+      allow read: if true;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update, delete: if false; // Share links are immutable and cannot be deleted for now.
+    }
+
+    /**
+     * @description Controls access to the admins collection. Only existing admins can read or write to it.
+     */
+    match /admins/{userId} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
