@@ -1,6 +1,6 @@
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, copyFileSync } from "node:fs";
 import { AgentTestRunner } from "./agent-test-runner.js";
 import { GeminiCliRunner } from "./gemini-cli-runner.js";
 import { buildFirebaseCli } from "./setup.js";
@@ -12,6 +12,10 @@ import { RunDirectories } from "./paths.js";
 export * from "./agent-test-runner.js";
 
 const dateName = new Date().toISOString().replace("T", "_").replace(/:/g, "-").replace(".", "-");
+
+const FIREBASE_CONFIG_FILENAME = "firebase-tools.json";
+const CONFIGSTORE_DIR = ".config/configstore";
+const HOME_CONFIGSTORE_DIR = path.resolve(path.join(process.env.HOME || "", CONFIGSTORE_DIR));
 
 export async function setupEnvironment(): Promise<void> {
   await buildFirebaseCli();
@@ -40,6 +44,13 @@ export async function startAgentTest(
   if (options?.templateName) {
     copyTemplate(options.templateName, dirs.runDir);
   }
+  if (process.env.COPY_FIREBASE_CLI_CONFIG) {
+    const toDir = path.resolve(dirs.userDir, CONFIGSTORE_DIR);
+    console.log(
+      `Copying Firebase CLI configs from ${HOME_CONFIGSTORE_DIR} to \n${toDir} so the test can use your auth credentials`,
+    );
+    copyFirebaseCliConfigstore(HOME_CONFIGSTORE_DIR, toDir);
+  }
 
   const run = new GeminiCliRunner(testName, dirs, options?.toolMocks || []);
   await run.waitForReadyPrompt();
@@ -64,4 +75,14 @@ function createRunDirectory(testName: string): RunDirectories {
   mkdirSync(userDir, { recursive: true });
 
   return { testDir, runDir, userDir };
+}
+
+function copyFirebaseCliConfigstore(fromDir: string, toDir: string) {
+  const toDirResolved = path.resolve(toDir);
+  mkdirSync(toDirResolved, { recursive: true });
+
+  copyFileSync(
+    path.join(fromDir, FIREBASE_CONFIG_FILENAME),
+    path.join(toDirResolved, FIREBASE_CONFIG_FILENAME),
+  );
 }
