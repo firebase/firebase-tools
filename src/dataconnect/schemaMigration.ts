@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
+import { IncompatibleSqlSchemaError, Diff, MAIN_SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   getIAMUser,
@@ -178,7 +178,7 @@ export async function migrateSchema(args: {
     const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
     if (!postgresql) {
       throw new FirebaseError(
-        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
+        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${MAIN_SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
       );
     }
     postgresql.schemaValidation = "NONE";
@@ -374,7 +374,7 @@ export function getIdentifiers(schema: Schema): {
     );
   }
   const instanceId = instanceName.split("/").pop()!;
-  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  const serviceName = schema.name.replace(`/schemas/${MAIN_SCHEMA_ID}`, "");
   return {
     databaseId,
     instanceId,
@@ -626,7 +626,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       source: {
         files: [],
       },
