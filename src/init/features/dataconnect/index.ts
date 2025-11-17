@@ -48,6 +48,7 @@ const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect
 const DATACONNECT_WEBHOOKS_YAML_TEMPLATE = readTemplateSync(
   "init/dataconnect/dataconnect-fdcwebhooks.yaml",
 );
+const SECONDARY_SCHEMA_YAML_TEMPLATE = readTemplateSync("init/dataconnect/secondary_schema.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -488,6 +489,9 @@ function subDataconnectYamlValues(replacementValues: {
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
+
+  // If no secondary schemas, remove the secondary schema placeholder.
+  replaced = replaced.replace("#__secondarySchemaPlaceholder__\n", "");
   return replaced;
 }
 
