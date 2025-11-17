@@ -1,0 +1,236 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user in the TaskMaster application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "email"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task in the TaskMaster application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Task entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Task)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the task."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Due date of the task.",
+          "format": "date-time"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Indicates whether the task is completed."
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "Reference to the Category this task belongs to."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "description",
+        "dueDate",
+        "completed"
+      ]
+    },
+    "SharedList": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SharedList",
+      "type": "object",
+      "description": "Represents a shared, read-only view of a user's task list.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the shared list link."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user whose task list is being shared."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the share link was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "createdAt"
+      ]
+    },
+    "Category": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Category",
+      "type": "object",
+      "description": "Represents a user-defined category for tasks.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Category."
+        },
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this category."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp when the category was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "createdAt"
+      ]
+    },
+    "Admin": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Admin",
+      "type": "object",
+      "description": "Represents an administrator user.",
+      "properties": {
+        "isAdmin": {
+          "type": "boolean",
+          "description": "Indicates if the user is an admin."
+        }
+      },
+      "required": [
+        "isAdmin"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data.  Path-based ownership is enforced.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores tasks associated with a specific user. Path-based ownership is enforced.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique identifier for the task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/categories/{categoryId}",
+        "definition": {
+          "entityName": "Category",
+          "schema": {
+            "$ref": "#/backend/entities/Category"
+          },
+          "description": "Stores categories for a specific user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "categoryId",
+              "description": "The unique identifier for the category."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/shared/{shareId}",
+        "definition": {
+          "entityName": "SharedList",
+          "schema": {
+            "$ref": "#/backend/entities/SharedList"
+          },
+          "description": "Stores documents that link a unique share ID to a user's ID, enabling read-only access to their task list.",
+          "params": [
+            {
+              "name": "shareId",
+              "description": "The unique identifier for the share link."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/admins/{userId}",
+        "definition": {
+          "entityName": "Admin",
+          "schema": {
+            "$ref": "#/backend/entities/Admin"
+          },
+          "description": "Stores administrator user records. A user's existence in this collection grants them admin privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to store tasks for individual users in a simple TODO list application (TaskMaster). User data is stored in a dedicated collection. Task data is stored within each user's document using a subcollection. This structure adheres to the principles of Authorization Independence, Clarity of Intent, and Structural Segregation.  Authorization Independence is achieved through path-based ownership, avoiding the need for `get()` calls in security rules. The path `/users/{userId}/tasks/{taskId}` clearly establishes that tasks belong to a specific user.  Structural Segregation is ensured by storing all tasks for a user in the `/users/{userId}/tasks` subcollection, where all documents share the same security posture (i.e., only the user can access their tasks). QAPs (Rules are not Filters) are supported because the structure enables secure list operations within the user's task subcollection. Path-based ownership makes `list` operations efficient and secure. A new '/shared' collection is added to manage public, read-only access to task lists. Each document in '/shared' maps a unique, publicly shareable ID to a user's ID. This allows anyone with the share ID to read the corresponding user's tasks without needing to be authenticated, while write access remains restricted. A subcollection for categories, `/users/{userId}/categories`, has been added to allow users to organize their tasks. Security rules ensure users can only manage their own categories. An '/admins' collection is added to manage administrator roles. A user's document in this collection designates them as an admin."
+  }
+}

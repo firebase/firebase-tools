@@ -128,4 +128,13 @@ describe.only("firestore:rules:test", function (this: Mocha.Suite) {
 
     await run.type(PROMPT);
   });
+
+  it("generates rules for next-app-rules-medium-task-master", async function (this: Mocha.Context) {
+    const run: AgentTestRunner = await startAgentTest(this, {
+      templateName: "next-app-rules-medium-task-master",
+      toolMocks: [],
+    });
+
+    await run.type(PROMPT);
+  });
 });
