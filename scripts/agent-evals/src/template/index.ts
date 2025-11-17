@@ -17,6 +17,10 @@ export const templates = [
     name: "next-app-hello-world",
     platform: TemplatePlatform.NODE,
   },
+    {
+    name: "next-app-rules-simple",
+    platform: TemplatePlatform.NODE,
+  },
 ] as const;
 
 export type TemplateName = (typeof templates)[number]["name"];
