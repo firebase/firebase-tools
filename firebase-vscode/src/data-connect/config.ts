@@ -1,6 +1,6 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
-import { ConnectorYaml, DataConnectYaml, mainSchemaYaml } from "../dataconnect/types";
+import { ConnectorYaml, DataConnectYaml, mainSchemaYaml } from "../../../src/dataconnect/types";
 import { Result, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
