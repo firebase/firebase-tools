@@ -12,7 +12,55 @@ const PROMPT = `"Follow these steps:
 The schema for the firestore.rules.spec.json file is as follows:
 
 \`\`\`ts
+export interface RulesTestSuite {
+  testCases: RulesTestCase[];
+}
 
+export interface RulesTestCase {
+  expectation?: RulesTestCaseExpectation;
+  request?: any;
+  resource?: any;
+  functionMocks?: RulesTestCaseFunctionMock[];
+  pathEncoding?: RulesTestCasePathEncoding;
+  expressionReportLevel?: RulesTestCaseExpressionReportLevel;
+}
+
+export interface RulesTestCaseFunctionMock {
+  function: string;
+  args: RulesTestCaseFunctionMockArg[];
+  result: RulesTestCaseFunctionMockResult;
+}
+
+export enum RulesTestCaseExpectation {
+  // TODO(samedson@) does this have utility?
+  // EXPECTATION_UNSPECIFIED = 0,
+  ALLOW = 1,
+  DENY = 2,
+}
+
+export interface RulesTestCaseFunctionMockArg {
+  exactValue?: any; // google.protobuf.Value
+  anyValue?: {}; // google.protobuf.Empty
+}
+
+export interface RulesTestCaseFunctionMockResult {
+  value?: any; // google.protobuf.Value
+  undefined?: {}; // google.protobuf.Empty
+}
+
+export enum RulesTestCasePathEncoding {
+  // TODO(samedson@) does this have utility?
+  // ENCODING_UNSPECIFIED = 0,
+  URL_ENCODED = 1,
+  PLAIN = 2,
+}
+
+export enum RulesTestCaseExpressionReportLevel {
+  LEVEL_UNSPECIFIED = 0,
+  NONE = 1,
+  FULL = 2,
+  VISITED = 3,
+}
 \`\`\`
 
 Example firestore.rules.spec.json:
@@ -58,7 +106,18 @@ Example firestore.rules.spec.json:
 
 `
 
-describe("firestore:rules:test", function (this: Mocha.Suite) {
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+// TODO REMOVE ONLY
+describe.only("firestore:rules:test", function (this: Mocha.Suite) {
   this.retries(2);
 
   it("backend app", async function (this: Mocha.Context) {
@@ -67,6 +126,6 @@ describe("firestore:rules:test", function (this: Mocha.Suite) {
       toolMocks: [],
     });
 
-    await run.type();
+    await run.type(PROMPT);
   });
 });
