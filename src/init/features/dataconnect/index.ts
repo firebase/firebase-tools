@@ -535,9 +535,8 @@ async function downloadService(info: RequiredInfo, serviceName: string): Promise
   try {
     schemas = await listSchemas(serviceName, [
       "schemas.name",
-      "schemas.datasources.postgresql.database",
-      "schemas.datasources.postgresql.cloudSql.instance",
-      "schemas.source.files",
+      "schemas.datasources",
+      "schemas.source",
     ]);
   } catch (err: any) {
     if (err.status !== 404) {

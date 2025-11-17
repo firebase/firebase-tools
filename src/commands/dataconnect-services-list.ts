@@ -7,7 +7,6 @@ import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import * as Table from "cli-table3";
-import { MAIN_SCHEMA_ID } from "../dataconnect/types";
 
 // TODO: Update this command to also list secondary schema information.
 export const command = new Command("dataconnect:services:list")
@@ -34,7 +33,7 @@ export const command = new Command("dataconnect:services:list")
     });
     const jsonOutput: { services: Record<string, any>[] } = { services: [] };
     for (const service of services) {
-      const schema = (await client.getSchema(service.name, MAIN_SCHEMA_ID)) ?? {
+      const schema = (await client.getSchema(service.name)) ?? {
         name: "",
         datasources: [{}],
         source: { files: [] },
