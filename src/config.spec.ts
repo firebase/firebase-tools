@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
 
 import { expect } from "chai";
 
@@ -79,7 +80,7 @@ describe("Config", () => {
 
   describe("functions.source", () => {
     it("injects default source when default dir exists but source is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config({ functions: {} }, { cwd: tmpDir, projectDir: tmpDir });
@@ -87,7 +88,7 @@ describe("Config", () => {
     });
 
     it("does not injects default source when default dir is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
 
       const cfg = new Config(
         { functions: { runtime: "nodejs20" } },
@@ -97,7 +98,7 @@ describe("Config", () => {
     });
 
     it("does not inject source for remoteSource", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -113,7 +114,7 @@ describe("Config", () => {
     });
 
     it("injects into the first empty entry only when default dir exists", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -136,7 +137,7 @@ describe("Config", () => {
     });
 
     it("injects only one entry when multiple are empty", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -152,7 +153,7 @@ describe("Config", () => {
     });
 
     it("does not inject when no entry is empty", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -173,7 +174,7 @@ describe("Config", () => {
     });
 
     it("does not inject for arrays when default dir is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
 
       const cfg = new Config(
         {
