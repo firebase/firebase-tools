@@ -278,7 +278,8 @@ export interface RulesTestSuite {
 }
 
 export enum RulesTestCaseExpectation {
-  EXPECTATION_UNSPECIFIED = 0,
+  // TODO(samedson@) does this have utility?
+  // EXPECTATION_UNSPECIFIED = 0,
   ALLOW = 1,
   DENY = 2,
 }
@@ -300,7 +301,8 @@ export interface RulesTestCaseFunctionMock {
 }
 
 export enum RulesTestCasePathEncoding {
-  ENCODING_UNSPECIFIED = 0,
+  // TODO(samedson@) does this have utility?
+  // ENCODING_UNSPECIFIED = 0,
   URL_ENCODED = 1,
   PLAIN = 2,
 }
@@ -314,8 +316,8 @@ export enum RulesTestCaseExpressionReportLevel {
 
 export interface RulesTestCase {
   expectation?: RulesTestCaseExpectation;
-  request?: any; // google.protobuf.Value
-  resource?: any; // google.protobuf.Value
+  request?: any;
+  resource?: any;
   functionMocks?: RulesTestCaseFunctionMock[];
   pathEncoding?: RulesTestCasePathEncoding;
   expressionReportLevel?: RulesTestCaseExpressionReportLevel;
@@ -324,12 +326,12 @@ export interface RulesTestCase {
 export function testRuleset(
   projectId: string,
   files: RulesetFile[],
-  testCases?: RulesTestCase[],
+  testSuite?: RulesTestSuite,
 ): Promise<any> {
-  let testSuite = testCases ? { testSuite: { testCases } } : undefined;
+  let testSuiteBody = testSuite ? { testSuite } : undefined;
   return apiClient.post(
     `/projects/${encodeURIComponent(projectId)}:test`,
-    { source: { files }, ...testSuite },
+    { source: { files }, ...testSuiteBody },
     { skipLog: { body: true } },
   );
 }
