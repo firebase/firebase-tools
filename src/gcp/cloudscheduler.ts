@@ -262,13 +262,15 @@ export async function jobFromEndpoint(
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
-  proto.convertIfPresent(
-    job,
-    endpoint.scheduleTrigger,
-    "attemptDeadline",
-    "attemptDeadlineSeconds",
-    nullsafeVisitor(proto.durationFromSeconds),
-  );
+  if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
+    proto.convertIfPresent(
+      job,
+      endpoint.scheduleTrigger,
+      "attemptDeadline",
+      "attemptDeadlineSeconds",
+      nullsafeVisitor(proto.durationFromSeconds),
+    );
+  }
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};
     proto.copyIfPresent(

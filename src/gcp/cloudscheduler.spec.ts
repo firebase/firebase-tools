@@ -284,7 +284,7 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should copy attemptDeadlineSeconds for v1 endpoints", async () => {
+    it("should not copy attemptDeadlineSeconds for v1 endpoints", async () => {
       expect(
         await cloudscheduler.jobFromEndpoint(
           {
@@ -301,11 +301,38 @@ describe("cloudscheduler", () => {
         name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
         timeZone: "America/Los_Angeles",
-        attemptDeadline: "300s",
         pubsubTarget: {
           topicName: "projects/project/topics/firebase-schedule-id-region",
           attributes: {
             scheduled: "true",
+          },
+        },
+      });
+    });
+
+    it("should copy attemptDeadlineSeconds for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            scheduleTrigger: {
+              schedule: "every 1 minutes",
+              attemptDeadlineSeconds: 300,
+            },
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "300s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
           },
         },
       });

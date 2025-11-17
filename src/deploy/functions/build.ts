@@ -605,9 +605,16 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       bkSchedule.retryConfig = null;
     }
     if (typeof endpoint.scheduleTrigger.attemptDeadlineSeconds !== "undefined") {
-      bkSchedule.attemptDeadlineSeconds = r.resolveInt(
-        endpoint.scheduleTrigger.attemptDeadlineSeconds,
-      );
+      const attemptDeadlineSeconds = r.resolveInt(endpoint.scheduleTrigger.attemptDeadlineSeconds);
+      if (
+        attemptDeadlineSeconds !== null &&
+        !backend.isValidAttemptDeadline(attemptDeadlineSeconds)
+      ) {
+        throw new FirebaseError(
+          `attemptDeadlineSeconds must be between ${backend.MIN_ATTEMPT_DEADLINE_SECONDS} and ${backend.MAX_ATTEMPT_DEADLINE_SECONDS} seconds (inclusive).`,
+        );
+      }
+      bkSchedule.attemptDeadlineSeconds = attemptDeadlineSeconds;
     }
     return { scheduleTrigger: bkSchedule };
   } else if ("taskQueueTrigger" in endpoint) {

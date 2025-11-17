@@ -224,6 +224,44 @@ describe("toBackend", () => {
       expect(endpointDef.func.serviceAccount).to.equal("service-account-1@");
     }
   });
+
+  it("throws if attemptDeadlineSeconds is out of range", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+          attemptDeadlineSeconds: 10, // Invalid: < 15
+        },
+      },
+    });
+    expect(() => build.toBackend(desiredBuild, {})).to.throw(
+      FirebaseError,
+      /attemptDeadlineSeconds must be between 15 and 1800 seconds/,
+    );
+
+    const desiredBuild2: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+          attemptDeadlineSeconds: 1801, // Invalid: > 1800
+        },
+      },
+    });
+    expect(() => build.toBackend(desiredBuild2, {})).to.throw(
+      FirebaseError,
+      /attemptDeadlineSeconds must be between 15 and 1800 seconds/,
+    );
+  });
 });
 
 describe("envWithType", () => {
