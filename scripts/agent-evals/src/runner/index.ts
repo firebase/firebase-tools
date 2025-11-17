@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, copyFileSync } from "node:fs";
 import { AgentTestRunner } from "./agent-test-runner.js";
@@ -15,7 +16,7 @@ const dateName = new Date().toISOString().replace("T", "_").replace(/:/g, "-").r
 
 const FIREBASE_CONFIG_FILENAME = "firebase-tools.json";
 const CONFIGSTORE_DIR = ".config/configstore";
-const HOME_CONFIGSTORE_DIR = path.resolve(path.join(process.env.HOME || "", CONFIGSTORE_DIR));
+const HOME_CONFIGSTORE_DIR = path.resolve(path.join(os.homedir(), CONFIGSTORE_DIR));
 
 export async function setupEnvironment(): Promise<void> {
   await buildFirebaseCli();
@@ -87,7 +88,9 @@ function copyFirebaseCliConfigstore(fromDir: string, toDir: string) {
   } catch (e: any) {
     if (e.code === "ENOENT") {
       const sourceFile = path.join(fromDir, FIREBASE_CONFIG_FILENAME);
-      console.warn(`Firebase CLI config file not found at ${sourceFile}. Skipping copy. If you want to use your local Firebase login, please log in with the Firebase CLI.`);
+      console.warn(
+        `Firebase CLI config file not found at ${sourceFile}. Skipping copy. If you want to use your local Firebase login, please log in with the Firebase CLI.`,
+      );
     } else {
       throw e;
     }
