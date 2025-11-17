@@ -120,7 +120,7 @@ Example firestore.rules.spec.json:
 describe.only("firestore:rules:test", function (this: Mocha.Suite) {
   this.retries(2);
 
-  it("backend app", async function (this: Mocha.Context) {
+  it("generates rules for next-app-rules-simple", async function (this: Mocha.Context) {
     const run: AgentTestRunner = await startAgentTest(this, {
       templateName: "next-app-rules-simple",
       toolMocks: [],
