@@ -35,6 +35,15 @@ export class InteractiveCLI {
     args: string[],
     private readonly options: RunInteractiveOptions,
   ) {
+    // Ensure that when you exit or Ctrl-C (SIGINT) that the terminal returns
+    // back to normal because pty can leave it in a wonky state
+    process.on("exit", () => {
+      this.cleanup();
+    });
+    process.on("SIGINT", () => {
+      this.cleanup();
+    });
+
     this.ptyProcess = pty.spawn(command, args, {
       name: "xterm-color",
       cols: 80,
@@ -157,9 +166,15 @@ export class InteractiveCLI {
       });
     });
 
-    // Restore cursor visibility
-    process.stdout.write("\x1b[?25h");
+    this.cleanup();
 
     this.ptyProcess.kill();
+  }
+
+  private cleanup() {
+    // Disable application mode
+    process.stdout.write("\x1b[?1l");
+    // Restore cursor visibility
+    process.stdout.write("\x1b[?25h");
   }
 }
