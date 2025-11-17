@@ -78,11 +78,18 @@ function createRunDirectory(testName: string): RunDirectories {
 }
 
 function copyFirebaseCliConfigstore(fromDir: string, toDir: string) {
-  const toDirResolved = path.resolve(toDir);
-  mkdirSync(toDirResolved, { recursive: true });
-
-  copyFileSync(
-    path.join(fromDir, FIREBASE_CONFIG_FILENAME),
-    path.join(toDirResolved, FIREBASE_CONFIG_FILENAME),
-  );
+  mkdirSync(toDir, { recursive: true });
+  try {
+    copyFileSync(
+      path.join(fromDir, FIREBASE_CONFIG_FILENAME),
+      path.join(toDir, FIREBASE_CONFIG_FILENAME),
+    );
+  } catch (e: any) {
+    if (e.code === "ENOENT") {
+      const sourceFile = path.join(fromDir, FIREBASE_CONFIG_FILENAME);
+      console.warn(`Firebase CLI config file not found at ${sourceFile}. Skipping copy. If you want to use your local Firebase login, please log in with the Firebase CLI.`);
+    } else {
+      throw e;
+    }
+  }
 }
