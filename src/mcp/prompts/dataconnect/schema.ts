@@ -1,17 +1,20 @@
 import { prompt } from "../../prompt";
 import { loadAll } from "../../../dataconnect/load";
-import type { ServiceInfo } from "../../../dataconnect/types";
+import { mainSchema, type ServiceInfo } from "../../../dataconnect/types";
 import { BUILTIN_SDL, MAIN_INSTRUCTIONS } from "../../util/dataconnect/content";
 import { compileErrors } from "../../util/dataconnect/compile";
 
 function renderServices(fdcServices: ServiceInfo[]) {
   if (!fdcServices.length) return "Data Connect Status: <UNCONFIGURED>";
 
+  // TODO: Render secondary schemas as well.
   return `\n\n## Data Connect Schema
 
 The following is the up-to-date content of existing schema files (their paths are relative to the Data Connect source directory).
 
-${fdcServices[0].schema.source.files?.map((f) => `\`\`\`graphql ${f.path}\n${f.content}\n\`\`\``).join("\n\n")}`;
+${mainSchema(fdcServices[0].schemas)
+  .source.files?.map((f) => `\`\`\`graphql ${f.path}\n${f.content}\n\`\`\``)
+  .join("\n\n")}`;
 }
 
 function renderErrors(errors?: string) {
