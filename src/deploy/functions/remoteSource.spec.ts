@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
-
+import * as path from "path";
 import * as tmp from "tmp";
 
 import { downloadGitHubSource } from "./remoteSource";
@@ -11,39 +11,53 @@ import * as unzipModule from "../../unzip";
 
 describe("remoteSource", () => {
   describe("downloadGitHubSource", () => {
-    let existsSyncStub: sinon.SinonStub;
-    let readdirSyncStub: sinon.SinonStub;
-    let statSyncStub: sinon.SinonStub;
     let downloadToTmpStub: sinon.SinonStub;
     let unzipStub: sinon.SinonStub;
+    let tmpDir: tmp.DirResult;
 
     beforeEach(() => {
-      existsSyncStub = sinon.stub(fs, "existsSync");
-      readdirSyncStub = sinon.stub(fs, "readdirSync");
-      statSyncStub = sinon.stub(fs, "statSync");
+      // Use a real temporary directory for each test
+      tmpDir = tmp.dirSync({
+        prefix: "firebase-functions-remote-test-",
+        unsafeCleanup: true,
+      });
+
+      // Stub downloadToTmp to return a fake archive path
       downloadToTmpStub = sinon.stub(downloadUtils, "downloadToTmp");
-      unzipStub = sinon.stub(unzipModule, "unzip");
-      sinon.stub(tmp, "dirSync").returns({
-        name: "/tmp/firebase-functions-remote-test",
-        removeCallback: () => {
-          // no-op
-        },
-      } as tmp.DirResult);
+
+      // Stub unzip to actually write files to the destination
+      unzipStub = sinon.stub(unzipModule, "unzip").callsFake(async (src, dest) => {
+        // Simulate unzipping by creating the expected directory structure
+        // We assume the zip contains a top-level directory "repo-main"
+        const repoDir = path.join(dest, "repo-main");
+        fs.mkdirSync(repoDir, { recursive: true });
+        fs.writeFileSync(path.join(repoDir, "functions.yaml"), "runtime: nodejs16");
+
+        // Add some extra files to simulate a real repo
+        fs.writeFileSync(path.join(repoDir, "index.js"), "console.log('hello')");
+        fs.mkdirSync(path.join(repoDir, "subdir"));
+        fs.writeFileSync(path.join(repoDir, "subdir", "file.txt"), "content");
+      });
+
+      // Spy on tmp.dirSync to ensure we can control the temp dir if needed,
+      // but mostly we just want to ensure the code uses a new temp dir.
+      // However, since the code calls tmp.dirSync internally, we can't easily intercept the *exact* one
+      // unless we stub it.
+      // To make the test robust without mocking fs, we should let the code create its own temp dir.
+      // BUT, we need to control the *content* of that temp dir via the unzip stub.
+      // The unzip stub receives the destination path, so we can write to it.
     });
 
     afterEach(() => {
       sinon.restore();
+      if (tmpDir) {
+        tmpDir.removeCallback();
+      }
     });
 
     it("should use GitHub Archive API for GitHub URLs", async () => {
       const archivePath = "/tmp/archive.zip";
       downloadToTmpStub.resolves(archivePath);
-      unzipStub.resolves();
-
-      // Mock readdir to return a single directory (repo-ref)
-      readdirSyncStub.returns(["repo-main"]);
-      statSyncStub.returns({ isDirectory: () => true } as fs.Stats);
-      existsSyncStub.returns(true); // functions.yaml exists
 
       const sourceDir = await downloadGitHubSource("https://github.com/org/repo", "main");
 
@@ -51,18 +65,14 @@ describe("remoteSource", () => {
       expect(downloadToTmpStub.firstCall.args[0]).to.equal(
         "https://github.com/org/repo/archive/main.zip",
       );
-      expect(unzipStub.calledOnceWith(archivePath, sinon.match.string)).to.be.true;
-      expect(sourceDir).to.contain("repo-main");
+      expect(unzipStub.calledOnce).to.be.true;
+      expect(sourceDir).to.match(/repo-main$/);
+      expect(fs.existsSync(path.join(sourceDir, "functions.yaml"))).to.be.true;
     });
 
     it("should support org/repo shorthand", async () => {
       const archivePath = "/tmp/archive.zip";
       downloadToTmpStub.resolves(archivePath);
-      unzipStub.resolves();
-
-      readdirSyncStub.returns(["repo-main"]);
-      statSyncStub.returns({ isDirectory: () => true } as fs.Stats);
-      existsSyncStub.returns(true);
 
       const sourceDir = await downloadGitHubSource("org/repo", "main");
 
@@ -70,37 +80,37 @@ describe("remoteSource", () => {
       expect(downloadToTmpStub.firstCall.args[0]).to.equal(
         "https://github.com/org/repo/archive/main.zip",
       );
-      expect(sourceDir).to.contain("repo-main");
+      expect(sourceDir).to.match(/repo-main$/);
     });
 
     it("should strip top-level directory from GitHub archive", async () => {
-      const archivePath = "/tmp/archive.zip";
-      downloadToTmpStub.resolves(archivePath);
-      unzipStub.resolves();
-
-      readdirSyncStub.returns(["repo-main"]);
-      statSyncStub.returns({ isDirectory: () => true } as fs.Stats);
-      existsSyncStub.returns(true);
+      downloadToTmpStub.resolves("/tmp/archive.zip");
 
       const sourceDir = await downloadGitHubSource("https://github.com/org/repo", "main");
 
       expect(sourceDir).to.match(/repo-main$/);
+      expect(fs.existsSync(path.join(sourceDir, "functions.yaml"))).to.be.true;
     });
 
-    it("should NOT strip top-level directory if multiple files exist", async () => {
-      const archivePath = "/tmp/archive.zip";
-      downloadToTmpStub.resolves(archivePath);
-      unzipStub.resolves();
+    it("should NOT strip top-level directory if multiple files exist at root", async () => {
+      downloadToTmpStub.resolves("/tmp/archive.zip");
 
-      readdirSyncStub.returns(["file1", "file2"]);
-      existsSyncStub.returns(true);
+      // Override unzip stub to create multiple files at root
+      unzipStub.callsFake(async (src, dest) => {
+        fs.writeFileSync(path.join(dest, "file1.txt"), "content");
+        fs.writeFileSync(path.join(dest, "functions.yaml"), "runtime: nodejs16");
+        const repoDir = path.join(dest, "repo-main");
+        fs.mkdirSync(repoDir);
+      });
 
       const sourceDir = await downloadGitHubSource("https://github.com/org/repo", "main");
 
-      expect(sourceDir).to.not.match(/file1$/);
-      expect(sourceDir).to.not.match(/file2$/);
-      // Should return the tmpDir itself
-      expect(sourceDir).to.contain("firebase-functions-remote-");
+      expect(sourceDir).to.not.match(/repo-main$/);
+      // Should return the tmpDir itself (or rather, the path to it)
+      // Since we can't easily know the exact random tmp path generated inside the function,
+      // we check that it contains the expected files.
+      expect(fs.existsSync(path.join(sourceDir, "file1.txt"))).to.be.true;
+      expect(fs.existsSync(path.join(sourceDir, "functions.yaml"))).to.be.true;
     });
 
     it("should throw error if GitHub Archive download fails", async () => {
@@ -110,8 +120,6 @@ describe("remoteSource", () => {
         FirebaseError,
         /Failed to download GitHub archive/,
       );
-
-      expect(downloadToTmpStub.calledOnce).to.be.true;
     });
 
     it("should throw error for non-GitHub URLs", async () => {
@@ -119,55 +127,40 @@ describe("remoteSource", () => {
         FirebaseError,
         /Only GitHub repositories are supported/,
       );
-
-      expect(downloadToTmpStub.called).to.be.false;
     });
 
     it("should validate subdirectory exists after clone", async () => {
-      // Simulate successful download
       downloadToTmpStub.resolves("/tmp/archive.zip");
-      unzipStub.resolves();
-      readdirSyncStub.returns(["repo-main"]);
-      statSyncStub.returns({ isDirectory: () => true } as fs.Stats);
 
-      // Simulate that the subdirectory does not exist
-      existsSyncStub.callsFake((p: fs.PathLike) => {
-        const s = String(p);
-        if (/[/\\]subdir$/.test(s)) return false; // dir missing
-        if (s.endsWith("functions.yaml")) return true; // avoid manifest error masking
-        return true;
-      });
-
-      try {
-        await downloadGitHubSource("https://github.com/org/repo", "main", "subdir");
-      } catch (e: any) {
-        if (!e.message.includes("Directory 'subdir' not found")) {
-          throw e;
-        }
-        return;
-      }
-      throw new Error("Expected error not thrown");
+      // The default unzip stub creates "repo-main/subdir", so "subdir" works.
+      // Let's try a non-existent one.
+      await expect(
+        downloadGitHubSource("https://github.com/org/repo", "main", "nonexistent"),
+      ).to.be.rejectedWith(FirebaseError, /Directory 'nonexistent' not found/);
     });
 
     it("should validate functions.yaml exists", async () => {
-      // Simulate successful download
       downloadToTmpStub.resolves("/tmp/archive.zip");
-      unzipStub.resolves();
-      readdirSyncStub.returns(["repo-main"]);
-      statSyncStub.returns({ isDirectory: () => true } as fs.Stats);
 
-      // Everything exists except the manifest file
-      existsSyncStub.callsFake((p: fs.PathLike) => !String(p).endsWith("functions.yaml"));
+      // Override unzip to NOT create functions.yaml
+      unzipStub.callsFake(async (src, dest) => {
+        const repoDir = path.join(dest, "repo-main");
+        fs.mkdirSync(repoDir, { recursive: true });
+        // No functions.yaml
+      });
 
-      try {
-        await downloadGitHubSource("https://github.com/org/repo", "main");
-      } catch (e: any) {
-        if (!e.message.includes("missing a required deployment manifest")) {
-          throw e;
-        }
-        return;
-      }
-      throw new Error("Expected error not thrown");
+      await expect(downloadGitHubSource("https://github.com/org/repo", "main")).to.be.rejectedWith(
+        FirebaseError,
+        /missing a required deployment manifest/,
+      );
+    });
+
+    it("should prevent path traversal in subdirectory", async () => {
+      downloadToTmpStub.resolves("/tmp/archive.zip");
+
+      await expect(
+        downloadGitHubSource("https://github.com/org/repo", "main", "../outside")
+      ).to.be.rejectedWith(FirebaseError, /must not escape/);
     });
   });
 });

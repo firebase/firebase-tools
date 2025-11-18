@@ -7,8 +7,7 @@ import * as tmp from "tmp";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
-import { logLabeledBullet } from "../../utils";
-import { resolveWithin } from "../../pathUtils";
+import { logLabeledBullet, resolveWithin } from "../../utils";
 import * as downloadUtils from "../../downloadUtils";
 import * as unzipModule from "../../unzip";
 
