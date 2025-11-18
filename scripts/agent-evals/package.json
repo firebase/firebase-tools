@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc",
     "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
-    "test:dev": "SKIP_REBUILD=true npm run test"
+    "test:dev": "SKIP_REBUILD=true COPY_FIREBASE_CLI_CONFIG=true npm run test"
   },
   "keywords": [],
   "author": "",
