@@ -109,7 +109,7 @@ export interface WebviewToExtensionParamsMap {
   /** Opens generated docs */
   "fdc.open-docs": void;
 
-  /** Opens settings page searching for Data Connect emualtor settings */
+  /** Opens settings page searching for Data Connect emulator settings */
   "fdc.open-emulator-settings": void;
 
   /** Clears data from a running data connect emulator */
