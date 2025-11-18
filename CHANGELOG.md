@@ -1,0 +1,1 @@
+- Add support for nodejs24 (beta) runtime for Firebase Functions. (#9475)
