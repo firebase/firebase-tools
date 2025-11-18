@@ -482,7 +482,7 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  private log(level: LoggingLevel, message: unknown): void {
+  log(level: LoggingLevel, message: unknown): void {
     let data = message;
 
     // mcp protocol only takes jsons or it errors; for convienence, format
