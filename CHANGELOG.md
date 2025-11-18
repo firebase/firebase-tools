@@ -1,1 +1,0 @@
-- [Added] support for new google-genai plugin during `init genkit` (#8957)
