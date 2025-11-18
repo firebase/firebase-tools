@@ -55,7 +55,7 @@ describe("remoteSource", () => {
       const archive = archiver("zip", { zlib: { level: 9 } });
       const chunks: Buffer[] = [];
       const output = new Writable({
-        write(chunk, encoding, callback) {
+        write(chunk, _encoding, callback) {
           chunks.push(chunk instanceof Buffer ? chunk : Buffer.from(chunk));
           callback();
         },
