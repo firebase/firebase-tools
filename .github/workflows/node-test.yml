@@ -48,6 +48,7 @@ jobs:
         node-version:
           - "20"
           - "22"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -153,6 +154,7 @@ jobs:
         node-version:
           - "20"
           - "22"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -301,7 +303,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -321,7 +322,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -341,7 +341,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4
