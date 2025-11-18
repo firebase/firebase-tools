@@ -12,8 +12,8 @@ import * as unzipModule from "../../unzip";
 
 /**
  * Downloads a remote source to a temporary directory and returns the absolute path
- * to the source directory. Verifies that a `functions.yaml` manifest exists
- * before returning.
+ * to the source directory. 
+ * 
  * @param repository Remote URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
  * @param ref Git ref to fetch (tag/branch/commit)
  * @param subDir Optional subdirectory within the repo to use
