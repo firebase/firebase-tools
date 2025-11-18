@@ -66,8 +66,8 @@ export async function getRemoteSource(
   const sourceDir = subDir
     ? resolveWithin(
         rootDir,
-      subDir,
-      `Subdirectory '${subDir}' in remote source must not escape the repository root.`,
+        subDir,
+        `Subdirectory '${subDir}' in remote source must not escape the repository root.`,
       )
     : rootDir;
 
