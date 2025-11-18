@@ -3,35 +3,31 @@ import * as path from "path";
 
 import { URL } from "url";
 
-import * as tmp from "tmp";
-
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
 import { logLabeledBullet, resolveWithin } from "../../utils";
+import { dirExistsSync, fileExistsSync } from "../../fsutils";
 import * as downloadUtils from "../../downloadUtils";
 import * as unzipModule from "../../unzip";
 
 /**
- * Downloads a GitHub repository to a temporary directory and returns the absolute path
+ * Downloads a remote source to a temporary directory and returns the absolute path
  * to the source directory. Verifies that a `functions.yaml` manifest exists
  * before returning.
- *
- * @param repository Remote GitHub URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
- * @param ref GitHub ref to fetch (tag/branch/commit)
- * @param dir Optional subdirectory within the repo to use
- * @returns Absolute path to the checked‑out source directory
+ * @param repository Remote URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
+ * @param ref Git ref to fetch (tag/branch/commit)
+ * @param subDir Optional subdirectory within the repo to use
+ * @return Absolute path to the checked‑out source directory
  */
-export async function downloadGitHubSource(
+export async function getRemoteSource(
   repository: string,
   ref: string,
-  dir?: string,
+  destDir: string,
+  subDir?: string,
 ): Promise<string> {
-  logger.debug(`Downloading remote source: ${repository}@${ref} (dir: ${dir || "."})`);
-
-  const tmpDir = tmp.dirSync({
-    prefix: "firebase-functions-remote-",
-    unsafeCleanup: true,
-  });
+  logger.debug(
+    `Downloading remote source: ${repository}@${ref} (destDir: ${destDir}, subDir: ${subDir || "."})`,
+  );
 
   const gitHubInfo = parseGitHubUrl(repository);
   if (!gitHubInfo) {
@@ -41,21 +37,21 @@ export async function downloadGitHubSource(
     );
   }
 
-  let rootDir = tmpDir.name;
+  let rootDir = destDir;
   try {
     logger.debug(`Attempting to download via GitHub Archive API for ${repository}@${ref}...`);
     const archiveUrl = `https://github.com/${gitHubInfo.owner}/${gitHubInfo.repo}/archive/${ref}.zip`;
     const archivePath = await downloadUtils.downloadToTmp(archiveUrl);
     logger.debug(`Downloaded archive to ${archivePath}, unzipping...`);
 
-    await unzipModule.unzip(archivePath, tmpDir.name);
+    await unzipModule.unzip(archivePath, destDir);
 
     // GitHub archives usually wrap content in a top-level directory (e.g. repo-ref).
     // We need to find it and use it as the root.
-    const files = fs.readdirSync(tmpDir.name);
+    const files = fs.readdirSync(destDir);
 
-    if (files.length === 1 && fs.statSync(path.join(tmpDir.name, files[0])).isDirectory()) {
-      rootDir = path.join(tmpDir.name, files[0]);
+    if (files.length === 1 && fs.statSync(path.join(destDir, files[0])).isDirectory()) {
+      rootDir = path.join(destDir, files[0]);
       logger.debug(`Found top-level directory in archive: ${files[0]}`);
     }
   } catch (err: unknown) {
@@ -67,21 +63,20 @@ export async function downloadGitHubSource(
     );
   }
 
-  const sourceDir = dir
+  const sourceDir = subDir
     ? resolveWithin(
         rootDir,
-        dir,
-        `Subdirectory '${dir}' in remote source must not escape the repository root.`,
+      subDir,
+      `Subdirectory '${subDir}' in remote source must not escape the repository root.`,
       )
     : rootDir;
 
-  if (dir && !fs.existsSync(sourceDir)) {
-    throw new FirebaseError(`Directory '${dir}' not found in repository ${repository}@${ref}`);
+  if (subDir && !dirExistsSync(sourceDir)) {
+    throw new FirebaseError(`Directory '${subDir}' not found in repository ${repository}@${ref}`);
   }
 
-  requireFunctionsYaml(sourceDir);
-  const origin = `${repository}@${ref}${dir ? `/${dir}` : ""}`;
-  logLabeledBullet("functions", `verified functions.yaml in remote source (${origin})`);
+  const origin = `${repository}@${ref}${subDir ? `/${subDir}` : ""}`;
+  logLabeledBullet("functions", `downloaded remote source (${origin})`);
   return sourceDir;
 }
 
@@ -92,9 +87,8 @@ export async function downloadGitHubSource(
  * - "https://github.com/owner/repo"
  * - "https://github.com/owner/repo.git"
  * - "owner/repo"
- *
  * @param url The URL or shorthand string to parse.
- * @returns An object containing the owner and repo, or undefined if parsing fails.
+ * @return An object containing the owner and repo, or undefined if parsing fails.
  */
 function parseGitHubUrl(url: string): { owner: string; repo: string } | undefined {
   // Handle "org/repo" shorthand
@@ -130,7 +124,7 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | undefine
  */
 export function requireFunctionsYaml(codeDir: string): void {
   const functionsYamlPath = path.join(codeDir, "functions.yaml");
-  if (!fs.existsSync(functionsYamlPath)) {
+  if (!fileExistsSync(functionsYamlPath)) {
     throw new FirebaseError(
       `The remote repository is missing a required deployment manifest (functions.yaml).\n\n` +
         `For your security, Firebase requires a static manifest to deploy functions from a remote source. ` +
