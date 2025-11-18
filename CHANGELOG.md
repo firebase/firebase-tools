@@ -1,0 +1,1 @@
+- Fix an issue that was causing the MCP server to failto start on Antigravity.
