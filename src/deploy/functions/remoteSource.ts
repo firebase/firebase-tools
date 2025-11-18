@@ -135,7 +135,7 @@ export function requireFunctionsYaml(codeDir: string): void {
       `The remote repository is missing a required deployment manifest (functions.yaml).\n\n` +
         `For your security, Firebase requires a static manifest to deploy functions from a remote source. ` +
         `This prevents the execution of arbitrary code on your machine during the function discovery process.\n\n` +
-        `To resolve this, clone the repository locally, inspect the code for safety, and deploy it as a local source.`,
+        `If you trust this repository and want to use it anyway, clone the repository locally, inspect the code for safety, and deploy it as a local source.`,
     );
   }
 }
