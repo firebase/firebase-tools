@@ -50,7 +50,7 @@ export interface Context {
   existingBackendPromise?: Promise<backend.Backend>;
   unreachableRegions?: {
     gcfV1: string[];
-    run: string[];
+    run?: string[];
   };
 
   // Tracks metrics about codebase deployments to send to GA4

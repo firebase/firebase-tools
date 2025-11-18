@@ -39,6 +39,41 @@ describe("Backend", () => {
     status: "ACTIVE",
   };
 
+  const RUN_SERVICE: runv2.Service = {
+    name: "projects/project/locations/region/services/id",
+    labels: {
+      "goog-managed-by": "cloud-functions",
+      "goog-cloudfunctions-runtime": "nodejs16",
+      "firebase-functions-codebase": "default",
+    },
+    annotations: {
+      "cloudfunctions.googleapis.com/function-id": "id",
+      "cloudfunctions.googleapis.com/trigger-type": "HTTP_TRIGGER",
+    },
+    template: {
+      containers: [
+        {
+          name: "worker",
+          image: "image",
+          env: [{ name: "FUNCTION_TARGET", value: "function" }],
+          resources: {
+            limits: {
+              cpu: "1",
+              memory: "256Mi",
+            },
+          },
+        },
+      ],
+      containerConcurrency: 80,
+    },
+    generation: 1,
+    createTime: "2023-01-01T00:00:00Z",
+    updateTime: "2023-01-01T00:00:00Z",
+    creator: "user",
+    lastModifier: "user",
+    etag: "etag",
+  };
+
   describe("Helper functions", () => {
     it("isEmptyBackend", () => {
       expect(backend.isEmptyBackend(backend.empty())).to.be.true;
@@ -127,6 +162,7 @@ describe("Backend", () => {
           ],
           unreachable: ["region"],
         });
+        listServices.onFirstCall().resolves([]);
         const firstBackend = await backend.existingBackend(context);
 
         const secondBackend = await backend.existingBackend(context);
@@ -158,10 +194,9 @@ describe("Backend", () => {
           functions: [],
           unreachable: [],
         });
-        listServices.onFirstCall().resolves([]);
-        listServices.throws(new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }));
 
         const context = newContext();
+        listServices.throws(new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }));
         const have = await backend.existingBackend(context);
 
         expect(have).to.deep.equal(backend.empty());
@@ -192,10 +227,30 @@ describe("Backend", () => {
           functions: [],
           unreachable: [],
         });
-        listServices.onFirstCall().resolves([]);
+        listServices.onFirstCall().resolves([RUN_SERVICE]);
         const have = await backend.existingBackend(newContext());
 
-        expect(have).to.deep.equal(backend.empty());
+        const want = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          httpsTrigger: {},
+          concurrency: 80,
+          cpu: 1,
+          availableMemoryMb: 256,
+          environmentVariables: {
+            FUNCTION_TARGET: "function",
+          },
+          secretEnvironmentVariables: [],
+          labels: {
+            "goog-managed-by": "cloud-functions",
+            "goog-cloudfunctions-runtime": "nodejs16",
+            "firebase-functions-codebase": "default",
+          },
+          codebase: projectConfig.DEFAULT_CODEBASE,
+          state: "ACTIVE",
+        });
+
+        expect(have).to.deep.equal(want);
       });
 
       it("should deduce features of scheduled functions", async () => {
@@ -277,28 +332,6 @@ describe("Backend", () => {
         expect(logLabeledWarning).to.have.been.called;
       });
 
-      it("should warn if an unused GCFv2 backend is unavailable", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
-        listServices.onFirstCall().resolves([]);
-        // Simulate unreachable run/v2 regions by manually setting context
-        const context = newContext();
-
-        await backend.existingBackend(context);
-
-        // Manually set the run region as unreachable to test the warning
-        if (!context.unreachableRegions) {
-          context.unreachableRegions = { gcfV1: [], run: [] };
-        }
-        context.unreachableRegions.run = ["region"];
-
-        await backend.checkAvailability(context, backend.empty());
-
-        expect(logLabeledWarning).to.have.been.called;
-      });
-
       it("should throw if a needed GCFv1 region is unavailable", async () => {
         listAllFunctions.onFirstCall().resolves({
           functions: [],
@@ -310,53 +343,6 @@ describe("Backend", () => {
           FirebaseError,
           /The following Cloud Functions regions are currently unreachable:/,
         );
-      });
-
-      it("should throw if a GCFv2 needed region is unavailable", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
-        listServices.onFirstCall().resolves([]);
-        const want: backend.Backend = backend.of({
-          ...ENDPOINT,
-          platform: "gcfv2",
-          httpsTrigger: {},
-        });
-
-        const context = newContext();
-        await backend.existingBackend(context);
-        if (!context.unreachableRegions) {
-          context.unreachableRegions = { gcfV1: [], run: [] };
-        }
-        context.unreachableRegions.run = ["region"];
-
-        await expect(backend.checkAvailability(context, want)).to.eventually.be.rejectedWith(
-          FirebaseError,
-          /The following Cloud Functions V2 regions are currently unreachable:/,
-        );
-      });
-
-      it("Should only warn when deploying GCFv1 and GCFv2 is unavailable.", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
-        listServices.resolves([]);
-
-        const want = backend.of({ ...ENDPOINT, httpsTrigger: {} });
-        const context = newContext();
-        await backend.existingBackend(context);
-        if (!context.unreachableRegions) {
-          context.unreachableRegions = { gcfV1: [], run: [] };
-        }
-        context.unreachableRegions.run = ["us-central1"];
-
-        await backend.checkAvailability(context, want);
-
-        expect(listAllFunctions).to.have.been.called;
-        expect(listServices).to.have.been.called;
-        expect(logLabeledWarning).to.have.been.called;
       });
 
       it("Should only warn when deploying GCFv2 and GCFv1 is unavailable.", async () => {
@@ -372,6 +358,48 @@ describe("Backend", () => {
         expect(listAllFunctions).to.have.been.called;
         expect(listServices).to.have.been.called;
         expect(logLabeledWarning).to.have.been.called;
+      });
+
+      it("should warn if an unused Cloud Run region is unavailable", async () => {
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.resolves([]);
+        const context = newContext();
+        context.unreachableRegions = { gcfV1: [], run: ["region"] };
+        // Pre-populate the promise to prevent loadExistingBackend from overwriting unreachableRegions
+        context.existingBackendPromise = Promise.resolve(backend.empty());
+
+        await backend.checkAvailability(context, backend.empty());
+
+        expect(logLabeledWarning).to.have.been.calledWith(
+          "functions",
+          sinon.match(/The following Cloud Run regions are currently unreachable/),
+        );
+      });
+
+      it("should throw if a needed Cloud Run region is unavailable", async () => {
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.resolves([]);
+        const context = newContext();
+        context.unreachableRegions = { gcfV1: [], run: ["region"] };
+        context.existingBackendPromise = Promise.resolve(backend.empty());
+
+        const want = backend.of({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          httpsTrigger: {},
+          region: "region",
+        });
+
+        await expect(backend.checkAvailability(context, want)).to.eventually.be.rejectedWith(
+          FirebaseError,
+          /The following Cloud Run regions are currently unreachable:/,
+        );
       });
     });
   });

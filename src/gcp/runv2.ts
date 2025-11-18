@@ -558,6 +558,8 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       version: e.valueSource.secretKeyRef.version || "latest",
     };
   });
+
+  endpoint.state = "ACTIVE";
   return endpoint;
 }
 
