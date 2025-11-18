@@ -23,7 +23,7 @@ import {
   McpError,
   ErrorCode,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpError } from "./util";
+import { checkFeatureActive, mcpError } from "./util";
 import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
 import { availableTools } from "./tools/index";
 import { ServerTool } from "./tool";
@@ -46,7 +46,6 @@ import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resolveResource, resources, resourceTemplates } from "./resources";
 import * as crossSpawn from "cross-spawn";
-import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -66,7 +65,6 @@ const orderedLogLevels = [
 export class FirebaseMcpServer {
   private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
-  private _pendingMessages: { level: LoggingLevel; data: unknown }[] = [];
   startupRoot?: string;
   cachedProjectDir?: string;
   server: Server;
@@ -150,7 +148,8 @@ export class FirebaseMcpServer {
       return {};
     });
 
-    void this.detectProjectSetup();
+    this.detectProjectRoot();
+    this.detectActiveFeatures();
   }
 
   /** Wait until initialization has finished. */
@@ -180,12 +179,6 @@ export class FirebaseMcpServer {
     return newConfig;
   }
 
-  async detectProjectSetup(): Promise<void> {
-    await this.detectProjectRoot();
-    // Detecting active features requires that the project directory has been appropriately set
-    await this.detectActiveFeatures();
-  }
-
   async detectProjectRoot(): Promise<string> {
     await timeoutFallback(this.ready(), null, 2000);
     if (this.cachedProjectDir) return this.cachedProjectDir;
@@ -198,13 +191,11 @@ export class FirebaseMcpServer {
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
     this.log("debug", "detecting active features of Firebase MCP server...");
-    const projectId = (await this.getProjectId()) || "";
-    const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const options = await this.resolveOptions();
+    const projectId = await this.getProjectId();
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
-        const availabilityCheck = getDefaultFeatureAvailabilityCheck(f);
-        if (await availabilityCheck(ctx)) return f;
+        if (await checkFeatureActive(f, projectId, options)) return f;
         return null;
       }),
     );
@@ -491,7 +482,7 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  log(level: LoggingLevel, message: unknown): void {
+  private log(level: LoggingLevel, message: unknown): void {
     let data = message;
 
     // mcp protocol only takes jsons or it errors; for convienence, format
@@ -508,18 +499,6 @@ export class FirebaseMcpServer {
       return;
     }
 
-    if (this._ready) {
-      // once ready, flush all pending messages before sending the next message
-      // this should only happen during startup
-      while (this._pendingMessages.length) {
-        const message = this._pendingMessages.shift();
-        if (!message) continue;
-        this.server.sendLoggingMessage({ level: message.level, data: message.data });
-      }
-
-      void this.server.sendLoggingMessage({ level, data });
-    } else {
-      this._pendingMessages.push({ level, data });
-    }
+    if (this._ready) void this.server.sendLoggingMessage({ level, data });
   }
 }

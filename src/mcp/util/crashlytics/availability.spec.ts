@@ -145,26 +145,11 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.false;
   });
 
-  it("should return true for an iOS project with Firebase/Crashlytics in Podfile", async () => {
+  it("should return true for an iOS project with Crashlytics in Podfile", async () => {
     mockfs({
       "/test-dir": {
         ios: {
           Podfile: "pod 'Firebase/Crashlytics'",
-          "Project.xcodeproj": {},
-        },
-      },
-    });
-
-    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
-
-    expect(result).to.be.true;
-  });
-
-  it("should return true for an iOS project with FirebaseCrashlytics in Podfile", async () => {
-    mockfs({
-      "/test-dir": {
-        ios: {
-          Podfile: "pod 'FirebaseCrashlytics'",
           "Project.xcodeproj": {},
         },
       },
@@ -180,37 +165,6 @@ describe("isCrashlyticsAvailable", () => {
       "/test-dir": {
         ios: {
           "Package.swift": '.product(name: "FirebaseCrashlytics", package: "Firebase"),',
-          "Project.xcodeproj": {},
-        },
-      },
-    });
-
-    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
-
-    expect(result).to.be.true;
-  });
-
-  it("should return true for an iOS project with Crashlytics in Cartfile", async () => {
-    mockfs({
-      "/test-dir": {
-        ios: {
-          Cartfile: 'github "firebase/firebase-ios-sdk/Crashlytics"',
-          "Project.xcodeproj": {},
-        },
-      },
-    });
-
-    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
-
-    expect(result).to.be.true;
-  });
-
-  it("should return true for an iOS project with Crashlytics binary in Cartfile", async () => {
-    mockfs({
-      "/test-dir": {
-        ios: {
-          Cartfile:
-            'binary "https://dl.google.com/firebase/ios/carthage/FirebaseCrashlyticsBinary.json"\ngithub "firebase/firebase-ios-sdk/Crashlytics"',
           "Project.xcodeproj": {},
         },
       },
