@@ -341,7 +341,7 @@ export async function detectFiles(dirPath: string, filePattern: string): Promise
       "**/coverage/**", // Test coverage reports
     ],
     absolute: false,
-    maxDepth: 2,
+    maxDepth: 4,
   };
   return glob(`**/${filePattern}`, options);
 }
