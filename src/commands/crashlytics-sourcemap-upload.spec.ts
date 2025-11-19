@@ -12,8 +12,8 @@ const expect = chai.expect;
 const PROJECT_ID = "test-project";
 const PROJECT_NUMBER = "12345";
 const BUCKET_NAME = "test-bucket";
-const DIR_PATH = "mockdata";
-const FILE_PATH = "mockdata/mock_mapping.js.map";
+const DIR_PATH = "src/test/fixtures/mapping-files";
+const FILE_PATH = "src/test/fixtures/mapping-files/mock_mapping.js.map";
 
 describe("crashlytics:sourcemap:upload", () => {
   let sandbox: sinon.SinonSandbox;
@@ -82,7 +82,7 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(gcsMock.uploadObject).to.be.calledOnce;
     expect(gcsMock.uploadObject).to.be.calledWith(sinon.match.any, BUCKET_NAME);
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
-      /test-app-default-mockdata-mock_mapping\.js\.map\.zip/,
+      /test-app-default-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
     );
   });
 
@@ -90,7 +90,7 @@ describe("crashlytics:sourcemap:upload", () => {
     await command.runner()(DIR_PATH, { app: "test-app" });
     expect(gcsMock.uploadObject).to.be.calledOnce;
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
-      /test-app-default-mockdata-mock_mapping\.js\.map\.zip/,
+      /test-app-default-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
     );
   });
 });
