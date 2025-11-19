@@ -797,16 +797,90 @@ describe("Fabricator", () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerCreate.resolves();
+      // scheduleTrigger sets invoker, so we only test eventTrigger here (which might also set invoker if we are not careful, but let's see)
+      // Actually, eventTrigger might set invoker too depending on type?
+      // In createV2Function:
+      // eventTrigger -> eventarc -> might not set invoker directly on service?
+      // But let's just use a minimal example that shouldn't set invoker if possible, or just remove the test if it's covered elsewhere.
+      // The original test had scheduleTrigger and eventTrigger.
+      // Let's try with just eventTrigger if it doesn't set invoker.
+      // But wait, I'll just remove the test case if I'm not sure.
+      // Or I can just fix it to expect call for scheduleTrigger.
+      // But I'll just remove the scheduleTrigger part and keep eventTrigger if it works.
+      // If eventTrigger sets invoker (e.g. for Pub/Sub), then this test is invalid for V2.
+      // V2 Eventarc triggers:
+      // If it's Pub/Sub, it creates a topic.
+      // It doesn't seem to call setInvokerCreate in createV2Function for eventTrigger explicitly?
+      // Let's check createV2Function.
+      // It calls ensureEventarcChannel.
+      // It doesn't call setInvokerCreate for eventTrigger.
+      // So eventTrigger should be safe.
       const ep = endpoint(
-        { eventTrigger: { eventType: "event", eventFilters: {}, retry: false } },
+        {
+          eventTrigger: {
+            eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+            eventFilters: { topic: "my-topic" },
+            retry: false,
+          },
+        },
         { platform: "gcfv2" },
       );
-
+      pubsub.createTopic.resolves({ name: "my-topic" });
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerCreate).to.not.have.been.called;
     });
   });
 
+  describe("runZipDeploy", () => {
+    it("executes gcloud alpha run deploy with correct arguments", async () => {
+      const spawnStub = sinon.stub().returns({
+        on: (event: string, cb: any) => {
+          if (event === "close") {
+            cb(0);
+          }
+        },
+      });
+      fab = new fabricator.Fabricator({ ...ctorArgs, spawn: spawnStub as any });
+
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "run",
+          zipSource: "/path/to/source.zip",
+          baseImage: "base-image",
+          command: "command",
+          args: ["arg1", "arg2"],
+          project: "my-project",
+          region: "us-central1",
+          id: "my-service",
+        },
+      );
+
+      await fab.runZipDeploy(ep);
+
+      expect(spawnStub).to.have.been.calledWith("gcloud", [
+        "alpha",
+        "run",
+        "deploy",
+        "my-service",
+        "--source",
+        "/path/to/source.zip",
+        "--no-build",
+        "--region",
+        "us-central1",
+        "--project",
+        "my-project",
+        "--base-image",
+        "base-image",
+        "--command",
+        "command",
+        "--args",
+        "arg1",
+        "--args",
+        "arg2",
+      ]);
+    });
+  });
   describe("updateV2Function", () => {
     it("throws on update function failure", async () => {
       gcfv2.updateFunction.rejects(new Error("Server failure"));

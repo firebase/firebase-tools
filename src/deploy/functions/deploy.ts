@@ -63,7 +63,7 @@ export async function uploadSourceV2(
 ): Promise<gcfv2.StorageSource | undefined> {
   const v2Endpoints = backend
     .allEndpoints(wantBackend)
-    .filter((e) => e.platform === "gcfv2" || e.platform === "run");
+    .filter((e) => (e.platform === "gcfv2" || e.platform === "run") && !e.zipSource);
   if (v2Endpoints.length === 0) {
     return;
   }

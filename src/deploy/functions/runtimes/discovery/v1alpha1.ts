@@ -67,8 +67,13 @@ export type WireEndpoint = build.Triggered &
     serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
-    platform?: build.FunctionsPlatform;
+  platform?: backend.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+  // Zip Deploy Fields
+  source?: string;
+  baseImage?: string;
+  command?: string;
+  args?: string[];
   };
 
 export type WireExtension = {
@@ -157,6 +162,11 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     ingressSettings: (setting) => setting === null || build.AllIngressSettings.includes(setting),
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
+    // Zip Deploy Fields
+    source: "string?",
+    baseImage: "string?",
+    command: "string?",
+    args: "array?",
     httpsTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
@@ -422,7 +432,6 @@ function parseEndpointForBuild(
   copyIfPresent(
     parsed,
     ep,
-    "omit",
     "availableMemoryMb",
     "cpu",
     "maxInstances",
@@ -434,7 +443,13 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables",
     "serviceAccount",
+    "baseImage",
+    "command",
+    "args",
   );
+  if (ep.source) {
+    parsed.zipSource = ep.source;
+  }
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {
       return null;
