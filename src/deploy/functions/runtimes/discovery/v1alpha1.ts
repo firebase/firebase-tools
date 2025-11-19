@@ -67,13 +67,13 @@ export type WireEndpoint = build.Triggered &
     serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
-  platform?: backend.FunctionsPlatform;
+    platform?: backend.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
-  // Zip Deploy Fields
-  source?: string;
-  baseImage?: string;
-  command?: string;
-  args?: string[];
+    // Zip Deploy Fields
+    source?: string;
+    baseImage?: string;
+    command?: string;
+    args?: string[];
   };
 
 export type WireExtension = {
