@@ -531,7 +531,7 @@ describe("runv2", () => {
         expect.fail("Should have thrown an error");
       } catch (err: any) {
         expect(err).to.be.instanceOf(FirebaseError);
-        expect(err.message).to.contain('Failed to list services: 500 "Internal Server Error"');
+        expect(err.message).to.contain("Failed to list services. HTTP Error: 500");
       }
     });
 
