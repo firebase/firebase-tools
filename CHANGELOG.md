@@ -1,1 +1,0 @@
-- Fixed an issue that was causing the MCP server to fail to start when run from directories with deeply nested children.
