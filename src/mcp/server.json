@@ -12,6 +12,8 @@
     {
       "registryType": "npm",
       "identifier": "firebase-tools",
+      "runtimeHint": "npx",
+      "runtimeArguments": [{"type": "positional", "value": "mcp"}],
       "version": "14.25.1",
       "transport": {
         "type": "stdio"
