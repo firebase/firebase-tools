@@ -55,6 +55,7 @@ export interface Job {
   schedule: string;
   description?: string;
   timeZone?: string | null;
+  attemptDeadline?: string | null;
 
   // oneof target
   httpTarget?: HttpTarget;
@@ -195,6 +196,9 @@ function needUpdate(existingJob: Job, newJob: Job): boolean {
   if (existingJob.timeZone !== newJob.timeZone) {
     return true;
   }
+  if (existingJob.attemptDeadline !== newJob.attemptDeadline) {
+    return true;
+  }
   if (newJob.retryConfig) {
     if (!existingJob.retryConfig) {
       return true;
@@ -258,6 +262,15 @@ export async function jobFromEndpoint(
     );
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
+  if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
+    proto.convertIfPresent(
+      job,
+      endpoint.scheduleTrigger,
+      "attemptDeadline",
+      "attemptDeadlineSeconds",
+      nullsafeVisitor(proto.durationFromSeconds),
+    );
+  }
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};
     proto.copyIfPresent(
