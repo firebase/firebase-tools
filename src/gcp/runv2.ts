@@ -530,11 +530,13 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
+    // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
     ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
       ? { httpsTrigger: {} }
       : {
           eventTrigger: {
             eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
             retry: false,
           },
         }),
