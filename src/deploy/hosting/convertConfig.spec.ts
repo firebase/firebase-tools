@@ -477,7 +477,6 @@ describe("convertConfig", () => {
         existingBackend: existingBackend || backend.empty(),
         unreachableRegions: {
           gcfV1: [],
-          gcfV2: [],
           run: [],
         },
       };

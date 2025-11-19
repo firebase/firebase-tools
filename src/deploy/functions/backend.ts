@@ -1,10 +1,12 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -539,7 +541,6 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   };
   const unreachableRegions = {
     gcfV1: [] as string[],
-    gcfV2: [] as string[],
     run: [] as string[],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
@@ -550,20 +551,19 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  let gcfV2Results;
   try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-    for (const apiFunction of gcfV2Results.functions) {
-      const endpoint = gcfV2.endpointFromFunction(apiFunction);
+    const runServices = await run.listServices(ctx.projectId);
+    for (const service of runServices) {
+      const endpoint = run.endpointFromService(service);
       existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
-    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   } catch (err: any) {
     if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
       // customer has preview enabled without allowlist set
     } else {
-      throw err;
+      logger.debug(err.message);
+      unreachableRegions.run = ["unknown"];
     }
   }
 
@@ -583,34 +583,36 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
   await existingBackend(context);
   const gcfV1Regions = new Set();
-  const gcfV2Regions = new Set();
+  const cloudRunRegions = new Set();
   for (const ep of allEndpoints(want)) {
     if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
     } else {
-      gcfV2Regions.add(ep.region);
+      cloudRunRegions.add(ep.region);
     }
   }
 
   const neededUnreachableV1 = context.unreachableRegions?.gcfV1.filter((region) =>
     gcfV1Regions.has(region),
   );
-  const neededUnreachableV2 = context.unreachableRegions?.gcfV2.filter((region) =>
-    gcfV2Regions.has(region),
-  );
+
   if (neededUnreachableV1?.length) {
     throw new FirebaseError(
       "The following Cloud Functions regions are currently unreachable:\n\t" +
-        neededUnreachableV1.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
+      neededUnreachableV1.join("\n\t") +
+      "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
-  if (neededUnreachableV2?.length) {
+  const neededUnreachableCloudRun = context.unreachableRegions?.run?.filter((region) =>
+    cloudRunRegions.has(region),
+  );
+
+  if (neededUnreachableCloudRun?.length) {
     throw new FirebaseError(
-      "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
-        neededUnreachableV2.join("\n\t") +
-        "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
+      "The following Cloud Run regions are currently unreachable:\n\t" +
+      neededUnreachableCloudRun.join("\n\t") +
+      "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
     );
   }
 
@@ -618,26 +620,18 @@ export async function checkAvailability(context: Context, want: Backend): Promis
     utils.logLabeledWarning(
       "functions",
       "The following Cloud Functions regions are currently unreachable:\n" +
-        context.unreachableRegions.gcfV1.join("\n") +
-        "\nCloud Functions in these regions won't be deleted.",
+      context.unreachableRegions.gcfV1.join("\n") +
+      "\nCloud Functions in these regions won't be deleted.",
     );
   }
 
-  if (context.unreachableRegions?.gcfV2.length) {
-    utils.logLabeledWarning(
-      "functions",
-      "The following Cloud Functions V2 regions are currently unreachable:\n" +
-        context.unreachableRegions.gcfV2.join("\n") +
-        "\nCloud Functions in these regions won't be deleted.",
-    );
-  }
-
-  if (context.unreachableRegions?.run.length) {
+  const unreachableRun = context.unreachableRegions?.run;
+  if (unreachableRun?.length) {
     utils.logLabeledWarning(
       "functions",
       "The following Cloud Run regions are currently unreachable:\n" +
-        context.unreachableRegions.run.join("\n") +
-        "\nCloud Run services in these regions won't be deleted.",
+      unreachableRun.join("\n") +
+      "\nCloud Run functions in these regions won't be deleted.",
     );
   }
 }
@@ -700,18 +694,18 @@ export function regionalEndpoints(backend: Backend, region: string): Endpoint[] 
 /** A curried function used for filters, returns a matcher for functions in a backend. */
 export const hasEndpoint =
   (backend: Backend) =>
-  (endpoint: Endpoint): boolean => {
-    return (
-      !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
-    );
-  };
+    (endpoint: Endpoint): boolean => {
+      return (
+        !!backend.endpoints[endpoint.region] && !!backend.endpoints[endpoint.region][endpoint.id]
+      );
+    };
 
 /** A curried function that is the opposite of hasEndpoint */
 export const missingEndpoint =
   (backend: Backend) =>
-  (endpoint: Endpoint): boolean => {
-    return !hasEndpoint(backend)(endpoint);
-  };
+    (endpoint: Endpoint): boolean => {
+      return !hasEndpoint(backend)(endpoint);
+    };
 
 /**
  * A standard method for sorting endpoints for display.
