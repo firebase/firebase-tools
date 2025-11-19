@@ -7,12 +7,12 @@
     "source": "github",
     "subfolder": "src/mcp"
   },
-  "version": "1.0.0",
+  "version": "0.3.0",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "@firebase/mcp",
-      "version": "1.0.0",
+      "identifier": "firebase-tools",
+      "version": "14.25.1",
       "transport": {
         "type": "stdio"
       }
