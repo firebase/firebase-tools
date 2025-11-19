@@ -444,6 +444,17 @@ async function writeFiles(
     // Even if the schema is empty, lets give them an empty .gql file to get started.
     fs.ensureFileSync(join(dir, "schema", "schema.gql"));
   }
+  if (serviceGql.secondarySchemaGqls?.length) {
+    for (const sch of serviceGql.secondarySchemaGqls) {
+      for (const f of sch.files) {
+        await config.askWriteProjectFile(
+          join(dir, `schema_${sch.id}`, f.path),
+          f.content,
+          !!options.force,
+        );
+      }
+    }
+  }
 
   for (const c of serviceGql.connectors) {
     await writeConnectorFiles(config, c, options);
@@ -513,7 +524,7 @@ function subDataconnectYamlValues(
       );
       secondaryReplaced = secondaryReplaced.replace(
         replacements.secondarySchemaSource,
-        `./schema_${JSON.stringify(schema.id)}`,
+        `"./schema_${schema.id}"`,
       );
       secondaryReplaced = secondaryReplaced.replace(
         replacements.secondarySchemaUri,
