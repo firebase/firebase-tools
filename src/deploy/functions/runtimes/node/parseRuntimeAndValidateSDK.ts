@@ -13,9 +13,9 @@ const supportedNodeVersions: string[] = Object.keys(supported.RUNTIMES)
   .map((s) => s.substring("nodejs".length));
 
 export const RUNTIME_NOT_SET =
-  "`runtime` field is required but was not found in firebase.json or package.json.\n" +
-  "To fix this, add the following lines to the `functions` section of your firebase.json:\n" +
-  `"runtime": "${supported.latest("nodejs")}" or set the "engines" field in package.json\n`;
+  `\`runtime\` field is required but was not found in firebase.json or package.json.
+To fix this, add the following lines to the \`functions\` section of your firebase.json:
+"runtime": "${supported.latest("nodejs")}" or set the "engines" field in package.json`;
 
 function getRuntimeChoiceFromPackageJson(sourceDir: string): supported.Runtime {
   const packageJsonPath = path.join(sourceDir, "package.json");
