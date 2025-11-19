@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.firebase/mcp",
+  "description": "A MCP server that provides AI development tools the ability to work with Firebase in your app.",
+  "repository": {
+    "url": "https://github.com/firebase/firebase-tools",
+    "source": "github",
+    "subfolder": "src/mcp"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@firebase/mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
