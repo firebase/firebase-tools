@@ -18,7 +18,7 @@ describe("remoteSource", () => {
 
     it("should not throw if functions.yaml exists", () => {
       mockfs({
-        "/app/functions.yaml": "runtime: nodejs16",
+        "/app/functions.yaml": "runtime: nodejs22",
       });
 
       expect(() => requireFunctionsYaml("/app")).to.not.throw();
@@ -76,7 +76,7 @@ describe("remoteSource", () => {
 
     it("should use GitHub Archive API for GitHub URLs", async () => {
       const zipBuffer = await createZipBuffer(
-        { "functions.yaml": "runtime: nodejs16" },
+        { "functions.yaml": "runtime: nodejs22" },
         "repo-main",
       );
       mockfs({
@@ -98,7 +98,7 @@ describe("remoteSource", () => {
 
     it("should support org/repo shorthand", async () => {
       const zipBuffer = await createZipBuffer(
-        { "functions.yaml": "runtime: nodejs16" },
+        { "functions.yaml": "runtime: nodejs22" },
         "repo-main",
       );
       mockfs({
@@ -118,7 +118,7 @@ describe("remoteSource", () => {
 
     it("should strip top-level directory from GitHub archive", async () => {
       const zipBuffer = await createZipBuffer(
-        { "functions.yaml": "runtime: nodejs16" },
+        { "functions.yaml": "runtime: nodejs22" },
         "repo-main",
       );
       mockfs({
@@ -136,7 +136,7 @@ describe("remoteSource", () => {
     it("should NOT strip top-level directory if multiple files exist at root", async () => {
       const zipBuffer = await createZipBuffer({
         "file1.txt": "content",
-        "functions.yaml": "runtime: nodejs16",
+        "functions.yaml": "runtime: nodejs22",
         "repo-main/index.js": "console.log('hello')",
       });
       mockfs({
@@ -171,7 +171,7 @@ describe("remoteSource", () => {
 
     it("should validate subdirectory exists after clone", async () => {
       const zipBuffer = await createZipBuffer(
-        { "functions.yaml": "runtime: nodejs16" },
+        { "functions.yaml": "runtime: nodejs22" },
         "repo-main",
       );
       mockfs({
@@ -202,7 +202,7 @@ describe("remoteSource", () => {
 
     it("should prevent path traversal in subdirectory", async () => {
       const zipBuffer = await createZipBuffer(
-        { "functions.yaml": "runtime: nodejs16" },
+        { "functions.yaml": "runtime: nodejs22" },
         "repo-main",
       );
       mockfs({
@@ -219,9 +219,9 @@ describe("remoteSource", () => {
     it("should return subdirectory if specified", async () => {
       const zipBuffer = await createZipBuffer(
         {
-          "functions.yaml": "runtime: nodejs16",
+          "functions.yaml": "runtime: nodejs22",
           "app/index.js": "console.log('hello')",
-          "app/functions.yaml": "runtime: nodejs16",
+          "app/functions.yaml": "runtime: nodejs22",
         },
         "repo-main",
       );

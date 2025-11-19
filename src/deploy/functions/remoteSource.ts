@@ -16,6 +16,7 @@ import * as unzipModule from "../../unzip";
  * 
  * @param repository Remote URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
  * @param ref Git ref to fetch (tag/branch/commit)
+ * @param destDir Directory to extract the source code to
  * @param subDir Optional subdirectory within the repo to use
  * @return Absolute path to the checked‑out source directory
  */
