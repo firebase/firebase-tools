@@ -12,8 +12,8 @@ import * as unzipModule from "../../unzip";
 
 /**
  * Downloads a remote source to a temporary directory and returns the absolute path
- * to the source directory. 
- * 
+ * to the source directory.
+ *
  * @param repository Remote URL (e.g. https://github.com/org/repo) or shorthand (org/repo)
  * @param ref Git ref to fetch (tag/branch/commit)
  * @param destDir Directory to extract the source code to
