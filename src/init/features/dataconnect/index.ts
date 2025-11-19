@@ -18,7 +18,7 @@ import {
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, MAIN_SCHEMA_ID, mainSchema } from "../../../dataconnect/types";
+import { Schema, Service, File, MAIN_SCHEMA_ID, isMainSchema } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -48,6 +48,7 @@ const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect
 const DATACONNECT_WEBHOOKS_YAML_TEMPLATE = readTemplateSync(
   "init/dataconnect/dataconnect-fdcwebhooks.yaml",
 );
+const SECONDARY_SCHEMA_YAML_TEMPLATE = readTemplateSync("init/dataconnect/secondary_schema.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
@@ -82,6 +83,11 @@ export interface ServiceGQL {
     id: string;
     path: string;
     files: File[];
+  }[];
+  secondarySchemaGqls?: {
+    id: string;
+    files: File[];
+    uri: string;
   }[];
   seedDataGql?: string;
 }
@@ -406,10 +412,13 @@ async function writeFiles(
   options: any,
 ): Promise<void> {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
-  const subbedDataconnectYaml = subDataconnectYamlValues({
-    ...info,
-    connectorDirs: serviceGql.connectors.map((c) => c.path),
-  });
+  const subbedDataconnectYaml = subDataconnectYamlValues(
+    {
+      ...info,
+      connectorDirs: serviceGql.connectors.map((c) => c.path),
+    },
+    serviceGql.secondarySchemaGqls?.map((sch) => ({ id: sch.id, uri: sch.uri })),
+  );
   config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(
     join(dir, "dataconnect.yaml"),
@@ -434,6 +443,17 @@ async function writeFiles(
   } else {
     // Even if the schema is empty, lets give them an empty .gql file to get started.
     fs.ensureFileSync(join(dir, "schema", "schema.gql"));
+  }
+  if (serviceGql.secondarySchemaGqls?.length) {
+    for (const sch of serviceGql.secondarySchemaGqls) {
+      for (const f of sch.files) {
+        await config.askWriteProjectFile(
+          join(dir, `schema_${sch.id}`, f.path),
+          f.content,
+          !!options.force,
+        );
+      }
+    }
   }
 
   for (const c of serviceGql.connectors) {
@@ -468,23 +488,54 @@ async function writeConnectorFiles(
   }
 }
 
-function subDataconnectYamlValues(replacementValues: {
-  serviceId: string;
-  cloudSqlInstanceId: string;
-  cloudSqlDatabase: string;
-  connectorDirs: string[];
-  locationId: string;
-}): string {
+function subDataconnectYamlValues(
+  replacementValues: {
+    serviceId: string;
+    cloudSqlInstanceId: string;
+    cloudSqlDatabase: string;
+    connectorDirs: string[];
+    locationId: string;
+  },
+  secondarySchemas?: {
+    id: string;
+    uri: string;
+  }[],
+): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
     locationId: "__location__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorDirs: "__connectorDirs__",
+    secondarySchemaId: "__secondarySchemaId__",
+    secondarySchemaSource: "__secondarySchemaSource__",
+    secondarySchemaUri: "__secondarySchemaUri__",
   };
   let replaced = experiments.isEnabled("fdcwebhooks")
     ? DATACONNECT_WEBHOOKS_YAML_TEMPLATE
     : DATACONNECT_YAML_TEMPLATE;
+  if (secondarySchemas && secondarySchemas.length > 0) {
+    let secondaryReplaced = "";
+    for (const schema of secondarySchemas) {
+      secondaryReplaced += SECONDARY_SCHEMA_YAML_TEMPLATE;
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaId,
+        JSON.stringify(schema.id),
+      );
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaSource,
+        `"./schema_${schema.id}"`,
+      );
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaUri,
+        JSON.stringify(schema.uri),
+      );
+    }
+    replaced = replaced.replace("#__secondarySchemaPlaceholder__\n", secondaryReplaced);
+  } else {
+    // If no secondary schemas, remove the secondary schema placeholder.
+    replaced = replaced.replace("#__secondarySchemaPlaceholder__\n", "");
+  }
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
@@ -552,17 +603,30 @@ async function downloadService(info: RequiredInfo, serviceName: string): Promise
       },
     ],
   };
-  const mainSch = mainSchema(schemas);
-  const primaryDatasource = mainSch.datasources.find((d) => d.postgresql);
-  if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-    const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
-    info.cloudSqlInstanceId = instanceName.instanceId;
+  for (const sch of schemas) {
+    if (isMainSchema(sch)) {
+      const primaryDatasource = sch.datasources.find((d) => d.postgresql);
+      if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+        const instanceName = parseCloudSQLInstanceName(
+          primaryDatasource.postgresql.cloudSql.instance,
+        );
+        info.cloudSqlInstanceId = instanceName.instanceId;
+      }
+      info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+      if (sch.source.files?.length) {
+        info.serviceGql.schemaGql = sch.source.files;
+      }
+    } else {
+      if (!info.serviceGql.secondarySchemaGqls) {
+        info.serviceGql.secondarySchemaGqls = [];
+      }
+      info.serviceGql.secondarySchemaGqls.push({
+        id: sch.name.split("/").pop()!,
+        files: sch.source.files || [],
+        uri: sch.datasources[0].httpGraphql?.uri ?? "",
+      });
+    }
   }
-  // TODO: Update dataconnect.yaml with downloaded secondary schemas as well.
-  if (mainSch.source.files?.length) {
-    info.serviceGql.schemaGql = mainSch.source.files;
-  }
-  info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
   const connectors = await listConnectors(serviceName, [
     "connectors.name",
     "connectors.source.files",
