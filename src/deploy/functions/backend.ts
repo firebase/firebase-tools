@@ -23,6 +23,7 @@ export interface ScheduleTrigger {
   schedule?: string;
   timeZone?: string | null;
   retryConfig?: ScheduleRetryConfig | null;
+  attemptDeadlineSeconds?: number | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -179,11 +180,18 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
-/**
- * Is a given string a valid VpcEgressSettings?
- */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
+}
+
+export const MIN_ATTEMPT_DEADLINE_SECONDS = 15;
+export const MAX_ATTEMPT_DEADLINE_SECONDS = 1800; // 30 mins
+
+/**
+ * Is a given number a valid attempt deadline?
+ */
+export function isValidAttemptDeadline(seconds: number): boolean {
+  return seconds >= MIN_ATTEMPT_DEADLINE_SECONDS && seconds <= MAX_ATTEMPT_DEADLINE_SECONDS;
 }
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
