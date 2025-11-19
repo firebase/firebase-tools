@@ -20,6 +20,7 @@ interface DeployServiceInfo {
 }
 
 export const list_services = tool(
+  "dataconnect",
   {
     name: "list_services",
     description: "Use this to list existing local and backend Firebase Data Connect services",

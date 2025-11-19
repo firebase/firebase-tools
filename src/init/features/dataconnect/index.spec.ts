@@ -247,7 +247,7 @@ function mockConfig(data: Record<string, any> = {}): Config {
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
-    analyticsFlow: "test",
+    flow: "test",
     appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",

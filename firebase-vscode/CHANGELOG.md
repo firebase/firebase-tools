@@ -1,7 +1,17 @@
 ## NEXT
 
+## 1.10.0
+
+- [Fixed] Populate correct default values of missing required variables.
+- [Added] Display the execution variables and auth params used.
+- [Added] Allow rerun any executions in the history.
+- Update internal `firebase-tools` dependency to 14.20.0
+
+## 1.9.0
+
 - [Added] Refine / Generate Operation Code Lens.
 - [Added] Support run "firebase init" without login and project.
+- Update internal `firebase-tools` dependency to 14.19.1
 
 ## 1.8.0
 

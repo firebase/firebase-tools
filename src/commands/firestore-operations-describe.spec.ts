@@ -57,10 +57,9 @@ describe("firestore:operations:describe", () => {
     const operation = { name: "op1", done: false, metadata: {} };
     firestoreApiStub.describeOperation.resolves(operation);
 
-    await command.runner()(operationName, options);
+    const jsonResult = await command.runner()(operationName, options);
 
-    expect(loggerInfoStub).to.be.calledOnceWith(JSON.stringify(operation, undefined, 2));
-    expect(prettyPrintStub).to.not.be.called;
+    expect(jsonResult).to.eql(operation);
   });
 
   it("should pretty-print the operation when --json is not specified", async () => {

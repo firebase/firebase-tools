@@ -6,6 +6,7 @@ import { firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
 
 export const get_documents = tool(
+  "firestore",
   {
     name: "get_documents",
     description:

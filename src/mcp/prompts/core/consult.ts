@@ -1,9 +1,10 @@
-import { detectApps } from "../../../dataconnect/appFinder";
+import { getPlatformsFromFolder } from "../../../appUtils";
 import { chatWithFirebase } from "../../../gemini/fdcExperience";
 import { requireGeminiToS } from "../../errors";
 import { prompt } from "../../prompt";
 
 export const consult = prompt(
+  "core",
   {
     name: "consult",
     description:
@@ -33,8 +34,7 @@ export const consult = prompt(
       ];
     }
 
-    const apps = await detectApps(config.projectDir);
-    const platforms = apps.map((a) => a.platform);
+    const platforms = await getPlatformsFromFolder(config.projectDir);
 
     const gifPrompt = `I am using a coding agent to build with Firebase and I have a specific question that I would like answered. Provide a robust and detailed response that will help the coding agent act on my behalf in a local workspace.
 

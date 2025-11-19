@@ -51,9 +51,17 @@ const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
 const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 
+export type Source =
+  | "mcp_init"
+  | "init"
+  | "init_sdk"
+  | "gen_sdk_init"
+  | "gen_sdk_init_sdk"
+  | "deploy";
+
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  analyticsFlow: string;
+  flow: string;
   appDescription: string;
   serviceId: string;
   locationId: string;
@@ -100,7 +108,7 @@ const templateServiceInfo: ServiceGQL = {
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
-    analyticsFlow: "cli",
+    flow: "",
     appDescription: "",
     serviceId: "",
     locationId: "",
@@ -118,12 +126,22 @@ export async function askQuestions(setup: Setup): Promise<void> {
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to use a template]:`,
+      const wantToGenerate = await confirm({
+        message: "Do you want to generate schema and queries with Gemini?",
+        default: false,
       });
-      if (info.appDescription) {
+      if (wantToGenerate) {
         configstore.set("gemini", true);
         await ensureGIFApiTos(setup.projectId);
+        info.appDescription = await input({
+          message: `Describe your app idea:`,
+          validate: async (s: string) => {
+            if (s.length > 0) {
+              return true;
+            }
+            return "Please enter a description for your app idea.";
+          },
+        });
       }
     }
     await promptForCloudSQL(setup, info);
@@ -152,15 +170,29 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
-    void trackGA4("dataconnect_init", {
-      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-      flow: info.analyticsFlow,
-      provision_cloud_sql: String(info.shouldProvisionCSQL),
-    });
+    const sdkInfo = setup.featureInfo?.dataconnectSdk;
+    const source: Source = setup.featureInfo?.dataconnectSource || "init";
+    void trackGA4(
+      "dataconnect_init",
+      {
+        source,
+        flow: info.flow.substring(1), // Trim the leading `_`
+        project_status: setup.projectId
+          ? (await isBillingEnabled(setup))
+            ? info.shouldProvisionCSQL
+              ? "blaze_provisioned_csql"
+              : "blaze"
+            : "spark"
+          : "missing",
+        ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
+      },
+      Date.now() - startTime,
+    );
   }
 
   if (info.appDescription) {
@@ -184,7 +216,7 @@ async function actuateWithInfo(
   const projectId = setup.projectId;
   if (!projectId) {
     // If no project is present, just save the template files.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
 
@@ -196,6 +228,7 @@ async function actuateWithInfo(
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
+      source: setup.featureInfo?.dataconnectSource || "init",
     });
   }
 
@@ -208,11 +241,11 @@ async function actuateWithInfo(
     }
     if (info.serviceGql) {
       // Save the downloaded service from the backend.
-      info.analyticsFlow += "_save_downloaded";
+      info.flow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
@@ -234,7 +267,7 @@ async function actuateWithInfo(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
-    info.analyticsFlow += "_save_gemini_service_already_exists";
+    info.flow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -276,7 +309,7 @@ async function actuateWithInfo(
         ],
       },
     ];
-    info.analyticsFlow += "_save_gemini";
+    info.flow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -287,7 +320,7 @@ async function actuateWithInfo(
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
-    info.analyticsFlow += "_save_gemini_operation_error";
+    info.flow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -467,11 +500,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
-    info.analyticsFlow += "_pick_new_service";
+    info.flow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
-  info.analyticsFlow += "_pick_existing_service";
+  info.flow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
@@ -595,11 +628,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         choices,
       });
       if (![FREE, PAID].includes(info.cloudSqlInstanceId)) {
-        info.analyticsFlow += "_pick_existing_csql";
+        info.flow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
-        info.analyticsFlow += "_pick_new_csql";
+        info.flow += "_pick_new_csql";
         if (info.cloudSqlInstanceId === PAID && !(await isBillingEnabled(setup))) {
           throw new FirebaseError(
             `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`,
@@ -644,7 +677,7 @@ async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
-      message: "What location should the new Cloud SQL instance be in?",
+      message: "What location would you like to use?",
       choices,
       default: FDC_DEFAULT_REGION,
     });
