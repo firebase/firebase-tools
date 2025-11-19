@@ -517,7 +517,7 @@ function subDataconnectYamlValues(
   if (secondarySchemas && secondarySchemas.length > 0) {
     let secondaryReplaced = "";
     for (const schema of secondarySchemas) {
-      secondaryReplaced += SECONDARY_SCHEMA_YAML_TEMPLATE + "\n";
+      secondaryReplaced += SECONDARY_SCHEMA_YAML_TEMPLATE;
       secondaryReplaced = secondaryReplaced.replace(
         replacements.secondarySchemaId,
         JSON.stringify(schema.id),
