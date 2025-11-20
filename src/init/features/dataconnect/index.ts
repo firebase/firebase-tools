@@ -613,7 +613,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     !(await checkFreeTrialInstanceUsed(setup.projectId)) &&
     (billingEnabled || instrumentlessTrialEnabled);
 
-  if (freeTrialAvailable) {
+  if (!freeTrialAvailable) {
     logLabeledWarning(
       "dataconnect",
       "CloudSQL no cost trial has already been used on this project.",
