@@ -609,16 +609,17 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   }
   const instrumentlessTrialEnabled = envOverride("ENABLE_INSTRUMENTLESS_TRIAL", "") === "true";
   const billingEnabled = await isBillingEnabled(setup);
+  const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId)
   const freeTrialAvailable =
-    !(await checkFreeTrialInstanceUsed(setup.projectId)) &&
+    !freeTrialUsed &&
     (billingEnabled || instrumentlessTrialEnabled);
 
-  if (!freeTrialAvailable) {
+  if (freeTrialUsed) {
     logLabeledWarning(
       "dataconnect",
       "CloudSQL no cost trial has already been used on this project.",
     );
-  } else {
+  } else if (instrumentlessTrialEnabled || billingEnabled) {
     logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
   }
 
