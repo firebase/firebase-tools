@@ -1,7 +1,2 @@
-- Add a command `firebase firestore:databases:clone` to clone a Firestore database (#9262).
-- Add JSON format support for Cloud Functions secrets with `--format json` flag and auto-detection from file extensions (#1745)
-- `firebase dataconnect:sdk:generate` will run `init dataconnect:sdk` automatically if no SDKs are configured (#9325).
-- Tighten --only filter resolution for functions deployment to prefer codebase names (#9353)
-- Fixed an issue where the Data Connect emulator would attempt to export data when `FIREBASE_DATACONNECT_POSTGRESQL_STRING` is set (#9330)
-- Added `functions.disallowLegacyRuntimeConfig` option to `firebase.json` to optionally skip fetching legacy Runtime Config during function deploys (#9354)
-- Update Data Connect Dart SDK's default import path to `import 'dataconnect_generated/generated.dart';` (#9365)
+- Add support for nodejs24 (beta) runtime for Firebase Functions. (#9475)
+- Adds listServices and also defines trigger within runv2.ts [#9482]

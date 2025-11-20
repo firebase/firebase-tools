@@ -48,7 +48,15 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
     // Start the AgentTestRunner, which will start up the coding agent in a
     // pseudo-terminal, and wait for it to load the Firebase MCP server, and
     // start accepting keystrokes
-    const run: AgentTestRunner = await startAgentTest(this);
+    const run: AgentTestRunner = await startAgentTest(this, {
+      // Name of the template to run in. You can find the list of templates in
+      // src/template/index.ts (these will auto-complete)
+      templateName: "next-app-hello-world",
+      // List of tool mocks to apply for this test. You can find the list of
+      // available mocks in src/mock/tool-mocks.ts (these will auto-complete).
+      // See the instructions below on how to add your own mocks
+      toolMocks: ["nextJsWithProjectMock"],
+    });
 
     // Simulate typing in the terminal. This will await until the "turn" is over
     // so any assertions on what happened will happen on the current "turn"
@@ -76,5 +84,64 @@ describe("<prompt-or-tool-name>", function (this: Mocha.Suite) {
       isSuccess: true,
     ]);
   });
+});
+```
+
+## Adding Templates
+
+Templates let you run your tests inside of a folder with existing project files in it. e.g. you could add a template with an iOS app in it.
+
+1. Add the new template in a new folder `scripts/agent-evals/templates/<template-name>`
+
+2. In `scripts/agent-evals/src/template/index.ts`, add the template name to the templates constant:
+
+```
+export const templates = [
+  {
+    name: "<template-name>",
+    platform: TemplatePlatform.NODE,
+  },
+  ...
+] as const;
+```
+
+3. Ensure you have a `.gitignore` for the template. For example, a Node.js template should ignore `node_modules`
+
+4. Set the `TemplatePlatform` for your template. To ensure the template is setup before each test run, we'll want to add a build command for the template. If you add a new `TemplatePlatform`, update the `buildTemplates()` function for it. For example, Node.js templates will run `npm install` before they are copied into the test directory.
+
+## Adding Mocks for MCP Tools
+
+Mocks applied to MCP tools will completely replace their impelementation with a static output string.
+
+1. Add your mocked tools to the `scripts/agent-evals/src/mock/mocks` folder, eg. `scripts/agent-evals/src/mock/mocks/next-js-with-project-mock.ts`
+
+```
+import { toMockContent } from "../tool-mock-utils.js";
+
+export const environment_nice_day_mock = {
+  firebase_get_environment: toMockContent("Tell the user to have a nice day"),
+} as const;
+```
+
+2. Add the new set of mocked tools to the map:
+
+```
+import { environment_nice_day_mock } from "./mocks/next-js-with-project-mock.js";
+
+const allToolMocks = {
+  // New tool mock
+  environment_nice_day_mock,
+} as const;
+```
+
+3. Start using the mock in your test:
+
+Note: If you apply multiple mocks to the same tool, later values in the list will take precedence.
+
+```
+const run: AgentTestRunner = await startAgentTest(this, {
+  templateName: "next-app-hello-world",
+  // Add the name of your mock here
+  toolMocks: ["environment_nice_day_mock"],
 });
 ```

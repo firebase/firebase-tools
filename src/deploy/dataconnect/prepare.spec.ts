@@ -91,16 +91,19 @@ describe("dataconnect prepare", () => {
     it("should diff schema and setup cloud sql", async () => {
       const serviceInfos = [
         {
-          schema: {
-            datasources: [
-              {
-                postgresql: {
-                  cloudSql: { instance: "projects/p/locations/l/instances/i" },
-                  database: "db",
+          schemas: [
+            {
+              name: "projects/p/locations/l/services/s/schemas/main",
+              datasources: [
+                {
+                  postgresql: {
+                    cloudSql: { instance: "projects/p/locations/l/instances/i" },
+                    database: "db",
+                  },
                 },
-              },
-            ],
-          },
+              ],
+            },
+          ],
           serviceName: "projects/p/locations/l/services/s",
           deploymentMetadata: {},
           dataConnectYaml: {

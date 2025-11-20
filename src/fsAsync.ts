@@ -12,6 +12,8 @@ export interface ReaddirRecursiveOpts {
   isGitIgnore?: boolean;
   // Files in the ignore array to include.
   include?: string[];
+  // Maximum depth to recurse.
+  maxDepth?: number;
 }
 
 export interface ReaddirRecursiveFile {
@@ -22,6 +24,7 @@ export interface ReaddirRecursiveFile {
 async function readdirRecursiveHelper(options: {
   path: string;
   filter: (p: string) => boolean;
+  maxDepth: number;
 }): Promise<ReaddirRecursiveFile[]> {
   const dirContents = readdirSync(options.path);
   const fullPaths = dirContents.map((n) => join(options.path, n));
@@ -35,7 +38,11 @@ async function readdirRecursiveHelper(options: {
     if (!fstat.isDirectory()) {
       continue;
     }
-    filePromises.push(readdirRecursiveHelper({ path: p, filter: options.filter }));
+    if (options.maxDepth > 1) {
+      filePromises.push(
+        readdirRecursiveHelper({ path: p, filter: options.filter, maxDepth: options.maxDepth - 1 }),
+      );
+    }
   }
 
   const files = await Promise.all(filePromises);
@@ -70,8 +77,10 @@ export async function readdirRecursive(
       return rule(t);
     });
   };
+  const maxDepth = options.maxDepth && options.maxDepth > 0 ? options.maxDepth : Infinity;
   return await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
+    maxDepth,
   });
 }
