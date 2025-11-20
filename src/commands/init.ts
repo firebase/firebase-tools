@@ -94,6 +94,12 @@ let choices: {
     checked: false,
     hidden: true,
   },
+  {
+    value: "dataconnect:schema",
+    name: "Data Connect: Set up a secondary schema for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  },
 ];
 
 if (isEnabled("genkit")) {
