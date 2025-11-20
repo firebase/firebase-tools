@@ -41,7 +41,6 @@ import {
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
-import { FirebaseError } from "../../../error";
 import { isEnabled } from "../../../experiments";
 
 // Default GCP region for Data Connect
@@ -615,10 +614,8 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     info.shouldProvisionCSQL = false;
     return;
   }
-  const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId)
-  const freeTrialAvailable =
-    !freeTrialUsed &&
-    (billingEnabled || instrumentlessTrialEnabled);
+  const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId);
+  const freeTrialAvailable = !freeTrialUsed && (billingEnabled || instrumentlessTrialEnabled);
 
   if (freeTrialUsed) {
     logLabeledWarning(

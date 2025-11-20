@@ -8,9 +8,6 @@ import { Options } from "../../options";
 import { logger } from "../../logger";
 import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
-import { checkBillingEnabled } from "../cloudbilling";
-import { upgradeInstructions } from "../../dataconnect/freeTrial";
-import { envOverride } from "../../utils";
 
 const API_VERSION = "v1";
 
