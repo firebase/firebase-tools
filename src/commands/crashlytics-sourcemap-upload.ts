@@ -4,12 +4,13 @@ import { statSync } from "fs-extra";
 import { readdirRecursive } from "../fsAsync";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { logLabeledBullet, logLabeledWarning } from "../utils";
+import { commandExistsSync, logLabeledBullet, logLabeledWarning } from "../utils";
 import { needProjectId } from "../projectUtils";
 import * as gcs from "../gcp/storage";
 import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { archiveFile } from "../archiveFile";
+import { execSync } from "node:child_process";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -32,7 +33,7 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
     checkGoogleAppID(options);
 
     // App version
-    const appVersion = getAppVersion();
+    const appVersion = getAppVersion(options);
 
     // Get project identifiers
     const projectId = needProjectId(options);
@@ -77,9 +78,15 @@ function checkGoogleAppID(options: CommandOptions): void {
   }
 }
 
-function getAppVersion(): string {
-  // TODO: implement app version lookup
-  return "default";
+function getAppVersion(options: CommandOptions): string {
+  if (options.appVersion) {
+    return options.appVersion;
+  }
+  const gitCommit = getGitCommit();
+  if (gitCommit) {
+    return gitCommit;
+  }
+  return "unset";
 }
 
 async function upsertBucket(
@@ -149,4 +156,15 @@ async function uploadMap(
 
 function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
+}
+
+function getGitCommit(): string | undefined {
+  if (!commandExistsSync("git")) {
+    return undefined;
+  }
+  try {
+    return execSync("git rev-parse HEAD").toString().trim();
+  } catch (error) {
+    return undefined;
+  }
 }

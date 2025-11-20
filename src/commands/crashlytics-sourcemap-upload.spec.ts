@@ -82,20 +82,36 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(gcsMock.uploadObject).to.be.calledOnce;
     expect(gcsMock.uploadObject).to.be.calledWith(sinon.match.any, BUCKET_NAME);
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
-      /test-app-default-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
     );
   });
 
   it("should find and upload mapping files in a directory", async () => {
     await command.runner()(DIR_PATH, { app: "test-app" });
-    const expectedFiles = [
-      "test-app-default-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
-      "test-app-default-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping.js.map.zip",
-    ];
+    expect(gcsMock.uploadObject).to.be.calledTwice;
     const uploadedFiles = gcsMock.uploadObject
       .getCalls()
       .map((call) => call.args[0].file)
       .sort();
-    expect(uploadedFiles).to.deep.equal(expectedFiles);
+    expect(uploadedFiles[0]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+    );
+    expect(uploadedFiles[1]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
+    );
+  });
+
+  it("should use the provided app version", async () => {
+    await command.runner()(FILE_PATH, { app: "test-app", appVersion: "1.0.0" });
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+      "test-app-1.0.0-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
+    );
+  });
+
+  it("should default to the git commit for app version", async () => {
+    await command.runner()(FILE_PATH, { app: "test-app" });
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
+      /test-app-[a-f0-9]{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
+    );
   });
 });
