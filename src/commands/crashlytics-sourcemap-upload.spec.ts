@@ -88,9 +88,12 @@ describe("crashlytics:sourcemap:upload", () => {
 
   it("should find and upload mapping files in a directory", async () => {
     await command.runner()(DIR_PATH, { app: "test-app" });
-    expect(gcsMock.uploadObject).to.be.calledOnce;
+    expect(gcsMock.uploadObject).to.be.calledTwice;
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
       /test-app-default-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+    );
+    expect(gcsMock.uploadObject.secondCall.args[0].file).to.match(
+      /test-app-default-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
     );
   });
 });

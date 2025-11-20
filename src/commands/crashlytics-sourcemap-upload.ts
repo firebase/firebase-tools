@@ -58,7 +58,7 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
     } else if (fstat.isDirectory()) {
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
       const files = (
-        await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"] })
+        await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
       ).filter((f) => f.name.endsWith(".js.map"));
       for (const file of files) {
         await uploadMap(file.name, bucketName, appVersion, options);
