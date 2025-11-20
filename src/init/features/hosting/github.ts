@@ -688,5 +688,3 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");
 }
-
-
