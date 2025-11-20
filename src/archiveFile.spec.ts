@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from "fs";
 import { expect } from "chai";
 import { archiveFile } from "./archiveFile";
 import { FIXTURE_DIR } from "./test/fixtures/config-imports";

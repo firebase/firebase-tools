@@ -59,7 +59,7 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
       const files = (
         await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
       ).filter((f) => f.name.endsWith(".js.map"));
-      await Promise.all(files.map(f => uploadMap(f.name, bucketName, appVersion, options)));
+      await Promise.all(files.map((f) => uploadMap(f.name, bucketName, appVersion, options)));
     } else {
       throw new FirebaseError(
         "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
@@ -131,7 +131,7 @@ async function uploadMap(
   logLabeledBullet("crashlytics", `Found mapping file ${mappingFile}...`);
   try {
     const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
-    const tmpArchive = await archiveFile(filePath, {archivedFileName: "mapping.js.map"});
+    const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
     const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(mappingFile)}.zip`;
 
     const { bucket, object } = await gcs.uploadObject(
