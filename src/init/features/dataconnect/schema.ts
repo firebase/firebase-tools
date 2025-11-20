@@ -11,6 +11,7 @@ import { FDC_DEFAULT_REGION } from ".";
 import { loadAll } from "../../../dataconnect/load";
 import { DataConnectYaml, SchemaYaml, ServiceInfo } from "../../../dataconnect/types";
 import { parseServiceName } from "../../../dataconnect/names";
+import * as experiments from "../../../experiments";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import { trackGA4 } from "../../../track";
 import { Source } from ".";
@@ -22,6 +23,9 @@ export interface SchemaRequiredInfo {
 }
 
 export async function askQuestions(setup: Setup, config: Config): Promise<void> {
+  if (!experiments.isEnabled("fdcwebhooks")) {
+    throw new Error("Unsupported command.");
+  }
   const schemaInfo: SchemaRequiredInfo = {
     id: "",
     uri: "",
@@ -65,38 +69,36 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
   setup.featureInfo.dataconnectSchema = schemaInfo;
 }
 
-export async function actuate(setup: Setup, config: Config, options: any) {
+export async function actuate(setup: Setup, config: Config) {
+  if (!experiments.isEnabled("fdcwebhooks")) {
+    return;
+  }
   const schemaInfo = setup.featureInfo?.dataconnectSchema;
   if (!schemaInfo) {
     throw new Error("Data Connect schema feature SchemaRequiredInfo not provided");
   }
   const startTime = Date.now();
   try {
-    await actuateWithInfo(config, schemaInfo, options);
+    actuateWithInfo(config, schemaInfo);
   } finally {
-    // If `firebase init dataconnect:sdk` is run alone, emit GA stats.
-    // Otherwise, `firebase init dataconnect` will emit those stats.
-    const fdcInfo = setup.featureInfo?.dataconnect;
-    if (!fdcInfo) {
-      const source: Source = setup.featureInfo?.dataconnectSource || "init_schema";
-      void trackGA4(
-        "dataconnect_init",
-        {
-          source,
-          project_status: setup.projectId
-            ? (await isBillingEnabled(setup))
-              ? "blaze"
-              : "spark"
-            : "missing",
-          ...{},
-        },
-        Date.now() - startTime,
-      );
-    }
+    const source: Source = setup.featureInfo?.dataconnectSource || "init_schema";
+    void trackGA4(
+      "dataconnect_init",
+      {
+        source,
+        project_status: setup.projectId
+          ? (await isBillingEnabled(setup))
+            ? "blaze"
+            : "spark"
+          : "missing",
+        ...{},
+      },
+      Date.now() - startTime,
+    );
   }
 }
 
-async function actuateWithInfo(config: Config, info: SchemaRequiredInfo, options: any) {
+function actuateWithInfo(config: Config, info: SchemaRequiredInfo) {
   const dataConnectYaml = JSON.parse(
     JSON.stringify(info.serviceInfo?.dataConnectYaml),
   ) as DataConnectYaml;
@@ -104,10 +106,9 @@ async function actuateWithInfo(config: Config, info: SchemaRequiredInfo, options
   info.serviceInfo.dataConnectYaml = dataConnectYaml;
   const dataConnectYamlContents = yaml.stringify(dataConnectYaml);
   const dataConnectYamlPath = join(info.serviceInfo.sourceDirectory, "dataconnect.yaml");
-  await config.askWriteProjectFile(
+  config.writeProjectFile(
     relative(config.projectDir, dataConnectYamlPath),
     dataConnectYamlContents,
-    !!options.force,
   );
 
   // Write an empty schema.gql file.
