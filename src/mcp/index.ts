@@ -483,50 +483,47 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-	get logger() {
-		const logAtLevel = (level: LoggingLevel, message: unknown): void => {
-			let data = message;
+  get logger() {
+    const logAtLevel = (level: LoggingLevel, message: unknown): void => {
+      let data = message;
 
-			// mcp protocol only takes jsons or it errors; for convienence, format
-			// a a string into a json.
-			if (typeof message === "string") {
-				data = { message };
-			}
+      // mcp protocol only takes jsons or it errors; for convienence, format
+      // a a string into a json.
+      if (typeof message === "string") {
+        data = { message };
+      }
 
-			if (!this.currentLogLevel) {
-				return;
-			}
+      if (!this.currentLogLevel) {
+        return;
+      }
 
-			if (
-				orderedLogLevels.indexOf(this.currentLogLevel) >
-				orderedLogLevels.indexOf(level)
-			) {
-				return;
-			}
+      if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
+        return;
+      }
 
-			if (this._ready) {
-				// once ready, flush all pending messages before sending the next message
-				// this should only happen during startup
-				while (this._pendingMessages.length) {
-					const message = this._pendingMessages.shift();
-					if (!message) continue;
-					this.server.sendLoggingMessage({
-						level: message.level,
-						data: message.data,
-					});
-				}
+      if (this._ready) {
+        // once ready, flush all pending messages before sending the next message
+        // this should only happen during startup
+        while (this._pendingMessages.length) {
+          const message = this._pendingMessages.shift();
+          if (!message) continue;
+          this.server.sendLoggingMessage({
+            level: message.level,
+            data: message.data,
+          });
+        }
 
-				void this.server.sendLoggingMessage({ level, data });
-			} else {
-				this._pendingMessages.push({ level, data });
-			}
-		};
+        void this.server.sendLoggingMessage({ level, data });
+      } else {
+        this._pendingMessages.push({ level, data });
+      }
+    };
 
-		return Object.fromEntries(
-			orderedLogLevels.map((logLevel) => [
-				logLevel,
-				(message: unknown) => logAtLevel(logLevel, message),
-			]),
-		) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
-	}
+    return Object.fromEntries(
+      orderedLogLevels.map((logLevel) => [
+        logLevel,
+        (message: unknown) => logAtLevel(logLevel, message),
+      ]),
+    ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
+  }
 }
