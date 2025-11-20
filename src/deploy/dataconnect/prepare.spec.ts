@@ -21,7 +21,6 @@ describe("dataconnect prepare", () => {
   let getResourceFiltersStub: sinon.SinonStub;
   let diffSchemaStub: sinon.SinonStub;
   let setupCloudSqlStub: sinon.SinonStub;
-  let checkBillingEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -32,14 +31,14 @@ describe("dataconnect prepare", () => {
     getResourceFiltersStub = sandbox.stub(filters, "getResourceFilters").returns(undefined);
     diffSchemaStub = sandbox.stub(schemaMigration, "diffSchema").resolves();
     setupCloudSqlStub = sandbox.stub(provisionCloudSql, "setupCloudSql").resolves();
-    checkBillingEnabledStub = sandbox.stub(cloudbilling, "checkBillingEnabled").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project");
     sandbox.stub(utils, "logLabeledBullet");
+    sandbox.stub(cloudbilling, "checkBillingEnabled").resolves();
   });
 
   afterEach(() => {
     sandbox.restore();
-    nock.cleanAll()
+    nock.cleanAll();
   });
 
   it("should do nothing if there are no services", async () => {
