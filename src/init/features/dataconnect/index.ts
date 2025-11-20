@@ -685,8 +685,6 @@ async function chooseExistingService(existing: Service[]): Promise<Service | und
 }
 
 async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void> {
-  const FREE = "__free__";
-  const PAID = "__paid__";
   if (!setup.projectId) {
     return;
   }
@@ -729,9 +727,9 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
       if (freeTrialAvailable) {
-        choices.push({ name: "Create a new free trial instance", value: FREE, location: "" });
+        choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       } else {
-        choices.push({ name: "Create a new CloudSQL instance", value: PAID, location: "" });
+        choices.push({ name: "Create a new CloudSQL instance", value: "", location: "" });
       }
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
