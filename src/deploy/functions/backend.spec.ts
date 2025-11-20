@@ -6,6 +6,8 @@ import * as args from "./args";
 import * as backend from "./backend";
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
+import * as experiments from "../../experiments";
 import * as utils from "../../utils";
 import * as projectConfig from "../../functions/projectConfig";
 
@@ -67,6 +69,41 @@ describe("Backend", () => {
     updateTime: new Date(),
   };
 
+  const RUN_SERVICE: run.Service = {
+    name: "projects/project/locations/region/services/id",
+    labels: {
+      "goog-managed-by": "cloud-functions",
+      "goog-cloudfunctions-runtime": "nodejs16",
+      "firebase-functions-codebase": "default",
+    },
+    annotations: {
+      "cloudfunctions.googleapis.com/function-id": "id",
+      "cloudfunctions.googleapis.com/trigger-type": "HTTP_TRIGGER",
+    },
+    template: {
+      containers: [
+        {
+          name: "worker",
+          image: "image",
+          env: [{ name: "FUNCTION_TARGET", value: "function" }],
+          resources: {
+            limits: {
+              cpu: "1",
+              memory: "256Mi",
+            },
+          },
+        },
+      ],
+      containerConcurrency: 80,
+    },
+    generation: 1,
+    createTime: "2023-01-01T00:00:00Z",
+    updateTime: "2023-01-01T00:00:00Z",
+    creator: "user",
+    lastModifier: "user",
+    etag: "etag",
+  };
+
   const HAVE_CLOUD_FUNCTION: gcf.CloudFunction = {
     ...CLOUD_FUNCTION,
     buildId: "buildId",
@@ -126,18 +163,24 @@ describe("Backend", () => {
   describe("existing backend", () => {
     let listAllFunctions: sinon.SinonStub;
     let listAllFunctionsV2: sinon.SinonStub;
+    let listServices: sinon.SinonStub;
     let logLabeledWarning: sinon.SinonSpy;
+    let isEnabled: sinon.SinonStub;
 
     beforeEach(() => {
       listAllFunctions = sinon.stub(gcf, "listAllFunctions").rejects("Unexpected call");
       listAllFunctionsV2 = sinon.stub(gcfV2, "listAllFunctions").rejects("Unexpected v2 call");
+      listServices = sinon.stub(run, "listServices").rejects("Unexpected run call");
       logLabeledWarning = sinon.spy(utils, "logLabeledWarning");
+      isEnabled = sinon.stub(experiments, "isEnabled").returns(false);
     });
 
     afterEach(() => {
       listAllFunctions.restore();
       listAllFunctionsV2.restore();
+      listServices.restore();
       logLabeledWarning.restore();
+      isEnabled.restore();
     });
 
     function newContext(): args.Context {
@@ -317,6 +360,53 @@ describe("Backend", () => {
         });
 
         expect(have).to.deep.equal(want);
+      });
+
+      it("should read v2 functions from Cloud Run when experiment is enabled", async () => {
+        isEnabled.withArgs("functionsrunapionly").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.onFirstCall().resolves([RUN_SERVICE]);
+
+        const have = await backend.existingBackend(newContext());
+
+        const wantEndpoint = {
+          ...ENDPOINT,
+          platform: "gcfv2" as const,
+          concurrency: 80,
+          cpu: 1,
+          httpsTrigger: {},
+          availableMemoryMb: 256 as backend.MemoryOptions,
+          environmentVariables: {
+            FUNCTION_TARGET: "function",
+          },
+          labels: {
+            "goog-managed-by": "cloud-functions",
+            "goog-cloudfunctions-runtime": "nodejs16",
+            "firebase-functions-codebase": "default",
+          },
+          secretEnvironmentVariables: [],
+        };
+        delete wantEndpoint.state;
+
+        expect(have).to.deep.equal(backend.of(wantEndpoint));
+        expect(listAllFunctionsV2).to.not.have.been.called;
+      });
+
+      it("should handle Cloud Run list errors gracefully when experiment is enabled", async () => {
+        isEnabled.withArgs("functionsrunapionly").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.rejects(new Error("Random error"));
+
+        const context = newContext();
+        await backend.existingBackend(context);
+
+        expect(context.unreachableRegions?.run).to.deep.equal(["unknown"]);
       });
     });
 
