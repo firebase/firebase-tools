@@ -816,7 +816,7 @@ export class Fabricator {
 
   async runZipDeploy(endpoint: backend.Endpoint): Promise<void> {
     const args = [
-      "alpha",
+      "beta",
       "run",
       "deploy",
       endpoint.runServiceId || endpoint.id,

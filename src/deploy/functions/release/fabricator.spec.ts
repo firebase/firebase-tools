@@ -859,7 +859,7 @@ describe("Fabricator", () => {
       await fab.runZipDeploy(ep);
 
       expect(spawnStub).to.have.been.calledWith("gcloud", [
-        "alpha",
+        "beta",
         "run",
         "deploy",
         "my-service",
