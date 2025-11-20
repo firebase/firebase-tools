@@ -587,8 +587,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
         // customer has preview enabled without allowlist set
       } else {
-        logger.debug(err.message);
-        unreachableRegions.gcfV2 = ["unknown"];
+        throw err;
       }
     }
   }
