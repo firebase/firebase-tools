@@ -1,1 +1,2 @@
+- Add support for nodejs24 (beta) runtime for Firebase Functions. (#9475)
 - Adds listServices and also defines trigger within runv2.ts [#9482]
