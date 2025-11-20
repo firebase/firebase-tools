@@ -31,7 +31,7 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
 }
 
 export function upgradeInstructions(projectId: string): string {
-  return `To provision a paid CloudSQL Postgres instance:
+  return `To provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial:
 
   1. Please upgrade to the pay-as-you-go (Blaze) billing plan. Visit the following page:
 

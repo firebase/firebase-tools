@@ -74,20 +74,8 @@ export async function createInstance(args: {
   freeTrialLabel: DataConnectLabel;
 }): Promise<void> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
-  const billingEnabled = await checkBillingEnabled(args.projectId);
-  const instrumentlessTrialEnabled = envOverride("ENABLE_INSTRUMENTLESS_TRIAL", "") === "true";
   if (args.enableGoogleMlIntegration) {
     databaseFlags.push({ name: "cloudsql.enable_google_ml_integration", value: "on" });
-  }
-  if (args.freeTrialLabel === "nt" && !billingEnabled) {
-    throw new FirebaseError(
-      `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(args.projectId)}
-      
-      Add a billing account to your project ${args.projectId} create new Cloud SQL instances.`,
-    );
-  }
-  if (args.freeTrialLabel === "ft" && !billingEnabled && !instrumentlessTrialEnabled) {
-    throw new FirebaseError(`You need an active billing account to create free trial instance`);
   }
   try {
     await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {

@@ -42,6 +42,7 @@ import {
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
 import { FirebaseError } from "../../../error";
+import { isEnabled } from "../../../experiments";
 
 // Default GCP region for Data Connect
 export const FDC_DEFAULT_REGION = "us-east4";
@@ -607,8 +608,13 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   if (!setup.projectId) {
     return;
   }
-  const instrumentlessTrialEnabled = envOverride("ENABLE_INSTRUMENTLESS_TRIAL", "") === "true";
+  const instrumentlessTrialEnabled = isEnabled("fdcift");
   const billingEnabled = await isBillingEnabled(setup);
+  if (!billingEnabled && !instrumentlessTrialEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
+    info.shouldProvisionCSQL = false;
+    return;
+  }
   const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId)
   const freeTrialAvailable =
     !freeTrialUsed &&
@@ -645,17 +651,12 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         message: `Which CloudSQL instance would you like to use?`,
         choices,
       });
-      if (![FREE, PAID].includes(info.cloudSqlInstanceId)) {
+      if (info.cloudSqlInstanceId !== "") {
         info.flow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
         info.flow += "_pick_new_csql";
-        if (info.cloudSqlInstanceId === PAID && !billingEnabled) {
-          throw new FirebaseError(
-            `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`,
-          );
-        }
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
@@ -670,7 +671,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     await promptForLocation(setup, info);
     info.shouldProvisionCSQL = await confirm({
-      message: `Would you like to provision your ${freeTrialAvailable ? " free trial" : ""}Cloud SQL instance and database now?`,
+      message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
       default: true,
     });
   }
