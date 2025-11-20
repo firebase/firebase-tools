@@ -692,19 +692,25 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   }
   const instrumentlessTrialEnabled = isEnabled("fdcift");
   const billingEnabled = await isBillingEnabled(setup);
-  if (!billingEnabled && !instrumentlessTrialEnabled) {
-    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
-    info.shouldProvisionCSQL = false;
-    return;
-  }
   const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId);
   const freeTrialAvailable = !freeTrialUsed && (billingEnabled || instrumentlessTrialEnabled);
+
+  if (!billingEnabled && !instrumentlessTrialEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project", false));
+    return;
+  }
 
   if (freeTrialUsed) {
     logLabeledWarning(
       "dataconnect",
       "CloudSQL no cost trial has already been used on this project.",
     );
+    if (!billingEnabled) {
+      setup.instructions.push(
+        upgradeInstructions(setup.projectId || "your-firebase-project", true),
+      );
+      return;
+    }
   } else if (instrumentlessTrialEnabled || billingEnabled) {
     logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
   }
