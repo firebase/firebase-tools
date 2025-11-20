@@ -1,7 +1,5 @@
-import * as archiver from "archiver";
 import * as fs from "fs";
 import * as path from "path";
-import * as tmp from "tmp";
 import { statSync } from "fs-extra";
 import { readdirRecursive } from "../fsAsync";
 import { Command } from "../command";
@@ -11,6 +9,7 @@ import { needProjectId } from "../projectUtils";
 import * as gcs from "../gcp/storage";
 import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
+import { archiveFile } from "../archiveFile";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -60,9 +59,7 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
       const files = (
         await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
       ).filter((f) => f.name.endsWith(".js.map"));
-      for (const file of files) {
-        await uploadMap(file.name, bucketName, appVersion, options);
-      }
+      await Promise.all(files.map(f => uploadMap(f.name, bucketName, appVersion, options)));
     } else {
       throw new FirebaseError(
         "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
@@ -133,7 +130,8 @@ async function uploadMap(
 ) {
   logLabeledBullet("crashlytics", `Found mapping file ${mappingFile}...`);
   try {
-    const tmpArchive = await createArchive(mappingFile, options);
+    const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
+    const tmpArchive = await archiveFile(filePath, {archivedFileName: "mapping.js.map"});
     const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(mappingFile)}.zip`;
 
     const { bucket, object } = await gcs.uploadObject(
@@ -147,30 +145,6 @@ async function uploadMap(
   } catch (e) {
     logLabeledWarning("crashlytics", `Failed to upload mapping file ${mappingFile}:\n${e}`);
   }
-}
-
-async function createArchive(mappingFile: string, options: CommandOptions): Promise<string> {
-  const tmpName = normalizeFileName(mappingFile);
-  const tmpFile = tmp.fileSync({ prefix: `${tmpName}-`, postfix: ".zip" }).name;
-  const fileStream = fs.createWriteStream(tmpFile, {
-    flags: "w",
-    encoding: "binary",
-  });
-  const archive = archiver("zip");
-  const rootDir = options.projectRoot ?? process.cwd();
-  const name = path.relative(rootDir, mappingFile);
-  archive.file(name, { name: "mapping.js.map" });
-  await pipeAsync(archive, fileStream);
-  return tmpFile;
-}
-
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
-  from.pipe(to);
-  await from.finalize();
-  return new Promise((resolve, reject) => {
-    to.on("finish", resolve);
-    to.on("error", reject);
-  });
 }
 
 function normalizeFileName(fileName: string): string {
