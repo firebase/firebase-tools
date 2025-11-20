@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
-import * as utils from "../utils";
 
 export function freeTrialTermsLink(): string {
   return "https://firebase.google.com/pricing";
@@ -27,14 +26,6 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
   } catch (err: any) {
     // If the metric doesn't exist, free trial is not used.
     used = false;
-  }
-  if (used) {
-    utils.logLabeledWarning(
-      "dataconnect",
-      "CloudSQL no cost trial has already been used on this project.",
-    );
-  } else {
-    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
   }
   return used;
 }

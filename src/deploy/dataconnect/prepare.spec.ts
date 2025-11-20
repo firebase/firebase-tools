@@ -9,7 +9,6 @@ import * as filters from "../../dataconnect/filters";
 import * as build from "../../dataconnect/build";
 import * as ensureApis from "../../dataconnect/ensureApis";
 import * as requireTosAcceptance from "../../requireTosAcceptance";
-import * as cloudbilling from "../../gcp/cloudbilling";
 import * as schemaMigration from "../../dataconnect/schemaMigration";
 import * as provisionCloudSql from "../../dataconnect/provisionCloudSql";
 import { FirebaseError } from "../../error";

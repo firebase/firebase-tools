@@ -28,6 +28,8 @@ import {
   promiseWithSpinner,
   logLabeledError,
   newUniqueId,
+  logLabeledWarning,
+  logLabeledSuccess,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
@@ -605,6 +607,21 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   if (!setup.projectId) {
     return;
   }
+  const instrumentlessTrialEnabled = envOverride("ENABLE_INSTRUMENTLESS_TRIAL", "") === "true";
+  const billingEnabled = await isBillingEnabled(setup);
+  const freeTrialAvailable =
+    !(await checkFreeTrialInstanceUsed(setup.projectId)) &&
+    (billingEnabled || instrumentlessTrialEnabled);
+
+  if (freeTrialAvailable) {
+    logLabeledWarning(
+      "dataconnect",
+      "CloudSQL no cost trial has already been used on this project.",
+    );
+  } else {
+    logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
+  }
+
   // Check for existing Cloud SQL instances, if we didn't already set one.
   if (info.cloudSqlInstanceId === "") {
     const instances = await cloudsql.listInstances(setup.projectId);
@@ -618,7 +635,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
+      if (freeTrialAvailable) {
         choices.push({ name: "Create a new free trial instance", value: FREE, location: "" });
       } else {
         choices.push({ name: "Create a new CloudSQL instance", value: PAID, location: "" });
@@ -633,7 +650,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
         info.flow += "_pick_new_csql";
-        if (info.cloudSqlInstanceId === PAID && !(await isBillingEnabled(setup))) {
+        if (info.cloudSqlInstanceId === PAID && !billingEnabled) {
           throw new FirebaseError(
             `The Cloud SQL free trial instance has already been used for this project. ${upgradeInstructions(setup.projectId)}`,
           );
@@ -652,7 +669,7 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   if (info.locationId === "") {
     await promptForLocation(setup, info);
     info.shouldProvisionCSQL = await confirm({
-      message: `Would you like to provision your Cloud SQL instance and database now?`,
+      message: `Would you like to provision your ${freeTrialAvailable ? " free trial" : ""}Cloud SQL instance and database now?`,
       default: true,
     });
   }
