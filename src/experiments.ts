@@ -62,6 +62,9 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {

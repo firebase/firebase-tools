@@ -1,10 +1,13 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
+import * as experiments from "../../experiments";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -180,6 +183,9 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
+/**
+ *
+ */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
 }
@@ -550,20 +556,40 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  let gcfV2Results;
-  try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-    for (const apiFunction of gcfV2Results.functions) {
-      const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
-      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+  if (experiments.isEnabled("functionsrunapionly")) {
+    try {
+      const runServices = await run.listServices(ctx.projectId);
+      for (const service of runServices) {
+        const endpoint = run.endpointFromService(service);
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    } catch (err: any) {
+      if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
+        // customer has preview enabled without allowlist set
+      } else {
+        logger.debug(err.message);
+        unreachableRegions.run = ["unknown"];
+      }
     }
-    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
-  } catch (err: any) {
-    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      // customer has preview enabled without allowlist set
-    } else {
-      throw err;
+  } else {
+    try {
+      const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+      for (const apiFunction of gcfV2Results.functions) {
+        const endpoint = gcfV2.endpointFromFunction(apiFunction);
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+      unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+    } catch (err: any) {
+      if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
+        // customer has preview enabled without allowlist set
+      } else {
+        logger.debug(err.message);
+        unreachableRegions.gcfV2 = ["unknown"];
+      }
     }
   }
 
