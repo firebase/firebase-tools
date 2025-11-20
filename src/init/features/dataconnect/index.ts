@@ -61,6 +61,7 @@ const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
 export type Source =
   | "mcp_init"
   | "init"
+  | "init_schema"
   | "init_sdk"
   | "gen_sdk_init"
   | "gen_sdk_init_sdk"

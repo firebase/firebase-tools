@@ -25,6 +25,7 @@ export interface Setup {
   /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
+  projectNumber?: string;
   projectLocation?: string;
   isBillingEnabled?: boolean;
 
@@ -36,6 +37,7 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
+  dataconnectSchema?: features.DataconnectSchemaInfo;
   dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
@@ -79,6 +81,11 @@ const featuresList: Feature[] = [
     name: "dataconnect:sdk",
     askQuestions: features.dataconnectSdkAskQuestions,
     actuate: features.dataconnectSdkActuate,
+  },
+  {
+    name: "dataconnect:schema",
+    askQuestions: features.dataconnectSchemaAskQuestions,
+    actuate: features.dataconnectSchemaActuate,
   },
   { name: "functions", doSetup: features.functions },
   {
