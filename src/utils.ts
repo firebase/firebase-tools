@@ -583,6 +583,13 @@ export function isRunningInWSL(): boolean {
 }
 
 /**
+ * Indicates whether the end-user is running the CLI from a GitHub Action.
+ */
+export function isRunningInGithubAction(): boolean {
+  return process.env.GITHUB_ACTION_REPOSITORY === "FirebaseExtended/action-hosting-deploy";
+}
+
+/**
  * Generates a date that is 30 days from Date.now()
  */
 export function thirtyDaysFromNow(): Date {

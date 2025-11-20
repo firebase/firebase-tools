@@ -689,6 +689,4 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
   return Buffer.from(encryptedBytes).toString("base64");
 }
 
-export function isRunningInGithubAction() {
-  return process.env.GITHUB_ACTION_REPOSITORY === HOSTING_GITHUB_ACTION_NAME.split("@")[0];
-}
+
