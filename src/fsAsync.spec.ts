@@ -110,5 +110,22 @@ describe("fsAsync", () => {
         .sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });
+
+    it("should support maximum recursion depth", async () => {
+      const results = await fsAsync.readdirRecursive({ path: baseDir, maxDepth: 2 });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = [".hidden", "visible", "subdir/subfile", "node_modules/subfile"];
+      const expectPaths = expectFiles.map((file) => path.join(baseDir, file)).sort();
+      return expect(gotFileNames).to.deep.equal(expectPaths);
+    });
+
+    it("should ignore invalid maximum recursion depth", async () => {
+      const results = await fsAsync.readdirRecursive({ path: baseDir, maxDepth: 0 });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+      return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
   });
 });
