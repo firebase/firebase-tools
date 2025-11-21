@@ -563,30 +563,17 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
         existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
       }
     } catch (err: any) {
-      if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-        // customer has preview enabled without allowlist set
-      } else {
-        logger.debug(err.message);
-        unreachableRegions.run = ["unknown"];
-      }
+      logger.debug(err.message);
+      unreachableRegions.run = ["unknown"];
     }
   } else {
-    try {
-      const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
-      for (const apiFunction of gcfV2Results.functions) {
-        const endpoint = gcfV2.endpointFromFunction(apiFunction);
-        existingBackend.endpoints[endpoint.region] =
-          existingBackend.endpoints[endpoint.region] || {};
-        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-      }
-      unreachableRegions.gcfV2 = gcfV2Results.unreachable;
-    } catch (err: any) {
-      if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-        // customer has preview enabled without allowlist set
-      } else {
-        throw err;
-      }
+    const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+    for (const apiFunction of gcfV2Results.functions) {
+      const endpoint = gcfV2.endpointFromFunction(apiFunction);
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
+    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   }
 
   ctx.existingBackend = existingBackend;

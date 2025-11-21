@@ -253,58 +253,6 @@ describe("Backend", () => {
         );
       });
 
-      it("should read v1 functions only when user is not allowlisted for v2", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [
-            {
-              ...HAVE_CLOUD_FUNCTION,
-              httpsTrigger: {},
-            },
-          ],
-          unreachable: [],
-        });
-        listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
-        );
-
-        const have = await backend.existingBackend(newContext());
-
-        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
-      });
-
-      it("should throw an error if v2 list api throws an error", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [],
-          unreachable: [],
-        });
-        listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 500, Internal Error", { status: 500 }),
-        );
-
-        await expect(backend.existingBackend(newContext())).to.be.rejectedWith(
-          "HTTP Error: 500, Internal Error",
-        );
-      });
-
-      it("should read v1 functions only when user is not allowlisted for v2", async () => {
-        listAllFunctions.onFirstCall().resolves({
-          functions: [
-            {
-              ...HAVE_CLOUD_FUNCTION,
-              httpsTrigger: {},
-            },
-          ],
-          unreachable: [],
-        });
-        listAllFunctionsV2.throws(
-          new FirebaseError("HTTP Error: 404, Method not found", { status: 404 }),
-        );
-
-        const have = await backend.existingBackend(newContext());
-
-        expect(have).to.deep.equal(backend.of({ ...ENDPOINT, httpsTrigger: {} }));
-      });
-
       it("should read v2 functions when enabled", async () => {
         listAllFunctions.onFirstCall().resolves({
           functions: [],
@@ -378,7 +326,7 @@ describe("Backend", () => {
           concurrency: 80,
           cpu: 1,
           httpsTrigger: {},
-          availableMemoryMb: 256 as backend.MemoryOptions,
+          availableMemoryMb: 256 as const,
           environmentVariables: {
             FUNCTION_TARGET: "function",
           },

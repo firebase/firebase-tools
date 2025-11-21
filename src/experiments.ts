@@ -64,6 +64,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   functionsrunapionly: {
     shortDescription: "Use Cloud Run API to list v2 functions",
+    public: false,
   },
 
   // Emulator experiments
