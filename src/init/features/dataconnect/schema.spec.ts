@@ -21,7 +21,7 @@ describe("addSchemaToDataConnectYaml", () => {
   beforeEach(() => {
     dataConnectYaml = {
       location: "us-central1",
-      serviceId: "test-service",
+      serviceId: "service-id",
       connectorDirs: [],
     };
     schemaRequiredInfo = {
@@ -68,7 +68,7 @@ describe("addSchemaToDataConnectYaml", () => {
     ];
     addSchemaToDataConnectYaml(dataConnectYaml, schemaRequiredInfo);
     expect(dataConnectYaml.schema).to.be.undefined;
-    expect(dataConnectYaml.schemas).to.have.lengthOf(2);
+    expect(dataConnectYaml.schemas).to.have.lengthOf(3);
     expect(dataConnectYaml.schemas).to.deep.equal([
       {
         source: "./schema",
@@ -117,7 +117,7 @@ describe("askQuestions", () => {
   });
 
   it("should throw error when fdcwebhooks experiment is not enabled", async () => {
-    experimentsStub.resolves(false);
+    experimentsStub.returns(false);
 
     try {
       await askQuestions(setup, config);
@@ -127,7 +127,7 @@ describe("askQuestions", () => {
   });
 
   it("should throw error when no services", async () => {
-    experimentsStub.resolves(true);
+    experimentsStub.returns(true);
     loadAllStub.resolves([]);
 
     try {
@@ -142,8 +142,13 @@ describe("askQuestions", () => {
   });
 
   it("should skip service selection when exactly one service", async () => {
-    experimentsStub.resolves(true);
-    loadAllStub.resolves([{ serviceName: "service-name" }]);
+    experimentsStub.returns(true);
+    loadAllStub.resolves([
+      {
+        serviceName: "projects/project-id/locations/us-central1/services/service-id",
+        dataConnectYaml: { location: "us-central1", serviceId: "service-id" },
+      },
+    ]);
     inputStub.onFirstCall().resolves("test_resolver");
     inputStub.onSecondCall().resolves("www.test.com");
 
@@ -153,16 +158,24 @@ describe("askQuestions", () => {
     expect(inputStub.calledTwice).to.be.true;
     expect(setup.featureInfo?.dataconnectSchema?.id).to.equal("test_resolver");
     expect(setup.featureInfo?.dataconnectSchema?.uri).to.equal("www.test.com");
-    expect(setup.featureInfo?.dataconnectSchema?.serviceInfo.serviceName).to.equal("service-name");
+    expect(setup.featureInfo?.dataconnectSchema?.serviceInfo.serviceName).to.equal(
+      "projects/project-id/locations/us-central1/services/service-id",
+    );
   });
 
   it("should prompt for service selection when multiple services", async () => {
-    experimentsStub.resolves(true);
+    experimentsStub.returns(true);
     loadAllStub.resolves([
-      { serviceName: "service-name" },
-      { serviceName: "another-service-name" },
+      { serviceName: "projects/project-id/locations/us-central1/services/service-id" },
+      {
+        serviceName: "projects/project-id/locations/us-central1/services/service-id2",
+        dataConnectYaml: { location: "us-central1", serviceId: "service-id2" },
+      },
     ]);
-    selectStub.resolves({ serviceName: "another-service-name" });
+    selectStub.resolves({
+      serviceName: "projects/project-id/locations/us-central1/services/service-id2",
+      dataConnectYaml: { location: "us-central1", serviceId: "service-id2" },
+    });
     inputStub.onFirstCall().resolves("test_resolver");
     inputStub.onSecondCall().resolves("www.test.com");
 
@@ -173,7 +186,7 @@ describe("askQuestions", () => {
     expect(setup.featureInfo?.dataconnectSchema?.id).to.equal("test_resolver");
     expect(setup.featureInfo?.dataconnectSchema?.uri).to.equal("www.test.com");
     expect(setup.featureInfo?.dataconnectSchema?.serviceInfo.serviceName).to.equal(
-      "another-service-name",
+      "projects/project-id/locations/us-central1/services/service-id2",
     );
   });
 });
@@ -199,11 +212,11 @@ describe("actuate", () => {
           uri: "www.test.com",
           serviceInfo: {
             sourceDirectory: "/path/to/service",
-            serviceName: "test-service",
+            serviceName: "service-id",
             schemas: [],
             dataConnectYaml: {
               location: "us-central1",
-              serviceId: "test-service",
+              serviceId: "service-id",
               schemas: [
                 {
                   source: "./schema",
@@ -238,7 +251,7 @@ describe("actuate", () => {
   });
 
   it("should no-op when fdcwebhooks experiment is not enabled", async () => {
-    experimentsStub.resolves(false);
+    experimentsStub.returns(false);
 
     await actuate(setup, config);
 
@@ -247,7 +260,7 @@ describe("actuate", () => {
   });
 
   it("should write dataconnect.yaml and set up empty secondary schema file", async () => {
-    experimentsStub.resolves(true);
+    experimentsStub.returns(true);
 
     await actuate(setup, config);
 
@@ -255,7 +268,7 @@ describe("actuate", () => {
     const writtenYamlPath = writeProjectFileStub.getCall(0).args[0];
     const writtenYamlContents = writeProjectFileStub.getCall(0).args[1];
     const parsedYaml = yaml.load(writtenYamlContents);
-    expect(writtenYamlPath).to.equal("/path/to/service/dataconnect.yaml");
+    expect(writtenYamlPath).to.equal("../service/dataconnect.yaml");
     expect(parsedYaml.schemas).to.have.lengthOf(2);
     expect(ensureSyncStub.calledOnce).to.be.true;
     const writtenSchemaPath = ensureSyncStub.getCall(0).args[0];
