@@ -1,5 +1,5 @@
 import { DEFAULT_FIREBASE_PROJECT, DEFAULT_FIREBASE_USER } from "../../data/index.js";
-import { renderTemplate } from "../../../../../src/mcp/tools/core/get_environment.js";
+import { renderTemplate } from "../../../../../src/mcp/tools/core/get_environment";
 import { toMockContent } from "../tool-mock-utils.js";
 
 const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";

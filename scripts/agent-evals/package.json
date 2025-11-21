@@ -2,10 +2,9 @@
   "name": "agent-evals",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
   "scripts": {
     "build": "tsc",
-    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
+    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec --require lib/scripts/agent-evals/src/helpers/mocha-bootstrap.js",
     "test:dev": "SKIP_REBUILD=true COPY_FIREBASE_CLI_CONFIG=true npm run test"
   },
   "keywords": [],
@@ -13,7 +12,10 @@
   "license": "ISC",
   "devDependencies": {
     "@types/mocha": "^9.0.0",
-    "@types/node": "^24.9.0"
+    "@types/node": "18.19.1",
+    "@typescript-eslint/eslint-plugin": "^5.9.0",
+    "@typescript-eslint/parser": "^5.9.0",
+    "typescript": "^4.5.4"
   },
   "dependencies": {
     "mocha": "^11.7.1",

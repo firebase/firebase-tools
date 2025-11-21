@@ -1,5 +1,5 @@
 import:
-  - ./lib/helpers/mocha-bootstrap.js
+  - ./lib/scripts/agent-evals/src/helpers/mocha-bootstrap.js
 timeout: 120000
 recursive: true
 node-options:

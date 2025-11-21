@@ -1,5 +1,5 @@
-import path from "node:path";
-import fs from "node:fs";
+import * as path from "path";
+import * as fs from "fs";
 import { execSync } from "node:child_process";
 
 export interface Template {
@@ -10,12 +10,17 @@ export interface Template {
 
 export enum TemplatePlatform {
   NODE,
+  ANDROID
 }
 
 export const templates = [
   {
     name: "next-app-hello-world",
     platform: TemplatePlatform.NODE,
+  },
+  {
+    name: "crashlytics-android",
+    platform: TemplatePlatform.ANDROID,
   },
 ] as const;
 

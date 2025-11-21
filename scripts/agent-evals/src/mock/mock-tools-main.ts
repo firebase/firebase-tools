@@ -1,9 +1,8 @@
 import { Module } from "module";
-import path from "path";
-import fs from "fs";
-import os from "os";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 import { getFirebaseCliRoot } from "../runner/paths.js";
-import { getToolMocks } from "./tool-mocks.js";
 
 //
 // This file is run as a node --import parameter before the Firebase CLI to
@@ -13,18 +12,31 @@ import { getToolMocks } from "./tool-mocks.js";
 // Path to the built MCP Tools implementation in the Firebase CLI, relative to
 // the repo's root
 const MCP_TOOLS_INDEX_PATH = "lib/mcp/tools/index.js";
+const CONFIGSTORE_INDEX_PATH = "lib/mcp/configstore.js";
 const LOG_FILE_PATH = path.join(os.homedir(), "Desktop", "agent_evals_mock_logs.txt");
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
 const ENABLE_FILE_LOGGING = false;
 
-const mocks = getToolMocks();
-
 const originalRequire = Module.prototype.require;
-Module.prototype.require = function (id: string) {
+(Module.prototype as any).require = function (id: string) {
   const requiredModule = originalRequire.apply(this, [id]);
   const absolutePath = Module.createRequire(this.filename).resolve(id);
   const pathRelativeToCliRoot = path.relative(getFirebaseCliRoot(), absolutePath);
+  console.log(`[DEBUG] Requiring: ${pathRelativeToCliRoot} (Absolute: ${absolutePath})`);
+
+  // Mock configstore to avoid "Cannot find module ../package.json" error and side effects
+  if (pathRelativeToCliRoot.endsWith(CONFIGSTORE_INDEX_PATH)) {
+    logToFile(`Mocking configstore for: ${pathRelativeToCliRoot}`);
+    return {
+      configstore: {
+        get: () => undefined,
+        set: () => { },
+        delete: () => { },
+      },
+    };
+  }
+
   if (!pathRelativeToCliRoot.endsWith(MCP_TOOLS_INDEX_PATH)) {
     return requiredModule;
   }
@@ -66,6 +78,10 @@ Module.prototype.require = function (id: string) {
     },
   });
 };
+
+import { getToolMocks } from "./tool-mocks.js";
+
+const mocks = getToolMocks();
 
 function logToFile(message: string) {
   if (!ENABLE_FILE_LOGGING) {

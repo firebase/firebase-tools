@@ -1,18 +1,18 @@
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { InteractiveCLI, poll } from "./interactive-cli.js";
-import { AgentTestRunner } from "./agent-test-runner.js";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import * as path from "path";
+import { InteractiveCLI, poll } from "./interactive-cli";
+import { AgentTestRunner, AgentTestMatchers } from "./agent-test-runner";
 import {
   ParsedToolLog,
   getToolName,
   toolArgumentsMatch,
   getToolArgumentsDebug,
-} from "./tool-matcher.js";
-import fs from "fs";
-import { throwFailure } from "./logging.js";
-import { getAgentEvalsRoot, RunDirectories } from "./paths.js";
+} from "./tool-matcher";
+
+import { throwFailure } from "./logging";
+import { getAgentEvalsRoot, RunDirectories } from "./paths";
 import { execSync } from "node:child_process";
-import { ToolMockName } from "../mock/tool-mocks.js";
+import { ToolMockName } from "../mock/tool-mocks";
 
 const READY_PROMPT = "Type your message";
 const INSTALL_ID = "238efa5b-efb2-44bd-9dce-9b081532681c";
@@ -34,6 +34,11 @@ interface ParsedTelemetryLog {
   }[];
 }
 
+interface CheckResult {
+  success: boolean;
+  messages: string[];
+}
+
 export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
@@ -49,11 +54,15 @@ export class GeminiCliRunner implements AgentTestRunner {
     dirs: RunDirectories,
     toolMocks: ToolMockName[],
   ) {
+    console.log(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(dirs.testDir, "telemetry.log");
-    const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "lib/mock/mock-tools-main.js"));
+
+    console.log(`Providing mock path: ${dirs.testDir}/telemetry.log`);
+    const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "src/mock/mock-tools-main.js"));
     const firebasePath = execSync("which firebase").toString().trim();
 
+    console.log(`Initializing Gemini workspace settings in ${dirs.runDir}`);
     // Write workspace Gemini Settings
     this.writeGeminiSettings(dirs.runDir, {
       general: {
@@ -76,6 +85,7 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
     });
 
+    console.log(`Initializing Gemini user settings in ${dirs.userDir}`);
     // Write user Gemini Settings
     this.writeGeminiSettings(dirs.userDir, {
       security: {
@@ -88,7 +98,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
-    this.runDir = runDir;
+    this.runDir = dirs.runDir;
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
@@ -97,6 +107,7 @@ export class GeminiCliRunner implements AgentTestRunner {
         // Overwrite $HOME so that we can support GCLI features that only apply
         // on a per-user basis, like memories and extensions
         HOME: dirs.userDir,
+        NODE_ENV: "test",
       },
     });
   }
@@ -111,9 +122,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     return this.cli.type(text);
   }
 
-  async expectText(text: string | RegExp): Promise<void> {
-    return this.cli.expectText(text);
-  }
+
 
   async exit(): Promise<void> {
     await this.cli.kill();
@@ -134,54 +143,88 @@ export class GeminiCliRunner implements AgentTestRunner {
     writeFileSync(path.join(geminiDir, "installation_id"), INSTALL_ID);
   }
 
+  async expectText(text: string | RegExp): Promise<void> {
+    return this.cli.expectText(text);
+  }
+
   /**
    * Reads the agent's telemetry file and looks for the given event. Throws if
    * the event is not found
    */
   async expectToolCalls(tools: string[]): Promise<void> {
     await this.waitForTelemetryReady();
-
-    // We still need to poll because telemetry can take time to write each turn
-    let messages: string[] = [];
-    const success = await poll(() => {
-      messages = [];
-      let allSucceeded = true;
-      // Start at this.turnToolIndex so we only read the tools used this turn
-      const toolLogs = this.readToolLogs().slice(this.turnToolIndex);
-      const foundToolNames = toolLogs.map((log) => log.name);
-      for (const toolDef of tools) {
-        const toolName = getToolName(toolDef);
-        const matchingTool = toolLogs.find((log) => log.name === toolName);
-        if (!matchingTool) {
-          messages.push(
-            `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`,
-          );
-          allSucceeded = false;
-        } else {
-          const foundMatchingArguments = toolLogs.some(
-            (log) => log.name === toolName && toolArgumentsMatch(toolDef, log),
-          );
-          if (!foundMatchingArguments) {
-            messages.push(
-              `Tool arguments matcher "${getToolArgumentsDebug(toolDef)}" for "${toolName}" did not match any tool results in the telemetry log. All tools are: [${JSON.stringify(toolLogs)}]`,
-            );
-            allSucceeded = false;
-          }
-        }
-      }
-      return allSucceeded;
+    let logs: string[] = [];
+    const toolsCallsMade = await poll(() => {
+      logs = []
+      const { success, messages } = this.checkToolCalls(tools);
+      logs = [...messages];
+      return success;
     }, this.telemetryTimeout);
 
-    if (!success) {
-      throwFailure(messages.join("\n"));
+    if (!toolsCallsMade) {
+      throwFailure(logs.join("\n"));
     }
+  }
+
+  public async expectMemory(text: string | RegExp): Promise<void> {
+    let logs: string[] = [];
+    const memoryFound = await poll(() => {
+      logs = []
+      const { success, messages } = this.checkMemory(text);
+      logs = [...messages];
+      return success
+
+    }, this.telemetryTimeout);
+
+    if (!memoryFound) {
+      throwFailure(logs.join("\n"));
+    }
+  }
+
+  get dont(): AgentTestMatchers {
+    return {
+      expectText: async (text: string | RegExp) => {
+        try {
+          await this.cli.expectText(text);
+        } catch (e) {
+          return;
+        }
+        throwFailure(`Found text "${text}" in the output, but expected it to be absent.`);
+      },
+      expectToolCalls: async (tools: string[]) => {
+        const timeout = 1000;
+        const found = await poll(() => {
+          const { success } = this.checkToolCalls(tools);
+          return success;
+        }, timeout);
+
+        if (found) {
+          throwFailure(
+            `Found tool calls ${JSON.stringify(tools)} in the output, but expected them to be absent.`,
+          );
+        }
+      },
+      expectMemory: async (text: string | RegExp) => {
+        const timeout = 1000;
+        const found = await poll(() => {
+          const { success } = this.checkMemory(text)
+          return success
+        }, timeout);
+
+        if (found) {
+          throwFailure(
+            `Found memory matching "${text}" in GEMINI.md, but expected it to be absent.`,
+          );
+        }
+      },
+    };
   }
 
   // Implementation for this is borrowed from the Gemini CLI's test-helper
   private async waitForTelemetryReady() {
     // Wait for telemetry file to exist and have content
     await poll(() => {
-      if (!fs.existsSync(this.telemetryPath)) return false;
+      if (!existsSync(this.telemetryPath)) return false;
       try {
         const content = readFileSync(this.telemetryPath, "utf-8");
         // Check if file has at lease one event in it
@@ -215,38 +258,9 @@ export class GeminiCliRunner implements AgentTestRunner {
     return logs;
   }
 
-  public async expectMemory(text: string | RegExp): Promise<void> {
-    const geminiMdPath = path.join(this.runDir, ".gemini", "GEMINI.md");
-    let messages: string[] = [];
-    const success = await poll(() => {
-      messages = [];
-      if (!fs.existsSync(geminiMdPath)) {
-        messages.push(`GEMINI.md file not found at ${geminiMdPath}`);
-        return false;
-      }
-      const content = readFileSync(geminiMdPath, "utf-8");
-      const found = content.match(text);
-      if (!found) {
-        messages.push(
-          `Did not find expected memory entry containing "${text.toString()}" in ${geminiMdPath}. File content:\n${content}`,
-        );
-        return false;
-      }
-      return true;
-    }, this.telemetryTimeout);
-
-    if (!success) {
-      throwFailure(messages.join("\n"));
-    }
-  }
-
-  public async expectTextContains(text: string | RegExp): Promise<void> {
-    return this.cli.expectText(text);
-  }
-
   private readAndParseTelemetryLog(): ParsedTelemetryLog[] {
     const logFilePath = this.telemetryPath;
-    if (!logFilePath || !fs.existsSync(logFilePath)) {
+    if (!logFilePath || !existsSync(logFilePath)) {
       return [];
     }
 
@@ -256,7 +270,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     // They are separated by "}\n{"
     const jsonObjects = content
       .split(/}\n{/)
-      .map((obj, index, array) => {
+      .map((obj: string, index: number, array: string[]) => {
         // Add back the braces we removed during split
         if (index > 0) obj = "{" + obj;
         if (index < array.length - 1) obj = obj + "}";
@@ -276,5 +290,52 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
 
     return logs;
+  }
+
+  private checkToolCalls(tools: string[]): CheckResult {
+    const messages = [];
+    let allSucceeded = true;
+    // Start at this.turnToolIndex so we only read the tools used this turn
+    const toolLogs = this.readToolLogs().slice(this.turnToolIndex);
+    const foundToolNames = toolLogs.map((log) => log.name);
+    for (const toolDef of tools) {
+      const toolName = getToolName(toolDef);
+      const matchingTool = toolLogs.find((log) => log.name === toolName);
+      if (!matchingTool) {
+        messages.push(
+          `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`,
+        );
+        allSucceeded = false;
+      } else {
+        const foundMatchingArguments = toolLogs.some(
+          (log) => log.name === toolName && toolArgumentsMatch(toolDef, log),
+        );
+        if (!foundMatchingArguments) {
+          messages.push(
+            `Tool arguments matcher "${getToolArgumentsDebug(toolDef)}" for "${toolName}" did not match any tool results in the telemetry log. All tools are: [${JSON.stringify(toolLogs)}]`,
+          );
+          allSucceeded = false;
+        }
+      }
+    }
+    return { success: allSucceeded, messages };
+  }
+
+  private checkMemory(text: string | RegExp): CheckResult {
+    const geminiMdPath = path.join(this.runDir, ".gemini", "GEMINI.md");
+    const messages: string[] = [];
+    if (!existsSync(geminiMdPath)) {
+      messages.push(`GEMINI.md file not found at ${geminiMdPath}`);
+      return { success: false, messages };
+    }
+    const content = readFileSync(geminiMdPath, "utf-8");
+    const found = content.match(text);
+    if (!found) {
+      messages.push(
+        `Did not find expected memory entry containing "${text.toString()}" in ${geminiMdPath}. File content:\n${content}`,
+      );
+      return { success: false, messages };
+    }
+    return { success: true, messages };
   }
 }
