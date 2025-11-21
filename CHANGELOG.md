@@ -1,2 +1,4 @@
-- Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
+- [BREAKING] Changed `firestore:backups:list --json` to return a `listBackupsResponse` object instead of a raw array of backups.
 - [BREAKING] Removed support for '.bolt' rules files.
+- [BREAKING] Removed support for running emulators with Java versions prior to 21.
+- Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
