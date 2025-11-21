@@ -703,12 +703,6 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       "dataconnect",
       "CloudSQL no cost trial has already been used on this project.",
     );
-    if (!billingEnabled) {
-      setup.instructions.push(
-        upgradeInstructions(setup.projectId || "your-firebase-project", true),
-      );
-      return;
-    }
   } else if (instrumentlessTrialEnabled || billingEnabled) {
     logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
   }
@@ -729,7 +723,11 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       if (freeTrialAvailable) {
         choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       } else {
-        choices.push({ name: "Create a new CloudSQL instance", value: "", location: "" });
+        choices.push({
+          name: `Create a new CloudSQL instance${billingEnabled ? "" : " (requires billing account)"}`,
+          value: "",
+          location: "",
+        });
       }
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
@@ -741,6 +739,12 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
         info.flow += "_pick_new_csql";
+        if (!billingEnabled && freeTrialUsed) {
+          setup.instructions.push(
+            upgradeInstructions(setup.projectId || "your-firebase-project", true),
+          );
+          return;
+        }
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
