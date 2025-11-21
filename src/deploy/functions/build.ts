@@ -205,8 +205,21 @@ export interface SecretEnvVar {
   projectId: string; // The project containing the Secret
 }
 
-export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
-const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+export type MemoryOption =
+  | 128
+  | 256
+  | 512
+  | 1024
+  | 1536
+  | 2048
+  | 3072
+  | 4096
+  | 8192
+  | 16384
+  | 32768;
+const allMemoryOptions: MemoryOption[] = [
+  128, 256, 512, 1024, 1536, 2048, 3072, 4096, 8192, 16384, 32768,
+];
 
 // Run is an automatic migration from gcfv2 and is not used on the wire.
 export type FunctionsPlatform = Exclude<backend.FunctionsPlatform, "run">;
