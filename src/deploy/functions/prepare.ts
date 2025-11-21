@@ -100,7 +100,11 @@ export async function prepare(
   const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
-  if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
+  if (
+    allowFunctionsConfig &&
+    checkAPIsEnabled[1] &&
+    targetedCodebaseConfigs.some(shouldUseRuntimeConfig)
+  ) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 

@@ -57,6 +57,14 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: false,
   },
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
+    fullDescription:
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: true,
+    public: true,
+  },
   runfunctions: {
     shortDescription:
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
