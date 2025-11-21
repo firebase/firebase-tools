@@ -110,6 +110,19 @@ export function cli(pkg: any) {
   if (!handlePreviewToggles(args)) {
     // determine if there are any arguments. if not, display help
     if (!args.length) {
+      const seen = new Set();
+      const loadAll = (obj: any) => {
+        if (seen.has(obj)) return;
+        seen.add(obj);
+        for (const [key, value] of Object.entries(obj)) {
+          if (typeof value === "function" && (value as any).load) {
+            (value as any).load();
+          } else if (typeof value === "object" && value !== null && !Array.isArray(value) && key !== "cli") {
+             loadAll(value);
+          }
+        }
+      };
+      loadAll(client);
       client.cli.help();
     } else {
       cmd = client.cli.parse(process.argv);

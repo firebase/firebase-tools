@@ -75,9 +75,32 @@ const RENAMED_COMMANDS: Record<string, string> = {
 
 // Default handler, this is called when no other command action matches.
 program.action((_, args) => {
+  const cmd = args[0];
+  const keys = cmd.split(":");
+  let obj = client;
+  let hit = true;
+  for (const key of keys) {
+    if (!obj || typeof obj !== "object") {
+      hit = false;
+      break;
+    }
+    const nextKey = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+    if (!nextKey) {
+      hit = false;
+      break;
+    }
+    obj = (obj as any)[nextKey];
+  }
+
+  if (hit && typeof obj === "function" && (obj as any).load) {
+    (obj as any).load();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (client.cli as any).parse(process.argv);
+    return;
+  }
+
   useConsoleLoggers();
 
-  const cmd = args[0];
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {

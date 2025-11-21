@@ -1,20 +1,36 @@
 import * as experiments from "../experiments";
+import { Command } from "../command";
+
 /**
  * Loads all commands for our parser.
  */
 export function load(client: any): any {
   function loadCommand(name: string) {
     const t0 = process.hrtime.bigint();
-    const { command: cmd } = require(`./${name}`);
-    cmd.register(client);
-    const t1 = process.hrtime.bigint();
-    const diffMS = (t1 - t0) / BigInt(1e6);
-    if (diffMS > 75) {
-      // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
-      // console.error(`Loading ${name} took ${diffMS}ms`);
-    }
 
-    return cmd.runner();
+    const load = () => {
+      const { command: cmd } = require(`./${name}`);
+      cmd.register(client);
+      return cmd.runner();
+    };
+
+    const runner = async (...args: any[]) => {
+      const run = load();
+      return run(...args);
+    };
+
+    // Store the load function on the runner so we can trigger it without running.
+    (runner as any).load = () => {
+      const tStart = process.hrtime.bigint();
+      require(`./${name}`).command.register(client);
+      const tEnd = process.hrtime.bigint();
+      const diff = (tEnd - tStart) / BigInt(1e6);
+      if (diff > 75) {
+         // console.error(`Loading ${name} took ${diff}ms`);
+      }
+    };
+
+    return runner;
   }
 
   const t0 = process.hrtime.bigint();
