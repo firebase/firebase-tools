@@ -33,6 +33,7 @@ describe("prepare", () => {
     let sandbox: sinon.SinonSandbox;
     let runtimeDelegateStub: RuntimeDelegate;
     let discoverBuildStub: sinon.SinonStub;
+    let getRuntimeDelegateStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -57,7 +58,9 @@ describe("prepare", () => {
           },
         }),
       );
-      sandbox.stub(runtimes, "getRuntimeDelegate").resolves(runtimeDelegateStub);
+      getRuntimeDelegateStub = sandbox.stub(runtimes, "getRuntimeDelegate").resolves(
+        runtimeDelegateStub,
+      );
     });
 
     afterEach(() => {
@@ -150,6 +153,33 @@ describe("prepare", () => {
       const callArgs = discoverBuildStub.firstCall.args;
       expect(callArgs[0]).to.deep.equal(runtimeConfig);
       expect(callArgs[0]).to.have.property("customKey", "customValue");
+    });
+
+    it("should skip codebases filtered out by exclude filters", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "keep", runtime: "nodejs22" },
+        { source: "other-source", codebase: "skip-me", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(
+        config,
+        options,
+        firebaseConfig,
+        runtimeConfig,
+        undefined,
+        [{ codebase: "skip-me" }],
+      );
+
+      expect(Object.keys(builds)).to.deep.equal(["keep"]);
+      expect(getRuntimeDelegateStub.calledOnce).to.be.true;
     });
   });
 
