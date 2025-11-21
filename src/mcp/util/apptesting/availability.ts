@@ -15,7 +15,7 @@ export async function isAppTestingAvailable(ctx: McpContext): Promise<boolean> {
   const supportedPlatforms = [Platform.FLUTTER, Platform.ANDROID, Platform.IOS];
 
   if (!platforms.some((p) => supportedPlatforms.includes(p))) {
-    host.log("debug", `Found no supported App Testing platforms.`);
+    host.logger.debug("Found no supported App Testing platforms.");
     return false;
   }
 

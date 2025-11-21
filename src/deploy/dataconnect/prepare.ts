@@ -11,12 +11,11 @@ import { ensureApis } from "../../dataconnect/ensureApis";
 import { requireTosAcceptance } from "../../requireTosAcceptance";
 import { DATA_CONNECT_TOS_ID } from "../../gcp/firedata";
 import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
-import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { parseServiceName } from "../../dataconnect/names";
 import { FirebaseError } from "../../error";
 import { mainSchema, requiresVector } from "../../dataconnect/types";
 import { diffSchema } from "../../dataconnect/schemaMigration";
-import { upgradeInstructions } from "../../dataconnect/freeTrial";
+import { checkBillingEnabled } from "../../gcp/cloudbilling";
 import { Context, initDeployStats } from "./context";
 
 /**
@@ -35,7 +34,6 @@ export default async function (context: Context, options: DeployOptions): Promis
   const { serviceInfos, filters, deployStats } = context.dataconnect;
   if (!(await checkBillingEnabled(projectId))) {
     deployStats.missingBilling = true;
-    throw new FirebaseError(upgradeInstructions(projectId));
   }
   await requireTosAcceptance(DATA_CONNECT_TOS_ID)(options);
   for (const si of serviceInfos) {
