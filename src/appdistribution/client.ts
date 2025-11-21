@@ -9,14 +9,19 @@ import { appDistributionOrigin } from "../api";
 
 import {
   AabInfo,
+  AIInstruction,
   BatchRemoveTestersResponse,
+  BatchUpdateTestCasesRequest,
+  BatchUpdateTestCasesResponse,
   Group,
   ListGroupsResponse,
+  ListTestCasesResponse,
   ListTestersResponse,
   LoginCredential,
-  mapDeviceToExecution,
   ReleaseTest,
+  TestCase,
   TestDevice,
+  Tester,
   UploadReleaseResponse,
 } from "./types";
 
@@ -66,7 +71,7 @@ export class AppDistributionClient {
     });
   }
 
-  async updateReleaseNotes(releaseName: string, releaseNotes: string): Promise<void> {
+  async updateReleaseNotes(releaseName: string, releaseNotes?: string): Promise<void> {
     if (!releaseNotes) {
       utils.logWarning("no release notes specified, skipping");
       return;
@@ -111,7 +116,7 @@ export class AppDistributionClient {
     try {
       await this.appDistroV1Client.post(`/${releaseName}:distribute`, data);
     } catch (err: any) {
-      let errorMessage = err.message;
+      let errorMessage = getErrMsg(err);
       const errorStatus = err?.context?.body?.error?.status;
       if (errorStatus === "FAILED_PRECONDITION") {
         errorMessage = "invalid testers";
@@ -126,17 +131,12 @@ export class AppDistributionClient {
     utils.logSuccess("distributed to testers/groups successfully");
   }
 
-  async listTesters(projectName: string, groupName?: string): Promise<ListTestersResponse> {
-    const listTestersResponse: ListTestersResponse = {
-      testers: [],
-    };
-
+  async listTesters(projectName: string, groupName?: string): Promise<Tester[]> {
+    const testers: Tester[] = [];
     const client = this.appDistroV1Client;
-
-    let pageToken: string | undefined;
-
     const filter = groupName ? `groups=${projectName}/groups/${groupName}` : null;
 
+    let pageToken: string | undefined;
     do {
       const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
       if (filter != null) {
@@ -148,12 +148,12 @@ export class AppDistributionClient {
         apiResponse = await client.get<ListTestersResponse>(`${projectName}/testers`, {
           queryParams,
         });
-      } catch (err) {
-        throw new FirebaseError(`Client request failed to list testers ${err}`);
+      } catch (err: unknown) {
+        throw new FirebaseError(`Client request failed to list testers ${getErrMsg(err)}`);
       }
 
       for (const t of apiResponse.body.testers ?? []) {
-        listTestersResponse.testers.push({
+        testers.push({
           name: t.name,
           displayName: t.displayName,
           groups: t.groups,
@@ -163,7 +163,7 @@ export class AppDistributionClient {
 
       pageToken = apiResponse.body.nextPageToken;
     } while (pageToken);
-    return listTestersResponse;
+    return testers;
   }
 
   async addTesters(projectName: string, emails: string[]): Promise<void> {
@@ -197,28 +197,24 @@ export class AppDistributionClient {
     return apiResponse.body;
   }
 
-  async listGroups(projectName: string): Promise<ListGroupsResponse> {
-    const listGroupsResponse: ListGroupsResponse = {
-      groups: [],
-    };
-
+  async listGroups(projectName: string): Promise<Group[]> {
+    const groups: Group[] = [];
     const client = this.appDistroV1Client;
 
     let pageToken: string | undefined;
-
     do {
       const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
       try {
         const apiResponse = await client.get<ListGroupsResponse>(`${projectName}/groups`, {
           queryParams,
         });
-        listGroupsResponse.groups.push(...(apiResponse.body.groups ?? []));
+        groups.push(...(apiResponse.body.groups ?? []));
         pageToken = apiResponse.body.nextPageToken;
-      } catch (err) {
-        throw new FirebaseError(`Client failed to list groups ${err}`);
+      } catch (err: unknown) {
+        throw new FirebaseError(`Client failed to list groups ${getErrMsg(err)}`);
       }
     } while (pageToken);
-    return listGroupsResponse;
+    return groups;
   }
 
   async createGroup(projectName: string, displayName: string, alias?: string): Promise<Group> {
@@ -280,6 +276,7 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
+    aiInstruction?: AIInstruction,
     loginCredential?: LoginCredential,
     testCaseName?: string,
   ): Promise<ReleaseTest> {
@@ -288,9 +285,10 @@ export class AppDistributionClient {
         method: "POST",
         path: `${releaseName}/tests`,
         body: {
-          deviceExecutions: devices.map(mapDeviceToExecution),
+          deviceExecutions: devices.map((device) => ({ device })),
           loginCredential,
           testCase: testCaseName,
+          aiInstructions: aiInstruction,
         },
       });
       return response.body;
@@ -302,5 +300,59 @@ export class AppDistributionClient {
   async getReleaseTest(releaseTestName: string): Promise<ReleaseTest> {
     const response = await this.appDistroV1AlphaClient.get<ReleaseTest>(releaseTestName);
     return response.body;
+  }
+
+  async listTestCases(appName: string): Promise<TestCase[]> {
+    const testCases: TestCase[] = [];
+    const client = this.appDistroV1AlphaClient;
+
+    let pageToken: string | undefined;
+    do {
+      const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+      try {
+        const apiResponse = await client.get<ListTestCasesResponse>(`${appName}/testCases`, {
+          queryParams,
+        });
+        testCases.push(...(apiResponse.body.testCases ?? []));
+        pageToken = apiResponse.body.nextPageToken;
+      } catch (err: unknown) {
+        throw new FirebaseError(`Client failed to list test cases ${getErrMsg(err)}`);
+      }
+    } while (pageToken);
+    return testCases;
+  }
+
+  async createTestCase(appName: string, testCase: TestCase): Promise<TestCase> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<TestCase, TestCase>({
+        method: "POST",
+        path: `${appName}/testCases`,
+        body: testCase,
+      });
+      return response.body;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to create test case ${getErrMsg(err)}`);
+    }
+  }
+
+  async batchUpsertTestCases(appName: string, testCases: TestCase[]): Promise<TestCase[]> {
+    try {
+      const response = await this.appDistroV1AlphaClient.request<
+        BatchUpdateTestCasesRequest,
+        BatchUpdateTestCasesResponse
+      >({
+        method: "POST",
+        path: `${appName}/testCases:batchUpdate`,
+        body: {
+          requests: testCases.map((tc) => ({
+            testCase: tc,
+            allowMissing: true,
+          })),
+        },
+      });
+      return response.body.testCases;
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to upsert test cases ${getErrMsg(err)}`);
+    }
   }
 }

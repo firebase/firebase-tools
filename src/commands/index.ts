@@ -25,11 +25,14 @@ export function load(client: any): any {
   client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
-  client.appdistribution.group = {};
-  client.appdistribution.group.list = loadCommand("appdistribution-groups-list");
-  client.appdistribution.group.create = loadCommand("appdistribution-groups-create");
-  client.appdistribution.group.delete = loadCommand("appdistribution-groups-delete");
-  client.appdistribution.groups = client.appdistribution.group;
+  client.appdistribution.groups = {};
+  client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
+  client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
+  client.appdistribution.groups.delete = loadCommand("appdistribution-groups-delete");
+  client.appdistribution.group = client.appdistribution.groups;
+  client.appdistribution.testCases = {};
+  client.appdistribution.testCases.export = loadCommand("appdistribution-testcases-export");
+  client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -115,6 +118,7 @@ export function load(client: any): any {
   client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.databases.clone = loadCommand("firestore-databases-clone");
   client.firestore.backups = {};
   client.firestore.backups.schedules = {};
   client.firestore.backups.list = loadCommand("firestore-backups-list");
@@ -231,6 +235,7 @@ export function load(client: any): any {
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.dataconnect = {};
   client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+  client.dataconnect.execute = loadCommand("dataconnect-execute");
   client.dataconnect.services = {};
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};

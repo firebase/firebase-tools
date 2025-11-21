@@ -6,6 +6,7 @@ import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
 import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
 
 export const get_security_rules = tool(
+  "core",
   {
     name: "get_security_rules",
     description:

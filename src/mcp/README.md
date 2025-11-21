@@ -1,3 +1,164 @@
+# Firebase MCP Server
+
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzQGxhdGVzdCIsIm1jcCJdfQ==)
+
+The Firebase Model Context Protocol (MCP) Server gives AI-powered development tools the ability to work with your Firebase projects and your app's codebase. The Firebase MCP server works with any tool that can act as an MCP client, including: [Firebase Studio](https://firebase.google.com/studio), [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://www.claude.com/product/claude-code), [Cline](https://github.com/cline/cline), [Cursor](https://www.cursor.com/), VS Code Copilot, [Windsurf](https://codeium.com/windsurf), and more!
+
+## Features
+
+An editor configured to use the Firebase MCP server can use its AI capabilities to help you:
+
+- **Create and manage Firebase projects** - Initialize new projects, list existing ones, and manage Firebase apps
+- **Manage Firebase Authentication users** - Retrieve, update, and manage user accounts
+- **Work with Cloud Firestore and Firebase Data Connect** - Query, read, write, and manage database documents
+- **Retrieve Firebase Data Connect schemas** - Generate schemas and operations with AI assistance
+- **Understand security rules** - Validate and retrieve security rules for Firestore, Cloud Storage, and Realtime Database
+- **Send messages with Firebase Cloud Messaging** - Send push notifications to devices and topics
+- **Access Crashlytics data** - Debug issues, view crash reports, and manage crash analytics
+- **Deploy to App Hosting** - Monitor backends and retrieve logs
+- **Work with Realtime Database** - Read and write data in real-time
+- **Query Cloud Functions logs** - Retrieve and analyze function execution logs
+- **Manage Remote Config** - Get and update remote configuration templates
+
+Some tools use [Gemini in Firebase](https://firebase.google.com/docs/ai-assistance) to help you:
+
+- Generate Firebase Data Connect schema and operations
+- Consult Gemini about Firebase products
+
+> **Important:** Gemini in Firebase can generate output that seems plausible but is factually incorrect. It may respond with inaccurate information that doesn't represent Google's views. Validate all output from Gemini before you use it and don't use untested generated code in production. Don't enter personally-identifiable information (PII) or user data into the chat.  
+> Learn more about [Gemini in Firebase and how it uses your data](https://firebase.google.com/docs/ai-assistance).
+
+## Installation and Setup
+
+### Prerequisites
+
+Make sure you have a working installation of [Node.js](http://nodejs.org/) and [npm](https://npmjs.org/).
+
+### Basic Configuration
+
+The Firebase MCP server can work with any MCP client that supports standard I/O (stdio) as the transport medium. When the Firebase MCP server makes tool calls, it uses the same user credentials that authorize the Firebase CLI in the environment where it's running.
+
+Here are configuration instructions for popular AI-assistive tools:
+
+#### Gemini CLI
+
+Install the [Firebase extension for Gemini CLI](https://github.com/gemini-cli-extensions/firebase/):
+
+```bash
+gemini extensions install https://github.com/gemini-cli-extensions/firebase/
+```
+
+#### Claude Code
+
+##### Option 1: Install via plugin (Recommended)
+
+The easiest way to set up the Firebase MCP server in Claude Code is to install the official Firebase plugin:
+
+1. Add the Firebase marketplace for Claude plugins:
+
+   ```bash
+   claude plugin marketplace add firebase/firebase-tools
+   ```
+
+2. Install the Claude plugin for Firebase:
+
+   ```bash
+   claude plugin install firebase@firebase
+   ```
+
+3. Verify the installation:
+
+   ```bash
+   claude plugin
+   ```
+
+##### Option 2: Configure MCP server manually
+
+Alternatively, you can manually configure the Firebase MCP server by running:
+
+```bash
+claude mcp add firebase npx -- -y firebase-tools@latest mcp
+```
+
+You can verify the installation by running:
+
+```bash
+claude mcp list
+```
+
+It should show:
+
+```
+firebase: npx -y firebase-tools@latest mcp - ✓ Connected
+```
+
+#### Cursor
+
+Add to `.cursorrules` in your project directory or configure in Cursor settings:
+
+```json
+{
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"]
+    }
+  }
+}
+```
+
+#### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"]
+    }
+  }
+}
+```
+
+#### Firebase Studio
+
+To configure Firebase Studio to use the Firebase MCP server, edit or create the configuration file: `.idx/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "firebase": {
+      "command": "npx",
+      "args": ["-y", "firebase-tools@latest", "mcp"]
+    }
+  }
+}
+```
+
+## Usage
+
+Once configured, the MCP server will automatically provide Firebase capabilities to your AI assistant. You can:
+
+- Ask the AI to help set up Firebase services
+- Query your Firestore database
+- Manage authentication users
+- Deploy to Firebase Hosting
+- Debug Crashlytics issues
+- And much more!
+
+For a complete list of available tools and resources, see the [Server Capabilities](#server-capabilities) section below.
+
+## Documentation
+
+For more information, visit the [official Firebase MCP server documentation](https://firebase.google.com/docs/ai-assistance/mcp-server).
+
+## Server Capabilities
+
+The Firebase MCP server provides three types of capabilities: **Tools** (functions that perform actions), **Prompts** (reusable command templates), and **Resources** (documentation files for AI models).
+
 | Tool Name                             | Feature Group    | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | firebase_login                        | core             | Use this to sign the user into the Firebase CLI and Firebase MCP server. This requires a Google Account, and sign in is required to create and work with Firebase Projects.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |

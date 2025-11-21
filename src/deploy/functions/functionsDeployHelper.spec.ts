@@ -22,6 +22,10 @@ describe("functionsDeployHelper", () => {
     codebase: DEFAULT_CODEBASE,
   };
 
+  const TEST_CONFIG: ValidatedConfig = [
+    { source: "functions", codebase: DEFAULT_CODEBASE },
+  ] as ValidatedConfig;
+
   describe("endpointMatchesFilter", () => {
     it("should match empty filter", () => {
       const func = { ...ENDPOINT, id: "id" };
@@ -163,18 +167,30 @@ describe("functionsDeployHelper", () => {
     interface Testcase {
       desc: string;
       selector: string;
+      config: ValidatedConfig;
       expected: EndpointFilter[];
     }
 
     const testcases: Testcase[] = [
       {
-        desc: "parses selector without codebase",
+        desc: "parses selector without codebase (not a codebase name)",
         selector: "func",
+        config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
             idChunks: ["func"],
           },
+        ],
+      },
+      {
+        desc: "parses selector without codebase (matches codebase name)",
+        selector: "func",
+        config: [
+          { source: "functions", codebase: DEFAULT_CODEBASE },
+          { source: "other", codebase: "func" },
+        ] as ValidatedConfig,
+        expected: [
           {
             codebase: "func",
           },
@@ -183,32 +199,29 @@ describe("functionsDeployHelper", () => {
       {
         desc: "parses group selector (with '.') without codebase",
         selector: "g1.func",
+        config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
             idChunks: ["g1", "func"],
-          },
-          {
-            codebase: "g1.func",
           },
         ],
       },
       {
         desc: "parses group selector (with '-') without codebase",
         selector: "g1-func",
+        config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
             idChunks: ["g1", "func"],
-          },
-          {
-            codebase: "g1-func",
           },
         ],
       },
       {
         desc: "parses group selector (with '-') with codebase",
         selector: "node:g1-func",
+        config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
         expected: [
           {
             codebase: "node",
@@ -220,7 +233,7 @@ describe("functionsDeployHelper", () => {
 
     for (const tc of testcases) {
       it(tc.desc, () => {
-        const actual = parseFunctionSelector(tc.selector);
+        const actual = parseFunctionSelector(tc.selector, tc.config);
 
         expect(actual.length).to.equal(tc.expected.length);
         expect(actual).to.deep.include.members(tc.expected);
@@ -245,14 +258,8 @@ describe("functionsDeployHelper", () => {
             idChunks: ["myFunc"],
           },
           {
-            codebase: "myFunc",
-          },
-          {
             codebase: DEFAULT_CODEBASE,
             idChunks: ["myOtherFunc"],
-          },
-          {
-            codebase: "myOtherFunc",
           },
         ],
       },
@@ -263,9 +270,6 @@ describe("functionsDeployHelper", () => {
           {
             codebase: DEFAULT_CODEBASE,
             idChunks: ["groupA", "myFunc"],
-          },
-          {
-            codebase: "groupA.myFunc",
           },
         ],
       },
@@ -301,7 +305,7 @@ describe("functionsDeployHelper", () => {
           only: tc.only,
         } as Options;
 
-        const actual = helper.getEndpointFilters(options);
+        const actual = helper.getEndpointFilters(options, TEST_CONFIG);
 
         expect(actual?.length).to.equal(tc.expected.length);
         expect(actual).to.deep.include.members(tc.expected);
@@ -309,11 +313,43 @@ describe("functionsDeployHelper", () => {
     }
 
     it("returns undefined given no only option", () => {
-      expect(helper.getEndpointFilters({})).to.be.undefined;
+      expect(helper.getEndpointFilters({}, TEST_CONFIG)).to.be.undefined;
     });
 
     it("returns undefined given no functions selector", () => {
-      expect(helper.getEndpointFilters({ only: "hosting:siteA,storage:bucketB" })).to.be.undefined;
+      expect(helper.getEndpointFilters({ only: "hosting:siteA,storage:bucketB" }, TEST_CONFIG)).to
+        .be.undefined;
+    });
+
+    it("should create only codebase filter when selector matches codebase name", () => {
+      const config: ValidatedConfig = [
+        { source: "functions", codebase: DEFAULT_CODEBASE },
+        { source: "other-functions", codebase: "other" },
+      ] as ValidatedConfig;
+
+      const options = {
+        only: "functions:other",
+      } as Options;
+
+      const actual = helper.getEndpointFilters(options, config);
+
+      expect(actual).to.deep.equal([{ codebase: "other" }]);
+    });
+
+    it("should create default codebase filter when selector does not match codebase name", () => {
+      const config: ValidatedConfig = [
+        { source: "functions", codebase: DEFAULT_CODEBASE },
+        { source: "python-functions", codebase: "python" },
+      ] as ValidatedConfig;
+
+      const options = {
+        only: "functions:other",
+      } as Options;
+
+      const actual = helper.getEndpointFilters(options, config);
+
+      expect(actual?.length).to.equal(1);
+      expect(actual).to.deep.equal([{ codebase: DEFAULT_CODEBASE, idChunks: ["other"] }]);
     });
   });
 

@@ -1,7 +1,9 @@
 import * as clc from "colorette";
+import * as tty from "tty";
 
 import { logger } from "../logger";
-import { ensureValidKey, ensureSecret } from "../functions/secrets";
+import { FirebaseError } from "../error";
+import { ensureValidKey, ensureSecret, validateJsonSecret } from "../functions/secrets";
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
@@ -36,15 +38,37 @@ export const command = new Command("functions:secrets:set <KEY>")
     "--data-file <dataFile>",
     'file path from which to read secret data. Set to "-" to read the secret data from stdin',
   )
+  .option("--format <format>", "format of the secret value. 'string' (default) or 'json'")
   .action(async (unvalidatedKey: string, options: Options) => {
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
     const key = await ensureValidKey(unvalidatedKey, options);
     const secret = await ensureSecret(projectId, key, options);
-    const secretValue = await readSecretValue(
-      `Enter a value for ${key}`,
-      options.dataFile as string | undefined,
-    );
+
+    // Determine format using priority order: explicit flag > file extension > default to string
+    let format = options.format as string | undefined;
+    const dataFile = options.dataFile as string | undefined;
+    if (!format && dataFile && dataFile !== "-") {
+      // Auto-detect from file extension
+      if (dataFile.endsWith(".json")) {
+        format = "json";
+      }
+    }
+
+    // Only error if there's no input source (no file and no piped stdin)
+    if (!dataFile && tty.isatty(0) && options.nonInteractive) {
+      throw new FirebaseError(
+        `Cannot prompt for secret value in non-interactive mode.\n` +
+          `Use --data-file to provide the secret value from a file.`,
+      );
+    }
+
+    const promptSuffix = format === "json" ? " (JSON format)" : "";
+    const secretValue = await readSecretValue(`Enter a value for ${key}${promptSuffix}:`, dataFile);
+
+    if (format === "json") {
+      validateJsonSecret(key, secretValue);
+    }
     const secretVersion = await addVersion(projectId, key, secretValue);
     logSuccess(`Created a new secret version ${toSecretVersionResourceName(secretVersion)}`);
 

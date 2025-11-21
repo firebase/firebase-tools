@@ -44,38 +44,46 @@
     }
   },
   "pubsub": {
-    "version": "0.8.14",
-    "expectedSize": 66786933,
-    "expectedChecksum": "a9025b3e53fdeafd2969ccb3ba1e1d38",
-    "expectedChecksumSHA256": "4fbeefd8ecb32b10e5ab522e5d8748e0c2b13891c471c0c327c04632dcc75a8d",
-    "remoteUrl": "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.14.zip",
-    "downloadPathRelativeToCacheDir": "pubsub-emulator-0.8.14.zip",
-    "binaryPathRelativeToCacheDir": "pubsub-emulator-0.8.14/pubsub-emulator/bin/cloud-pubsub-emulator"
+    "version": "0.8.17",
+    "expectedSize": 65162324,
+    "expectedChecksum": "a88ec6424e49af459b5c8a3657d69c06",
+    "expectedChecksumSHA256": "72a49d14ee6cd4c1a0fee4a46f520fe4d7465396a155c61abc0103905047edd3",
+    "remoteUrl": "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.17.zip",
+    "downloadPathRelativeToCacheDir": "pubsub-emulator-0.8.17.zip",
+    "binaryPathRelativeToCacheDir": "pubsub-emulator-0.8.17/pubsub-emulator/bin/cloud-pubsub-emulator"
   },
   "dataconnect": {
     "darwin": {
-      "version": "2.14.0",
-      "expectedSize": 29602656,
-      "expectedChecksum": "4570cfde37b7def2ac9ead63752dda34",
-      "expectedChecksumSHA256": "88d3e13e860be59bc3520fe685b695be51341d13203838d48e7502c62504acb8",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-v2.14.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.14.0"
+      "version": "2.17.2",
+      "expectedSize": 30012256,
+      "expectedChecksum": "9e8d43abb6e93f4c969088078fdaf780",
+      "expectedChecksumSHA256": "6001b86795f727f90755b497cba7ebcd2f50d024b0e56d1d6e957fcb98ff463c",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-amd64-v2.17.2",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.17.2"
+    },
+    "darwin_arm64": {
+      "version": "2.17.2",
+      "expectedSize": 29475730,
+      "expectedChecksum": "1a82213baded25c2a6c584a72a5600f2",
+      "expectedChecksumSHA256": "c51a6810e975e13ac5ea5f038addf259da8b0d17b0b739dab1267dca133e5a54",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-macos-arm64-v2.17.2",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.17.2"
     },
     "win32": {
-      "version": "2.14.0",
-      "expectedSize": 30091264,
-      "expectedChecksum": "43338765d5f7ec2fabb6fe8f212bab82",
-      "expectedChecksumSHA256": "1de9ce32f4958c6e1e56ca7a0a7f5f4364d6cd17de77d08f76d3638830bc3c16",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-v2.14.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.14.0.exe"
+      "version": "2.17.2",
+      "expectedSize": 30507008,
+      "expectedChecksum": "1a071a45267279463516f8264aaa5a97",
+      "expectedChecksumSHA256": "8f84b312a049f80e2f9466eb1f77d15e1dedec8ce0696c51fc221fbb3b436eee",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-windows-amd64-v2.17.2",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.17.2.exe"
     },
     "linux": {
-      "version": "2.14.0",
-      "expectedSize": 29524152,
-      "expectedChecksum": "711dd1e6d97bbeabc070efcdf0a22ee4",
-      "expectedChecksumSHA256": "bc468019bfb87b846adf02f21f65e5243854dbeee72258fe98f5e3201d1b1363",
-      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-v2.14.0",
-      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.14.0"
+      "version": "2.17.2",
+      "expectedSize": 29937848,
+      "expectedChecksum": "70bc4fc8eecc1c1c6dd4f404ed7e2b89",
+      "expectedChecksumSHA256": "9b90874daf84f0cfb7ae72f3a8c4ccec523593ccd318cd967f5bef7d574efa77",
+      "remoteUrl": "https://storage.googleapis.com/firemat-preview-drop/emulator/dataconnect-emulator-linux-amd64-v2.17.2",
+      "downloadPathRelativeToCacheDir": "dataconnect-emulator-2.17.2"
     }
   }
 }
