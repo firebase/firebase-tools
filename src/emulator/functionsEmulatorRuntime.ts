@@ -392,6 +392,11 @@ https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10f
    */
 async function initializeFirebaseFunctionsStubs(): Promise<void> {
   const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
+  if (compareVersionStrings(firebaseFunctionsResolution.version, "7.0.0") >= 0) {
+    logDebug("Detected firebase-functions v7+, skipping legacy stubs.");
+    return;
+  }
+
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution,

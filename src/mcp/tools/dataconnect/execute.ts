@@ -8,6 +8,7 @@ import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
 
 export const execute = tool(
+  "dataconnect",
   {
     name: "execute",
     description:
@@ -73,7 +74,6 @@ You can find candidate service_id in \`dataconnect.yaml\`
       executeGraphQL = dataplane.executeGraphQLRead;
     }
     const response = await executeGraphQL(apiClient, serviceInfo.serviceName, {
-      name: "",
       query,
       variables: parseVariables(unparsedVariables),
       extensions: {

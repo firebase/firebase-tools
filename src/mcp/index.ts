@@ -23,7 +23,7 @@ import {
   McpError,
   ErrorCode,
 } from "@modelcontextprotocol/sdk/types.js";
-import { checkFeatureActive, mcpError } from "./util";
+import { mcpError } from "./util";
 import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
 import { availableTools } from "./tools/index";
 import { ServerTool } from "./tool";
@@ -46,6 +46,7 @@ import { isFirebaseStudio } from "../env";
 import { timeoutFallback } from "../timeout";
 import { resolveResource, resources, resourceTemplates } from "./resources";
 import * as crossSpawn from "cross-spawn";
+import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -65,6 +66,7 @@ const orderedLogLevels = [
 export class FirebaseMcpServer {
   private _ready = false;
   private _readyPromises: { resolve: () => void; reject: (err: unknown) => void }[] = [];
+  private _pendingMessages: { level: LoggingLevel; data: unknown }[] = [];
   startupRoot?: string;
   cachedProjectDir?: string;
   server: Server;
@@ -77,13 +79,6 @@ export class FirebaseMcpServer {
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
   currentLogLevel?: LoggingLevel = process.env.FIREBASE_MCP_DEBUG_LOG ? "debug" : undefined;
-  // the api of logging from a consumers perspective looks like `server.logger.warn("my warning")`.
-  public readonly logger = Object.fromEntries(
-    orderedLogLevels.map((logLevel) => [
-      logLevel,
-      (message: unknown) => this.log(logLevel, message),
-    ]),
-  ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
 
   /** Create a special tracking function to avoid blocking everything on initialization notification. */
   private async trackGA4(
@@ -148,8 +143,7 @@ export class FirebaseMcpServer {
       return {};
     });
 
-    this.detectProjectRoot();
-    this.detectActiveFeatures();
+    void this.detectProjectSetup();
   }
 
   /** Wait until initialization has finished. */
@@ -179,30 +173,37 @@ export class FirebaseMcpServer {
     return newConfig;
   }
 
+  async detectProjectSetup(): Promise<void> {
+    await this.detectProjectRoot();
+    // Detecting active features requires that the project directory has been appropriately set
+    await this.detectActiveFeatures();
+  }
+
   async detectProjectRoot(): Promise<string> {
     await timeoutFallback(this.ready(), null, 2000);
     if (this.cachedProjectDir) return this.cachedProjectDir;
     const storedRoot = this.getStoredClientConfig().projectRoot;
     this.cachedProjectDir = storedRoot || this.startupRoot || process.cwd();
-    this.log("debug", "detected and cached project root: " + this.cachedProjectDir);
+    this.logger.debug(`detected and cached project root: ${this.cachedProjectDir}`);
     return this.cachedProjectDir;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
-    this.log("debug", "detecting active features of Firebase MCP server...");
-    const options = await this.resolveOptions();
-    const projectId = await this.getProjectId();
+    this.logger.debug("detecting active features of Firebase MCP server...");
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
-        if (await checkFeatureActive(f, projectId, options)) return f;
+        const availabilityCheck = getDefaultFeatureAvailabilityCheck(f);
+        if (await availabilityCheck(ctx)) return f;
         return null;
       }),
     );
     this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
-    this.log(
-      "debug",
-      "detected features of Firebase MCP server: " + (this.detectedFeatures.join(", ") || "<none>"),
+    this.logger.debug(
+      `detected features of Firebase MCP server:  ${this.detectedFeatures.join(", ") || "<none>"}`,
     );
     return this.detectedFeatures;
   }
@@ -238,24 +239,32 @@ export class FirebaseMcpServer {
     return `http://${host}:${emulatorInfo.port}`;
   }
 
-  get availableTools(): ServerTool[] {
-    return availableTools(
-      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
-    );
+  async getAvailableTools(): Promise<ServerTool[]> {
+    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
+    // We need a project ID and user for the context, but it's ok if they're empty.
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
+    return availableTools(ctx, features);
   }
 
-  getTool(name: string): ServerTool | null {
-    return this.availableTools.find((t) => t.mcp.name === name) || null;
+  async getTool(name: string): Promise<ServerTool | null> {
+    const tools = await this.getAvailableTools();
+    return tools.find((t) => t.mcp.name === name) || null;
   }
 
-  get availablePrompts(): ServerPrompt[] {
-    return availablePrompts(
-      this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures,
-    );
+  async getAvailablePrompts(): Promise<ServerPrompt[]> {
+    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
+    // We need a project ID and user for the context, but it's ok if they're empty.
+    const projectId = (await this.getProjectId()) || "";
+    const accountEmail = await this.getAuthenticatedUser();
+    const ctx = this._createMcpContext(projectId, accountEmail);
+    return availablePrompts(ctx, features);
   }
 
-  getPrompt(name: string): ServerPrompt | null {
-    return this.availablePrompts.find((p) => p.mcp.name === name) || null;
+  async getPrompt(name: string): Promise<ServerPrompt | null> {
+    const prompts = await this.getAvailablePrompts();
+    return prompts.find((p) => p.mcp.name === name) || null;
   }
 
   setProjectRoot(newRoot: string | null): void {
@@ -268,7 +277,7 @@ export class FirebaseMcpServer {
 
   async resolveOptions(): Promise<Partial<Options>> {
     const options: Partial<Options> = { cwd: this.cachedProjectDir, isMCP: true };
-    await cmd.prepare(options);
+    await cmd.prepare(options as Options);
     return options;
   }
 
@@ -278,12 +287,12 @@ export class FirebaseMcpServer {
 
   async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
     try {
-      this.log("debug", `calling requireAuth`);
+      this.logger.debug("calling requireAuth");
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
-      this.log("debug", `detected authenticated account: ${email || "<none>"}`);
+      this.logger.debug(`detected authenticated account: ${email || "<none>"}`);
       return email ?? (skipAutoAuth ? null : "Application Default Credentials");
     } catch (e) {
-      this.log("debug", `error in requireAuth: ${e}`);
+      this.logger.debug(`error in requireAuth: ${e}`);
       return null;
     }
   }
@@ -313,9 +322,10 @@ export class FirebaseMcpServer {
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_tools");
     const skipAutoAuthForStudio = isFirebaseStudio();
-    this.log("debug", `skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
+    this.logger.debug(`skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
+    const availableTools = await this.getAvailableTools();
     return {
-      tools: this.availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => t.mcp),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
@@ -330,7 +340,7 @@ export class FirebaseMcpServer {
     await this.detectProjectRoot();
     const toolName = request.params.name;
     const toolArgs = request.params.arguments;
-    const tool = this.getTool(toolName);
+    const tool = await this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
     // Check if the current project directory exists.
@@ -383,7 +393,7 @@ export class FirebaseMcpServer {
     await this.trackGA4("mcp_list_prompts");
     const skipAutoAuthForStudio = isFirebaseStudio();
     return {
-      prompts: this.availablePrompts.map((p) => ({
+      prompts: (await this.getAvailablePrompts()).map((p) => ({
         name: p.mcp.name,
         description: p.mcp.description,
         annotations: p.mcp.annotations,
@@ -403,7 +413,7 @@ export class FirebaseMcpServer {
     await this.detectProjectRoot();
     const promptName = req.params.name;
     const promptArgs = req.params.arguments || {};
-    const prompt = this.getPrompt(promptName);
+    const prompt = await this.getPrompt(promptName);
     if (!prompt) {
       throw new Error(`Prompt '${promptName}' could not be found.`);
     }
@@ -473,23 +483,47 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  private log(level: LoggingLevel, message: unknown): void {
-    let data = message;
+  get logger() {
+    const logAtLevel = (level: LoggingLevel, message: unknown): void => {
+      let data = message;
 
-    // mcp protocol only takes jsons or it errors; for convienence, format
-    // a a string into a json.
-    if (typeof message === "string") {
-      data = { message };
-    }
+      // mcp protocol only takes jsons or it errors; for convienence, format
+      // a a string into a json.
+      if (typeof message === "string") {
+        data = { message };
+      }
 
-    if (!this.currentLogLevel) {
-      return;
-    }
+      if (!this.currentLogLevel) {
+        return;
+      }
 
-    if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
-      return;
-    }
+      if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
+        return;
+      }
 
-    if (this._ready) void this.server.sendLoggingMessage({ level, data });
+      if (this._ready) {
+        // once ready, flush all pending messages before sending the next message
+        // this should only happen during startup
+        while (this._pendingMessages.length) {
+          const message = this._pendingMessages.shift();
+          if (!message) continue;
+          this.server.sendLoggingMessage({
+            level: message.level,
+            data: message.data,
+          });
+        }
+
+        void this.server.sendLoggingMessage({ level, data });
+      } else {
+        this._pendingMessages.push({ level, data });
+      }
+    };
+
+    return Object.fromEntries(
+      orderedLogLevels.map((logLevel) => [
+        logLevel,
+        (message: unknown) => logAtLevel(logLevel, message),
+      ]),
+    ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
   }
 }

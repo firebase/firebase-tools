@@ -25,6 +25,7 @@ async function checkCloudProject(projectId: string): Promise<ProjectInfo | undef
 }
 
 export const create_project = tool(
+  "core",
   {
     name: "create_project",
     description: "Use this to create a new Firebase Project.",

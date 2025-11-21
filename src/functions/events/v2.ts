@@ -33,6 +33,8 @@ export const FIRESTORE_EVENTS = [
 
 export const FIREALERTS_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
 
+export const DATACONNECT_EVENT = "google.firebase.dataconnect.connector.v1.mutationExecuted";
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | (typeof STORAGE_EVENTS)[number]
@@ -41,7 +43,8 @@ export type Event =
   | typeof REMOTE_CONFIG_EVENT
   | typeof TEST_LAB_EVENT
   | (typeof FIRESTORE_EVENTS)[number]
-  | typeof FIREALERTS_EVENT;
+  | typeof FIREALERTS_EVENT
+  | typeof DATACONNECT_EVENT;
 
 // Why can't auth context be removed? This is map was added to correct a bug where a regex
 // allowed any non-auth type to be converted to any auth type, but we should follow up for why

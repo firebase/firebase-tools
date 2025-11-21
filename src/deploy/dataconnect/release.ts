@@ -1,13 +1,19 @@
 import * as utils from "../../utils";
-import { Connector, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertConnector } from "../../dataconnect/client";
+import {
+  Connector,
+  isMainSchema,
+  mainSchema,
+  mainSchemaYaml,
+  ServiceInfo,
+} from "../../dataconnect/types";
+import { listConnectors, upsertConnector, upsertSchema } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { ResourceFilter } from "../../dataconnect/filters";
 import { migrateSchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
 import { parseServiceName } from "../../dataconnect/names";
 import { logger } from "../../logger";
+import { Context } from "./context";
 
 /**
  * Release deploys schemas and connectors.
@@ -15,21 +21,17 @@ import { logger } from "../../logger";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-    };
-  },
-  options: Options,
-): Promise<void> {
+export default async function (context: Context, options: Options): Promise<void> {
+  const dataconnect = context.dataconnect;
+  if (!dataconnect) {
+    throw new Error("dataconnect.prepare must be run before dataconnect.release");
+  }
   const project = needProjectId(options);
-  const serviceInfos = context.dataconnect.serviceInfos;
-  const filters = context.dataconnect.filters;
+  const serviceInfos = dataconnect.serviceInfos;
+  const filters = dataconnect.filters;
 
   // First, figure out the schemas and connectors to deploy.
-  const wantSchemas = serviceInfos
+  const wantMainSchemas = serviceInfos
     .filter((si) => {
       return (
         !filters ||
@@ -39,8 +41,8 @@ export default async function (
       );
     })
     .map((s) => ({
-      schema: s.schema,
-      validationMode: s.dataConnectYaml?.schema?.datasource?.postgresql?.schemaValidation,
+      schema: mainSchema(s.schemas),
+      validationMode: mainSchemaYaml(s.dataConnectYaml).datasource?.postgresql?.schemaValidation,
     }));
   const wantConnectors = serviceInfos.flatMap((si) =>
     si.connectorInfo
@@ -70,19 +72,40 @@ export default async function (
         return c; // will try again after schema deployment.
       }
       utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+      dataconnect.deployStats.numConnectorUpdatedBeforeSchema++;
       return undefined;
     }),
   );
 
-  // Migrate schemas.
-  for (const s of wantSchemas) {
+  // Migrate main schemas.
+  for (const s of wantMainSchemas) {
     await migrateSchema({
       options,
       schema: s.schema,
       validateOnly: false,
       schemaValidation: s.validationMode,
+      stats: dataconnect.deployStats,
     });
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
+  }
+
+  // Upsert secondary schemas.
+  const wantSecondarySchemas = serviceInfos
+    .filter((si) => {
+      return (
+        !filters ||
+        filters.some((f) => {
+          return f.serviceId === si.dataConnectYaml.serviceId && (f.schemaOnly || f.fullService);
+        })
+      );
+    })
+    .map((s) => s.schemas.filter((s) => !isMainSchema(s)))
+    .flatMap((s) => s);
+  for (const schema of wantSecondarySchemas) {
+    await upsertSchema(schema, false);
+    utils.logLabeledSuccess("dataconnect", `Migrated schema ${schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
   }
 
   // Lastly, deploy the remaining connectors that relies on the latest schema.
@@ -91,6 +114,7 @@ export default async function (
       if (c) {
         await upsertConnector(c);
         utils.logLabeledSuccess("dataconnect", `Deployed connector ${c.name}`);
+        dataconnect.deployStats.numConnectorUpdatedAfterSchema++;
       }
     }),
   );

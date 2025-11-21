@@ -2,13 +2,12 @@ import { Command } from "../command";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { loadCodebases } from "../deploy/functions/prepare";
-import { normalizeAndValidate } from "../functions/projectConfig";
+import { normalizeAndValidate, shouldUseRuntimeConfig } from "../functions/projectConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
 import { needProjectId } from "../projectUtils";
 import { FirebaseError } from "../error";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import { runtimeconfigOrigin } from "../api";
-import * as experiments from "../experiments";
 import { getFunctionsConfig } from "../deploy/functions/prepareFunctionsUpload";
 
 export const command = new Command("internaltesting:functions:discover")
@@ -24,9 +23,8 @@ export const command = new Command("internaltesting:functions:discover")
     }
 
     let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-    const allowFunctionsConfig = experiments.isEnabled("legacyRuntimeConfigCommands");
 
-    if (allowFunctionsConfig) {
+    if (fnConfig.some(shouldUseRuntimeConfig)) {
       try {
         const runtimeConfigApiEnabled = await ensureApiEnabled.check(
           projectId,

@@ -24,6 +24,8 @@ type cliEventNames =
   | "product_init"
   | "product_init_mcp"
   | "dataconnect_init"
+  | "dataconnect_deploy"
+  | "dataconnect_cloud_sql"
   | "error"
   | "login"
   | "api_enabled"

@@ -1,0 +1,24 @@
+{
+  "name": "agent-evals",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
+    "test:dev": "SKIP_REBUILD=true COPY_FIREBASE_CLI_CONFIG=true npm run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^24.9.0"
+  },
+  "dependencies": {
+    "mocha": "^11.7.1",
+    "node-pty": "^1.0.0",
+    "strip-ansi": "^7.1.0",
+    "tsx": "^4.11.0"
+  }
+}

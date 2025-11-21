@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { findUser, listUsers, UserInfo } from "../../../gcp/auth";
 
 export const get_users = tool(
+  "auth",
   {
     name: "get_users",
     description:
