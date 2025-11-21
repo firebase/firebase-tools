@@ -1,12 +1,6 @@
 import { ToolDef } from "./tool-matcher.js";
 
-export interface AgentTestRunner {
-  /**
-   * Simulates typing a string and waits for the turn to complete. It types one
-   * character at a time to avoid paste detection that the Gemini CLI has
-   */
-  type(text: string): Promise<void>;
-
+export interface AgentTestMatchers {
   /**
    * Looks for a specific string or regex to in the agent's output since the
    * last time the user typed and pressed enter.
@@ -25,4 +19,17 @@ export interface AgentTestRunner {
    * an event is not found
    */
   expectMemory(text: string | RegExp): Promise<void>;
+}
+
+export interface AgentTestRunner extends AgentTestMatchers {
+  /**
+   * Simulates typing a string and waits for the turn to complete. It types one
+   * character at a time to avoid paste detection that the Gemini CLI has
+   */
+  type(text: string): Promise<void>;
+
+  /**
+   * Negated assertions
+   */
+  dont: AgentTestMatchers;
 }

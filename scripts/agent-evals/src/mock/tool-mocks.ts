@@ -1,10 +1,10 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { nextJsWithProjectMock } from "./mocks/next-js-with-project-mock.js";
-import {
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types";
+const { nextJsWithProjectMock } = require("./mocks/next-js-with-project-mock");
+const {
   getEnvironmentWithIosApp,
   getEnvironmentWithAndroidApp,
-  getEnvironmentWithFlutterApp
-} from "./mocks/get-environment-mock.js";
+  getEnvironmentWithFlutterApp,
+} = require("./mocks/get-environment-mock");
 
 export type ToolMock = CallToolResult;
 
@@ -36,3 +36,5 @@ export function getToolMocks(): Record<string, ToolMock> {
   }
   return mocks;
 }
+
+module.exports = { getToolMocks };
