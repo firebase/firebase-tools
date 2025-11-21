@@ -8,6 +8,7 @@ import { Options } from "../../options";
 import { logger } from "../../logger";
 import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
+
 const API_VERSION = "v1";
 
 const client = new Client({
