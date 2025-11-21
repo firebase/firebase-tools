@@ -1,3 +1,4 @@
 - Add support for nodejs24 (beta) runtime for Cloud Functions for Firebase. (#9475)
 - Adds listServices and also defines trigger within runv2.ts (#9482)
 - Updates the `firebase init functions` template to use [`firebase-functions` 7.0.0](https://firebase.google.com/support/releases#cloudfunctions-700-launch) (#9496)
+- Updated to v2.17.2 of the Data Connect emulator, which fixes a bug with handling of optional enum lists in generated Flutter SDKs. (#9391)
