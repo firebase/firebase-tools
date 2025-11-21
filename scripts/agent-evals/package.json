@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && echo '{ \"name\": \"firebase-tools-agent-evals\" }' > lib/package.json",
     "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec --require lib/scripts/agent-evals/src/helpers/mocha-bootstrap.js",
     "test:dev": "SKIP_REBUILD=true COPY_FIREBASE_CLI_CONFIG=true npm run test"
   },
