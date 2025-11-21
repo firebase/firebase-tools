@@ -81,7 +81,7 @@ export async function actuate(setup: Setup, config: Config) {
   try {
     actuateWithInfo(config, schemaInfo);
   } finally {
-    const source: Source = setup.featureInfo?.dataconnectSource || "init_schema";
+    const source: Source = "init_schema";
     void trackGA4(
       "dataconnect_init",
       {
@@ -115,7 +115,8 @@ function actuateWithInfo(config: Config, info: SchemaRequiredInfo) {
   fs.ensureFileSync(join(info.serviceInfo.sourceDirectory, `schema_${info.id}`, "schema.gql"));
 }
 
-function addSchemaToDataConnectYaml(
+/** Add secondary schema configuration to dataconnect.yaml in place */
+export function addSchemaToDataConnectYaml(
   dataConnectYaml: DataConnectYaml,
   info: SchemaRequiredInfo,
 ): void {
