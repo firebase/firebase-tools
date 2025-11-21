@@ -163,6 +163,38 @@ describe("functionsDeployHelper", () => {
     });
   });
 
+  describe("endpointMatchesDeploymentFilters", () => {
+    it("should include functions when no filters provided", () => {
+      const func = { ...ENDPOINT, id: "id" };
+      expect(helper.endpointMatchesDeploymentFilters(func)).to.be.true;
+    });
+
+    it("should include only functions matching include filters", () => {
+      const func = { ...ENDPOINT, id: "match-me" };
+      expect(
+        helper.endpointMatchesDeploymentFilters(func, [
+          { ...BASE_FILTER, idChunks: ["different"] },
+        ]),
+      ).to.be.false;
+      expect(
+        helper.endpointMatchesDeploymentFilters(func, [
+          { ...BASE_FILTER, idChunks: ["match", "me"] },
+        ]),
+      ).to.be.true;
+    });
+
+    it("should exclude functions matching exclude filters", () => {
+      const func = { ...ENDPOINT, id: "blocked-func" };
+      expect(
+        helper.endpointMatchesDeploymentFilters(
+          func,
+          [{ ...BASE_FILTER }],
+          [{ ...BASE_FILTER, idChunks: ["blocked"] }],
+        ),
+      ).to.be.false;
+    });
+  });
+
   describe("parseFunctionSelector", () => {
     interface Testcase {
       desc: string;
@@ -351,6 +383,21 @@ describe("functionsDeployHelper", () => {
       expect(actual?.length).to.equal(1);
       expect(actual).to.deep.equal([{ codebase: DEFAULT_CODEBASE, idChunks: ["other"] }]);
     });
+
+    it("parses filters from the --except option when requested", () => {
+      const config: ValidatedConfig = [
+        { source: "functions", codebase: DEFAULT_CODEBASE },
+        { source: "other-functions", codebase: "other" },
+      ] as ValidatedConfig;
+
+      const options = {
+        except: "functions:other",
+      } as Options;
+
+      const actual = helper.getEndpointFilters(options, config, "except");
+
+      expect(actual).to.deep.equal([{ codebase: "other" }]);
+    });
   });
 
   describe("targetCodebases", () => {
@@ -397,6 +444,32 @@ describe("functionsDeployHelper", () => {
         },
       ];
       expect(helper.targetCodebases(config, filters)).to.have.members(["default", "foobar"]);
+    });
+
+    it("excludes codebases specified by exclude filters without id chunks", () => {
+      const excludeFilters: EndpointFilter[] = [
+        {
+          codebase: "foobar",
+        },
+      ];
+
+      expect(helper.targetCodebases(config, undefined, excludeFilters)).to.have.members([
+        "default",
+      ]);
+    });
+
+    it("does not exclude codebases when exclude filters include id chunks", () => {
+      const excludeFilters: EndpointFilter[] = [
+        {
+          codebase: "foobar",
+          idChunks: ["some", "func"],
+        },
+      ];
+
+      expect(helper.targetCodebases(config, undefined, excludeFilters)).to.have.members([
+        "default",
+        "foobar",
+      ]);
     });
   });
 
