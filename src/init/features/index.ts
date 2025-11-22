@@ -38,10 +38,10 @@ export {
   actuate as dataconnectSdkActuate,
 } from "./dataconnect/sdk";
 export {
-  askQuestions as dataconnectSchemaAskQuestions,
-  SchemaRequiredInfo as DataconnectSchemaInfo,
-  actuate as dataconnectSchemaActuate,
-} from "./dataconnect/schema";
+  askQuestions as dataconnectResolverAskQuestions,
+  ResolverRequiredInfo as DataconnectResolverInfo,
+  actuate as dataconnectResolverActuate,
+} from "./dataconnect/resolver";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
 export {

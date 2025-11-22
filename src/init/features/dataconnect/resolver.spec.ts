@@ -4,7 +4,12 @@ import * as fs from "fs-extra";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
-import { addSchemaToDataConnectYaml, askQuestions, actuate, SchemaRequiredInfo } from "./schema";
+import {
+  addSchemaToDataConnectYaml,
+  askQuestions,
+  actuate,
+  ResolverRequiredInfo,
+} from "./resolver";
 import { Setup } from "../..";
 import { Config } from "../../../config";
 import * as load from "../../../dataconnect/load";
@@ -15,7 +20,7 @@ import * as prompt from "../../../prompt";
 const expect = chai.expect;
 
 describe("addSchemaToDataConnectYaml", () => {
-  let schemaRequiredInfo: SchemaRequiredInfo;
+  let schemaRequiredInfo: ResolverRequiredInfo;
   let dataConnectYaml: DataConnectYaml;
 
   beforeEach(() => {
@@ -156,9 +161,9 @@ describe("askQuestions", () => {
 
     expect(selectStub.called).to.be.false;
     expect(inputStub.calledTwice).to.be.true;
-    expect(setup.featureInfo?.dataconnectSchema?.id).to.equal("test_resolver");
-    expect(setup.featureInfo?.dataconnectSchema?.uri).to.equal("www.test.com");
-    expect(setup.featureInfo?.dataconnectSchema?.serviceInfo.serviceName).to.equal(
+    expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal("www.test.com");
+    expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id",
     );
   });
@@ -183,9 +188,9 @@ describe("askQuestions", () => {
 
     expect(selectStub.calledOnce).to.be.true;
     expect(inputStub.calledTwice).to.be.true;
-    expect(setup.featureInfo?.dataconnectSchema?.id).to.equal("test_resolver");
-    expect(setup.featureInfo?.dataconnectSchema?.uri).to.equal("www.test.com");
-    expect(setup.featureInfo?.dataconnectSchema?.serviceInfo.serviceName).to.equal(
+    expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal("www.test.com");
+    expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id2",
     );
   });
@@ -207,7 +212,7 @@ describe("actuate", () => {
       config: { projectDir: "/path/to/project" } as any,
       rcfile: {} as any,
       featureInfo: {
-        dataconnectSchema: {
+        dataconnectResolver: {
           id: "test_resolver",
           uri: "www.test.com",
           serviceInfo: {

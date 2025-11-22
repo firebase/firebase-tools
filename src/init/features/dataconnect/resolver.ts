@@ -16,7 +16,7 @@ import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import { trackGA4 } from "../../../track";
 import { Source } from ".";
 
-export interface SchemaRequiredInfo {
+export interface ResolverRequiredInfo {
   id: string;
   uri: string;
   serviceInfo: ServiceInfo;
@@ -26,7 +26,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
   if (!experiments.isEnabled("fdcwebhooks")) {
     throw new Error("Unsupported command.");
   }
-  const schemaInfo: SchemaRequiredInfo = {
+  const resolverInfo: ResolverRequiredInfo = {
     id: "",
     uri: "",
     serviceInfo: {} as ServiceInfo,
@@ -38,7 +38,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       `No Firebase Data Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and main schema.`,
     );
   } else if (serviceInfos.length === 1) {
-    schemaInfo.serviceInfo = serviceInfos[0];
+    resolverInfo.serviceInfo = serviceInfos[0];
   } else {
     const choices: Array<{ name: string; value: ServiceInfo }> = serviceInfos.map((si) => {
       const serviceName = parseServiceName(si.serviceName);
@@ -47,41 +47,41 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
         value: si,
       };
     });
-    schemaInfo.serviceInfo = await select<ServiceInfo>({
-      message: "Which service would you like to set up a secondary schema for?",
+    resolverInfo.serviceInfo = await select<ServiceInfo>({
+      message: "Which service would you like to set up a custom resolver for?",
       choices,
     });
   }
 
-  schemaInfo.id = await input({
-    message: `What ID would you like to use for your secondary schema?`,
+  resolverInfo.id = await input({
+    message: `What ID would you like to use for your custom resolver?`,
     default: newUniqueId(
       `resolver`,
-      schemaInfo.serviceInfo.dataConnectYaml.schemas?.map((sch) => sch.id || "") || [],
+      resolverInfo.serviceInfo.dataConnectYaml.schemas?.map((sch) => sch.id || "") || [],
     ),
   });
-  schemaInfo.uri = await input({
-    message: `What is the URL of your Cloud Run data source that implements your secondary schema?`,
-    default: `https://${schemaInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${FDC_DEFAULT_REGION}.run.app/graphql`,
+  resolverInfo.uri = await input({
+    message: `What is the URL of your Cloud Run data source that implements your custom resolver?`,
+    default: `https://${resolverInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${FDC_DEFAULT_REGION}.run.app/graphql`,
   });
 
   setup.featureInfo = setup.featureInfo || {};
-  setup.featureInfo.dataconnectSchema = schemaInfo;
+  setup.featureInfo.dataconnectResolver = resolverInfo;
 }
 
 export async function actuate(setup: Setup, config: Config) {
   if (!experiments.isEnabled("fdcwebhooks")) {
     return;
   }
-  const schemaInfo = setup.featureInfo?.dataconnectSchema;
-  if (!schemaInfo) {
-    throw new Error("Data Connect schema feature SchemaRequiredInfo not provided");
+  const resolverInfo = setup.featureInfo?.dataconnectResolver;
+  if (!resolverInfo) {
+    throw new Error("Data Connect resolver feature ResolverRequiredInfo not provided");
   }
   const startTime = Date.now();
   try {
-    actuateWithInfo(config, schemaInfo);
+    actuateWithInfo(config, resolverInfo);
   } finally {
-    const source: Source = "init_schema";
+    const source: Source = "init_resolver";
     void trackGA4(
       "dataconnect_init",
       {
@@ -98,7 +98,7 @@ export async function actuate(setup: Setup, config: Config) {
   }
 }
 
-function actuateWithInfo(config: Config, info: SchemaRequiredInfo) {
+function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
   const dataConnectYaml = JSON.parse(
     JSON.stringify(info.serviceInfo?.dataConnectYaml),
   ) as DataConnectYaml;
@@ -118,7 +118,7 @@ function actuateWithInfo(config: Config, info: SchemaRequiredInfo) {
 /** Add secondary schema configuration to dataconnect.yaml in place */
 export function addSchemaToDataConnectYaml(
   dataConnectYaml: DataConnectYaml,
-  info: SchemaRequiredInfo,
+  info: ResolverRequiredInfo,
 ): void {
   const secondarySchema: SchemaYaml = {
     source: `./schema_${info.id}`,

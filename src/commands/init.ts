@@ -95,8 +95,8 @@ let choices: {
     hidden: true,
   },
   {
-    value: "dataconnect:schema",
-    name: "Data Connect: Set up a secondary schema for your Firebase Data Connect service",
+    value: "dataconnect:resolver",
+    name: "Data Connect: Set up a custom resolver for your Firebase Data Connect service",
     checked: false,
     hidden: true,
   },
