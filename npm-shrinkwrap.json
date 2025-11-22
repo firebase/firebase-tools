@@ -9,8 +9,7 @@
       "version": "14.23.0",
       "license": "MIT",
       "dependencies": {
-        "@apphosting/build": "^0.1.6",
-        "@apphosting/common": "^0.0.8",
+        "@apphosting/build": "^0.1.7",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
@@ -303,12 +302,12 @@
       }
     },
     "node_modules/@apphosting/build": {
-      "version": "0.1.6",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
-      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
+      "version": "0.1.7",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.7.tgz",
+      "integrity": "sha512-zNgQGiAWDOj6c+4ylv5ej3nLGXzMAVmzCGMqlbSarHe4bvBmZ2C5GfBRdJksedP7C9pqlwTWpxU5+GSzhJ+nKA==",
       "license": "Apache-2.0",
       "dependencies": {
-        "@apphosting/common": "^0.0.8",
+        "@apphosting/common": "^0.0.9",
         "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
@@ -329,9 +328,9 @@
       }
     },
     "node_modules/@apphosting/common": {
-      "version": "0.0.8",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
-      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ==",
+      "version": "0.0.9",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
       "license": "Apache-2.0"
     },
     "node_modules/@astrojs/compiler": {
@@ -22065,11 +22064,11 @@
       }
     },
     "@apphosting/build": {
-      "version": "0.1.6",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
-      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
+      "version": "0.1.7",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.7.tgz",
+      "integrity": "sha512-zNgQGiAWDOj6c+4ylv5ej3nLGXzMAVmzCGMqlbSarHe4bvBmZ2C5GfBRdJksedP7C9pqlwTWpxU5+GSzhJ+nKA==",
       "requires": {
-        "@apphosting/common": "^0.0.8",
+        "@apphosting/common": "^0.0.9",
         "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
@@ -22085,9 +22084,9 @@
       }
     },
     "@apphosting/common": {
-      "version": "0.0.8",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
-      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ=="
+      "version": "0.0.9",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
     },
     "@astrojs/compiler": {
       "version": "1.3.1",

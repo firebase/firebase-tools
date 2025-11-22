@@ -7,7 +7,7 @@ import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import { DeepOmit, RecursiveKeyOf, assertImplements } from "../metaprogramming";
 
-export const API_VERSION = "v1beta";
+export const API_VERSION = "v1alpha";
 
 export const client = new Client({
   urlPrefix: apphostingOrigin(),
@@ -20,6 +20,10 @@ type BuildState = "BUILDING" | "BUILD" | "DEPLOYING" | "READY" | "FAILED";
 interface Codebase {
   repository?: string;
   rootDirectory: string;
+}
+
+interface Runtime {
+  value: string;
 }
 
 /**
@@ -35,6 +39,7 @@ export interface Backend {
   name: string;
   mode?: string;
   codebase?: Codebase;
+  runtime?: Runtime;
   servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;

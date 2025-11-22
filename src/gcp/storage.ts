@@ -265,16 +265,17 @@ export async function uploadObject(
   object: string;
   generation: string | null;
 }> {
-  if (path.extname(source.file) !== ".zip") {
-    throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
-  }
+  //  if (path.extname(source.file) !== ".zip") {
+  //throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
+  //}
   const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   const location = `/${bucketName}/${path.basename(source.file)}`;
   const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
-      "Content-Type": "application/zip",
+      //"Content-Type": "application/zip",
+      "Content-Type": "application/octet-stream",
       "x-goog-content-length-range": "0,123289600",
     },
     body: source.stream,
