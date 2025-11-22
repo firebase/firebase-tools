@@ -37,7 +37,7 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
-  dataconnectSchema?: features.DataconnectSchemaInfo;
+  dataconnectResolver?: features.DataconnectResolverInfo;
   dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
@@ -83,9 +83,9 @@ const featuresList: Feature[] = [
     actuate: features.dataconnectSdkActuate,
   },
   {
-    name: "dataconnect:schema",
-    askQuestions: features.dataconnectSchemaAskQuestions,
-    actuate: features.dataconnectSchemaActuate,
+    name: "dataconnect:resolver",
+    askQuestions: features.dataconnectResolverAskQuestions,
+    actuate: features.dataconnectResolverActuate,
   },
   { name: "functions", doSetup: features.functions },
   {
