@@ -7,7 +7,6 @@ import { input, select } from "../../../prompt";
 import { Setup } from "../..";
 import { newUniqueId } from "../../../utils";
 import { Config } from "../../../config";
-import { FDC_DEFAULT_REGION } from ".";
 import { loadAll } from "../../../dataconnect/load";
 import { DataConnectYaml, SchemaYaml, ServiceInfo } from "../../../dataconnect/types";
 import { parseServiceName } from "../../../dataconnect/names";
@@ -62,7 +61,7 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
   });
   resolverInfo.uri = await input({
     message: `What is the URL of your Cloud Run data source that implements your custom resolver?`,
-    default: `https://${resolverInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${FDC_DEFAULT_REGION}.run.app/graphql`,
+    default: `https://${resolverInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${resolverInfo.serviceInfo.dataConnectYaml.location}.run.app/graphql`,
   });
 
   setup.featureInfo = setup.featureInfo || {};
