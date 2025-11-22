@@ -1,0 +1,1 @@
+- Increase supported range for Next.js to version 16.0 (#9463)
