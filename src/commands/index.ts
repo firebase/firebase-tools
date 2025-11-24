@@ -1,13 +1,10 @@
 import * as experiments from "../experiments";
-import { Command } from "../command";
 
 /**
  * Loads all commands for our parser.
  */
 export function load(client: any): any {
   function loadCommand(name: string) {
-    const t0 = process.hrtime.bigint();
-
     const load = () => {
       const { command: cmd } = require(`./${name}`);
       cmd.register(client);
@@ -26,7 +23,7 @@ export function load(client: any): any {
       const tEnd = process.hrtime.bigint();
       const diff = (tEnd - tStart) / BigInt(1e6);
       if (diff > 75) {
-         // console.error(`Loading ${name} took ${diff}ms`);
+        // console.error(`Loading ${name} took ${diff}ms`);
       }
     };
 

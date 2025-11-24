@@ -117,8 +117,13 @@ export function cli(pkg: any) {
         for (const [key, value] of Object.entries(obj)) {
           if (typeof value === "function" && (value as any).load) {
             (value as any).load();
-          } else if (typeof value === "object" && value !== null && !Array.isArray(value) && key !== "cli") {
-             loadAll(value);
+          } else if (
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value) &&
+            key !== "cli"
+          ) {
+            loadAll(value);
           }
         }
       };
