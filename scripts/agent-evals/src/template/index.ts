@@ -10,7 +10,9 @@ export interface Template {
 
 export enum TemplatePlatform {
   NODE,
-  ANDROID
+  ANDROID,
+  IOS,
+  FLUTTER,
 }
 
 export const templates = [
@@ -21,6 +23,14 @@ export const templates = [
   {
     name: "crashlytics-android",
     platform: TemplatePlatform.ANDROID,
+  },
+  {
+    name: "crashlytics-flutter",
+    platform: TemplatePlatform.FLUTTER,
+  },
+  {
+    name: "crashlytics-ios",
+    platform: TemplatePlatform.IOS,
   },
 ] as const;
 

@@ -23,10 +23,21 @@ export interface AgentTestMatchers {
 
 export interface AgentTestRunner extends AgentTestMatchers {
   /**
+   * The directory where the test runner is operating
+   */
+  readonly runDir: string;
+
+  /**
    * Simulates typing a string and waits for the turn to complete. It types one
    * character at a time to avoid paste detection that the Gemini CLI has
    */
   type(text: string): Promise<void>;
+
+  /**
+   * Simulates a previously remembered value. For Gemini CLI, this results in
+   * saved values in the user's GEMINI.md file.
+   */
+  remember(text: string): Promise<void>;
 
   /**
    * Negated assertions

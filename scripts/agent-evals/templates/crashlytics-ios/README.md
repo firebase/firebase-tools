@@ -1,6 +1,6 @@
-# Crashlytics Android Example
+# Crashlytics iOS Example
 
-This is a simple Android application created to demonstrate the integration of Firebase Crashlytics.
+This is a simple iOS application created to demonstrate the integration of Firebase Crashlytics.
 
 ## Features
 
@@ -9,7 +9,9 @@ This is a simple Android application created to demonstrate the integration of F
 
 ## How to Use
 
-1.  Replace the placeholder `google-services.json` with your own Firebase project's configuration file.
-2.  Build and run the application on an Android device or emulator.
-3.  Click the "Increment" button 5 times to trigger a crash.
-4.  Check the Firebase Crashlytics dashboard to see the crash report.
+1.  Run `pod install` to install dependencies.
+2.  Open `IOSExampleApp.xcworkspace` in Xcode.
+3.  Add your `GoogleService-Info.plist` to the project.
+4.  Build and run the application on a device or simulator.
+5.  Click the "Increment" button 5 times to trigger a crash.
+6.  Check the Firebase Crashlytics dashboard to see the crash report.

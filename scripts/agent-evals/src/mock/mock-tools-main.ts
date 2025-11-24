@@ -12,7 +12,6 @@ import { getFirebaseCliRoot } from "../runner/paths.js";
 // Path to the built MCP Tools implementation in the Firebase CLI, relative to
 // the repo's root
 const MCP_TOOLS_INDEX_PATH = "lib/mcp/tools/index.js";
-const CONFIGSTORE_INDEX_PATH = "lib/mcp/configstore.js";
 const LOG_FILE_PATH = path.join(os.homedir(), "Desktop", "agent_evals_mock_logs.txt");
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
@@ -23,19 +22,6 @@ const originalRequire = Module.prototype.require;
   const requiredModule = originalRequire.apply(this, [id]);
   const absolutePath = Module.createRequire(this.filename).resolve(id);
   const pathRelativeToCliRoot = path.relative(getFirebaseCliRoot(), absolutePath);
-  console.log(`[DEBUG] Requiring: ${pathRelativeToCliRoot} (Absolute: ${absolutePath})`);
-
-  // Mock configstore to avoid "Cannot find module ../package.json" error and side effects
-  if (pathRelativeToCliRoot.endsWith(CONFIGSTORE_INDEX_PATH)) {
-    logToFile(`Mocking configstore for: ${pathRelativeToCliRoot}`);
-    return {
-      configstore: {
-        get: () => undefined,
-        set: () => { },
-        delete: () => { },
-      },
-    };
-  }
 
   if (!pathRelativeToCliRoot.endsWith(MCP_TOOLS_INDEX_PATH)) {
     return requiredModule;

@@ -3,10 +3,10 @@ import { renderTemplate } from "../../../../../src/mcp/tools/core/get_environmen
 import { toMockContent } from "../tool-mock-utils.js";
 
 const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";
-const IOS_APP_ID = `1:${DEFAULT_FIREBASE_PROJECT}:ios:abc123efj456`;
-const IOS_BUNDLE_ID = "com.firebase.fake.ios";
-const ANDROID_APP_ID = `1:${DEFAULT_FIREBASE_PROJECT}:android:abc123efj456`;
-const ANDROID_PACKAGE_NAME = "com.firebase.fake.android";
+export const IOS_APP_ID = `1:${DEFAULT_FIREBASE_PROJECT}:ios:abc123efj456`;
+export const IOS_BUNDLE_ID = "com.firebase.fake.ios";
+export const ANDROID_APP_ID = `1:${DEFAULT_FIREBASE_PROJECT}:android:abc123efj456`;
+export const ANDROID_PACKAGE_NAME = "com.firebase.fake.android";
 
 const BASE_ENVIRONMENT_CONFIG = {
   projectId: DEFAULT_FIREBASE_PROJECT,
@@ -40,7 +40,7 @@ export const getEnvironmentWithFlutterApp = {
       ...BASE_ENVIRONMENT_CONFIG,
       detectedAppIds: {
         [ANDROID_APP_ID]: ANDROID_PACKAGE_NAME,
-        [IOS_APP_ID]: IOS_BUNDLE_ID
+        [IOS_APP_ID]: IOS_BUNDLE_ID,
       },
     }),
   ),

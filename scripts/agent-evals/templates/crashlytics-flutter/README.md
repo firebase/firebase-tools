@@ -1,6 +1,6 @@
-# Crashlytics Android Example
+# Crashlytics Flutter Example
 
-This is a simple Android application created to demonstrate the integration of Firebase Crashlytics.
+This is a simple Flutter application created to demonstrate the integration of Firebase Crashlytics.
 
 ## Features
 
@@ -9,7 +9,8 @@ This is a simple Android application created to demonstrate the integration of F
 
 ## How to Use
 
-1.  Replace the placeholder `google-services.json` with your own Firebase project's configuration file.
-2.  Build and run the application on an Android device or emulator.
-3.  Click the "Increment" button 5 times to trigger a crash.
-4.  Check the Firebase Crashlytics dashboard to see the crash report.
+1.  Run `flutter pub get` to install dependencies.
+2.  Configure Firebase for both Android and iOS using the FlutterFire CLI.
+3.  Build and run the application on a device or emulator.
+4.  Click the "Increment" button 5 times to trigger a crash.
+5.  Check the Firebase Crashlytics dashboard to see the crash report.

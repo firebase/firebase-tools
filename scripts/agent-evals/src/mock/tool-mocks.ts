@@ -12,7 +12,7 @@ const allToolMocks = {
   nextJsWithProjectMock,
   getEnvironmentWithIosApp,
   getEnvironmentWithAndroidApp,
-  getEnvironmentWithFlutterApp
+  getEnvironmentWithFlutterApp,
 } as const;
 
 export type ToolMockName = keyof typeof allToolMocks;

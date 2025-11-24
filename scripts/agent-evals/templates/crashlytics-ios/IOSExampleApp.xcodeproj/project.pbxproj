@@ -14,7 +14,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		8E23B49E1D3B8A5A00A4D7A2 /* CrashlyticsExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CrashlyticsExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8E23B49E1D3B8A5A00A4D7A2 /* IOSExampleApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IOSExampleApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8E23B49F1D3B8A5A00A4D7A2 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		8E23B4A11D3B8A5A00A4D7A2 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		8E23B4A41D3B8A5A00A4D7A2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -23,13 +23,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		8E23B49D1D3B8A5A00A4D7A2 = {isa = PBXGroup; children = (8E23B4A01D3B8A5A00A4D7A2 /* AppDelegate.swift */, 8E23B4A21D3B8A5A00A4D7A2 /* ViewController.swift */, 8E23B4A51D3B8A5A00A4D7A2 /* Main.storyboard */, 8E23B4A81D3B8A5A00A4D7A2 /* LaunchScreen.storyboard */, 8E23B4A91D3B8A5A00A4D7A2 /* Info.plist */, 8E23B49E1D3B8A5A00A4D7A2 /* CrashlyticsExample.app */); sourceTree = "<group>"; };
+		8E23B49D1D3B8A5A00A4D7A2 = {isa = PBXGroup; children = (8E23B4A01D3B8A5A00A4D7A2 /* AppDelegate.swift */, 8E23B4A21D3B8A5A00A4D7A2 /* ViewController.swift */, 8E23B4A51D3B8A5A00A4D7A2 /* Main.storyboard */, 8E23B4A81D3B8A5A00A4D7A2 /* LaunchScreen.storyboard */, 8E23B4A91D3B8A5A00A4D7A2 /* Info.plist */, 8E23B49E1D3B8A5A00A4D7A2 /* IOSExampleApp.app */); sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		8E23B49C1D3B8A5A00A4D7A2 /* CrashlyticsExample */ = {
+		8E23B49C1D3B8A5A00A4D7A2 /* IOSExampleApp */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 8E23B4B11D3B8A5A00A4D7A2 /* Build configuration list for PBXNativeTarget "CrashlyticsExample" */;
+			buildConfigurationList = 8E23B4B11D3B8A5A00A4D7A2 /* Build configuration list for PBXNativeTarget "IOSExampleApp" */;
 			buildPhases = (
 				8E23B4991D3B8A5A00A4D7A2 /* Sources */,
 				8E23B49A1D3B8A5A00A4D7A2 /* Frameworks */,
@@ -39,9 +39,9 @@
 			);
 			dependencies = (
 			);
-			name = CrashlyticsExample;
-			productName = CrashlyticsExample;
-			productReference = 8E23B49E1D3B8A5A00A4D7A2 /* CrashlyticsExample.app */;
+			name = IOSExampleApp;
+			productName = IOSExampleApp;
+			productReference = 8E23B49E1D3B8A5A00A4D7A2 /* IOSExampleApp.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -61,11 +61,11 @@
 				Base,
 			);
 			mainGroup = 8E23B49D1D3B8A5A00A4D7A2;
-			productRefGroup = 8E23B49E1D3B8A5A00A4D7A2 /* CrashlyticsExample.app */;
+			productRefGroup = 8E23B49E1D3B8A5A00A4D7A2 /* IOSExampleApp.app */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				8E23B49C1D3B8A5A00A4D7A2 /* CrashlyticsExample */,
+				8E23B49C1D3B8A5A00A4D7A2 /* IOSExampleApp */,
 			);
 		};
 /* End PBXProject section */
@@ -94,12 +94,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = CrashlyticsExample/Info.plist;
+				INFOPLIST_FILE = IOSExampleApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CrashlyticsExample;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.IOSExampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 4.0;
 			};
@@ -111,12 +111,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = "";
-				INFOPLIST_FILE = CrashlyticsExample/Info.plist;
+				INFOPLIST_FILE = IOSExampleApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.CrashlyticsExample;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.IOSExampleApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 4.0;
 			};
@@ -148,7 +148,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		8E23B4B11D3B8A5A00A4D7A2 /* Build configuration list for PBXNativeTarget "CrashlyticsExample" */ = {
+		8E23B4B11D3B8A5A00A4D7A2 /* Build configuration list for PBXNativeTarget "IOSExampleApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				8E23B4B21D3B8A5A00A4D7A2 /* Debug */,

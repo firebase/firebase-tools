@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
 import * as path from "path";
+import * as os from "os";
 import { InteractiveCLI, poll } from "./interactive-cli";
 import { AgentTestRunner, AgentTestMatchers } from "./agent-test-runner";
 import {
@@ -13,6 +14,7 @@ import { throwFailure } from "./logging";
 import { getAgentEvalsRoot, RunDirectories } from "./paths";
 import { execSync } from "node:child_process";
 import { ToolMockName } from "../mock/tool-mocks";
+import { appendFileSync } from "node:fs";
 
 const READY_PROMPT = "Type your message";
 const INSTALL_ID = "238efa5b-efb2-44bd-9dce-9b081532681c";
@@ -43,7 +45,8 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
-  private readonly runDir: string;
+  readonly runDir: string;
+  private readonly userDir: string;
 
   // Determines which tools to start from for this turn so we don't detect tool
   // calls from previous turns
@@ -54,15 +57,15 @@ export class GeminiCliRunner implements AgentTestRunner {
     dirs: RunDirectories,
     toolMocks: ToolMockName[],
   ) {
-    console.log(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
+    console.debug(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
     // Create a settings file to point the CLI to a local telemetry log
     this.telemetryPath = path.join(dirs.testDir, "telemetry.log");
 
-    console.log(`Providing mock path: ${dirs.testDir}/telemetry.log`);
     const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "src/mock/mock-tools-main.js"));
+    console.debug(`Providing mock path: ${mockPath}`);
     const firebasePath = execSync("which firebase").toString().trim();
 
-    console.log(`Initializing Gemini workspace settings in ${dirs.runDir}`);
+    console.debug(`Initializing Gemini workspace settings in ${dirs.runDir}`);
     // Write workspace Gemini Settings
     this.writeGeminiSettings(dirs.runDir, {
       general: {
@@ -85,7 +88,7 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
     });
 
-    console.log(`Initializing Gemini user settings in ${dirs.userDir}`);
+    console.debug(`Initializing Gemini user settings in ${dirs.userDir}`);
     // Write user Gemini Settings
     this.writeGeminiSettings(dirs.userDir, {
       security: {
@@ -99,6 +102,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     this.writeGeminiInstallId(dirs.userDir);
 
     this.runDir = dirs.runDir;
+    this.userDir = dirs.userDir;
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
@@ -122,7 +126,22 @@ export class GeminiCliRunner implements AgentTestRunner {
     return this.cli.type(text);
   }
 
+  async remember(text: string): Promise<void> {
+    const geminiDir = path.join(this.userDir, ".gemini");
+    const geminiMdFile = path.join(geminiDir, "GEMINI.md");
+    if (!existsSync(geminiDir)) {
+      mkdirSync(geminiDir, { recursive: true });
+    }
 
+    if (!existsSync(geminiMdFile)) {
+      writeFileSync(geminiMdFile, "## Gemini Added Memories" + os.EOL);
+    }
+
+    appendFileSync(geminiMdFile, text + os.EOL);
+    await this.type("/memory refresh");
+    // Due to https://github.com/google-gemini/gemini-cli/issues/10702, we need to start a new chat
+    await this.type("/clear");
+  }
 
   async exit(): Promise<void> {
     await this.cli.kill();
@@ -155,7 +174,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     await this.waitForTelemetryReady();
     let logs: string[] = [];
     const toolsCallsMade = await poll(() => {
-      logs = []
+      logs = [];
       const { success, messages } = this.checkToolCalls(tools);
       logs = [...messages];
       return success;
@@ -169,11 +188,10 @@ export class GeminiCliRunner implements AgentTestRunner {
   public async expectMemory(text: string | RegExp): Promise<void> {
     let logs: string[] = [];
     const memoryFound = await poll(() => {
-      logs = []
+      logs = [];
       const { success, messages } = this.checkMemory(text);
       logs = [...messages];
-      return success
-
+      return success;
     }, this.telemetryTimeout);
 
     if (!memoryFound) {
@@ -207,8 +225,8 @@ export class GeminiCliRunner implements AgentTestRunner {
       expectMemory: async (text: string | RegExp) => {
         const timeout = 1000;
         const found = await poll(() => {
-          const { success } = this.checkMemory(text)
-          return success
+          const { success } = this.checkMemory(text);
+          return success;
         }, timeout);
 
         if (found) {
@@ -322,7 +340,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   }
 
   private checkMemory(text: string | RegExp): CheckResult {
-    const geminiMdPath = path.join(this.runDir, ".gemini", "GEMINI.md");
+    const geminiMdPath = path.join(this.userDir, ".gemini", "GEMINI.md");
     const messages: string[] = [];
     if (!existsSync(geminiMdPath)) {
       messages.push(`GEMINI.md file not found at ${geminiMdPath}`);
