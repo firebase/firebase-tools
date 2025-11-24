@@ -109,7 +109,7 @@ export function cli(pkg: any) {
 
   if (!handlePreviewToggles(args)) {
     // determine if there are any arguments. if not, display help
-    if (!args.length) {
+    if (!args.length || args[0] === "help") {
       const seen = new Set();
       const loadAll = (obj: any) => {
         if (seen.has(obj)) return;
