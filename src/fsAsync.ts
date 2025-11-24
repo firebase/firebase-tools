@@ -1,8 +1,9 @@
-import { readdirSync, statSync } from "fs-extra";
+import { readdirSync, statSync, lstatSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
 import { join, relative } from "path";
+import { logger} from "./logger";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
@@ -14,6 +15,8 @@ export interface ReaddirRecursiveOpts {
   include?: string[];
   // Maximum depth to recurse.
   maxDepth?: number;
+  // Ignore symlinked files or directories when traversing.
+  ignoreSymlinks?: boolean;
 }
 
 export interface ReaddirRecursiveFile {
@@ -68,6 +71,13 @@ export async function readdirRecursive(
     .createFilter();
 
   const filter = (t: string): boolean => {
+    if (options.ignoreSymlinks) {
+      const stats = lstatSync(t);
+      if (stats.isSymbolicLink()) {
+        logger.warn(`Skipping ${t} because it is a symlink.`)
+        return true;
+      }
+    }
     if (options.isGitIgnore) {
       // the git ignore filter will return true if given path should be included,
       // so we need to negative that return false to avoid filtering it.
