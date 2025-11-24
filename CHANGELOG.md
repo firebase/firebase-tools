@@ -1,0 +1,1 @@
+- Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj`
