@@ -23,7 +23,6 @@ import { DelegateContext } from "..";
 import * as supported from "../supported";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
-import * as parseTriggers from "./parseTriggers";
 import { fileExistsSync } from "../../../../fsutils";
 
 // The versions of the Firebase Functions SDK that added support for the container contract.
@@ -292,18 +291,15 @@ export class Delegate {
     env: backend.EnvironmentVariables,
   ): Promise<build.Build> {
     if (!semver.valid(this.sdkVersion)) {
-      logger.debug(
-        `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`,
+      throw new FirebaseError(
+        `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Please make sure you are using a valid version of firebase-functions.`,
       );
-      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
     }
     if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
-      logLabeledWarning(
-        "functions",
+      throw new FirebaseError(
         `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
           `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`,
       );
-      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
     }
     // Perform a check for the minimum SDK version that added annotation support for the `Build.extensions` property
     // and log to the user explaining why they need to upgrade their version.
