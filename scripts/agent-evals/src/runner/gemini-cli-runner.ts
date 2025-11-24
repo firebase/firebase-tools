@@ -45,7 +45,6 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
-  readonly dirs: RunDirectories;
 
   // Determines which tools to start from for this turn so we don't detect tool
   // calls from previous turns
@@ -53,7 +52,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
   constructor(
     private readonly testName: string,
-    dirs: RunDirectories,
+    readonly dirs: RunDirectories,
     toolMocks: ToolMockName[],
   ) {
     console.debug(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
@@ -100,7 +99,6 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
-    this.dirs = dirs;
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
