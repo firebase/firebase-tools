@@ -3,7 +3,7 @@ import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
 import { join, relative } from "path";
-import { logger} from "./logger";
+import { logger } from "./logger";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
@@ -74,7 +74,7 @@ export async function readdirRecursive(
     if (options.ignoreSymlinks) {
       const stats = lstatSync(t);
       if (stats.isSymbolicLink()) {
-        logger.warn(`Skipping ${t} because it is a symlink.`)
+        logger.warn(`Skipping ${t} because it is a symlink.`);
         return true;
       }
     }
