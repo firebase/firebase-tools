@@ -1,3 +1,4 @@
+import { RunDirectories } from "./paths.js";
 import { ToolDef } from "./tool-matcher.js";
 
 export interface AgentTestMatchers {
@@ -23,9 +24,9 @@ export interface AgentTestMatchers {
 
 export interface AgentTestRunner extends AgentTestMatchers {
   /**
-   * The directory where the test runner is operating
+   * The directories where the test runner is operating
    */
-  readonly runDir: string;
+  readonly dirs: RunDirectories;
 
   /**
    * Simulates typing a string and waits for the turn to complete. It types one

@@ -95,7 +95,7 @@ describe("/crashlytics:connect", function (this: Mocha.Suite) {
     // Example text: "- The app ID for the directory /Users/fakeUser/develop/crashlytics-android is 1:1234567890:android:1234ab5678cd9101 with package name com.example.crashlytics."
     await run.expectMemory(
       new RegExp(
-        `^(?=.*${ANDROID_APP_ID})(?=.*${run.runDir})(?=.*${ANDROID_PACKAGE_NAME}).*$`,
+        `^(?=.*${ANDROID_APP_ID})(?=.*${run.dirs.runDir})(?=.*${ANDROID_PACKAGE_NAME}).*$`,
         "m",
       ),
     );
@@ -109,7 +109,7 @@ describe("/crashlytics:connect", function (this: Mocha.Suite) {
     });
 
     await run.remember(
-      `- App ID for directory ${run.runDir}: ${ANDROID_APP_ID} (${ANDROID_PACKAGE_NAME})`,
+      `- App ID for directory ${run.dirs.runDir}: ${ANDROID_APP_ID} (${ANDROID_PACKAGE_NAME})`,
     );
 
     await run.type("/crashlytics:connect");

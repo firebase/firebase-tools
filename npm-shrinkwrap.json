@@ -150,6 +150,7 @@
         "eslint-plugin-brikke": "^2.2.2",
         "eslint-plugin-jsdoc": "^48.0.1",
         "eslint-plugin-prettier": "^5.1.3",
+        "firebase": "^9.16.0",
         "firebase-admin": "^11.5.0",
         "firebase-functions": "^4.3.1",
         "google-discovery-to-swagger": "^2.1.0",
@@ -1546,16 +1547,215 @@
         "node": ">=10.17.0"
       }
     },
+    "node_modules/@firebase/analytics": {
+      "version": "0.10.0",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics/-/analytics-0.10.0.tgz",
+      "integrity": "sha512-Locv8gAqx0e+GX/0SI3dzmBY5e9kjVDtD+3zCFLJ0tH2hJwuCAiL+5WkHuxKj92rqQj/rvkBUCfA1ewlX2hehg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/analytics-compat": {
+      "version": "0.2.6",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics-compat/-/analytics-compat-0.2.6.tgz",
+      "integrity": "sha512-4MqpVLFkGK7NJf/5wPEEP7ePBJatwYpyjgJ+wQHQGHfzaCDgntOnl9rL2vbVGGKCnRqWtZDIWhctB86UWXaX2Q==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/analytics": "0.10.0",
+        "@firebase/analytics-types": "0.8.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/analytics-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/analytics-types": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics-types/-/analytics-types-0.8.0.tgz",
+      "integrity": "sha512-iRP+QKI2+oz3UAh4nPEq14CsEjrjD6a5+fuypjScisAh9kXKFvdJOZJDwk7kikLvWVLGEs9+kIUS4LPQV7VZVw==",
+      "dev": true
+    },
+    "node_modules/@firebase/analytics/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/app": {
+      "version": "0.9.13",
+      "resolved": "https://registry.npmjs.org/@firebase/app/-/app-0.9.13.tgz",
+      "integrity": "sha512-GfiI1JxJ7ecluEmDjPzseRXk/PX31hS7+tjgBopL7XjB2hLUdR+0FTMXy2Q3/hXezypDvU6or7gVFizDESrkXw==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "idb": "7.1.1",
+        "tslib": "^2.1.0"
+      }
+    },
+    "node_modules/@firebase/app-check": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check/-/app-check-0.8.0.tgz",
+      "integrity": "sha512-dRDnhkcaC2FspMiRK/Vbp+PfsOAEP6ZElGm9iGFJ9fDqHoPs0HOPn7dwpJ51lCFi1+2/7n5pRPGhqF/F03I97g==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/app-check-compat": {
+      "version": "0.3.7",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-compat/-/app-check-compat-0.3.7.tgz",
+      "integrity": "sha512-cW682AxsyP1G+Z0/P7pO/WT2CzYlNxoNe5QejVarW2o5ZxeWSSPAiVEwpEpQR/bUlUmdeWThYTMvBWaopdBsqw==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/app-check": "0.8.0",
+        "@firebase/app-check-types": "0.5.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/app-check-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/app-check-interop-types": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-interop-types/-/app-check-interop-types-0.3.0.tgz",
+      "integrity": "sha512-xAxHPZPIgFXnI+vb4sbBjZcde7ZluzPPaSK7Lx3/nmuVk4TjZvnL8ONnkd4ERQKL8WePQySU+pRcWkh8rDf5Sg==",
+      "dev": true
+    },
+    "node_modules/@firebase/app-check-types": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-types/-/app-check-types-0.5.0.tgz",
+      "integrity": "sha512-uwSUj32Mlubybw7tedRzR24RP8M8JUVR3NPiMk3/Z4bCmgEKTlQBwMXrehDAZ2wF+TsBq0SN1c6ema71U/JPyQ==",
+      "dev": true
+    },
+    "node_modules/@firebase/app-check/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/app-compat": {
+      "version": "0.2.13",
+      "resolved": "https://registry.npmjs.org/@firebase/app-compat/-/app-compat-0.2.13.tgz",
+      "integrity": "sha512-j6ANZaWjeVy5zg6X7uiqh6lM6o3n3LD1+/SJFNs9V781xyryyZWXe+tmnWNWPkP086QfJoNkWN9pMQRqSG4vMg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/app": "0.9.13",
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      }
+    },
+    "node_modules/@firebase/app-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
     "node_modules/@firebase/app-types": {
       "version": "0.9.0",
       "resolved": "https://registry.npmjs.org/@firebase/app-types/-/app-types-0.9.0.tgz",
       "integrity": "sha512-AeweANOIo0Mb8GiYm3xhTEBVCmPwTYAu9Hcd2qSkLuga/6+j9b1Jskl5bpiSQWy9eJ/j5pavxj6eYogmnuzm+Q==",
       "dev": true
     },
+    "node_modules/@firebase/app/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/auth": {
+      "version": "0.23.2",
+      "resolved": "https://registry.npmjs.org/@firebase/auth/-/auth-0.23.2.tgz",
+      "integrity": "sha512-dM9iJ0R6tI1JczuGSxXmQbXAgtYie0K4WvKcuyuSTCu9V8eEDiz4tfa1sO3txsfvwg7nOY3AjoCyMYEdqZ8hdg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/auth-compat": {
+      "version": "0.4.2",
+      "resolved": "https://registry.npmjs.org/@firebase/auth-compat/-/auth-compat-0.4.2.tgz",
+      "integrity": "sha512-Q30e77DWXFmXEt5dg5JbqEDpjw9y3/PcP9LslDPR7fARmAOTIY9MM6HXzm9KC+dlrKH/+p6l8g9ifJiam9mc4A==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/auth": "0.23.2",
+        "@firebase/auth-types": "0.12.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/auth-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
     "node_modules/@firebase/auth-interop-types": {
       "version": "0.2.1",
       "resolved": "https://registry.npmjs.org/@firebase/auth-interop-types/-/auth-interop-types-0.2.1.tgz",
       "integrity": "sha512-VOaGzKp65MY6P5FI84TfYKBXEPi6LmOCSMMzys6o2BN2LOsqy7pCuZCup7NYnfbk5OkkQKzvIfHOzTm0UDpkyg==",
+      "dev": true
+    },
+    "node_modules/@firebase/auth-types": {
+      "version": "0.12.0",
+      "resolved": "https://registry.npmjs.org/@firebase/auth-types/-/auth-types-0.12.0.tgz",
+      "integrity": "sha512-pPwaZt+SPOshK8xNoiQlK5XIrS97kFYc3Rc7xmy373QsOJ9MmqXxLaYssP5Kcds4wd2qK//amx/c+A8O2fVeZA==",
+      "dev": true,
+      "peerDependencies": {
+        "@firebase/app-types": "0.x",
+        "@firebase/util": "1.x"
+      }
+    },
+    "node_modules/@firebase/auth/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
       "dev": true
     },
     "node_modules/@firebase/component": {
@@ -1624,6 +1824,176 @@
       "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
       "dev": true
     },
+    "node_modules/@firebase/firestore": {
+      "version": "3.13.0",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore/-/firestore-3.13.0.tgz",
+      "integrity": "sha512-NwcnU+madJXQ4fbLkGx1bWvL612IJN/qO6bZ6dlPmyf7QRyu5azUosijdAN675r+bOOJxMtP1Bv981bHBXAbUg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "@firebase/webchannel-wrapper": "0.10.1",
+        "@grpc/grpc-js": "~1.7.0",
+        "@grpc/proto-loader": "^0.6.13",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "engines": {
+        "node": ">=10.10.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/firestore-compat": {
+      "version": "0.3.12",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore-compat/-/firestore-compat-0.3.12.tgz",
+      "integrity": "sha512-mazuNGAx5Kt9Nph0pm6ULJFp/+j7GSsx+Ncw1GrnKl+ft1CQ4q2LcUssXnjqkX2Ry0fNGqUzC1mfIUrk9bYtjQ==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/firestore": "3.13.0",
+        "@firebase/firestore-types": "2.5.1",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/firestore-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/firestore-types": {
+      "version": "2.5.1",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore-types/-/firestore-types-2.5.1.tgz",
+      "integrity": "sha512-xG0CA6EMfYo8YeUxC8FeDzf6W3FX1cLlcAGBYV6Cku12sZRI81oWcu61RSKM66K6kUENP+78Qm8mvroBcm1whw==",
+      "dev": true,
+      "peerDependencies": {
+        "@firebase/app-types": "0.x",
+        "@firebase/util": "1.x"
+      }
+    },
+    "node_modules/@firebase/firestore/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/functions": {
+      "version": "0.10.0",
+      "resolved": "https://registry.npmjs.org/@firebase/functions/-/functions-0.10.0.tgz",
+      "integrity": "sha512-2U+fMNxTYhtwSpkkR6WbBcuNMOVaI7MaH3cZ6UAeNfj7AgEwHwMIFLPpC13YNZhno219F0lfxzTAA0N62ndWzA==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/app-check-interop-types": "0.3.0",
+        "@firebase/auth-interop-types": "0.2.1",
+        "@firebase/component": "0.6.4",
+        "@firebase/messaging-interop-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/functions-compat": {
+      "version": "0.3.5",
+      "resolved": "https://registry.npmjs.org/@firebase/functions-compat/-/functions-compat-0.3.5.tgz",
+      "integrity": "sha512-uD4jwgwVqdWf6uc3NRKF8cSZ0JwGqSlyhPgackyUPe+GAtnERpS4+Vr66g0b3Gge0ezG4iyHo/EXW/Hjx7QhHw==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/functions": "0.10.0",
+        "@firebase/functions-types": "0.6.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/functions-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/functions-types": {
+      "version": "0.6.0",
+      "resolved": "https://registry.npmjs.org/@firebase/functions-types/-/functions-types-0.6.0.tgz",
+      "integrity": "sha512-hfEw5VJtgWXIRf92ImLkgENqpL6IWpYaXVYiRkFY1jJ9+6tIhWM7IzzwbevwIIud/jaxKVdRzD7QBWfPmkwCYw==",
+      "dev": true
+    },
+    "node_modules/@firebase/functions/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/installations": {
+      "version": "0.6.4",
+      "resolved": "https://registry.npmjs.org/@firebase/installations/-/installations-0.6.4.tgz",
+      "integrity": "sha512-u5y88rtsp7NYkCHC3ElbFBrPtieUybZluXyzl7+4BsIz4sqb4vSAuwHEUgCgCeaQhvsnxDEU6icly8U9zsJigA==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "idb": "7.0.1",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/installations-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/installations-compat/-/installations-compat-0.2.4.tgz",
+      "integrity": "sha512-LI9dYjp0aT9Njkn9U4JRrDqQ6KXeAmFbRC0E7jI7+hxl5YmRWysq5qgQl22hcWpTk+cm3es66d/apoDU/A9n6Q==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/installations-types": "0.5.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/installations-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/installations-types": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@firebase/installations-types/-/installations-types-0.5.0.tgz",
+      "integrity": "sha512-9DP+RGfzoI2jH7gY4SlzqvZ+hr7gYzPODrbzVD82Y12kScZ6ZpRg/i3j6rleto8vTFC8n6Len4560FnV1w2IRg==",
+      "dev": true,
+      "peerDependencies": {
+        "@firebase/app-types": "0.x"
+      }
+    },
+    "node_modules/@firebase/installations/node_modules/idb": {
+      "version": "7.0.1",
+      "resolved": "https://registry.npmjs.org/idb/-/idb-7.0.1.tgz",
+      "integrity": "sha512-UUxlE7vGWK5RfB/fDwEGgRf84DY/ieqNha6msMV99UsEMQhJ1RwbCd8AYBj3QMgnE3VZnfQvm4oKVCJTYlqIgg==",
+      "dev": true
+    },
+    "node_modules/@firebase/installations/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
     "node_modules/@firebase/logger": {
       "version": "0.4.0",
       "resolved": "https://registry.npmjs.org/@firebase/logger/-/logger-0.4.0.tgz",
@@ -1639,6 +2009,217 @@
       "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==",
       "dev": true
     },
+    "node_modules/@firebase/messaging": {
+      "version": "0.12.4",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging/-/messaging-0.12.4.tgz",
+      "integrity": "sha512-6JLZct6zUaex4g7HI3QbzeUrg9xcnmDAPTWpkoMpd/GoSVWH98zDoWXMGrcvHeCAIsLpFMe4MPoZkJbrPhaASw==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/messaging-interop-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "idb": "7.0.1",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/messaging-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging-compat/-/messaging-compat-0.2.4.tgz",
+      "integrity": "sha512-lyFjeUhIsPRYDPNIkYX1LcZMpoVbBWXX4rPl7c/rqc7G+EUea7IEtSt4MxTvh6fDfPuzLn7+FZADfscC+tNMfg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/messaging": "0.12.4",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/messaging-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/messaging-interop-types": {
+      "version": "0.2.0",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging-interop-types/-/messaging-interop-types-0.2.0.tgz",
+      "integrity": "sha512-ujA8dcRuVeBixGR9CtegfpU4YmZf3Lt7QYkcj693FFannwNuZgfAYaTmbJ40dtjB81SAu6tbFPL9YLNT15KmOQ==",
+      "dev": true
+    },
+    "node_modules/@firebase/messaging/node_modules/idb": {
+      "version": "7.0.1",
+      "resolved": "https://registry.npmjs.org/idb/-/idb-7.0.1.tgz",
+      "integrity": "sha512-UUxlE7vGWK5RfB/fDwEGgRf84DY/ieqNha6msMV99UsEMQhJ1RwbCd8AYBj3QMgnE3VZnfQvm4oKVCJTYlqIgg==",
+      "dev": true
+    },
+    "node_modules/@firebase/messaging/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/performance": {
+      "version": "0.6.4",
+      "resolved": "https://registry.npmjs.org/@firebase/performance/-/performance-0.6.4.tgz",
+      "integrity": "sha512-HfTn/bd8mfy/61vEqaBelNiNnvAbUtME2S25A67Nb34zVuCSCRIX4SseXY6zBnOFj3oLisaEqhVcJmVPAej67g==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/performance-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/performance-compat/-/performance-compat-0.2.4.tgz",
+      "integrity": "sha512-nnHUb8uP9G8islzcld/k6Bg5RhX62VpbAb/Anj7IXs/hp32Eb2LqFPZK4sy3pKkBUO5wcrlRWQa6wKOxqlUqsg==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/performance": "0.6.4",
+        "@firebase/performance-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/performance-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/performance-types": {
+      "version": "0.2.0",
+      "resolved": "https://registry.npmjs.org/@firebase/performance-types/-/performance-types-0.2.0.tgz",
+      "integrity": "sha512-kYrbr8e/CYr1KLrLYZZt2noNnf+pRwDq2KK9Au9jHrBMnb0/C9X9yWSXmZkFt4UIdsQknBq8uBB7fsybZdOBTA==",
+      "dev": true
+    },
+    "node_modules/@firebase/performance/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/remote-config": {
+      "version": "0.4.4",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config/-/remote-config-0.4.4.tgz",
+      "integrity": "sha512-x1ioTHGX8ZwDSTOVp8PBLv2/wfwKzb4pxi0gFezS5GCJwbLlloUH4YYZHHS83IPxnua8b6l0IXUaWd0RgbWwzQ==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/remote-config-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config-compat/-/remote-config-compat-0.2.4.tgz",
+      "integrity": "sha512-FKiki53jZirrDFkBHglB3C07j5wBpitAaj8kLME6g8Mx+aq7u9P7qfmuSRytiOItADhWUj7O1JIv7n9q87SuwA==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/remote-config": "0.4.4",
+        "@firebase/remote-config-types": "0.3.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/remote-config-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/remote-config-types": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config-types/-/remote-config-types-0.3.0.tgz",
+      "integrity": "sha512-RtEH4vdcbXZuZWRZbIRmQVBNsE7VDQpet2qFvq6vwKLBIQRQR5Kh58M4ok3A3US8Sr3rubYnaGqZSurCwI8uMA==",
+      "dev": true
+    },
+    "node_modules/@firebase/remote-config/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/storage": {
+      "version": "0.11.2",
+      "resolved": "https://registry.npmjs.org/@firebase/storage/-/storage-0.11.2.tgz",
+      "integrity": "sha512-CtvoFaBI4hGXlXbaCHf8humajkbXhs39Nbh6MbNxtwJiCqxPy9iH3D3CCfXAvP0QvAAwmJUTK3+z9a++Kc4nkA==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app": "0.x"
+      }
+    },
+    "node_modules/@firebase/storage-compat": {
+      "version": "0.3.2",
+      "resolved": "https://registry.npmjs.org/@firebase/storage-compat/-/storage-compat-0.3.2.tgz",
+      "integrity": "sha512-wvsXlLa9DVOMQJckbDNhXKKxRNNewyUhhbXev3t8kSgoCotd1v3MmqhKKz93ePhDnhHnDs7bYHy+Qa8dRY6BXw==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/component": "0.6.4",
+        "@firebase/storage": "0.11.2",
+        "@firebase/storage-types": "0.8.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "peerDependencies": {
+        "@firebase/app-compat": "0.x"
+      }
+    },
+    "node_modules/@firebase/storage-compat/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
+    "node_modules/@firebase/storage-types": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/storage-types/-/storage-types-0.8.0.tgz",
+      "integrity": "sha512-isRHcGrTs9kITJC0AVehHfpraWFui39MPaU7Eo8QfWlqW7YPymBmRgjDrlOgFdURh6Cdeg07zmkLP5tzTKRSpg==",
+      "dev": true,
+      "peerDependencies": {
+        "@firebase/app-types": "0.x",
+        "@firebase/util": "1.x"
+      }
+    },
+    "node_modules/@firebase/storage/node_modules/tslib": {
+      "version": "2.6.2",
+      "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+      "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+      "dev": true
+    },
     "node_modules/@firebase/util": {
       "version": "1.9.3",
       "resolved": "https://registry.npmjs.org/@firebase/util/-/util-1.9.3.tgz",
@@ -1652,6 +2233,12 @@
       "version": "2.4.1",
       "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.4.1.tgz",
       "integrity": "sha512-tGyy4dAjRIEwI7BzsB0lynWgOpfqjUdq91XXAlIWD2OwKBH7oCl/GZG/HT4BOHrTlPMOASlMQ7veyTqpmRcrNA==",
+      "dev": true
+    },
+    "node_modules/@firebase/webchannel-wrapper": {
+      "version": "0.10.1",
+      "resolved": "https://registry.npmjs.org/@firebase/webchannel-wrapper/-/webchannel-wrapper-0.10.1.tgz",
+      "integrity": "sha512-Dq5rYfEpdeel0bLVN+nfD1VWmzCkK+pJbSjIawGE+RY4+NIJqhbUDDQjvV0NUK84fMfwxvtFoCtEe70HfZjFcw==",
       "dev": true
     },
     "node_modules/@gar/promisify": {
@@ -2391,6 +2978,87 @@
       ],
       "bin": {
         "uuid": "dist/bin/uuid"
+      }
+    },
+    "node_modules/@grpc/grpc-js": {
+      "version": "1.7.3",
+      "resolved": "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.7.3.tgz",
+      "integrity": "sha512-H9l79u4kJ2PVSxUNA08HMYAnUBLj9v6KjYQ7SQ71hOZcEXhShE/y5iQCesP8+6/Ik/7i2O0a10bPquIcYfufog==",
+      "dev": true,
+      "dependencies": {
+        "@grpc/proto-loader": "^0.7.0",
+        "@types/node": ">=12.12.47"
+      },
+      "engines": {
+        "node": "^8.13.0 || >=10.10.0"
+      }
+    },
+    "node_modules/@grpc/grpc-js/node_modules/@grpc/proto-loader": {
+      "version": "0.7.4",
+      "resolved": "https://registry.npmjs.org/@grpc/proto-loader/-/proto-loader-0.7.4.tgz",
+      "integrity": "sha512-MnWjkGwqQ3W8fx94/c1CwqLsNmHHv2t0CFn+9++6+cDphC1lolpg9M2OU0iebIjK//pBNX9e94ho+gjx6vz39w==",
+      "dev": true,
+      "dependencies": {
+        "@types/long": "^4.0.1",
+        "lodash.camelcase": "^4.3.0",
+        "long": "^4.0.0",
+        "protobufjs": "^7.0.0",
+        "yargs": "^16.2.0"
+      },
+      "bin": {
+        "proto-loader-gen-types": "build/bin/proto-loader-gen-types.js"
+      },
+      "engines": {
+        "node": ">=6"
+      }
+    },
+    "node_modules/@grpc/grpc-js/node_modules/protobufjs": {
+      "version": "7.3.0",
+      "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-7.3.0.tgz",
+      "integrity": "sha512-YWD03n3shzV9ImZRX3ccbjqLxj7NokGN0V/ESiBV5xWqrommYHYiihuIyavq03pWSGqlyvYUFmfoMKd+1rPA/g==",
+      "dev": true,
+      "hasInstallScript": true,
+      "dependencies": {
+        "@protobufjs/aspromise": "^1.1.2",
+        "@protobufjs/base64": "^1.1.2",
+        "@protobufjs/codegen": "^2.0.4",
+        "@protobufjs/eventemitter": "^1.1.0",
+        "@protobufjs/fetch": "^1.1.0",
+        "@protobufjs/float": "^1.0.2",
+        "@protobufjs/inquire": "^1.1.0",
+        "@protobufjs/path": "^1.1.2",
+        "@protobufjs/pool": "^1.1.0",
+        "@protobufjs/utf8": "^1.1.0",
+        "@types/node": ">=13.7.0",
+        "long": "^5.0.0"
+      },
+      "engines": {
+        "node": ">=12.0.0"
+      }
+    },
+    "node_modules/@grpc/grpc-js/node_modules/protobufjs/node_modules/long": {
+      "version": "5.2.1",
+      "resolved": "https://registry.npmjs.org/long/-/long-5.2.1.tgz",
+      "integrity": "sha512-GKSNGeNAtw8IryjjkhZxuKB3JzlcLTwjtiQCHKvqQet81I93kXslhDQruGI/QsddO83mcDToBVy7GqGS/zYf/A==",
+      "dev": true
+    },
+    "node_modules/@grpc/proto-loader": {
+      "version": "0.6.13",
+      "resolved": "https://registry.npmjs.org/@grpc/proto-loader/-/proto-loader-0.6.13.tgz",
+      "integrity": "sha512-FjxPYDRTn6Ec3V0arm1FtSpmP6V50wuph2yILpyvTKzjc76oDdoihXqM1DzOW5ubvCC8GivfCnNtfaRE8myJ7g==",
+      "dev": true,
+      "dependencies": {
+        "@types/long": "^4.0.1",
+        "lodash.camelcase": "^4.3.0",
+        "long": "^4.0.0",
+        "protobufjs": "^6.11.3",
+        "yargs": "^16.2.0"
+      },
+      "bin": {
+        "proto-loader-gen-types": "build/bin/proto-loader-gen-types.js"
+      },
+      "engines": {
+        "node": ">=6"
       }
     },
     "node_modules/@humanwhocodes/config-array": {
@@ -4422,8 +5090,7 @@
       "version": "4.0.1",
       "resolved": "https://registry.npmjs.org/@types/long/-/long-4.0.1.tgz",
       "integrity": "sha512-5tXH6Bx/kNGd3MgffdmP4dy2Z+G4eaXw0SE81Tq3BNadtnMR5/ySMzX4SLEzHJzSmPNn4HIdpQsBvXMUykr58w==",
-      "dev": true,
-      "optional": true
+      "dev": true
     },
     "node_modules/@types/lsofi": {
       "version": "1.0.2",
@@ -9832,6 +10499,40 @@
         "pkg-dir": "^4.2.0"
       }
     },
+    "node_modules/firebase": {
+      "version": "9.23.0",
+      "resolved": "https://registry.npmjs.org/firebase/-/firebase-9.23.0.tgz",
+      "integrity": "sha512-/4lUVY0lUvBDIaeY1q6dUYhS8Sd18Qb9CgWkPZICUo9IXpJNCEagfNZXBBFCkMTTN5L5gx2Hjr27y21a9NzUcA==",
+      "dev": true,
+      "dependencies": {
+        "@firebase/analytics": "0.10.0",
+        "@firebase/analytics-compat": "0.2.6",
+        "@firebase/app": "0.9.13",
+        "@firebase/app-check": "0.8.0",
+        "@firebase/app-check-compat": "0.3.7",
+        "@firebase/app-compat": "0.2.13",
+        "@firebase/app-types": "0.9.0",
+        "@firebase/auth": "0.23.2",
+        "@firebase/auth-compat": "0.4.2",
+        "@firebase/database": "0.14.4",
+        "@firebase/database-compat": "0.3.4",
+        "@firebase/firestore": "3.13.0",
+        "@firebase/firestore-compat": "0.3.12",
+        "@firebase/functions": "0.10.0",
+        "@firebase/functions-compat": "0.3.5",
+        "@firebase/installations": "0.6.4",
+        "@firebase/installations-compat": "0.2.4",
+        "@firebase/messaging": "0.12.4",
+        "@firebase/messaging-compat": "0.2.4",
+        "@firebase/performance": "0.6.4",
+        "@firebase/performance-compat": "0.2.4",
+        "@firebase/remote-config": "0.4.4",
+        "@firebase/remote-config-compat": "0.2.4",
+        "@firebase/storage": "0.11.2",
+        "@firebase/storage-compat": "0.3.2",
+        "@firebase/util": "1.9.3"
+      }
+    },
     "node_modules/firebase-admin": {
       "version": "11.5.0",
       "resolved": "https://registry.npmjs.org/firebase-admin/-/firebase-admin-11.5.0.tgz",
@@ -11949,6 +12650,12 @@
         "node": ">=0.10.0"
       }
     },
+    "node_modules/idb": {
+      "version": "7.1.1",
+      "resolved": "https://registry.npmjs.org/idb/-/idb-7.1.1.tgz",
+      "integrity": "sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==",
+      "dev": true
+    },
     "node_modules/ieee754": {
       "version": "1.2.1",
       "resolved": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz",
@@ -13295,8 +14002,7 @@
       "version": "4.0.0",
       "resolved": "https://registry.npmjs.org/long/-/long-4.0.0.tgz",
       "integrity": "sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==",
-      "dev": true,
-      "optional": true
+      "dev": true
     },
     "node_modules/longest-streak": {
       "version": "3.1.0",
@@ -17200,6 +17906,32 @@
       },
       "engines": {
         "node": ">=12.0.0"
+      }
+    },
+    "node_modules/protobufjs": {
+      "version": "6.11.4",
+      "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-6.11.4.tgz",
+      "integrity": "sha512-5kQWPaJHi1WoCpjTGszzQ32PG2F4+wRY6BmAT4Vfw56Q2FZ4YZzK20xUYQH4YkfehY1e6QSICrJquM6xXZNcrw==",
+      "dev": true,
+      "hasInstallScript": true,
+      "dependencies": {
+        "@protobufjs/aspromise": "^1.1.2",
+        "@protobufjs/base64": "^1.1.2",
+        "@protobufjs/codegen": "^2.0.4",
+        "@protobufjs/eventemitter": "^1.1.0",
+        "@protobufjs/fetch": "^1.1.0",
+        "@protobufjs/float": "^1.0.2",
+        "@protobufjs/inquire": "^1.1.0",
+        "@protobufjs/path": "^1.1.2",
+        "@protobufjs/pool": "^1.1.0",
+        "@protobufjs/utf8": "^1.1.0",
+        "@types/long": "^4.0.1",
+        "@types/node": ">=13.7.0",
+        "long": "^4.0.0"
+      },
+      "bin": {
+        "pbjs": "bin/pbjs",
+        "pbts": "bin/pbts"
       }
     },
     "node_modules/proxy": {
@@ -22489,17 +23221,211 @@
         "text-decoding": "^1.0.0"
       }
     },
+    "@firebase/analytics": {
+      "version": "0.10.0",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics/-/analytics-0.10.0.tgz",
+      "integrity": "sha512-Locv8gAqx0e+GX/0SI3dzmBY5e9kjVDtD+3zCFLJ0tH2hJwuCAiL+5WkHuxKj92rqQj/rvkBUCfA1ewlX2hehg==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/analytics-compat": {
+      "version": "0.2.6",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics-compat/-/analytics-compat-0.2.6.tgz",
+      "integrity": "sha512-4MqpVLFkGK7NJf/5wPEEP7ePBJatwYpyjgJ+wQHQGHfzaCDgntOnl9rL2vbVGGKCnRqWtZDIWhctB86UWXaX2Q==",
+      "dev": true,
+      "requires": {
+        "@firebase/analytics": "0.10.0",
+        "@firebase/analytics-types": "0.8.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/analytics-types": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/analytics-types/-/analytics-types-0.8.0.tgz",
+      "integrity": "sha512-iRP+QKI2+oz3UAh4nPEq14CsEjrjD6a5+fuypjScisAh9kXKFvdJOZJDwk7kikLvWVLGEs9+kIUS4LPQV7VZVw==",
+      "dev": true
+    },
+    "@firebase/app": {
+      "version": "0.9.13",
+      "resolved": "https://registry.npmjs.org/@firebase/app/-/app-0.9.13.tgz",
+      "integrity": "sha512-GfiI1JxJ7ecluEmDjPzseRXk/PX31hS7+tjgBopL7XjB2hLUdR+0FTMXy2Q3/hXezypDvU6or7gVFizDESrkXw==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "idb": "7.1.1",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/app-check": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check/-/app-check-0.8.0.tgz",
+      "integrity": "sha512-dRDnhkcaC2FspMiRK/Vbp+PfsOAEP6ZElGm9iGFJ9fDqHoPs0HOPn7dwpJ51lCFi1+2/7n5pRPGhqF/F03I97g==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/app-check-compat": {
+      "version": "0.3.7",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-compat/-/app-check-compat-0.3.7.tgz",
+      "integrity": "sha512-cW682AxsyP1G+Z0/P7pO/WT2CzYlNxoNe5QejVarW2o5ZxeWSSPAiVEwpEpQR/bUlUmdeWThYTMvBWaopdBsqw==",
+      "dev": true,
+      "requires": {
+        "@firebase/app-check": "0.8.0",
+        "@firebase/app-check-types": "0.5.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/app-check-interop-types": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-interop-types/-/app-check-interop-types-0.3.0.tgz",
+      "integrity": "sha512-xAxHPZPIgFXnI+vb4sbBjZcde7ZluzPPaSK7Lx3/nmuVk4TjZvnL8ONnkd4ERQKL8WePQySU+pRcWkh8rDf5Sg==",
+      "dev": true
+    },
+    "@firebase/app-check-types": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@firebase/app-check-types/-/app-check-types-0.5.0.tgz",
+      "integrity": "sha512-uwSUj32Mlubybw7tedRzR24RP8M8JUVR3NPiMk3/Z4bCmgEKTlQBwMXrehDAZ2wF+TsBq0SN1c6ema71U/JPyQ==",
+      "dev": true
+    },
+    "@firebase/app-compat": {
+      "version": "0.2.13",
+      "resolved": "https://registry.npmjs.org/@firebase/app-compat/-/app-compat-0.2.13.tgz",
+      "integrity": "sha512-j6ANZaWjeVy5zg6X7uiqh6lM6o3n3LD1+/SJFNs9V781xyryyZWXe+tmnWNWPkP086QfJoNkWN9pMQRqSG4vMg==",
+      "dev": true,
+      "requires": {
+        "@firebase/app": "0.9.13",
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
     "@firebase/app-types": {
       "version": "0.9.0",
       "resolved": "https://registry.npmjs.org/@firebase/app-types/-/app-types-0.9.0.tgz",
       "integrity": "sha512-AeweANOIo0Mb8GiYm3xhTEBVCmPwTYAu9Hcd2qSkLuga/6+j9b1Jskl5bpiSQWy9eJ/j5pavxj6eYogmnuzm+Q==",
       "dev": true
     },
+    "@firebase/auth": {
+      "version": "0.23.2",
+      "resolved": "https://registry.npmjs.org/@firebase/auth/-/auth-0.23.2.tgz",
+      "integrity": "sha512-dM9iJ0R6tI1JczuGSxXmQbXAgtYie0K4WvKcuyuSTCu9V8eEDiz4tfa1sO3txsfvwg7nOY3AjoCyMYEdqZ8hdg==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/auth-compat": {
+      "version": "0.4.2",
+      "resolved": "https://registry.npmjs.org/@firebase/auth-compat/-/auth-compat-0.4.2.tgz",
+      "integrity": "sha512-Q30e77DWXFmXEt5dg5JbqEDpjw9y3/PcP9LslDPR7fARmAOTIY9MM6HXzm9KC+dlrKH/+p6l8g9ifJiam9mc4A==",
+      "dev": true,
+      "requires": {
+        "@firebase/auth": "0.23.2",
+        "@firebase/auth-types": "0.12.0",
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
     "@firebase/auth-interop-types": {
       "version": "0.2.1",
       "resolved": "https://registry.npmjs.org/@firebase/auth-interop-types/-/auth-interop-types-0.2.1.tgz",
       "integrity": "sha512-VOaGzKp65MY6P5FI84TfYKBXEPi6LmOCSMMzys6o2BN2LOsqy7pCuZCup7NYnfbk5OkkQKzvIfHOzTm0UDpkyg==",
       "dev": true
+    },
+    "@firebase/auth-types": {
+      "version": "0.12.0",
+      "resolved": "https://registry.npmjs.org/@firebase/auth-types/-/auth-types-0.12.0.tgz",
+      "integrity": "sha512-pPwaZt+SPOshK8xNoiQlK5XIrS97kFYc3Rc7xmy373QsOJ9MmqXxLaYssP5Kcds4wd2qK//amx/c+A8O2fVeZA==",
+      "dev": true,
+      "requires": {}
     },
     "@firebase/component": {
       "version": "0.6.4",
@@ -22573,6 +23499,162 @@
         "@firebase/util": "1.9.3"
       }
     },
+    "@firebase/firestore": {
+      "version": "3.13.0",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore/-/firestore-3.13.0.tgz",
+      "integrity": "sha512-NwcnU+madJXQ4fbLkGx1bWvL612IJN/qO6bZ6dlPmyf7QRyu5azUosijdAN675r+bOOJxMtP1Bv981bHBXAbUg==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "@firebase/webchannel-wrapper": "0.10.1",
+        "@grpc/grpc-js": "~1.7.0",
+        "@grpc/proto-loader": "^0.6.13",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/firestore-compat": {
+      "version": "0.3.12",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore-compat/-/firestore-compat-0.3.12.tgz",
+      "integrity": "sha512-mazuNGAx5Kt9Nph0pm6ULJFp/+j7GSsx+Ncw1GrnKl+ft1CQ4q2LcUssXnjqkX2Ry0fNGqUzC1mfIUrk9bYtjQ==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/firestore": "3.13.0",
+        "@firebase/firestore-types": "2.5.1",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/firestore-types": {
+      "version": "2.5.1",
+      "resolved": "https://registry.npmjs.org/@firebase/firestore-types/-/firestore-types-2.5.1.tgz",
+      "integrity": "sha512-xG0CA6EMfYo8YeUxC8FeDzf6W3FX1cLlcAGBYV6Cku12sZRI81oWcu61RSKM66K6kUENP+78Qm8mvroBcm1whw==",
+      "dev": true,
+      "requires": {}
+    },
+    "@firebase/functions": {
+      "version": "0.10.0",
+      "resolved": "https://registry.npmjs.org/@firebase/functions/-/functions-0.10.0.tgz",
+      "integrity": "sha512-2U+fMNxTYhtwSpkkR6WbBcuNMOVaI7MaH3cZ6UAeNfj7AgEwHwMIFLPpC13YNZhno219F0lfxzTAA0N62ndWzA==",
+      "dev": true,
+      "requires": {
+        "@firebase/app-check-interop-types": "0.3.0",
+        "@firebase/auth-interop-types": "0.2.1",
+        "@firebase/component": "0.6.4",
+        "@firebase/messaging-interop-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/functions-compat": {
+      "version": "0.3.5",
+      "resolved": "https://registry.npmjs.org/@firebase/functions-compat/-/functions-compat-0.3.5.tgz",
+      "integrity": "sha512-uD4jwgwVqdWf6uc3NRKF8cSZ0JwGqSlyhPgackyUPe+GAtnERpS4+Vr66g0b3Gge0ezG4iyHo/EXW/Hjx7QhHw==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/functions": "0.10.0",
+        "@firebase/functions-types": "0.6.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/functions-types": {
+      "version": "0.6.0",
+      "resolved": "https://registry.npmjs.org/@firebase/functions-types/-/functions-types-0.6.0.tgz",
+      "integrity": "sha512-hfEw5VJtgWXIRf92ImLkgENqpL6IWpYaXVYiRkFY1jJ9+6tIhWM7IzzwbevwIIud/jaxKVdRzD7QBWfPmkwCYw==",
+      "dev": true
+    },
+    "@firebase/installations": {
+      "version": "0.6.4",
+      "resolved": "https://registry.npmjs.org/@firebase/installations/-/installations-0.6.4.tgz",
+      "integrity": "sha512-u5y88rtsp7NYkCHC3ElbFBrPtieUybZluXyzl7+4BsIz4sqb4vSAuwHEUgCgCeaQhvsnxDEU6icly8U9zsJigA==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "idb": "7.0.1",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "idb": {
+          "version": "7.0.1",
+          "resolved": "https://registry.npmjs.org/idb/-/idb-7.0.1.tgz",
+          "integrity": "sha512-UUxlE7vGWK5RfB/fDwEGgRf84DY/ieqNha6msMV99UsEMQhJ1RwbCd8AYBj3QMgnE3VZnfQvm4oKVCJTYlqIgg==",
+          "dev": true
+        },
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/installations-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/installations-compat/-/installations-compat-0.2.4.tgz",
+      "integrity": "sha512-LI9dYjp0aT9Njkn9U4JRrDqQ6KXeAmFbRC0E7jI7+hxl5YmRWysq5qgQl22hcWpTk+cm3es66d/apoDU/A9n6Q==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/installations-types": "0.5.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/installations-types": {
+      "version": "0.5.0",
+      "resolved": "https://registry.npmjs.org/@firebase/installations-types/-/installations-types-0.5.0.tgz",
+      "integrity": "sha512-9DP+RGfzoI2jH7gY4SlzqvZ+hr7gYzPODrbzVD82Y12kScZ6ZpRg/i3j6rleto8vTFC8n6Len4560FnV1w2IRg==",
+      "dev": true,
+      "requires": {}
+    },
     "@firebase/logger": {
       "version": "0.4.0",
       "resolved": "https://registry.npmjs.org/@firebase/logger/-/logger-0.4.0.tgz",
@@ -22590,6 +23672,206 @@
         }
       }
     },
+    "@firebase/messaging": {
+      "version": "0.12.4",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging/-/messaging-0.12.4.tgz",
+      "integrity": "sha512-6JLZct6zUaex4g7HI3QbzeUrg9xcnmDAPTWpkoMpd/GoSVWH98zDoWXMGrcvHeCAIsLpFMe4MPoZkJbrPhaASw==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/messaging-interop-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "idb": "7.0.1",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "idb": {
+          "version": "7.0.1",
+          "resolved": "https://registry.npmjs.org/idb/-/idb-7.0.1.tgz",
+          "integrity": "sha512-UUxlE7vGWK5RfB/fDwEGgRf84DY/ieqNha6msMV99UsEMQhJ1RwbCd8AYBj3QMgnE3VZnfQvm4oKVCJTYlqIgg==",
+          "dev": true
+        },
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/messaging-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging-compat/-/messaging-compat-0.2.4.tgz",
+      "integrity": "sha512-lyFjeUhIsPRYDPNIkYX1LcZMpoVbBWXX4rPl7c/rqc7G+EUea7IEtSt4MxTvh6fDfPuzLn7+FZADfscC+tNMfg==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/messaging": "0.12.4",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/messaging-interop-types": {
+      "version": "0.2.0",
+      "resolved": "https://registry.npmjs.org/@firebase/messaging-interop-types/-/messaging-interop-types-0.2.0.tgz",
+      "integrity": "sha512-ujA8dcRuVeBixGR9CtegfpU4YmZf3Lt7QYkcj693FFannwNuZgfAYaTmbJ40dtjB81SAu6tbFPL9YLNT15KmOQ==",
+      "dev": true
+    },
+    "@firebase/performance": {
+      "version": "0.6.4",
+      "resolved": "https://registry.npmjs.org/@firebase/performance/-/performance-0.6.4.tgz",
+      "integrity": "sha512-HfTn/bd8mfy/61vEqaBelNiNnvAbUtME2S25A67Nb34zVuCSCRIX4SseXY6zBnOFj3oLisaEqhVcJmVPAej67g==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/performance-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/performance-compat/-/performance-compat-0.2.4.tgz",
+      "integrity": "sha512-nnHUb8uP9G8islzcld/k6Bg5RhX62VpbAb/Anj7IXs/hp32Eb2LqFPZK4sy3pKkBUO5wcrlRWQa6wKOxqlUqsg==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/performance": "0.6.4",
+        "@firebase/performance-types": "0.2.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/performance-types": {
+      "version": "0.2.0",
+      "resolved": "https://registry.npmjs.org/@firebase/performance-types/-/performance-types-0.2.0.tgz",
+      "integrity": "sha512-kYrbr8e/CYr1KLrLYZZt2noNnf+pRwDq2KK9Au9jHrBMnb0/C9X9yWSXmZkFt4UIdsQknBq8uBB7fsybZdOBTA==",
+      "dev": true
+    },
+    "@firebase/remote-config": {
+      "version": "0.4.4",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config/-/remote-config-0.4.4.tgz",
+      "integrity": "sha512-x1ioTHGX8ZwDSTOVp8PBLv2/wfwKzb4pxi0gFezS5GCJwbLlloUH4YYZHHS83IPxnua8b6l0IXUaWd0RgbWwzQ==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/installations": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/remote-config-compat": {
+      "version": "0.2.4",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config-compat/-/remote-config-compat-0.2.4.tgz",
+      "integrity": "sha512-FKiki53jZirrDFkBHglB3C07j5wBpitAaj8kLME6g8Mx+aq7u9P7qfmuSRytiOItADhWUj7O1JIv7n9q87SuwA==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/logger": "0.4.0",
+        "@firebase/remote-config": "0.4.4",
+        "@firebase/remote-config-types": "0.3.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/remote-config-types": {
+      "version": "0.3.0",
+      "resolved": "https://registry.npmjs.org/@firebase/remote-config-types/-/remote-config-types-0.3.0.tgz",
+      "integrity": "sha512-RtEH4vdcbXZuZWRZbIRmQVBNsE7VDQpet2qFvq6vwKLBIQRQR5Kh58M4ok3A3US8Sr3rubYnaGqZSurCwI8uMA==",
+      "dev": true
+    },
+    "@firebase/storage": {
+      "version": "0.11.2",
+      "resolved": "https://registry.npmjs.org/@firebase/storage/-/storage-0.11.2.tgz",
+      "integrity": "sha512-CtvoFaBI4hGXlXbaCHf8humajkbXhs39Nbh6MbNxtwJiCqxPy9iH3D3CCfXAvP0QvAAwmJUTK3+z9a++Kc4nkA==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/util": "1.9.3",
+        "node-fetch": "2.6.7",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/storage-compat": {
+      "version": "0.3.2",
+      "resolved": "https://registry.npmjs.org/@firebase/storage-compat/-/storage-compat-0.3.2.tgz",
+      "integrity": "sha512-wvsXlLa9DVOMQJckbDNhXKKxRNNewyUhhbXev3t8kSgoCotd1v3MmqhKKz93ePhDnhHnDs7bYHy+Qa8dRY6BXw==",
+      "dev": true,
+      "requires": {
+        "@firebase/component": "0.6.4",
+        "@firebase/storage": "0.11.2",
+        "@firebase/storage-types": "0.8.0",
+        "@firebase/util": "1.9.3",
+        "tslib": "^2.1.0"
+      },
+      "dependencies": {
+        "tslib": {
+          "version": "2.6.2",
+          "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
+          "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
+          "dev": true
+        }
+      }
+    },
+    "@firebase/storage-types": {
+      "version": "0.8.0",
+      "resolved": "https://registry.npmjs.org/@firebase/storage-types/-/storage-types-0.8.0.tgz",
+      "integrity": "sha512-isRHcGrTs9kITJC0AVehHfpraWFui39MPaU7Eo8QfWlqW7YPymBmRgjDrlOgFdURh6Cdeg07zmkLP5tzTKRSpg==",
+      "dev": true,
+      "requires": {}
+    },
     "@firebase/util": {
       "version": "1.9.3",
       "resolved": "https://registry.npmjs.org/@firebase/util/-/util-1.9.3.tgz",
@@ -22606,6 +23888,12 @@
           "dev": true
         }
       }
+    },
+    "@firebase/webchannel-wrapper": {
+      "version": "0.10.1",
+      "resolved": "https://registry.npmjs.org/@firebase/webchannel-wrapper/-/webchannel-wrapper-0.10.1.tgz",
+      "integrity": "sha512-Dq5rYfEpdeel0bLVN+nfD1VWmzCkK+pJbSjIawGE+RY4+NIJqhbUDDQjvV0NUK84fMfwxvtFoCtEe70HfZjFcw==",
+      "dev": true
     },
     "@gar/promisify": {
       "version": "1.1.3",
@@ -23159,6 +24447,72 @@
           "resolved": "https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz",
           "integrity": "sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA=="
         }
+      }
+    },
+    "@grpc/grpc-js": {
+      "version": "1.7.3",
+      "resolved": "https://registry.npmjs.org/@grpc/grpc-js/-/grpc-js-1.7.3.tgz",
+      "integrity": "sha512-H9l79u4kJ2PVSxUNA08HMYAnUBLj9v6KjYQ7SQ71hOZcEXhShE/y5iQCesP8+6/Ik/7i2O0a10bPquIcYfufog==",
+      "dev": true,
+      "requires": {
+        "@grpc/proto-loader": "^0.7.0",
+        "@types/node": ">=12.12.47"
+      },
+      "dependencies": {
+        "@grpc/proto-loader": {
+          "version": "0.7.4",
+          "resolved": "https://registry.npmjs.org/@grpc/proto-loader/-/proto-loader-0.7.4.tgz",
+          "integrity": "sha512-MnWjkGwqQ3W8fx94/c1CwqLsNmHHv2t0CFn+9++6+cDphC1lolpg9M2OU0iebIjK//pBNX9e94ho+gjx6vz39w==",
+          "dev": true,
+          "requires": {
+            "@types/long": "^4.0.1",
+            "lodash.camelcase": "^4.3.0",
+            "long": "^4.0.0",
+            "protobufjs": "^7.0.0",
+            "yargs": "^16.2.0"
+          }
+        },
+        "protobufjs": {
+          "version": "7.3.0",
+          "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-7.3.0.tgz",
+          "integrity": "sha512-YWD03n3shzV9ImZRX3ccbjqLxj7NokGN0V/ESiBV5xWqrommYHYiihuIyavq03pWSGqlyvYUFmfoMKd+1rPA/g==",
+          "dev": true,
+          "requires": {
+            "@protobufjs/aspromise": "^1.1.2",
+            "@protobufjs/base64": "^1.1.2",
+            "@protobufjs/codegen": "^2.0.4",
+            "@protobufjs/eventemitter": "^1.1.0",
+            "@protobufjs/fetch": "^1.1.0",
+            "@protobufjs/float": "^1.0.2",
+            "@protobufjs/inquire": "^1.1.0",
+            "@protobufjs/path": "^1.1.2",
+            "@protobufjs/pool": "^1.1.0",
+            "@protobufjs/utf8": "^1.1.0",
+            "@types/node": ">=13.7.0",
+            "long": "^5.0.0"
+          },
+          "dependencies": {
+            "long": {
+              "version": "5.2.1",
+              "resolved": "https://registry.npmjs.org/long/-/long-5.2.1.tgz",
+              "integrity": "sha512-GKSNGeNAtw8IryjjkhZxuKB3JzlcLTwjtiQCHKvqQet81I93kXslhDQruGI/QsddO83mcDToBVy7GqGS/zYf/A==",
+              "dev": true
+            }
+          }
+        }
+      }
+    },
+    "@grpc/proto-loader": {
+      "version": "0.6.13",
+      "resolved": "https://registry.npmjs.org/@grpc/proto-loader/-/proto-loader-0.6.13.tgz",
+      "integrity": "sha512-FjxPYDRTn6Ec3V0arm1FtSpmP6V50wuph2yILpyvTKzjc76oDdoihXqM1DzOW5ubvCC8GivfCnNtfaRE8myJ7g==",
+      "dev": true,
+      "requires": {
+        "@types/long": "^4.0.1",
+        "lodash.camelcase": "^4.3.0",
+        "long": "^4.0.0",
+        "protobufjs": "^6.11.3",
+        "yargs": "^16.2.0"
       }
     },
     "@humanwhocodes/config-array": {
@@ -24586,8 +25940,7 @@
       "version": "4.0.1",
       "resolved": "https://registry.npmjs.org/@types/long/-/long-4.0.1.tgz",
       "integrity": "sha512-5tXH6Bx/kNGd3MgffdmP4dy2Z+G4eaXw0SE81Tq3BNadtnMR5/ySMzX4SLEzHJzSmPNn4HIdpQsBvXMUykr58w==",
-      "dev": true,
-      "optional": true
+      "dev": true
     },
     "@types/lsofi": {
       "version": "1.0.2",
@@ -28568,6 +29921,40 @@
         "pkg-dir": "^4.2.0"
       }
     },
+    "firebase": {
+      "version": "9.23.0",
+      "resolved": "https://registry.npmjs.org/firebase/-/firebase-9.23.0.tgz",
+      "integrity": "sha512-/4lUVY0lUvBDIaeY1q6dUYhS8Sd18Qb9CgWkPZICUo9IXpJNCEagfNZXBBFCkMTTN5L5gx2Hjr27y21a9NzUcA==",
+      "dev": true,
+      "requires": {
+        "@firebase/analytics": "0.10.0",
+        "@firebase/analytics-compat": "0.2.6",
+        "@firebase/app": "0.9.13",
+        "@firebase/app-check": "0.8.0",
+        "@firebase/app-check-compat": "0.3.7",
+        "@firebase/app-compat": "0.2.13",
+        "@firebase/app-types": "0.9.0",
+        "@firebase/auth": "0.23.2",
+        "@firebase/auth-compat": "0.4.2",
+        "@firebase/database": "0.14.4",
+        "@firebase/database-compat": "0.3.4",
+        "@firebase/firestore": "3.13.0",
+        "@firebase/firestore-compat": "0.3.12",
+        "@firebase/functions": "0.10.0",
+        "@firebase/functions-compat": "0.3.5",
+        "@firebase/installations": "0.6.4",
+        "@firebase/installations-compat": "0.2.4",
+        "@firebase/messaging": "0.12.4",
+        "@firebase/messaging-compat": "0.2.4",
+        "@firebase/performance": "0.6.4",
+        "@firebase/performance-compat": "0.2.4",
+        "@firebase/remote-config": "0.4.4",
+        "@firebase/remote-config-compat": "0.2.4",
+        "@firebase/storage": "0.11.2",
+        "@firebase/storage-compat": "0.3.2",
+        "@firebase/util": "1.9.3"
+      }
+    },
     "firebase-admin": {
       "version": "11.5.0",
       "resolved": "https://registry.npmjs.org/firebase-admin/-/firebase-admin-11.5.0.tgz",
@@ -30156,6 +31543,12 @@
         "safer-buffer": ">= 2.1.2 < 3"
       }
     },
+    "idb": {
+      "version": "7.1.1",
+      "resolved": "https://registry.npmjs.org/idb/-/idb-7.1.1.tgz",
+      "integrity": "sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==",
+      "dev": true
+    },
     "ieee754": {
       "version": "1.2.1",
       "resolved": "https://registry.npmjs.org/ieee754/-/ieee754-1.2.1.tgz",
@@ -31190,8 +32583,7 @@
       "version": "4.0.0",
       "resolved": "https://registry.npmjs.org/long/-/long-4.0.0.tgz",
       "integrity": "sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==",
-      "dev": true,
-      "optional": true
+      "dev": true
     },
     "longest-streak": {
       "version": "3.1.0",
@@ -33971,6 +35363,27 @@
             "long": "^5.0.0"
           }
         }
+      }
+    },
+    "protobufjs": {
+      "version": "6.11.4",
+      "resolved": "https://registry.npmjs.org/protobufjs/-/protobufjs-6.11.4.tgz",
+      "integrity": "sha512-5kQWPaJHi1WoCpjTGszzQ32PG2F4+wRY6BmAT4Vfw56Q2FZ4YZzK20xUYQH4YkfehY1e6QSICrJquM6xXZNcrw==",
+      "dev": true,
+      "requires": {
+        "@protobufjs/aspromise": "^1.1.2",
+        "@protobufjs/base64": "^1.1.2",
+        "@protobufjs/codegen": "^2.0.4",
+        "@protobufjs/eventemitter": "^1.1.0",
+        "@protobufjs/fetch": "^1.1.0",
+        "@protobufjs/float": "^1.0.2",
+        "@protobufjs/inquire": "^1.1.0",
+        "@protobufjs/path": "^1.1.2",
+        "@protobufjs/pool": "^1.1.0",
+        "@protobufjs/utf8": "^1.1.0",
+        "@types/long": "^4.0.1",
+        "@types/node": ">=13.7.0",
+        "long": "^4.0.0"
       }
     },
     "proxy": {

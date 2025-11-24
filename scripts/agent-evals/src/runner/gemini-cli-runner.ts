@@ -45,8 +45,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
   private readonly telemetryTimeout = 15000;
-  readonly runDir: string;
-  private readonly userDir: string;
+  readonly dirs: RunDirectories;
 
   // Determines which tools to start from for this turn so we don't detect tool
   // calls from previous turns
@@ -101,8 +100,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
-    this.runDir = dirs.runDir;
-    this.userDir = dirs.userDir;
+    this.dirs = dirs;
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
@@ -127,7 +125,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   }
 
   async remember(text: string): Promise<void> {
-    const geminiDir = path.join(this.userDir, ".gemini");
+    const geminiDir = path.join(this.dirs.userDir, ".gemini");
     const geminiMdFile = path.join(geminiDir, "GEMINI.md");
     if (!existsSync(geminiDir)) {
       mkdirSync(geminiDir, { recursive: true });
@@ -141,6 +139,10 @@ export class GeminiCliRunner implements AgentTestRunner {
     await this.type("/memory refresh");
     // Due to https://github.com/google-gemini/gemini-cli/issues/10702, we need to start a new chat
     await this.type("/clear");
+  }
+
+  async expectText(text: string | RegExp): Promise<void> {
+    return this.cli.expectText(text);
   }
 
   async exit(): Promise<void> {
@@ -160,10 +162,6 @@ export class GeminiCliRunner implements AgentTestRunner {
   writeGeminiInstallId(userDir: string) {
     const geminiDir = path.join(userDir, ".gemini");
     writeFileSync(path.join(geminiDir, "installation_id"), INSTALL_ID);
-  }
-
-  async expectText(text: string | RegExp): Promise<void> {
-    return this.cli.expectText(text);
   }
 
   /**
@@ -340,7 +338,7 @@ export class GeminiCliRunner implements AgentTestRunner {
   }
 
   private checkMemory(text: string | RegExp): CheckResult {
-    const geminiMdPath = path.join(this.userDir, ".gemini", "GEMINI.md");
+    const geminiMdPath = path.join(this.dirs.userDir, ".gemini", "GEMINI.md");
     const messages: string[] = [];
     if (!existsSync(geminiMdPath)) {
       messages.push(`GEMINI.md file not found at ${geminiMdPath}`);

@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import { getFirebaseCliRoot } from "../runner/paths.js";
+import { getToolMocks } from "./tool-mocks.js";
 
 //
 // This file is run as a node --import parameter before the Firebase CLI to
@@ -16,6 +17,8 @@ const LOG_FILE_PATH = path.join(os.homedir(), "Desktop", "agent_evals_mock_logs.
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
 const ENABLE_FILE_LOGGING = false;
+
+const mocks = getToolMocks();
 
 const originalRequire = Module.prototype.require;
 (Module.prototype as any).require = function (id: string) {
@@ -64,10 +67,6 @@ const originalRequire = Module.prototype.require;
     },
   });
 };
-
-import { getToolMocks } from "./tool-mocks.js";
-
-const mocks = getToolMocks();
 
 function logToFile(message: string) {
   if (!ENABLE_FILE_LOGGING) {
