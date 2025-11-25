@@ -64,12 +64,10 @@ describe("/crashlytics:connect", function (this: Mocha.Suite) {
     await run.expectText(ANDROID_APP_ID);
     await run.expectText(IOS_APP_ID);
 
-    await run.type(IOS_APP_ID);
+    await run.type(`Use ${IOS_APP_ID}`);
 
-    await run.expectText("remember");
-    await run.expectText(IOS_APP_ID);
-
-    await run.type("yes");
+    await run.expectText("SaveMemory");
+    await run.expectText("Memory refreshed successfully.");
 
     await run.expectText("prioritize");
     await run.expectText("fix");
