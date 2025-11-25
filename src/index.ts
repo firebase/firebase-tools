@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import * as leven from "leven";
 
 import { logger, useConsoleLoggers } from "./logger";
+import { isCommandModule } from "./command";
 
 const pkg = require("../package.json");
 
@@ -92,8 +93,8 @@ program.action((_, args) => {
     obj = (obj as any)[nextKey];
   }
 
-  if (hit && typeof obj === "function" && (obj as any).load) {
-    (obj as any).load();
+  if (hit && isCommandModule(obj)) {
+    obj.load();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (client.cli as any).parse(process.argv);
     return;

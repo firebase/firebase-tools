@@ -18,13 +18,7 @@ import * as utils from "../utils";
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
 
-interface Command {
-  load: () => void;
-}
-
-function isCommand(value: unknown): value is Command {
-  return typeof value === "function" && typeof (value as any).load === "function";
-}
+import { isCommandModule } from "../command";
 
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
@@ -124,7 +118,7 @@ export function cli(pkg: any) {
         if (seen.has(obj)) return;
         seen.add(obj);
         for (const [key, value] of Object.entries(obj)) {
-          if (isCommand(value)) {
+          if (isCommandModule(value)) {
             value.load();
           } else if (
             typeof value === "object" &&
