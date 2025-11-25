@@ -18,6 +18,14 @@ import * as utils from "../utils";
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
 
+interface Command {
+  load: () => void;
+}
+
+function isCommand(value: unknown): value is Command {
+  return typeof value === "function" && typeof (value as any).load === "function";
+}
+
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
 
@@ -108,15 +116,16 @@ export function cli(pkg: any) {
   });
 
   if (!handlePreviewToggles(args)) {
-    // determine if there are any arguments. if not, display help
-    if (!args.length || args[0] === "help") {
+    // If this is a help command, load all commands so we can display them.
+    const isHelp = !args.length || args[0] === "help";
+    if (isHelp) {
       const seen = new Set();
       const loadAll = (obj: any) => {
         if (seen.has(obj)) return;
         seen.add(obj);
         for (const [key, value] of Object.entries(obj)) {
-          if (typeof value === "function" && (value as any).load) {
-            (value as any).load();
+          if (isCommand(value)) {
+            value.load();
           } else if (
             typeof value === "object" &&
             value !== null &&
@@ -128,6 +137,9 @@ export function cli(pkg: any) {
         }
       };
       loadAll(client);
+    }
+    // If there are no args, display help
+    if (!args.length) {
       client.cli.help();
     } else {
       cmd = client.cli.parse(process.argv);
