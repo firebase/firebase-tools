@@ -1,22 +1,22 @@
-import path from "node:path";
-import os from "node:os";
+import * as path from "path";
+import * as os from "os";
 import { randomBytes } from "node:crypto";
 import { mkdirSync, copyFileSync } from "node:fs";
-import { AgentTestRunner } from "./agent-test-runner.js";
-import { GeminiCliRunner } from "./gemini-cli-runner.js";
-import { buildFirebaseCli } from "./setup.js";
-import { addCleanup } from "../helpers/cleanup.js";
-import { TemplateName, copyTemplate, buildTemplates } from "../template/index.js";
-import { ToolMockName } from "../mock/tool-mocks.js";
-import { RunDirectories } from "./paths.js";
+import { AgentTestRunner } from "./agent-test-runner";
+import { GeminiCliRunner } from "./gemini-cli-runner";
+import { buildFirebaseCli } from "./setup";
+import { addCleanup } from "../helpers/cleanup";
+import { TemplateName, copyTemplate, buildTemplates } from "../template/index";
+import { ToolMockName } from "../mock/tool-mocks";
+import { RunDirectories } from "./paths";
 
-export * from "./agent-test-runner.js";
+export * from "./agent-test-runner";
 
 const dateName = new Date().toISOString().replace("T", "_").replace(/:/g, "-").replace(".", "-");
 
 const FIREBASE_CONFIG_FILENAME = "firebase-tools.json";
 const CONFIGSTORE_DIR = ".config/configstore";
-const HOME_CONFIGSTORE_DIR = path.resolve(path.join(os.homedir(), CONFIGSTORE_DIR));
+const HOME_CONFIGSTORE_DIR = path.resolve(os.homedir(), CONFIGSTORE_DIR);
 
 export async function setupEnvironment(): Promise<void> {
   await buildFirebaseCli();
@@ -64,7 +64,10 @@ export async function startAgentTest(
 }
 
 function createRunDirectory(testName: string): RunDirectories {
-  const sanitizedName = testName.toLowerCase().replace(/[^a-z0-9]/g, "-");
+  const sanitizedName = testName
+    .toLowerCase()
+    .replace(/^[^a-z0-9]/, "")
+    .replace(/[^a-z0-9]/g, "-");
   const testDir = path.resolve(
     path.join("output", dateName, `${sanitizedName}-${randomBytes(8).toString("hex")}`),
   );
