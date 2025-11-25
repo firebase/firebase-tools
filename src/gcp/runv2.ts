@@ -11,7 +11,7 @@ import * as backend from "../deploy/functions/backend";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
-import { logger } from "..";
+import { logger } from "../logger";
 import { partition } from "../functional";
 
 export const API_VERSION = "v2";

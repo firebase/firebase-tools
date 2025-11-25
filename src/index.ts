@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import * as leven from "leven";
 
 import { logger, useConsoleLoggers } from "./logger";
-import { isCommandModule } from "./command";
+import { isCommandModule, CLIClient } from "./command";
 
 const pkg = require("../package.json");
 
@@ -24,8 +24,7 @@ program.option("--debug", "print verbose debug output and keep a debug log file"
 program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
 program.allowUnknownOption();
 
-
-const client = {
+const client: CLIClient = {
   cli: program,
   logger: require("./logger"),
   errorOut: require("./errorOut").errorOut,
@@ -59,7 +58,7 @@ function suggestCommands(cmd: string, cmdList: string[]): string | undefined {
   }
 }
 
-const commandNames = program.commands.map((cmd: any) => {
+const commandNames = program.commands.map((cmd) => {
   return cmd._name;
 });
 
@@ -80,7 +79,7 @@ const RENAMED_COMMANDS: Record<string, string> = {
 program.action((_, args) => {
   const cmd = args[0];
   const keys = cmd.split(":");
-  let obj = client;
+  let obj: any = client;
   let hit = true;
   for (const key of keys) {
     if (!obj || typeof obj !== "object") {
@@ -92,14 +91,13 @@ program.action((_, args) => {
       hit = false;
       break;
     }
-    obj = (obj as any)[nextKey];
+    obj = obj[nextKey];
   }
 
   if (hit && isCommandModule(obj)) {
     obj.load();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (client.cli as any).allowUnknownOption(false);
-    (client.cli as any).parse(process.argv);
+    client.cli.allowUnknownOption(false);
+    client.cli.parse(process.argv);
     return;
   }
 
