@@ -22,6 +22,8 @@ program.option("--non-interactive", "error out of the command instead of waiting
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
 program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
+program.allowUnknownOption();
+
 
 const client = {
   cli: program,
@@ -96,6 +98,7 @@ program.action((_, args) => {
   if (hit && isCommandModule(obj)) {
     obj.load();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (client.cli as any).allowUnknownOption(false);
     (client.cli as any).parse(process.argv);
     return;
   }

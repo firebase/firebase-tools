@@ -1,23 +1,26 @@
+import { CLIClient } from "../command";
 import * as experiments from "../experiments";
+
+type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
 
 /**
  * Loads all commands for our parser.
  */
-export function load(client: any): any {
-  function loadCommand(name: string) {
+export function load(client: CLIClient): CLIClient {
+  function loadCommand(name: string): CommandRunner {
     const load = () => {
       const { command: cmd } = require(`./${name}`);
       cmd.register(client);
       return cmd.runner();
     };
 
-    const runner = async (...args: any[]) => {
+    const runner = (async (...args: any[]) => {
       const run = load();
       return run(...args);
-    };
+    }) as CommandRunner;
 
     // Store the load function on the runner so we can trigger it without running.
-    (runner as any).load = () => {
+    runner.load = () => {
       const tStart = process.hrtime.bigint();
       require(`./${name}`).command.register(client);
       const tEnd = process.hrtime.bigint();

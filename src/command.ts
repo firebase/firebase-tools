@@ -35,9 +35,10 @@ interface BeforeFunction {
   args: any[];
 }
 
-interface CLIClient {
+export interface CLIClient {
   cli: CommanderStatic;
   errorOut: (e: Error) => void;
+  [key: string]: any;
 }
 
 /**
