@@ -4,6 +4,7 @@ import { statSync } from "fs-extra";
 import { readdirRecursive } from "../fsAsync";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import { commandExistsSync, logLabeledBullet, logLabeledWarning } from "../utils";
 import { needProjectId } from "../projectUtils";
 import * as gcs from "../gcp/storage";
@@ -53,19 +54,30 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
         "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
       );
     }
+    let successCount = 0;
+    let failureCount = 0;
     if (fstat.isFile()) {
-      await uploadMap(mappingFiles, bucketName, appVersion, options);
+      const success = await uploadMap(mappingFiles, bucketName, appVersion, options);
+      success ? successCount++ : failureCount++;
     } else if (fstat.isDirectory()) {
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
       const files = (
         await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
       ).filter((f) => f.name.endsWith(".js.map"));
-      await Promise.all(files.map((f) => uploadMap(f.name, bucketName, appVersion, options)));
+      (
+        await Promise.all(files.map((f) => uploadMap(f.name, bucketName, appVersion, options)))
+      ).forEach((success) => {
+        success ? successCount++ : failureCount++;
+      });
     } else {
       throw new FirebaseError(
         "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
       );
     }
+    logLabeledBullet(
+      "crashlytics",
+      `Uploaded ${successCount} (${failureCount} failed) mapping files to ${bucketName}`,
+    );
 
     // TODO: notify Firebase Telemetry service of the new mapping file
   });
@@ -84,7 +96,13 @@ function getAppVersion(options: CommandOptions): string {
   }
   const gitCommit = getGitCommit();
   if (gitCommit) {
+    logLabeledBullet("crashlytics", `Using git commit as app version: ${gitCommit}`);
     return gitCommit;
+  }
+  const packageVersion = getPackageVersion();
+  if (packageVersion) {
+    logLabeledBullet("crashlytics", `Using package version as app version: ${packageVersion}`);
+    return packageVersion;
   }
   return "unset";
 }
@@ -134,8 +152,7 @@ async function uploadMap(
   bucketName: string,
   appVersion: string,
   options: CommandOptions,
-) {
-  logLabeledBullet("crashlytics", `Found mapping file ${mappingFile}...`);
+): Promise<boolean> {
   try {
     const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
     const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
@@ -148,9 +165,11 @@ async function uploadMap(
       },
       bucketName,
     );
-    logLabeledBullet("crashlytics", `Uploaded to gs://${bucket}/${object}`);
+    logger.debug(`Uploaded mapping file ${mappingFile} to gs://${bucket}/${object}`);
+    return true;
   } catch (e) {
     logLabeledWarning("crashlytics", `Failed to upload mapping file ${mappingFile}:\n${e}`);
+    return false;
   }
 }
 
@@ -164,6 +183,17 @@ function getGitCommit(): string | undefined {
   }
   try {
     return execSync("git rev-parse HEAD").toString().trim();
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function getPackageVersion(): string | undefined {
+  if (!commandExistsSync("npm")) {
+    return undefined;
+  }
+  try {
+    return execSync("npm pkg get version").toString().trim().replaceAll('"', "");
   } catch (error) {
     return undefined;
   }

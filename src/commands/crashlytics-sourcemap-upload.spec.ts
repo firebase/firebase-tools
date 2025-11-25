@@ -6,6 +6,8 @@ import * as gcs from "../gcp/storage";
 import * as projectUtils from "../projectUtils";
 import * as getProjectNumber from "../getProjectNumber";
 import { FirebaseError } from "../error";
+import * as childProcess from "child_process";
+import * as utils from "../utils";
 
 const expect = chai.expect;
 
@@ -20,6 +22,8 @@ describe("crashlytics:sourcemap:upload", () => {
   let gcsMock: sinon.SinonStubbedInstance<typeof gcs>;
   let projectUtilsMock: sinon.SinonStubbedInstance<typeof projectUtils>;
   let getProjectNumberMock: sinon.SinonStubbedInstance<typeof getProjectNumber>;
+  let execSyncStub: sinon.SinonStub;
+  let commandExistsSyncStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -35,6 +39,11 @@ describe("crashlytics:sourcemap:upload", () => {
       object: "test-object",
       generation: "1",
     });
+    execSyncStub = sandbox.stub(childProcess, "execSync");
+    commandExistsSyncStub = sandbox.stub(utils, "commandExistsSync");
+    // Default to git working
+    commandExistsSyncStub.withArgs("git").returns(true);
+    execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
   });
 
   afterEach(() => {
@@ -108,10 +117,32 @@ describe("crashlytics:sourcemap:upload", () => {
     );
   });
 
-  it("should default to the git commit for app version", async () => {
+  it("should fall back to the git commit for app version", async () => {
     await command.runner()(FILE_PATH, { app: "test-app" });
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
-      /test-app-[a-f0-9]{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
+      /test-app-a{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
+    );
+  });
+
+  it("should fall back to the package version for app version", async () => {
+    commandExistsSyncStub.withArgs("git").returns(true);
+    execSyncStub.withArgs("git rev-parse HEAD").throws(new Error("git failed"));
+    commandExistsSyncStub.withArgs("npm").returns(true);
+    execSyncStub.withArgs("npm pkg get version").returns(Buffer.from("1.2.3"));
+
+    await command.runner()(FILE_PATH, { app: "test-app" });
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+      "test-app-1.2.3-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
+    );
+  });
+
+  it("should fall back to the 'unset' for app version", async () => {
+    commandExistsSyncStub.withArgs("git").returns(false);
+    commandExistsSyncStub.withArgs("npm").returns(false);
+
+    await command.runner()(FILE_PATH, { app: "test-app" });
+    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+      "test-app-unset-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
   });
 });
