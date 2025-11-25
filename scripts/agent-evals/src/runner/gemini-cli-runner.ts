@@ -181,6 +181,11 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
   }
 
+  /**
+   * Inspect the users's GEMINI.md file to ensure a piece of information was written there.
+   *
+   * For more information about Gemini CLI's memory capabilities, see https://geminicli.com/docs/tools/memory/.
+   */
   public async expectMemory(text: string | RegExp): Promise<void> {
     let logs: string[] = [];
     const memoryFound = await poll(() => {

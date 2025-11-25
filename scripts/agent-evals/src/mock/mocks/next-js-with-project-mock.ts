@@ -7,7 +7,7 @@ import {
   DEFAULT_FIREBASE_WEB_APP_NAME,
   DEFAULT_FIREBASE_WEB_APP_API_KEY,
 } from "../../data/index.js";
-import { renderTemplate } from "../../../../../src/mcp/tools/core/get_environment";
+import { hydrateTemplate } from "../../../../../src/mcp/tools/core/get_environment";
 import { toMockContent } from "../tool-mock-utils.js";
 
 const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";
@@ -25,7 +25,7 @@ const environmentConfig = {
 export const nextJsWithProjectMock = {
   firebase_login: toMockContent(`Successfully logged in as ${DEFAULT_FIREBASE_USER}`),
 
-  firebase_get_environment: toMockContent(renderTemplate(environmentConfig)),
+  firebase_get_environment: toMockContent(hydrateTemplate(environmentConfig)),
 
   firebase_update_environment: toMockContent(
     `- Updated active project to '${DEFAULT_FIREBASE_PROJECT}'\n`,

@@ -42,7 +42,7 @@ interface EnvironmentTemplateValues {
 /**
  * Hydrate the template for the get_environment tool response
  */
-export function renderTemplate(config: EnvironmentTemplateValues): string {
+export function hydrateTemplate(config: EnvironmentTemplateValues): string {
   const activeProject = config.projectId
     ? `${config.projectId}${config.projectAliases.length ? ` (alias: ${config.projectAliases.join(",")})` : ""}`
     : "<NONE>";
@@ -135,6 +135,6 @@ export const get_environment = tool(
       detectedAppIds: detectedAppsMap,
       projectFileContents: projectFileExists ? config.readProjectFile("firebase.json") : undefined,
     };
-    return toContent(renderTemplate(environmentTemplateConfig));
+    return toContent(hydrateTemplate(environmentTemplateConfig));
   },
 );

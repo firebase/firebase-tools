@@ -1,5 +1,5 @@
 import { DEFAULT_FIREBASE_PROJECT, DEFAULT_FIREBASE_USER } from "../../data/index.js";
-import { renderTemplate } from "../../../../../src/mcp/tools/core/get_environment";
+import { hydrateTemplate } from "../../../../../src/mcp/tools/core/get_environment";
 import { toMockContent } from "../tool-mock-utils.js";
 
 const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";
@@ -21,13 +21,16 @@ const BASE_ENVIRONMENT_CONFIG = {
 
 export const getEnvironmentWithIosApp = {
   firebase_get_environment: toMockContent(
-    renderTemplate({ ...BASE_ENVIRONMENT_CONFIG, detectedAppIds: { [IOS_APP_ID]: IOS_BUNDLE_ID } }),
+    hydrateTemplate({
+      ...BASE_ENVIRONMENT_CONFIG,
+      detectedAppIds: { [IOS_APP_ID]: IOS_BUNDLE_ID },
+    }),
   ),
 };
 
 export const getEnvironmentWithAndroidApp = {
   firebase_get_environment: toMockContent(
-    renderTemplate({
+    hydrateTemplate({
       ...BASE_ENVIRONMENT_CONFIG,
       detectedAppIds: { [ANDROID_APP_ID]: ANDROID_PACKAGE_NAME },
     }),
@@ -36,7 +39,7 @@ export const getEnvironmentWithAndroidApp = {
 
 export const getEnvironmentWithFlutterApp = {
   firebase_get_environment: toMockContent(
-    renderTemplate({
+    hydrateTemplate({
       ...BASE_ENVIRONMENT_CONFIG,
       detectedAppIds: {
         [ANDROID_APP_ID]: ANDROID_PACKAGE_NAME,
