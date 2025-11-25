@@ -266,7 +266,7 @@ export function isMainSchema(schema: Schema): boolean {
 export interface ExecuteGraphqlRequest {
   query: string;
   operationName?: string;
-  variables?: { [key: string]: string };
+  variables?: { [key: string]: any };
   extensions?: { impersonate?: Impersonation };
 }
 
@@ -277,7 +277,7 @@ export interface GraphqlResponse {
 
 export interface ExecuteOperationRequest {
   operationName: string;
-  variables?: { [key: string]: string };
+  variables?: { [key: string]: any };
 }
 
 export interface GraphqlResponseError {
