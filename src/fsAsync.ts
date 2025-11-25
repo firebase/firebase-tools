@@ -1,9 +1,8 @@
-import { readdirSync, statSync, lstatSync } from "fs-extra";
+import { readdirSync, statSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
 import { join, relative } from "path";
-import { logger } from "./logger";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
@@ -28,9 +27,12 @@ async function readdirRecursiveHelper(options: {
   path: string;
   filter: (p: string) => boolean;
   maxDepth: number;
+  ignoreSymlinks: boolean;
 }): Promise<ReaddirRecursiveFile[]> {
-  const dirContents = readdirSync(options.path);
-  const fullPaths = dirContents.map((n) => join(options.path, n));
+  const dirContents = readdirSync(options.path, { withFileTypes: true });
+  const fullPaths = dirContents
+    .filter((n) => !options.ignoreSymlinks || !n.isSymbolicLink())
+    .map((n) => join(options.path, n.name));
   const filteredPaths = fullPaths.filter((p) => !options.filter(p));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
   for (const p of filteredPaths) {
@@ -43,7 +45,12 @@ async function readdirRecursiveHelper(options: {
     }
     if (options.maxDepth > 1) {
       filePromises.push(
-        readdirRecursiveHelper({ path: p, filter: options.filter, maxDepth: options.maxDepth - 1 }),
+        readdirRecursiveHelper({
+          path: p,
+          filter: options.filter,
+          maxDepth: options.maxDepth - 1,
+          ignoreSymlinks: options.ignoreSymlinks,
+        }),
       );
     }
   }
@@ -71,13 +78,6 @@ export async function readdirRecursive(
     .createFilter();
 
   const filter = (t: string): boolean => {
-    if (options.ignoreSymlinks) {
-      const stats = lstatSync(t);
-      if (stats.isSymbolicLink()) {
-        logger.warn(`Skipping ${t} because it is a symlink.`);
-        return true;
-      }
-    }
     if (options.isGitIgnore) {
       // the git ignore filter will return true if given path should be included,
       // so we need to negative that return false to avoid filtering it.
@@ -92,5 +92,6 @@ export async function readdirRecursive(
     path: options.path,
     filter: filter,
     maxDepth,
+    ignoreSymlinks: !!options.ignoreSymlinks,
   });
 }
