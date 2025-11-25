@@ -79,7 +79,7 @@ const RENAMED_COMMANDS: Record<string, string> = {
 program.action((_, args) => {
   const cmd = args[0];
   const keys = cmd.split(":");
-  let obj: any = client;
+  let obj = client;
   let hit = true;
   for (const key of keys) {
     if (!obj || typeof obj !== "object") {
