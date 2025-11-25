@@ -9,7 +9,6 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
 import { logger, useFileLogger } from "../logger";
 import * as client from "..";
 import * as fsutils from "../fsutils";
@@ -107,12 +106,10 @@ export function cli(pkg: any) {
     errorOut(err);
   });
 
-  if (!handlePreviewToggles(args)) {
-    // determine if there are any arguments. if not, display help
-    if (!args.length) {
-      client.cli.help();
-    } else {
-      cmd = client.cli.parse(process.argv);
-    }
+  // determine if there are any arguments. if not, display help
+  if (!args.length) {
+    client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
   }
 }
