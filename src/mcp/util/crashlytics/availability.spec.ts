@@ -236,6 +236,23 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.false;
   });
 
+  it("should return true for an iOS project with Crashlytics in project.pbxproj", async () => {
+    mockfs({
+      "/test-dir": {
+        ios: {
+          "Project.xcodeproj": {
+            "project.pbxproj":
+              "/* Begin PBXBuildFile section */  /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; /* FirebaseCore */; }; /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; /* FirebaseCrashlytics */; }; /* End PBXBuildFile section */",
+          },
+        },
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
   it("should return true for a Flutter project with Crashlytics in pubspec.yaml", async () => {
     mockfs({
       "/test-dir": {
