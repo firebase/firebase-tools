@@ -18,9 +18,6 @@ Some tools use [Gemini in Firebase](https://firebase.google.com/docs/ai-assistan
 - Generate Firebase Data Connect schema and operations
 - Consult Gemini about Firebase products
 
-> **Important:** Gemini in Firebase can generate output that seems plausible but is factually incorrect. It may respond with inaccurate information that doesn't represent Google's views. Validate all output from Gemini before you use it and don't use untested generated code in production. Don't enter personally-identifiable information (PII) or user data into the chat.
-> Learn more about [Gemini in Firebase and how it uses your data](https://firebase.google.com/docs/ai-assistance).
-
 ## Usage
 
 Once configured, the MCP server will automatically provide Firebase capabilities to your AI assistant. You can:
