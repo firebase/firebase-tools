@@ -34,6 +34,26 @@ const client: CLIClient = {
         return client.cli.commands[i];
       }
     }
+    const keys = name.split(":");
+    let obj: any = client;
+    for (const key of keys) {
+      if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
+        return;
+      }
+      const nextKey = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+      if (!nextKey) {
+        return;
+      }
+      obj = obj[nextKey];
+    }
+    if (isCommandModule(obj)) {
+      obj.load();
+      for (let i = 0; i < client.cli.commands.length; i++) {
+        if (client.cli.commands[i]._name === name) {
+          return client.cli.commands[i];
+        }
+      }
+    }
     return;
   },
 };
@@ -82,7 +102,7 @@ program.action((_, args) => {
   let obj = client;
   let hit = true;
   for (const key of keys) {
-    if (!obj || typeof obj !== "object") {
+    if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
       hit = false;
       break;
     }

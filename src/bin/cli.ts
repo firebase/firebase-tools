@@ -111,7 +111,7 @@ export function cli(pkg: any) {
 
   if (!handlePreviewToggles(args)) {
     // If this is a help command, load all commands so we can display them.
-    const isHelp = !args.length || args[0] === "help";
+    const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
     if (isHelp) {
       const seen = new Set();
       const loadAll = (obj: any) => {
