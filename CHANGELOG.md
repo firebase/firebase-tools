@@ -1,4 +1,4 @@
-- Enforce strict timeout validation for functions. (#9540)
+- [BREAKING] Enforce strict timeout validation for functions. (#9540)
 - [BREAKING] Changed `firestore:backups:list --json` to return a `listBackupsResponse` object instead of a raw array of backups.
 - [BREAKING] Removed support for '.bolt' rules files.
 - [BREAKING] Removed support for running emulators with Java versions prior to 21.
