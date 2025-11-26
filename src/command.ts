@@ -18,6 +18,14 @@ import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
 
+export interface CommandModule {
+  load: () => void;
+}
+
+export function isCommandModule(value: unknown): value is CommandModule {
+  return typeof value === "function" && typeof (value as any).load === "function";
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
 
@@ -27,9 +35,10 @@ interface BeforeFunction {
   args: any[];
 }
 
-interface CLIClient {
+export interface CLIClient {
   cli: CommanderStatic;
   errorOut: (e: Error) => void;
+  [key: string]: any;
 }
 
 /**
