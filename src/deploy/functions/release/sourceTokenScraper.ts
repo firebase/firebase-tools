@@ -3,6 +3,14 @@ import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
+interface TokenFetchOptions {
+  /**
+   * Maximum time to wait for a token before returning undefined.
+   * Keeps callers from blocking the entire deploy when the backend
+   * never returns a source token (as is possible with some APIs).
+   */
+  timeoutMs?: number;
+}
 interface TokenFetchResult {
   token?: string;
   aborted: boolean;
@@ -30,19 +38,25 @@ export class SourceTokenScraper {
     this.resolve({ aborted: true });
   }
 
-  async getToken(): Promise<string | undefined> {
+  async getToken(options: TokenFetchOptions = {}): Promise<string | undefined> {
     if (this.fetchState === "NONE") {
       this.fetchState = "FETCHING";
       return undefined;
     } else if (this.fetchState === "FETCHING") {
-      const tokenResult = await this.promise;
+      const tokenResult = await this.waitForToken(options.timeoutMs);
+      if (!tokenResult) {
+        return undefined;
+      }
       if (tokenResult.aborted) {
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
       }
       return tokenResult.token;
     } else if (this.fetchState === "VALID") {
-      const tokenResult = await this.promise;
+      const tokenResult = await this.waitForToken(options.timeoutMs);
+      if (!tokenResult) {
+        return undefined;
+      }
       if (this.isTokenExpired()) {
         this.fetchState = "FETCHING";
         this.promise = new Promise((resolve) => (this.resolve = resolve));
@@ -52,6 +66,16 @@ export class SourceTokenScraper {
     } else {
       assertExhaustive(this.fetchState);
     }
+  }
+
+  private async waitForToken(timeoutMs?: number): Promise<TokenFetchResult | undefined> {
+    if (timeoutMs === undefined) {
+      return this.promise;
+    }
+    return Promise.race([
+      this.promise,
+      new Promise<undefined>((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
   }
 
   isTokenExpired(): boolean {
