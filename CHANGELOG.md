@@ -2,3 +2,4 @@
 - [BREAKING] Removed support for '.bolt' rules files.
 - [BREAKING] Removed support for running emulators with Java versions prior to 21.
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
+- [BREAKING] Removed deprecated `firebase --open-sesame` and `firebase --close-sesame` commands. Use `firebase experiments:enable` and `firebase experiments:disable` instead.
