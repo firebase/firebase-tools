@@ -182,49 +182,38 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
  * This is a breaking change to prevent dangerous infinite retry loops and confusing timeouts.
  */
 export function validateTimeoutConfig(endpoints: backend.Endpoint[]): void {
-  const invalidEndpoints = endpoints.filter((ep) => {
+  const invalidEndpoints: { ep: backend.Endpoint; limit: number }[] = [];
+  for (const ep of endpoints) {
     const timeout = ep.timeoutSeconds;
     if (!timeout) {
-      return false;
+      continue;
     }
+
+    let limit: number | undefined;
     if (ep.platform === "gcfv1") {
-      return timeout > MAX_V1_TIMEOUT_SECONDS;
+      limit = MAX_V1_TIMEOUT_SECONDS;
+    } else if (backend.isEventTriggered(ep)) {
+      limit = MAX_V2_EVENTS_TIMEOUT_SECONDS;
+    } else if (backend.isScheduleTriggered(ep)) {
+      limit = MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
+    } else if (backend.isTaskQueueTriggered(ep)) {
+      limit = MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
+    } else if (backend.isHttpsTriggered(ep) || backend.isCallableTriggered(ep)) {
+      limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
     }
-    if (backend.isEventTriggered(ep)) {
-      return timeout > MAX_V2_EVENTS_TIMEOUT_SECONDS;
+
+    if (limit !== undefined && timeout > limit) {
+      invalidEndpoints.push({ ep, limit });
     }
-    if (backend.isScheduleTriggered(ep)) {
-      return timeout > MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
-    }
-    if (backend.isTaskQueueTriggered(ep)) {
-      return timeout > MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
-    }
-    if (backend.isHttpsTriggered(ep) || backend.isCallableTriggered(ep)) {
-      return timeout > MAX_V2_HTTP_TIMEOUT_SECONDS;
-    }
-    return false;
-  });
+  }
+
   if (invalidEndpoints.length === 0) {
     return;
   }
 
   const invalidList = invalidEndpoints
-    .sort(backend.compareFunctions)
-    .map((ep) => {
-      let limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
-      if (ep.platform === "gcfv1") {
-        limit = MAX_V1_TIMEOUT_SECONDS;
-      } else if (backend.isEventTriggered(ep)) {
-        limit = MAX_V2_EVENTS_TIMEOUT_SECONDS;
-      } else if (backend.isScheduleTriggered(ep)) {
-        limit = MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
-      } else if (backend.isTaskQueueTriggered(ep)) {
-        limit = MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
-      } else {
-        limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
-      }
-      return `\t${getFunctionLabel(ep)}: ${ep.timeoutSeconds}s (limit: ${limit}s)`;
-    })
+    .sort((a, b) => backend.compareFunctions(a.ep, b.ep))
+    .map(({ ep, limit }) => `\t${getFunctionLabel(ep)}: ${ep.timeoutSeconds}s (limit: ${limit}s)`)
     .join("\n");
 
   const msg =
