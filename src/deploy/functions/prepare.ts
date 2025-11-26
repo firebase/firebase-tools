@@ -259,7 +259,6 @@ export async function prepare(
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
     validate.endpointsAreValid(wantBackend);
-    validate.validateTimeoutConfig(backend.allEndpoints(wantBackend));
     inferBlockingDetails(wantBackend);
   }
 
