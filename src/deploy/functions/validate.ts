@@ -4,11 +4,42 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
+import { getFunctionLabel } from "./functionsDeployHelper";
+import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
-import { serviceForEndpoint } from "./services";
+
+/**
+ * GCF Gen 1 has a max timeout of 540s.
+ */
+const MAX_V1_TIMEOUT_SECONDS = 540;
+
+/**
+ * Eventarc triggers are implicitly limited by Pub/Sub's ack deadline (600s).
+ * However, GCFv2 API prevents creation of functions with timeout > 540s.
+ * See https://cloud.google.com/pubsub/docs/subscription-properties#ack_deadline
+ */
+const MAX_V2_EVENTS_TIMEOUT_SECONDS = 540;
+
+/**
+ * Cloud Scheduler has a max attempt deadline of 30 minutes.
+ * See https://cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs#Job.FIELDS.attempt_deadline
+ */
+const MAX_V2_SCHEDULE_TIMEOUT_SECONDS = 1800;
+
+/**
+ * Cloud Tasks has a max dispatch deadline of 30 minutes.
+ * See https://cloud.google.com/tasks/docs/reference/rest/v2/projects.locations.queues.tasks#Task.FIELDS.dispatch_deadline
+ */
+const MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS = 1800;
+
+/**
+ * HTTP and Callable functions have a max timeout of 60 minutes.
+ * See https://cloud.google.com/run/docs/configuring/request-timeout
+ */
+const MAX_V2_HTTP_TIMEOUT_SECONDS = 3600;
 
 function matchingIds(
   endpoints: backend.Endpoint[],
@@ -32,6 +63,7 @@ const cpu = (endpoint: backend.Endpoint): number => {
 export function endpointsAreValid(wantBackend: backend.Backend): void {
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
+  validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
   }
@@ -145,6 +177,63 @@ export function cpuConfigIsValid(endpoints: backend.Endpoint[]): void {
   }
 }
 
+/**
+ * Validates that the timeout for each endpoint is within acceptable limits.
+ * This is a breaking change to prevent dangerous infinite retry loops and confusing timeouts.
+ */
+export function validateTimeoutConfig(endpoints: backend.Endpoint[]): void {
+  const invalidEndpoints = endpoints.filter((ep) => {
+    const timeout = ep.timeoutSeconds;
+    if (!timeout) {
+      return false;
+    }
+    if (ep.platform === "gcfv1") {
+      return timeout > MAX_V1_TIMEOUT_SECONDS;
+    }
+    if (backend.isEventTriggered(ep)) {
+      return timeout > MAX_V2_EVENTS_TIMEOUT_SECONDS;
+    }
+    if (backend.isScheduleTriggered(ep)) {
+      return timeout > MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
+    }
+    if (backend.isTaskQueueTriggered(ep)) {
+      return timeout > MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
+    }
+    if (backend.isHttpsTriggered(ep) || backend.isCallableTriggered(ep)) {
+      return timeout > MAX_V2_HTTP_TIMEOUT_SECONDS;
+    }
+    return false;
+  });
+  if (invalidEndpoints.length === 0) {
+    return;
+  }
+
+  const invalidList = invalidEndpoints
+    .sort(backend.compareFunctions)
+    .map((ep) => {
+      let limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
+      if (ep.platform === "gcfv1") {
+        limit = MAX_V1_TIMEOUT_SECONDS;
+      } else if (backend.isEventTriggered(ep)) {
+        limit = MAX_V2_EVENTS_TIMEOUT_SECONDS;
+      } else if (backend.isScheduleTriggered(ep)) {
+        limit = MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
+      } else if (backend.isTaskQueueTriggered(ep)) {
+        limit = MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
+      } else {
+        limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
+      }
+      return `\t${getFunctionLabel(ep)}: ${ep.timeoutSeconds}s (limit: ${limit}s)`;
+    })
+    .join("\n");
+
+  const msg =
+    "The following functions have timeouts that exceed the maximum allowed for their trigger type:\n\n" +
+    invalidList +
+    "\n\nFor more information, see https://firebase.google.com/docs/functions/quotas#time_limits";
+  throw new FirebaseError(msg);
+}
+
 /** Validate that all endpoints in the given set of backends are unique */
 export function endpointsAreUnique(backends: Record<string, backend.Backend>): void {
   const endpointToCodebases: Record<string, Set<string>> = {}; // function name -> codebases
@@ -233,7 +322,7 @@ function validatePlatformTargets(endpoints: backend.Endpoint[]) {
     const errs = unsupported.map((e) => `${e.id}[platform=${e.platform}]`);
     throw new FirebaseError(
       `Tried to set secret environment variables on ${errs.join(", ")}. ` +
-        `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`,
+      `Only ${secretsSupportedPlatforms.join(", ")} support secret environments.`,
     );
   }
 }
