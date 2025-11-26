@@ -1,3 +1,5 @@
-import { setupEnvironment } from "../runner/index.js";
+import { setupEnvironment } from "../runner/index";
 
-await setupEnvironment();
+export async function mochaGlobalSetup() {
+  await setupEnvironment();
+}

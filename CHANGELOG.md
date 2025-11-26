@@ -1,2 +1,1 @@
-- Add support for nodejs24 (beta) runtime for Firebase Functions. (#9475)
-- Adds listServices and also defines trigger within runv2.ts [#9482]
+- Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj` (#9515)
