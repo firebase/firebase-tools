@@ -65,10 +65,6 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
   );
 
   const files = fileArrays.flat();
-  if (files.length === 0) {
-    return false;
-  }
-
   for (const file of files) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (content.includes("Crashlytics")) {
