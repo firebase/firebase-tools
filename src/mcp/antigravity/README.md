@@ -8,15 +8,9 @@ The Firebase Model Context Protocol (MCP) Server gives AI-powered development to
 
 Use this MCP server to quickly add powerful backend features to your app:
 
-- **Add a database to your app** - Store and query your application data with Cloud Firestore or Firebase Data Connect
-- **Add user login and sign up pages** - Implement authentication flows with Firebase Authentication
-- **Host your app** - Deploy and serve your application with Firebase Hosting services
-- **Add AI logic to your app** - Build intelligent features with Firebase AI Logic
-
-Some tools use [Gemini in Firebase](https://firebase.google.com/docs/ai-assistance) to help you:
-
-- Generate Firebase Data Connect schema and operations
-- Consult Gemini about Firebase products
+- Create and manage Firebase projects, apps, and directories.
+- Tools for your favorite Firebase products: read from your Firestore databases, look up Firebase Auth users, fetch logs to help debug Function and App Hosting.
+- Resources to help your agent set up and code with Firebase products
 
 ## Usage
 
