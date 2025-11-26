@@ -662,4 +662,106 @@ describe("validate", () => {
       }
     });
   });
+
+  describe("validateTimeoutConfig", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("should allow valid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3600,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should allow function without timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3601,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1800,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+  });
 });
