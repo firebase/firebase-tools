@@ -309,7 +309,8 @@ describe("cloudscheduler", () => {
         await cloudscheduler.jobFromEndpoint(
           {
             ...V2_ENDPOINT,
-            // This should never happen
+            // This is bad configuration.
+            // Users are discouraged from setting timeout >1800s for scheduled functions.
             timeoutSeconds: 3600,
           },
           V2_ENDPOINT.region,

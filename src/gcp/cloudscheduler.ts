@@ -4,14 +4,16 @@ import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
+import { assertExhaustive, nullsafeVisitor } from "../functional";
+import { MAX_V2_SCHEDULE_TIMEOUT_SECONDS } from "../deploy/functions/validate";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
 import * as gce from "../gcp/computeEngine";
-import { assertExhaustive, nullsafeVisitor } from "../functional";
 
 const VERSION = "v1";
 const DEFAULT_TIME_ZONE_V1 = "America/Los_Angeles";
 const DEFAULT_TIME_ZONE_V2 = "UTC";
+const ATTEMPT_DEADLINE_DEFAULT_SECONDS = 180;
 
 export interface PubsubTarget {
   topicName: string;
@@ -264,12 +266,18 @@ export async function jobFromEndpoint(
   job.schedule = endpoint.scheduleTrigger.schedule;
   if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
     proto.convertIfPresent(job, endpoint, "attemptDeadline", "timeoutSeconds", (timeout) => {
+      if (timeout === null) {
+        return null;
+      }
       // Cloud Scheduler has an attempt deadline range of [15s, 1800s], and defaults to 180s.
       // We floor at 180s to be safe, even if the function timeout is shorter.
       // This is because GCF/Cloud Run will already terminate the function at its configured timeout,
       // so Cloud Scheduler won't actually wait the full 180s unless GCF itself fails to respond.
       // Setting it shorter than 180s might cause premature retries due to network latency.
-      const attemptDeadlineSeconds = Math.max(Math.min(timeout as number, 1800), 180);
+      const attemptDeadlineSeconds = Math.max(
+        Math.min(timeout, MAX_V2_SCHEDULE_TIMEOUT_SECONDS),
+        ATTEMPT_DEADLINE_DEFAULT_SECONDS,
+      );
       return proto.durationFromSeconds(attemptDeadlineSeconds);
     });
   }

@@ -14,7 +14,7 @@ import { serviceForEndpoint } from "./services";
  * Cloud Scheduler has a max attempt deadline of 30 minutes.
  * See https://cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs#Job.FIELDS.attempt_deadline
  */
-const MAX_V2_SCHEDULE_TIMEOUT_SECONDS = 1800;
+export const MAX_V2_SCHEDULE_TIMEOUT_SECONDS = 1800;
 
 function matchingIds(
   endpoints: backend.Endpoint[],
