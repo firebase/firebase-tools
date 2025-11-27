@@ -6,8 +6,8 @@ import { cloudschedulerOrigin } from "../api";
 import { Client } from "../apiv2";
 import { assertExhaustive, nullsafeVisitor } from "../functional";
 import {
-  DEFAULT_V2_SCHEDULE_TIMEOUT_SECONDS,
-  MAX_V2_SCHEDULE_TIMEOUT_SECONDS,
+  DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
+  MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
 } from "../deploy/functions/validate";
 import * as backend from "../deploy/functions/backend";
 import * as proto from "./proto";
@@ -277,8 +277,8 @@ export async function jobFromEndpoint(
       // so Cloud Scheduler won't actually wait the full 180s unless GCF itself fails to respond.
       // Setting it shorter than 180s might cause premature retries due to network latency.
       const attemptDeadlineSeconds = Math.max(
-        Math.min(timeout, MAX_V2_SCHEDULE_TIMEOUT_SECONDS),
-        DEFAULT_V2_SCHEDULE_TIMEOUT_SECONDS,
+        Math.min(timeout, MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS),
+        DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS,
       );
       return proto.durationFromSeconds(attemptDeadlineSeconds);
     });
