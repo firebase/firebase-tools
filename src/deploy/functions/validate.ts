@@ -11,9 +11,10 @@ import * as secrets from "../../functions/secrets";
 import { serviceForEndpoint } from "./services";
 
 /**
- * Cloud Scheduler has a max attempt deadline of 30 minutes.
+ * Cloud Scheduler requires attempt deadline in range [15s, 30min] with default of 3min.
  * See https://cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs#Job.FIELDS.attempt_deadline
  */
+export const DEFAULT_V2_SCHEDULE_TIMEOUT_SECONDS = 180;
 export const MAX_V2_SCHEDULE_TIMEOUT_SECONDS = 1800;
 
 function matchingIds(
