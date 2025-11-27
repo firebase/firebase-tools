@@ -263,13 +263,15 @@ export async function jobFromEndpoint(
   }
   job.schedule = endpoint.scheduleTrigger.schedule;
   if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
-    proto.convertIfPresent(
-      job,
-      endpoint.scheduleTrigger,
-      "attemptDeadline",
-      "attemptDeadlineSeconds",
-      nullsafeVisitor(proto.durationFromSeconds),
-    );
+    proto.convertIfPresent(job, endpoint, "attemptDeadline", "timeoutSeconds", (timeout) => {
+      // Cloud Scheduler has an attempt deadline range of [15s, 1800s], and defaults to 180s.
+      // We floor at 180s to be safe, even if the function timeout is shorter.
+      // This is because GCF/Cloud Run will already terminate the function at its configured timeout,
+      // so Cloud Scheduler won't actually wait the full 180s unless GCF itself fails to respond.
+      // Setting it shorter than 180s might cause premature retries due to network latency.
+      const attemptDeadlineSeconds = Math.max(Math.min(timeout as number, 1800), 180);
+      return proto.durationFromSeconds(attemptDeadlineSeconds);
+    });
   }
   if (endpoint.scheduleTrigger.retryConfig) {
     job.retryConfig = {};

@@ -10,6 +10,12 @@ import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
 import { serviceForEndpoint } from "./services";
 
+/**
+ * Cloud Scheduler has a max attempt deadline of 30 minutes.
+ * See https://cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs#Job.FIELDS.attempt_deadline
+ */
+const MAX_V2_SCHEDULE_TIMEOUT_SECONDS = 1800;
+
 function matchingIds(
   endpoints: backend.Endpoint[],
   filter: (endpoint: backend.Endpoint) => boolean,
@@ -28,11 +34,28 @@ const cpu = (endpoint: backend.Endpoint): number => {
     : endpoint.cpu ?? backend.memoryToGen2Cpu(mem(endpoint));
 };
 
+function validateScheduledTimeout(ep: backend.Endpoint): void {
+  if (
+    backend.isScheduleTriggered(ep) &&
+    ep.timeoutSeconds &&
+    ep.timeoutSeconds > MAX_V2_SCHEDULE_TIMEOUT_SECONDS
+  ) {
+    utils.logLabeledWarning(
+      "functions",
+      `Scheduled function ${ep.id} has a timeout of ${ep.timeoutSeconds} seconds, ` +
+        `which exceeds the maximum attempt deadline of ${MAX_V2_SCHEDULE_TIMEOUT_SECONDS} seconds for Cloud Scheduler. ` +
+        "This is probably not what you want! Having a timeout longer than the attempt deadline may lead to unexpected retries and multiple function executions. " +
+        `The attempt deadline will be capped at ${MAX_V2_SCHEDULE_TIMEOUT_SECONDS} seconds.`,
+    );
+  }
+}
+
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   for (const ep of endpoints) {
+    validateScheduledTimeout(ep);
     serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
   }
 
