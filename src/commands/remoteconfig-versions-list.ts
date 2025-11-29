@@ -34,7 +34,7 @@ export const command = new Command("remoteconfig:versions:list")
       options.limit,
     );
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    for (let item = 0; item < versionsList.versions.length; item++) {
+    for (let item = 0; item < versionsList.versions?.length; item++) {
       pushTableContents(table, versionsList.versions[item]);
     }
     logger.info(table.toString());
