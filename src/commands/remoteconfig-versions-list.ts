@@ -34,7 +34,7 @@ export const command = new Command("remoteconfig:versions:list")
       options.limit,
     );
     printVersionsTable(versionsList);
-    
+
     return versionsList;
   });
 
