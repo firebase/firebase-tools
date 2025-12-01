@@ -21,13 +21,7 @@ export function load(client: CLIClient): CLIClient {
 
     // Store the load function on the runner so we can trigger it without running.
     runner.load = () => {
-      const tStart = process.hrtime.bigint();
       require(`./${name}`).command.register(client);
-      const tEnd = process.hrtime.bigint();
-      const diff = (tEnd - tStart) / BigInt(1e6);
-      if (diff > 75) {
-        // console.error(`Loading ${name} took ${diff}ms`);
-      }
     };
 
     return runner;
