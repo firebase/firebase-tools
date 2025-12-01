@@ -6,7 +6,7 @@ export const crashlytics_reports = resource(
     name: "crashlytics_reports_guide",
     title: "Firebase Crashlytics Reports Guide",
     description:
-      "guides the coding agent through requesting Crashlytics reports, including setting appropriate filters and how to understand the metrics",
+      "Guides the coding agent through requesting Crashlytics reports, including setting appropriate filters and how to understand the metrics. The agent should read this guide before requesting any report.",
   },
   async (uri) => {
     return {

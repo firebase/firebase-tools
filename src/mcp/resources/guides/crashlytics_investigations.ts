@@ -6,7 +6,7 @@ export const crashlytics_investigations = resource(
     name: "crashlytics_investigations_guide",
     title: "Firebase Crashlytics Investigations Guide",
     description:
-      "guides the coding agent when investigating bugs reported in Crashlytics issues, including procedures for diagnosing and fixing crashes",
+      "Guides the coding agent when investigating bugs reported in Crashlytics issues, including procedures for diagnosing and fixing crashes.",
   },
   async (uri) => {
     return {
