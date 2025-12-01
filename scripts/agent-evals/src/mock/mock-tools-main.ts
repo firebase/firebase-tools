@@ -74,13 +74,21 @@ const originalRequire = Module.prototype.require;
 };
 
 function removeToolRequirements(tool: any) {
-  if (!tool[MCP_KEY] || !tool[MCP_KEY][META_KEY]) {
+  if (!tool[MCP_KEY]?.[META_KEY]) {
     return tool;
   }
-  tool[MCP_KEY][META_KEY]["optionalProjectDir"] = false;
-  tool[MCP_KEY][META_KEY]["requiresAuth"] = false;
-  tool[MCP_KEY][META_KEY]["requiresProject"] = false;
-  return tool;
+  return {
+    ...tool,
+    [MCP_KEY]: {
+      ...tool[MCP_KEY],
+      [META_KEY]: {
+        ...tool[MCP_KEY][META_KEY],
+        optionalProjectDir: false,
+        requiresAuth: false,
+        requiresProject: false,
+      },
+    },
+  };
 }
 
 function logToFile(message: string) {
