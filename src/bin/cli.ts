@@ -107,33 +107,33 @@ export function cli(pkg: any) {
   process.on("uncaughtException", (err) => {
     errorOut(err);
   });
-  
-    // If this is a help command, load all commands so we can display them.
-    const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
-    if (isHelp) {
-      const seen = new Set();
-      const loadAll = (obj: any) => {
-        if (seen.has(obj)) return;
-        seen.add(obj);
-        for (const [key, value] of Object.entries(obj)) {
-          if (isCommandModule(value)) {
-            value.load();
-          } else if (
-            typeof value === "object" &&
-            value !== null &&
-            !Array.isArray(value) &&
-            key !== "cli"
-          ) {
-            loadAll(value);
-          }
+
+  // If this is a help command, load all commands so we can display them.
+  const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
+  if (isHelp) {
+    const seen = new Set();
+    const loadAll = (obj: any) => {
+      if (seen.has(obj)) return;
+      seen.add(obj);
+      for (const [key, value] of Object.entries(obj)) {
+        if (isCommandModule(value)) {
+          value.load();
+        } else if (
+          typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value) &&
+          key !== "cli"
+        ) {
+          loadAll(value);
         }
-      };
-      loadAll(client);
-    }
-    // If there are no args, display help
-    if (!args.length) {
-      client.cli.help();
-    } else {
-      cmd = client.cli.parse(process.argv);
-    }
+      }
+    };
+    loadAll(client);
+  }
+  // If there are no args, display help
+  if (!args.length) {
+    client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
+  }
 }
