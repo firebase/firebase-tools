@@ -16,7 +16,7 @@ describe("loadCJSON", () => {
     const filePath = path.join(fixturesDir, "nonexistent.cjson");
     expect(() => loadCJSON(filePath)).to.throw(
       FirebaseError,
-      new RegExp(`File ${filePath} does not exist`),
+      "File " + filePath + " does not exist"
     );
   });
 
