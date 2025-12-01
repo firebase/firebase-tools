@@ -9,7 +9,6 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
 import { logger, useFileLogger } from "../logger";
 import * as client from "..";
 import * as fsutils from "../fsutils";
@@ -108,8 +107,7 @@ export function cli(pkg: any) {
   process.on("uncaughtException", (err) => {
     errorOut(err);
   });
-
-  if (!handlePreviewToggles(args)) {
+  
     // If this is a help command, load all commands so we can display them.
     const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
     if (isHelp) {
@@ -138,5 +136,4 @@ export function cli(pkg: any) {
     } else {
       cmd = client.cli.parse(process.argv);
     }
-  }
 }

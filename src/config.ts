@@ -16,7 +16,6 @@ import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 import { loadCJSON } from "./loadCJSON";
-const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
   static DEFAULT_FUNCTIONS_SOURCE = "functions";
@@ -68,7 +67,7 @@ export class Config {
     }
 
     // If a top-level key contains a string path pointing to a suported file
-    // type (JSON or Bolt), we read the file.
+    // type (JSON ), we read the file.
     //
     // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
@@ -166,10 +165,9 @@ export class Config {
         return loadCJSON(fullPath);
       /* istanbul ignore-next */
       case ".bolt":
-        if (target === "database") {
-          this.notes.databaseRules = "bolt";
-        }
-        return parseBoltRules(fullPath);
+        throw new FirebaseError(
+          "As of firebase-tools@15.0.0, .bolt rules are no longer supported.",
+        );
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
