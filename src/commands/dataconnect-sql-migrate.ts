@@ -8,6 +8,7 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
 type MigrateOptions = Options & { service?: string; location?: string };
 
@@ -32,8 +33,8 @@ export const command = new Command("dataconnect:sql:migrate")
       options.service,
       options.location,
     );
-    const instanceId =
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
+    const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
+      .instanceId;
     if (!instanceId) {
       throw new FirebaseError(
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
@@ -41,9 +42,10 @@ export const command = new Command("dataconnect:sql:migrate")
     }
     const diffs = await migrateSchema({
       options,
-      schema: serviceInfo.schema,
+      schema: mainSchema(serviceInfo.schemas),
       validateOnly: true,
-      schemaValidation: serviceInfo.dataConnectYaml.schema.datasource.postgresql?.schemaValidation,
+      schemaValidation: mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql
+        ?.schemaValidation,
     });
     if (diffs.length) {
       logLabeledSuccess(

@@ -1,20 +1,30 @@
+import { CLIClient } from "../command";
 import * as experiments from "../experiments";
+
+type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
+
 /**
  * Loads all commands for our parser.
  */
-export function load(client: any): any {
-  function loadCommand(name: string) {
-    const t0 = process.hrtime.bigint();
-    const { command: cmd } = require(`./${name}`);
-    cmd.register(client);
-    const t1 = process.hrtime.bigint();
-    const diffMS = (t1 - t0) / BigInt(1e6);
-    if (diffMS > 75) {
-      // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
-      // console.error(`Loading ${name} took ${diffMS}ms`);
-    }
+export function load(client: CLIClient): CLIClient {
+  function loadCommand(name: string): CommandRunner {
+    const load = () => {
+      const { command: cmd } = require(`./${name}`);
+      cmd.register(client);
+      return cmd.runner();
+    };
 
-    return cmd.runner();
+    const runner = (async (...args: any[]) => {
+      const run = load();
+      return run(...args);
+    }) as CommandRunner;
+
+    // Store the load function on the runner so we can trigger it without running.
+    runner.load = () => {
+      require(`./${name}`).command.register(client);
+    };
+
+    return runner;
   }
 
   const t0 = process.hrtime.bigint();
@@ -25,11 +35,14 @@ export function load(client: any): any {
   client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
   client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
-  client.appdistribution.group = {};
-  client.appdistribution.group.list = loadCommand("appdistribution-groups-list");
-  client.appdistribution.group.create = loadCommand("appdistribution-groups-create");
-  client.appdistribution.group.delete = loadCommand("appdistribution-groups-delete");
-  client.appdistribution.groups = client.appdistribution.group;
+  client.appdistribution.groups = {};
+  client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
+  client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
+  client.appdistribution.groups.delete = loadCommand("appdistribution-groups-delete");
+  client.appdistribution.group = client.appdistribution.groups;
+  client.appdistribution.testCases = {};
+  client.appdistribution.testCases.export = loadCommand("appdistribution-testcases-export");
+  client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -115,6 +128,7 @@ export function load(client: any): any {
   client.firestore.databases.update = loadCommand("firestore-databases-update");
   client.firestore.databases.delete = loadCommand("firestore-databases-delete");
   client.firestore.databases.restore = loadCommand("firestore-databases-restore");
+  client.firestore.databases.clone = loadCommand("firestore-databases-clone");
   client.firestore.backups = {};
   client.firestore.backups.schedules = {};
   client.firestore.backups.list = loadCommand("firestore-backups-list");
@@ -231,6 +245,7 @@ export function load(client: any): any {
   client.setup.emulators.ui = loadCommand("setup-emulators-ui");
   client.dataconnect = {};
   client.setup.emulators.dataconnect = loadCommand("setup-emulators-dataconnect");
+  client.dataconnect.execute = loadCommand("dataconnect-execute");
   client.dataconnect.services = {};
   client.dataconnect.services.list = loadCommand("dataconnect-services-list");
   client.dataconnect.sql = {};

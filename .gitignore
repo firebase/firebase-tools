@@ -3,6 +3,7 @@ src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/pa
 src/test/emulators/extensions/firebase/storage-resize-images@0.1.18/functions/package-lock.json
 scripts/functions-deploy-tests/**/package-lock.json
 scripts/functions-discover-tests/**/**/package-lock.json
+scripts/agent-evals/output
 .dataconnect
 *-debug.log
 
@@ -27,6 +28,7 @@ yarn.lock
 scripts/*.json
 
 lib/
+!scripts/agent-evals/templates/crashlytics-flutter/lib/
 dev/
 clean/
 .gemini/

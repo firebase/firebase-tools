@@ -1,5 +1,16 @@
 ## NEXT
 
+## 1.10.1
+
+- Update internal `firebase-tools` dependency to 14.24.2
+
+## 1.10.0
+
+- [Fixed] Populate correct default values of missing required variables.
+- [Added] Display the execution variables and auth params used.
+- [Added] Allow rerun any executions in the history.
+- Update internal `firebase-tools` dependency to 14.20.0
+
 ## 1.9.0
 
 - [Added] Refine / Generate Operation Code Lens.

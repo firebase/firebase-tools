@@ -10,6 +10,7 @@ import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
 import { pickOneService } from "../dataconnect/load";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
 type SetupOptions = Options & { service?: string; location?: string };
 
@@ -33,15 +34,17 @@ export const command = new Command("dataconnect:sql:setup")
       options.service,
       options.location,
     );
-    const instanceId =
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
+    const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
+      .instanceId;
     if (!instanceId) {
       throw new FirebaseError(
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
       );
     }
 
-    const { serviceName, instanceName, databaseId } = getIdentifiers(serviceInfo.schema);
+    const { serviceName, instanceName, databaseId } = getIdentifiers(
+      mainSchema(serviceInfo.schemas),
+    );
     await ensureServiceIsConnectedToCloudSql(
       serviceName,
       instanceName,

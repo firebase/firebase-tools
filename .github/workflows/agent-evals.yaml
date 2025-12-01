@@ -1,0 +1,64 @@
+name: Agent Evals
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every 6 hours
+    - cron: "0 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version:
+          - "20"
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: npm-shrinkwrap.json
+
+      - run: npm i -g npm@9.5
+      - run: npm install -g @google/gemini-cli
+      - run: npm ci
+      - run: npm install
+        working-directory: scripts/agent-evals
+      - name: "Run agent-evals tests"
+        run: |-
+          set -euo pipefail
+
+          # Create temporary directories and clean them up when we're done
+          TEMP_STDOUT="$(mktemp -p "${RUNNER_TEMP}" gemini-out.XXXXXXXXXX)"
+          TEMP_STDERR="$(mktemp -p "${RUNNER_TEMP}" gemini-err.XXXXXXXXXX)"
+          function cleanup {
+            rm -f "${TEMP_STDOUT}" "${TEMP_STDERR}"
+          }
+          trap cleanup EXIT
+
+          npm run test 2> "${TEMP_STDERR}" 1> "${TEMP_STDOUT}"
+
+          # Write the logs and errors to GITHUB_OUTPUT
+          mkdir -p gemini-artifacts
+          cp "${TEMP_STDOUT}" gemini-artifacts/stdout.log
+          cp "${TEMP_STDERR}" gemini-artifacts/stderr.log
+          cat "${TEMP_STDOUT}" >> "${GITHUB_OUTPUT}"
+          echo "EOF" >> "${GITHUB_OUTPUT}"
+          cat "${TEMP_STDERR}" >> "${GITHUB_OUTPUT}"
+          echo "EOF" >> "${GITHUB_OUTPUT}"
+
+        working-directory: scripts/agent-evals

@@ -5,6 +5,7 @@ import { generateOperation } from "../../../gemini/fdcExperience";
 import { pickOneService } from "../../../dataconnect/load";
 
 export const generate_operation = tool(
+  "dataconnect",
   {
     name: "generate_operation",
     description:

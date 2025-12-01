@@ -7,6 +7,7 @@
                 "nodejs18",
                 "nodejs20",
                 "nodejs22",
+                "nodejs24",
                 "python310",
                 "python311",
                 "python312",
@@ -872,6 +873,9 @@
                 "configDir": {
                     "type": "string"
                 },
+                "disallowLegacyRuntimeConfig": {
+                    "type": "boolean"
+                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -912,6 +916,7 @@
                         "nodejs18",
                         "nodejs20",
                         "nodejs22",
+                        "nodejs24",
                         "python310",
                         "python311",
                         "python312",
@@ -1087,7 +1092,6 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
         "apphosting": {

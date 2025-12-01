@@ -3,7 +3,7 @@ import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -39,7 +39,7 @@ export const ALL_EXPERIMENTS = experiments({
       "of deploys. This has been made an experiment due to backend bugs that are " +
       "temporarily causing failures in some regions with this optimization enabled",
     public: true,
-    default: true,
+    default: false,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
@@ -55,19 +55,23 @@ export const ALL_EXPERIMENTS = experiments({
       `Registry. The ${bold("functions:deletegcfartifacts")} command ` +
       "will delete all Docker images created by Google Cloud Functions irrespective " +
       "of how that image was created.",
-    public: true,
+    public: false,
   },
-  dangerouslyAllowFunctionsConfig: {
-    shortDescription: "Allows the use of deprecated functions.config() API",
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
-      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
-      "This experiment allows continued use of the API during the migration period.",
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
     default: true,
     public: true,
   },
   runfunctions: {
     shortDescription:
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
   },
 
@@ -152,16 +156,19 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for Data Connect",
+    public: false,
+    default: false,
+  },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
-  ailogic: {
-    shortDescription: "Enable Firebase AI Logic feature for existing apps",
-    fullDescription:
-      "Enables the AI Logic initialization feature that provisions AI Logic for existing Firebase apps.",
-    public: true,
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase Data Connect webhooks feature.",
     default: false,
+    public: false,
   },
 });
 

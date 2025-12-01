@@ -48,6 +48,7 @@ jobs:
         node-version:
           - "20"
           - "22"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -84,7 +85,7 @@ jobs:
   #     - name: Setup Java JDK
   #       uses: actions/setup-java@v3.3.0
   #       with:
-  #         java-version: 17
+  #         java-version: 21
   #         distribution: temurin
 
   #     - uses: actions/checkout@v4
@@ -125,6 +126,27 @@ jobs:
   #     - uses: codecov/codecov-action@v3
   #       if: matrix.node-version == '20'
 
+  agent_evals_build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version:
+          - "22"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+          cache-dependency-path: scripts/agent-evals/package-lock.json
+
+      - run: npm i -g npm@9.5
+      - run: npm ci
+      - run: npm install
+        working-directory: scripts/agent-evals
+      - run: npm run build
+        working-directory: scripts/agent-evals
+
   unit:
     runs-on: ubuntu-latest
     strategy:
@@ -132,6 +154,7 @@ jobs:
         node-version:
           - "20"
           - "22"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -188,6 +211,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 21
+          distribution: temurin
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1.7.2
         with:
@@ -247,7 +275,7 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
-          java-version: 17
+          java-version: 21
           distribution: temurin
 
       - uses: actions/checkout@v4
@@ -280,7 +308,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -300,7 +327,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4
@@ -320,7 +346,6 @@ jobs:
       matrix:
         node-version:
           - "20"
-          - "22"
 
     steps:
       - uses: actions/checkout@v4

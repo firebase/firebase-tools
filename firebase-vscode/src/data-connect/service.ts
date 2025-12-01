@@ -1,4 +1,4 @@
-import fetch, { Response } from "node-fetch";
+import fetch from "node-fetch";
 import { ExtensionContext } from "vscode";
 import {
   ExecutionResult,
@@ -6,8 +6,6 @@ import {
   getIntrospectionQuery,
 } from "graphql";
 import { DataConnectError } from "../../common/error";
-import { AuthService } from "../auth/service";
-import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { dataConnectConfigs } from "../data-connect/config";
@@ -24,23 +22,21 @@ import {
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
-  Impersonation,
 } from "../dataconnect/types";
 import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { ExecutionParamsService } from "./execution/execution-params";
 
 /**
  * DataConnect Emulator service
  */
 export class DataConnectService {
   constructor(
-    private authService: AuthService,
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
-    private context: ExtensionContext,
     private analyticsLogger: AnalyticsLogger,
   ) {}
 
@@ -100,19 +96,6 @@ export class DataConnectService {
       ...rest,
       variables: JSON.parse(variables),
     });
-  }
-
-  private _auth(): { impersonate?: Impersonation } {
-    const userMock = this.authService.userMock;
-    if (!userMock || userMock.kind === UserMockKind.ADMIN) {
-      return {};
-    }
-    return {
-      impersonate:
-        userMock.kind === UserMockKind.AUTHENTICATED
-          ? { authClaims: JSON.parse(userMock.claims), includeDebugDetails: true }
-          : { unauthenticated: true, includeDebugDetails: true },
-    };
   }
 
   // This introspection is used to generate a basic graphql schema
@@ -197,36 +180,13 @@ export class DataConnectService {
     }
   }
 
-  async executeGraphQL(params: {
-    query: string;
-    operationName?: string;
-    variables: string;
-    path: string;
-    instance: InstanceType;
-  }) {
-    const servicePath = await this.servicePath(params.path);
-    if (!servicePath) {
-      throw new Error("No service found for path: " + params.path);
-    }
-    const prodBody: ExecuteGraphqlRequest = {
-      operationName: params.operationName,
-      variables: parseVariableString(params.variables),
-      query: params.query,
-      name: `${servicePath}`,
-      extensions: this._auth(),
-    };
-
-    const body = this._serializeBody({
-      ...params,
-      name: `${servicePath}`,
-      extensions: this._auth(),
-    });
-    if (params.instance === InstanceType.PRODUCTION) {
+  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest) {
+    if (instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
       pluginLogger.info(
-        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`,
+        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(body, undefined, 4)}`,
       );
-      const resp = await executeGraphQL(client, servicePath, prodBody);
+      const resp = await executeGraphQL(client, servicePath, body);
       return this.handleProdResponse(resp);
     } else {
       const endpoint = this.emulatorsController.getLocalEndpoint();
@@ -239,25 +199,12 @@ export class DataConnectService {
         urlPrefix: endpoint,
         apiVersion: DATACONNECT_API_VERSION,
       });
-      const resp = await executeGraphQL(client, servicePath, prodBody);
+      const resp = await executeGraphQL(client, servicePath, body);
       return this.handleEmulatorResponse(resp);
     }
   }
 
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
-  }
-}
-
-function parseVariableString(variables: string): Record<string, any> {
-  if (!variables) {
-    return {};
-  }
-  try {
-    return JSON.parse(variables);
-  } catch (e: any) {
-    throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
-    );
   }
 }

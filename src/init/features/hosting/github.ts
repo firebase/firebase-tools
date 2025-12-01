@@ -57,7 +57,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
     return reject("Could not determine Project ID, can't set up GitHub workflow.", { exit: 1 });
   }
 
-  if (!setup.config.hosting) {
+  if (!setup.config.hosting && !setup.featureInfo?.hosting) {
     return reject(
       `Didn't find a Hosting config in firebase.json. Run ${bold("firebase init hosting")} instead.`,
     );
@@ -132,7 +132,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
 
   // If the developer is using predeploy scripts in firebase.json,
   // remind them before they set up a script in their workflow file.
-  if (!Array.isArray(setup.config.hosting) && setup.config.hosting.predeploy) {
+  if (!Array.isArray(setup.config.hosting) && setup.config.hosting?.predeploy) {
     logBullet(`You have a predeploy script configured in firebase.json.`);
   }
 
@@ -687,8 +687,4 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
 
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");
-}
-
-export function isRunningInGithubAction() {
-  return process.env.GITHUB_ACTION_REPOSITORY === HOSTING_GITHUB_ACTION_NAME.split("@")[0];
 }

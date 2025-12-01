@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import * as leven from "leven";
 
 import { logger, useConsoleLoggers } from "./logger";
+import { isCommandModule, CLIClient } from "./command";
 
 const pkg = require("../package.json");
 
@@ -21,8 +22,9 @@ program.option("--non-interactive", "error out of the command instead of waiting
 program.option("-i, --interactive", "force prompts to be displayed");
 program.option("--debug", "print verbose debug output and keep a debug log file");
 program.option("-c, --config <path>", "path to the firebase.json file to use for configuration");
+program.allowUnknownOption();
 
-const client = {
+const client: CLIClient = {
   cli: program,
   logger: require("./logger"),
   errorOut: require("./errorOut").errorOut,
@@ -30,6 +32,26 @@ const client = {
     for (let i = 0; i < client.cli.commands.length; i++) {
       if (client.cli.commands[i]._name === name) {
         return client.cli.commands[i];
+      }
+    }
+    const keys = name.split(":");
+    let obj: any = client;
+    for (const key of keys) {
+      if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
+        return;
+      }
+      const nextKey = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+      if (!nextKey) {
+        return;
+      }
+      obj = obj[nextKey];
+    }
+    if (isCommandModule(obj)) {
+      obj.load();
+      for (let i = 0; i < client.cli.commands.length; i++) {
+        if (client.cli.commands[i]._name === name) {
+          return client.cli.commands[i];
+        }
       }
     }
     return;
@@ -56,7 +78,7 @@ function suggestCommands(cmd: string, cmdList: string[]): string | undefined {
   }
 }
 
-const commandNames = program.commands.map((cmd: any) => {
+const commandNames = program.commands.map((cmd) => {
   return cmd._name;
 });
 
@@ -75,9 +97,32 @@ const RENAMED_COMMANDS: Record<string, string> = {
 
 // Default handler, this is called when no other command action matches.
 program.action((_, args) => {
+  const cmd = args[0];
+  const keys = cmd.split(":");
+  let obj = client;
+  let hit = true;
+  for (const key of keys) {
+    if (!obj || (typeof obj !== "object" && typeof obj !== "function")) {
+      hit = false;
+      break;
+    }
+    const nextKey = Object.keys(obj).find((k) => k.toLowerCase() === key.toLowerCase());
+    if (!nextKey) {
+      hit = false;
+      break;
+    }
+    obj = obj[nextKey];
+  }
+
+  if (hit && isCommandModule(obj)) {
+    obj.load();
+    client.cli.allowUnknownOption(false);
+    client.cli.parse(process.argv);
+    return;
+  }
+
   useConsoleLoggers();
 
-  const cmd = args[0];
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 
   if (RENAMED_COMMANDS[cmd]) {

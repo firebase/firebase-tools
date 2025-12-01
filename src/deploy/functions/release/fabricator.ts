@@ -759,7 +759,7 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = RUNTIMES[endpoint.runtime].friendly;
+    const runtime = endpoint.runtime ? RUNTIMES[endpoint.runtime].friendly : "unknown";
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(

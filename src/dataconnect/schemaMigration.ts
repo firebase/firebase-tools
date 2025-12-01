@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
+import { IncompatibleSqlSchemaError, Diff, MAIN_SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   getIAMUser,
@@ -21,6 +21,7 @@ import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { select, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
+import { DeployStats } from "../deploy/dataconnect/context";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
@@ -150,8 +151,9 @@ export async function migrateSchema(args: {
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
+  stats?: DeployStats;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly, schemaValidation } = args;
+  const { options, schema, validateOnly, schemaValidation, stats } = args;
 
   // If the schema validation mode is unset, we prompt COMPATIBLE SQL diffs and then STRICT diffs.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
@@ -170,10 +172,13 @@ export async function migrateSchema(args: {
   // Check if Cloud SQL instance is still being created.
   const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
   if (existingInstance.state === "PENDING_CREATE") {
+    if (stats) {
+      stats.numSchemaSkippedDueToPendingCreate++;
+    }
     const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
     if (!postgresql) {
       throw new FirebaseError(
-        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
+        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${MAIN_SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
       );
     }
     postgresql.schemaValidation = "NONE";
@@ -210,6 +215,14 @@ export async function migrateSchema(args: {
         throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
       }
       throw err;
+    }
+    if (stats) {
+      if (incompatible) {
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
+      }
+      if (invalidConnectors.length) {
+        stats.numSchemaInvalidConnectors += invalidConnectors.length;
+      }
     }
 
     const migrationMode = await promptForSchemaMigration(
@@ -259,10 +272,12 @@ export async function migrateSchema(args: {
       }
       // Parse and handle failed precondition errors, then retry.
       const incompatible = errors.getIncompatibleSchemaError(err);
-      const invalidConnectors = errors.getInvalidConnectors(err);
-      if (!incompatible && !invalidConnectors.length) {
+      if (!incompatible) {
         // If we got a different type of error, throw it
         throw err;
+      }
+      if (stats && incompatible) {
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
       }
 
       const migrationMode = await promptForSchemaMigration(
@@ -359,7 +374,7 @@ export function getIdentifiers(schema: Schema): {
     );
   }
   const instanceId = instanceName.split("/").pop()!;
-  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  const serviceName = schema.name.replace(`/schemas/${MAIN_SCHEMA_ID}`, "");
   return {
     databaseId,
     instanceId,
@@ -611,7 +626,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       source: {
         files: [],
       },
