@@ -80,6 +80,13 @@ async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
       return true;
     }
   }
+  const xcodeProjectFiles = await detectFiles(appPath, "project.pbxproj");
+  for (const file of xcodeProjectFiles) {
+    const content = await fs.readFile(path.join(appPath, file), "utf8");
+    if (content.includes("Crashlytics")) {
+      return true;
+    }
+  }
   return false;
 }
 
