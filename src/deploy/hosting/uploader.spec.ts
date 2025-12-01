@@ -20,12 +20,16 @@ describe("deploy/hosting/uploader", () => {
       const p = Promise.resolve(this.handler(item));
       this.promises.push(p);
     }
-    process() { }
+    process() {
+      // do nothing
+    }
     async wait() {
       await Promise.all(this.promises);
       return Promise.resolve();
     }
-    close() { }
+    close() {
+      // do nothing
+    }
     stats() {
       return { total: 0, complete: 0, cursor: 0 };
     }
@@ -62,9 +66,15 @@ describe("deploy/hosting/uploader", () => {
       files: ["file1.txt", "file2.txt"],
       public: "public",
     });
-    (uploader as any).hashQueue = new MockQueue({ handler: (uploader as any).hashHandler.bind(uploader) });
-    (uploader as any).populateQueue = new MockQueue({ handler: (uploader as any).populateHandler.bind(uploader) });
-    (uploader as any).uploadQueue = new MockQueue({ handler: (uploader as any).uploadHandler.bind(uploader) });
+    (uploader as any).hashQueue = new MockQueue({
+      handler: (uploader as any).hashHandler.bind(uploader),
+    });
+    (uploader as any).populateQueue = new MockQueue({
+      handler: (uploader as any).populateHandler.bind(uploader),
+    });
+    (uploader as any).uploadQueue = new MockQueue({
+      handler: (uploader as any).uploadHandler.bind(uploader),
+    });
 
     (fs.statSync as sinon.SinonStub).returns({ mtime: new Date(), size: 100 });
     const { PassThrough, Readable } = require("stream");
@@ -87,20 +97,10 @@ describe("deploy/hosting/uploader", () => {
     (zlib.createGzip as sinon.SinonStub).callsFake(() => new PassThrough());
     (fs.createReadStream as sinon.SinonStub).callsFake((filePath: string) => {
       if (filePath.includes("file1.txt")) {
-        return new Readable({
-          read() {
-            this.push(Buffer.from("hash1"));
-            this.push(null);
-          },
-        });
+        return mockStream1;
       }
       if (filePath.includes("file2.txt")) {
-        return new Readable({
-          read() {
-            this.push(Buffer.from("hash2"));
-            this.push(null);
-          },
-        });
+        return mockStream2;
       }
       return new PassThrough();
     });
@@ -110,8 +110,8 @@ describe("deploy/hosting/uploader", () => {
         uploadUrl: "https://upload.url",
         uploadRequiredHashes: [
           "af316ecb91a8ee7ae99210702b2d4758f30cdde3bf61e3d8e787d74681f90a6e", // hash for "hash1"
-          "e7bf382f6e5915b3f88619b866223ebf1d51c4c5321cccde2e9ff700a3259086"  // hash for "hash2"
-        ]
+          "e7bf382f6e5915b3f88619b866223ebf1d51c4c5321cccde2e9ff700a3259086", // hash for "hash2"
+        ],
       },
     });
     clientRequestStub.resolves({ status: 200, response: { text: sinon.stub().resolves("") } });
