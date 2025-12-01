@@ -18,7 +18,7 @@ const MCP_TOOLS_INDEX_PATH = "lib/mcp/tools/index.js";
 const LOG_FILE_PATH = path.join(os.homedir(), "agent_evals_mock_logs.txt");
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
-const ENABLE_FILE_LOGGING = true;
+const ENABLE_FILE_LOGGING = false;
 
 const MCP_KEY = "mcp";
 const META_KEY = "_meta";
