@@ -5,18 +5,19 @@ import * as zlib from "zlib";
 import { Uploader } from "./uploader";
 import { Client } from "../../apiv2";
 import * as hashcache from "./hashcache";
+import { PassThrough, Readable } from "stream";
 
 describe("deploy/hosting/uploader", () => {
   let clientPostStub: sinon.SinonStub;
   let clientRequestStub: sinon.SinonStub;
 
-  class MockQueue {
-    public handler: any;
+  class MockQueue<T> {
+    public handler: (item: T) => Promise<void>;
     private promises: Promise<void>[] = [];
-    constructor(options: any) {
+    constructor(options: { handler: (item: T) => Promise<void> }) {
       this.handler = options.handler;
     }
-    add(item: any) {
+    add(item: T) {
       const p = Promise.resolve(this.handler(item));
       this.promises.push(p);
     }
@@ -77,7 +78,6 @@ describe("deploy/hosting/uploader", () => {
     });
 
     (fs.statSync as sinon.SinonStub).returns({ mtime: new Date(), size: 100 });
-    const { PassThrough, Readable } = require("stream");
 
     // Mock stream for file1.txt
     const mockStream1 = new Readable({
