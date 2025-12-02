@@ -3,7 +3,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { Options } from "../options";
 import { DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { getProjectId, needProjectId } from "../projectUtils";
+import { getProjectId } from "../projectUtils";
 import { pickServices } from "../dataconnect/load";
 import { getProjectDefaultAccount } from "../auth";
 import { logBullet, logLabeledSuccess, logWarning } from "../utils";
@@ -14,6 +14,7 @@ import * as dataconnectInit from "../init/features/dataconnect";
 import * as dataconnectSdkInit from "../init/features/dataconnect/sdk";
 import { FirebaseError } from "../error";
 import { postInitSaves } from "./init";
+import { EmulatorHub } from "../emulator/hub";
 
 type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
@@ -36,9 +37,7 @@ export const command = new Command("dataconnect:sdk:generate")
     if (!config || !config.has("dataconnect")) {
       if (options.nonInteractive) {
         throw new FirebaseError(
-          `No dataconnect project directory found. Please run ${clc.bold(
-            "firebase init dataconnect",
-          )} to set it up first.`,
+          `No dataconnect project directory found. Please run ${clc.bold("firebase init dataconnect")} to set it up first.`,
         );
       }
       logWarning("No dataconnect project directory found.");
@@ -65,29 +64,11 @@ export const command = new Command("dataconnect:sdk:generate")
       options.config = config;
     }
 
-    const serviceInfos = await pickServices(
-      needProjectId(options),
-      options.config,
-      options.service,
-      options.location,
-    );
-    let serviceInfosWithSDKs = serviceInfos.filter((serviceInfo) =>
-      serviceInfo.connectorInfo.some((c) => {
-        return (
-          c.connectorYaml.generate?.javascriptSdk ||
-          c.connectorYaml.generate?.kotlinSdk ||
-          c.connectorYaml.generate?.swiftSdk ||
-          c.connectorYaml.generate?.dartSdk
-        );
-      }),
-    );
-
+    let serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
     if (!serviceInfosWithSDKs.length) {
       if (justRanInit || options.nonInteractive) {
         throw new FirebaseError(
-          `No generated SDKs are configured during init. Please run ${clc.bold(
-            "firebase init dataconnect:sdk",
-          )} to configure a generated SDK.`,
+          `No generated SDKs are configured during init. Please run ${clc.bold("firebase init dataconnect:sdk")} to configure a generated SDK.`,
         );
       }
       logWarning("No generated SDKs have been configured.");
@@ -106,26 +87,32 @@ export const command = new Command("dataconnect:sdk:generate")
       await dataconnectSdkInit.askQuestions(setup);
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
-      const newServiceInfos = await pickServices(
-        needProjectId(options),
-        options.config,
-        options.service,
-        options.location,
-      );
-      serviceInfosWithSDKs = newServiceInfos.filter((serviceInfo) =>
-        serviceInfo.connectorInfo.some((c) => {
-          return (
-            c.connectorYaml.generate?.javascriptSdk ||
-            c.connectorYaml.generate?.kotlinSdk ||
-            c.connectorYaml.generate?.swiftSdk ||
-            c.connectorYaml.generate?.dartSdk
-          );
-        }),
-      );
+      serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
     }
 
     await generateSDKsInAll(options, serviceInfosWithSDKs, justRanInit);
   });
+
+async function loadAllWithSDKs(
+  projectId: string | undefined,
+  config: Config,
+): Promise<ServiceInfo[]> {
+  const serviceInfos = await pickServices(
+    projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER,
+    config,
+  );
+  return serviceInfos.filter((serviceInfo) =>
+    serviceInfo.connectorInfo.some((c) => {
+      return (
+        c.connectorYaml.generate?.javascriptSdk ||
+        c.connectorYaml.generate?.kotlinSdk ||
+        c.connectorYaml.generate?.swiftSdk ||
+        c.connectorYaml.generate?.dartSdk ||
+        c.connectorYaml.generate?.adminNodeSdk
+      );
+    }),
+  );
+}
 
 async function generateSDKsInAll(
   options: GenerateOptions,
