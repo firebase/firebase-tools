@@ -394,13 +394,10 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
     } catch (err: any) {
       const children = err.children?.length > 0 ? err.children : [err];
       const messages = children.map((c: any) => c.message).join("\n");
-      throw new FirebaseError(
-        `Failed to load environment variables from ${f}: ${messages}`,
-        {
-          exit: 2,
-          children,
-        },
-      );
+      throw new FirebaseError(`Failed to load environment variables from ${f}: ${messages}`, {
+        exit: 2,
+        children,
+      });
     }
   }
   logBullet(
