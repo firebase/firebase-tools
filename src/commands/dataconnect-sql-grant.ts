@@ -52,8 +52,8 @@ export const command = new Command("dataconnect:sql:grant")
     const serviceInfo = await pickOneService(
       projectId,
       options.config,
-      options.service as string | undefined,
-      options.location as string | undefined,
+      options.service,
+      options.location,
     );
 
     // Make sure current user can perform this action.
