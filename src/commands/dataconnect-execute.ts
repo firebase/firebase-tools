@@ -212,7 +212,7 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
           options.config,
           serviceId || undefined,
           locationId || undefined,
-        ).catch((e: any) => {
+        ).catch((e: unknown) => {
           if (!(e instanceof FirebaseError)) {
             return Promise.reject(e);
           }
