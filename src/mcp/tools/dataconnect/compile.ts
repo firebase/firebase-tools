@@ -18,7 +18,7 @@ export const compile = tool(
         .string()
         .optional()
         .describe(
-          `Data Connect Service ID to disambiguate if there are multiple Data Connect services.`,
+          `Service ID of the Data Connect service to compile. Used to disambiguate when there are multiple Data Connect services in firebase.json.`,
         ),
       location_id: z
         .string()
