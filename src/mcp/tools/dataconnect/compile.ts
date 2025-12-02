@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { pickService } from "../../../dataconnect/load";
 import { compileErrors } from "../../util/dataconnect/compile";
+import { pickServices } from "../../../dataconnect/load";
 
 export const compile = tool(
   "dataconnect",
@@ -18,7 +18,13 @@ export const compile = tool(
         .string()
         .optional()
         .describe(
-          "The Firebase Data Connect service ID to look for. If omitted, builds all services defined in `firebase.json`.",
+          `Service ID of the Data Connect service to compile. Used to disambiguate when there are multiple Data Connect services in firebase.json.`,
+        ),
+      location_id: z
+        .string()
+        .optional()
+        .describe(
+          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
         ),
     }),
     annotations: {
@@ -30,15 +36,26 @@ export const compile = tool(
       requiresAuth: false,
     },
   },
-  async ({ service_id, error_filter }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId, config, service_id || undefined);
-    const errors = await compileErrors(serviceInfo.sourceDirectory, error_filter);
-    if (errors)
+  async ({ service_id, location_id, error_filter }, { projectId, config }) => {
+    const serviceInfos = await pickServices(
+      projectId,
+      config,
+      service_id || undefined,
+      location_id || undefined,
+    );
+    const errors = (
+      await Promise.all(
+        serviceInfos.map(async (serviceInfo) => {
+          return await compileErrors(serviceInfo.sourceDirectory, error_filter);
+        }),
+      )
+    ).flat();
+    if (errors.length > 0)
       return {
         content: [
           {
             type: "text",
-            text: `The following errors were encountered while compiling Data Connect from directory \`${serviceInfo.sourceDirectory}\`:\n\n${errors}`,
+            text: `The following errors were encountered while compiling Data Connect:\n\n${errors.join("\n")}`,
           },
         ],
         isError: true,
