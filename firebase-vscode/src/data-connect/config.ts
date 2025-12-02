@@ -1,6 +1,6 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
-import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
+import { ConnectorYaml, DataConnectYaml, mainSchemaYaml } from "../../../src/dataconnect/types";
 import { Result, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
@@ -265,7 +265,7 @@ export class ResolvedDataConnectConfig {
   }
 
   get schemaDir(): string {
-    return this.value.schema.source;
+    return mainSchemaYaml(this.value).source;
   }
 
   get relativePath(): string {

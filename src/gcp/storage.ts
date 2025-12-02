@@ -11,6 +11,12 @@ import { ensure } from "../ensureApiEnabled";
 import * as utils from "../utils";
 import { fieldMasks } from "./proto";
 
+/** Content Type **/
+export enum ContentType {
+  ZIP = "ZIP",
+  TAR = "TAR",
+}
+
 /** Bucket Interface */
 interface BucketResponse {
   kind: string;
@@ -253,29 +259,39 @@ export async function upload(
 }
 
 /**
- * Uploads a zip file to the specified bucket using the firebasestorage api.
+ * Uploads a zip or tar file to the specified bucket using the firebasestorage api.
  */
 export async function uploadObject(
   /** Source with file (name) to upload, and stream of file. */
   source: { file: string; stream: Readable },
   /** Bucket to upload to. */
   bucketName: string,
+  contentType?: ContentType,
 ): Promise<{
   bucket: string;
   object: string;
   generation: string | null;
 }> {
-  //  if (path.extname(source.file) !== ".zip") {
-  //throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
-  //}
+  switch (contentType) {
+    case ContentType.TAR:
+      if (!source.file.endsWith(".tar.gz")) {
+        throw new FirebaseError(`Expected a file name ending in .tar.gz, got ${source.file}`);
+      }
+      break;
+    default:
+      if (path.extname(source.file) !== ".zip") {
+        throw new FirebaseError(`Expected a file name ending in .zip, got ${source.file}`);
+      }
+  }
+
   const localAPIClient = new Client({ urlPrefix: storageOrigin() });
   const location = `/${bucketName}/${path.basename(source.file)}`;
   const res = await localAPIClient.request({
     method: "PUT",
     path: location,
     headers: {
-      //"Content-Type": "application/zip",
-      "Content-Type": "application/octet-stream",
+      "Content-Type":
+        contentType === ContentType.TAR ? "application/octet-stream" : "application/zip",
       "x-goog-content-length-range": "0,123289600",
     },
     body: source.stream,

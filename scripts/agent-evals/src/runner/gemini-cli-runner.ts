@@ -1,20 +1,23 @@
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
-import path from "node:path";
-import { InteractiveCLI, poll } from "./interactive-cli.js";
-import { AgentTestRunner } from "./agent-test-runner.js";
+import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import * as path from "path";
+import * as os from "os";
+import { InteractiveCLI, poll } from "./interactive-cli";
+import { AgentTestRunner, AgentTestMatchers } from "./agent-test-runner";
 import {
   ParsedToolLog,
   getToolName,
   toolArgumentsMatch,
   getToolArgumentsDebug,
-} from "./tool-matcher.js";
-import fs from "fs";
-import { throwFailure } from "./logging.js";
-import { getAgentEvalsRoot } from "./paths.js";
+} from "./tool-matcher";
+
+import { throwFailure } from "./logging";
+import { getAgentEvalsRoot, RunDirectories } from "./paths";
 import { execSync } from "node:child_process";
-import { ToolMockName } from "../mock/tool-mocks.js";
+import { ToolMockName } from "../mock/tool-mocks";
+import { appendFileSync } from "node:fs";
 
 const READY_PROMPT = "Type your message";
+const INSTALL_ID = "238efa5b-efb2-44bd-9dce-9b081532681c";
 
 interface ParsedTelemetryLog {
   attributes?: {
@@ -33,6 +36,11 @@ interface ParsedTelemetryLog {
   }[];
 }
 
+interface CheckResult {
+  success: boolean;
+  messages: string[];
+}
+
 export class GeminiCliRunner implements AgentTestRunner {
   private readonly cli: InteractiveCLI;
   private readonly telemetryPath: string;
@@ -44,15 +52,20 @@ export class GeminiCliRunner implements AgentTestRunner {
 
   constructor(
     private readonly testName: string,
-    testDir: string,
-    runDir: string,
+    readonly dirs: RunDirectories,
     toolMocks: ToolMockName[],
   ) {
+    console.debug(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
     // Create a settings file to point the CLI to a local telemetry log
-    this.telemetryPath = path.join(testDir, "telemetry.log");
-    const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "lib/mock/mock-tools-main.js"));
+    this.telemetryPath = path.join(dirs.testDir, "telemetry.log");
+
+    const mockPath = path.resolve(path.join(getAgentEvalsRoot(), "src/mock/mock-tools-main.js"));
+    console.debug(`Providing mock path: ${mockPath}`);
     const firebasePath = execSync("which firebase").toString().trim();
-    const settings = {
+
+    console.debug(`Initializing Gemini workspace settings in ${dirs.runDir}`);
+    // Write workspace Gemini Settings
+    this.writeGeminiSettings(dirs.runDir, {
       general: {
         disableAutoUpdate: true,
       },
@@ -71,15 +84,31 @@ export class GeminiCliRunner implements AgentTestRunner {
           },
         },
       },
-    };
-    const geminiDir = path.join(runDir, ".gemini");
-    mkdirSync(geminiDir, { recursive: true });
-    writeFileSync(path.join(geminiDir, "settings.json"), JSON.stringify(settings, null, 2));
+    });
+
+    console.debug(`Initializing Gemini user settings in ${dirs.userDir}`);
+    // Write user Gemini Settings
+    this.writeGeminiSettings(dirs.userDir, {
+      security: {
+        auth: {
+          selectedType: "gemini-api-key",
+        },
+      },
+      hasSeenIdeIntegrationNudge: true,
+    });
+
+    this.writeGeminiInstallId(dirs.userDir);
 
     this.cli = new InteractiveCLI("gemini", ["--yolo"], {
-      cwd: runDir,
+      cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
       showOutput: true,
+      env: {
+        // Overwrite $HOME so that we can support GCLI features that only apply
+        // on a per-user basis, like memories and extensions
+        HOME: dirs.userDir,
+        NODE_ENV: "test",
+      },
     });
   }
 
@@ -93,6 +122,23 @@ export class GeminiCliRunner implements AgentTestRunner {
     return this.cli.type(text);
   }
 
+  async remember(text: string): Promise<void> {
+    const geminiDir = path.join(this.dirs.userDir, ".gemini");
+    const geminiMdFile = path.join(geminiDir, "GEMINI.md");
+    if (!existsSync(geminiDir)) {
+      mkdirSync(geminiDir, { recursive: true });
+    }
+
+    if (!existsSync(geminiMdFile)) {
+      writeFileSync(geminiMdFile, "## Gemini Added Memories" + os.EOL);
+    }
+
+    appendFileSync(geminiMdFile, text + os.EOL);
+    await this.type("/memory refresh");
+    // Due to https://github.com/google-gemini/gemini-cli/issues/10702, we need to start a new chat
+    await this.type("/clear");
+  }
+
   async expectText(text: string | RegExp): Promise<void> {
     return this.cli.expectText(text);
   }
@@ -101,54 +147,103 @@ export class GeminiCliRunner implements AgentTestRunner {
     await this.cli.kill();
   }
 
+  writeGeminiSettings(dir: string, settings: any) {
+    const geminiDir = path.join(dir, ".gemini");
+    mkdirSync(geminiDir, { recursive: true });
+    writeFileSync(path.join(geminiDir, "settings.json"), JSON.stringify(settings, null, 2));
+  }
+
+  /**
+   * Writes a constant, real install ID so that we don't bump Gemini metrics
+   * with fake users
+   */
+  writeGeminiInstallId(userDir: string) {
+    const geminiDir = path.join(userDir, ".gemini");
+    writeFileSync(path.join(geminiDir, "installation_id"), INSTALL_ID);
+  }
+
   /**
    * Reads the agent's telemetry file and looks for the given event. Throws if
    * the event is not found
    */
   async expectToolCalls(tools: string[]): Promise<void> {
     await this.waitForTelemetryReady();
-
-    // We still need to poll because telemetry can take time to write each turn
-    let messages: string[] = [];
-    const success = await poll(() => {
-      messages = [];
-      let allSucceeded = true;
-      // Start at this.turnToolIndex so we only read the tools used this turn
-      const toolLogs = this.readToolLogs().slice(this.turnToolIndex);
-      const foundToolNames = toolLogs.map((log) => log.name);
-      for (const toolDef of tools) {
-        const toolName = getToolName(toolDef);
-        const matchingTool = toolLogs.find((log) => log.name === toolName);
-        if (!matchingTool) {
-          messages.push(
-            `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`,
-          );
-          allSucceeded = false;
-        } else {
-          const foundMatchingArguments = toolLogs.some(
-            (log) => log.name === toolName && toolArgumentsMatch(toolDef, log),
-          );
-          if (!foundMatchingArguments) {
-            messages.push(
-              `Tool arguments matcher "${getToolArgumentsDebug(toolDef)}" for "${toolName}" did not match any tool results in the telemetry log. All tools are: [${JSON.stringify(toolLogs)}]`,
-            );
-            allSucceeded = false;
-          }
-        }
-      }
-      return allSucceeded;
+    let logs: string[] = [];
+    const toolsCallsMade = await poll(() => {
+      logs = [];
+      const { success, messages } = this.checkToolCalls(tools);
+      logs = [...messages];
+      return success;
     }, this.telemetryTimeout);
 
-    if (!success) {
-      throwFailure(messages.join("\n"));
+    if (!toolsCallsMade) {
+      throwFailure(logs.join("\n"));
     }
+  }
+
+  /**
+   * Inspect the users's GEMINI.md file to ensure a piece of information was written there.
+   *
+   * For more information about Gemini CLI's memory capabilities, see https://geminicli.com/docs/tools/memory/.
+   */
+  public async expectMemory(text: string | RegExp): Promise<void> {
+    let logs: string[] = [];
+    const memoryFound = await poll(() => {
+      logs = [];
+      const { success, messages } = this.checkMemory(text);
+      logs = [...messages];
+      return success;
+    }, this.telemetryTimeout);
+
+    if (!memoryFound) {
+      throwFailure(logs.join("\n"));
+    }
+  }
+
+  get dont(): AgentTestMatchers {
+    return {
+      expectText: async (text: string | RegExp) => {
+        try {
+          await this.cli.expectText(text);
+        } catch (e) {
+          return;
+        }
+        throwFailure(`Found text "${text}" in the output, but expected it to be absent.`);
+      },
+      expectToolCalls: async (tools: string[]) => {
+        const timeout = 1000;
+        const found = await poll(() => {
+          const { success } = this.checkToolCalls(tools);
+          return success;
+        }, timeout);
+
+        if (found) {
+          throwFailure(
+            `Found tool calls ${JSON.stringify(tools)} in the output, but expected them to be absent.`,
+          );
+        }
+      },
+      expectMemory: async (text: string | RegExp) => {
+        const timeout = 1000;
+        const found = await poll(() => {
+          const { success } = this.checkMemory(text);
+          return success;
+        }, timeout);
+
+        if (found) {
+          throwFailure(
+            `Found memory matching "${text}" in GEMINI.md, but expected it to be absent.`,
+          );
+        }
+      },
+    };
   }
 
   // Implementation for this is borrowed from the Gemini CLI's test-helper
   private async waitForTelemetryReady() {
     // Wait for telemetry file to exist and have content
     await poll(() => {
-      if (!fs.existsSync(this.telemetryPath)) return false;
+      if (!existsSync(this.telemetryPath)) return false;
       try {
         const content = readFileSync(this.telemetryPath, "utf-8");
         // Check if file has at lease one event in it
@@ -182,10 +277,9 @@ export class GeminiCliRunner implements AgentTestRunner {
     return logs;
   }
 
-  // Implementation for this is borrowed from the Gemini CLI's test-helper
   private readAndParseTelemetryLog(): ParsedTelemetryLog[] {
     const logFilePath = this.telemetryPath;
-    if (!logFilePath || !fs.existsSync(logFilePath)) {
+    if (!logFilePath || !existsSync(logFilePath)) {
       return [];
     }
 
@@ -195,7 +289,7 @@ export class GeminiCliRunner implements AgentTestRunner {
     // They are separated by "}\n{"
     const jsonObjects = content
       .split(/}\n{/)
-      .map((obj, index, array) => {
+      .map((obj: string, index: number, array: string[]) => {
         // Add back the braces we removed during split
         if (index > 0) obj = "{" + obj;
         if (index < array.length - 1) obj = obj + "}";
@@ -215,5 +309,52 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
 
     return logs;
+  }
+
+  private checkToolCalls(tools: string[]): CheckResult {
+    const messages = [];
+    let allSucceeded = true;
+    // Start at this.turnToolIndex so we only read the tools used this turn
+    const toolLogs = this.readToolLogs().slice(this.turnToolIndex);
+    const foundToolNames = toolLogs.map((log) => log.name);
+    for (const toolDef of tools) {
+      const toolName = getToolName(toolDef);
+      const matchingTool = toolLogs.find((log) => log.name === toolName);
+      if (!matchingTool) {
+        messages.push(
+          `Did not find expected tool call: "${toolName}" in the telemetry log. Found [${foundToolNames}]`,
+        );
+        allSucceeded = false;
+      } else {
+        const foundMatchingArguments = toolLogs.some(
+          (log) => log.name === toolName && toolArgumentsMatch(toolDef, log),
+        );
+        if (!foundMatchingArguments) {
+          messages.push(
+            `Tool arguments matcher "${getToolArgumentsDebug(toolDef)}" for "${toolName}" did not match any tool results in the telemetry log. All tools are: [${JSON.stringify(toolLogs)}]`,
+          );
+          allSucceeded = false;
+        }
+      }
+    }
+    return { success: allSucceeded, messages };
+  }
+
+  private checkMemory(text: string | RegExp): CheckResult {
+    const geminiMdPath = path.join(this.dirs.userDir, ".gemini", "GEMINI.md");
+    const messages: string[] = [];
+    if (!existsSync(geminiMdPath)) {
+      messages.push(`GEMINI.md file not found at ${geminiMdPath}`);
+      return { success: false, messages };
+    }
+    const content = readFileSync(geminiMdPath, "utf-8");
+    const found = content.match(text);
+    if (!found) {
+      messages.push(
+        `Did not find expected memory entry containing "${text.toString()}" in ${geminiMdPath}. File content:\n${content}`,
+      );
+      return { success: false, messages };
+    }
+    return { success: true, messages };
   }
 }

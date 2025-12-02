@@ -1,11 +1,11 @@
-import path from "path";
-import { fileURLToPath } from "url";
+import * as path from "path";
+
+export type RunDirectories = { testDir: string; runDir: string; userDir: string };
 
 export function getAgentEvalsRoot(): string {
-  const thisFilePath = path.dirname(fileURLToPath(import.meta.url));
-  return path.resolve(path.join(thisFilePath, "..", ".."));
+  return path.resolve(path.join(__dirname, "..", ".."));
 }
 
 export function getFirebaseCliRoot(): string {
-  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+  return path.resolve(__dirname, "..", "..", "..", "..");
 }

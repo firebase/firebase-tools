@@ -1,10 +1,13 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
+import * as experiments from "../../experiments";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -23,6 +26,7 @@ export interface ScheduleTrigger {
   schedule?: string;
   timeZone?: string | null;
   retryConfig?: ScheduleRetryConfig | null;
+  attemptDeadlineSeconds?: number | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -179,11 +183,18 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
-/**
- * Is a given string a valid VpcEgressSettings?
- */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
+}
+
+export const MIN_ATTEMPT_DEADLINE_SECONDS = 15;
+export const MAX_ATTEMPT_DEADLINE_SECONDS = 1800; // 30 mins
+
+/**
+ * Is a given number a valid attempt deadline?
+ */
+export function isValidAttemptDeadline(seconds: number): boolean {
+  return seconds >= MIN_ATTEMPT_DEADLINE_SECONDS && seconds <= MAX_ATTEMPT_DEADLINE_SECONDS;
 }
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
@@ -354,7 +365,7 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
-    runtime: Runtime;
+    runtime?: Runtime;
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
@@ -542,21 +553,27 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  let gcfV2Results;
-  try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  if (experiments.isEnabled("functionsrunapionly")) {
+    try {
+      const runServices = await run.listServices(ctx.projectId);
+      for (const service of runServices) {
+        const endpoint = run.endpointFromService(service);
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    } catch (err: any) {
+      logger.debug(err.message);
+      unreachableRegions.run = ["unknown"];
+    }
+  } else {
+    const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
       existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
     unreachableRegions.gcfV2 = gcfV2Results.unreachable;
-  } catch (err: any) {
-    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      // customer has preview enabled without allowlist set
-    } else {
-      throw err;
-    }
   }
 
   ctx.existingBackend = existingBackend;

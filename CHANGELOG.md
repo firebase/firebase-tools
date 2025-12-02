@@ -1,1 +1,1 @@
-- Adds 2nd gen Firebase Data Connect triggers to firebase deploy (#9394).
+- Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj` (#9515)

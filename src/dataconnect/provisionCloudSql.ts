@@ -9,6 +9,7 @@ import { promiseWithSpinner } from "../utils";
 import { trackGA4 } from "../track";
 import * as utils from "../utils";
 import { Source } from "../init/features/dataconnect";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -147,7 +148,12 @@ async function createInstance(args: {
     });
     utils.logLabeledBullet(
       "dataconnect",
-      cloudSQLBeingCreated(projectId, instanceId, freeTrialLabel === "ft"),
+      cloudSQLBeingCreated(
+        projectId,
+        instanceId,
+        freeTrialLabel === "ft",
+        await checkBillingEnabled(projectId),
+      ),
     );
   }
 }
@@ -158,18 +164,22 @@ async function createInstance(args: {
 export function cloudSQLBeingCreated(
   projectId: string,
   instanceId: string,
-  includeFreeTrialToS?: boolean,
+  isFreeTrial?: boolean,
+  billingEnabled?: boolean,
 ): string {
   return (
     `Cloud SQL Instance ${clc.bold(instanceId)} is being created.` +
-    (includeFreeTrialToS
+    (isFreeTrial
       ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
-    `
-   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
-
-   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
-`
+    `\n
+   Meanwhile, your data are saved in a temporary database and will be migrated once complete.` +
+    (isFreeTrial && !billingEnabled
+      ? ` 
+   Your free trial instance won't show in google cloud console until a billing account is added.
+   However, you can still use the gcloud cli to monitor your database instance:\n\n\te.g. gcloud sql instances list --project ${projectId}\n`
+      : ` 
+   Monitor its progress at\n\n\t${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}\n`)
   );
 }
 
