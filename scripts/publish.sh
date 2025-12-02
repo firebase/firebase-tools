@@ -141,7 +141,7 @@ if [[ $VERSION != "preview" ]]; then
   hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
   echo "Published release notes."
 else
-  echo "Publishing canary version to npm..."
-  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag canary
-  echo "Published canary version to npm."
+  echo "Publishing preview version to npm..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
+  echo "Published preview version to npm."
 fi
