@@ -4,4 +4,5 @@
 - [BREAKING] Removed support for running emulators with Java versions prior to 21.
 - Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)
 - [BREAKING] Removed deprecated `firebase --open-sesame` and `firebase --close-sesame` commands. Use `firebase experiments:enable` and `firebase experiments:disable` instead.
+- [BREAKING] Enforce strict timeout validation for functions. (#9540)
 - [BREAKING] Update `dataconnect:\*` commands to use flags instead of positional arguments for `--service` & `--location`. Changed output type of `dataconnect:sql:migrate --json` (#9312)
