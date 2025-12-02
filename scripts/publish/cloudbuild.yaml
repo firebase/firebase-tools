@@ -139,19 +139,6 @@ steps:
           echo "Skipping firepit build for preview version."
         fi
 
-  # Grab the latest version, store in workspace
-  - id: "Read New Version Number from npm"
-    name: "node"
-    entrypoint: "sh"
-    args:
-      - "-c"
-      - |
-        if [ "${_VERSION}" != "preview" ]; then
-          npm view firebase-tools version > /workspace/version_number.txt
-        else
-          echo "Skipping version lookup for preview version."
-        fi
-
   # Publish the Firebase docker image
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"
