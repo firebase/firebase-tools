@@ -127,6 +127,11 @@ if [[ $VERSION != "preview" ]]; then
   npm --prefix ./scripts/publish/firebase-docker-image install
   echo "Updated package-lock.json for Docker image."
 
+
+  echo "Updating server.json for MCP registry..."
+  . ./scripts/update-server.sh $NEW_VERSION
+  echo "Updated server.json for MCP registry."
+
   echo "Cleaning up release notes..."
   rm CHANGELOG.md
   touch CHANGELOG.md
