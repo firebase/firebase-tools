@@ -14,7 +14,7 @@ import { validateEventFilters } from "../../../crashlytics/filters";
 
 function getReportContent(
   report: CrashlyticsReport,
-  additionalPrompt?: string,
+  additionalPrompt: string = "",
 ): (input: ReportInput) => Promise<CallToolResult> {
   return async ({ appId, filter, pageSize }) => {
     if (!appId) return mcpError(`Must specify 'appId' parameter.`);
@@ -28,12 +28,9 @@ function getReportContent(
     }
     validateEventFilters(filter); // throws here if invalid filters
     const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
-    if (!reportResponse.groups || reportResponse.groups.length === 0) {
-      additionalPrompt = "This report response contains no results.";
-    }
-    if (additionalPrompt) {
-      reportResponse.usage = (reportResponse.usage || "").concat("\n", additionalPrompt);
-    }
+    const emptyPrompt = (!reportResponse.groups || reportResponse.groups.length === 0) ?
+      "\nThis report response contains no results." : "";
+    reportResponse.usage = [reportResponse.usage || "", additionalPrompt, emptyPrompt].join(" ");
     return toContent(reportResponse);
   };
 }
