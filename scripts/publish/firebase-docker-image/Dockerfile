@@ -1,13 +1,9 @@
 FROM node:lts-alpine AS app-env
 
 # Install Python and Java and pre-cache emulator dependencies.
-# We do so in separate steps to make it simple to identify the source of errors and vulnerabilities.
-RUN apk add --no-cache python3
-RUN apk add --no-cache py3-pip
-RUN apk add --no-cache openjdk21-jre
-RUN apk add --no-cache bash
-
-RUN apk update && apk upgrade
+RUN apk add --no-cache python3 py3-pip openjdk21-jre-headless bash && \
+    apk update && \
+    apk upgrade
 
 
 RUN mkdir -p /usr/local/node_packages/
