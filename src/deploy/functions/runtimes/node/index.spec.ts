@@ -7,6 +7,7 @@ import * as versioning from "./versioning";
 import * as utils from "../../../../utils";
 import { FirebaseError } from "../../../../error";
 import { Runtime } from "../supported";
+import * as discovery from "../discovery";
 
 const PROJECT_ID = "test-project";
 const PROJECT_DIR = "/some/path";
@@ -75,6 +76,64 @@ describe("NodeDelegate", () => {
       );
 
       expect(() => delegate.getNodeBinary()).to.throw(FirebaseError);
+    });
+  });
+
+  describe("discoverBuild", () => {
+    let getFunctionsSDKVersionMock: sinon.SinonStub;
+    let detectFromYamlMock: sinon.SinonStub;
+
+    beforeEach(() => {
+      getFunctionsSDKVersionMock = sinon.stub(versioning, "getFunctionsSDKVersion");
+      detectFromYamlMock = sinon.stub(discovery, "detectFromYaml");
+    });
+
+    afterEach(() => {
+      getFunctionsSDKVersionMock.restore();
+      detectFromYamlMock.restore();
+    });
+
+    it("throws error if SDK version is too old", async () => {
+      getFunctionsSDKVersionMock.returns("3.19.0");
+      const delegate = new node.Delegate(
+        PROJECT_ID,
+        PROJECT_DIR,
+        SOURCE_DIR,
+        "nodejs16" as Runtime,
+      );
+      try {
+        await delegate.discoverBuild({}, {});
+        throw new Error("Should have thrown");
+      } catch (err: any) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err.message).to.include("Please update firebase-functions SDK");
+      }
+    });
+
+    it("proceeds if SDK version is valid", async () => {
+      getFunctionsSDKVersionMock.returns("4.0.0");
+      detectFromYamlMock.resolves({ endpoints: {} });
+      const delegate = new node.Delegate(
+        PROJECT_ID,
+        PROJECT_DIR,
+        SOURCE_DIR,
+        "nodejs16" as Runtime,
+      );
+      await delegate.discoverBuild({}, {});
+      expect(detectFromYamlMock).to.have.been.called;
+    });
+
+    it("proceeds if SDK version is invalid", async () => {
+      getFunctionsSDKVersionMock.returns("not-a-version");
+      detectFromYamlMock.resolves({ endpoints: {} });
+      const delegate = new node.Delegate(
+        PROJECT_ID,
+        PROJECT_DIR,
+        SOURCE_DIR,
+        "nodejs16" as Runtime,
+      );
+      await delegate.discoverBuild({}, {});
+      expect(detectFromYamlMock).to.have.been.called;
     });
   });
 });
