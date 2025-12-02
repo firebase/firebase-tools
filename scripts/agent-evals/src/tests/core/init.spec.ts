@@ -1,7 +1,7 @@
-import { startAgentTest } from "../runner/index.js";
-import { AgentTestRunner } from "../runner/index.js";
-import { DEFAULT_FIREBASE_PROJECT } from "../data/index.js";
-import "../helpers/hooks.js";
+import { startAgentTest } from "../../runner/index.js";
+import { AgentTestRunner } from "../../runner/index.js";
+import { DEFAULT_FIREBASE_PROJECT } from "../../data/index.js";
+import "../../helpers/hooks.js";
 
 describe("/firebase:init", function (this: Mocha.Suite) {
   this.retries(2);
