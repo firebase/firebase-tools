@@ -199,14 +199,6 @@ export function registerExecution(
       }
     }
 
-    // build schema to check for compilation errors
-    // TODO: run schema check on locally modified schema
-    const introspect = await dataConnectService.introspect();
-    if (!introspect.data) {
-      executionError("Please check your compilation errors");
-      return undefined;
-    }
-
     // get all gql files from connector and validate
     const gqlText = await getConnectorGQLText(documentPath);
 
