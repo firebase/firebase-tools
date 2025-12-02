@@ -291,9 +291,7 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables,
   ): Promise<build.Build> {
-    if (!semver.valid(this.sdkVersion)) {
-      logger.debug(`Could not parse firebase-functions version '${this.sdkVersion}' into semver.`);
-    } else {
+    if (semver.valid(this.sdkVersion)) {
       if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
         throw new FirebaseError(
           `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
@@ -309,6 +307,8 @@ export class Delegate {
             `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES} to use them correctly`,
         );
       }
+    } else {
+      logger.debug(`Could not parse firebase-functions version '${this.sdkVersion}' into semver.`);
     }
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {
