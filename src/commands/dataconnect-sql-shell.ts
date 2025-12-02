@@ -89,7 +89,10 @@ export const command = new Command("dataconnect:sql:shell")
     "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
   )
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service to disambiguate")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
   .action(async (options: ShellOptions) => {

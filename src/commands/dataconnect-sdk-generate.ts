@@ -24,7 +24,10 @@ export const command = new Command("dataconnect:sdk:generate")
     "--service <serviceId>",
     "the serviceId of the Data Connect service. If not provided, generates SDKs for all services.",
   )
-  .option("--location <location>", "the location of the Data Connect service to disambiguate")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .option(
     "--watch",
     "watch for changes to your connector GQL files and regenerate your SDKs when updates occur",
@@ -64,7 +67,7 @@ export const command = new Command("dataconnect:sdk:generate")
       options.config = config;
     }
 
-    let serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
+    let serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config, options);
     if (!serviceInfosWithSDKs.length) {
       if (justRanInit || options.nonInteractive) {
         throw new FirebaseError(
@@ -87,7 +90,7 @@ export const command = new Command("dataconnect:sdk:generate")
       await dataconnectSdkInit.askQuestions(setup);
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
-      serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config);
+      serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config, options);
     }
 
     await generateSDKsInAll(options, serviceInfosWithSDKs, justRanInit);
@@ -96,10 +99,13 @@ export const command = new Command("dataconnect:sdk:generate")
 async function loadAllWithSDKs(
   projectId: string | undefined,
   config: Config,
+  options: GenerateOptions,
 ): Promise<ServiceInfo[]> {
   const serviceInfos = await pickServices(
     projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER,
     config,
+    options.service,
+    options.location,
   );
   return serviceInfos.filter((serviceInfo) =>
     serviceInfo.connectorInfo.some((c) => {

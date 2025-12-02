@@ -15,7 +15,10 @@ export const command = new Command("dataconnect:sql:diff")
     "display the differences between the local Data Connect schema and your CloudSQL database's schema",
   )
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service to disambiguate")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",

@@ -15,7 +15,10 @@ type MigrateOptions = Options & { service?: string; location?: string };
 export const command = new Command("dataconnect:sql:migrate")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
   .option("--service <serviceId>", "the serviceId of the Data Connect service")
-  .option("--location <location>", "the location of the Data Connect service to disambiguate")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
