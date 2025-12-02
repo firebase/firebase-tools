@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as fsutils from "../../fsutils";
 import * as validate from "./validate";
+import * as utils from "../../utils";
 import * as projectPath from "../../projectPath";
 import * as secretManager from "../../gcp/secretManager";
 import * as backend from "./backend";
@@ -462,6 +463,23 @@ describe("validate", () => {
       };
 
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
+    });
+
+    it("warns for scheduled functions with timeout > 1800s", () => {
+      const logStub = sinon.stub(utils, "logLabeledWarning");
+      try {
+        const ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          scheduleTrigger: {
+            schedule: "every 1 minutes",
+          },
+          timeoutSeconds: 1801,
+        };
+        validate.endpointsAreValid(backend.of(ep));
+        expect(logStub.calledOnce).to.be.true;
+      } finally {
+        logStub.restore();
+      }
     });
   });
 
