@@ -103,6 +103,11 @@ else
   echo "Made a $VERSION version."
 fi
 
+if [[ -d "/workspace" ]]; then
+  echo "Writing version number to /workspace/version_number.txt"
+  echo "$NEW_VERSION" > /workspace/version_number.txt
+fi
+
 echo "Making the release notes..."
 RELEASE_NOTES_FILE=$(mktemp)
 echo "[DEBUG] ${RELEASE_NOTES_FILE}"
@@ -111,11 +116,13 @@ echo "" >> "${RELEASE_NOTES_FILE}"
 cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
-echo "Publishing to npm..."
-npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-echo "Published to npm."
+
 
 if [[ $VERSION != "preview" ]]; then
+  echo "Publishing to npm..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
+  echo "Published to npm."
+
   echo "Updating package-lock.json for Docker image..."
   npm --prefix ./scripts/publish/firebase-docker-image install
   echo "Updated package-lock.json for Docker image."
@@ -133,4 +140,8 @@ if [[ $VERSION != "preview" ]]; then
   echo "Publishing release notes..."
   hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
   echo "Published release notes."
+else
+  echo "Publishing preview version to npm..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
+  echo "Published preview version to npm."
 fi
