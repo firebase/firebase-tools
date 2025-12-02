@@ -5,7 +5,7 @@ import * as yaml from "yaml";
 
 import { input, select } from "../../../prompt";
 import { Setup } from "../..";
-import { newUniqueId } from "../../../utils";
+import { logBullet, newUniqueId } from "../../../utils";
 import { Config } from "../../../config";
 import { loadAll } from "../../../dataconnect/load";
 import { DataConnectYaml, SchemaYaml, ServiceInfo } from "../../../dataconnect/types";
@@ -59,10 +59,15 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       resolverInfo.serviceInfo.dataConnectYaml.schemas?.map((sch) => sch.id || "") || [],
     ),
   });
-  resolverInfo.uri = await input({
-    message: `What is the URL of your Cloud Run data source that implements your custom resolver?`,
-    default: `https://${resolverInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${resolverInfo.serviceInfo.dataConnectYaml.location}.run.app/graphql`,
-  });
+  // TODO: List existing Cloud Run instances in the project and offer as choices.
+  resolverInfo.uri = `https://${resolverInfo.id}-${setup.projectNumber || "PROJECT_NUMBER"}.${resolverInfo.serviceInfo.dataConnectYaml.location}.run.app/graphql`;
+  logBullet(
+    "Setting " +
+      clc.bold(resolverInfo.uri) +
+      " as the custom resolver URL. To change this, update your " +
+      clc.bold(`dataconnect.yaml`) +
+      " later.",
+  );
 
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnectResolver = resolverInfo;

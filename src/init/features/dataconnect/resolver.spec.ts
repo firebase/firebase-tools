@@ -155,14 +155,15 @@ describe("askQuestions", () => {
       },
     ]);
     inputStub.onFirstCall().resolves("test_resolver");
-    inputStub.onSecondCall().resolves("www.test.com");
 
     await askQuestions(setup, config);
 
     expect(selectStub.called).to.be.false;
-    expect(inputStub.calledTwice).to.be.true;
+    expect(inputStub.calledOnce).to.be.true;
     expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
-    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal("www.test.com");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal(
+      "https://test_resolver-PROJECT_NUMBER.us-central1.run.app/graphql",
+    );
     expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id",
     );
@@ -182,16 +183,41 @@ describe("askQuestions", () => {
       dataConnectYaml: { location: "us-central1", serviceId: "service-id2" },
     });
     inputStub.onFirstCall().resolves("test_resolver");
-    inputStub.onSecondCall().resolves("www.test.com");
 
     await askQuestions(setup, config);
 
     expect(selectStub.calledOnce).to.be.true;
-    expect(inputStub.calledTwice).to.be.true;
+    expect(inputStub.calledOnce).to.be.true;
     expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
-    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal("www.test.com");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal(
+      "https://test_resolver-PROJECT_NUMBER.us-central1.run.app/graphql",
+    );
     expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id2",
+    );
+  });
+
+  it("uses project number in URI if set", async () => {
+    setup.projectNumber = "123456789";
+    experimentsStub.returns(true);
+    loadAllStub.resolves([
+      {
+        serviceName: "projects/project-id/locations/us-central1/services/service-id",
+        dataConnectYaml: { location: "us-central1", serviceId: "service-id" },
+      },
+    ]);
+    inputStub.onFirstCall().resolves("test_resolver");
+
+    await askQuestions(setup, config);
+
+    expect(selectStub.called).to.be.false;
+    expect(inputStub.calledOnce).to.be.true;
+    expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal(
+      "https://test_resolver-123456789.us-central1.run.app/graphql",
+    );
+    expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
+      "projects/project-id/locations/us-central1/services/service-id",
     );
   });
 });
