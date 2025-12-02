@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
 import {
@@ -7,8 +8,23 @@ import {
   ReportInput,
   simplifyReport,
 } from "../../../crashlytics/reports";
+import { EventFilter } from "../../../crashlytics/filters";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { validateEventFilters } from "../../../crashlytics/filters";
+import { Report, ReportFilters } from "../../../crashlytics/types";
+import { dump, DumpOptions } from "js-yaml";
+
+const DUMP_OPTIONS: DumpOptions = { lineWidth: 200 };
+
+function toText(response: Report, filters: EventFilter): Record<string, string> {
+  const result: Record<string, string> = {
+    filters: dump(filters, DUMP_OPTIONS)
+  };
+  for (const [key, value] of Object.entries(response)) {
+    result[key] = dump(value, DUMP_OPTIONS);
+  }
+  return result;
+}
 
 // Generates the tool call fn for requesting a Crashlytics report
 
@@ -28,10 +44,12 @@ function getReportContent(
     }
     validateEventFilters(filter); // throws here if invalid filters
     const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
-    const emptyPrompt = (!reportResponse.groups || reportResponse.groups.length === 0) ?
-      "\nThis report response contains no results." : "";
-    reportResponse.usage = [reportResponse.usage || "", additionalPrompt, emptyPrompt].join(" ");
-    return toContent(reportResponse);
+    reportResponse.usage = (reportResponse.groups && reportResponse.groups.length) 
+      ? (reportResponse.usage || "").concat(additionalPrompt) 
+      : "This report response contains no results.";
+    return {
+      content: [{ type: "text", text: dump(toText(reportResponse, filter), DUMP_OPTIONS) }],
+    };
   };
 }
 
