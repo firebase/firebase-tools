@@ -168,7 +168,10 @@ export class KeyValidationError extends Error {
  */
 export function validateKey(key: string): void {
   if (RESERVED_KEYS.includes(key)) {
-    throw new KeyValidationError(key, `Key ${key} is reserved for internal use.`);
+    throw new KeyValidationError(
+      key,
+      `Key ${key} is reserved for internal use; please use a different key.`,
+    );
   }
   if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
     throw new KeyValidationError(
@@ -177,10 +180,11 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
-  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+  const reservedPrefix = RESERVED_PREFIXES.find((prefix) => key.startsWith(prefix));
+  if (reservedPrefix) {
     throw new KeyValidationError(
       key,
-      `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
+      `Key ${key} starts with a reserved prefix (${reservedPrefix})`,
     );
   }
 }
@@ -388,10 +392,15 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
       const data = fs.readFileSync(path.join(configDir, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
-      throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
-        exit: 2,
-        children: err.children?.length > 0 ? err.children : [err],
-      });
+      const children = err.children?.length > 0 ? err.children : [err];
+      const messages = children.map((c: any) => c.message).join("\n");
+      throw new FirebaseError(
+        `Failed to load environment variables from ${f}: ${messages}`,
+        {
+          exit: 2,
+          children,
+        },
+      );
     }
   }
   logBullet(
