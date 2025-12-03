@@ -1,4 +1,4 @@
-- Minor bug fixes in Firestore Emulator for Datastore Mode
+- Updated Firestore Emulator to v1.20.2, which includes minor bug fixes for Datastore Mode.
 - Improved command loading performance by implementing lazy loading.
 - [BREAKING] Changed `firestore:backups:list --json` to return a `listBackupsResponse` object instead of a raw array of backups.
 - [BREAKING] Removed support for '.bolt' rules files.
