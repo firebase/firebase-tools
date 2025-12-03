@@ -345,12 +345,26 @@ export async function build(
   if (wantsBackend && isUsingAppDirectory(join(dir, distDir))) {
     const nextVersion = getNextVersionRaw(dir);
     if (nextVersion && isNextJsVersionVulnerable(nextVersion)) {
-      throw new FirebaseError(
+      let message =
         `Next.js version ${nextVersion} is vulnerable to CVE-2025-66478.\n` +
-          `Please upgrade to a patched version (15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, 15.5.7+, 16.0.7+) ` +
-          `or downgrade to a stable Next.js 14.x release if using canary.\n` +
-          `See https://nextjs.org/blog/CVE-2025-66478 for more details.`,
-      );
+        `Please upgrade to a patched version: `;
+
+      if (nextVersion.startsWith("16")) {
+        message += "16.0.7+.";
+      } else if (nextVersion.startsWith("15")) {
+        message += "15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, or 15.5.7+.";
+      } else if (nextVersion.startsWith("14")) {
+        message += "downgrade to a stable Next.js 14.x release.";
+      } else {
+        // Fallback for unexpected cases
+        message +=
+          "15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, 15.5.7+, 16.0.7+ " +
+          "or downgrade to a stable Next.js 14.x release if using canary.";
+      }
+
+      message += `\nSee https://nextjs.org/blog/CVE-2025-66478 for more details.`;
+
+      throw new FirebaseError(message);
     }
   }
 
