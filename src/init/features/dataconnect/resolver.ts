@@ -22,9 +22,6 @@ export interface ResolverRequiredInfo {
 }
 
 export async function askQuestions(setup: Setup, config: Config): Promise<void> {
-  if (!experiments.isEnabled("fdcwebhooks")) {
-    throw new Error("Unsupported command.");
-  }
   const resolverInfo: ResolverRequiredInfo = {
     id: "",
     uri: "",

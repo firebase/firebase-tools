@@ -94,13 +94,16 @@ let choices: {
     checked: false,
     hidden: true,
   },
-  {
+];
+
+if (isEnabled("fdcwebhooks")) {
+  choices.push({
     value: "dataconnect:resolver",
     name: "Data Connect: Set up a custom resolver for your Firebase Data Connect service",
     checked: false,
     hidden: true,
-  },
-];
+  });
+}
 
 if (isEnabled("genkit")) {
   choices = [
