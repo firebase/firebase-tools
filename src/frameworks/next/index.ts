@@ -8,7 +8,7 @@ import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists, pathExistsSync, readFile } from "fs-extra";
 import { pathToFileURL, parse } from "url";
-import { gte } from "semver";
+import { gte, coerce } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
 import { chain } from "stream-chain";
@@ -349,11 +349,12 @@ export async function build(
         `Next.js version ${nextVersion} is vulnerable to CVE-2025-66478.\n` +
         `Please upgrade to a patched version: `;
 
-      if (nextVersion.startsWith("16")) {
+      const { major } = coerce(nextVersion) || {};
+      if (major === 16) {
         message += "16.0.7+.";
-      } else if (nextVersion.startsWith("15")) {
+      } else if (major === 15) {
         message += "15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, or 15.5.7+.";
-      } else if (nextVersion.startsWith("14")) {
+      } else if (major === 14) {
         message += "downgrade to a stable Next.js 14.x release.";
       } else {
         // Fallback for unexpected cases
