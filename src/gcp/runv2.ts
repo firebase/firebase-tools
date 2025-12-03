@@ -11,7 +11,7 @@ import * as backend from "../deploy/functions/backend";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
-import { logger } from "..";
+import { logger } from "../logger";
 import { partition } from "../functional";
 
 export const API_VERSION = "v2";
@@ -198,6 +198,49 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     operationResourceName: res.body.name,
   });
   return svc;
+}
+
+/**
+ * Lists Cloud Run services in the given project.
+ *
+ * This method only returns services with the "goog-managed-by" label set to
+ * "cloud-functions" or "firebase-functions".
+ */
+export async function listServices(projectId: string): Promise<Service[]> {
+  const allServices: Service[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams["pageToken"] = pageToken;
+    }
+
+    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/-/services`,
+      { queryParams },
+    );
+
+    if (res.status !== 200) {
+      throw new FirebaseError(`Failed to list services. HTTP Error: ${res.status}`, {
+        original: res.body as any,
+      });
+    }
+
+    if (res.body.services) {
+      for (const service of res.body.services) {
+        if (
+          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
+        ) {
+          allServices.push(service);
+        }
+      }
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return allServices;
 }
 
 // TODO: Replace with real version:
@@ -487,9 +530,16 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
-
-    // TODO: trigger types.
-    httpsTrigger: {},
+    // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
+    ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+      ? { httpsTrigger: {} }
+      : {
+          eventTrigger: {
+            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
+            retry: false,
+          },
+        }),
   };
   proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
