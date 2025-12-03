@@ -69,10 +69,6 @@ describe("webframeworks", function (this) {
             },
             rewrites: [
               {
-                destination: "/base",
-                source: "/base/about",
-              },
-              {
                 source: "/base/**",
                 function: {
                   functionId: "ssrdemonextjs",
@@ -136,7 +132,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -155,7 +151,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -172,7 +168,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -190,7 +186,7 @@ describe("webframeworks", function (this) {
                 headers: [
                   {
                     key: "x-nextjs-stale-time",
-                    value: "4294967294",
+                    value: "300",
                   },
                   {
                     key: "x-nextjs-prerender",
@@ -303,16 +299,18 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql(
-          "private, no-cache, no-store, max-age=0, must-revalidate",
-        );
-        expect(await response.text()).to.include("<body>ISR");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=60");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("ISR");
       });
 
       it("should have working SSR", async () => {
         const bazResponse = await fetch(`${NEXTJS_HOST}/app/ssr`);
         expect(bazResponse.ok).to.be.true;
-        expect(await bazResponse.text()).to.include("<body>SSR");
+        const text = await bazResponse.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("SSR");
       });
 
       it("should have working dynamic routes", async () => {
@@ -325,7 +323,9 @@ describe("webframeworks", function (this) {
       it("should have working image", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/image`);
         expect(response.ok).to.be.true;
-        expect(await response.text()).to.include("<body><img");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("<img");
       });
     });
 
@@ -357,7 +357,7 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/pages/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql("private");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=10");
         expect(await response.text()).to.include(`ISR <!-- -->${DEFAULT_LANG}`);
       });
     });

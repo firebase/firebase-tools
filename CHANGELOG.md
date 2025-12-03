@@ -1,3 +1,6 @@
 - Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj` (#9515)
 - Add logic to synchronize v2 scheduled function timeout with Cloud Schduler's attempt deadline (#9544)
 - Prevent deployments of Next.js apps vulnerable to CVE-2025-66478 (#9572)
+- Updated Data Connect emulator to v2.17.3:
+  - Fixed Swift codegen: Include FirebaseCore import in the connector keys file.
+  - Fixed a bug where debug details of Internal errors were swallowed: https://github.com/firebase/firebase-tools/issues/9508
