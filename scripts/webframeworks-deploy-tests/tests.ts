@@ -68,7 +68,6 @@ describe("webframeworks", function (this) {
               region: "asia-east1",
             },
             rewrites: [
-
               {
                 source: "/base/**",
                 function: {
