@@ -40,8 +40,8 @@ export const command = new Command("remoteconfig:versions:list")
 
 export function printVersionsTable(versionsList: ListVersionsResult): void {
   const table = new Table({ head: tableHead, style: { head: ["green"] } });
-  for (let item = 0; item < versionsList.versions?.length; item++) {
-    pushTableContents(table, versionsList.versions[item]);
+  for (const version of versionsList.versions || []) {
+    pushTableContents(table, version);
   }
   logger.info(table.toString());
 }
