@@ -246,25 +246,20 @@ describe("cloudscheduler", () => {
     });
 
     it("should copy optional fields for v2 endpoints", async () => {
-      expect(
-        await cloudscheduler.jobFromEndpoint(
-          {
-            ...V2_ENDPOINT,
-            scheduleTrigger: {
-              schedule: "every 1 minutes",
-              timeZone: "America/Los_Angeles",
-              retryConfig: {
-                maxDoublings: 2,
-                maxBackoffSeconds: 20,
-                minBackoffSeconds: 1,
-                maxRetrySeconds: 60,
-              },
-            },
+      const ep: backend.Endpoint = {
+        ...V2_ENDPOINT,
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+          timeZone: "America/Los_Angeles",
+          retryConfig: {
+            maxDoublings: 2,
+            maxBackoffSeconds: 20,
+            minBackoffSeconds: 1,
+            maxRetrySeconds: 60,
           },
-          V2_ENDPOINT.region,
-          "1234567",
-        ),
-      ).to.deep.equal({
+        },
+      };
+      expect(await cloudscheduler.jobFromEndpoint(ep, "region", "1234567")).to.deep.equal({
         name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
         schedule: "every 1 minutes",
         timeZone: "America/Los_Angeles",
@@ -284,41 +279,12 @@ describe("cloudscheduler", () => {
       });
     });
 
-    it("should not copy attemptDeadlineSeconds for v1 endpoints", async () => {
-      expect(
-        await cloudscheduler.jobFromEndpoint(
-          {
-            ...V1_ENDPOINT,
-            scheduleTrigger: {
-              schedule: "every 1 minutes",
-              attemptDeadlineSeconds: 300,
-            },
-          },
-          "appEngineLocation",
-          "1234567",
-        ),
-      ).to.deep.equal({
-        name: "projects/project/locations/appEngineLocation/jobs/firebase-schedule-id-region",
-        schedule: "every 1 minutes",
-        timeZone: "America/Los_Angeles",
-        pubsubTarget: {
-          topicName: "projects/project/topics/firebase-schedule-id-region",
-          attributes: {
-            scheduled: "true",
-          },
-        },
-      });
-    });
-
-    it("should copy attemptDeadlineSeconds for v2 endpoints", async () => {
+    it("should sync attemptDeadline with timeoutSeconds for v2 endpoints", async () => {
       expect(
         await cloudscheduler.jobFromEndpoint(
           {
             ...V2_ENDPOINT,
-            scheduleTrigger: {
-              schedule: "every 1 minutes",
-              attemptDeadlineSeconds: 300,
-            },
+            timeoutSeconds: 300,
           },
           V2_ENDPOINT.region,
           "1234567",
@@ -328,6 +294,58 @@ describe("cloudscheduler", () => {
         schedule: "every 1 minutes",
         timeZone: "UTC",
         attemptDeadline: "300s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should cap attemptDeadline at 1800s for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            // This is bad configuration.
+            // Users are discouraged from setting timeout >1800s for scheduled functions.
+            timeoutSeconds: 3600,
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "1800s",
+        httpTarget: {
+          uri: "https://my-uri.com",
+          httpMethod: "POST",
+          oidcToken: {
+            serviceAccountEmail: "1234567-compute@developer.gserviceaccount.com",
+          },
+        },
+      });
+    });
+
+    it("should floor attemptDeadline at 180s for v2 endpoints", async () => {
+      expect(
+        await cloudscheduler.jobFromEndpoint(
+          {
+            ...V2_ENDPOINT,
+            timeoutSeconds: 60,
+          },
+          V2_ENDPOINT.region,
+          "1234567",
+        ),
+      ).to.deep.equal({
+        name: "projects/project/locations/region/jobs/firebase-schedule-id-region",
+        schedule: "every 1 minutes",
+        timeZone: "UTC",
+        attemptDeadline: "180s",
         httpTarget: {
           uri: "https://my-uri.com",
           httpMethod: "POST",
