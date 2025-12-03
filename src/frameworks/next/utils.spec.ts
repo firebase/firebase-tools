@@ -680,7 +680,6 @@ describe("Next.js utils", () => {
 
   describe("isNextJsVersionVulnerable", () => {
     describe("vulnerable versions", () => {
-      // 15.x
       it("should block vulnerable 15.0.x versions (< 15.0.5)", () => {
         expect(isNextJsVersionVulnerable("15.0.4")).to.be.true;
         expect(isNextJsVersionVulnerable("15.0.0")).to.be.true;
@@ -715,7 +714,6 @@ describe("Next.js utils", () => {
         expect(isNextJsVersionVulnerable("15.5.1-canary.39")).to.be.true;
       });
 
-      // 16.x
       it("should block vulnerable 16.0.x versions (< 16.0.7)", () => {
         expect(isNextJsVersionVulnerable("16.0.6")).to.be.true;
         expect(isNextJsVersionVulnerable("16.0.0-beta.0")).to.be.true;
@@ -723,15 +721,12 @@ describe("Next.js utils", () => {
         expect(isNextJsVersionVulnerable("16.0.2-canary.34")).to.be.true;
       });
 
-      // 14.x
       it("should block vulnerable 14.x canary versions (>= 14.3.0-canary.77)", () => {
         expect(isNextJsVersionVulnerable("14.3.0-canary.77")).to.be.true;
         expect(isNextJsVersionVulnerable("14.3.0-canary.87")).to.be.true;
       });
 
-      // Edge cases
       it("should treat pre-releases of patched versions as vulnerable (conservative)", () => {
-        // 15.0.5-canary.1 < 15.0.5, so it should be blocked
         expect(isNextJsVersionVulnerable("15.0.5-canary.1")).to.be.true;
       });
 
@@ -741,7 +736,6 @@ describe("Next.js utils", () => {
     });
 
     describe("safe versions", () => {
-      // 15.x Patched
       it("should allow patched 15.0.x versions (>= 15.0.5)", () => {
         expect(isNextJsVersionVulnerable("15.0.5")).to.be.false;
         expect(isNextJsVersionVulnerable("15.0.6")).to.be.false;
@@ -767,12 +761,10 @@ describe("Next.js utils", () => {
         expect(isNextJsVersionVulnerable("15.5.7")).to.be.false;
       });
 
-      // 15.6.x+ (Newer minors assumed safe)
       it("should allow newer minor versions (e.g. 15.6.x)", () => {
         expect(isNextJsVersionVulnerable("15.6.0-canary.57")).to.be.false;
       });
 
-      // 16.x Patched / Newer
       it("should allow patched 16.0.x versions (>= 16.0.7)", () => {
         expect(isNextJsVersionVulnerable("16.0.7")).to.be.false;
       });
@@ -781,7 +773,6 @@ describe("Next.js utils", () => {
         expect(isNextJsVersionVulnerable("16.1.0-canary.12")).to.be.false;
       });
 
-      // 14.x Safe
       it("should allow safe 14.x canary versions (< 14.3.0-canary.77)", () => {
         expect(isNextJsVersionVulnerable("14.3.0-canary.76")).to.be.false;
         expect(isNextJsVersionVulnerable("14.3.0-canary.43")).to.be.false;
@@ -794,13 +785,11 @@ describe("Next.js utils", () => {
         expect(isNextJsVersionVulnerable("14.1.4")).to.be.false;
       });
 
-      // Unaffected older versions
       it("should allow unaffected older versions", () => {
         expect(isNextJsVersionVulnerable("13.5.11")).to.be.false;
         expect(isNextJsVersionVulnerable("12.3.7")).to.be.false;
       });
 
-      // Edge cases
       it("should allow versions with build metadata if base is safe", () => {
         expect(isNextJsVersionVulnerable("15.0.5+build123")).to.be.false;
       });
