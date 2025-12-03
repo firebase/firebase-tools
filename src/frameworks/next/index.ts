@@ -58,6 +58,9 @@ import {
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
+  isUsingAppDirectory,
+  getNextVersionRaw,
+  isNextJsVersionVulnerable,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -338,6 +341,18 @@ export async function build(
     }));
 
   const wantsBackend = reasonsForBackend.size > 0;
+
+  if (wantsBackend && isUsingAppDirectory(join(dir, distDir))) {
+    const nextVersion = getNextVersionRaw(dir);
+    if (nextVersion && isNextJsVersionVulnerable(nextVersion)) {
+      throw new FirebaseError(
+        `Next.js version ${nextVersion} is vulnerable to CVE-2025-66478.\n` +
+          `Please upgrade to a patched version (15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, 15.5.7+, 16.0.7+) ` +
+          `or downgrade to a stable Next.js 14.x release if using canary.\n` +
+          `See https://nextjs.org/blog/CVE-2025-66478 for more details.`,
+      );
+    }
+  }
 
   if (wantsBackend) {
     logger.info("Building a Cloud Function to run this application. This is needed due to:");
