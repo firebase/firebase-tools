@@ -530,7 +530,7 @@ ${
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 
-      execSync(`npm i --omit dev --no-audit`, {
+      execSync(`npm i --force --omit dev --no-audit`, {
         cwd: functionsDist,
         stdio: "inherit",
       });
@@ -556,7 +556,10 @@ ${
   const server = import('firebase-frameworks');
   exports.${functionId} = onRequest(${JSON.stringify(
     frameworksBackend || {},
-  )}, (req, res) => server.then(it => it.handle(req, res)));
+  )}, (req, res) => server.then(it => it.handle(req, res).then((...r) => console.log('then response', r))).catch(err => {
+    console.error(err);
+    res.status(500).send('Internal Server Error');
+  }));
   `,
         );
       }

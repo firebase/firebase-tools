@@ -314,6 +314,14 @@ function requirePackageJson(): PackageJSON | undefined {
  * So yeah, we'll try our best and hopefully we can catch 90% of requests.
  */
 function initializeNetworkFiltering(): void {
+  // http2 is a built-in module.
+  let http2;
+  try {
+    http2 = require("http2");
+  } catch (e) {
+    // http2 is not supported in this Node version, so we don't need to mock it.
+  }
+
   const networkingModules = [
     { name: "http", module: require("http"), path: ["request"] },
     { name: "http", module: require("http"), path: ["get"] },
@@ -322,6 +330,10 @@ function initializeNetworkFiltering(): void {
     { name: "net", module: require("net"), path: ["connect"] },
     // HTTP2 is not currently mocked due to the inability to quiet Experiment warnings in Node.
   ];
+
+  if (http2) {
+    networkingModules.push({ name: "http2", module: http2, path: ["connect"] });
+  }
 
   const history: { [href: string]: boolean } = {};
   const results = networkingModules.map((bundle) => {

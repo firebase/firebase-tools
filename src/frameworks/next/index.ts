@@ -59,7 +59,7 @@ import {
   installEsbuild,
   findEsbuildPath,
 } from "./utils";
-import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
+import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, I18N_ROOT } from "../constants";
 import type {
   AppPathRoutesManifest,
   AppPathsManifest,
@@ -104,11 +104,15 @@ function getReactVersion(cwd: string): string | undefined {
  * Returns whether this codebase is a Next.js backend.
  */
 export async function discover(dir: string) {
-  if (!(await pathExists(join(dir, "package.json")))) return;
-  const version = getNextVersion(dir);
-  if (!(await whichNextConfigFile(dir)) && !version) return;
+  // if (!(await pathExists(join(dir, "package.json")))) return;
+  // const version = getNextVersion(dir);
+  // if (!(await whichNextConfigFile(dir)) && !version) return;
 
-  return { mayWantBackend: true, publicDirectory: join(dir, PUBLIC_DIR), version };
+  return {
+    mayWantBackend: true,
+    publicDirectory: join(dir, PUBLIC_DIR),
+    version: "file:/Users/leo/dev/next.js/packages/next",
+  };
 }
 
 /**
@@ -119,7 +123,10 @@ export async function build(
   target: string,
   context?: FrameworkContext,
 ): Promise<BuildResult> {
-  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  const variable = false;
+  if (variable) {
+    await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  }
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
@@ -156,20 +163,23 @@ export async function build(
     }
   }
 
-  const cli = getNodeModuleBin("next", dir);
+  const falsevar = true;
+  if (falsevar) {
+    const cli = getNodeModuleBin("next", dir);
 
-  const nextBuild = new Promise((resolve, reject) => {
-    const buildProcess = spawn(cli, ["build"], { cwd: dir, env });
-    buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
-    buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
-    buildProcess.on("error", (err) => {
-      reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+    const nextBuild = new Promise((resolve, reject) => {
+      const buildProcess = spawn(cli, ["build"], { cwd: dir, env });
+      buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
+      buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
+      buildProcess.on("error", (err) => {
+        reject(new FirebaseError(`Unable to build your Next.js app: ${err}`));
+      });
+      buildProcess.on("exit", (code) => {
+        resolve(code);
+      });
     });
-    buildProcess.on("exit", (code) => {
-      resolve(code);
-    });
-  });
-  await nextBuild;
+    await nextBuild;
+  }
 
   const reasonsForBackend = new Set();
   const { distDir, trailingSlash, basePath: baseUrl } = await getConfig(dir);
@@ -596,7 +606,35 @@ export async function ɵcodegenFunctionsDirectory(
   context?: FrameworkContext,
 ): ReturnType<NonNullable<Framework["ɵcodegenFunctionsDirectory"]>> {
   const { distDir } = await getConfig(sourceDir);
-  const packageJson = await readJSON(join(sourceDir, "package.json"));
+  const packageJson = {
+    name: "16",
+    version: "0.1.0",
+    private: true,
+    scripts: {
+      "build-pages-json": "bun run scripts/pages-json.ts",
+      dev: "next dev",
+      build: "next build",
+      start: "next start",
+      lint: "eslint",
+    },
+    dependencies: {
+      react: "file:/Users/leo/dev/next.js/node_modules/react",
+      "react-dom": "file:/Users/leo/dev/next.js/node_modules/react-dom",
+      next: "file:/Users/leo/dev/next.js/packages/next",
+    },
+    devDependencies: {
+      typescript: "^5",
+      "@types/node": "^20",
+      "@types/react": "^19",
+      "@types/react-dom": "^19",
+      "@tailwindcss/postcss": "^4",
+      tailwindcss: "^4",
+      eslint: "^9",
+      "eslint-config-next": "16.0.0",
+    },
+  };
+
+  // await readJSON(join(sourceDir, "package.json"));
   // Bundle their next.config.js with esbuild via NPX, pinned version was having troubles on m1
   // macs and older Node versions; either way, we should avoid taking on any deps in firebase-tools
   // Alternatively I tried using @swc/spack and the webpack bundled into Next.js but was
@@ -679,7 +717,7 @@ export async function ɵcodegenFunctionsDirectory(
 
   // Add the `sharp` library if app is using image optimization
   if (await isUsingImageOptimization(sourceDir, distDir)) {
-    packageJson.dependencies["sharp"] = SHARP_VERSION;
+    // packageJson.dependencies["sharp"] = SHARP_VERSION as any;
   }
 
   const dotEnv: Record<string, string> = {};
