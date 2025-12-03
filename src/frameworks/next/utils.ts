@@ -574,7 +574,7 @@ export function installEsbuild(version: string): void {
  * - 15.5.x < 15.5.7
  * - 16.0.x < 16.0.7
  * - 14.x canary >= 14.3.0-canary.77
- * 
+ *
  * @see https://nextjs.org/blog/CVE-2025-66478
  * @see https://www.cve.org/CVERecord?id=CVE-2025-55182
  * @see https://github.com/vercel/next.js/security/advisories/GHSA-9qr9-h5gf-34mp
