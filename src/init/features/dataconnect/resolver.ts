@@ -95,7 +95,6 @@ export async function actuate(setup: Setup, config: Config) {
             ? "blaze"
             : "spark"
           : "missing",
-        ...{},
       },
       Date.now() - startTime,
     );
