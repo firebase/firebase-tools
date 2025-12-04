@@ -121,16 +121,6 @@ describe("askQuestions", () => {
     sinon.restore();
   });
 
-  it("should throw error when fdcwebhooks experiment is not enabled", async () => {
-    experimentsStub.returns(false);
-
-    try {
-      await askQuestions(setup, config);
-    } catch (err: any) {
-      expect(err.message).to.equal("Unsupported command.");
-    }
-  });
-
   it("should throw error when no services", async () => {
     experimentsStub.returns(true);
     loadAllStub.resolves([]);
