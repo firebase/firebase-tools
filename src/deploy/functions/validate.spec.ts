@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as fsutils from "../../fsutils";
 import * as validate from "./validate";
-import * as utils from "../../utils";
 import * as projectPath from "../../projectPath";
 import * as secretManager from "../../gcp/secretManager";
 import * as backend from "./backend";
@@ -466,14 +465,16 @@ describe("validate", () => {
     });
 
     it("errors for scheduled functions with timeout > 1800s", () => {
-        const ep: backend.Endpoint = {
-          ...ENDPOINT_BASE,
-          scheduleTrigger: {
-            schedule: "every 1 minutes",
-          },
-          timeoutSeconds: 1801,
-        };
-      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw("The following functions have timeouts that exceed the maximum allowed for their trigger typ"); 
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+        },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
+      );
     });
   });
 
