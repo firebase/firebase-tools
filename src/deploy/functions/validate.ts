@@ -41,6 +41,13 @@ const MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS = 1800;
  */
 const MAX_V2_HTTP_TIMEOUT_SECONDS = 3600;
 
+/**
+ * Cloud Scheduler requires attempt deadline in range [15s, 30min] with default of 3min.
+ * See https://cloud.google.com/scheduler/docs/reference/rest/v1/projects.locations.jobs#Job.FIELDS.attempt_deadline
+ */
+export const DEFAULT_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS = 180;
+export const MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS = 1800;
+
 function matchingIds(
   endpoints: backend.Endpoint[],
   filter: (endpoint: backend.Endpoint) => boolean,
@@ -59,12 +66,29 @@ const cpu = (endpoint: backend.Endpoint): number => {
     : endpoint.cpu ?? backend.memoryToGen2Cpu(mem(endpoint));
 };
 
+function validateScheduledTimeout(ep: backend.Endpoint): void {
+  if (
+    backend.isScheduleTriggered(ep) &&
+    ep.timeoutSeconds &&
+    ep.timeoutSeconds > MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS
+  ) {
+    utils.logLabeledWarning(
+      "functions",
+      `Scheduled function ${ep.id} has a timeout of ${ep.timeoutSeconds} seconds, ` +
+        `which exceeds the maximum attempt deadline of ${MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS} seconds for Cloud Scheduler. ` +
+        "This is probably not what you want! Having a timeout longer than the attempt deadline may lead to unexpected retries and multiple function executions. " +
+        `The attempt deadline will be capped at ${MAX_V2_SCHEDULE_ATTEMPT_DEADLINE_SECONDS} seconds.`,
+    );
+  }
+}
+
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
+    validateScheduledTimeout(ep);
     serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
   }
 
