@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import { appTestingOrigin } from "../api";
 import { invokeTests, pollInvocationStatus } from "./invokeTests";
 import { FirebaseError } from "../error";

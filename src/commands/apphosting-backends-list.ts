@@ -6,7 +6,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 const TABLE_HEAD = ["Backend", "Repository", "URL", "Primary Region", "Updated Date"];
 

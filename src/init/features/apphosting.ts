@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import { existsSync } from "fs";
-import * as ora from "ora";
+import ora from "ora";
 import * as path from "path";
 import { Setup } from "..";
 import { webApps } from "../../apphosting/app";

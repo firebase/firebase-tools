@@ -1,5 +1,5 @@
 import { bold } from "colorette";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 import { Channel, listChannels } from "../hosting/api";
 import { Command } from "../command";

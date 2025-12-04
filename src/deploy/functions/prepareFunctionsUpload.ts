@@ -1,6 +1,6 @@
-import * as archiver from "archiver";
+import archiver from "archiver";
 import * as clc from "colorette";
-import * as filesize from "filesize";
+import filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";

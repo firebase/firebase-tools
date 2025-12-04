@@ -1,6 +1,6 @@
 import * as clc from "colorette";
-import * as ora from "ora";
-import * as Table from "cli-table3";
+import ora from "ora";
+import Table from "cli-table3";
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";

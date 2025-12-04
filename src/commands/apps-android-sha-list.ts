@@ -1,4 +1,4 @@
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
 import { listAppAndroidSha, AppAndroidShaData } from "../management/apps";

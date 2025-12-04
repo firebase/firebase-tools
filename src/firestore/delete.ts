@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as ProgressBar from "progress";
+import ProgressBar from "progress";
 
 import * as apiv2 from "../apiv2";
 import * as firestore from "../gcp/firestore";

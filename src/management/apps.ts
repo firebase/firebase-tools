@@ -1,5 +1,5 @@
 import * as fs from "fs-extra";
-import * as ora from "ora";
+import ora from "ora";
 import * as path from "path";
 import { Client } from "../apiv2";
 import { firebaseApiOrigin } from "../api";

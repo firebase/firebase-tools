@@ -1,5 +1,5 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
+import leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";

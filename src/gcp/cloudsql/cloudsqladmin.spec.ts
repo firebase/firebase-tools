@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 
 import * as sqladmin from "../../gcp/cloudsql/cloudsqladmin";

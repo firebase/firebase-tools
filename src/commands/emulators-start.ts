@@ -10,7 +10,7 @@ import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 import { Options } from "../options";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));

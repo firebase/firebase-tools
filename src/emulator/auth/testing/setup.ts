@@ -1,6 +1,6 @@
 import { Suite } from "mocha";
 import { useFakeTimers } from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import { createApp } from "../server";
 import { AgentProjectState } from "../state";
 import { SingleProjectMode } from "..";

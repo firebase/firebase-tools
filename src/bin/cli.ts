@@ -1,4 +1,4 @@
-import * as updateNotifierPkg from "update-notifier-cjs";
+import updateNotifierPkg from "update-notifier-cjs";
 import * as clc from "colorette";
 import { markedTerminal } from "marked-terminal";
 import { marked } from "marked";

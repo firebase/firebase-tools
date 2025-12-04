@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
 import * as api from "../api";
 import * as refs from "./refs";

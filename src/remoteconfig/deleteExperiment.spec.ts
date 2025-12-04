@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as clc from "colorette";
 
 import { remoteConfigApiOrigin } from "../api";

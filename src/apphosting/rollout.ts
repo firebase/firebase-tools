@@ -1,6 +1,6 @@
 import * as apphosting from "../gcp/apphosting";
 import { FirebaseError } from "../error";
-import * as ora from "ora";
+import ora from "ora";
 import { getRepoDetailsFromBackend, listAllBranches } from "../gcp/devConnect";
 import {
   getGitHubBranch,

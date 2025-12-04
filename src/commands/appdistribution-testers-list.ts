@@ -1,4 +1,4 @@
-import * as ora from "ora";
+import ora from "ora";
 import { AppDistributionClient } from "../appdistribution/client";
 import { getProjectName } from "../appdistribution/options-parser-util";
 import { ListTestersResponse, Tester } from "../appdistribution/types";
@@ -8,7 +8,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import * as utils from "../utils";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 export const command = new Command("appdistribution:testers:list [group]")
   .description("list testers in project")

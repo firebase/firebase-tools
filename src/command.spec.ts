@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as rc from "./rc";
-import * as nock from "nock";
+import nock from "nock";
 
 import { Command, validateProjectId } from "./command";
 import { FirebaseError } from "./error";

@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import archiver from "archiver";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";

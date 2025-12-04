@@ -1,4 +1,4 @@
-import * as express from "express";
+import express from "express";
 import * as os from "os";
 import * as fs from "fs";
 import * as path from "path";

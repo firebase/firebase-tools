@@ -1,6 +1,6 @@
 import * as program from "commander";
 import * as clc from "colorette";
-import * as leven from "leven";
+import leven from "leven";
 
 import { logger, useConsoleLoggers } from "./logger";
 

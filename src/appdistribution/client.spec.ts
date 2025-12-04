@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { join } from "path";
 import * as fs from "fs-extra";
-import * as nock from "nock";
+import nock from "nock";
 import { rmSync } from "node:fs";
 import * as sinon from "sinon";
 import * as tmp from "tmp";

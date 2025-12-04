@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as express from "express";
+import express from "express";
 import { EmulatorRegistry } from "../registry";
 import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";

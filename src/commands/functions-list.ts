@@ -4,7 +4,7 @@ import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as backend from "../deploy/functions/backend";
 import { logger } from "../logger";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import { Options } from "../options";
 import { FunctionsPlatform } from "../deploy/functions/backend";
 

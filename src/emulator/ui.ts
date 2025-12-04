@@ -1,4 +1,4 @@
-import * as express from "express";
+import express from "express";
 import * as path from "path";
 import { Emulators, ListenSpec } from "./types";
 import * as downloadableEmulators from "./downloadableEmulators";

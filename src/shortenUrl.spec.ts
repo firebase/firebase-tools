@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import { dynamicLinksKey, dynamicLinksOrigin } from "./api";
 import { shortenUrl } from "./shortenUrl";
 

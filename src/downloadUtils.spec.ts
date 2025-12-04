@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { readFileSync } from "fs-extra";
-import * as nock from "nock";
+import nock from "nock";
 import { gunzipSync, gzipSync } from "zlib";
 
 import { downloadToTmp } from "./downloadUtils";

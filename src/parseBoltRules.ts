@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as clc from "colorette";
 import * as _ from "lodash";
 

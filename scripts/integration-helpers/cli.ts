@@ -1,5 +1,5 @@
 import { ChildProcess } from "child_process";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
 export class CLIProcess {
   process?: ChildProcess;

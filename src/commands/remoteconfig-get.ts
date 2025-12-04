@@ -9,7 +9,7 @@ import { parseTemplateForTable } from "../remoteconfig/get";
 import { Options } from "../options";
 import * as utils from "../utils";
 
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import * as fs from "fs";
 import * as util from "util";
 import { FirebaseError } from "../error";

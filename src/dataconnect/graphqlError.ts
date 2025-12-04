@@ -1,5 +1,5 @@
 import { GraphqlError } from "./types";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 export function prettify(err: GraphqlError): string {
   let message = err.message;

@@ -1,5 +1,5 @@
 import { URL } from "url";
-import * as express from "express";
+import express from "express";
 import { IdpJwtPayload, resetPassword, setAccountInfoImpl } from "./operations";
 import { ProjectState, ProviderUserInfo } from "./state";
 import { BadRequestError, NotImplementedError } from "./errors";

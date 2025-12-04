@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import * as cloudbilling from "./cloudbilling";
 import { cloudbillingOrigin } from "../api";
 import { Setup } from "../init";

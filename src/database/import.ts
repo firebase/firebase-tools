@@ -1,4 +1,4 @@
-import * as Chain from "stream-chain";
+import Chain from "stream-chain";
 import * as clc from "colorette";
 import * as Filter from "stream-json/filters/Filter";
 import * as stream from "stream";
@@ -8,7 +8,7 @@ import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
 import { FetchError } from "node-fetch";
 import { FirebaseError } from "../error";
-import * as pLimit from "p-limit";
+import pLimit from "p-limit";
 
 type JsonType = { [key: string]: JsonType } | string | number | boolean;
 

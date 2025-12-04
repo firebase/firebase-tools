@@ -1,5 +1,5 @@
 import { parse } from "csv-parse";
-import * as Chain from "stream-chain";
+import Chain from "stream-chain";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as Pick from "stream-json/filters/Pick";

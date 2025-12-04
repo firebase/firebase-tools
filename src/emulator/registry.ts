@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 import * as portUtils from "./portUtils";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
-import * as express from "express";
+import express from "express";
 import { connectableHostname } from "../utils";
 import { Client, ClientOptions } from "../apiv2";
 import { get as getDownloadableEmulatorDetails } from "./downloadableEmulators";

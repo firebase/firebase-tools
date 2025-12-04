@@ -17,7 +17,7 @@ import { confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";

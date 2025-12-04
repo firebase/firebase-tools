@@ -1,7 +1,7 @@
 import { bold, underline } from "colorette";
 import * as fs from "fs";
 import * as yaml from "yaml";
-import * as ora from "ora";
+import ora from "ora";
 import * as path from "path";
 import * as libsodium from "libsodium-wrappers";
 

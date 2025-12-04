@@ -1,6 +1,6 @@
 import * as chai from "chai";
-import * as nock from "nock";
-import * as chaiAsPromised from "chai-as-promised";
+import nock from "nock";
+import chaiAsPromised from "chai-as-promised";
 
 import { getIssue, updateIssue } from "./issues";
 import { State } from "./types";

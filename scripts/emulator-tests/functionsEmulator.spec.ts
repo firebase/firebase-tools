@@ -4,9 +4,9 @@ import * as os from "os";
 import * as path from "path";
 
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import * as winston from "winston";
 import * as logform from "logform";
 

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { remoteConfigApiOrigin } from "../api";
-import * as nock from "nock";
+import nock from "nock";
 
 import { RemoteConfigTemplate } from "./interfaces";
 import * as remoteconfig from "./rollback";

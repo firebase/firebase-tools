@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "fs-extra";
 import ignorePkg from "ignore";
 import * as _ from "lodash";
-import * as minimatch from "minimatch";
+import minimatch from "minimatch";
 import { join, relative } from "path";
 
 export interface ReaddirRecursiveOpts {

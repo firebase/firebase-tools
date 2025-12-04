@@ -1,5 +1,5 @@
 import { bold } from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";

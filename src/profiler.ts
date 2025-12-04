@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import * as ora from "ora";
+import ora from "ora";
 import * as readline from "readline";
 import * as tmp from "tmp";
 import AbortController from "abort-controller";

@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "nock";
 import * as prepare from "./prepare";
 import * as load from "../../dataconnect/load";
 import * as utils from "../../utils";

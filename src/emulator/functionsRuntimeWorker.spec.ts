@@ -1,5 +1,5 @@
 import * as httpMocks from "node-mocks-http";
-import * as nock from "nock";
+import nock from "nock";
 import { expect } from "chai";
 import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
 import { EventEmitter } from "events";

@@ -3,8 +3,8 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as chaiAsPromised from "chai-as-promised";
-import * as spawn from "cross-spawn";
+import chaiAsPromised from "chai-as-promised";
+import spawn from "cross-spawn";
 import * as downloadUtils from "../downloadUtils";
 import { FirebaseError } from "../error";
 

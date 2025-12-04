@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "./operations";
 import { PROVIDER_PASSWORD, SIGNIN_METHOD_EMAIL_LINK } from "./state";

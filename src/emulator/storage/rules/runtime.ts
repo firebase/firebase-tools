@@ -1,7 +1,7 @@
 import { spawn } from "cross-spawn";
 import { ChildProcess } from "child_process";
 import { FirebaseError } from "../../../error";
-import * as AsyncLock from "async-lock";
+import AsyncLock from "async-lock";
 import {
   DataLoadStatus,
   RulesetOperationMethod,

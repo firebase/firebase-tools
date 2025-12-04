@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
 import { Client } from "../apiv2";
 import { FirebaseError, getErrStatus } from "../error";

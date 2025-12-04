@@ -1,7 +1,7 @@
 import * as fs from "fs";
 
 import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
-import * as express from "express";
+import express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
 import * as bodyParser from "body-parser";

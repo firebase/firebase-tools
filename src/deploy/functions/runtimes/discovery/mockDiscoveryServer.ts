@@ -1,4 +1,4 @@
-import * as express from "express";
+import express from "express";
 
 const app = express();
 app.get("/backend.yaml", (req, res) => {

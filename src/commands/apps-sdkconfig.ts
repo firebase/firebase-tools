@@ -1,4 +1,4 @@
-import * as ora from "ora";
+import ora from "ora";
 import * as fs from "fs-extra";
 
 import { Command } from "../command";

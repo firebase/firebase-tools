@@ -1,4 +1,4 @@
-import * as nock from "nock";
+import nock from "nock";
 import * as sinon from "sinon";
 import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "./gcp/firedata";
 import { requireTosAcceptance } from "./requireTosAcceptance";

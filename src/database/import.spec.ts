@@ -1,4 +1,4 @@
-import * as nock from "nock";
+import nock from "nock";
 import * as stream from "stream";
 import * as utils from "../utils";
 import { expect } from "chai";

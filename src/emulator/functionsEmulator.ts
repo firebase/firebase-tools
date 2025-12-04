@@ -1,10 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as express from "express";
+import express from "express";
 import * as clc from "colorette";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
-import * as cors from "cors";
+import cors from "cors";
 import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
@@ -17,7 +17,7 @@ import { EmulatorInfo, EmulatorInstance, Emulators, FunctionsExecutionMode } fro
 import * as chokidar from "chokidar";
 import * as portfinder from "portfinder";
 
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 import {
   EmulatedTriggerDefinition,

@@ -1,4 +1,4 @@
-import * as mockfs from "mock-fs";
+import mockfs from "mock-fs";
 import * as sinon from "sinon";
 import { FirebaseMcpServer } from "../../index";
 import { RC } from "../../../rc";

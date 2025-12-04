@@ -233,6 +233,7 @@
     "@types/ws": "^7.2.3",
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
+    "@typescript/native-preview": "^7.0.0-dev.20251204.1",
     "astro": "^2.2.3",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",

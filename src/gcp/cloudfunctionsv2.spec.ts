@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "nock";
 
 import * as cloudfunctionsv2 from "./cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";

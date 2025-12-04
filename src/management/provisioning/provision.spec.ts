@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "nock";
 import { firebaseApiOrigin } from "../../api";
 import * as pollUtils from "../../operation-poller";
 import {
