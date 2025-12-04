@@ -465,9 +465,7 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
 
-    it("warns for scheduled functions with timeout > 1800s", () => {
-      const logStub = sinon.stub(utils, "logLabeledWarning");
-      try {
+    it("errors for scheduled functions with timeout > 1800s", () => {
         const ep: backend.Endpoint = {
           ...ENDPOINT_BASE,
           scheduleTrigger: {
@@ -475,11 +473,7 @@ describe("validate", () => {
           },
           timeoutSeconds: 1801,
         };
-        validate.endpointsAreValid(backend.of(ep));
-        expect(logStub.calledOnce).to.be.true;
-      } finally {
-        logStub.restore();
-      }
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw("The following functions have timeouts that exceed the maximum allowed for their trigger typ"); 
     });
   });
 
