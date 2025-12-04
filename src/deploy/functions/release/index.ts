@@ -48,6 +48,7 @@ export async function release(
         wantBackend,
         haveBackend,
         filters: context.filters,
+        excludeFilters: context.filtersExcept,
       }),
     };
   }
