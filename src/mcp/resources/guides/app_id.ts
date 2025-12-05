@@ -1,20 +1,6 @@
 import { resource } from "../../resource";
 
-export const app_id = resource(
-  {
-    uri: "firebase://guides/app_id",
-    name: "app_id_guide",
-    title: "Firebase App Id Guide",
-    description:
-      "guides the coding agent through choosing a Firebase App ID in the current project",
-  },
-  async (uri) => {
-    return {
-      contents: [
-        {
-          uri,
-          type: "text",
-          text: `
+export const RESOURCE_CONTENT = `
 ### Firebase App ID
   The Firebase App ID is used to identify a mobile or web client application to Firebase back end services such as Crashlytics or Remote Config. Use the information below to find the developer's App ID.
 
@@ -38,9 +24,19 @@ export const app_id = resource(
           number (typically "1"), a project number, a platform type ("android", "ios", or "web"), 
           and a sequence of hexadecimal characters. 
        ii. Store the valid app id value, the android package name or ios bundle identifier, and the project directory.
-`.trim(),
-        },
-      ],
+`.trim();
+
+export const app_id = resource(
+  {
+    uri: "firebase://guides/app_id",
+    name: "app_id_guide",
+    title: "Firebase App Id Guide",
+    description:
+      "guides the coding agent through choosing a Firebase App ID in the current project",
+  },
+  async (uri) => {
+    return {
+      contents: [{ uri, type: "text", text: RESOURCE_CONTENT }],
     };
   },
 );

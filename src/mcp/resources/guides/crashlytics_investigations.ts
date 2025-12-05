@@ -1,20 +1,6 @@
 import { resource } from "../../resource";
 
-export const crashlytics_investigations = resource(
-  {
-    uri: "firebase://guides/crashlytics/investigations",
-    name: "crashlytics_investigations_guide",
-    title: "Firebase Crashlytics Investigations Guide",
-    description:
-      "Guides the coding agent when investigating bugs reported in Crashlytics issues, including procedures for diagnosing and fixing crashes.",
-  },
-  async (uri) => {
-    return {
-      contents: [
-        {
-          uri,
-          type: "text",
-          text: `
+const RESOURCE_CONTENT = `
 ### How to Diagnose and Fix Crashlytics Issues
 
   Follow these steps to diagnose bugs and and propose fixes for issues.
@@ -61,9 +47,19 @@ export const crashlytics_investigations = resource(
   10. Only if they approve the plan, create a fix for the issue.
     10a. Be mindful of API contracts and do not add fields to resources without a clear way to populate those fields
     10b. If there is not enough information in the crash report to find a root cause, describe why you cannot fix the issue instead of making a guess.
-`.trim(),
-        },
-      ],
+`.trim();
+
+export const crashlytics_investigations = resource(
+  {
+    uri: "firebase://guides/crashlytics/investigations",
+    name: "crashlytics_investigations_guide",
+    title: "Firebase Crashlytics Investigations Guide",
+    description:
+      "Guides the coding agent when investigating bugs reported in Crashlytics issues, including procedures for diagnosing and fixing crashes.",
+  },
+  async (uri) => {
+    return {
+      contents: [{ uri, type: "text", text: RESOURCE_CONTENT }],
     };
   },
 );

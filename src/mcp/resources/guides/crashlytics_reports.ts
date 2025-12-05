@@ -1,20 +1,6 @@
 import { resource } from "../../resource";
 
-export const crashlytics_reports = resource(
-  {
-    uri: "firebase://guides/crashlytics/reports",
-    name: "crashlytics_reports_guide",
-    title: "Firebase Crashlytics Reports Guide",
-    description:
-      "Guides the coding agent through requesting Crashlytics reports, including setting appropriate filters and how to understand the metrics. The agent should read this guide before requesting any report.",
-  },
-  async (uri) => {
-    return {
-      contents: [
-        {
-          uri,
-          type: "text",
-          text: `
+const RESOURCE_CONTENT = `
 ### Crashlytics Reports
 
 Aggregate metrics for all of the events sent to Crashlytics are available as reports. 
@@ -103,9 +89,19 @@ When setting report filters adhere to the following instructions.
   
   * When investigating an issue, use the appropriate top devices and top operating systems reports to understand what systems are impacted by the problem. Pass the "issueId" in the filter to narrow any report to a specific issue.
 
-`.trim(),
-        },
-      ],
+`.trim();
+
+export const crashlytics_reports = resource(
+  {
+    uri: "firebase://guides/crashlytics/reports",
+    name: "crashlytics_reports_guide",
+    title: "Firebase Crashlytics Reports Guide",
+    description:
+      "Guides the coding agent through requesting Crashlytics reports, including setting appropriate filters and how to understand the metrics. The agent should read this guide before requesting any report.",
+  },
+  async (uri) => {
+    return {
+      contents: [{ uri, type: "text", text: RESOURCE_CONTENT }],
     };
   },
 );

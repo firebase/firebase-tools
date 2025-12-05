@@ -1,4 +1,5 @@
 import { prompt } from "../../prompt";
+import { RESOURCE_CONTENT as connectResourceContent } from "../../resources/guides/crashlytics_connect";
 
 export const connect = prompt(
   "crashlytics",
@@ -34,25 +35,8 @@ You will assist developers in investigating and resolving mobile application iss
 
 **Obtain the Firebase App ID.** 
     If an App ID is not readily available, consult this guide for selection: [Firebase App Id Guide](firebase://guides/app_id).
-### Next Steps
 
-After confirming the user is logged into Firebase and the correct App ID is identified, inquire about the desired actions. Your capabilities include:
-- Reading Crashlytics reports.
-- Investigating bug reports using Crashlytics event data.
-- Proposing code changes to resolve identified bugs.
-
-Only ask the user one question at a time. Do not proceed without user instructions.
-Upon receiving user instructions, refer to the relevant resources for guidance.
-Use the Firebase \`read_resources\` tool to access the following guides.
-
-  1. [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports)
-     This guide details how to request and use aggregated numerical data from Crashlytics. The agent should read this guide before requesting any report.
-    
-  2. [Firebase Crashlytics Issues Guide](firebase://guides/crashlytics/issues)
-     This guide details how to work with issues within Crashlytics. The agent should read this guide before prioritizing issues or presenting issue data to the user.
-
-  3. [Investigating Crashlytics Issues](firebase://guides/crashlytics/investigations)
-     This guide provides instructions on investigating the root causes of crashes and exceptions reported in Crashlytics issues.
+${ connectResourceContent }
 `.trim(),
         },
       },
