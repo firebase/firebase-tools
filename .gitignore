@@ -32,3 +32,4 @@ lib/
 dev/
 clean/
 .gemini/
+.env
