@@ -78,6 +78,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     const projectId = this.watch(firebaseRC)?.tryReadValue?.projects.default;
 
     const documentText = document.getText();
+    // TODO: replace w/ online-parser to work with malformed documents
     const documentNode = parse(documentText);
     const definitions: ExecutableDefinitionNode[] = [];
     for (const def of documentNode.definitions) {
