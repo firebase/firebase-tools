@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "14.26.0",
+  "version": "14.27.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
