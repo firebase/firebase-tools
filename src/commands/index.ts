@@ -34,7 +34,7 @@ export function load(client: CLIClient): CLIClient {
   client.appdistribution.testers = {};
   client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
-  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.testers.remove = loadCommand("appdistribution-testers-remove");
   client.appdistribution.groups = {};
   client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
   client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
@@ -55,7 +55,7 @@ export function load(client: CLIClient): CLIClient {
   client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
-  client.auth.upload = loadCommand("auth-import");
+  client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
