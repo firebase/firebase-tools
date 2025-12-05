@@ -1,5 +1,11 @@
 ## NEXT
 
+- Fixed common code lens rendering issue.
+  - Don't show "Generate query" in schema file.
+  - Don't show "Generate query" for comments within an operation.
+  - Show "Add Data" for @table type only.
+  - Show "View Data" for @table and @view type.
+
 ## 1.10.1
 
 - Update internal `firebase-tools` dependency to 14.24.2
