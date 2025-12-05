@@ -54,6 +54,7 @@ describe("get_environment tool", () => {
       rc,
       config,
       firebaseCliCommand: "firebase",
+      isBillingEnabled: false,
     };
   };
 
@@ -72,6 +73,7 @@ Project Directory: /test-dir
 Project Config Path: <NO CONFIG PRESENT>
 Active Project ID: <NONE>
 Gemini in Firebase Terms of Service: <NOT ACCEPTED>
+Billing Enabled: N/A
 Authenticated User: <NONE>
 Detected App IDs: <NONE>
 Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
@@ -120,6 +122,7 @@ Project Directory: /test-dir
 Project Config Path: /test-dir/firebase.json
 Active Project ID: test-project (alias: my-alias)
 Gemini in Firebase Terms of Service: Accepted
+Billing Enabled: No
 Authenticated User: test@example.com
 Detected App IDs: 
 
