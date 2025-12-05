@@ -1,4 +1,4 @@
-import { OperationDefinitionNode } from "graphql";
+import { ExecutableDefinitionNode, Kind, OperationDefinitionNode } from "graphql";
 
 interface Comment {
   text: string;
@@ -8,7 +8,7 @@ interface Comment {
   queryDoc?: OperationDefinitionNode;
 }
 
-export function findCommentsBlocks(text: string, operations: OperationDefinitionNode[]): Comment[] {
+export function findCommentsBlocks(text: string, operations: ExecutableDefinitionNode[]): Comment[] {
   // Find all line endings
   const lineEnds: number[] = [];
   let searchIndex: number = -1;
@@ -31,7 +31,8 @@ export function findCommentsBlocks(text: string, operations: OperationDefinition
   const commentsOutsideOperations: Comment[] = [];
   let j = 0;
   for (let i = 0; i < operations.length; i++) {
-    const loc = operations[i].loc!;
+    const op = operations[i];
+    const loc = op.loc!;
     const opStartLine = loc.startToken.line - 1;
     const opEndLine = loc.endToken.line - 1;
     for (; j < comments.length; j++) {
@@ -41,8 +42,8 @@ export function findCommentsBlocks(text: string, operations: OperationDefinition
       }
       if (c.endLine < opStartLine) {
         commentsOutsideOperations.push(c);
-        if (c.endLine + 1 === opStartLine) {
-          c.queryDoc = operations[i];
+        if (c.endLine + 1 === opStartLine && op.kind === Kind.OPERATION_DEFINITION) {
+          c.queryDoc = op;
         }
       } else {
         // Ignore comments inside operation

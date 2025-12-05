@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { Kind, parse } from "graphql";
+import { ExecutableDefinitionNode, Kind, parse } from "graphql";
 import { Disposable } from "vscode";
 
 import { Signal } from "@preact/signals-core";
@@ -79,13 +79,12 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
 
     const documentText = document.getText();
     const documentNode = parse(documentText);
-    const operations = [];
+    const definitions: ExecutableDefinitionNode[] = [];
     for (const def of documentNode.definitions) {
       switch (def.kind) {
         case Kind.OPERATION_DEFINITION:
-          operations.push(def);
-          break;
         case Kind.FRAGMENT_DEFINITION:
+          definitions.push(def);
           break;
         default:
           // No code lenses for schema files
@@ -94,10 +93,16 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
     }
 
     const codeLenses: vscode.CodeLens[] = [];
-    for (let i = 0; i < operations.length; i++) {
-      const x = operations[i];
+    for (let i = 0; i < definitions.length; i++) {
+      const x = definitions[i];
+      if (!x.loc) {
+        throw new Error("Definition has no location");
+      }
+      if (x.kind !== Kind.OPERATION_DEFINITION) {
+        continue;
+      }
       // startToken.line is 1-indexed, range is 0-indexed
-      const line = x.loc!.startToken.line - 1;
+      const line = x.loc.startToken.line - 1;
       const range = new vscode.Range(line, 0, line, 0);
       const position = new vscode.Position(line, 0);
       const service = fdcConfigs.findEnclosingServiceForPath(document.fileName);
@@ -140,7 +145,7 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
       }
     }
 
-    const comments = findCommentsBlocks(documentText, operations);
+    const comments = findCommentsBlocks(documentText, definitions);
     for (let i = 0; i < comments.length; i++) {
       const c = comments[i];
       const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
