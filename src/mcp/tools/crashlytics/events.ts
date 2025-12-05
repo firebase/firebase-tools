@@ -140,7 +140,7 @@ export const list_events = tool(
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
-      result.content.push({ type: "text", text: forceAppIdGuide});
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
     if (!filter || (!filter.issueId && !filter.issueVariantId)) {
       result.isError = true;
@@ -190,7 +190,7 @@ export const batch_get_events = tool(
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter." });
-      result.content.push({ type: "text", text: forceAppIdGuide});
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
     if (!names || names.length === 0) {
       result.isError = true;

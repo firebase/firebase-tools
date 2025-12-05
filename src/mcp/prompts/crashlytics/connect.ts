@@ -36,7 +36,7 @@ You will assist developers in investigating and resolving mobile application iss
 **Obtain the Firebase App ID.** 
     If an App ID is not readily available, consult this guide for selection: [Firebase App Id Guide](firebase://guides/app_id).
 
-${ connectResourceContent }
+${connectResourceContent}
 `.trim(),
         },
       },

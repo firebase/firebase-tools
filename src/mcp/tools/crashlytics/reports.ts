@@ -2,7 +2,6 @@ import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dump, DumpOptions } from "js-yaml";
 import { EventFilter, validateEventFilters } from "../../../crashlytics/filters";
 import {
-  CrashlyticsReport,
   getReport,
   ReportInputSchema,
   simplifyReport,
@@ -63,7 +62,7 @@ export const get_report = tool(
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
-      result.content.push({ type: "text", text: forceAppIdGuide});
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
     try {
       filter = validateEventFilters(filter || {});

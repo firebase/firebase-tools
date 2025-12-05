@@ -3,9 +3,7 @@ import { FirebaseError } from "../error";
 
 export const ApplicationIdSchema = z
   .string()
-  .describe(
-    "Firebase App Id. Leave blank if unknown to receive instructions for finding it.",
-  );
+  .describe("Firebase App Id. Leave blank if unknown to receive instructions for finding it.");
 
 export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexidecimal uuid");
 
@@ -113,7 +111,7 @@ export function validateEventFilters(filter: EventFilter = {}): EventFilter {
   if (!!filter.intervalStartTime && !filter.intervalEndTime) {
     // interval.end_time is required if interval.start_time is set but the agent likes to forget it
     filter.intervalEndTime = new Date().toISOString();
-  }   
+  }
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   if (filter.intervalStartTime && new Date(filter.intervalStartTime) < ninetyDaysAgo) {
     throw new FirebaseError("intervalStartTime must be less than 90 days in the past");

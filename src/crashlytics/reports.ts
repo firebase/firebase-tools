@@ -80,7 +80,6 @@ export async function getReport(
   filter: EventFilter,
   pageSize = DEFAULT_PAGE_SIZE,
 ): Promise<Report> {
-  
   if (!reportName) {
     throw new FirebaseError("Invalid Crashlytics report " + reportName);
   }

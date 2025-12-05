@@ -30,7 +30,7 @@ export const get_issue = tool(
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
-      result.content.push({ type: "text", text: forceAppIdGuide});
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
     if (!issueId) {
       result.isError = true;
@@ -70,7 +70,7 @@ export const update_issue = tool(
     if (!appId) {
       result.isError = true;
       result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
-      result.content.push({ type: "text", text: forceAppIdGuide});
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
     if (!issueId) {
       result.isError = true;
