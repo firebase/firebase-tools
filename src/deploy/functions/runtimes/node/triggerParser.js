@@ -21,7 +21,7 @@ async function loadModule(packageDir) {
   try {
     return require(packageDir);
   } catch (e) {
-    if (e.code === "ERR_REQUIRE_ESM") {
+    if (e.code === "ERR_REQUIRE_ESM" && e.code !== "ERR_REQUIRE_ASYNC_MODULE") {
       const modulePath = require.resolve(packageDir);
       // Resolve module path to file:// URL. Required for windows support.
       const moduleURL = url.pathToFileURL(modulePath).href;

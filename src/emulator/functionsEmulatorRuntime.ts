@@ -919,7 +919,7 @@ async function loadTriggers(): Promise<any> {
   try {
     triggerModule = require(process.cwd());
   } catch (err: any) {
-    if (err.code !== "ERR_REQUIRE_ESM") {
+    if (err.code !== "ERR_REQUIRE_ESM" && err.code !== "ERR_REQUIRE_ASYNC_MODULE") {
       // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
       await moduleResolutionDetective(err);
       throw err;
