@@ -73,7 +73,7 @@ Project Directory: /test-dir
 Project Config Path: <NO CONFIG PRESENT>
 Active Project ID: <NONE>
 Gemini in Firebase Terms of Service: <NOT ACCEPTED>
-Billing Enabled: No
+Billing Enabled: N/A
 Authenticated User: <NONE>
 Detected App IDs: <NONE>
 Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
