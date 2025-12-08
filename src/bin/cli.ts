@@ -109,7 +109,15 @@ export function cli(pkg: any) {
   });
 
   // If this is a help command, load all commands so we can display them.
-  const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
+  const commandName = args[0];
+  const isHelp =
+    !args.length || commandName === "help" || (args.length === 1 && commandName === "ext");
+  const hasHelpFlag = args.includes("--help") || args.includes("-h");
+
+  if (hasHelpFlag) {
+    client.getCommand(commandName);
+  }
+
   if (isHelp) {
     const seen = new Set();
     const loadAll = (obj: any) => {
