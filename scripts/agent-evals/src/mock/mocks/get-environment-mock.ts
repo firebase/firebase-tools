@@ -1,7 +1,6 @@
 import { DEFAULT_FIREBASE_PROJECT, DEFAULT_FIREBASE_USER } from "../../data/index.js";
 import { hydrateTemplate } from "../../../../../src/mcp/tools/core/get_environment";
 import { toMockContent } from "../tool-mock-utils.js";
-import { isBillingEnabled } from "../../../../../src/gcp/cloudbilling.js";
 
 const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";
 export const IOS_APP_ID = `1:${DEFAULT_FIREBASE_PROJECT}:ios:abc123efj456`;
