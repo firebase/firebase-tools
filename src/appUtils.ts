@@ -177,24 +177,29 @@ async function packageJsonToAdminOrWebApp(
   dirPath: string,
   packageJsonFile: string,
 ): Promise<App[]> {
-  const fullPath = path.join(dirPath, packageJsonFile);
-  const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
-  const allDeps = getAllDepsFromPackageJson(packageJson);
-  const detectedApps = [];
-  if (allDeps.includes("firebase-admin") || allDeps.includes("firebase-functions")) {
-    detectedApps.push({
-      platform: Platform.ADMIN_NODE,
-      directory: path.dirname(packageJsonFile),
-    });
+  try {
+    const fullPath = path.join(dirPath, packageJsonFile);
+    const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
+    const allDeps = getAllDepsFromPackageJson(packageJson);
+    const detectedApps = [];
+    if (allDeps.includes("firebase-admin") || allDeps.includes("firebase-functions")) {
+      detectedApps.push({
+        platform: Platform.ADMIN_NODE,
+        directory: path.dirname(packageJsonFile),
+      });
+    }
+    if (allDeps.includes("firebase") || detectedApps.length === 0) {
+      detectedApps.push({
+        platform: Platform.WEB,
+        directory: path.dirname(packageJsonFile),
+        frameworks: getFrameworksFromPackageJson(packageJson),
+      });
+    }
+    return detectedApps;
+  } catch (err) {
+    // If there is a malformed package.json, don't crash
+    return [];
   }
-  if (allDeps.includes("firebase") || detectedApps.length === 0) {
-    detectedApps.push({
-      platform: Platform.WEB,
-      directory: path.dirname(packageJsonFile),
-      frameworks: getFrameworksFromPackageJson(packageJson),
-    });
-  }
-  return detectedApps;
 }
 
 const WEB_FRAMEWORKS: Framework[] = Object.values(Framework);
@@ -336,6 +341,7 @@ export async function detectFiles(dirPath: string, filePattern: string): Promise
       "**/coverage/**", // Test coverage reports
     ],
     absolute: false,
+    maxDepth: 4,
   };
   return glob(`**/${filePattern}`, options);
 }

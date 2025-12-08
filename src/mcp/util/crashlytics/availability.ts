@@ -7,7 +7,7 @@ import * as path from "path";
  * Returns a function that detects whether Crashlytics is available.
  */
 export async function isCrashlyticsAvailable(ctx: McpContext): Promise<boolean> {
-  ctx.host.log("debug", `Looking for whether crashlytics is installed...`);
+  ctx.host.logger.debug("Looking for whether crashlytics is installed...");
   return await isCrashlyticsInstalled(ctx);
 }
 
@@ -22,25 +22,24 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
     !platforms.includes(Platform.ANDROID) &&
     !platforms.includes(Platform.IOS)
   ) {
-    host.log("debug", `Found no supported Crashlytics platforms.`);
+    host.logger.debug("Found no supported Crashlytics platforms.");
     return false;
   }
 
   if (platforms.includes(Platform.FLUTTER) && (await flutterAppUsesCrashlytics(projectDir))) {
-    host.log("debug", `Found Flutter app using Crashlytics`);
+    host.logger.debug("Found Flutter app using Crashlytics");
     return true;
   }
   if (platforms.includes(Platform.ANDROID) && (await androidAppUsesCrashlytics(projectDir))) {
-    host.log("debug", `Found Android app using Crashlytics`);
+    host.logger.debug("Found Android app using Crashlytics");
     return true;
   }
   if (platforms.includes(Platform.IOS) && (await iosAppUsesCrashlytics(projectDir))) {
-    host.log("debug", `Found iOS app using Crashlytics`);
+    host.logger.debug("Found iOS app using Crashlytics");
     return true;
   }
 
-  host.log(
-    "debug",
+  host.logger.debug(
     `Found supported platforms ${JSON.stringify(platforms)}, but did not find a Crashlytics dependency.`,
   );
   return false;
@@ -60,22 +59,13 @@ async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
 }
 
 async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const podfiles = await detectFiles(appPath, "Podfile");
-  for (const file of podfiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
-    }
-  }
-  const swiftPackageFiles = await detectFiles(appPath, "Package.swift");
-  for (const file of swiftPackageFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
-    }
-  }
-  const cartFiles = await detectFiles(appPath, "Cartfile*");
-  for (const file of cartFiles) {
+  const filePatternsToDetect = ["Podfile", "Package.swift", "Cartfile*", "project.pbxproj"];
+  const fileArrays = await Promise.all(
+    filePatternsToDetect.map((term) => detectFiles(appPath, term)),
+  );
+
+  const files = fileArrays.flat();
+  for (const file of files) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (content.includes("Crashlytics")) {
       return true;

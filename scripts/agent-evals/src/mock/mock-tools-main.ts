@@ -1,7 +1,7 @@
 import { Module } from "module";
-import path from "path";
-import fs from "fs";
-import os from "os";
+import * as path from "path";
+import * as fs from "fs";
+import * as os from "os";
 import { getFirebaseCliRoot } from "../runner/paths.js";
 import { getToolMocks } from "./tool-mocks.js";
 
@@ -21,10 +21,11 @@ const ENABLE_FILE_LOGGING = false;
 const mocks = getToolMocks();
 
 const originalRequire = Module.prototype.require;
-Module.prototype.require = function (id: string) {
+(Module.prototype as any).require = function (id: string) {
   const requiredModule = originalRequire.apply(this, [id]);
   const absolutePath = Module.createRequire(this.filename).resolve(id);
   const pathRelativeToCliRoot = path.relative(getFirebaseCliRoot(), absolutePath);
+
   if (!pathRelativeToCliRoot.endsWith(MCP_TOOLS_INDEX_PATH)) {
     return requiredModule;
   }

@@ -7,32 +7,25 @@ import {
   DEFAULT_FIREBASE_WEB_APP_NAME,
   DEFAULT_FIREBASE_WEB_APP_API_KEY,
 } from "../../data/index.js";
+import { hydrateTemplate } from "../../../../../src/mcp/tools/core/get_environment";
 import { toMockContent } from "../tool-mock-utils.js";
+
+const PROJECT_DIR = "/Users/fakeuser/develop/fake-project";
+const environmentConfig = {
+  projectId: DEFAULT_FIREBASE_PROJECT,
+  projectAliases: [],
+  projectDir: PROJECT_DIR,
+  geminiTosAccepted: true,
+  authenticatedUser: DEFAULT_FIREBASE_USER,
+  projectAliasMap: {},
+  allAccounts: [],
+  detectedAppIds: {},
+};
 
 export const nextJsWithProjectMock = {
   firebase_login: toMockContent(`Successfully logged in as ${DEFAULT_FIREBASE_USER}`),
 
-  firebase_get_environment: toMockContent(`# Environment Information
-
-Project Directory:
-/Users/samedson/Firebase/firebase-tools/scripts/agent-evals/output/2025-10-24_15-36-06-588Z/-firebase-init-backend-app-2c27e75e3e5d809c/repo
-Project Config Path: <NO CONFIG PRESENT>
-Active Project ID: ${DEFAULT_FIREBASE_PROJECT}
-Gemini in Firebase Terms of Service: Accepted
-Authenticated User: ${DEFAULT_FIREBASE_USER}
-Detected App IDs: <NONE>
-Available Project Aliases (format: '[alias]: [projectId]'): <NONE>
-
-No firebase.json file was found.
-
-If this project does not use Firebase services that require a firebase.json file, no action is necessary.
-
-If this project uses Firebase services that require a firebase.json file, the user will most likely want to:
-
-a) Change the project directory using the 'firebase_update_environment' tool to select a directory with a 'firebase.json' file in it, or
-b) Initialize a new Firebase project directory using the 'firebase_init' tool.
-
-Confirm with the user before taking action.`),
+  firebase_get_environment: toMockContent(hydrateTemplate(environmentConfig)),
 
   firebase_update_environment: toMockContent(
     `- Updated active project to '${DEFAULT_FIREBASE_PROJECT}'\n`,

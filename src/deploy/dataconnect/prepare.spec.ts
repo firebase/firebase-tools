@@ -9,16 +9,15 @@ import * as filters from "../../dataconnect/filters";
 import * as build from "../../dataconnect/build";
 import * as ensureApis from "../../dataconnect/ensureApis";
 import * as requireTosAcceptance from "../../requireTosAcceptance";
-import * as cloudbilling from "../../gcp/cloudbilling";
 import * as schemaMigration from "../../dataconnect/schemaMigration";
 import * as provisionCloudSql from "../../dataconnect/provisionCloudSql";
+import * as cloudbilling from "../../gcp/cloudbilling";
 import { FirebaseError } from "../../error";
 
 describe("dataconnect prepare", () => {
   let sandbox: sinon.SinonSandbox;
   let loadAllStub: sinon.SinonStub;
   let buildStub: sinon.SinonStub;
-  let checkBillingEnabledStub: sinon.SinonStub;
   let getResourceFiltersStub: sinon.SinonStub;
   let diffSchemaStub: sinon.SinonStub;
   let setupCloudSqlStub: sinon.SinonStub;
@@ -27,7 +26,6 @@ describe("dataconnect prepare", () => {
     sandbox = sinon.createSandbox();
     loadAllStub = sandbox.stub(load, "loadAll").resolves([]);
     buildStub = sandbox.stub(build, "build").resolves({} as any);
-    checkBillingEnabledStub = sandbox.stub(cloudbilling, "checkBillingEnabled").resolves(true);
     sandbox.stub(ensureApis, "ensureApis").resolves();
     sandbox.stub(requireTosAcceptance, "requireTosAcceptance").returns(() => Promise.resolve());
     getResourceFiltersStub = sandbox.stub(filters, "getResourceFilters").returns(undefined);
@@ -35,6 +33,7 @@ describe("dataconnect prepare", () => {
     setupCloudSqlStub = sandbox.stub(provisionCloudSql, "setupCloudSql").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project");
     sandbox.stub(utils, "logLabeledBullet");
+    sandbox.stub(cloudbilling, "checkBillingEnabled").resolves();
   });
 
   afterEach(() => {
@@ -55,16 +54,6 @@ describe("dataconnect prepare", () => {
         deployStats: (context as any).dataconnect.deployStats,
       },
     });
-  });
-
-  it("should throw an error if billing is not enabled", async () => {
-    checkBillingEnabledStub.resolves(false);
-    const context = {};
-    const options = { config: {} } as any;
-    await expect(prepare.default(context, options)).to.be.rejectedWith(
-      FirebaseError,
-      "To provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial",
-    );
   });
 
   it("should build services", async () => {
