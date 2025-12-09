@@ -8,4 +8,6 @@
 - [BREAKING] Enforce strict timeout validation for functions. (#9540)
 - [BREAKING] Update `dataconnect:\*` commands to use flags instead of positional arguments for `--service` & `--location`. Changed output type of `dataconnect:sql:migrate --json` (#9312)
 - [BREAKING] When using 'firebase-tools' as a Node module, `cli.auth.upload` has been renamed to `cli.auth.import` and `cli.appdistribution.testers.delete` has been renamed to `cli.appdistribution.testers.remove`.
-- [BREAKING] bumped Firebase Data Connect emulator version to v3.0.0
+- [BREAKING] Data Connect, Kotlin codegen: Fixed generated code character case when letters follow numbers (https://github.com/firebase/firebase-tools/issues/9567).
+- [BREAKING] Data Connect, Dart codegen: Int64 types are now serialized and deserialized using BigInt.
+- [BREAKING] Data Connect, Kotlin codegen: Removed magic "convenience renames" of keys and counts in selection sets (https://github.com/firebase/firebase-tools/issues/9571).
