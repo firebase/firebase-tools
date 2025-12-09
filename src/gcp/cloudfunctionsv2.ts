@@ -460,20 +460,6 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   };
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
-  proto.convertIfPresent(
-    gcfFunction.buildConfig,
-    endpoint,
-    "serviceAccount",
-    "serviceAccount",
-    (from) =>
-      !from
-        ? null
-        : `projects/${endpoint.project}/serviceAccounts/${proto.formatServiceAccount(
-            from,
-            endpoint.project,
-            true,
-          )}`,
-  );
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
@@ -482,16 +468,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "ingressSettings",
     "timeoutSeconds",
   );
-  proto.convertIfPresent(
-    gcfFunction.serviceConfig,
-    endpoint,
-    "serviceAccountEmail",
-    "serviceAccount",
-    (from) =>
-      !from
-        ? null
-        : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
-  );
+
+  if (Object.prototype.hasOwnProperty.call(endpoint, "serviceAccount")) {
+    const serviceAccount = endpoint.serviceAccount;
+    if (!serviceAccount) {
+      gcfFunction.buildConfig.serviceAccount = null;
+      gcfFunction.serviceConfig.serviceAccountEmail = null;
+    } else {
+      const email = proto.formatServiceAccount(serviceAccount, endpoint.project, true);
+      gcfFunction.buildConfig.serviceAccount = `projects/${endpoint.project}/serviceAccounts/${email}`;
+      gcfFunction.serviceConfig.serviceAccountEmail = email;
+    }
+  }
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
   const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;

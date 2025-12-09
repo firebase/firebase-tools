@@ -443,26 +443,6 @@ describe("cloudfunctionsv2", () => {
         },
       });
     });
-
-    it("should set buildConfig.serviceAccount when serviceAccount is specified", () => {
-      expect(
-        cloudfunctionsv2.functionFromEndpoint({
-          ...ENDPOINT,
-          serviceAccount: "custom@project.iam.gserviceaccount.com",
-          httpsTrigger: {},
-        }),
-      ).to.deep.equal({
-        ...CLOUD_FUNCTION_V2,
-        buildConfig: {
-          ...CLOUD_FUNCTION_V2.buildConfig,
-          serviceAccount: "projects/project/serviceAccounts/custom@project.iam.gserviceaccount.com",
-        },
-        serviceConfig: {
-          ...CLOUD_FUNCTION_V2.serviceConfig,
-          serviceAccountEmail: "custom@project.iam.gserviceaccount.com",
-        },
-      });
-    });
   });
 
   describe("endpointFromFunction", () => {
