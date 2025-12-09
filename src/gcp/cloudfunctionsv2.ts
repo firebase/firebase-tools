@@ -455,20 +455,25 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       },
       // We don't use build environment variables,
       environmentVariables: {},
-      ...(endpoint.serviceAccount !== undefined && {
-        serviceAccount: endpoint.serviceAccount
-          ? `projects/${endpoint.project}/serviceAccounts/${proto.formatServiceAccount(
-              endpoint.serviceAccount,
-              endpoint.project,
-              true,
-            )}`
-          : null,
-      }),
     },
     serviceConfig: {},
   };
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
+  proto.convertIfPresent(
+    gcfFunction.buildConfig,
+    endpoint,
+    "serviceAccount",
+    "serviceAccount",
+    (from) =>
+      !from
+        ? null
+        : `projects/${endpoint.project}/serviceAccounts/${proto.formatServiceAccount(
+            from,
+            endpoint.project,
+            true,
+          )}`,
+  );
   proto.copyIfPresent(
     gcfFunction.serviceConfig,
     endpoint,
