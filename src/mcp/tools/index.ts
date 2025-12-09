@@ -1,47 +1,30 @@
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
-import { authTools } from "./auth/index";
-import { dataconnectTools } from "./dataconnect/index";
-import { firestoreTools } from "./firestore/index";
-import { coreTools } from "./core/index";
-import { storageTools } from "./storage/index";
-import { messagingTools } from "./messaging/index";
-import { remoteConfigTools } from "./remoteconfig/index";
-import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
 import { apptestingTools } from "./apptesting/index";
-import { realtimeDatabaseTools } from "./realtime_database/index";
+import { authTools } from "./auth/index";
+import { coreTools } from "./core/index";
+import { crashlyticsTools } from "./crashlytics/index";
+import { dataconnectTools } from "./dataconnect/index";
+import { firestoreTools } from "./firestore/index";
 import { functionsTools } from "./functions/index";
+import { messagingTools } from "./messaging/index";
+import { realtimeDatabaseTools } from "./realtime_database/index";
+import { remoteConfigTools } from "./remoteconfig/index";
+import { storageTools } from "./storage/index";
 
-/** availableTools returns the list of MCP tools available given the server flags */
-export async function availableTools(
-  ctx: McpContext,
-  activeFeatures?: ServerFeature[],
-): Promise<ServerTool[]> {
-  const allTools = getAllTools(activeFeatures);
-  const availabilities = await Promise.all(
-    allTools.map((t) => {
-      if (t.isAvailable) {
-        return t.isAvailable(ctx);
-      }
-      return true;
-    }),
-  );
-  return allTools.filter((_, i) => availabilities[i]);
-}
-
-function getAllTools(activeFeatures?: ServerFeature[]): ServerTool[] {
-  const toolDefs: ServerTool[] = [];
-  if (!activeFeatures?.length) {
-    activeFeatures = Object.keys(tools) as ServerFeature[];
-  }
-  if (!activeFeatures.includes("core")) {
-    activeFeatures.unshift("core");
-  }
-  for (const key of activeFeatures) {
-    toolDefs.push(...tools[key]);
-  }
-  return toolDefs;
+function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
+  return tools.map((tool) => ({
+    ...tool,
+    mcp: {
+      ...tool.mcp,
+      name: `${feature}_${tool.mcp.name}`,
+      _meta: {
+        ...tool.mcp._meta,
+        feature,
+      },
+    },
+  }));
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
@@ -59,18 +42,58 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
 };
 
-function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
-  return tools.map((tool) => ({
-    ...tool,
-    mcp: {
-      ...tool.mcp,
-      name: `${feature}_${tool.mcp.name}`,
-      _meta: {
-        ...tool.mcp._meta,
-        feature,
-      },
-    },
-  }));
+const allToolsMap = new Map(
+  Object.values(tools)
+    .flat()
+    .map((t) => [t.mcp.name, t]),
+);
+
+function getToolsByName(names: string[]): ServerTool[] {
+  const selectedTools = new Set<ServerTool>();
+
+  for (const toolName of names) {
+    const tool = allToolsMap.get(toolName);
+    if (tool) {
+      selectedTools.add(tool);
+    }
+  }
+
+  return Array.from(selectedTools);
+}
+
+function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
+  const features = new Set(
+    serverFeatures?.length ? serverFeatures : (Object.keys(tools) as ServerFeature[]),
+  );
+  features.add("core");
+
+  return Array.from(features).flatMap((feature) => tools[feature] || []);
+}
+
+/**
+ * Discover all all available tools. When `activeFeatures` is provided, tool discovery will only
+ * consider those features. When `enabledTools` is provided, discovery is skipped entirely, and
+ * only tools with exactly those names are returned.
+ */
+export async function availableTools(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+  enabledTools?: string[],
+): Promise<ServerTool[]> {
+  if (enabledTools?.length) {
+    return getToolsByName(enabledTools);
+  }
+
+  const allTools = getToolsByFeature(activeFeatures);
+  const availabilities = await Promise.all(
+    allTools.map((t) => {
+      if (t.isAvailable) {
+        return t.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allTools.filter((_, i) => availabilities[i]);
 }
 
 /**
@@ -78,7 +101,7 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
  * This is used for generating documentation.
  */
 export function markdownDocsOfTools(): string {
-  const allTools = getAllTools([]);
+  const allTools = getToolsByFeature([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
