@@ -291,8 +291,14 @@ client.apps.list("", {});
 Note: when used in a limited environment like Cloud Functions, not all `firebase-tools` commands will work programatically
 because they require access to a local filesystem.
 
+## Privacy Policy
+
+The Firebase CLI is subject to the [Firebase Privacy Policy](https://firebase.google.com/privacy).
+
+
 [gh-actions]: https://github.com/firebase/firebase-tools/actions
 [npm]: https://www.npmjs.com/package/firebase-tools
 [gh-actions-badge]: https://github.com/firebase/firebase-tools/workflows/CI%20Tests/badge.svg
 [node-badge]: https://img.shields.io/node/v/firebase-tools.svg
 [npm-badge]: https://img.shields.io/npm/v/firebase-tools.svg
+

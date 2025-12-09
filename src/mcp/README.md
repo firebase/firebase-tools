@@ -155,6 +155,10 @@ For a complete list of available tools and resources, see the [Server Capabiliti
 
 For more information, visit the [official Firebase MCP server documentation](https://firebase.google.com/docs/ai-assistance/mcp-server).
 
+## Privacy Policy
+
+The Firebase MCP server is subject to the [Firebase Privacy Policy](https://firebase.google.com/privacy).
+
 ## Server Capabilities
 
 The Firebase MCP server provides three types of capabilities: **Tools** (functions that perform actions), **Prompts** (reusable command templates), and **Resources** (documentation files for AI models).
