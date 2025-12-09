@@ -2,6 +2,8 @@ import { z } from "zod";
 import { tool } from "../../tool";
 import { pickService } from "../../../dataconnect/load";
 import { compileErrors } from "../../util/dataconnect/compile";
+import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
+import { getProjectDefaultAccount } from "../../../auth";
 
 export const compile = tool(
   "dataconnect",
@@ -20,6 +22,10 @@ export const compile = tool(
         .describe(
           "The Firebase Data Connect service ID to look for. If omitted, builds all services defined in `firebase.json`.",
         ),
+      generate_sdk: z
+        .boolean()
+        .optional()
+        .describe("Whether to generate typed SDKs for your Data Connect connectors."),
     }),
     annotations: {
       title: "Compile Data Connect",
@@ -30,8 +36,23 @@ export const compile = tool(
       requiresAuth: false,
     },
   },
-  async ({ service_id, error_filter }, { projectId, config }) => {
-    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+  async ({ service_id, error_filter, generate_sdk }, ctx) => {
+    const serviceInfo = await pickService(ctx.projectId, ctx.config, service_id || undefined);
+    if (generate_sdk) {
+      await DataConnectEmulator.generate({
+        configDir: serviceInfo.sourceDirectory,
+        watch: false,
+        account: getProjectDefaultAccount(ctx.config.projectDir),
+      });
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Generated SDKs for service ${serviceInfo.dataConnectYaml.serviceId}`,
+          },
+        ],
+      };
+    }
     const errors = await compileErrors(serviceInfo.sourceDirectory, error_filter);
     if (errors)
       return {
