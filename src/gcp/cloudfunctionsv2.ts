@@ -51,6 +51,10 @@ export interface BuildConfig {
   source: Source;
   sourceToken?: string;
   environmentVariables: Record<string, string>;
+  // TODO(#8841): Add serviceAccount field to support custom service accounts for builds.
+  // The GCF v2 API supports buildConfig.serviceAccount but we're not setting it,
+  // causing deployments to fail when the default compute SA is deleted.
+  // See: https://github.com/firebase/firebase-tools/issues/8841
 
   // Output only
   build?: string;
@@ -454,6 +458,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       },
       // We don't use build environment variables,
       environmentVariables: {},
+      // TODO(#8841): Set serviceAccount here to match the runtime service account.
+      // When endpoint.serviceAccount is specified, we should set:
+      //   serviceAccount: proto.formatServiceAccount(endpoint.serviceAccount, endpoint.project, true)
+      // This ensures the custom SA is used for building, not just runtime.
     },
     serviceConfig: {},
   };
