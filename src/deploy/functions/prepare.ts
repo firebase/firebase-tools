@@ -53,6 +53,7 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import * as experiments from "../../experiments";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -94,11 +95,16 @@ export async function prepare(
 
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
+  const allowFunctionsConfig = experiments.isEnabled("legacyRuntimeConfigCommands");
 
   const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
-  if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
+  if (
+    allowFunctionsConfig &&
+    checkAPIsEnabled[1] &&
+    targetedCodebaseConfigs.some(shouldUseRuntimeConfig)
+  ) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 

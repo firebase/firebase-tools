@@ -1,0 +1,16 @@
+- [BREAKING] Changed `firestore:backups:list --json` to return a `listBackupsResponse` object instead of a raw array of backups.
+- [BREAKING] Removed support for '.bolt' rules files.
+- [BREAKING] Removed support for running emulators with Java versions prior to 21.
+- [BREAKING] Removed deprecated `firebase --open-sesame` and `firebase --close-sesame` commands. Use `firebase experiments:enable` and `firebase experiments:disable` instead.
+- [BREAKING] Enforce strict timeout validation for functions. (#9540)
+- [BREAKING] Update `dataconnect:\*` commands to use flags instead of positional arguments for `--service` & `--location`. Changed output type of `dataconnect:sql:migrate --json` (#9312)
+- [BREAKING] When using 'firebase-tools' as a Node module, `cli.auth.upload` has been renamed to `cli.auth.import` and `cli.appdistribution.testers.delete` has been renamed to `cli.appdistribution.testers.remove`.
+- [BREAKING] Updated Firebase Data Connect emulator version to v3.0.0
+  - [BREAKING] Fixed generated code character case when letters follow numbers (https://github.com/firebase/firebase-tools/issues/9567).
+  - [BREAKING] Dart codegen: Int64 types are now serialized and deserialized using BigInt.
+  - [BREAKING] Kotlin codegen: Removed magic "convenience renames" of keys and counts in selection sets (https://github.com/firebase/firebase-tools/issues/9571).
+  - Eagerly load config upon any requests from VS Code Extensions or Firebase CLI. This ensures the emulator always serve the latest local configs.
+  - Kotlin codegen: Removed vestigial FIREBASE_DATA_CONNECT_GENERATED_FILE section at the bottom of each generated file.
+- Updated Firestore Emulator to v1.20.2, which includes minor bug fixes for Datastore Mode.
+- Improved command loading performance by implementing lazy loading.
+- Add a confirmation in `firebase init dataconnect` before asking for app idea description. (#9282)

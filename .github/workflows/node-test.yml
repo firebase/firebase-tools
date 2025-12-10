@@ -85,7 +85,7 @@ jobs:
   #     - name: Setup Java JDK
   #       uses: actions/setup-java@v3.3.0
   #       with:
-  #         java-version: 17
+  #         java-version: 21
   #         distribution: temurin
 
   #     - uses: actions/checkout@v4
@@ -211,6 +211,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 21
+          distribution: temurin
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1.7.2
         with:
@@ -270,7 +275,7 @@ jobs:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
-          java-version: 17
+          java-version: 21
           distribution: temurin
 
       - uses: actions/checkout@v4
