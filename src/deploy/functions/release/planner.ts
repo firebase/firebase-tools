@@ -1,6 +1,6 @@
 import {
   EndpointFilter,
-  endpointMatchesAnyFilter,
+  endpointMatchesDeploymentFilters,
   getFunctionLabel,
 } from "../functionsDeployHelper";
 import { isFirebaseManaged } from "../../../deploymentTool";
@@ -29,6 +29,7 @@ export interface PlanArgs {
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
+  excludeFilters?: EndpointFilter[]; // filters to exclude from deploy, passed from users by --except flag
   deleteAll?: boolean; // deletes all functions if set
 }
 
@@ -130,14 +131,17 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
  * Create a plan for deploying all functions in one region.
  */
 export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
-  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
+  let { wantBackend, haveBackend, codebase, filters, excludeFilters, deleteAll } = args;
   let deployment: DeploymentPlan = {};
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return endpointMatchesAnyFilter(endpoint, filters);
+    return endpointMatchesDeploymentFilters(endpoint, filters, excludeFilters);
   });
   const wantedEndpoint = backend.hasEndpoint(wantBackend);
   haveBackend = backend.matchingBackend(haveBackend, (endpoint) => {
-    return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
+    return (
+      wantedEndpoint(endpoint) ||
+      endpointMatchesDeploymentFilters(endpoint, filters, excludeFilters)
+    );
   });
 
   const regions = new Set([
