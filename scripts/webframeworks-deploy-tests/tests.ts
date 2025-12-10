@@ -384,6 +384,9 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr"]
         .flatMap((locale) => [
           ...(locale
+            ? [join(NEXT_BASE_PATH, "_next", "data", buildId, locale, "pages", "ssg.json")]
+            : []),
+          ...(locale
             ? [1, 2].map((num) =>
                 join(
                   NEXT_BASE_PATH,
@@ -397,13 +400,14 @@ describe("webframeworks", function (this) {
                 ),
               )
             : [
-                join(NEXT_BASE_PATH, "_next", "data", buildId, "pages", "ssg.json"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_clientMiddlewareManifest.json"),
                 join(NEXT_BASE_PATH, "app", "api", "static"),
                 join(NEXT_BASE_PATH, "app", "image.html"),
                 join(NEXT_BASE_PATH, "app", "ssg.html"),
                 join(NEXT_BASE_PATH, "404.html"),
+                join(NEXT_BASE_PATH, "_not-found.html"),
               ]),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
@@ -417,16 +421,9 @@ describe("webframeworks", function (this) {
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[^-]+-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "app", `layout-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_error-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `index-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `polyfills-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `webpack-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "css", `[^.]+.css`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `turbopack-[^.]+\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\.css`],
       ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
