@@ -384,21 +384,21 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr"]
         .flatMap((locale) => [
           ...(locale
-            ? [join(NEXT_BASE_PATH, "_next", "data", buildId, locale, "pages", "ssg.json")]
-            : []),
-          ...(locale
-            ? [1, 2].map((num) =>
-                join(
-                  NEXT_BASE_PATH,
-                  "_next",
-                  "data",
-                  buildId,
-                  locale,
-                  "pages",
-                  "fallback",
-                  `${num}.json`,
+            ? [
+                ...[1, 2].map((num) =>
+                  join(
+                    NEXT_BASE_PATH,
+                    "_next",
+                    "data",
+                    buildId,
+                    locale,
+                    "pages",
+                    "fallback",
+                    `${num}.json`,
+                  ),
                 ),
-              )
+                join(NEXT_BASE_PATH, "_next", "data", buildId, locale, "pages", "ssg.json"),
+              ]
             : [
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
