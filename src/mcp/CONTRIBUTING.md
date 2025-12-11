@@ -27,7 +27,7 @@ off of sepearate branches in this repo, to ensure that all CI runs correctly for
 
 External developers: The preferred means of contribution to the MCP server is by creating a branch in your
 own fork, pushing your changes there, and submitting a Pull Request to the
-`master` branch of `firebase/firebase-tools`.
+`main` branch of `firebase/firebase-tools`.
 
 Internal developers: Instead of working off of a fork, please make a branch on [firebase/firebase-tools][gh-repo]
 named <yourInitialsOrLDAP>-<feature> (for example, `jh-dataconnect-tools`)
@@ -47,7 +47,7 @@ member, they will merge your PR. Thank you for your contribution!
 
 ### Setting up your development environment
 
-Please follow the instructions in the [CLI's CONTRIBUTING.md](https://github.com/firebase/firebase-tools/blob/master/CONTRIBUTING.md#setting-up-your-development-environment) to get your development environment set up.
+Please follow the instructions in the [CLI's CONTRIBUTING.md](https://github.com/firebase/firebase-tools/blob/main/CONTRIBUTING.md#setting-up-your-development-environment) to get your development environment set up.
 
 There are a few extra things to set up when developing the MCP server.
 

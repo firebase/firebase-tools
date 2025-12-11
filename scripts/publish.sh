@@ -139,7 +139,7 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."
-  git push origin master --tags
+  git push origin main --tags
   echo "Pushed to GitHub."
 
   echo "Publishing release notes..."

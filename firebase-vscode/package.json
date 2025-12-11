@@ -185,13 +185,13 @@
     "jsonValidation": [
       {
         "fileMatch": "firebase.json",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/firebase-config.json"
       }
     ],
     "yamlValidation": [
       {
         "fileMatch": "extension.yaml",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/extension-yaml.json"
       },
       {
         "fileMatch": "dataconnect.yaml",
