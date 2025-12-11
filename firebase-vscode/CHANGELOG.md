@@ -6,6 +6,13 @@
   - Show "Add Data" for @table type only.
   - Show "View Data" for @table and @view type.
 
+<<<<<<< HEAD
+=======
+## 1.10.2
+
+- Update internal `firebase-tools` dependency to 14.27.0
+
+>>>>>>> origin/main
 ## 1.10.1
 
 - Update internal `firebase-tools` dependency to 14.24.2
