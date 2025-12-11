@@ -28,23 +28,24 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
 }
 
 const tools: Record<ServerFeature, ServerTool[]> = {
-  core: addFeaturePrefix("firebase", coreTools),
-  firestore: addFeaturePrefix("firestore", firestoreTools),
-  auth: addFeaturePrefix("auth", authTools),
-  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
-  storage: addFeaturePrefix("storage", storageTools),
-  messaging: addFeaturePrefix("messaging", messagingTools),
-  functions: addFeaturePrefix("functions", functionsTools),
-  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
-  crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
-  apptesting: addFeaturePrefix("apptesting", apptestingTools),
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
+  apptesting: addFeaturePrefix("apptesting", apptestingTools),
+  auth: addFeaturePrefix("auth", authTools),
+  core: addFeaturePrefix("firebase", coreTools),
+  crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
   database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
+  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
+  firestore: addFeaturePrefix("firestore", firestoreTools),
+  functions: addFeaturePrefix("functions", functionsTools),
+  messaging: addFeaturePrefix("messaging", messagingTools),
+  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
+  storage: addFeaturePrefix("storage", storageTools),
 };
 
 const allToolsMap = new Map(
   Object.values(tools)
     .flat()
+    .sort((a, b) => a.mcp.name.localeCompare(b.mcp.name))
     .map((t) => [t.mcp.name, t]),
 );
 

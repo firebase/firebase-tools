@@ -46,9 +46,6 @@ Options:
                             If specified, auto-detection is disabled for other features.
   --tools <tools>           Comma-separated list of specific tools to enable. Disables
                             auto-detection entirely.
-  --generate-tool-list      Generate markdown documentation for all available tools.
-  --generate-prompt-list    Generate markdown documentation for all available prompts.
-  --generate-resource-list  Generate markdown documentation for all available resources.
   -h, --help                Show this help message.
 `;
 
