@@ -8,7 +8,7 @@ import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
 import { ensureFirestoreTriggerRegion } from "./firestore";
-import { ensureDataConnectTriggerRegion } from "./dataconnect";
+import { ensureDataConnectTriggerRegion, obtainDataConnectBindings } from "./dataconnect";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -136,7 +136,7 @@ const firestoreService: Service = {
 const dataconnectService: Service = {
   name: "dataconnect",
   api: "firebasedataconnect.googleapis.com",
-  requiredProjectBindings: noopProjectBindings,
+  requiredProjectBindings: obtainDataConnectBindings,
   ensureTriggerRegion: ensureDataConnectTriggerRegion,
   validateTrigger: noop,
   registerTrigger: noop,
