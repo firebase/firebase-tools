@@ -1,2 +1,0 @@
-- Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj` (#9515)
-- Add logic to synchronize v2 scheduled function timeout with Cloud Schduler's attempt deadline (#9544)

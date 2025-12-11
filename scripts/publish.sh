@@ -129,7 +129,7 @@ if [[ $VERSION != "preview" ]]; then
 
 
   echo "Updating server.json for MCP registry..."
-  . ./scripts/update-server.sh $NEW_VERSION
+  . ./scripts/update-server-json-version.sh $NEW_VERSION
   echo "Updated server.json for MCP registry."
 
   echo "Cleaning up release notes..."
@@ -139,7 +139,7 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."
-  git push origin master --tags
+  git push origin main --tags
   echo "Pushed to GitHub."
 
   echo "Publishing release notes..."
