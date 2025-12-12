@@ -17,6 +17,7 @@ describe("availableTools", () => {
     } as any,
     rc: {} as any,
     firebaseCliCommand: "firebase",
+    isBillingEnabled: true,
   };
 
   it("should return specific tools when enabledTools is provided", async () => {
