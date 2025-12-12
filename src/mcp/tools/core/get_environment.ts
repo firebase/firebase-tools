@@ -114,7 +114,6 @@ export const get_environment = tool(
   async (_, { projectId, host, accountEmail, rc, config, isBillingEnabled }) => {
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
     const geminiTosAccepted = !!configstore.get("gemini");
-    const billingEnabled = isBillingEnabled;
     const projectFileExists = config.projectFileExists("firebase.json");
     const detectedApps = await detectApps(process.cwd());
     const allAccounts = getAllAccounts().map((account) => account.user.email);
@@ -135,7 +134,7 @@ export const get_environment = tool(
       projectDir: host.cachedProjectDir,
       projectConfigPath: projectFileExists ? config.path("firebase.json") : undefined,
       geminiTosAccepted,
-      isBillingEnabled: billingEnabled,
+      isBillingEnabled,
       authenticatedUser: accountEmail || undefined,
       projectAliasMap: rc.projects,
       allAccounts,
