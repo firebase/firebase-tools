@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "1.10.2",
+  "version": "2.0.0",
   "engines": {
     "vscode": "^1.69.0"
   },
