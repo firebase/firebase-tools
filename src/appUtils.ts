@@ -66,6 +66,7 @@ export async function detectApps(dirPath: string): Promise<App[]> {
   const adminAndWebApps = (
     await Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p)))
   ).flat();
+
   const flutterAppPromises = await Promise.all(
     pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f)),
   );
