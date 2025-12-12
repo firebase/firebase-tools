@@ -397,6 +397,11 @@ export type Endpoint = TargetIds &
 
     // State of the endpoint.
     state?: EndpointState;
+
+    // "nobuild" option for pre-built containers
+    nobuild?: boolean;
+    baseImage?: string;
+    command?: string[];
   };
 
 export interface RequiredAPI {

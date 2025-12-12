@@ -51,8 +51,17 @@ describe("cloudfunctionsv2", () => {
   const RUN_URI = "https://id-nonce-region-project.run.app";
   const GCF_URL = "https://region-project.cloudfunctions.net/id";
   const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.OutputCloudFunction = {
-    ...CLOUD_FUNCTION_V2,
+    name: "projects/project/locations/region/functions/id",
+    buildConfig: {
+      entryPoint: "function",
+      runtime: "nodejs16",
+      source: {
+        storageSource: CLOUD_FUNCTION_V2_SOURCE,
+      },
+      environmentVariables: {},
+    },
     serviceConfig: {
+      availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
       service: "service",
       uri: RUN_URI,
     },
@@ -426,6 +435,35 @@ describe("cloudfunctionsv2", () => {
           serviceAccountEmail: null,
         },
       });
+    });
+    it("should handle nobuild option", () => {
+      const noBuildEndpoint: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        nobuild: true,
+        baseImage: "us-west1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123",
+        command: ["./bin/server.exe"],
+      };
+
+      const expectedGcfFunction: cloudfunctionsv2.InputCloudFunction = {
+        name: "projects/project/locations/region/functions/id",
+        serviceConfig: {
+          availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
+          containers: [
+            {
+              image: "scratch",
+              baseImageUri:
+                "us-west1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123",
+              command: ["./bin/server.exe"],
+            },
+          ],
+        },
+      };
+
+      expect(cloudfunctionsv2.functionFromEndpoint(noBuildEndpoint)).to.deep.equal(
+        expectedGcfFunction,
+      );
     });
   });
 
@@ -843,7 +881,7 @@ describe("cloudfunctionsv2", () => {
             "FUNCTION_TARGET",
             "function",
           );
-          expect(body.buildConfig.environmentVariables).to.have.property(
+          expect(body.buildConfig?.environmentVariables).to.have.property(
             "GOOGLE_NODE_RUN_SCRIPTS",
             "",
           );
@@ -859,6 +897,22 @@ describe("cloudfunctionsv2", () => {
 
   describe("updateFunction", () => {
     it("should set default environment variables", async () => {
+      const testFunction: cloudfunctionsv2.InputCloudFunction = {
+        name: "projects/project/locations/region/functions/id",
+        buildConfig: {
+          entryPoint: "function",
+          runtime: "nodejs16",
+          source: {
+            storageSource: CLOUD_FUNCTION_V2_SOURCE,
+          },
+          environmentVariables: {},
+        },
+        serviceConfig: {
+          availableMemory: `${backend.DEFAULT_MEMORY}Mi`,
+          environmentVariables: {},
+        },
+      };
+
       const scope = nock(functionsV2Origin())
         .patch("/v2/projects/project/locations/region/functions/id", (body) => {
           expect(body.serviceConfig.environmentVariables).to.have.property(
@@ -869,7 +923,7 @@ describe("cloudfunctionsv2", () => {
             "FUNCTION_TARGET",
             "function",
           );
-          expect(body.buildConfig.environmentVariables).to.have.property(
+          expect(body.buildConfig?.environmentVariables).to.have.property(
             "GOOGLE_NODE_RUN_SCRIPTS",
             "",
           );
@@ -878,7 +932,7 @@ describe("cloudfunctionsv2", () => {
         .query(true) // Accept any query parameters
         .reply(200, { name: "operations/123", done: true });
 
-      await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      await cloudfunctionsv2.updateFunction(testFunction);
       expect(scope.isDone()).to.be.true;
     });
   });

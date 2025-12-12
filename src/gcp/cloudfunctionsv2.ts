@@ -104,6 +104,15 @@ export interface SecretEnvVar {
   version?: string;
 }
 
+/** Represents a container in a Cloud Run service. */
+export interface Container {
+  image: string;
+  baseImageUri?: string;
+  command?: string[];
+  args?: string[];
+  // Add other container properties as needed
+}
+
 /** The Cloud Run service that underlies a Cloud Function. */
 export interface ServiceConfig {
   // Output only
@@ -129,6 +138,8 @@ export interface ServiceConfig {
   // default compute account. This is different from the v1 default
   // of the default GAE account.
   serviceAccountEmail?: string | null;
+
+  containers?: Container[];
 }
 
 export interface EventTrigger {
@@ -172,7 +183,7 @@ export type OutputCloudFunction = CloudFunctionBase & {
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
-  buildConfig: BuildConfig;
+  buildConfig?: BuildConfig;
   // serviceConfig is required.
   serviceConfig: ServiceConfig;
 };
@@ -229,7 +240,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
         "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
         "at https://cloud.google.com/run/quotas.",
     );
-    const suggestedFix = func.buildConfig.runtime?.startsWith("python")
+    const suggestedFix = func.buildConfig?.runtime?.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
       : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
@@ -294,16 +305,18 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
   const components = cloudFunction.name.split("/");
   const functionId = components.splice(-1, 1)[0];
 
-  cloudFunction.buildConfig.environmentVariables = {
-    ...cloudFunction.buildConfig.environmentVariables,
-    // Disable GCF from automatically running npm run build script
-    // https://cloud.google.com/functions/docs/release-notes
-    GOOGLE_NODE_RUN_SCRIPTS: "",
-  };
+  if (cloudFunction.buildConfig) {
+    cloudFunction.buildConfig.environmentVariables = {
+      ...cloudFunction.buildConfig.environmentVariables,
+      // Disable GCF from automatically running npm run build script
+      // https://cloud.google.com/functions/docs/release-notes
+      GOOGLE_NODE_RUN_SCRIPTS: "",
+    };
+  }
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig?.entryPoint.replaceAll("-", ".") || "",
     // Enable logging execution id by default for better debugging
     LOG_EXECUTION_ID: "true",
   };
@@ -377,15 +390,17 @@ async function listFunctionsInternal(
  * Customers can force a field to be deleted by setting that field to `undefined`
  */
 export async function updateFunction(cloudFunction: InputCloudFunction): Promise<Operation> {
-  cloudFunction.buildConfig.environmentVariables = {
-    ...cloudFunction.buildConfig.environmentVariables,
-    // Disable GCF from automatically running npm run build script
-    // https://cloud.google.com/functions/docs/release-notes
-    GOOGLE_NODE_RUN_SCRIPTS: "",
-  };
+  if (cloudFunction.buildConfig) {
+    cloudFunction.buildConfig.environmentVariables = {
+      ...cloudFunction.buildConfig.environmentVariables,
+      // Disable GCF from automatically running npm run build script
+      // https://cloud.google.com/functions/docs/release-notes
+      GOOGLE_NODE_RUN_SCRIPTS: "",
+    };
+  }
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig?.entryPoint.replaceAll("-", ".") || "",
     // Enable logging execution id by default for better debugging
     LOG_EXECUTION_ID: "true",
   };
@@ -457,6 +472,18 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     },
     serviceConfig: {},
   };
+
+  if (endpoint.nobuild) {
+    // Override for nobuild option
+    delete gcfFunction.buildConfig;
+    gcfFunction.serviceConfig.containers = [
+      {
+        image: "scratch",
+        baseImageUri: endpoint.baseImage,
+        command: endpoint.command,
+      },
+    ];
+  }
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
   proto.copyIfPresent(

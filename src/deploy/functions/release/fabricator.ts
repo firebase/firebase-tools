@@ -375,7 +375,9 @@ export class Fabricator {
       resultFunction = await this.functionExecutor
         .run(async () => {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
-            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            if (apiFunction.buildConfig) {
+              apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            }
           }
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
@@ -515,7 +517,9 @@ export class Fabricator {
       .run(
         async () => {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
-            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            if (apiFunction.buildConfig) {
+              apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            }
           }
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({

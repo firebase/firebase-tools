@@ -805,6 +805,31 @@ describe("Fabricator", () => {
       await fab.createV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerCreate).to.not.have.been.called;
     });
+
+    it("handles nobuild option", async () => {
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      ep.nobuild = true;
+      ep.baseImage = "us-west1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123";
+      ep.command = ["./bin/server.exe"];
+
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+      expect(gcfv2.createFunction).to.have.been.calledOnce;
+      const callArgs = gcfv2.createFunction.getCall(0).args[0];
+      expect(callArgs.buildConfig).to.be.undefined;
+      expect(callArgs.serviceConfig.containers).to.deep.equal([
+        {
+          image: "scratch",
+          baseImageUri: "us-west1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123",
+          command: ["./bin/server.exe"],
+        },
+      ]);
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
+    });
   });
 
   describe("updateV2Function", () => {

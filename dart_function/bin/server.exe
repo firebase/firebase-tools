@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# This is a placeholder for a compiled Dart application.
+# In a real scenario, this would be a binary executable.
+echo "Hello from Dart!"
