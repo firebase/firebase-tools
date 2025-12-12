@@ -112,6 +112,7 @@ export async function prepare(
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
 
+  // TODO: Modify to also load dataconnect schema if `onGraphRequest` is used with `schemaFilePath`?
   const wantBuilds = await loadCodebases(
     context.config,
     options,
