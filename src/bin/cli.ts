@@ -109,9 +109,6 @@ export function cli(pkg: any) {
   });
 
   // If this is a help command, load all commands so we can display them.
-<<<<<<< HEAD
-  const isHelp = !args.length || args[0] === "help" || (args.length === 1 && args[0] === "ext");
-=======
   const commandName = args[0];
   const isHelp =
     !args.length ||
@@ -124,7 +121,6 @@ export function cli(pkg: any) {
     client.getCommand(commandName);
   }
 
->>>>>>> origin/main
   if (isHelp) {
     const seen = new Set();
     const loadAll = (obj: any) => {
