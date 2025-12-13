@@ -1,63 +1,17 @@
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
-import { authTools } from "./auth/index";
-import { dataconnectTools } from "./dataconnect/index";
-import { firestoreTools } from "./firestore/index";
-import { coreTools } from "./core/index";
-import { storageTools } from "./storage/index";
-import { messagingTools } from "./messaging/index";
-import { remoteConfigTools } from "./remoteconfig/index";
-import { crashlyticsTools } from "./crashlytics/index";
 import { appHostingTools } from "./apphosting/index";
 import { apptestingTools } from "./apptesting/index";
-import { realtimeDatabaseTools } from "./realtime_database/index";
+import { authTools } from "./auth/index";
+import { coreTools } from "./core/index";
+import { crashlyticsTools } from "./crashlytics/index";
+import { dataconnectTools } from "./dataconnect/index";
+import { firestoreTools } from "./firestore/index";
 import { functionsTools } from "./functions/index";
-
-/** availableTools returns the list of MCP tools available given the server flags */
-export async function availableTools(
-  ctx: McpContext,
-  activeFeatures?: ServerFeature[],
-): Promise<ServerTool[]> {
-  const allTools = getAllTools(activeFeatures);
-  const availabilities = await Promise.all(
-    allTools.map((t) => {
-      if (t.isAvailable) {
-        return t.isAvailable(ctx);
-      }
-      return true;
-    }),
-  );
-  return allTools.filter((_, i) => availabilities[i]);
-}
-
-function getAllTools(activeFeatures?: ServerFeature[]): ServerTool[] {
-  const toolDefs: ServerTool[] = [];
-  if (!activeFeatures?.length) {
-    activeFeatures = Object.keys(tools) as ServerFeature[];
-  }
-  if (!activeFeatures.includes("core")) {
-    activeFeatures.unshift("core");
-  }
-  for (const key of activeFeatures) {
-    toolDefs.push(...tools[key]);
-  }
-  return toolDefs;
-}
-
-const tools: Record<ServerFeature, ServerTool[]> = {
-  core: addFeaturePrefix("firebase", coreTools),
-  firestore: addFeaturePrefix("firestore", firestoreTools),
-  auth: addFeaturePrefix("auth", authTools),
-  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
-  storage: addFeaturePrefix("storage", storageTools),
-  messaging: addFeaturePrefix("messaging", messagingTools),
-  functions: addFeaturePrefix("functions", functionsTools),
-  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
-  crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
-  apptesting: addFeaturePrefix("apptesting", apptestingTools),
-  apphosting: addFeaturePrefix("apphosting", appHostingTools),
-  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
-};
+import { messagingTools } from "./messaging/index";
+import { realtimeDatabaseTools } from "./realtime_database/index";
+import { remoteConfigTools } from "./remoteconfig/index";
+import { storageTools } from "./storage/index";
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
@@ -73,12 +27,82 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   }));
 }
 
+const tools: Record<ServerFeature, ServerTool[]> = {
+  apphosting: addFeaturePrefix("apphosting", appHostingTools),
+  apptesting: addFeaturePrefix("apptesting", apptestingTools),
+  auth: addFeaturePrefix("auth", authTools),
+  core: addFeaturePrefix("firebase", coreTools),
+  crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
+  database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
+  dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
+  firestore: addFeaturePrefix("firestore", firestoreTools),
+  functions: addFeaturePrefix("functions", functionsTools),
+  messaging: addFeaturePrefix("messaging", messagingTools),
+  remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
+  storage: addFeaturePrefix("storage", storageTools),
+};
+
+const allToolsMap = new Map(
+  Object.values(tools)
+    .flat()
+    .sort((a, b) => a.mcp.name.localeCompare(b.mcp.name))
+    .map((t) => [t.mcp.name, t]),
+);
+
+function getToolsByName(names: string[]): ServerTool[] {
+  const selectedTools = new Set<ServerTool>();
+
+  for (const toolName of names) {
+    const tool = allToolsMap.get(toolName);
+    if (tool) {
+      selectedTools.add(tool);
+    }
+  }
+
+  return Array.from(selectedTools);
+}
+
+function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
+  const features = new Set(
+    serverFeatures?.length ? serverFeatures : (Object.keys(tools) as ServerFeature[]),
+  );
+  features.add("core");
+
+  return Array.from(features).flatMap((feature) => tools[feature] || []);
+}
+
+/**
+ * Discover all all available tools. When `activeFeatures` is provided, tool discovery will only
+ * consider those features. When `enabledTools` is provided, discovery is skipped entirely, and
+ * only tools with exactly those names are returned.
+ */
+export async function availableTools(
+  ctx: McpContext,
+  activeFeatures?: ServerFeature[],
+  enabledTools?: string[],
+): Promise<ServerTool[]> {
+  if (enabledTools?.length) {
+    return getToolsByName(enabledTools);
+  }
+
+  const allTools = getToolsByFeature(activeFeatures);
+  const availabilities = await Promise.all(
+    allTools.map((t) => {
+      if (t.isAvailable) {
+        return t.isAvailable(ctx);
+      }
+      return true;
+    }),
+  );
+  return allTools.filter((_, i) => availabilities[i]);
+}
+
 /**
  * Generates a markdown table of all available tools and their descriptions.
  * This is used for generating documentation.
  */
 export function markdownDocsOfTools(): string {
-  const allTools = getAllTools([]);
+  const allTools = getToolsByFeature([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
