@@ -59,29 +59,30 @@ export async function getPlatformsFromFolder(dirPath: string): Promise<Platform[
  * @return A list of apps detected.
  */
 export async function detectApps(dirPath: string): Promise<App[]> {
-  const packageJsonFiles = await detectFiles(dirPath, "package.json");
-  const pubSpecYamlFiles = await detectFiles(dirPath, "pubspec.yaml");
-  const srcMainFolders = await detectFiles(dirPath, "src/main/");
-  const xCodeProjects = await detectFiles(dirPath, "*.xcodeproj/");
-  const adminAndWebApps = (
-    await Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p)))
-  ).flat();
-  const flutterAppPromises = await Promise.all(
-    pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f)),
-  );
-  const flutterApps = flutterAppPromises.flat();
+  const [packageJsonFiles, pubSpecYamlFiles, srcMainFolders, xCodeProjects] = await Promise.all([
+    detectFiles(dirPath, "package.json"),
+    detectFiles(dirPath, "pubspec.yaml"),
+    detectFiles(dirPath, "src/main/"),
+    detectFiles(dirPath, "*.xcodeproj/"),
+  ]);
 
-  const androidAppPromises = await Promise.all(
-    srcMainFolders.map((f) => processAndroidDir(dirPath, f)),
-  );
-  const androidApps = androidAppPromises
-    .flat()
-    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
+  const [adminAndWebApps, flutterApps, androidAppsRaw, iosAppsRaw] = await Promise.all([
+    Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p))).then((r) =>
+      r.flat(),
+    ),
+    Promise.all(pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(srcMainFolders.map((f) => processAndroidDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f))).then((r) => r.flat()),
+  ]);
 
-  const iosAppPromises = await Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f)));
-  const iosApps = iosAppPromises
-    .flat()
-    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
+  const androidApps = androidAppsRaw.filter(
+    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
+  );
+
+  const iosApps = iosAppsRaw.filter(
+    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
+  );
+
   return [...flutterApps, ...androidApps, ...iosApps, ...adminAndWebApps];
 }
 

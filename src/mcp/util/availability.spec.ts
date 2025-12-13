@@ -17,6 +17,7 @@ describe("getDefaultFeatureAvailabilityCheck", () => {
     host: {} as any,
     rc: {} as any,
     firebaseCliCommand: "firebase",
+    isBillingEnabled: false,
   });
 
   beforeEach(() => {

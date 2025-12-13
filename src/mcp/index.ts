@@ -47,6 +47,7 @@ import { availableTools } from "./tools/index";
 import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
 import { mcpError } from "./util";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -199,7 +200,8 @@ export class FirebaseMcpServer {
     this.logger.debug("detecting active features of Firebase MCP server...");
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
         const availabilityCheck = getDefaultFeatureAvailabilityCheck(f);
@@ -250,7 +252,8 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availableTools(ctx, features, this.enabledTools);
   }
 
@@ -264,7 +267,8 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availablePrompts(ctx, features);
   }
 
@@ -303,7 +307,11 @@ export class FirebaseMcpServer {
     }
   }
 
-  private _createMcpContext(projectId: string, accountEmail: string | null): McpContext {
+  private _createMcpContext(
+    projectId: string,
+    accountEmail: string | null,
+    isBillingEnabled: boolean,
+  ): McpContext {
     const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     return {
       projectId: projectId,
@@ -312,6 +320,7 @@ export class FirebaseMcpServer {
       rc: loadRC(options),
       accountEmail,
       firebaseCliCommand: this._getFirebaseCliCommand(),
+      isBillingEnabled,
     };
   }
 
@@ -376,7 +385,8 @@ export class FirebaseMcpServer {
       if (err) return err;
     }
 
-    const toolsCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -430,7 +440,8 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const promptsCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const promptsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     try {
       const messages = await prompt.fn(promptArgs, promptsCtx);
@@ -470,7 +481,8 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const resourceCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const resourceCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     const resolved = await resolveResource(req.params.uri, resourceCtx);
     if (!resolved) {
