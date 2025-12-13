@@ -1,0 +1,1 @@
+- Updated default Postgres version for Data Connect to 17.

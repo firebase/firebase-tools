@@ -61,7 +61,7 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
 }
 
 export type DataConnectLabel = "ft" | "nt";
-export const DEFAULT_DATABASE_VERSION = "POSTGRES_15";
+export const DEFAULT_DATABASE_VERSION = "POSTGRES_17";
 
 export async function createInstance(args: {
   projectId: string;
