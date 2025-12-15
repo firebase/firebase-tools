@@ -127,5 +127,32 @@ describe("fsAsync", () => {
       const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);
     });
+
+    it("should ignore symlinks when option is set", async () => {
+      const symlinkPath = path.join(baseDir, "symlink");
+      fs.symlinkSync(path.join(baseDir, "visible"), symlinkPath);
+
+      try {
+        const resultsWithSymlinks = await fsAsync.readdirRecursive({
+          path: baseDir,
+          ignoreSymlinks: true,
+        });
+        const gotFileNamesWithSymlinks = resultsWithSymlinks.map((r) => r.name).sort();
+        const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+        expect(gotFileNamesWithSymlinks).to.deep.equal(expectFiles);
+
+        const resultsWithoutSymlinks = await fsAsync.readdirRecursive({
+          path: baseDir,
+          ignoreSymlinks: false,
+        });
+        const gotFileNamesWithoutSymlinks = resultsWithoutSymlinks.map((r) => r.name).sort();
+        const expectFilesWithSymlinks = [...files, "symlink"]
+          .map((file) => path.join(baseDir, file))
+          .sort();
+        expect(gotFileNamesWithoutSymlinks).to.deep.equal(expectFilesWithSymlinks);
+      } finally {
+        fs.unlinkSync(symlinkPath);
+      }
+    });
   });
 });

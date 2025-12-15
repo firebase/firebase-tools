@@ -30,7 +30,5 @@ export const command = new Command("firestore:backups:list")
       );
     }
 
-    // TODO: Consider returning listBackupResponse instead for --json. This will
-    // be a breaking change but exposes .unreachable, not just .backups.
-    return backups;
+    return listBackupsResponse;
   });

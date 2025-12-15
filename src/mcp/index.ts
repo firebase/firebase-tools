@@ -3,49 +3,49 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequest,
   CallToolRequestSchema,
-  ListToolsResult,
-  LoggingLevel,
-  SetLevelRequestSchema,
-  ListToolsRequestSchema,
   CallToolResult,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-  ListPromptsResult,
-  GetPromptResult,
+  ErrorCode,
   GetPromptRequest,
+  GetPromptRequestSchema,
+  GetPromptResult,
+  ListPromptsRequestSchema,
+  ListPromptsResult,
   ListResourcesRequestSchema,
   ListResourcesResult,
-  ReadResourceRequest,
-  ReadResourceResult,
-  ReadResourceRequestSchema,
   ListResourceTemplatesRequestSchema,
   ListResourceTemplatesResult,
+  ListToolsRequestSchema,
+  ListToolsResult,
+  LoggingLevel,
   McpError,
-  ErrorCode,
+  ReadResourceRequest,
+  ReadResourceRequestSchema,
+  ReadResourceResult,
+  SetLevelRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpError } from "./util";
-import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
-import { availableTools } from "./tools/index";
-import { ServerTool } from "./tool";
-import { availablePrompts } from "./prompts/index";
-import { ServerPrompt } from "./prompt";
-import { configstore } from "../configstore";
+import * as crossSpawn from "cross-spawn";
+import { existsSync } from "node:fs";
 import { Command } from "../command";
-import { requireAuth } from "../requireAuth";
-import { Options } from "../options";
-import { getProjectId } from "../projectUtils";
-import { mcpAuthError, noProjectDirectory, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
-import { trackGA4 } from "../track";
 import { Config } from "../config";
-import { loadRC } from "../rc";
+import { configstore } from "../configstore";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
-import { existsSync } from "node:fs";
-import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
+import { Options } from "../options";
+import { getProjectId } from "../projectUtils";
+import { loadRC } from "../rc";
+import { requireAuth } from "../requireAuth";
 import { timeoutFallback } from "../timeout";
+import { trackGA4 } from "../track";
+import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory, requireGeminiToS } from "./errors";
+import { LoggingStdioServerTransport } from "./logging-transport";
+import { ServerPrompt } from "./prompt";
+import { availablePrompts } from "./prompts/index";
 import { resolveResource, resources, resourceTemplates } from "./resources";
-import * as crossSpawn from "cross-spawn";
+import { ServerTool } from "./tool";
+import { availableTools } from "./tools/index";
+import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
+import { mcpError } from "./util";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
 const SERVER_VERSION = "0.3.0";
@@ -72,6 +72,7 @@ export class FirebaseMcpServer {
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
+  enabledTools?: string[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
   private cliCommand?: string;
@@ -99,9 +100,14 @@ export class FirebaseMcpServer {
     return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
-  constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
+  constructor(options: {
+    activeFeatures?: ServerFeature[];
+    projectRoot?: string;
+    enabledTools?: string[];
+  }) {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
+    this.enabledTools = options.enabledTools;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
     this.server.registerCapabilities({
       tools: { listChanged: true },
@@ -245,7 +251,7 @@ export class FirebaseMcpServer {
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
     const ctx = this._createMcpContext(projectId, accountEmail);
-    return availableTools(ctx, features);
+    return availableTools(ctx, features, this.enabledTools);
   }
 
   async getTool(name: string): Promise<ServerTool | null> {

@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { Options } from "../options";
 import { getProjectId, needProjectId } from "../projectUtils";
-import { pickService, readGQLFiles, squashGraphQL } from "../dataconnect/load";
+import { pickOneService, readGQLFiles, squashGraphQL } from "../dataconnect/load";
 import { requireAuth } from "../requireAuth";
 import { Constants } from "../emulator/constants";
 import { Client } from "../apiv2";
@@ -207,7 +207,12 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
       }
 
       async function getServiceInfo(): Promise<ServiceInfo> {
-        return pickService(projectId, options.config, serviceId || undefined).catch((e) => {
+        return pickOneService(
+          projectId,
+          options.config,
+          serviceId || undefined,
+          locationId || undefined,
+        ).catch((e: unknown) => {
           if (!(e instanceof FirebaseError)) {
             return Promise.reject(e);
           }
