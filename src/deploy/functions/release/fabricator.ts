@@ -546,21 +546,38 @@ export class Fabricator {
     }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
-      invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
+      // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
+      // public.
+      invoker = endpoint.taskQueueTrigger.invoker;
+      if (invoker && !invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     } else if (
       backend.isBlockingTriggered(endpoint) &&
       AUTH_BLOCKING_EVENTS.includes(endpoint.blockingTrigger.eventType as any)
     ) {
-      invoker = ["public"];
+      // Auth Blocking functions should always be public
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
         : [await gce.getDefaultServiceAccount(this.projectNumber)];
-    }
-
-    if (invoker) {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));

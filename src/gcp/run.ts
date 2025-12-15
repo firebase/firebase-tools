@@ -325,6 +325,8 @@ export async function setInvokerUpdate(
   const currentInvokerBinding = currentPolicy.bindings?.find(
     (binding) => binding.role === invokerRole,
   );
+  
+  // If the invoker binding already exists and matches, no update needed
   if (
     currentInvokerBinding &&
     JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
@@ -332,7 +334,21 @@ export async function setInvokerUpdate(
     return;
   }
 
-  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  // If there's no existing policy or no bindings at all, use the same approach as setInvokerCreate
+  // This handles the case where a service was created but IAM policy was never set (e.g., failed initial deploy)
+  if (!currentPolicy.bindings || currentPolicy.bindings.length === 0) {
+    const bindings = [{ role: invokerRole, members: invokerMembers }];
+    const policy: iam.Policy = {
+      bindings: bindings,
+      etag: "",
+      version: 3,
+    };
+    await setIamPolicy(serviceName, policy, httpClient);
+    return;
+  }
+
+  // Otherwise, update the existing policy by replacing the invoker binding
+  const bindings = currentPolicy.bindings.filter((binding) => binding.role !== invokerRole);
   bindings.push({
     role: invokerRole,
     members: invokerMembers,

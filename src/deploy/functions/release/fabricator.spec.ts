@@ -830,11 +830,21 @@ describe("Fabricator", () => {
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.rejects(new Error("Boom"));
 
-      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
       await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.be.rejectedWith(
         reporter.DeploymentError,
         "set invoker",
       );
+    });
+
+    it("doesn't set private invoker on update", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.not.have.been.called;
     });
 
     it("sets explicit invoker on httpsTrigger", async () => {
@@ -888,14 +898,24 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
-    it("does not set invoker by default", async () => {
+    it("always sets invoker to public for callableTrigger", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ callableTrigger: {} }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
+    });
+
+    it("sets invoker to public by default", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.setInvokerUpdate).to.not.have.been.called;
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
     it("doesn't set invoker on non-http functions", async () => {
