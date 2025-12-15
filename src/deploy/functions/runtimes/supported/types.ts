@@ -91,7 +91,7 @@ export const RUNTIMES = runtimes({
   },
   nodejs24: {
     friendly: "Node.js 24",
-    status: "beta",
+    status: "GA",
     deprecationDate: "2028-04-30",
     decommissionDate: "2028-10-31",
   },

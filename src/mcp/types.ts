@@ -30,4 +30,5 @@ export interface McpContext {
   host: FirebaseMcpServer;
   rc: RC;
   firebaseCliCommand: string;
+  isBillingEnabled: boolean;
 }

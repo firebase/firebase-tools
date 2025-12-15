@@ -19,14 +19,14 @@ describe("checkFunctionsSDKVersion", () => {
   });
 
   it("Should warn if the SDK version is too low", () => {
-    latestVersion.returns("1.9.9");
-    versioning.checkFunctionsSDKVersion("1.9.9");
+    latestVersion.returns("3.20.0");
+    versioning.checkFunctionsSDKVersion("3.19.9");
     expect(warningSpy).calledWith(versioning.FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
   });
 
   it("Should not warn for the latest SDK version", () => {
-    latestVersion.returns("3.14.159");
-    versioning.checkFunctionsSDKVersion("3.14.159");
+    latestVersion.returns("3.20.0");
+    versioning.checkFunctionsSDKVersion("3.20.0");
     expect(warningSpy).not.called;
   });
 

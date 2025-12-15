@@ -59,22 +59,13 @@ async function androidAppUsesCrashlytics(appPath: string): Promise<boolean> {
 }
 
 async function iosAppUsesCrashlytics(appPath: string): Promise<boolean> {
-  const podfiles = await detectFiles(appPath, "Podfile");
-  for (const file of podfiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
-    }
-  }
-  const swiftPackageFiles = await detectFiles(appPath, "Package.swift");
-  for (const file of swiftPackageFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("Crashlytics")) {
-      return true;
-    }
-  }
-  const cartFiles = await detectFiles(appPath, "Cartfile*");
-  for (const file of cartFiles) {
+  const filePatternsToDetect = ["Podfile", "Package.swift", "Cartfile*", "project.pbxproj"];
+  const fileArrays = await Promise.all(
+    filePatternsToDetect.map((term) => detectFiles(appPath, term)),
+  );
+
+  const files = fileArrays.flat();
+  for (const file of files) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (content.includes("Crashlytics")) {
       return true;

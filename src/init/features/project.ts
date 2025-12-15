@@ -123,6 +123,7 @@ async function usingProjectMetadata(
   // write "default" alias and activate it immediately
   _.set(setup.rcfile, "projects.default", pm.projectId);
   setup.projectId = pm.projectId;
+  setup.projectNumber = pm.projectNumber;
   setup.instance = pm.resources?.realtimeDatabaseInstance;
   setup.projectLocation = pm.resources?.locationId;
   utils.makeActiveProject(config.projectDir, pm.projectId);

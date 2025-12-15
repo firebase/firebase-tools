@@ -24,7 +24,7 @@ describe("unzip", () => {
 
         const expectedSize = await calculateFolderSize(inflatedDir);
         expect(await calculateFolderSize(unzipPath)).to.eql(expectedSize);
-      });
+      }).timeout(2000);
     } else {
       it(`should throw "${wantErr}" when reading a zip file with ${name} case`, async () => {
         const unzipPath = path.join(tempDir, name);
