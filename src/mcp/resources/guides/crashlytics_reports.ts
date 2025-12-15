@@ -88,7 +88,6 @@ When setting report filters adhere to the following instructions.
   * Report responses grouped by issue will include a sample event URI. Use the "crashlytics_batch_get_events" tool to fetch the complete record for any sample event.
   
   * When investigating an issue, use the appropriate top devices and top operating systems reports to understand what systems are impacted by the problem. Pass the "issueId" in the filter to narrow any report to a specific issue.
-
 `.trim();
 
 export const crashlytics_reports = resource(

@@ -14,15 +14,7 @@ const RESOURCE_CONTENT = `
   5. Determine possible root causes for the crash - no more than 5 potential root causes.
   6. Critique your own determination, analyzing how plausible each scenario is given the crash details.
   7. Choose the most likely root cause given your analysis.
-  8. Write out a plan for the most likely root cause using the following criteria:
-    8a. Write out a description of the issue and including
-        * A brief description of the cause of the issue
-        * A determination of your level of confidence in the cause of the issue using your analysis.
-        * A determination of which library is at fault, this codebase or a dependent library
-        * A determination for how complex the fix will be
-    8b. The plan should include relevant files to change
-    8c. The plan should include a test plan for how the user might verify the fix
-    8d. Use the following format for the plan:
+  8. Create a plan for the most likely root cause using the following format for the plan:
 
     ## Cause
     <A description of the root cause leading to the issue>
@@ -43,10 +35,7 @@ const RESOURCE_CONTENT = `
     1. <Another possible root cause>
     2. <Another possible root cause>
       
-  9. Present the plan to the user and get approval before making the change.
-  10. Only if they approve the plan, create a fix for the issue.
-    10a. Be mindful of API contracts and do not add fields to resources without a clear way to populate those fields
-    10b. If there is not enough information in the crash report to find a root cause, describe why you cannot fix the issue instead of making a guess.
+  9. If there is not enough information in the crash report to find a root cause, describe why you cannot fix the issue instead of making a guess.
 `.trim();
 
 export const crashlytics_investigations = resource(
