@@ -151,7 +151,7 @@ export const ALL_EXPERIMENTS = experiments({
   fdcift: {
     shortDescription: "Enable instrumentless trial for Data Connect",
     public: false,
-    default: false,
+    default: true,
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
