@@ -40,7 +40,11 @@ export const get_report = tool(
   {
     name: "get_report",
     description:
-      `Use this to request numerical reports from Crashlytics. Reports contain aggregated metrics describing the number of crash events and number of impacted end users. The reports are grouped by different dimensions such as issue, version or device.
+      `**REQUIRED PREREQUISITE:** READ firebase://guides/app_id, firebase://guides/crashlytics/reports, and firebase://guides/crashlytics/issues.
+      **DO NOT FETCH DATA FIRST. IT WILL CAUSE ERRORS AND WASTE TOKENS AND TIME. READING THE GUIDES IS THE MOST EFFICIENT WAY TO GET THE ANSWERS YOU WANT.**
+      AGENTS MUST READ these guides to fetch, format, and interpret report results or TOOL CALLS WILL FAIL.
+
+      Use this to request numerical reports from Crashlytics.
     `.trim(),
     inputSchema: ReportInputSchema,
     annotations: {

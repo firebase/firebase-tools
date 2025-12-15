@@ -89,6 +89,10 @@ When setting report filters adhere to the following instructions.
   
   * When investigating an issue, use the appropriate top devices and top operating systems reports to understand what systems are impacted by the problem. Pass the "issueId" in the filter to narrow any report to a specific issue.
 
+### Formatting Reports
+
+
+
 `.trim();
 
 export const crashlytics_reports = resource(

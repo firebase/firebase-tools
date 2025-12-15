@@ -47,6 +47,9 @@ function formatFrames(origFrames: Frame[], maxFrames = 20): string[] {
 // Formats an event into more legible, token-efficient text content sections
 
 function toText(event: Event): Record<string, string> {
+  if (!event) {
+    return {};
+  }
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(event)) {
     if (key === "logs") {
@@ -62,7 +65,7 @@ function toText(event: Event): Record<string, string> {
       const breadcrumbs = (value as Breadcrumb[]) || [];
       const slicedBreadcrumbs = breadcrumbs.length > 10 ? breadcrumbs.slice(-10) : breadcrumbs;
       const breadcrumbLines = slicedBreadcrumbs.map((b) => {
-        const paramString = Object.entries(b.params)
+        const paramString = Object.entries(b?.params || {})
           .map(([k, v]) => `${k}: ${v}`)
           .join(", ");
         const params = paramString ? ` { ${paramString} }` : "";

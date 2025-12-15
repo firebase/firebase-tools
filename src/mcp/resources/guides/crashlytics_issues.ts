@@ -3,7 +3,7 @@ import { resource } from "../../resource";
 const RESOURCE_CONTENT = `
 ### How to Display Issues
 
-When displaying a list of issues, favor the following format:
+When displaying a list of issues, use the following format:
 
   1. Issue <issue id>
     * <the issue title>

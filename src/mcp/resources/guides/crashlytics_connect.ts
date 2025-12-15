@@ -22,15 +22,15 @@ Use the \`firebase_read_resources\` tool to access the following guides.
 ### Check That You Are Connected
 
 Verify that you can read the app's Crashlytics data by getting the topVersions report. This report will tell you which app versions have the most events.
-  a. Call the \`firebase_get_environment\` tool if you need to find the app_id.
+  a. Use the firebase://guides/app_id if you need to find the app_id.
   b. Call the \`crashlytics_get_report\` tool to read the \`topVersions\` report.
   c. If you haven't read the reports guide, then the tool will include it in the response. This is OK. Simply call the tool again.
   d. Help the user resolve any issues that arise when trying to connect.
 
-After confirming you can access Crashlytics, inquire about the desired actions. Your capabilities include:
+After confirming you can access Crashlytics, ask the user what they would like help with. Your capabilities include:
 
-  - Reading Crashlytics reports.
-  - Investigating bug reports using Crashlytics event data.
+  - Reading Crashlytics reports to prioritize or find important issues. Before fetching issues or reports, you MUST read both the firebase://guides/crashlytics/reports and firebase://guides/crashlytics/issues guides to know how to best help users with this.
+  - Investigating bug reports using Crashlytics event data. Before attempting to investigate an individual issue, you MUST read the firebase://guides/crashlytics/investigations guide to know how to best help users with this.
   - Proposing code changes to resolve identified bugs.
 `.trim();
 
