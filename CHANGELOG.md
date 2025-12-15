@@ -1,0 +1,1 @@
+- Enable Data Connect SQL IFT Free Trial init flow (#9620).
