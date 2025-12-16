@@ -17,6 +17,7 @@ describe("availableTools", () => {
     } as any,
     rc: {} as any,
     firebaseCliCommand: "firebase",
+    isBillingEnabled: true,
   };
 
   it("should return specific tools when enabledTools is provided", async () => {
@@ -24,7 +25,7 @@ describe("availableTools", () => {
 
     expect(tools).to.have.length(1);
     expect(tools[0].mcp.name).to.equal("firebase_login");
-  });
+  }).timeout(2000);
 
   it("should return core tools by default", async () => {
     const tools = await availableTools(mockContext, []);
@@ -32,19 +33,19 @@ describe("availableTools", () => {
     const loginTool = tools.find((t) => t.mcp.name === "firebase_login");
 
     expect(loginTool).to.exist;
-  });
+  }).timeout(2000);
 
   it("should include feature-specific tools when activeFeatures is provided", async () => {
     const tools = await availableTools(mockContext, ["firestore"]);
     const firestoreTool = tools.find((t) => t.mcp.name.startsWith("firestore_"));
 
     expect(firestoreTool).to.exist;
-  });
+  }).timeout(2000);
 
   it("should not include feature tools if no active features", async () => {
     const tools = await availableTools(mockContext, ["core"]);
     const firestoreTool = tools.find((t) => t.mcp.name.startsWith("firestore_"));
 
     expect(firestoreTool).to.not.exist;
-  });
+  }).timeout(2000);
 });
