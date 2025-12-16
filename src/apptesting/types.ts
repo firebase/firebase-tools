@@ -57,7 +57,7 @@ export interface TestExecutionResult {
 }
 
 export interface TestCase {
-  startUri: string;
+  startUri?: string;
   displayName: string;
   instructions: Instructions;
 }

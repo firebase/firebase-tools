@@ -12,16 +12,20 @@ function createFilter(pattern?: string) {
 
 export async function parseTestFiles(
   dir: string,
-  targetUri: string,
+  targetUri?: string,
   filePattern?: string,
   namePattern?: string,
 ): Promise<TestCaseInvocation[]> {
-  try {
-    new URL(targetUri);
-  } catch (ex) {
-    const errMsg = "Invalid URL" + (targetUri.startsWith("http") ? "" : " (must include protocol)");
-    throw new FirebaseError(errMsg, { original: getError(ex) });
+  if (targetUri) {
+    try {
+      new URL(targetUri);
+    } catch (ex) {
+      const errMsg =
+        "Invalid URL" + (targetUri.startsWith("http") ? "" : " (must include protocol)");
+      throw new FirebaseError(errMsg, { original: getError(ex) });
+    }
   }
+
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
 
@@ -35,8 +39,11 @@ export async function parseTestFiles(
       } else if (fileFilterFn(path) && fileExistsSync(path)) {
         try {
           const file = await readFileFromDirectory(testDir, item);
+          logger.info(`Read the file ${file.source}.`);
           const parsedFile = wrappedSafeLoad(file.source);
+          logger.info(`Parsed the file.`);
           const tests = parsedFile.tests;
+          logger.info(`There are ${tests.length} tests.`);
           const defaultConfig = parsedFile.defaultConfig;
           if (!tests || !tests.length) {
             logger.info(`No tests found in ${path}. Ignoring.`);
@@ -61,7 +68,7 @@ export async function parseTestFiles(
   return parseTestFilesRecursive(dir);
 }
 
-function toTestDef(testDef: any, targetUri: string, defaultConfig: any): TestCaseInvocation {
+function toTestDef(testDef: any, targetUri: any, defaultConfig: any): TestCaseInvocation {
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??
