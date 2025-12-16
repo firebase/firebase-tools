@@ -65,7 +65,7 @@ export async function parseTestFiles(
   return parseTestFilesRecursive(dir);
 }
 
-function toTestDef(testDef: any, targetUri: any, defaultConfig: any): TestCaseInvocation {
+function toTestDef(testDef: any, targetUri?: string, defaultConfig: any): TestCaseInvocation {
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??
