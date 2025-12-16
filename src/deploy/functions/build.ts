@@ -71,6 +71,12 @@ export interface HttpsTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
+export interface DataConnectHttpsTrigger {
+  // Which service account should be able to trigger this function. No value means that only the
+  // Firebase Data Connect P4SA can trigger this function. For more, see go/cf3-http-access-control
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+}
+
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
 interface CallableTrigger {
@@ -150,6 +156,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type DataConnectHttpsTriggered = { dataConnectHttpsTrigger: DataConnectHttpsTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -157,6 +164,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
+  | DataConnectHttpsTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -166,6 +174,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectHttpsTrigger */
+export function isDataConnectHttpsTriggered(
+  triggered: Triggered,
+): triggered is DataConnectHttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectHttpsTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -559,6 +574,16 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
+  } else if (isDataConnectHttpsTriggered(endpoint)) {
+    const dataConnectHttpsTrigger: backend.DataConnectHttpsTrigger = {};
+    if (endpoint.dataConnectHttpsTrigger.invoker === null) {
+      dataConnectHttpsTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectHttpsTrigger.invoker !== "undefined") {
+      dataConnectHttpsTrigger.invoker = endpoint.dataConnectHttpsTrigger.invoker.map(
+        r.resolveString,
+      );
+    }
+    return { dataConnectHttpsTrigger };
   } else if (isCallableTriggered(endpoint)) {
     const trigger: CallableTriggered = { callableTrigger: {} };
     proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");

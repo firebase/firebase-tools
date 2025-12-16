@@ -43,6 +43,16 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
+/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+export interface DataConnectHttpsTrigger {
+  invoker?: string[] | null;
+}
+
+/** Something that has a Data Connect HTTPS trigger */
+export interface DataConnectHttpsTriggered {
+  dataConnectHttpsTrigger: DataConnectHttpsTrigger;
+}
+
 /** API agnostic version of a Firebase callable function. */
 export type CallableTrigger = {
   genkitAction?: string;
@@ -151,6 +161,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isDataConnectHttpsTriggered(endpoint)) {
+    return "dataConnectHttps";
   } else if (isCallableTriggered(endpoint)) {
     return "callable";
   } else if (isEventTriggered(endpoint)) {
@@ -305,6 +317,7 @@ export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
+  | DataConnectHttpsTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
@@ -314,6 +327,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectHttpsTrigger */
+export function isDataConnectHttpsTriggered(
+  triggered: Triggered,
+): triggered is DataConnectHttpsTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectHttpsTrigger");
 }
 
 /** Whether something has a CallableTrigger */

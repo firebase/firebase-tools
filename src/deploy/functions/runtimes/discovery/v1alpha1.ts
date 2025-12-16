@@ -40,6 +40,7 @@ type WireEventTrigger = build.EventTrigger & {
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
+  Partial<build.DataConnectHttpsTriggered> &
   Partial<build.CallableTriggered> &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
@@ -158,6 +159,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
+    dataConnectHttpsTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
@@ -174,6 +176,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.dataConnectHttpsTrigger) {
     triggerCount++;
   }
   if (ep.callableTrigger) {
@@ -211,6 +216,10 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     });
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
+      invoker: "array?",
+    });
+  } else if (build.isDataConnectHttpsTriggered(ep)) {
+    assertKeyTypes(prefix + ".dataConnectHttpsTrigger", ep.dataConnectHttpsTrigger, {
       invoker: "array?",
     });
   } else if (build.isCallableTriggered(ep)) {
@@ -311,6 +320,9 @@ function parseEndpointForBuild(
   } else if (build.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isDataConnectHttpsTriggered(ep)) {
+    triggered = { dataConnectHttpsTrigger: {} };
+    copyIfPresent(triggered.dataConnectHttpsTrigger, ep.dataConnectHttpsTrigger, "invoker");
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
     copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
