@@ -1,0 +1,18 @@
+tests:
+- testName: Search for Bob Dylan and find his birthday
+  steps:
+    - goal: Search for "Bob Dylan" in the search bar.
+      hint: Type "Bob Dylan" into the search input field.
+      successCriteria: >-
+        A list of search results is displayed. The first result should be "Bob
+        Dylan".
+    - goal: Open the article about Bob Dylan.
+      hint: 'Tap on the first search result, which should be "Bob Dylan".'
+      successCriteria: >-
+        The article for "Bob Dylan" is opened and the title "Bob Dylan" is
+        visible.
+    - goal: Find Bob Dylan's birthday in the article.
+      hint: >-
+        Look for the "Born" section in the infobox on the right side of the
+        page.
+      successCriteria: 'The text "May 24, 1941" is visible on the screen.'
