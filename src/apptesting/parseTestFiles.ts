@@ -39,11 +39,8 @@ export async function parseTestFiles(
       } else if (fileFilterFn(path) && fileExistsSync(path)) {
         try {
           const file = await readFileFromDirectory(testDir, item);
-          logger.info(`Read the file ${file.source}.`);
           const parsedFile = wrappedSafeLoad(file.source);
-          logger.info(`Parsed the file.`);
           const tests = parsedFile.tests;
-          logger.info(`There are ${tests.length} tests.`);
           const defaultConfig = parsedFile.defaultConfig;
           if (!tests || !tests.length) {
             logger.info(`No tests found in ${path}. Ignoring.`);
