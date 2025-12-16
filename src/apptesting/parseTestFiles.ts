@@ -48,7 +48,7 @@ export async function parseTestFiles(
           }
           for (const rawTestDef of parsedFile.tests) {
             if (!nameFilterFn(rawTestDef.testName)) continue;
-            const testDef = toTestDef(rawTestDef, targetUri, defaultConfig);
+            const testDef = toTestDef(rawTestDef, defaultConfig, targetUri);
             results.push(testDef);
           }
         } catch (ex) {
@@ -65,7 +65,7 @@ export async function parseTestFiles(
   return parseTestFilesRecursive(dir);
 }
 
-function toTestDef(testDef: any, targetUri?: string, defaultConfig: any): TestCaseInvocation {
+function toTestDef(testDef: any, defaultConfig: any, targetUri?: string): TestCaseInvocation {
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??
