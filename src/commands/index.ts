@@ -264,11 +264,6 @@ export function load(client: CLIClient): CLIClient {
   if (experiments.isEnabled("apptesting")) {
     client.apptesting = {};
     client.apptesting.execute = loadCommand("apptesting-execute");
-  }
-  if (experiments.isEnabled("mata")) {
-    if (!client.apptesting) {
-      client.apptesting = {};
-    }
     client.apptesting.mobile = {};
     client.apptesting.mobile.execute = loadCommand("apptesting-mobile-execute");
   }

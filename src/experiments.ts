@@ -165,10 +165,6 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
-  mata: {
-    shortDescription: "Adds experimental Mobile App Testing Agent (MATA) feature",
-    public: true,
-  },
   fdcwebhooks: {
     shortDescription: "Enable Firebase Data Connect webhooks feature.",
     default: false,
