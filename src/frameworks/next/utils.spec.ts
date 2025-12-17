@@ -12,6 +12,8 @@ import {
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
+  MIDDLEWARE_MANIFEST,
 } from "./constants";
 
 import {
@@ -72,8 +74,13 @@ import {
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
   serverReferenceManifest,
+  middlewareV3ManifestWhenUsed,
+  functionsConfigManifestWhenUsed,
+  middlewareV3ManifestWhenNotUsed,
+  functionsConfigManifestWhenNotUsed,
+  middlewareV3ManifestWithDeprecatedMiddleware,
+  pathsWithCustomRoutesInternalPrefix,
 } from "./testing";
-import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
 
 describe("Next.js utils", () => {
   describe("cleanEscapedChars", () => {
@@ -233,24 +240,66 @@ describe("Next.js utils", () => {
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
 
-    it("should return true if using middleware in development", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(true);
-      expect(await isUsingMiddleware("", true)).to.be.true;
+    describe("development", () => {
+      it("should return true if using middleware", async () => {
+        sandbox.stub(fsExtra, "pathExists").resolves(true);
+        expect(await isUsingMiddleware("", true)).to.be.true;
+      });
+
+      it("should  return false if not using middleware", async () => {
+        sandbox.stub(fsExtra, "pathExists").resolves(false);
+        expect(await isUsingMiddleware("", true)).to.be.false;
+      });
     });
 
-    it("should return false if not using middleware in development", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(false);
-      expect(await isUsingMiddleware("", true)).to.be.false;
+    describe("production (v2)", () => {
+      it("should return true if using middleware", async () => {
+        sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return false if not using middleware", async () => {
+        sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
+        expect(await isUsingMiddleware("", false)).to.be.false;
+      });
     });
 
-    it("should return true if using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
-      expect(await isUsingMiddleware("", false)).to.be.true;
-    });
+    describe("production (v3)", () => {
+      it("should return true if using middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWhenUsed);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenUsed);
 
-    it("should return false if not using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
-      expect(await isUsingMiddleware("", false)).to.be.false;
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return true if using deprecated middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWithDeprecatedMiddleware);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenNotUsed);
+
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return false if not using middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWhenNotUsed);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenNotUsed);
+
+        expect(await isUsingMiddleware("", false)).to.be.false;
+      });
     });
   });
 
@@ -420,32 +469,82 @@ describe("Next.js utils", () => {
   });
 
   describe("getMiddlewareMatcherRegexes", () => {
-    it("should return regexes when using version 1", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenUsed);
+    describe("middleware version 1", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV1ManifestWhenUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      for (const regex of middlewareMatcherRegexes) {
-        expect(regex).to.be.an.instanceOf(RegExp);
-      }
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
+
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV1ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
     });
 
-    it("should return empty array when using version 1 but not using middleware", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenNotUsed);
+    describe("middleware version 2", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV2ManifestWhenUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      expect(middlewareMatcherRegexes).to.eql([]);
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
+
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV2ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
     });
 
-    it("should return regexes when using version 2", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenUsed);
+    describe("middleware version 3", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWhenUsed,
+          functionsConfigManifestWhenUsed,
+        );
 
-      for (const regex of middlewareMatcherRegexes) {
-        expect(regex).to.be.an.instanceOf(RegExp);
-      }
-    });
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
 
-    it("should return empty array when using version 2 but not using middleware", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      expect(middlewareMatcherRegexes).to.eql([]);
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
+
+      it("should return regexes from deprecated manifest", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWithDeprecatedMiddleware,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+        expect(middlewareMatcherRegexes).to.have.length(1);
+      });
     });
   });
 

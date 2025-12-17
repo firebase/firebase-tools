@@ -83,9 +83,103 @@ export interface ExportMarker {
   isNextImageImported: boolean;
 }
 
-export type MiddlewareManifest = MiddlewareManifestV1 | MiddlewareManifestV2FromNext;
+export type MiddlewareManifest =
+  | MiddlewareManifestV1
+  | MiddlewareManifestV2FromNext
+  | MiddlewareManifestV3;
 
 export type MiddlewareManifestV2 = MiddlewareManifestV2FromNext;
+
+/**
+ * Middleware manifest types for Next.js 16
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L55
+ */
+export type MiddlewareManifestV3 = {
+  version: 3;
+  sortedMiddleware: string[];
+  middleware: { [page: string]: EdgeFunctionDefinition };
+  functions: { [page: string]: EdgeFunctionDefinition };
+};
+
+/**
+ * Type required for MiddlewareManifestV3
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L44-L53
+ */
+interface EdgeFunctionDefinition {
+  files: string[];
+  name: string;
+  page: string;
+  matchers: ProxyMatcherNext16[];
+  env: Record<string, string>;
+  wasm?: AssetBinding[];
+  assets?: AssetBinding[];
+  regions?: string[] | string;
+}
+
+/**
+ * Type required for MiddlewareManifestV3
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/analysis/get-page-static-info.ts#L48-L54
+ */
+type ProxyMatcherNext16 = {
+  regexp: string;
+  locale?: false;
+  has?: RouteHasNext16[];
+  missing?: RouteHasNext16[];
+  originalSource: string;
+};
+
+/**
+ * Type required for MiddlewareManifestV3
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/lib/load-custom-routes.ts#L10-L20
+ */
+type RouteHasNext16 =
+  | {
+      type: "header" | "cookie" | "query";
+      key: string;
+      value?: string;
+    }
+  | {
+      type: "host";
+      key?: undefined;
+      value: string;
+    };
+
+/**
+ * Type required for MiddlewareManifestV3
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/webpack/loaders/get-module-build-info.ts#L59
+ */
+interface AssetBinding {
+  filePath: string;
+  name: string;
+}
+
+/**
+ * Manifest used to detect proxy path matchers in Next.js 16+
+ *
+ * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/index.ts#L576-L588
+ */
+export interface FunctionsConfigManifest {
+  version: number;
+  functions: Record<
+    string,
+    {
+      maxDuration?: number;
+      runtime?: "nodejs";
+      regions?: string[] | string;
+      matchers?: Array<{
+        regexp: string;
+        originalSource: string;
+        has?: RouteHas[];
+        missing?: RouteHas[];
+      }>;
+    }
+  >;
+}
 
 // See: https://github.com/vercel/next.js/blob/b188fab3360855c28fd9407bd07c4ee9f5de16a6/packages/next/build/webpack/plugins/middleware-plugin.ts#L15-L29
 export interface MiddlewareManifestV1 {
