@@ -1,1 +1,1 @@
-- Data Connect Emulator internal fixes (#9627)
+- Update Data Connect Emulator to 3.0.1, which addresses some internal errors (#9627)
