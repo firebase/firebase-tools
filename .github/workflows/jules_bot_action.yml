@@ -27,7 +27,7 @@ jobs:
       - name: Run root agent
         env:
           JULES_KEY: ${{ secrets.JULES_KEY }}
-          GITHUB_PAT: ${{ GITHUB_TOKEN }}
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           PROMPT="Triage this new issue: ${{ github.event.issue.title }} ${{ github.event.issue.number }} ${{ github.event.issue.body }} ${{ github.event.issue.html_url }}"
