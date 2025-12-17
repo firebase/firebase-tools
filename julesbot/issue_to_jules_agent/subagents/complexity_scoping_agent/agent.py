@@ -9,7 +9,7 @@ class IssueComplexityOutput(BaseModel):
 complexity_scoping_agent = Agent(
     model="gemini-3-pro-preview",
     name="complexity_agent",
-    description="A agent that estimates the complexity of fixing a Github Issue",
+    description="An agent that estimates the complexity of fixing a Github Issue",
     instruction=prompt.COMPLEXITY_INSTR,
     output_schema=IssueComplexityOutput
 )

@@ -9,7 +9,7 @@ class IssueTypeOutput(BaseModel):
 issue_type_agent = Agent(
     model="gemini-3-pro-preview",
     name="issue_type_agent",
-    description="A agent that determines whether an issue is a bug, support request, or feature request",
+    description="nt that determines whether an issue is a bug, support request, or feature request",
     instruction=prompt.ISSUE_TYPE_INSTR,
     output_schema=IssueTypeOutput
 )

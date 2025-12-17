@@ -3,3 +3,5 @@ firebase-debug.log
 __pycache__
 venv
 .env
+session.db
+.adk/

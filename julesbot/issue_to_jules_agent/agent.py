@@ -94,50 +94,70 @@ def jules_create_session(prompt: str, title: str) -> dict:
         return {"status": "failure", "report": error_message}
 
 
-# determine_files_and_dir = Agent(
-#     model="gemini-3-pro-preview",
-#     name="determine_files_and_dir",
-#     description="An agent to search files and directories",
-#     instruction="""
-#     You are an expert debugger working for a large tech company. You know how to navigate code bases like a pro.
-#     Starting at src/ list all files and directories within that location. If that area has already been explored, use feedback
-#     to determine the next area of the project to explore.
-#     """,
-#     tools=[github_toolset],
-# )
-
-# next_path_suggestor = Agent(
-#     model="gemini-3-pro-preview",
-#     name="next_path_suggestor",
-#     description="An agent to determine whether the listed file and direcory contents can help solve the issue presented",
-#     instruction="""
-#     Based on the code provided, are you able to solve the issue presented to you from the issue list?
-
-
-#     If not, suggest a different path to explore.
-
-#     If so, call exit_loop after providing an explanation on how to solve it.
-#     """,
-#     tools=[exit_loop],
-# )
-
-# file_agent = LoopAgent(
-#     name="scoping_agent",
-#     description="used to scope the issue to a directory that likely makes sense on a fix",
-#     sub_agents=[determine_files_and_dir, next_path_suggestor],
-#     max_iterations=30,
-# )
-
-
 jules_agent = Agent(
     model="gemini-3-pro-preview",
     name="jules_agent",
     description="Formats a task for jules, a code agent to help solve a GitHub issue based on the information provided",
     instruction="""
-    Summarize the issue and the discussion (including a link to the original) and provide a task for Jules to solve it.
-    If there is a reproduction provided, include it in the task - otherwise, ask Jules to first attempt to reproduce the issue so that it can verify the fix.
-    Additionally, instruct Jules not to revert any changes to npm-shrinkwrap.json before committing, and to write a CHANGELOG.md entry for the change if it is user facing.
-    Also, tell Jules to include 'fixes #<issue_number>' in the PR description.
+  ### System Instructions
+You are an expert assistant for a software development team. Your role is to process bug reports and feature requests, and then create a clear, structured, and actionable task for an AI developer named Jules.
+
+### Task
+Based on the provided issue details, generate a complete, markdown-formatted task description for Jules.
+
+### Instructions
+1.  Read the `issue_body` and any `discussion_body` provided.
+2.  **Summarize the Issue:** Create a concise summary of the problem and include a link to the original issue.
+3.  **Define the Task:** Write a clear and direct task for Jules to solve the problem.
+4.  **Handle Reproduction Steps:**
+    *   If `reproduction_steps` are provided in the input, include them under the "Reproduction" heading.
+    *   If `reproduction_steps` are empty or not provided, add the following instruction for Jules: "Please attempt to reproduce the issue first so that you can verify the fix."
+5.  **Add Commit Instructions:** Always include the standard "Commit & PR Instructions" as shown in the example, using the provided `issue_number`.
+
+### Input Placeholders
+- `{{issue_body}}`: The raw text of the issue report.
+- `{{discussion_body}}`: (Optional) The raw text of the discussion.
+- `{{original_link}}`: The URL to the original issue.
+- `{{issue_number}}`: The numerical ID of the issue.
+- `{{reproduction_steps}}`: (Optional) Pre-written steps to reproduce the issue.
+
+### Output Template & Example
+
+---
+
+#### Example Input:
+```json
+{
+  "issue_body": "The login button looks weird on my phone. It's all the way on the right and hard to click. I'm using Safari.",
+  "discussion_body": "User @dev1 confirmed this on iOS 15. It looks like a flexbox alignment problem in `container.css`. Should be a quick fix.",
+  "original_link": "https://github.com/example/project/issues/123",
+  "issue_number": "123",
+  "reproduction_steps": ""
+}
+```
+
+#### Corresponding Desired Output:
+```markdown
+### Issue Summary
+The login button is misaligned on mobile browsers, specifically Safari on iOS, likely due to a flexbox alignment problem.
+
+Original Issue: https://github.com/example/project/issues/123
+
+### Task for Jules
+Please fix the CSS for the login page to ensure the login button is correctly aligned within its container on mobile browsers, especially Safari.
+
+### Reproduction
+Please attempt to reproduce the issue first so that you can verify the fix.
+
+### Commit & PR Instructions
+- Revert any changes to `npm-shrinkwrap.json` before committing.
+- If this change is user-facing, please write a `CHANGELOG.md` entry.
+- Ensure your PR description includes the line: `fixes #123`
+```
+
+---
+
+Now, generate the task description for the user's input.
     """,
     tools=[jules_create_session],
 )
