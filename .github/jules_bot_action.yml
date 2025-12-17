@@ -1,0 +1,32 @@
+name: Jules Bot Action
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  run_agent:
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-adk requests
+
+      - name: Run root agent
+        env:
+          JULES_KEY: ${{ secrets.JULES_KEY }}
+          GITHUB_PAT: ${{ GITHUB_TOKEN }}
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          PROMPT="Triage this new issue: ${{ github.event.issue.title }} ${{ github.event.issue.number }} ${{ github.event.issue.body }} ${{ github.event.issue.html_url }}"
+          python julesbot/issues_call.py --prompt "$PROMPT" --repo "firebase/firebase-tools"
