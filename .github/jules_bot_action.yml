@@ -8,6 +8,8 @@ jobs:
   run_agent:
     if: github.event.action == 'opened'
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
