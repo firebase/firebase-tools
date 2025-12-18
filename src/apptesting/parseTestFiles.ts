@@ -1,14 +1,9 @@
 import { dirExistsSync, fileExistsSync, listFiles } from "../fsutils";
 import { join } from "path";
 import { logger } from "../logger";
-import { Browser, TestCaseInvocation } from "./types";
+import { Browser, TestCaseInvocation, TestStep } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { FirebaseError, getErrMsg, getError } from "../error";
-
-function createFilter(pattern?: string) {
-  const regex = pattern ? new RegExp(pattern) : undefined;
-  return (s: string) => !regex || regex.test(s);
-}
 
 export async function parseTestFiles(
   dir: string,
@@ -26,52 +21,123 @@ export async function parseTestFiles(
     }
   }
 
+  const files = await parseTestFilesRecursive({ testDir: dir, targetUri });
+  const idToInvocation = files
+    .flatMap((file) => file.invocations)
+    .reduce(
+      (accumulator, invocation) => {
+        if (invocation.testCase.id) {
+          accumulator[invocation.testCase.id] = invocation;
+        }
+        return accumulator;
+      },
+      {} as Record<string, TestCaseInvocation>,
+    );
+
   const fileFilterFn = createFilter(filePattern);
   const nameFilterFn = createFilter(namePattern);
+  const filteredInvocations = files
+    .filter((file) => fileFilterFn(file.path))
+    .flatMap((file) => file.invocations)
+    .filter((invocation) => nameFilterFn(invocation.testCase.displayName));
 
-  async function parseTestFilesRecursive(testDir: string): Promise<TestCaseInvocation[]> {
-    const items = listFiles(testDir);
-    const results = [];
-    for (const item of items) {
-      const path = join(testDir, item);
-      if (dirExistsSync(path)) {
-        results.push(...(await parseTestFilesRecursive(path)));
-      } else if (fileFilterFn(path) && fileExistsSync(path)) {
-        try {
-          const file = await readFileFromDirectory(testDir, item);
-          const parsedFile = wrappedSafeLoad(file.source);
-          const tests = parsedFile.tests;
-          const defaultConfig = parsedFile.defaultConfig;
-          if (!tests || !tests.length) {
-            logger.info(`No tests found in ${path}. Ignoring.`);
-            continue;
-          }
-          for (const rawTestDef of parsedFile.tests) {
-            if (!nameFilterFn(rawTestDef.testName)) continue;
-            const testDef = toTestDef(rawTestDef, defaultConfig, targetUri);
-            results.push(testDef);
-          }
-        } catch (ex) {
-          const errMsg = getErrMsg(ex);
-          const errDetails = errMsg ? `Error details: \n${errMsg}` : "";
-          logger.info(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
-          continue;
-        }
-      }
+  return filteredInvocations.map((invocation) => {
+    let prerequisiteTestCaseId = invocation.testCase.prerequisiteTestCaseId;
+    if (prerequisiteTestCaseId === undefined) {
+      return invocation;
     }
-    return results;
-  }
 
-  return parseTestFilesRecursive(dir);
+    const prerequisiteSteps: TestStep[] = [];
+    while (prerequisiteTestCaseId) {
+      const prerequisiteTestCaseInvocation: TestCaseInvocation | undefined =
+        idToInvocation[prerequisiteTestCaseId];
+      if (prerequisiteTestCaseInvocation === undefined) {
+        const errMsg = `Invalid prerequisiteTestCaseId. There is no test case with id ${prerequisiteTestCaseId}`;
+        throw new FirebaseError(errMsg);
+      }
+      prerequisiteSteps.unshift(...prerequisiteTestCaseInvocation.testCase.instructions.steps);
+      prerequisiteTestCaseId = prerequisiteTestCaseInvocation.testCase.prerequisiteTestCaseId;
+    }
+
+    return {
+      ...invocation,
+      testCase: {
+        ...invocation.testCase,
+        instructions: {
+          ...invocation.testCase.instructions,
+          steps: prerequisiteSteps.concat(invocation.testCase.instructions.steps),
+        },
+      },
+    };
+  });
 }
 
-function toTestDef(testDef: any, defaultConfig: any, targetUri?: string): TestCaseInvocation {
+function createFilter(pattern?: string) {
+  const regex = pattern ? new RegExp(pattern) : undefined;
+  return (s: string) => !regex || regex.test(s);
+}
+
+interface TestCaseFile {
+  path: string;
+  invocations: TestCaseInvocation[];
+}
+
+async function parseTestFilesRecursive(params: {
+  testDir: string;
+  targetUri?: string;
+}): Promise<TestCaseFile[]> {
+  const testDir = params.testDir;
+  const targetUri = params.targetUri;
+  const items = listFiles(testDir);
+  const results = [];
+  for (const item of items) {
+    const path = join(testDir, item);
+    if (dirExistsSync(path)) {
+      results.push(...(await parseTestFilesRecursive({ testDir: path, targetUri })));
+    } else if (fileExistsSync(path)) {
+      try {
+        const file = await readFileFromDirectory(testDir, item);
+        logger.info(`Read the file ${file.source}.`);
+        const parsedFile = wrappedSafeLoad(file.source);
+        logger.info(`Parsed the file.`);
+        const tests = parsedFile.tests;
+        logger.info(`There are ${tests.length} tests.`);
+        const defaultConfig = parsedFile.defaultConfig;
+        if (!tests || !tests.length) {
+          logger.info(`No tests found in ${path}. Ignoring.`);
+          continue;
+        }
+        const invocations = [];
+        for (const rawTestDef of tests) {
+          const invocation = toTestCaseInvocation(rawTestDef, targetUri, defaultConfig);
+          invocations.push(invocation);
+        }
+        results.push({ path, invocations: invocations });
+      } catch (ex) {
+        const errMsg = getErrMsg(ex);
+        const errDetails = errMsg ? `Error details: \n${errMsg}` : "";
+        logger.info(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
+        continue;
+      }
+    }
+  }
+
+  return results;
+}
+
+function toTestCaseInvocation(
+  testDef: any,
+  targetUri: any,
+  defaultConfig: any,
+): TestCaseInvocation {
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??
     defaultConfig?.browsers ?? [Browser.CHROME];
   return {
     testCase: {
+      id: testDef.id,
+      prerequisiteTestCaseId: testDef.prerequisiteTestCaseId,
       startUri: targetUri + route,
       displayName: testDef.testName,
       instructions: { steps },

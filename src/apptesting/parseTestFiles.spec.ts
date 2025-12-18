@@ -53,6 +53,8 @@ describe("parseTestFiles", () => {
       expect(tests).to.eql([
         {
           testCase: {
+            id: undefined,
+            prerequisiteTestCaseId: undefined,
             displayName: "my test",
             startUri: "http://www.foo.com/mypage",
             instructions: {
@@ -74,6 +76,8 @@ describe("parseTestFiles", () => {
       expect(tests).to.eql([
         {
           testCase: {
+            id: undefined,
+            prerequisiteTestCaseId: undefined,
             displayName: "Smoke test",
             startUri: "http://www.foo.com",
             instructions: {
@@ -115,6 +119,8 @@ describe("parseTestFiles", () => {
       expect(tests).to.eql([
         {
           testCase: {
+            id: undefined,
+            prerequisiteTestCaseId: undefined,
             displayName: "my test",
             startUri: "https://www.foo.com",
             instructions: {
@@ -129,6 +135,8 @@ describe("parseTestFiles", () => {
         },
         {
           testCase: {
+            id: undefined,
+            prerequisiteTestCaseId: undefined,
             displayName: "my second test",
             startUri: "https://www.foo.com",
             instructions: {
@@ -144,6 +152,8 @@ describe("parseTestFiles", () => {
 
         {
           testCase: {
+            id: undefined,
+            prerequisiteTestCaseId: undefined,
             displayName: "my third test",
             startUri: "https://www.foo.com/mypage",
             instructions: {
@@ -202,6 +212,141 @@ describe("parseTestFiles", () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
       expect(await getTestCaseNames("a$", "xx")).to.eql(["axx"]);
+    });
+  });
+  describe("prerequisite test cases", () => {
+    it("merges the steps from the prerequisite test case", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              id: "my-first-test",
+              testName: "my first test",
+              steps: [{ goal: "do something first" }],
+            },
+            {
+              testName: "my second test",
+              prerequisiteTestCaseId: "my-first-test",
+              steps: [{ goal: "do something second" }],
+            },
+          ],
+        }),
+      );
+
+      const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
+      expect(tests.length).to.equal(2);
+      const secondTest = tests[1];
+      expect(secondTest.testCase.instructions.steps).to.eql([
+        { goal: "do something first" },
+        { goal: "do something second" },
+      ]);
+    });
+
+    it("throws an error for a non-existent prerequisite test case", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              testName: "my second test",
+              prerequisiteTestCaseId: "my-first-test",
+              steps: [{ goal: "do something second" }],
+            },
+          ],
+        }),
+      );
+
+      await expect(parseTestFiles(tempdir.name, "https://www.foo.com")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid prerequisiteTestCaseId. There is no test case with id my-first-test",
+      );
+    });
+
+    it("handles an undefined prerequisite test case id", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              testName: "my test",
+              steps: [{ goal: "do something" }],
+            },
+          ],
+        }),
+      );
+
+      const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
+      expect(tests.length).to.equal(1);
+      expect(tests[0].testCase.instructions.steps).to.eql([{ goal: "do something" }]);
+    });
+
+    it("works correctly with filtering", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              id: "my-first-test",
+              testName: "my first test",
+              steps: [{ goal: "do something first" }],
+            },
+            {
+              testName: "my second test",
+              prerequisiteTestCaseId: "my-first-test",
+              steps: [{ goal: "do something second" }],
+            },
+          ],
+        }),
+      );
+
+      const tests = await parseTestFiles(
+        tempdir.name,
+        "https://www.foo.com",
+        /* filePattern= */ "",
+        /* namePattern= */ "my second test",
+      );
+      expect(tests.length).to.equal(1);
+      const secondTest = tests[0];
+      expect(secondTest.testCase.instructions.steps).to.eql([
+        { goal: "do something first" },
+        { goal: "do something second" },
+      ]);
+    });
+
+    it("works correctly with multiple levels of prerequisites", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              id: "my-first-test",
+              testName: "my first test",
+              steps: [{ goal: "do something first" }],
+            },
+            {
+              id: "my-second-test",
+              testName: "my second test",
+              prerequisiteTestCaseId: "my-first-test",
+              steps: [{ goal: "do something second" }],
+            },
+            {
+              testName: "my third test",
+              prerequisiteTestCaseId: "my-second-test",
+              steps: [{ goal: "do something third" }],
+            },
+          ],
+        }),
+      );
+
+      const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
+      expect(tests.length).to.equal(3);
+      const thirdTest = tests[2];
+      expect(thirdTest.testCase.instructions.steps).to.eql([
+        { goal: "do something first" },
+        { goal: "do something second" },
+        { goal: "do something third" },
+      ]);
     });
   });
 });
