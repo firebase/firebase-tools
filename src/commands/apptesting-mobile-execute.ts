@@ -9,8 +9,8 @@ import { FirebaseError, getError } from "../error";
 import { marked } from "marked";
 import { AppDistributionClient } from "../appdistribution/client";
 import { Distribution, upload } from "../appdistribution/distribution";
-import { AIInstruction, ReleaseTest } from "../appdistribution/types";
-import { getAppName } from "../appdistribution/options-parser-util";
+import { AIInstruction, ReleaseTest, TestDevice } from "../appdistribution/types";
+import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
 
 // TODO rothbutter add ability to specify devices
 const defaultDevices = [
@@ -37,6 +37,14 @@ export const command = new Command("apptesting:mobile-execute <target>")
     "Test name pattern. Only tests with names that match this pattern will be executed.",
   )
   .option("--test-dir <test_dir>", "Directory where tests can be found.")
+  .option(
+    "--test-devices <string>",
+    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+  )
+  .option(
+    "--test-devices-file <string>",
+    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+  )
   .before(requireAuth)
   .action(async (target: string, options: any) => {
     const appName = getAppName(options);
@@ -48,6 +56,7 @@ export const command = new Command("apptesting:mobile-execute <target>")
       options.testFilePattern,
       options.testNamePattern,
     );
+    const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
 
     if (!tests.length) {
       throw new FirebaseError("No tests found");
@@ -62,7 +71,12 @@ export const command = new Command("apptesting:mobile-execute <target>")
       releaseId = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
-      testInvocations = await invokeMataTests(client, releaseId, tests);
+      testInvocations = await invokeMataTests(
+        client,
+        releaseId,
+        tests,
+        !testDevices.length ? defaultDevices : testDevices,
+      );
       invokeSpinner.text = "Test execution requested";
       invokeSpinner.succeed();
     } catch (ex) {
@@ -84,6 +98,7 @@ async function invokeMataTests(
   client: AppDistributionClient,
   releaseName: string,
   testDefs: TestCaseInvocation[],
+  devices: TestDevice[],
 ) {
   try {
     const testInvocations: ReleaseTest[] = [];
@@ -91,9 +106,7 @@ async function invokeMataTests(
       const aiInstruction: AIInstruction = {
         steps: testDef.testCase.instructions.steps,
       };
-      testInvocations.push(
-        await client.createReleaseTest(releaseName, defaultDevices, aiInstruction),
-      );
+      testInvocations.push(await client.createReleaseTest(releaseName, devices, aiInstruction));
     }
     return testInvocations;
   } catch (err: unknown) {
