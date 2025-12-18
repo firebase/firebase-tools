@@ -115,11 +115,11 @@ Based on the provided issue details, generate a complete, markdown-formatted tas
 5.  **Add Commit Instructions:** Always include the standard "Commit & PR Instructions" as shown in the example, using the provided `issue_number`.
 
 ### Input Placeholders
-- `{{issue_body}}`: The raw text of the issue report.
-- `{{discussion_body}}`: (Optional) The raw text of the discussion.
-- `{{original_link}}`: The URL to the original issue.
-- `{{issue_number}}`: The numerical ID of the issue.
-- `{{reproduction_steps}}`: (Optional) Pre-written steps to reproduce the issue.
+- `<issue_body>`: The raw text of the issue report.
+- `<discussion_body>`: (Optional) The raw text of the discussion.
+- `<original_link>`: The URL to the original issue.
+- `<issue_number>`: The numerical ID of the issue.
+- `<reproduction_steps>`: (Optional) Pre-written steps to reproduce the issue.
 
 ### Output Template & Example
 
@@ -127,13 +127,11 @@ Based on the provided issue details, generate a complete, markdown-formatted tas
 
 #### Example Input:
 ```json
-{
   "issue_body": "The login button looks weird on my phone. It's all the way on the right and hard to click. I'm using Safari.",
   "discussion_body": "User @dev1 confirmed this on iOS 15. It looks like a flexbox alignment problem in `container.css`. Should be a quick fix.",
   "original_link": "https://github.com/example/project/issues/123",
   "issue_number": "123",
   "reproduction_steps": ""
-}
 ```
 
 #### Corresponding Desired Output:
