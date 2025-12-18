@@ -29,6 +29,9 @@ jobs:
           JULES_KEY: ${{ secrets.JULES_KEY }}
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
         run: |
-          printf -v PROMPT "%q\n" "Triage this new issue: ${{ github.event.issue.title }} ${{ github.event.issue.number }} ${{ github.event.issue.body }} ${{ github.event.issue.html_url }}"
-          python julesbot/issues_call.py --prompt "$PROMPT"
+          python julesbot/issues_call.py --prompt "Triage this new issue: $ISSUE_TITLE $ISSUE_NUMBER $ISSUE_BODY $ISSUE_URL"
