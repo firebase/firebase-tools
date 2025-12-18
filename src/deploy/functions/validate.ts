@@ -222,7 +222,11 @@ export function validateTimeoutConfig(endpoints: backend.Endpoint[]): void {
       limit = MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
     } else if (backend.isTaskQueueTriggered(ep)) {
       limit = MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
-    } else if (backend.isHttpsTriggered(ep) || backend.isCallableTriggered(ep)) {
+    } else if (
+      backend.isHttpsTriggered(ep) ||
+      backend.isCallableTriggered(ep) ||
+      backend.isDataConnectHttpsTriggered(ep)
+    ) {
       limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
     }
 

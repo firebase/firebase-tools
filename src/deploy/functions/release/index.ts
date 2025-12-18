@@ -127,7 +127,9 @@ export async function release(
  * has updated the URI of endpoints after deploy.
  */
 export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+  const httpsFunctions = backend
+    .allEndpoints(results)
+    .filter(backend.isHttpsTriggered || backend.isDataConnectHttpsTriggered);
   if (httpsFunctions.length === 0) {
     return;
   }

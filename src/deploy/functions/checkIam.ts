@@ -77,7 +77,7 @@ export async function checkHttpIam(
   const filters = context.filters || getEndpointFilters(options, context.config!);
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
-    .filter(backend.isHttpsTriggered)
+    .filter(backend.isHttpsTriggered || backend.isDataConnectHttpsTriggered)
     .filter((f) => endpointMatchesAnyFilter(f, filters));
 
   const existing = await backend.existingBackend(context);
