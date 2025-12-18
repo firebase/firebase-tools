@@ -422,7 +422,6 @@ export class Fabricator {
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isDataConnectHttpsTriggered(endpoint)) {
-      // TODO: Check if this overrides default project bindings.
       const invoker = endpoint.dataConnectHttpsTrigger.invoker;
       if (invoker && !invoker.includes("private")) {
         await this.executor
