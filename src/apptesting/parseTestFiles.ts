@@ -48,12 +48,18 @@ export async function parseTestFiles(
     }
 
     const prerequisiteSteps: TestStep[] = [];
+    const previousTestCaseIds = new Set<string>();
     while (prerequisiteTestCaseId) {
+      if (previousTestCaseIds.has(prerequisiteTestCaseId)) {
+        throw new FirebaseError(`Detected a cycle in prerequisite test cases.`);
+      }
+      previousTestCaseIds.add(prerequisiteTestCaseId);
       const prerequisiteTestCaseInvocation: TestCaseInvocation | undefined =
         idToInvocation[prerequisiteTestCaseId];
       if (prerequisiteTestCaseInvocation === undefined) {
-        const errMsg = `Invalid prerequisiteTestCaseId. There is no test case with id ${prerequisiteTestCaseId}`;
-        throw new FirebaseError(errMsg);
+        throw new FirebaseError(
+          `Invalid prerequisiteTestCaseId. There is no test case with id ${prerequisiteTestCaseId}`,
+        );
       }
       prerequisiteSteps.unshift(...prerequisiteTestCaseInvocation.testCase.instructions.steps);
       prerequisiteTestCaseId = prerequisiteTestCaseInvocation.testCase.prerequisiteTestCaseId;
@@ -97,14 +103,14 @@ async function parseTestFilesRecursive(params: {
     } else if (fileExistsSync(path)) {
       try {
         const file = await readFileFromDirectory(testDir, item);
-        logger.info(`Read the file ${file.source}.`);
+        logger.debug(`Read the file ${file.source}.`);
         const parsedFile = wrappedSafeLoad(file.source);
-        logger.info(`Parsed the file.`);
+        logger.debug(`Parsed the file.`);
         const tests = parsedFile.tests;
-        logger.info(`There are ${tests.length} tests.`);
+        logger.debug(`There are ${tests.length} tests.`);
         const defaultConfig = parsedFile.defaultConfig;
         if (!tests || !tests.length) {
-          logger.info(`No tests found in ${path}. Ignoring.`);
+          logger.debug(`No tests found in ${path}. Ignoring.`);
           continue;
         }
         const invocations = [];
@@ -116,7 +122,7 @@ async function parseTestFilesRecursive(params: {
       } catch (ex) {
         const errMsg = getErrMsg(ex);
         const errDetails = errMsg ? `Error details: \n${errMsg}` : "";
-        logger.info(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
+        logger.debug(`Unable to parse test file ${path}. Ignoring.${errDetails}`);
         continue;
       }
     }

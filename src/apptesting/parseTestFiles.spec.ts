@@ -348,5 +348,32 @@ describe("parseTestFiles", () => {
         { goal: "do something third" },
       ]);
     });
+
+    it("throws error if there is a circular depedency", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [
+            {
+              id: "my-first-test",
+              testName: "my first test",
+              prerequisiteTestCaseId: "my-second-test",
+              steps: [{ goal: "do something first" }],
+            },
+            {
+              id: "my-second-test",
+              testName: "my second test",
+              prerequisiteTestCaseId: "my-first-test",
+              steps: [{ goal: "do something second" }],
+            },
+          ],
+        }),
+      );
+
+      await expect(parseTestFiles(tempdir.name, "https://www.foo.com")).to.be.rejectedWith(
+        FirebaseError,
+        "Detected a cycle in prerequisite test cases.",
+      );
+    });
   });
 });
