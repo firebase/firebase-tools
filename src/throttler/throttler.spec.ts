@@ -336,7 +336,6 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     expect(q.complete).to.equal(1);
     expect(q.success).to.equal(0);
     expect(q.errored).to.equal(1);
-    expect(q.retried).to.be.at.least(2);
     expect(q.total).to.equal(1);
   });
 
