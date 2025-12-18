@@ -72,6 +72,8 @@ def jules_create_session(prompt: str, title: str) -> dict:
             "source": "sources/github/firebase/firebase-tools",
             "githubRepoContext": {"startingBranch": "main"},
         },
+        "requirePlanApproval": False,
+        "automationMode": "AUTO_CREATE_PR",
         "title": title,
     }
 
@@ -168,10 +170,11 @@ root_agent = Agent(
     Your job is to triage a GitHub issue. The tasks you should perform are:
     1. Determine if an issue is spam using the is_spam agent. If it is spam, use the issue_write tool to update the issue state to "closed" and then you are done.
     2. If it is not spam, hand off the issue to the LABELER tool (labeler_agent). When the LABELER tool is done, use the issue_write tool to update the issue with the suggested labels and add a label called 'Triaged by JulesBot'.
-    3. Use the issue_type_agent to determine the type of issue. If it is a support request or feature request, report back and you are done.
+    3. Use the issue_type_agent to determine the type of issue.
     4. If you have not done so yet, use the issue_read tool to get the comments on the issue, to help inform the next steps
-    5. If it is a bug, use the complexity_scoping_agent to determine the complexity of the issue.
-    6. If it is a bug with complexity of less than 30, use the jules_agent to submit it to Jules.
+    5. If it is a support request, write up a reply. Maintain a helpful tone and try to debug the issue for the user. **DO NOT** actually send this reply, just report it back and you are done.
+    6. If it is a feature request or bug, use the complexity_scoping_agent to determine the complexity of the issue.
+    7. If it has a complexity of less than 40, use the jules_agent to submit it to Jules. If it has a complexity of 40 or more, report back the reasoning for the complexity score and you are done.
     """,
     tools=[github_toolset, IS_SPAM, ISSUE_TYPE, COMPLEXITY_SCORE, LABELER],
     sub_agents=[jules_agent],
