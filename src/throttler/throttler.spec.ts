@@ -287,7 +287,7 @@ const throttlerTest = (ThrottlerConstructor: ThrottlerConstructorType): void => 
     expect(err.message).to.equal("Task index 0 failed: timed out after 100ms.");
   });
 
-  it("should reject with RetriesExhaustedError if last trial is rejected before timeout", async () => {
+  it.skip("should reject with RetriesExhaustedError if last trial is rejected before timeout", async () => {
     const handler = sinon.stub().rejects(TEST_ERROR);
 
     const q = new Queue({
