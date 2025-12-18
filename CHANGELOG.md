@@ -1,1 +1,2 @@
+- Updated default Postgres version for Data Connect to 17.
 - Update Data Connect Emulator to 3.0.1, which addresses some internal errors (#9627)
