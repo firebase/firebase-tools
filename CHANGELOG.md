@@ -1,2 +1,1 @@
-- Update Data Connect Emulator to 3.0.1, which addresses some internal errors (#9627)
 - Fix proxy.js/proxy.ts in Next.js 16 (#9631)
