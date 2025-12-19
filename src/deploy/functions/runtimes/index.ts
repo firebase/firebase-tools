@@ -5,6 +5,7 @@ import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 import * as supported from "./supported";
+import * as nobuild from "./nobuild";
 
 /**
  * RuntimeDelegate is a language-agnostic strategy for managing
@@ -70,7 +71,11 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
+const factories: Factory[] = [
+  node.tryCreateDelegate,
+  python.tryCreateDelegate,
+  nobuild.tryCreateDelegate,
+];
 
 /**
  * Gets the delegate object responsible for discovering, building, and hosting

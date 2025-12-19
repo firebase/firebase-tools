@@ -61,7 +61,6 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
 /**
  * Checks a functions deployment for HTTP function creation, and tests IAM
  * permissions accordingly.
- *
  * @param context The deploy context.
  * @param options The command-wide options object.
  * @param payload The deploy payload.
@@ -78,7 +77,8 @@ export async function checkHttpIam(
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
     .filter(backend.isHttpsTriggered)
-    .filter((f) => endpointMatchesAnyFilter(f, filters));
+    .filter((f) => endpointMatchesAnyFilter(f, filters))
+    .filter((f) => f.platform !== "run");
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));
