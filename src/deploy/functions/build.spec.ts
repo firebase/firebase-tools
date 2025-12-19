@@ -75,7 +75,7 @@ describe("toBackend", () => {
     expect(Object.keys(backend.endpoints).length).to.equal(0);
   });
 
-  it("populates multiple specified invokers correctly", () => {
+  it("populates multiple specified https invokers correctly", () => {
     const desiredBuild: build.Build = build.of({
       func: {
         platform: "gcfv1",
@@ -109,6 +109,46 @@ describe("toBackend", () => {
       expect(endpointDef.func.region).to.equal("us-central1");
       expect(
         "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : [],
+      ).to.have.members(["service-account-1@", "service-account-2@"]);
+    }
+  });
+
+  it("populates multiple specified data connect https invokers correctly", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        maxInstances: 42,
+        minInstances: 1,
+        serviceAccount: "service-account-1@",
+        vpc: {
+          connector: "projects/project/locations/region/connectors/connector",
+          egressSettings: "PRIVATE_RANGES_ONLY",
+        },
+        ingressSettings: "ALLOW_ALL",
+        labels: {
+          test: "testing",
+        },
+        dataConnectHttpsTrigger: {
+          invoker: ["service-account-1@", "service-account-2@"],
+        },
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    expect(endpointDef).to.not.equal(undefined);
+    if (endpointDef) {
+      expect(endpointDef.func.id).to.equal("func");
+      expect(endpointDef.func.project).to.equal("project");
+      expect(endpointDef.func.region).to.equal("us-central1");
+      expect(
+        "dataConnectHttpsTrigger" in endpointDef.func
+          ? endpointDef.func.dataConnectHttpsTrigger.invoker
+          : [],
       ).to.have.members(["service-account-1@", "service-account-2@"]);
     }
   });
