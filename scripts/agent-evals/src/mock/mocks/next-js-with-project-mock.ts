@@ -15,6 +15,7 @@ const environmentConfig = {
   projectId: DEFAULT_FIREBASE_PROJECT,
   projectAliases: [],
   projectDir: PROJECT_DIR,
+  isBillingEnabled: true,
   geminiTosAccepted: true,
   authenticatedUser: DEFAULT_FIREBASE_USER,
   projectAliasMap: {},

@@ -541,7 +541,6 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
-    type: "zip",
     ignore: ["node_modules", ".git"],
   });
   const res = await uploadObject(zippedSource, bucketName);

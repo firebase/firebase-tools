@@ -228,7 +228,6 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       schedule: "Field<string>",
       timeZone: "Field<string>?",
       retryConfig: "object?",
-      attemptDeadlineSeconds: "Field<number>?",
     });
     if (ep.scheduleTrigger.retryConfig) {
       assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
@@ -384,7 +383,6 @@ function parseEndpointForBuild(
     } else if (ep.scheduleTrigger.retryConfig === null) {
       st.retryConfig = null;
     }
-    copyIfPresent(st, ep.scheduleTrigger, "attemptDeadlineSeconds");
     triggered = { scheduleTrigger: st };
   } else if (build.isTaskQueueTriggered(ep)) {
     const tq: build.TaskQueueTrigger = {};

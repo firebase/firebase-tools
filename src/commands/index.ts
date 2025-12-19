@@ -1,20 +1,30 @@
+import { CLIClient } from "../command";
 import * as experiments from "../experiments";
+
+type CommandRunner = ((...args: any[]) => Promise<any>) & { load: () => void };
+
 /**
  * Loads all commands for our parser.
  */
-export function load(client: any): any {
-  function loadCommand(name: string) {
-    const t0 = process.hrtime.bigint();
-    const { command: cmd } = require(`./${name}`);
-    cmd.register(client);
-    const t1 = process.hrtime.bigint();
-    const diffMS = (t1 - t0) / BigInt(1e6);
-    if (diffMS > 75) {
-      // NOTE: logger.debug doesn't work since it's not loaded yet. Comment out below to debug.
-      // console.error(`Loading ${name} took ${diffMS}ms`);
-    }
+export function load(client: CLIClient): CLIClient {
+  function loadCommand(name: string): CommandRunner {
+    const load = () => {
+      const { command: cmd } = require(`./${name}`);
+      cmd.register(client);
+      return cmd.runner();
+    };
 
-    return cmd.runner();
+    const runner = (async (...args: any[]) => {
+      const run = load();
+      return run(...args);
+    }) as CommandRunner;
+
+    // Store the load function on the runner so we can trigger it without running.
+    runner.load = () => {
+      require(`./${name}`).command.register(client);
+    };
+
+    return runner;
   }
 
   const t0 = process.hrtime.bigint();
@@ -24,7 +34,7 @@ export function load(client: any): any {
   client.appdistribution.testers = {};
   client.appdistribution.testers.list = loadCommand("appdistribution-testers-list");
   client.appdistribution.testers.add = loadCommand("appdistribution-testers-add");
-  client.appdistribution.testers.delete = loadCommand("appdistribution-testers-remove");
+  client.appdistribution.testers.remove = loadCommand("appdistribution-testers-remove");
   client.appdistribution.groups = {};
   client.appdistribution.groups.list = loadCommand("appdistribution-groups-list");
   client.appdistribution.groups.create = loadCommand("appdistribution-groups-create");
@@ -45,7 +55,7 @@ export function load(client: any): any {
   client.apps.android.sha.delete = loadCommand("apps-android-sha-delete");
   client.auth = {};
   client.auth.export = loadCommand("auth-export");
-  client.auth.upload = loadCommand("auth-import");
+  client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");

@@ -742,7 +742,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: 120,
           maxDoublings: 10,
         },
-        attemptDeadlineSeconds: 300,
       };
 
       const yaml: v1alpha1.WireManifest = {
@@ -771,7 +770,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: "{{ params.RETRY_DURATION }}",
           maxDoublings: "{{ params.DOUBLINGS }}",
         },
-        attemptDeadlineSeconds: "{{ params.ATTEMPT_DEADLINE }}",
       };
 
       const yaml: v1alpha1.WireManifest = {
