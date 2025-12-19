@@ -1,10 +1,14 @@
 ## NEXT
 
-- Fixed common code lens rendering issue.
+## 2.0.0
+
+- Update internal `firebase-tools` dependency to 15.0.0
+- [Fixed] common code lens rendering issue.
   - Don't show "Generate query" in schema file.
   - Don't show "Generate query" for comments within an operation.
   - Show "Add Data" for @table type only.
   - Show "View Data" for @table and @view type.
+- [Fixed] Integration test for recent variables panel changes
 
 ## 1.10.2
 

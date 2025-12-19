@@ -31,6 +31,7 @@ describe("isAppTestingAvailable", () => {
     host: new FirebaseMcpServer({}),
     rc: {} as RC,
     firebaseCliCommand: "firebase",
+    isBillingEnabled: false,
   });
 
   it("returns false for non mobile project", async () => {
