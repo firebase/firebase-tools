@@ -52,8 +52,8 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
       `Missing permissions required for functions deploy. You must have permission ${bold(
         "iam.serviceAccounts.ActAs",
       )} on service account ${bold(saEmail)}.\n\n` +
-        `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
-        `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
+      `To address this error, ask a project Owner to assign your account the "Service Account User" role from this URL:\n\n` +
+      `https://console.cloud.google.com/iam-admin/iam?project=${projectId}`,
     );
   }
 }
@@ -61,7 +61,6 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
 /**
  * Checks a functions deployment for HTTP function creation, and tests IAM
  * permissions accordingly.
- *
  * @param context The deploy context.
  * @param options The command-wide options object.
  * @param payload The deploy payload.
@@ -77,8 +76,9 @@ export async function checkHttpIam(
   const filters = context.filters || getEndpointFilters(options, context.config!);
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
-    .filter(backend.isHttpsTriggered || backend.isDataConnectGraphqlTriggered)
-    .filter((f) => endpointMatchesAnyFilter(f, filters));
+    .filter((f) => backend.isHttpsTriggered(f) || backend.isDataConnectGraphqlTriggered(f))
+    .filter((f) => endpointMatchesAnyFilter(f, filters))
+    .filter((f) => f.platform !== "run");
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));
@@ -117,8 +117,8 @@ export async function checkHttpIam(
       )} to deploy new HTTPS functions. The permission ${bold(
         PERMISSION,
       )} is required to deploy the following functions:\n\n- ` +
-        newHttpsEndpoints.map((func) => func.id).join("\n- ") +
-        `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`,
+      newHttpsEndpoints.map((func) => func.id).join("\n- ") +
+      `\n\nTo address this error, please ask a project Owner to assign your account the "Cloud Functions Admin" role at the following URL:\n\nhttps://console.cloud.google.com/iam-admin/iam?project=${context.projectId}`,
     );
   }
   logger.debug("[functions] found setIamPolicy permission, proceeding with deploy");
@@ -290,8 +290,8 @@ async function ensureBindings(
     utils.logLabeledBullet(
       "functions",
       "Could not verify the necessary IAM configuration for the following newly-integrated services: " +
-        `${newServicesOrEndpoints.join(", ")}` +
-        ". Deployment may fail.",
+      `${newServicesOrEndpoints.join(", ")}` +
+      ". Deployment may fail.",
       "warn",
     );
     return;
@@ -316,8 +316,8 @@ async function ensureBindings(
     iam.printManualIamConfig(requiredBindings, projectId, "functions");
     throw new FirebaseError(
       "We failed to modify the IAM policy for the project. The functions " +
-        "deployment requires specific roles to be granted to service agents," +
-        " otherwise the deployment will fail.",
+      "deployment requires specific roles to be granted to service agents," +
+      " otherwise the deployment will fail.",
       { original: err },
     );
   }

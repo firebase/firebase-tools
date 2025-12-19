@@ -70,6 +70,9 @@ export type WireEndpoint = build.Triggered &
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export type WireExtension = {
@@ -166,6 +169,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     taskQueueTrigger: "object",
     blockingTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
+    baseImageUri: "string?",
+    command: "array?",
+    args: "array?",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
@@ -449,7 +455,11 @@ function parseEndpointForBuild(
     "labels",
     "ingressSettings",
     "environmentVariables",
+    "environmentVariables",
     "serviceAccount",
+    "baseImageUri",
+    "command",
+    "args",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

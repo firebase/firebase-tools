@@ -195,6 +195,9 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
+/**
+ *
+ */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
 }
@@ -407,6 +410,11 @@ export type Endpoint = TargetIds &
 
     // State of the endpoint.
     state?: EndpointState;
+
+    // Fields for "run" platform (no-build)
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export interface RequiredAPI {

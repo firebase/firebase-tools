@@ -24,6 +24,9 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
+/**
+ *
+ */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -37,9 +40,9 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
     if (errorCode === 500 || errorCode === 503) {
       throw new FirebaseError(
         "Cloud Runtime Config is currently experiencing issues, " +
-          "which is preventing your functions from being deployed. " +
-          "Please wait a few minutes and then try to deploy your functions again." +
-          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project.",
+        "which is preventing your functions from being deployed. " +
+        "Please wait a few minutes and then try to deploy your functions again." +
+        "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project.",
       );
     }
   }
@@ -61,13 +64,16 @@ async function packageSource(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig: any,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
+  const exportType = options?.exportType || "zip";
+  const postfix = exportType === "tar.gz" ? ".tar.gz" : ".zip";
+  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
   const hashes: string[] = [];
 
   // We must ignore firebase-debug.log or weird things happen if
@@ -138,26 +144,33 @@ async function packageSource(
 
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
-      " packaged " +
-      clc.bold(sourceDir) +
-      " (" +
-      filesize(archive.pointer()) +
-      ") for uploading",
+    " packaged " +
+    clc.bold(sourceDir) +
+    " (" +
+    filesize(archive.pointer()) +
+    ") for uploading",
   );
   const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
 }
 
+/**
+ *
+ */
 export async function prepareFunctionsUpload(
   projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig);
+  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
 
+/**
+ *
+ */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 
