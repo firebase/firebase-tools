@@ -162,13 +162,13 @@ describe("buildFromV1Alpha", () => {
       });
     });
 
-    describe("dataConnectHttpsTriggers", () => {
+    describe("dataConnectGraphqlTriggers", () => {
       it("invalid value for Data Connect https trigger key invoker", () => {
         assertParserError({
           endpoints: {
             func: {
               ...MIN_ENDPOINT,
-              dataConnectHttpsTrigger: { invoker: 42 },
+              dataConnectGraphqlTrigger: { invoker: 42 },
             },
           },
         });
@@ -180,7 +180,7 @@ describe("buildFromV1Alpha", () => {
             func: {
               ...MIN_ENDPOINT,
               platform: "gcfv1",
-              dataConnectHttpsTrigger: {
+              dataConnectGraphqlTrigger: {
                 invoker: "custom@",
               },
             },

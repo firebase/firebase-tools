@@ -129,7 +129,7 @@ export async function release(
 export function printTriggerUrls(results: backend.Backend): void {
   const httpsFunctions = backend
     .allEndpoints(results)
-    .filter(backend.isHttpsTriggered || backend.isDataConnectHttpsTriggered);
+    .filter(backend.isHttpsTriggered || backend.isDataConnectGraphqlTriggered);
   if (httpsFunctions.length === 0) {
     return;
   }

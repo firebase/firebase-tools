@@ -132,7 +132,7 @@ describe("toBackend", () => {
         labels: {
           test: "testing",
         },
-        dataConnectHttpsTrigger: {
+        dataConnectGraphqlTrigger: {
           invoker: ["service-account-1@", "service-account-2@"],
         },
       },
@@ -146,8 +146,8 @@ describe("toBackend", () => {
       expect(endpointDef.func.project).to.equal("project");
       expect(endpointDef.func.region).to.equal("us-central1");
       expect(
-        "dataConnectHttpsTrigger" in endpointDef.func
-          ? endpointDef.func.dataConnectHttpsTrigger.invoker
+        "dataConnectGraphqlTrigger" in endpointDef.func
+          ? endpointDef.func.dataConnectGraphqlTrigger.invoker
           : [],
       ).to.have.members(["service-account-1@", "service-account-2@"]);
     }

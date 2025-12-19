@@ -269,7 +269,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   const triggerType = (e: backend.Endpoint): string => {
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
-    } else if (backend.isDataConnectHttpsTriggered(e)) {
+    } else if (backend.isDataConnectGraphqlTriggered(e)) {
       return "a Data Connect HTTPS";
     } else if (backend.isCallableTriggered(e)) {
       return "a callable";

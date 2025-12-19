@@ -708,12 +708,12 @@ describe("Fabricator", () => {
       });
     });
 
-    describe("dataConnectHttpsTrigger", () => {
+    describe("dataConnectGraphqlTrigger", () => {
       it("doesn't set invoker by default", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
         run.setInvokerCreate.resolves();
-        const ep = endpoint({ dataConnectHttpsTrigger: {} }, { platform: "gcfv2" });
+        const ep = endpoint({ dataConnectGraphqlTrigger: {} }, { platform: "gcfv2" });
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
         expect(run.setInvokerCreate).to.not.have.been.called;
@@ -725,7 +725,7 @@ describe("Fabricator", () => {
         run.setInvokerCreate.resolves();
         const ep = endpoint(
           {
-            dataConnectHttpsTrigger: {
+            dataConnectGraphqlTrigger: {
               invoker: ["custom@"],
             },
           },
@@ -741,7 +741,7 @@ describe("Fabricator", () => {
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
         run.setInvokerCreate.resolves();
         const ep = endpoint(
-          { dataConnectHttpsTrigger: { invoker: ["private"] } },
+          { dataConnectGraphqlTrigger: { invoker: ["private"] } },
           { platform: "gcfv2" },
         );
 
@@ -896,13 +896,13 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
     });
 
-    it("sets explicit invoker on dataConnectHttpsTrigger", async () => {
+    it("sets explicit invoker on dataConnectGraphqlTrigger", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
       const ep = endpoint(
         {
-          dataConnectHttpsTrigger: {
+          dataConnectGraphqlTrigger: {
             invoker: ["custom@"],
           },
         },

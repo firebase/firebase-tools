@@ -71,7 +71,7 @@ export interface HttpsTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
-export interface DataConnectHttpsTrigger {
+export interface DataConnectGraphqlTrigger {
   // Which service account should be able to trigger this function. No value means that only the
   // Firebase Data Connect P4SA can trigger this function. For more, see go/cf3-http-access-control
   invoker?: Array<ServiceAccount | Expression<string>> | null;
@@ -156,7 +156,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
-export type DataConnectHttpsTriggered = { dataConnectHttpsTrigger: DataConnectHttpsTrigger };
+export type DataConnectGraphqlTriggered = { dataConnectGraphqlTrigger: DataConnectGraphqlTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -164,7 +164,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
-  | DataConnectHttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -176,11 +176,11 @@ export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTrigge
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
 }
 
-/** Whether something has a DataConnectHttpsTrigger */
-export function isDataConnectHttpsTriggered(
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
   triggered: Triggered,
-): triggered is DataConnectHttpsTriggered {
-  return {}.hasOwnProperty.call(triggered, "dataConnectHttpsTrigger");
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -574,16 +574,16 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
-  } else if (isDataConnectHttpsTriggered(endpoint)) {
-    const dataConnectHttpsTrigger: backend.DataConnectHttpsTrigger = {};
-    if (endpoint.dataConnectHttpsTrigger.invoker === null) {
-      dataConnectHttpsTrigger.invoker = null;
-    } else if (typeof endpoint.dataConnectHttpsTrigger.invoker !== "undefined") {
-      dataConnectHttpsTrigger.invoker = endpoint.dataConnectHttpsTrigger.invoker.map(
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    const dataConnectGraphqlTrigger: backend.DataConnectGraphqlTrigger = {};
+    if (endpoint.dataConnectGraphqlTrigger.invoker === null) {
+      dataConnectGraphqlTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectGraphqlTrigger.invoker !== "undefined") {
+      dataConnectGraphqlTrigger.invoker = endpoint.dataConnectGraphqlTrigger.invoker.map(
         r.resolveString,
       );
     }
-    return { dataConnectHttpsTrigger };
+    return { dataConnectGraphqlTrigger };
   } else if (isCallableTriggered(endpoint)) {
     const trigger: CallableTriggered = { callableTrigger: {} };
     proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");

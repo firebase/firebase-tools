@@ -265,8 +265,8 @@ export function triggerTag(endpoint: backend.Endpoint): string {
     return `${prefix}.https`;
   }
 
-  if (backend.isDataConnectHttpsTriggered(endpoint)) {
-    return `${prefix}.dataConnectHttps`;
+  if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+    return `${prefix}.dataConnectGraphql`;
   }
 
   if (backend.isBlockingTriggered(endpoint)) {

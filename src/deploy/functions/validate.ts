@@ -225,7 +225,7 @@ export function validateTimeoutConfig(endpoints: backend.Endpoint[]): void {
     } else if (
       backend.isHttpsTriggered(ep) ||
       backend.isCallableTriggered(ep) ||
-      backend.isDataConnectHttpsTriggered(ep)
+      backend.isDataConnectGraphqlTriggered(ep)
     ) {
       limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
     }

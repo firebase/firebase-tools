@@ -186,7 +186,7 @@ export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
     return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || noOpService;
   }
 
-  if (backend.isDataConnectHttpsTriggered(endpoint)) {
+  if (backend.isDataConnectGraphqlTriggered(endpoint)) {
     return dataconnectService;
   }
 

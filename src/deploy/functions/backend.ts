@@ -44,13 +44,13 @@ export interface HttpsTriggered {
 }
 
 /** API agnostic version of a Firebase Data Connect HTTPS trigger. */
-export interface DataConnectHttpsTrigger {
+export interface DataConnectGraphqlTrigger {
   invoker?: string[] | null;
 }
 
 /** Something that has a Data Connect HTTPS trigger */
-export interface DataConnectHttpsTriggered {
-  dataConnectHttpsTrigger: DataConnectHttpsTrigger;
+export interface DataConnectGraphqlTriggered {
+  dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }
 
 /** API agnostic version of a Firebase callable function. */
@@ -161,8 +161,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
-  } else if (isDataConnectHttpsTriggered(endpoint)) {
-    return "dataConnectHttps";
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    return "dataConnectGraphql";
   } else if (isCallableTriggered(endpoint)) {
     return "callable";
   } else if (isEventTriggered(endpoint)) {
@@ -317,7 +317,7 @@ export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
-  | DataConnectHttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
@@ -329,11 +329,11 @@ export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTrigge
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
 }
 
-/** Whether something has a DataConnectHttpsTrigger */
-export function isDataConnectHttpsTriggered(
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
   triggered: Triggered,
-): triggered is DataConnectHttpsTriggered {
-  return {}.hasOwnProperty.call(triggered, "dataConnectHttpsTrigger");
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
