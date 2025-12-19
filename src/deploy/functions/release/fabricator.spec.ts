@@ -708,6 +708,48 @@ describe("Fabricator", () => {
       });
     });
 
+    describe("dataConnectHttpsTrigger", () => {
+      it("doesn't set invoker by default", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint({ dataConnectHttpsTrigger: {} }, { platform: "gcfv2" });
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.not.have.been.called;
+      });
+
+      it("sets explicit invoker", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          {
+            dataConnectHttpsTrigger: {
+              invoker: ["custom@"],
+            },
+          },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+      });
+
+      it("doesn't set private invoker on create", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { dataConnectHttpsTrigger: { invoker: ["private"] } },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.not.have.been.called;
+      });
+    });
+
     describe("callableTrigger", () => {
       it("always sets invoker to public", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
@@ -844,6 +886,23 @@ describe("Fabricator", () => {
       const ep = endpoint(
         {
           httpsTrigger: {
+            invoker: ["custom@"],
+          },
+        },
+        { platform: "gcfv2" },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+    });
+
+    it("sets explicit invoker on dataConnectHttpsTrigger", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint(
+        {
+          dataConnectHttpsTrigger: {
             invoker: ["custom@"],
           },
         },

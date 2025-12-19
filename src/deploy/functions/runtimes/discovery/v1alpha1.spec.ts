@@ -162,6 +162,33 @@ describe("buildFromV1Alpha", () => {
       });
     });
 
+    describe("dataConnectHttpsTriggers", () => {
+      it("invalid value for Data Connect https trigger key invoker", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              dataConnectHttpsTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+
+      it("cannot be used with 1st gen", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              platform: "gcfv1",
+              dataConnectHttpsTrigger: {
+                invoker: "custom@",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("genkitTriggers", () => {
       it("fails with invalid fields", () => {
         assertParserError({
