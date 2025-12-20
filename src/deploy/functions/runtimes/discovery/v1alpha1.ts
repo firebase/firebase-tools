@@ -437,7 +437,6 @@ function parseEndpointForBuild(
     "labels",
     "ingressSettings",
     "environmentVariables",
-    "environmentVariables",
     "serviceAccount",
     "baseImageUri",
     "command",
