@@ -161,7 +161,8 @@ export interface SubmitBuildResponse {
 }
 
 /**
- *
+ * Submits a build to Cloud Build using the v2 API, tracking the long-running operation.
+ * Used for building source code into container images.
  */
 export async function submitBuild(
   projectId: string,
@@ -183,7 +184,8 @@ export async function submitBuild(
 }
 
 /**
- *
+ * Updates an existing Cloud Run service.
+ * Tracks the long-running operation until completion.
  */
 export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
   const fieldMask = proto.fieldMasks(
@@ -212,7 +214,8 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
 }
 
 /**
- *
+ * Creates a new Cloud Run service in the specified project and location.
+ * Tracks the long-running operation until completion.
  */
 export async function createService(
   projectId: string,
@@ -242,7 +245,8 @@ export async function createService(
 }
 
 /**
- *
+ * Deletes a Cloud Run service.
+ * Tracks the long-running operation until completion.
  */
 export async function deleteService(
   projectId: string,
@@ -259,7 +263,7 @@ export async function deleteService(
 }
 
 /**
- *
+ * Gets a Cloud Run service details.
  */
 export async function getService(
   projectId: string,
@@ -564,7 +568,8 @@ export interface FirebaseFunctionMetadata {
 // only returns the service and not the dependent resources, which we will
 // need for updates.
 /**
- *
+ * Converts a Cloud Run Service definition into a Firebase internal Endpoint representation.
+ * Handles parsing of environment variables, secrets, and labels to reconstruct the function configuration.
  */
 export function endpointFromService(service: Omit<Service, ServiceOutputFields>): backend.Endpoint {
   const [, /* projects*/ project /* locations*/, , location /* services*/, , svcId] =
@@ -638,7 +643,8 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
 }
 
 /**
- *
+ * Converts a Firebase internal Endpoint representation into a Cloud Run Service definition.
+ * Used for creating or updating services.
  */
 export function serviceFromEndpoint(
   endpoint: backend.Endpoint,

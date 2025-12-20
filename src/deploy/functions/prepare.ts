@@ -536,9 +536,6 @@ export async function loadCodebases(
 // Genkit almost always requires an API key, so warn if the customer is about to deploy
 // a function and doesn't have one. To avoid repetitive nagging, only warn on the first
 // deploy of the function.
-/**
- *
- */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -573,9 +570,6 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
 
 // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
 // require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
-/**
- *
- */
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,
