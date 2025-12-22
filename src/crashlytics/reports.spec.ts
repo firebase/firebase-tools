@@ -140,7 +140,7 @@ describe("getReport", () => {
       .reply(200, mockResponse);
 
     const result = await getReport(
-      CrashlyticsReport.TopIssues,
+      CrashlyticsReport.TOP_ISSUES,
       appId,
       { issueErrorTypes: [issueType] },
       pageSize,
@@ -153,7 +153,7 @@ describe("getReport", () => {
   it("should throw a FirebaseError if the appId is invalid", async () => {
     const invalidAppId = "invalid-app-id";
 
-    await expect(getReport(CrashlyticsReport.TopIssues, invalidAppId, {})).to.be.rejectedWith(
+    await expect(getReport(CrashlyticsReport.TOP_ISSUES, invalidAppId, {})).to.be.rejectedWith(
       FirebaseError,
       "Unable to get the projectId from the AppId.",
     );
