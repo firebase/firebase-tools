@@ -89,7 +89,7 @@ export type MiddlewareManifest =
   | MiddlewareManifestV3;
 
 /**
- * Middleware manifest type used between Next.js 12.2.0- 14.1.4
+ * Middleware manifest type used between Next.js 12.2.0 - 14.1.4
  *
  * @see https://github.com/vercel/next.js/blob/v14.1.4/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L45-L50
  */
