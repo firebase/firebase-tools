@@ -88,12 +88,17 @@ export type MiddlewareManifest =
   | MiddlewareManifestV2FromNext
   | MiddlewareManifestV3;
 
+/**
+ * Middleware manifest type used between Next.js 12.2.0- 14.1.4
+ *
+ * @see https://github.com/vercel/next.js/blob/v14.1.4/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L45-L50
+ */
 export type MiddlewareManifestV2 = MiddlewareManifestV2FromNext;
 
 /**
- * Middleware manifest types for Next.js 16
+ * Middleware manifest types used since Next.js 14.2.0
  *
- * @see https://github.com/vercel/next.js/blob/3352f9ee9342b40aaded91c340e7e11650aa4867/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L55
+ * @see https://github.com/vercel/next.js/blob/v14.2.0/packages/next/src/build/webpack/plugins/middleware-plugin.ts#L51-L56
  */
 export type MiddlewareManifestV3 = {
   version: 3;
@@ -181,7 +186,11 @@ export interface FunctionsConfigManifest {
   >;
 }
 
-// See: https://github.com/vercel/next.js/blob/b188fab3360855c28fd9407bd07c4ee9f5de16a6/packages/next/build/webpack/plugins/middleware-plugin.ts#L15-L29
+/**
+ * Middleware manifest type used before Next.js 12.2, when middleware became stable.
+ *
+ * @see https://github.com/vercel/next.js/blob/b188fab3360855c28fd9407bd07c4ee9f5de16a6/packages/next/build/webpack/plugins/middleware-plugin.ts#L15-L29
+ */
 export interface MiddlewareManifestV1 {
   version: 1;
   sortedMiddleware: string[];
