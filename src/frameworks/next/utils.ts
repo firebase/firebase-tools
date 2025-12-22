@@ -205,14 +205,18 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
  */
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
   if (isDevMode) {
-    const [middlewareJs, middlewareTs, proxyJs, proxyTs] = await Promise.all([
+    const middlewareFiles = await Promise.all([
       pathExists(join(dir, "middleware.js")),
       pathExists(join(dir, "middleware.ts")),
       pathExists(join(dir, "proxy.js")),
       pathExists(join(dir, "proxy.ts")),
+      pathExists(join(dir, "src", "middleware.js")),
+      pathExists(join(dir, "src", "middleware.ts")),
+      pathExists(join(dir, "src", "proxy.js")),
+      pathExists(join(dir, "src", "proxy.ts")),
     ]);
 
-    return middlewareJs || middlewareTs || proxyJs || proxyTs;
+    return middlewareFiles.some((file) => file);
   } else {
     const middlewareManifest: MiddlewareManifest = await readJSON<MiddlewareManifest>(
       join(dir, "server", MIDDLEWARE_MANIFEST),
