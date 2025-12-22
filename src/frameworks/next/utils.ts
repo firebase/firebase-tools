@@ -205,6 +205,7 @@ export async function hasUnoptimizedImage(sourceDir: string, distDir: string): P
  */
 export async function isUsingMiddleware(dir: string, isDevMode: boolean): Promise<boolean> {
   if (isDevMode) {
+    // manifest files might not be available yet in dev mode, check all possible middleware files
     const middlewareFiles = await Promise.all([
       pathExists(join(dir, "middleware.js")),
       pathExists(join(dir, "middleware.ts")),
