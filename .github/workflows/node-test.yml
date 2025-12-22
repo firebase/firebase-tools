@@ -222,7 +222,7 @@ jobs:
           install-dependencies: true
           install-chromedriver: true
       - name: Cache firebase emulators
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -286,7 +286,7 @@ jobs:
           cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache firebase emulators
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
