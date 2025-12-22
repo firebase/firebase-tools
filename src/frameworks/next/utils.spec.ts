@@ -246,7 +246,7 @@ describe("Next.js utils", () => {
         expect(await isUsingMiddleware("", true)).to.be.true;
       });
 
-      it("should  return false if not using middleware", async () => {
+      it("should return false if not using middleware", async () => {
         sandbox.stub(fsExtra, "pathExists").resolves(false);
         expect(await isUsingMiddleware("", true)).to.be.false;
       });
