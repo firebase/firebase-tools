@@ -50,7 +50,7 @@ describe("deployHosting", () => {
       cwd: projectDirectory,
       only: "hosting:client-integration-site",
     });
-  }).timeout(10 * 1e3); // Deploying takes several steps.
+  }).timeout(20 * 1e3); // Deploying takes several steps.
 });
 
 describe("apps:list", () => {
