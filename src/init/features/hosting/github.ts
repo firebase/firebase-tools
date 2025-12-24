@@ -219,7 +219,7 @@ export async function initGitHub(setup: Setup): Promise<void> {
  * For example, if the .git folder is /Users/sparky/projects/my-web-app/.git
  * This function will return /Users/sparky/projects/my-web-app
  *
- * Modeled after https://github.com/firebase/firebase-tools/blob/master/src/detectProjectRoot.ts
+ * Modeled after https://github.com/firebase/firebase-tools/blob/main/src/detectProjectRoot.ts
  *
  * @return {string} The folder that contains the .git folder
  */
@@ -687,8 +687,4 @@ async function encryptServiceAccountJSON(serviceAccountJSON: string, key: string
 
   // Base64 the encrypted secret
   return Buffer.from(encryptedBytes).toString("base64");
-}
-
-export function isRunningInGithubAction() {
-  return process.env.GITHUB_ACTION_REPOSITORY === HOSTING_GITHUB_ACTION_NAME.split("@")[0];
 }

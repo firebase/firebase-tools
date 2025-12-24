@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
-import * as utils from "../utils";
 
 export function freeTrialTermsLink(): string {
   return "https://firebase.google.com/pricing";
@@ -28,19 +27,11 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
     // If the metric doesn't exist, free trial is not used.
     used = false;
   }
-  if (used) {
-    utils.logLabeledWarning(
-      "dataconnect",
-      "CloudSQL no cost trial has already been used on this project.",
-    );
-  } else {
-    utils.logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
-  }
   return used;
 }
 
-export function upgradeInstructions(projectId: string): string {
-  return `To provision a CloudSQL Postgres instance on the Firebase Data Connect no-cost trial:
+export function upgradeInstructions(projectId: string, trialUsed: boolean): string {
+  return `To provision a ${trialUsed ? "paid CloudSQL Postgres instance" : "CloudSQL Postgres instance on the Firebase Data Connect no-cost trial"}:
 
   1. Please upgrade to the pay-as-you-go (Blaze) billing plan. Visit the following page:
 

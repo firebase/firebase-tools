@@ -3,50 +3,51 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequest,
   CallToolRequestSchema,
-  ListToolsResult,
-  LoggingLevel,
-  SetLevelRequestSchema,
-  ListToolsRequestSchema,
   CallToolResult,
-  ListPromptsRequestSchema,
-  GetPromptRequestSchema,
-  ListPromptsResult,
-  GetPromptResult,
+  ErrorCode,
   GetPromptRequest,
+  GetPromptRequestSchema,
+  GetPromptResult,
+  ListPromptsRequestSchema,
+  ListPromptsResult,
   ListResourcesRequestSchema,
   ListResourcesResult,
-  ReadResourceRequest,
-  ReadResourceResult,
-  ReadResourceRequestSchema,
   ListResourceTemplatesRequestSchema,
   ListResourceTemplatesResult,
+  ListToolsRequestSchema,
+  ListToolsResult,
+  LoggingLevel,
   McpError,
-  ErrorCode,
+  ReadResourceRequest,
+  ReadResourceRequestSchema,
+  ReadResourceResult,
+  SetLevelRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { mcpError } from "./util";
-import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
-import { availableTools } from "./tools/index";
-import { ServerTool } from "./tool";
-import { availablePrompts } from "./prompts/index";
-import { ServerPrompt } from "./prompt";
-import { configstore } from "../configstore";
+import * as crossSpawn from "cross-spawn";
+import { existsSync } from "node:fs";
 import { Command } from "../command";
-import { requireAuth } from "../requireAuth";
-import { Options } from "../options";
-import { getProjectId } from "../projectUtils";
-import { mcpAuthError, noProjectDirectory, NO_PROJECT_ERROR, requireGeminiToS } from "./errors";
-import { trackGA4 } from "../track";
 import { Config } from "../config";
-import { loadRC } from "../rc";
+import { configstore } from "../configstore";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
-import { existsSync } from "node:fs";
-import { LoggingStdioServerTransport } from "./logging-transport";
 import { isFirebaseStudio } from "../env";
+import { Options } from "../options";
+import { getProjectId } from "../projectUtils";
+import { loadRC } from "../rc";
+import { requireAuth } from "../requireAuth";
 import { timeoutFallback } from "../timeout";
+import { trackGA4 } from "../track";
+import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory, requireGeminiToS } from "./errors";
+import { LoggingStdioServerTransport } from "./logging-transport";
+import { ServerPrompt } from "./prompt";
+import { availablePrompts } from "./prompts/index";
 import { resolveResource, resources, resourceTemplates } from "./resources";
-import * as crossSpawn from "cross-spawn";
+import { ServerTool } from "./tool";
+import { availableTools } from "./tools/index";
+import { ClientConfig, McpContext, SERVER_FEATURES, ServerFeature } from "./types";
+import { mcpError } from "./util";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 const SERVER_VERSION = "0.3.0";
 
@@ -72,6 +73,7 @@ export class FirebaseMcpServer {
   server: Server;
   activeFeatures?: ServerFeature[];
   detectedFeatures?: ServerFeature[];
+  enabledTools?: string[];
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
   private cliCommand?: string;
@@ -79,13 +81,6 @@ export class FirebaseMcpServer {
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
   currentLogLevel?: LoggingLevel = process.env.FIREBASE_MCP_DEBUG_LOG ? "debug" : undefined;
-  // the api of logging from a consumers perspective looks like `server.logger.warn("my warning")`.
-  public readonly logger = Object.fromEntries(
-    orderedLogLevels.map((logLevel) => [
-      logLevel,
-      (message: unknown) => this.log(logLevel, message),
-    ]),
-  ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
 
   /** Create a special tracking function to avoid blocking everything on initialization notification. */
   private async trackGA4(
@@ -106,9 +101,14 @@ export class FirebaseMcpServer {
     return trackGA4(event, { ...params, ...clientInfoParams });
   }
 
-  constructor(options: { activeFeatures?: ServerFeature[]; projectRoot?: string }) {
+  constructor(options: {
+    activeFeatures?: ServerFeature[];
+    projectRoot?: string;
+    enabledTools?: string[];
+  }) {
     this.activeFeatures = options.activeFeatures;
     this.startupRoot = options.projectRoot || process.env.PROJECT_ROOT;
+    this.enabledTools = options.enabledTools;
     this.server = new Server({ name: "firebase", version: SERVER_VERSION });
     this.server.registerCapabilities({
       tools: { listChanged: true },
@@ -191,16 +191,17 @@ export class FirebaseMcpServer {
     if (this.cachedProjectDir) return this.cachedProjectDir;
     const storedRoot = this.getStoredClientConfig().projectRoot;
     this.cachedProjectDir = storedRoot || this.startupRoot || process.cwd();
-    this.log("debug", "detected and cached project root: " + this.cachedProjectDir);
+    this.logger.debug(`detected and cached project root: ${this.cachedProjectDir}`);
     return this.cachedProjectDir;
   }
 
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
-    this.log("debug", "detecting active features of Firebase MCP server...");
+    this.logger.debug("detecting active features of Firebase MCP server...");
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
         const availabilityCheck = getDefaultFeatureAvailabilityCheck(f);
@@ -209,9 +210,8 @@ export class FirebaseMcpServer {
       }),
     );
     this.detectedFeatures = detected.filter((f) => !!f) as ServerFeature[];
-    this.log(
-      "debug",
-      "detected features of Firebase MCP server: " + (this.detectedFeatures.join(", ") || "<none>"),
+    this.logger.debug(
+      `detected features of Firebase MCP server:  ${this.detectedFeatures.join(", ") || "<none>"}`,
     );
     return this.detectedFeatures;
   }
@@ -252,8 +252,9 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
-    return availableTools(ctx, features);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
+    return availableTools(ctx, features, this.enabledTools);
   }
 
   async getTool(name: string): Promise<ServerTool | null> {
@@ -266,7 +267,8 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const ctx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availablePrompts(ctx, features);
   }
 
@@ -295,17 +297,21 @@ export class FirebaseMcpServer {
 
   async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
     try {
-      this.log("debug", `calling requireAuth`);
+      this.logger.debug("calling requireAuth");
       const email = await requireAuth(await this.resolveOptions(), skipAutoAuth);
-      this.log("debug", `detected authenticated account: ${email || "<none>"}`);
+      this.logger.debug(`detected authenticated account: ${email || "<none>"}`);
       return email ?? (skipAutoAuth ? null : "Application Default Credentials");
     } catch (e) {
-      this.log("debug", `error in requireAuth: ${e}`);
+      this.logger.debug(`error in requireAuth: ${e}`);
       return null;
     }
   }
 
-  private _createMcpContext(projectId: string, accountEmail: string | null): McpContext {
+  private _createMcpContext(
+    projectId: string,
+    accountEmail: string | null,
+    isBillingEnabled: boolean,
+  ): McpContext {
     const options = { projectDir: this.cachedProjectDir, cwd: this.cachedProjectDir };
     return {
       projectId: projectId,
@@ -314,6 +320,7 @@ export class FirebaseMcpServer {
       rc: loadRC(options),
       accountEmail,
       firebaseCliCommand: this._getFirebaseCliCommand(),
+      isBillingEnabled,
     };
   }
 
@@ -330,7 +337,7 @@ export class FirebaseMcpServer {
     const hasActiveProject = !!(await this.getProjectId());
     await this.trackGA4("mcp_list_tools");
     const skipAutoAuthForStudio = isFirebaseStudio();
-    this.log("debug", `skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
+    this.logger.debug(`skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
     const availableTools = await this.getAvailableTools();
     return {
       tools: availableTools.map((t) => t.mcp),
@@ -378,7 +385,8 @@ export class FirebaseMcpServer {
       if (err) return err;
     }
 
-    const toolsCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -432,7 +440,8 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const promptsCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const promptsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     try {
       const messages = await prompt.fn(promptArgs, promptsCtx);
@@ -472,7 +481,8 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const resourceCtx = this._createMcpContext(projectId, accountEmail);
+    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const resourceCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     const resolved = await resolveResource(req.params.uri, resourceCtx);
     if (!resolved) {
@@ -491,35 +501,47 @@ export class FirebaseMcpServer {
     await this.server.connect(transport);
   }
 
-  log(level: LoggingLevel, message: unknown): void {
-    let data = message;
+  get logger() {
+    const logAtLevel = (level: LoggingLevel, message: unknown): void => {
+      let data = message;
 
-    // mcp protocol only takes jsons or it errors; for convienence, format
-    // a a string into a json.
-    if (typeof message === "string") {
-      data = { message };
-    }
-
-    if (!this.currentLogLevel) {
-      return;
-    }
-
-    if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
-      return;
-    }
-
-    if (this._ready) {
-      // once ready, flush all pending messages before sending the next message
-      // this should only happen during startup
-      while (this._pendingMessages.length) {
-        const message = this._pendingMessages.shift();
-        if (!message) continue;
-        this.server.sendLoggingMessage({ level: message.level, data: message.data });
+      // mcp protocol only takes jsons or it errors; for convienence, format
+      // a a string into a json.
+      if (typeof message === "string") {
+        data = { message };
       }
 
-      void this.server.sendLoggingMessage({ level, data });
-    } else {
-      this._pendingMessages.push({ level, data });
-    }
+      if (!this.currentLogLevel) {
+        return;
+      }
+
+      if (orderedLogLevels.indexOf(this.currentLogLevel) > orderedLogLevels.indexOf(level)) {
+        return;
+      }
+
+      if (this._ready) {
+        // once ready, flush all pending messages before sending the next message
+        // this should only happen during startup
+        while (this._pendingMessages.length) {
+          const message = this._pendingMessages.shift();
+          if (!message) continue;
+          this.server.sendLoggingMessage({
+            level: message.level,
+            data: message.data,
+          });
+        }
+
+        void this.server.sendLoggingMessage({ level, data });
+      } else {
+        this._pendingMessages.push({ level, data });
+      }
+    };
+
+    return Object.fromEntries(
+      orderedLogLevels.map((logLevel) => [
+        logLevel,
+        (message: unknown) => logAtLevel(logLevel, message),
+      ]),
+    ) as Record<LoggingLevel, (message: unknown) => Promise<void>>;
   }
 }

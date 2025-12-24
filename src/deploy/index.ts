@@ -21,7 +21,7 @@ import * as AppHostingTarget from "./apphosting";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
-import { isRunningInGithubAction } from "../init/features/hosting/github";
+import { isRunningInGithubAction } from "../utils";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
