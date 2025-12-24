@@ -221,6 +221,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   } else if (build.isDataConnectGraphqlTriggered(ep)) {
     assertKeyTypes(prefix + ".dataConnectGraphqlTrigger", ep.dataConnectGraphqlTrigger, {
       invoker: "array?",
+      schemaFilePath: "string?",
     });
   } else if (build.isCallableTriggered(ep)) {
     assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
@@ -323,6 +324,11 @@ function parseEndpointForBuild(
   } else if (build.isDataConnectGraphqlTriggered(ep)) {
     triggered = { dataConnectGraphqlTrigger: {} };
     copyIfPresent(triggered.dataConnectGraphqlTrigger, ep.dataConnectGraphqlTrigger, "invoker");
+    copyIfPresent(
+      triggered.dataConnectGraphqlTrigger,
+      ep.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
     copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");

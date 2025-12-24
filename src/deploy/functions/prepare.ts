@@ -112,7 +112,6 @@ export async function prepare(
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
 
-  // TODO: Modify to also load dataconnect schema if `onGraphRequest` is used with `schemaFilePath`.
   const wantBuilds = await loadCodebases(
     context.config,
     options,
@@ -231,13 +230,33 @@ export async function prepare(
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
+      const schPathSet = new Set<string>();
+      for (const e of backend.allEndpoints(wantBackend)) {
+        if (
+          backend.isDataConnectGraphqlTriggered(e) &&
+          e.dataConnectGraphqlTrigger.schemaFilePath
+        ) {
+          schPathSet.add(e.dataConnectGraphqlTrigger.schemaFilePath);
+        }
+      }
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [...schPathSet],
+      );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
       const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload);
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [],
+        configForUpload,
+      );
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }

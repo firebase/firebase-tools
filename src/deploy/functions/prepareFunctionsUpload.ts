@@ -56,8 +56,10 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
 }
 
 async function packageSource(
+  projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
+  additionalSources: string[],
   runtimeConfig: any,
 ): Promise<PackagedSourceInfo | undefined> {
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
@@ -87,6 +89,16 @@ async function packageSource(
       archive.file(file.name, {
         name,
         mode: file.mode,
+      });
+    }
+    for (const name of additionalSources) {
+      const absPath = path.join(projectDir, name);
+      const mode = fs.statSync(absPath).mode;
+      const fileHash = await getSourceHash(absPath);
+      hashes.push(fileHash);
+      archive.file(absPath, {
+        name,
+        mode,
       });
     }
     if (typeof runtimeConfig !== "undefined") {
@@ -130,11 +142,13 @@ async function packageSource(
 }
 
 export async function prepareFunctionsUpload(
+  projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
+  additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
 ): Promise<PackagedSourceInfo | undefined> {
-  return packageSource(sourceDir, config, runtimeConfig);
+  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig);
 }
 
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
