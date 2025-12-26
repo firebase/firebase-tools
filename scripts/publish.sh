@@ -142,9 +142,9 @@ if [[ $VERSION != "preview" ]]; then
   git push origin main --tags
   echo "Pushed to GitHub."
 
-  echo "Publishing release notes..."
-  hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
-  echo "Published release notes."
+  echo "Publishing draft release notes..."
+  hub release create -draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+  echo "Published draft release notes."
 else
   echo "Publishing preview version to npm..."
   npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
