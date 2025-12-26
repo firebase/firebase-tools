@@ -143,7 +143,7 @@ if [[ $VERSION != "preview" ]]; then
   echo "Pushed to GitHub."
 
   echo "Publishing draft release notes..."
-  hub release create -draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+  hub release create --draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
   echo "Published draft release notes."
 else
   echo "Publishing preview version to npm..."
