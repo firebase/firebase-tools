@@ -280,52 +280,81 @@ export async function fromNodeSocket(socket: net.Socket, options?: PostgresConne
 }
 
 export class PGliteExtendedQueryPatch {
-  isExtendedQuery = false;
-  eqpErrored = false;
   pgliteDebugLog: fs.WriteStream;
 
   constructor(public connection: PostgresConnection) {
     this.pgliteDebugLog = fs.createWriteStream("pglite-debug.log");
   }
 
-  async *filterResponse(message: Uint8Array, response: Uint8Array) {
-    // 'Parse' indicates the start of an extended query
-    const pipelineStartMessages: number[] = [
-      FrontendMessageCode.Parse,
-      FrontendMessageCode.Bind,
-      FrontendMessageCode.Close,
-    ];
-    const decoded = decoder.write(message as any as Buffer);
+  async *filterResponse(request: Uint8Array, response: Uint8Array) {
+    this.pgliteDebugLog.write(
+      `\n[-> ${getFrontendMessageCodeName(request[0])}] ` + decoder.write(request as any as Buffer),
+    );
 
-    this.pgliteDebugLog.write("Front: " + decoded);
-
-    if (pipelineStartMessages.includes(message[0])) {
-      this.isExtendedQuery = true;
-    }
+    // const isExtendedQuery =
+    //   request[0] === FrontendMessageCode.Parse || request[0] === FrontendMessageCode.Bind;
+    // let hasError = false;
+    // let hasReadyForQuery = false;
 
     // 'Sync' indicates the end of an extended query
-    if (message[0] === FrontendMessageCode.Sync) {
-      this.isExtendedQuery = false;
-      this.eqpErrored = false;
-    }
+    // if (request[0] === FrontendMessageCode.Sync) {
+    //   this.isExtendedQuery = false;
+    //   this.extendedQueryErrored = false;
+    // }
 
     // A PGlite response can contain multiple messages
+    // https://www.postgresql.org/docs/current/protocol-message-formats.html
     for await (const bm of getMessages(response)) {
       // After an ErrorMessage in extended query protocol, we should throw away messages until the next Sync
       // (per https://www.postgresql.org/docs/current/protocol-flow.html#PROTOCOL-FLOW-EXT-QUERY:~:text=When%20an%20error,for%20each%20Sync.))
-      if (this.eqpErrored) {
-        continue;
-      }
-      if (this.isExtendedQuery && bm[0] === BackendMessageCode.ErrorMessage) {
-        this.eqpErrored = true;
-      }
+      // if (this.eqpErrored) {
+      //   this.pgliteDebugLog.write(
+      //     `\n[<- ${getBackendMessageCodeName(bm[0])} (skipped)] ${decodedResp}`,
+      //   );
+      //   continue;
+      // }
+      // if (bm[0] === BackendMessageCode.ErrorMessage) {
+      //   hasError = true;
+      // }
+      // if (bm[0] === BackendMessageCode.ReadyForQuery) {
+      //   hasReadyForQuery = true;
+      // }
       // Filter out incorrect `ReadyForQuery` messages during the extended query protocol
-      if (this.isExtendedQuery && bm[0] === BackendMessageCode.ReadyForQuery) {
-        this.pgliteDebugLog.write("Filtered: " + decoder.write(bm as any as Buffer));
-        continue;
-      }
-      this.pgliteDebugLog.write("Sent: " + decoder.write(bm as any as Buffer));
+      // if (this.isExtendedQuery && bm[0] === BackendMessageCode.ReadyForQuery) {
+      //   this.pgliteDebugLog.write(
+      //     `\n[<- ${getBackendMessageCodeName(bm[0])} (skipped)] ${decodedResp}`,
+      //   );
+      //   continue;
+      // }
+      this.pgliteDebugLog.write(
+        `\n[<- ${getBackendMessageCodeName(bm[0])}] ${decoder.write(bm as any as Buffer)}`,
+      );
       yield bm;
     }
+    // if (isExtendedQuery && hasError && !hasReadyForQuery) {
+    //   const bm = new Uint8Array([BackendMessageCode.ReadyForQuery, 0, 0, 0, 5, 73]); // 'I' = Idle
+    //   yield bm;
+    //   this.pgliteDebugLog.write(
+    //     `\n[<- ${getBackendMessageCodeName(bm[0])} extra] ${decoder.write(bm as any as Buffer)}`,
+    //   );
+    // }
   }
+}
+
+const REVERSE_FRONTEND_MESSAGE_CODE: Record<number, string> = {};
+for (const key in FrontendMessageCode) {
+  REVERSE_FRONTEND_MESSAGE_CODE[FrontendMessageCode[key as keyof typeof FrontendMessageCode]] = key;
+}
+
+const REVERSE_BACKEND_MESSAGE_CODE: Record<number, string> = {};
+for (const key in BackendMessageCode) {
+  REVERSE_BACKEND_MESSAGE_CODE[BackendMessageCode[key as keyof typeof BackendMessageCode]] = key;
+}
+
+function getFrontendMessageCodeName(code: number): string {
+  return REVERSE_FRONTEND_MESSAGE_CODE[code] || `UNKNOWN_FRONTEND_CODE_${code}`;
+}
+
+function getBackendMessageCodeName(code: number): string {
+  return REVERSE_BACKEND_MESSAGE_CODE[code] || `UNKNOWN_BACKEND_CODE_${code}`;
 }
