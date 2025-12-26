@@ -77,7 +77,7 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const { builds } = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
     });
@@ -95,7 +95,7 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const { builds } = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
 
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });

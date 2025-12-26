@@ -41,7 +41,7 @@ export const command = new Command("internaltesting:functions:discover")
       }
     }
 
-    const wantBuilds = await loadCodebases(
+    const { builds: wantBuilds } = await loadCodebases(
       fnConfig,
       options,
       firebaseConfig,
