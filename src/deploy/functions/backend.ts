@@ -386,6 +386,11 @@ export type Endpoint = TargetIds &
 
     // State of the endpoint.
     state?: EndpointState;
+
+    // Fields for "run" platform (no-build)
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export interface RequiredAPI {

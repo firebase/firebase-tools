@@ -15,6 +15,7 @@ import * as experiments from "../../experiments";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
 import { getProjectNumber } from "../../getProjectNumber";
+import * as path from "path";
 
 setGracefulCleanup();
 
@@ -51,10 +52,16 @@ async function uploadSourceV1(
 }
 
 // Trampoline to allow tests to mock out createStream.
+/**
+ *
+ */
 export function createReadStream(filePath: string): NodeJS.ReadableStream {
   return fs.createReadStream(filePath);
 }
 
+/**
+ *
+ */
 export async function uploadSourceV2(
   projectId: string,
   projectNumber: string,
@@ -80,7 +87,9 @@ export async function uploadSourceV2(
   };
 
   // Legacy behavior: use the GCF API
-  if (!experiments.isEnabled("runfunctions")) {
+  // We use BYO bucket if the "runfunctions" experiment is enabled OR if we have any platform: run endpoints.
+  // Otherwise, we use the GCF API.
+  if (!experiments.isEnabled("runfunctions") && !v2Endpoints.some((e) => e.platform === "run")) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
       logLabeledWarning(
         "functions",
@@ -116,7 +125,7 @@ export async function uploadSourceV2(
       },
     },
   });
-  const objectPath = `${source.functionsSourceV2Hash}.zip`;
+  const objectPath = `${source.functionsSourceV2Hash}${path.extname(source.functionsSourceV2!)}`;
   await gcs.upload(
     uploadOpts,
     `${bucketName}/${objectPath}`,

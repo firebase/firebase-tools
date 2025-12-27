@@ -97,7 +97,7 @@ export async function prepare(
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
   const allowFunctionsConfig = experiments.isEnabled("legacyRuntimeConfigCommands");
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (
@@ -229,8 +229,14 @@ export async function prepare(
       );
     }
 
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {
+      const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
+      const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
+        ? "tar.gz"
+        : "zip";
+      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload, {
+        exportType,
+      });
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }

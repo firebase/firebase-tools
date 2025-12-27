@@ -1,0 +1,9 @@
+endpoints:
+  darttest-verified-9:
+    platform: "run"
+    region: ["us-west1"]
+    maxInstances: 10
+    httpsTrigger: {}
+    baseImageUri: "us-west1-docker.pkg.dev/serverless-runtimes/google-22-full/runtimes/go123"
+    command: ["./bin/server.exe"]
+    entryPoint: "server"
