@@ -230,10 +230,10 @@ export class EmulatorHub extends ExpressBasedEmulator {
     // Delete the emulator hub locator file on exit
     const cleanup = () => {
       try {
-        if (fs.existsSync(locatorPath)) fs.unlinkSync(locatorPath);
+        fs.unlinkSync(locatorPath);
         logger.debug(`Delete emulator hub locator file: ${locatorPath}`);
       } catch (e: any) {
-        logger.debug(`Cannot delete emulator hub locator file: ${e.message}`);
+        logger.debug(`Cannot delete emulator hub locator file`, e);
       }
     };
     process.on("SIGINT", cleanup);
