@@ -108,9 +108,6 @@ export function registerTerminalTasks(
       { focus: true },
     );
   };
-  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    startEmulatorsTask();
-  });
   const startEmulatorsCommand = vscode.commands.registerCommand(
     "firebase.emulators.start",
     startEmulatorsTask,
@@ -118,7 +115,6 @@ export function registerTerminalTasks(
 
   return Disposable.from(
     { dispose: loginTaskBroker },
-    { dispose: startEmulatorsTaskBroker },
     startEmulatorsCommand,
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
