@@ -574,6 +574,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     if (endpoint.callableTrigger.genkitAction) {
       gcfFunction.labels["genkit-action"] = "true";
     }
+  } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-fdcgraphql": "true" };
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -618,6 +620,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
     trigger = {
       callableTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-fdcgraphql"] === "true") {
+    trigger = {
+      dataConnectGraphqlTrigger: {},
     };
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     trigger = {

@@ -421,6 +421,13 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      const invoker = endpoint.dataConnectGraphqlTrigger.invoker;
+      if (invoker && !invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
       await this.executor
@@ -547,6 +554,11 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      invoker =
+        endpoint.dataConnectGraphqlTrigger.invoker === null
+          ? undefined
+          : endpoint.dataConnectGraphqlTrigger.invoker;
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
