@@ -53,9 +53,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
-    logger.debug(
-      `Found emulator locator: ${JSON.stringify(locator)}, CLI_VERSION: ${this.CLI_VERSION}`,
-    );
+    logger.debug(`Found emulator hub locator: ${JSON.stringify(locator)}`);
     return locator;
   }
 
@@ -217,21 +215,19 @@ export class EmulatorHub extends ExpressBasedEmulator {
   private async writeLocatorFile(): Promise<void> {
     const projectId = this.args.projectId;
     const existingLocator = EmulatorHub.readLocatorFile(projectId);
-    if (existingLocator) {
-      if (existingLocator.pid && isProcessLive(existingLocator.pid)) {
-        utils.logLabeledWarning(
-          "emulators",
-          `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
-        );
-        return;
-      }
+    if (existingLocator && existingLocator.pid && isProcessLive(existingLocator.pid)) {
+      utils.logLabeledWarning(
+        "emulators",
+        `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
+      );
+      return;
     }
 
     const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
     logger.debug(`Write emulator hub locator at ${locatorPath}`);
     fs.writeFileSync(locatorPath, JSON.stringify(this.buildLocator()));
 
-    // 3. Handle automatic deletion on exit
+    // Delete the emulator hub locator file on exit
     const cleanup = () => {
       try {
         if (fs.existsSync(locatorPath)) fs.unlinkSync(locatorPath);
@@ -240,8 +236,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
         logger.debug(`Cannot delete emulator hub locator file: ${e.message}`);
       }
     };
-
-    // Bind cleanup to process termination signals
     process.on("SIGINT", cleanup);
     process.on("SIGTERM", cleanup);
     process.on("exit", cleanup);
