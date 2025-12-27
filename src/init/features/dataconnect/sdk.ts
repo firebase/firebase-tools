@@ -148,6 +148,12 @@ export async function chooseApp(): Promise<App[]> {
     const pickedApps = await checkbox<App>({
       message: "Which apps do you want to set up Data Connect SDKs in?",
       choices,
+      validate: (choices) => {
+        if (choices.length === 0) {
+          return "Please choose at least one app.";
+        }
+        return true;
+      },
     });
     if (!pickedApps || !pickedApps.length) {
       throw new FirebaseError("Command Aborted. Please choose at least one app.");
