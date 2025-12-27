@@ -64,7 +64,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
     }
     const filename = `hub-${projectId}.json`;
     const locatorPath = path.join(dir, filename);
-    logger.debug(`Emulator locator file path: ${locatorPath}`);
     return locatorPath;
   }
 
@@ -214,8 +213,8 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
   private async writeLocatorFile(): Promise<void> {
     const projectId = this.args.projectId;
-    const existingLocator = EmulatorHub.readLocatorFile(projectId);
-    if (existingLocator && existingLocator.pid && isProcessLive(existingLocator.pid)) {
+    const prevLocator = EmulatorHub.readLocatorFile(projectId);
+    if (prevLocator && prevLocator.pid && isProcessLive(prevLocator.pid)) {
       utils.logLabeledWarning(
         "emulators",
         `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
@@ -230,8 +229,11 @@ export class EmulatorHub extends ExpressBasedEmulator {
     // Delete the emulator hub locator file on exit
     const cleanup = () => {
       try {
-        fs.unlinkSync(locatorPath);
-        logger.debug(`Delete emulator hub locator file: ${locatorPath}`);
+        const curLocator = EmulatorHub.readLocatorFile(projectId);
+        if (curLocator && curLocator.pid === process.pid) {
+          fs.unlinkSync(locatorPath);
+          logger.debug(`Delete emulator hub locator file: ${locatorPath}`);
+        }
       } catch (e: any) {
         logger.debug(`Cannot delete emulator hub locator file`, e);
       }
