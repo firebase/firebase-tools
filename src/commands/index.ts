@@ -264,6 +264,8 @@ export function load(client: CLIClient): CLIClient {
   if (experiments.isEnabled("apptesting")) {
     client.apptesting = {};
     client.apptesting.execute = loadCommand("apptesting-execute");
+    client.apptesting.mobile = {};
+    client.apptesting.mobile.execute = loadCommand("apptesting-mobile-execute");
   }
 
   const t1 = process.hrtime.bigint();
