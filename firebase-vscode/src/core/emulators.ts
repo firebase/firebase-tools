@@ -50,7 +50,7 @@ export class EmulatorsController implements Disposable {
   private currExecId = 0;
 
   public async startEmulators() {
-    if ((await this.areEmulatorsRunning())) {
+    if (await this.areEmulatorsRunning()) {
       return;
     }
     this.setEmulatorsStarting();
