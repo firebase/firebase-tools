@@ -22,7 +22,7 @@ export class EmulatorsController implements Disposable {
     // called by emulator UI
     this.subscriptions.push(
       broker.on("runStartEmulators", () => {
-        this.setEmulatorsStarting();
+        this.startEmulators();
       }),
     );
 
@@ -50,6 +50,9 @@ export class EmulatorsController implements Disposable {
   private currExecId = 0;
 
   public async startEmulators() {
+    if ((await this.areEmulatorsRunning())) {
+      return;
+    }
     this.setEmulatorsStarting();
     vscode.commands.executeCommand("firebase.emulators.start");
   }
