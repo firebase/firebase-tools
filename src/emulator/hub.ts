@@ -244,7 +244,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
 function isProcessLive(pid: number): boolean {
   try {
-    // Attempting to send signal 0
+    // Send signal 0 to check if process is alive.
     process.kill(pid, 0);
     return true;
   } catch (error: any) {
