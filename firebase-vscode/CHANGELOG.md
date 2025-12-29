@@ -1,6 +1,6 @@
 ## NEXT
 
-- Fix the emulator discovery bug when "run local" starts the emulator repeatedly.
+- Fix the data connect emulator discovery bugs.
 
 ## 2.0.0
 
