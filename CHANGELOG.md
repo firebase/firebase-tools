@@ -1,0 +1,1 @@
+- Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
