@@ -1,5 +1,7 @@
 ## NEXT
 
+- Fix the data connect emulator discovery bugs.
+
 ## 2.0.0
 
 - Update internal `firebase-tools` dependency to 15.0.0
