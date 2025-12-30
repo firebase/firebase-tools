@@ -93,6 +93,14 @@ async function packageSource(
     }
     for (const name of additionalSources) {
       const absPath = path.join(projectDir, name);
+      if (!fs.existsSync(absPath)) {
+        throw new FirebaseError(clc.bold(absPath) + " does not exist.", { exit: 1 });
+      }
+      if (path.relative(projectDir, absPath).includes("..")) {
+        throw new FirebaseError(clc.bold(absPath) + " is outside of the project directory.", {
+          exit: 1,
+        });
+      }
       const mode = fs.statSync(absPath).mode;
       const fileHash = await getSourceHash(absPath);
       hashes.push(fileHash);
@@ -120,6 +128,10 @@ async function packageSource(
     }
     await pipeAsync(archive, fileStream);
   } catch (err: any) {
+    if (err instanceof FirebaseError) {
+      // No need to wrap these again.
+      throw err;
+    }
     throw new FirebaseError(
       "Could not read source directory. Remove links and shortcuts and try again.",
       {
