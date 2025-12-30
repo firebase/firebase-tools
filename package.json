@@ -272,9 +272,6 @@
       "ajv-formats": "3.0.1",
       "ajv": "^8.17.1"
     },
-    "@modelcontextprotocol/sdk": {
-      "express": "^5.2.1"
-    },
     "node-fetch": {
       "whatwg-url": "^14.0.0"
     }
