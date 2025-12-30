@@ -1,1 +1,2 @@
 - Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
+- Updated Pub/Sub emulator to version 0.8.25.
