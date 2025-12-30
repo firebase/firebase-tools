@@ -1,2 +1,3 @@
 - Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
 - Updated Pub/Sub emulator to version 0.8.25.
+- Fixed a bug when `firebase emulators:start` incorrectly deletes discovery file of another emulator process (#9672)
