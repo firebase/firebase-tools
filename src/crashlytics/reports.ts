@@ -9,25 +9,29 @@ import {
   EventFilterSchema,
   filterToUrlSearchParams,
 } from "./filters";
+import { FirebaseError } from "../error";
 
 const DEFAULT_PAGE_SIZE = 10;
 
+export enum CrashlyticsReport {
+  TOP_ISSUES = "topIssues",
+  TOP_VARIANTS = "topVariants",
+  TOP_VERSIONS = "topVersions",
+  TOP_OPERATING_SYSTEMS = "topOperatingSystems",
+  TOP_APPLE_DEVICES = "topAppleDevices",
+  TOP_ANDROID_DEVICES = "topAndroidDevices",
+}
+
+export const CrashlyticsReportSchema = z.nativeEnum(CrashlyticsReport);
+
 export const ReportInputSchema = z.object({
   appId: ApplicationIdSchema,
+  report: CrashlyticsReportSchema,
   filter: EventFilterSchema,
   pageSize: z.number().optional().describe("Number of rows to return").default(DEFAULT_PAGE_SIZE),
 });
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
-
-export enum CrashlyticsReport {
-  TopIssues = "topIssues",
-  TopVariants = "topVariants",
-  TopVersions = "topVersions",
-  TopOperatingSystems = "topOperatingSystems",
-  TopAppleDevices = "topAppleDevices",
-  TopAndroidDevices = "topAndroidDevices",
-}
 
 /**
  * Returns a report for Crashlytics events.
@@ -62,23 +66,26 @@ export function simplifyReport(report: Report): Report {
 }
 
 export async function getReport(
-  report: CrashlyticsReport,
+  reportName: CrashlyticsReport,
   appId: string,
   filter: EventFilter,
   pageSize = DEFAULT_PAGE_SIZE,
 ): Promise<Report> {
+  if (!reportName) {
+    throw new FirebaseError("Invalid Crashlytics report " + reportName);
+  }
   const requestProjectNumber = parseProjectNumber(appId);
   const queryParams = filterToUrlSearchParams(filter);
   queryParams.set("page_size", `${pageSize}`);
   logger.debug(
-    `[crashlytics] report ${report} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
+    `[crashlytics] report ${reportName} called with appId: ${appId} filter: ${queryParams.toString()}, page_size: ${pageSize}`,
   );
   const response = await CRASHLYTICS_API_CLIENT.request<void, Report>({
     method: "GET",
     headers: {
       "Content-Type": "application/json",
     },
-    path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${report}`,
+    path: `/projects/${requestProjectNumber}/apps/${appId}/reports/${reportName}`,
     queryParams: queryParams,
     timeout: TIMEOUT,
   });
