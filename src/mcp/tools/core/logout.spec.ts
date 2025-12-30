@@ -59,7 +59,7 @@ describe("logout tool", () => {
     const result = await logout.fn({ email: undefined }, {} as any);
 
     expect(logoutStub.calledOnceWith("token1")).to.be.true;
-    expect(result.content[0].text).to.include("Logged out from test1@example.com");
+    expect((result.content[0] as any).text).to.include("Logged out from test1@example.com");
   });
 
   it("should log out a specific user by email", async () => {
@@ -71,7 +71,7 @@ describe("logout tool", () => {
 
     expect(logoutStub.calledOnceWith("token2")).to.be.true;
     expect(logoutStub.callCount).to.equal(1);
-    expect(result.content[0].text).to.include("Logged out from test2@example.com");
+    expect((result.content[0] as any).text).to.include("Logged out from test2@example.com");
   });
 
   it("should log out all users if no email is provided", async () => {

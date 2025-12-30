@@ -52,6 +52,6 @@ describe("login tool", () => {
     const result = await login.fn({ authCode: "fake_auth_code" }, { host: server } as any);
 
     expect(result.isError).to.be.true;
-    expect(result.content[0].text).to.include("Login flow not started");
+    expect((result.content[0] as any).text).to.include("Login flow not started");
   });
 });

@@ -34,7 +34,7 @@ const CONNECTION_NAME_REGEX =
 export function parseConnectionName(name: string): ConnectionNameParts | undefined {
   const match = CONNECTION_NAME_REGEX.exec(name);
 
-  if (!match || typeof match.groups === undefined) {
+  if (!match || typeof match.groups === "undefined") {
     return;
   }
   const { projectId, location, id } = match.groups as unknown as ConnectionNameParts;

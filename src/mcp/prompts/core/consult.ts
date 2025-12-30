@@ -28,7 +28,7 @@ export const consult = prompt(
           role: "user",
           content: {
             type: "text",
-            text: `Missing required conditions to run this prompt:\n\n${gifTosError.content[0]?.text}\n\nPlease ask the user if they would like to accept these terms of service before proceeding. If they decline, inform them that this operation cannot continue without their acceptance.`,
+            text: `Missing required conditions to run this prompt:\n\n${(gifTosError.content[0] as any)?.text}\n\nPlease ask the user if they would like to accept these terms of service before proceeding. If they decline, inform them that this operation cannot continue without their acceptance.`,
           },
         },
       ];
