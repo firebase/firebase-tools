@@ -303,7 +303,7 @@ export async function promptGitHubInstallation(
 ): Promise<string> {
   const installations = await listValidInstallations(projectId, location, connection);
 
-  const installationName = await search({
+  const installationName = await search<string>({
     message: "Which GitHub account do you want to use?",
     source: (input: string | undefined = ""): Array<Separator | Choice<string>> => [
       new Separator(),
@@ -394,7 +394,7 @@ async function promptCloneUri(
   connection: devConnect.Connection,
 ): Promise<string> {
   const cloneUris = await fetchRepositoryCloneUris(projectId, connection);
-  const cloneUri = await search({
+  const cloneUri = await search<string>({
     message: "Which GitHub repo do you want to deploy?",
     source: (input = ""): Array<Choice<string> | Separator> => [
       new Separator(),
@@ -425,7 +425,7 @@ async function promptCloneUri(
  */
 export async function promptGitHubBranch(repoLink: devConnect.GitRepositoryLink): Promise<string> {
   const branches = await devConnect.listAllBranches(repoLink.name);
-  const branch = await search({
+  const branch = await search<string>({
     message: "Pick a branch for continuous deployment",
     source: (input = ""): Array<Choice<string> | Separator> => [
       ...fuzzy.filter(input, Array.from(branches)).map((result) => {

@@ -483,7 +483,7 @@ async function promptForReleaseStage(args: {
       };
       choices.push(stableChoice);
     }
-    stage = await select({
+    stage = await select<ReleaseStage>({
       message: "Choose the release stage:",
       choices: choices,
       default: stage,
@@ -498,7 +498,7 @@ async function promptForReleaseStage(args: {
         default: false,
       });
       if (!confirmed) {
-        stage = await select({
+        stage = await select<ReleaseStage>({
           message: "Choose the release stage:",
           choices: choices,
           default: stage,
