@@ -30,6 +30,9 @@ async function deployIndexes(context: any, options: any): Promise<void> {
     return;
   }
   const indexesContext: IndexContext[] = context?.firestore?.indexes;
+  if (!indexesContext) {
+    return;
+  }
 
   utils.logBullet(clc.bold(clc.cyan("firestore: ")) + "deploying indexes...");
   const firestoreIndexes = new FirestoreApi();
