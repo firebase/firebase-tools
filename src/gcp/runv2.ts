@@ -46,6 +46,10 @@ export interface Container {
     // N.B. This defaults to true if resources is not set and must manually be set to true if it is set.
     cpuIdle?: boolean; // If true, the container will be allowed to idle CPU when not processing requests.
   };
+  baseImageUri?: string;
+  sourceCode?: {
+    cloudStorageSource: StorageSource;
+  };
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
 export interface RevisionTemplate {
@@ -68,7 +72,7 @@ export interface RevisionTemplate {
   timeout?: proto.Duration;
   serviceAccount?: string;
   containers?: Container[];
-  containerConcurrency?: number;
+  maxInstanceRequestConcurrency?: number;
 }
 
 export interface BuildConfig {
@@ -109,6 +113,7 @@ export interface Service {
   invokerIamDisabled?: boolean;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
+  uri?: string;
 }
 
 export type ServiceOutputFields =
@@ -155,6 +160,10 @@ export interface SubmitBuildResponse {
   baseImageWarning?: string;
 }
 
+/**
+ * Submits a build to Cloud Build using the v2 API, tracking the long-running operation.
+ * Used for building source code into container images.
+ */
 export async function submitBuild(
   projectId: string,
   location: string,
@@ -174,6 +183,10 @@ export async function submitBuild(
   });
 }
 
+/**
+ * Updates an existing Cloud Run service.
+ * Tracks the long-running operation until completion.
+ */
 export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
   const fieldMask = proto.fieldMasks(
     service,
@@ -198,6 +211,68 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     operationResourceName: res.body.name,
   });
   return svc;
+}
+
+/**
+ * Creates a new Cloud Run service in the specified project and location.
+ * Tracks the long-running operation until completion.
+ */
+export async function createService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+  service: Omit<Service, ServiceOutputFields>,
+): Promise<Service> {
+  // The create API expects the name to be empty or unset, as the parent is in the URL
+  // and resource ID is a query param.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { name, ...serviceBody } = service;
+  const res = await client.post<Partial<Service>, LongRunningOperation<Service>>(
+    `/projects/${projectId}/locations/${location}/services`,
+    serviceBody,
+    {
+      queryParams: {
+        serviceId,
+      },
+    },
+  );
+  const svc = await pollOperation<Service>({
+    apiOrigin: runOrigin(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
+  return svc;
+}
+
+/**
+ * Deletes a Cloud Run service.
+ * Tracks the long-running operation until completion.
+ */
+export async function deleteService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+): Promise<void> {
+  const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
+  const res = await client.delete<LongRunningOperation<Service>>(name);
+  await pollOperation({
+    apiOrigin: runOrigin(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
+}
+
+/**
+ * Gets a Cloud Run service details.
+ */
+export async function getService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+): Promise<Service> {
+  const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
+  const res = await client.get<Service>(name);
+  return res.body;
 }
 
 /**
@@ -492,6 +567,10 @@ export interface FirebaseFunctionMetadata {
 // values from the dependent services? But serviceFromEndpoint currently
 // only returns the service and not the dependent resources, which we will
 // need for updates.
+/**
+ * Converts a Cloud Run Service definition into a Firebase internal Endpoint representation.
+ * Handles parsing of environment variables, secrets, and labels to reconstruct the function configuration.
+ */
 export function endpointFromService(service: Omit<Service, ServiceOutputFields>): backend.Endpoint {
   const [, /* projects*/ project /* locations*/, , location /* services*/, , svcId] =
     service.name.split("/");
@@ -541,7 +620,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
           },
         }),
   };
-  proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
+  proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
   proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, service.scaling || {}, "maxInstances", "maxInstanceCount");
@@ -563,6 +642,10 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
   return endpoint;
 }
 
+/**
+ * Converts a Firebase internal Endpoint representation into a Cloud Run Service definition.
+ * Used for creating or updating services.
+ */
 export function serviceFromEndpoint(
   endpoint: backend.Endpoint,
   image: string,
@@ -627,9 +710,9 @@ export function serviceFromEndpoint(
         },
       },
     ],
-    containerConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
+    maxInstanceRequestConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
   };
-  proto.renameIfPresent(template, endpoint, "containerConcurrency", "concurrency");
+  proto.renameIfPresent(template, endpoint, "maxInstanceRequestConcurrency", "concurrency");
 
   const service: Omit<Service, ServiceOutputFields> = {
     name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(
