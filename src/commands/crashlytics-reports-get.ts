@@ -16,7 +16,7 @@ interface CommandOptions extends Options {
   pageSize?: number;
   issueId?: string;
   issueVariantId?: string;
-  errorType?: string[];
+  issueType?: string[];
   appVersion?: string[];
   startTime?: string;
   endTime?: string;
@@ -27,7 +27,7 @@ interface ReportTableConfig {
   getRow: (group: ReportGroup) => string[];
 }
 
-const VALID_ERROR_TYPES = ["FATAL", "NON_FATAL", "ANR"] as const;
+const VALID_ISSUE_TYPES = ["FATAL", "NON_FATAL", "ANR"] as const;
 
 const REPORT_CONFIG: Record<string, { report: CrashlyticsReport; table: ReportTableConfig }> = {
   TOP_ISSUES: {
@@ -135,7 +135,7 @@ export const command = new Command("crashlytics:reports:get <report>")
   .option("--page-size <number>", "number of rows to return", 10)
   .option("--issue-id <issueId>", "filter by issue id")
   .option("--issue-variant-id <variantId>", "filter by issue variant id")
-  .option("--error-type <types...>", "filter by error type (FATAL, NON_FATAL, ANR)")
+  .option("--issue-type <types...>", "filter by issue type (FATAL, NON_FATAL, ANR)")
   .option("--app-version <versions...>", "filter by app version display names")
   .option("--start-time <timestamp>", "filter start time (ISO 8601 format)")
   .option("--end-time <timestamp>", "filter end time (ISO 8601 format)")
@@ -154,16 +154,16 @@ export const command = new Command("crashlytics:reports:get <report>")
     if (options.issueVariantId) {
       filter.issueVariantId = options.issueVariantId;
     }
-    if (options.errorType) {
-      for (const errorType of options.errorType) {
-        const errorTypeUpper = errorType.toUpperCase();
-        if (!VALID_ERROR_TYPES.includes(errorTypeUpper as (typeof VALID_ERROR_TYPES)[number])) {
+    if (options.issueType) {
+      for (const issueType of options.issueType) {
+        const issueTypeUpper = issueType.toUpperCase();
+        if (!VALID_ISSUE_TYPES.includes(issueTypeUpper as (typeof VALID_ISSUE_TYPES)[number])) {
           throw new FirebaseError(
-            `Invalid error type "${errorType}". Must be one of: ${VALID_ERROR_TYPES.join(", ")}`,
+            `Invalid issue type "${issueType}". Must be one of: ${VALID_ISSUE_TYPES.join(", ")}`,
           );
         }
       }
-      filter.issueErrorTypes = options.errorType.map((e) => e.toUpperCase()) as (
+      filter.issueErrorTypes = options.issueType.map((e) => e.toUpperCase()) as (
         | "FATAL"
         | "NON_FATAL"
         | "ANR"
