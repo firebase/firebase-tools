@@ -29,6 +29,8 @@ const VALID_REPORTS = [
   "TOP_APPLE_DEVICES",
 ];
 
+const VALID_ERROR_TYPES = ["FATAL", "NON_FATAL", "ANR"] as const;
+
 const REPORT_NAME_MAP: Record<string, CrashlyticsReport> = {
   TOP_ISSUES: CrashlyticsReport.TOP_ISSUES,
   TOP_VARIANTS: CrashlyticsReport.TOP_VARIANTS,
@@ -71,7 +73,19 @@ export const command = new Command("crashlytics:reports:get <report>")
       filter.issueVariantId = options.issueVariantId;
     }
     if (options.errorType) {
-      filter.issueErrorTypes = options.errorType as ("FATAL" | "NON_FATAL" | "ANR")[];
+      for (const errorType of options.errorType) {
+        const errorTypeUpper = errorType.toUpperCase();
+        if (!VALID_ERROR_TYPES.includes(errorTypeUpper as (typeof VALID_ERROR_TYPES)[number])) {
+          throw new FirebaseError(
+            `Invalid error type "${errorType}". Must be one of: ${VALID_ERROR_TYPES.join(", ")}`,
+          );
+        }
+      }
+      filter.issueErrorTypes = options.errorType.map((e) => e.toUpperCase()) as (
+        | "FATAL"
+        | "NON_FATAL"
+        | "ANR"
+      )[];
     }
     if (options.appVersion) {
       filter.versionDisplayNames = options.appVersion;
