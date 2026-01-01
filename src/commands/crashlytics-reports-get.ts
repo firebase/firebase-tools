@@ -9,6 +9,7 @@ import { requireAuth } from "../requireAuth";
 import { getReport, CrashlyticsReport } from "../crashlytics/reports";
 import { EventFilter, validateEventFilters } from "../crashlytics/filters";
 import { requireAppId } from "../crashlytics/utils";
+import { ReportGroup } from "../crashlytics/types";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -21,25 +22,109 @@ interface CommandOptions extends Options {
   endTime?: string;
 }
 
-const VALID_REPORTS = [
-  "TOP_ISSUES",
-  "TOP_VARIANTS",
-  "TOP_VERSIONS",
-  "TOP_OPERATING_SYSTEMS",
-  "TOP_ANDROID_DEVICES",
-  "TOP_APPLE_DEVICES",
-];
+interface ReportTableConfig {
+  headers: string[];
+  getRow: (group: ReportGroup) => string[];
+}
 
 const VALID_ERROR_TYPES = ["FATAL", "NON_FATAL", "ANR"] as const;
 
-const REPORT_NAME_MAP: Record<string, CrashlyticsReport> = {
-  TOP_ISSUES: CrashlyticsReport.TOP_ISSUES,
-  TOP_VARIANTS: CrashlyticsReport.TOP_VARIANTS,
-  TOP_VERSIONS: CrashlyticsReport.TOP_VERSIONS,
-  TOP_OPERATING_SYSTEMS: CrashlyticsReport.TOP_OPERATING_SYSTEMS,
-  TOP_ANDROID_DEVICES: CrashlyticsReport.TOP_ANDROID_DEVICES,
-  TOP_APPLE_DEVICES: CrashlyticsReport.TOP_APPLE_DEVICES,
+const REPORT_CONFIG: Record<string, { report: CrashlyticsReport; table: ReportTableConfig }> = {
+  TOP_ISSUES: {
+    report: CrashlyticsReport.TOP_ISSUES,
+    table: {
+      headers: ["Issue", "Type", "Events", "Users", "State"],
+      getRow: (group) => {
+        const issue = group.issue;
+        const metrics = group.metrics?.[0];
+        return [
+          issue?.title || issue?.id || "-",
+          issue?.errorType || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+          issue?.state || "-",
+        ];
+      },
+    },
+  },
+  TOP_VARIANTS: {
+    report: CrashlyticsReport.TOP_VARIANTS,
+    table: {
+      headers: ["Variant ID", "Events", "Users"],
+      getRow: (group) => {
+        const variant = group.variant;
+        const metrics = group.metrics?.[0];
+        return [
+          variant?.id || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+        ];
+      },
+    },
+  },
+  TOP_VERSIONS: {
+    report: CrashlyticsReport.TOP_VERSIONS,
+    table: {
+      headers: ["Version", "Events", "Users"],
+      getRow: (group) => {
+        const version = group.version;
+        const metrics = group.metrics?.[0];
+        return [
+          version?.displayName || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+        ];
+      },
+    },
+  },
+  TOP_OPERATING_SYSTEMS: {
+    report: CrashlyticsReport.TOP_OPERATING_SYSTEMS,
+    table: {
+      headers: ["Operating System", "Events", "Users"],
+      getRow: (group) => {
+        const os = group.operatingSystem;
+        const metrics = group.metrics?.[0];
+        return [
+          os?.displayName || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+        ];
+      },
+    },
+  },
+  TOP_ANDROID_DEVICES: {
+    report: CrashlyticsReport.TOP_ANDROID_DEVICES,
+    table: {
+      headers: ["Device", "Events", "Users"],
+      getRow: (group) => {
+        const device = group.device;
+        const metrics = group.metrics?.[0];
+        return [
+          device?.marketingName || device?.displayName || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+        ];
+      },
+    },
+  },
+  TOP_APPLE_DEVICES: {
+    report: CrashlyticsReport.TOP_APPLE_DEVICES,
+    table: {
+      headers: ["Device", "Events", "Users"],
+      getRow: (group) => {
+        const device = group.device;
+        const metrics = group.metrics?.[0];
+        return [
+          device?.marketingName || device?.displayName || "-",
+          metrics?.eventsCount?.toLocaleString() || "0",
+          metrics?.impactedUsersCount?.toLocaleString() || "0",
+        ];
+      },
+    },
+  },
 };
+
+const VALID_REPORTS = Object.keys(REPORT_CONFIG);
 
 export const command = new Command("crashlytics:reports:get <report>")
   .description(
@@ -96,94 +181,22 @@ export const command = new Command("crashlytics:reports:get <report>")
 
     const validatedFilter = validateEventFilters(filter);
     const pageSize = options.pageSize ?? 10;
-    const reportType = REPORT_NAME_MAP[reportUpper];
+    const config = REPORT_CONFIG[reportUpper];
 
-    const result = await getReport(reportType, appId, validatedFilter, pageSize);
+    const result = await getReport(config.report, appId, validatedFilter, pageSize);
 
-    // Display table output
     if (result.groups && result.groups.length > 0) {
       logger.info(`\n${result.displayName || reportUpper}`);
       logger.info("");
 
-      if (reportUpper === "TOP_ISSUES") {
-        const table = new Table({
-          head: ["Issue", "Type", "Events", "Users", "State"],
-          style: { head: ["green"] },
-        });
-        for (const group of result.groups) {
-          const issue = group.issue;
-          const metrics = group.metrics?.[0];
-          table.push([
-            issue?.title || issue?.id || "-",
-            issue?.errorType || "-",
-            metrics?.eventsCount?.toLocaleString() || "0",
-            metrics?.impactedUsersCount?.toLocaleString() || "0",
-            issue?.state || "-",
-          ]);
-        }
-        logger.info(table.toString());
-      } else if (reportUpper === "TOP_VARIANTS") {
-        const table = new Table({
-          head: ["Variant ID", "Events", "Users"],
-          style: { head: ["green"] },
-        });
-        for (const group of result.groups) {
-          const variant = group.variant;
-          const metrics = group.metrics?.[0];
-          table.push([
-            variant?.id || "-",
-            metrics?.eventsCount?.toLocaleString() || "0",
-            metrics?.impactedUsersCount?.toLocaleString() || "0",
-          ]);
-        }
-        logger.info(table.toString());
-      } else if (reportUpper === "TOP_VERSIONS") {
-        const table = new Table({
-          head: ["Version", "Events", "Users"],
-          style: { head: ["green"] },
-        });
-        for (const group of result.groups) {
-          const version = group.version;
-          const metrics = group.metrics?.[0];
-          table.push([
-            version?.displayName || "-",
-            metrics?.eventsCount?.toLocaleString() || "0",
-            metrics?.impactedUsersCount?.toLocaleString() || "0",
-          ]);
-        }
-        logger.info(table.toString());
-      } else if (reportUpper === "TOP_OPERATING_SYSTEMS") {
-        const table = new Table({
-          head: ["Operating System", "Events", "Users"],
-          style: { head: ["green"] },
-        });
-        for (const group of result.groups) {
-          const os = group.operatingSystem;
-          const metrics = group.metrics?.[0];
-          table.push([
-            os?.displayName || "-",
-            metrics?.eventsCount?.toLocaleString() || "0",
-            metrics?.impactedUsersCount?.toLocaleString() || "0",
-          ]);
-        }
-        logger.info(table.toString());
-      } else if (reportUpper === "TOP_ANDROID_DEVICES" || reportUpper === "TOP_APPLE_DEVICES") {
-        const table = new Table({
-          head: ["Device", "Events", "Users"],
-          style: { head: ["green"] },
-        });
-        for (const group of result.groups) {
-          const device = group.device;
-          const metrics = group.metrics?.[0];
-          table.push([
-            device?.marketingName || device?.displayName || "-",
-            metrics?.eventsCount?.toLocaleString() || "0",
-            metrics?.impactedUsersCount?.toLocaleString() || "0",
-          ]);
-        }
-        logger.info(table.toString());
+      const table = new Table({
+        head: config.table.headers,
+        style: { head: ["green"] },
+      });
+      for (const group of result.groups) {
+        table.push(config.table.getRow(group));
       }
-
+      logger.info(table.toString());
       logger.info(`\n${result.groups.length} result(s).`);
     } else {
       logger.info(clc.bold("No results found."));
