@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as Table from "cli-table3";
 
 import { Command } from "../command";
 import { FirebaseError } from "../error";
@@ -8,7 +7,7 @@ import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { listEvents } from "../crashlytics/events";
 import { EventFilter } from "../crashlytics/filters";
-import { requireAppId } from "../crashlytics/utils";
+import { requireAppId, renderEventsTable } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -44,21 +43,7 @@ export const command = new Command("crashlytics:events:list")
     if (!result.events || result.events.length === 0) {
       logger.info(clc.bold("No events found."));
     } else {
-      const table = new Table({
-        head: ["Time", "Device", "OS", "Version", "Issue"],
-        style: { head: ["green"] },
-      });
-      for (const event of result.events) {
-        table.push([
-          event.eventTime ? new Date(event.eventTime).toLocaleString() : "-",
-          event.device?.marketingName || event.device?.model || "-",
-          event.operatingSystem?.displayName || "-",
-          event.version?.displayName || "-",
-          event.issue?.title || event.issue?.id || "-",
-        ]);
-      }
-      logger.info(table.toString());
-      logger.info(`\n${result.events.length} event(s).`);
+      renderEventsTable(result.events);
     }
 
     return result;
