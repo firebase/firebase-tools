@@ -2,11 +2,11 @@ import * as clc from "colorette";
 import * as Table from "cli-table3";
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { listNotes } from "../crashlytics/notes";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -19,14 +19,10 @@ export const command = new Command("crashlytics:notes:list <issueId>")
   .option("--app <appId>", "the app id of your Firebase app")
   .option("--page-size <number>", "number of notes to return", 20)
   .action(async (issueId: string, options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
 
     const pageSize = options.pageSize ?? 20;
-    const notes = await listNotes(options.app, issueId, pageSize);
+    const notes = await listNotes(appId, issueId, pageSize);
 
     if (notes.length === 0) {
       logger.info(clc.bold("No notes found."));

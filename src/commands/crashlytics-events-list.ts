@@ -8,6 +8,7 @@ import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { listEvents } from "../crashlytics/events";
 import { EventFilter } from "../crashlytics/filters";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -24,11 +25,7 @@ export const command = new Command("crashlytics:events:list")
   .option("--issue-variant-id <variantId>", "filter by issue variant id")
   .option("--page-size <number>", "number of events to return", 1)
   .action(async (options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
     if (!options.issueId && !options.issueVariantId) {
       throw new FirebaseError("set --issue-id or --issue-variant-id to filter events");
     }
@@ -42,7 +39,7 @@ export const command = new Command("crashlytics:events:list")
     }
 
     const pageSize = options.pageSize ?? 1;
-    const result = await listEvents(options.app, filter, pageSize);
+    const result = await listEvents(appId, filter, pageSize);
 
     if (!result.events || result.events.length === 0) {
       logger.info(clc.bold("No events found."));

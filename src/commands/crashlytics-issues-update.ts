@@ -5,6 +5,7 @@ import * as utils from "../utils";
 import { requireAuth } from "../requireAuth";
 import { updateIssue } from "../crashlytics/issues";
 import { State } from "../crashlytics/types";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -17,11 +18,7 @@ export const command = new Command("crashlytics:issues:update <issueId>")
   .option("--app <appId>", "the app id of your Firebase app")
   .option("--state <state>", "the new state for the issue (OPEN or CLOSED)")
   .action(async (issueId: string, options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
     if (!options.state) {
       throw new FirebaseError("set --state to OPEN or CLOSED");
     }
@@ -32,7 +29,7 @@ export const command = new Command("crashlytics:issues:update <issueId>")
     }
 
     const state = stateUpper as State;
-    const issue = await updateIssue(options.app, issueId, state);
+    const issue = await updateIssue(appId, issueId, state);
 
     utils.logLabeledSuccess("crashlytics", `Issue ${issueId} is now ${String(issue.state)}`);
 
