@@ -8,21 +8,6 @@ import { Event } from "./types";
 
 export const TIMEOUT = 10000;
 
-/**
- * Validates that the --app option is provided.
- * @param appId - The app ID from command options.
- * @returns The validated app ID.
- * @throws FirebaseError if the app ID is not provided.
- */
-export function requireAppId(appId: string | undefined): string {
-  if (!appId) {
-    throw new FirebaseError(
-      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-    );
-  }
-  return appId;
-}
-
 export const CRASHLYTICS_API_CLIENT = new Client({
   urlPrefix: crashlyticsApiOrigin(),
   apiVersion: "v1alpha",
@@ -55,10 +40,15 @@ export function parsePlatform(appId: string): PLATFORM_PATH {
   throw new FirebaseError(`Only android or ios apps are supported.`);
 }
 
-/**
- * Renders a list of Crashlytics events as a table and logs the count.
- * @param events - Array of events to render.
- */
+export function requireAppId(appId: string | undefined): string {
+  if (!appId) {
+    throw new FirebaseError(
+      "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
+    );
+  }
+  return appId;
+}
+
 export function renderEventsTable(events: Event[]): void {
   const table = new Table({
     head: ["Time", "Device", "OS", "Version", "Issue"],
