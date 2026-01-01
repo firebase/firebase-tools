@@ -7,6 +7,7 @@ import { Options } from "../options";
 import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { batchGetEvents } from "../crashlytics/events";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -17,16 +18,12 @@ export const command = new Command("crashlytics:events:batchget <eventNames...>"
   .before(requireAuth)
   .option("--app <appId>", "the app id of your Firebase app")
   .action(async (eventNames: string[], options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
     if (!eventNames || eventNames.length === 0) {
       throw new FirebaseError("provide at least one event resource name");
     }
 
-    const result = await batchGetEvents(options.app, eventNames);
+    const result = await batchGetEvents(appId, eventNames);
 
     if (!result.events || result.events.length === 0) {
       logger.info(clc.bold("No events found."));

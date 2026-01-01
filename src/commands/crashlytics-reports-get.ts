@@ -8,6 +8,7 @@ import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { getReport, CrashlyticsReport } from "../crashlytics/reports";
 import { EventFilter, validateEventFilters } from "../crashlytics/filters";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -54,11 +55,7 @@ export const command = new Command("crashlytics:reports:get <report>")
   .option("--start-time <timestamp>", "filter start time (ISO 8601 format)")
   .option("--end-time <timestamp>", "filter end time (ISO 8601 format)")
   .action(async (report: string, options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
 
     const reportUpper = report.toUpperCase();
     if (!VALID_REPORTS.includes(reportUpper)) {
@@ -101,7 +98,7 @@ export const command = new Command("crashlytics:reports:get <report>")
     const pageSize = options.pageSize ?? 10;
     const reportType = REPORT_NAME_MAP[reportUpper];
 
-    const result = await getReport(reportType, options.app, validatedFilter, pageSize);
+    const result = await getReport(reportType, appId, validatedFilter, pageSize);
 
     // Display table output
     if (result.groups && result.groups.length > 0) {

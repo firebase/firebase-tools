@@ -1,11 +1,11 @@
 import * as Table from "cli-table3";
 
 import { Command } from "../command";
-import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { logger } from "../logger";
 import { requireAuth } from "../requireAuth";
 import { getIssue } from "../crashlytics/issues";
+import { requireAppId } from "../crashlytics/utils";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -16,13 +16,9 @@ export const command = new Command("crashlytics:issues:get <issueId>")
   .before(requireAuth)
   .option("--app <appId>", "the app id of your Firebase app")
   .action(async (issueId: string, options: CommandOptions) => {
-    if (!options.app) {
-      throw new FirebaseError(
-        "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
-      );
-    }
+    const appId = requireAppId(options.app);
 
-    const issue = await getIssue(options.app, issueId);
+    const issue = await getIssue(appId, issueId);
 
     // Display formatted output
     const table = new Table();
