@@ -155,7 +155,10 @@ export const command = new Command("crashlytics:reports:get <report>")
       filter.issueVariantId = options.issueVariantId;
     }
     if (options.issueType) {
-      for (const issueType of options.issueType) {
+      const issueTypes = Array.isArray(options.issueType)
+        ? options.issueType
+        : [options.issueType];
+      for (const issueType of issueTypes) {
         const issueTypeUpper = issueType.toUpperCase();
         if (!VALID_ISSUE_TYPES.includes(issueTypeUpper as (typeof VALID_ISSUE_TYPES)[number])) {
           throw new FirebaseError(
@@ -163,7 +166,7 @@ export const command = new Command("crashlytics:reports:get <report>")
           );
         }
       }
-      filter.issueErrorTypes = options.issueType.map((e) => e.toUpperCase()) as (
+      filter.issueErrorTypes = issueTypes.map((e) => e.toUpperCase()) as (
         | "FATAL"
         | "NON_FATAL"
         | "ANR"
