@@ -88,7 +88,7 @@ a) Change the project directory using the 'firebase_update_environment' tool to 
 b) Initialize a new Firebase project directory using the 'firebase_init' tool.
 
 Confirm with the user before taking action.`;
-    expect(result.content[0].text).to.equal(expectedOutput);
+    expect((result.content[0] as { text: string }).text).to.equal(expectedOutput);
   });
 
   it("should show full environment", async () => {
@@ -144,7 +144,7 @@ firebase.json contents:
 \`\`\`json
 { "hosting": { "public": "public" } }
 \`\`\``;
-    expect(result.content[0].text).to.equal(expectedOutput);
+    expect((result.content[0] as { text: string }).text).to.equal(expectedOutput);
   });
 
   it("should handle a single alias", async () => {
@@ -156,8 +156,10 @@ firebase.json contents:
     });
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include("Active Project ID: test-project (alias: my-alias)");
-    expect(result.content[0].text).to.include(
+    expect((result.content[0] as { text: string }).text).to.include(
+      "Active Project ID: test-project (alias: my-alias)",
+    );
+    expect((result.content[0] as { text: string }).text).to.include(
       `Available Project Aliases (format: '[alias]: [projectId]'): 
 
 my-alias: test-project
@@ -176,10 +178,10 @@ my-alias: test-project
     });
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include(
+    expect((result.content[0] as { text: string }).text).to.include(
       "Active Project ID: test-project (alias: alias1,alias2)",
     );
-    expect(result.content[0].text).to.include(
+    expect((result.content[0] as { text: string }).text).to.include(
       `Available Project Aliases (format: '[alias]: [projectId]'): 
 
 alias1: test-project
@@ -199,8 +201,10 @@ alias2: test-project
     const options = mockToolOptions("test-project", "test@example.com");
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include("Authenticated User: test@example.com");
-    expect(result.content[0].text).to.include(`Available Accounts: 
+    expect((result.content[0] as { text: string }).text).to.include(
+      "Authenticated User: test@example.com",
+    );
+    expect((result.content[0] as { text: string }).text).to.include(`Available Accounts: 
 
 - test@example.com
 - another@example.com
@@ -215,7 +219,7 @@ alias2: test-project
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include(`Detected App IDs: 
+    expect((result.content[0] as { text: string }).text).to.include(`Detected App IDs: 
 
 web-app-id: <UNKNOWN BUNDLE ID>
 
@@ -237,7 +241,7 @@ web-app-id: <UNKNOWN BUNDLE ID>
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include(`Detected App IDs: 
+    expect((result.content[0] as { text: string }).text).to.include(`Detected App IDs: 
 
 web-app-id: <UNKNOWN BUNDLE ID>
 android-app-id: com.foo.bar
@@ -253,7 +257,7 @@ android-app-id: com.foo.bar
     const options = mockToolOptions();
 
     const result = await get_environment.fn({}, options);
-    expect(result.content[0].text).to.include(
+    expect((result.content[0] as { text: string }).text).to.include(
       "Gemini in Firebase Terms of Service: <NOT ACCEPTED>",
     );
   });

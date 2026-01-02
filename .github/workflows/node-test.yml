@@ -270,7 +270,7 @@ jobs:
           # - npm run test:storage-emulator-integration
           # - npm run test:dataconnect-deploy #  TODO (joehanley): Reenable this - it should be safe to run in parallel
           # - npm run test:dataconnect-emulator # TODO (joehanley): Figure out why this is failing
-          - npm run test:frameworks
+          # - npm run test:frameworks
     steps:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0

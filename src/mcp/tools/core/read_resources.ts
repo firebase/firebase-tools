@@ -45,7 +45,7 @@ export const read_resources = tool(
         continue;
       }
       out.push(
-        `<resource uri="${uri}" title="${resolved.mcp.title || resolved.mcp.name}">\n${resolved.result.contents.map((c) => c.text).join("")}\n</resource>`,
+        `<resource uri="${uri}" title="${resolved.mcp.title || resolved.mcp.name}">\n${resolved.result.contents.map((c) => ("text" in c ? c.text : "")).join("")}\n</resource>`,
       );
     }
 
