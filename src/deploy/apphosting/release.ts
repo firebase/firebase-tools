@@ -31,11 +31,9 @@ export default async function (context: Context, options: Options): Promise<void
 
   const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
   if (localBuildBackends.length > 0) {
-    logLabeledWarning(
-      "apphosting",
-      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`,
-    );
-    backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
+    console.log(localBuildBackends);
+    console.log(context.backendStorageUris);
+    console.log(context.backendLocalBuilds);
   }
 
   if (backendIds.length === 0) {
@@ -46,16 +44,17 @@ export default async function (context: Context, options: Options): Promise<void
   const rollouts = backendIds.map((backendId) =>
     // TODO(9114): Add run_command
     // TODO(914): Set the buildConfig.
-    // TODO(914): Set locallyBuiltSource.
     orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
+	config: context.backendLocalBuilds[backendId].buildConfig,
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
+	    locallyBuiltSource: true, // generalize
           },
         },
       },
