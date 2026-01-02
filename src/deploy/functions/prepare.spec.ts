@@ -9,10 +9,13 @@ import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
 import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
-import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
+import * as functionsEnv from "../../functions/env";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+import * as path from "path";
+import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
+import * as remoteSource from "./remoteSource";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -33,6 +36,11 @@ describe("prepare", () => {
     let sandbox: sinon.SinonSandbox;
     let runtimeDelegateStub: RuntimeDelegate;
     let discoverBuildStub: sinon.SinonStub;
+    let getRemoteSourceStub: sinon.SinonStub;
+    let loadUserEnvsStub: sinon.SinonStub;
+
+    const EXTRACTED_SOURCE_DIR = "/tmp/extracted-source";
+    const DEFAULT_ENVS = { FOO: "bar" };
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
@@ -58,6 +66,9 @@ describe("prepare", () => {
         }),
       );
       sandbox.stub(runtimes, "getRuntimeDelegate").resolves(runtimeDelegateStub);
+      getRemoteSourceStub = sandbox.stub(remoteSource, "getRemoteSource").resolves(EXTRACTED_SOURCE_DIR);
+      sandbox.stub(remoteSource, "requireFunctionsYaml");
+      loadUserEnvsStub = sandbox.stub(functionsEnv, "loadUserEnvs").returns(DEFAULT_ENVS);
     });
 
     afterEach(() => {
@@ -68,16 +79,16 @@ describe("prepare", () => {
       const config: ValidatedConfig = [
         { source: "source", codebase: "codebase", prefix: "my-prefix", runtime: "nodejs22" },
       ];
-      const options = {
-        config: {
-          path: (p: string) => p,
-        },
-        projectId: "project",
-      } as unknown as Options;
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const { builds } = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const { builds } = await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
     });
@@ -86,16 +97,16 @@ describe("prepare", () => {
       const config: ValidatedConfig = [
         { source: "source", codebase: "codebase", runtime: "nodejs20" },
       ];
-      const options = {
-        config: {
-          path: (p: string) => p,
-        },
-        projectId: "project",
-      } as unknown as Options;
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      const { builds } = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      const { builds } = await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
 
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });
@@ -109,16 +120,16 @@ describe("prepare", () => {
           runtime: "nodejs22",
         },
       ];
-      const options = {
-        config: {
-          path: (p: string) => p,
-        },
-        projectId: "project",
-      } as unknown as Options;
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = { firebase: firebaseConfig, customKey: "customValue" };
 
-      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
 
       expect(discoverBuildStub.calledOnce).to.be.true;
       const callArgs = discoverBuildStub.firstCall.args;
@@ -135,21 +146,81 @@ describe("prepare", () => {
           runtime: "nodejs22",
         },
       ];
-      const options = {
-        config: {
-          path: (p: string) => p,
-        },
-        projectId: "project",
-      } as unknown as Options;
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = { firebase: firebaseConfig, customKey: "customValue" };
 
-      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+      await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
 
       expect(discoverBuildStub.calledOnce).to.be.true;
       const callArgs = discoverBuildStub.firstCall.args;
       expect(callArgs[0]).to.deep.equal(runtimeConfig);
       expect(callArgs[0]).to.have.property("customKey", "customValue");
+    });
+
+    it("should handle remote sources by extracting and discovering", async () => {
+      const config: ValidatedConfig = [
+        {
+          codebase: "remote",
+          remoteSource: { repository: "user/repo", ref: "main" },
+          runtime: "nodejs20",
+        },
+      ];
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig };
+
+      const { builds, sourceDirs, envs } = await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
+
+      expect(remoteSource.getRemoteSource).to.have.been.calledWith(
+        /* repository= */ "user/repo",
+        /* ref= */ "main",
+        /* destDir= */ sinon.match.string,
+        /* subDir= */ undefined,
+      );
+      expect(builds.remote).to.exist;
+      expect(sourceDirs.remote).to.equal(EXTRACTED_SOURCE_DIR);
+      expect(envs.remote).to.deep.equal({});
+    });
+
+    it("should pass configDir to loadUserEnvs for remote sources", async () => {
+      const config: ValidatedConfig = [
+        {
+          codebase: "remote",
+          remoteSource: { repository: "user/repo", ref: "main" },
+          runtime: "nodejs20",
+          configDir: "config-dir",
+        },
+      ];
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig };
+
+      const { envs, sourceDirs } = await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
+
+      expect(sourceDirs.remote).to.equal(EXTRACTED_SOURCE_DIR);
+      expect(functionsEnv.loadUserEnvs).to.have.been.calledWith(
+        sinon.match({
+          functionsSource: EXTRACTED_SOURCE_DIR,
+          configDir: path.resolve("/project", "config-dir"),
+        }),
+      );
+      expect(envs.remote).to.deep.equal(DEFAULT_ENVS);
     });
   });
 

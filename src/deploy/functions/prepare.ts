@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as path from "path";
 
 import * as args from "./args";
 
@@ -21,7 +22,6 @@ import {
   storageOrigin,
   secretManagerOrigin,
 } from "../../api";
-import { Options } from "../../options";
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
@@ -68,6 +68,19 @@ export interface LoadedCodebases {
   builds: Record<string, build.Build>;
   /** Map of codebase ID to the resolved absolute source directory on the local file system. */
   sourceDirs: Record<string, string>;
+  /** Map of codebase ID to the loaded user environment variables. */
+  envs: Record<string, Record<string, string>>;
+}
+
+/** @internal */
+export interface DiscoveryContext {
+  projectId: string;
+  projectDir: string;
+  projectAlias?: string;
+  config: ValidatedConfig;
+  filters?: EndpointFilter[];
+  firebaseConfig: args.FirebaseConfig;
+  runtimeConfig: Record<string, unknown>;
 }
 
 /**
@@ -125,13 +138,16 @@ export async function prepare(
   // This drives GA4 metric `has_runtime_config` in the functions deploy reporter.
   context.hasRuntimeConfig = Object.keys(runtimeConfig).some((k) => k !== "firebase");
   // Phase 1. Load codebases
-  const { builds: wantBuilds, sourceDirs: loadedSourceDirs } = await loadCodebases(
-    context.config,
-    options,
+  const loadedCodebases = await loadCodebases({
+    projectId,
+    projectDir: options.config.projectDir,
+    projectAlias: options.projectAlias,
+    config: context.config,
+    filters: context.filters,
     firebaseConfig,
     runtimeConfig,
-    context.filters,
-  );
+  });
+  const { builds: wantBuilds, sourceDirs: loadedSourceDirs, envs: loadedEnvs } = loadedCodebases;
 
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
@@ -147,21 +163,18 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(context.firebaseConfig, projectId);
+
+    // Environment variables are now loaded in Phase 1 (loadCodebases)
+    const userEnvs = loadedEnvs[codebase] || {};
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: loadedSourceDirs[codebase],
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-
-    // For remote sources, environment variables are only loaded if 'configDir' is explicitly specified.
-    // For local sources, they default to loading from the source directory.
-    let userEnvs: Record<string, string> = {};
-    if (config.configDir || isLocalConfig(config)) {
-      if (config.configDir) {
-        userEnvOpt.configDir = options.config.path(config.configDir);
-      }
-      userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    if (config.configDir) {
+      userEnvOpt.configDir = options.config.path(config.configDir);
     }
 
     const envs = { ...userEnvs, ...firebaseEnvs };
@@ -174,7 +187,7 @@ export async function prepare(
       isEmulator: false,
     });
 
-    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    // functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -466,21 +479,16 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
  * Exported for use by an internal command (internaltesting:functions:discover) only.
  * @internal
  */
-export async function loadCodebases(
-  config: ValidatedConfig,
-  options: Options,
-  firebaseConfig: args.FirebaseConfig,
-  runtimeConfig: Record<string, any> = {},
-  filters?: EndpointFilter[],
-): Promise<LoadedCodebases> {
-  const codebases = targetCodebases(config, filters);
-  const projectId = needProjectId(options);
+export async function loadCodebases(context: DiscoveryContext): Promise<LoadedCodebases> {
+  const codebases = targetCodebases(context.config, context.filters);
+  const projectId = context.projectId;
 
   const wantBuilds: Record<string, build.Build> = {};
   const sourceDirs: Record<string, string> = {};
+  const envs: Record<string, Record<string, string>> = {};
 
   for (const codebase of codebases) {
-    const codebaseConfig = configForCodebase(config, codebase);
+    const codebaseConfig = configForCodebase(context.config, codebase);
     let sourceDir: string;
 
     if (isLocalConfig(codebaseConfig)) {
@@ -490,7 +498,7 @@ export async function loadCodebases(
           `No functions code detected at default location(./functions), and no functions source defined in firebase.json`,
         );
       }
-      sourceDir = options.config.path(sourceDirName);
+      sourceDir = path.resolve(context.projectDir, sourceDirName);
     } else {
       const { repository, ref, dir } = codebaseConfig.remoteSource;
       const tmpObj = tmp.dirSync({
@@ -505,7 +513,7 @@ export async function loadCodebases(
     const delegateContext: runtimes.DelegateContext = {
       projectId,
       sourceDir,
-      projectDir: options.config.projectDir,
+      projectDir: context.projectDir,
       runtime: codebaseConfig.runtime,
     };
     const firebaseJsonRuntime = codebaseConfig.runtime;
@@ -513,9 +521,9 @@ export async function loadCodebases(
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
         `${firebaseJsonRuntime} specified in firebase.json.Valid values are: \n` +
-          Object.keys(supported.RUNTIMES)
-            .map((s) => `- ${s}`)
-            .join("\n"),
+        Object.keys(supported.RUNTIMES)
+          .map((s) => `- ${s}`)
+          .join("\n"),
       );
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
@@ -525,17 +533,15 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(context.firebaseConfig, projectId);
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
 
     const codebaseRuntimeConfig = shouldUseRuntimeConfig(codebaseConfig)
-      ? runtimeConfig
-      : isLocalConfig(codebaseConfig)
-        ? { firebase: firebaseConfig }
-        : {};
+      ? context.runtimeConfig
+      : { firebase: context.firebaseConfig };
 
     const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
       ...firebaseEnvs,
@@ -547,8 +553,26 @@ export async function loadCodebases(
     discoveredBuild.runtime = codebaseConfig.runtime;
     build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
     wantBuilds[codebase] = discoveredBuild;
+
+    // Load user environment variables
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: context.projectAlias,
+    };
+    if (codebaseConfig.configDir) {
+      userEnvOpt.configDir = path.resolve(context.projectDir, codebaseConfig.configDir);
+    }
+
+    // For remote sources, environment variables are only loaded if 'configDir' is explicitly specified.
+    // For local sources, they default to loading from the source directory.
+    let userEnvs: Record<string, string> = {};
+    if (codebaseConfig.configDir || isLocalConfig(codebaseConfig)) {
+      userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    }
+    envs[codebase] = userEnvs;
   }
-  return { builds: wantBuilds, sourceDirs };
+  return { builds: wantBuilds, sourceDirs, envs };
 }
 
 // Genkit almost always requires an API key, so warn if the customer is about to deploy

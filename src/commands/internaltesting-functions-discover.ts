@@ -41,13 +41,15 @@ export const command = new Command("internaltesting:functions:discover")
       }
     }
 
-    const { builds: wantBuilds } = await loadCodebases(
-      fnConfig,
-      options,
+    const result = await loadCodebases({
+      projectId,
+      projectDir: options.config.projectDir,
+      projectAlias: options.projectAlias,
+      config: fnConfig,
       firebaseConfig,
       runtimeConfig,
-      undefined, // no filters
-    );
+    });
+    const wantBuilds = result.builds;
 
     logger.info(JSON.stringify(wantBuilds, null, 2));
     return wantBuilds;
