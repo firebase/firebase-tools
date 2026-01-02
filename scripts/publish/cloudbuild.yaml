@@ -135,6 +135,7 @@ steps:
       - |
         if [ "${_VERSION}" != "preview" ]; then
           node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
         fi
