@@ -75,7 +75,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebasedataconnect.schemas.update",
   ],
   apphosting: ["firebaseapphosting.sites.update"],
-  auth: [], // TODO: Add these
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
 };
 
 export const command = new Command("deploy")

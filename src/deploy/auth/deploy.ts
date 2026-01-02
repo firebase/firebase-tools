@@ -22,17 +22,21 @@ export async function deploy(context: any, options: Options): Promise<void> {
 
   const authInput: FirebaseAuthInput = {};
   const providers = config.providers;
+  const logMsg: string[] = [];
 
   if (providers) {
     if (providers.anonymous === true) {
+      logMsg.push("anonymous");
       authInput.anonymousAuthProviderMode = ProviderMode.PROVIDER_ENABLED;
     }
 
     if (providers.emailPassword === true) {
+      logMsg.push("email/password");
       authInput.emailAuthProviderMode = ProviderMode.PROVIDER_ENABLED;
     }
 
     if (providers.googleSignIn) {
+      logMsg.push("Google sign-in");
       authInput.googleSigninProviderMode = ProviderMode.PROVIDER_ENABLED;
       authInput.googleSigninProviderConfig = {
         publicDisplayName: providers.googleSignIn.oAuthBrandDisplayName,
@@ -48,18 +52,7 @@ export async function deploy(context: any, options: Options): Promise<void> {
     return;
   }
 
-  const enabledProviders: string[] = [];
-  if (authInput.anonymousAuthProviderMode === ProviderMode.PROVIDER_ENABLED) {
-    enabledProviders.push("anonymous");
-  }
-  if (authInput.emailAuthProviderMode === ProviderMode.PROVIDER_ENABLED) {
-    enabledProviders.push("email/password");
-  }
-  if (authInput.googleSigninProviderMode === ProviderMode.PROVIDER_ENABLED) {
-    enabledProviders.push("Google sign-in");
-  }
-
-  logger.info(`Enabling auth providers: ${enabledProviders.join(", ")}...`);
+  logger.info(`Enabling auth providers: ${logMsg.join(", ")}...`);
 
   await provisionFirebaseApp({
     project: {
@@ -77,5 +70,5 @@ export async function deploy(context: any, options: Options): Promise<void> {
     },
   });
 
-  logSuccess(`Auth providers enabled: ${enabledProviders.join(", ")}`);
+  logSuccess(`Auth providers enabled: ${logMsg.join(", ")}`);
 }

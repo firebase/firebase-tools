@@ -60,18 +60,17 @@ export async function askQuestions(setup: Setup): Promise<void> {
   if (!setup.featureInfo) {
     setup.featureInfo = {};
   }
-  // We cast to any here because SetupInfo definition in init/index.ts has been updated but TS might need to re-check
-  (setup.featureInfo as any).auth = providersConfig;
+  setup.featureInfo.auth = { providers: providersConfig };
 }
 
 export async function actuate(setup: Setup, config: Config): Promise<void> {
-  const providersConfig = (setup.featureInfo as any)?.auth;
+  const authConfig = setup.featureInfo?.auth;
 
-  if (!providersConfig) {
+  if (!authConfig) {
     return;
   }
 
-  config.set("auth", { providers: providersConfig });
+  config.set("auth", authConfig);
   config.writeProjectFile("firebase.json", config.src);
 
   logger.info("");
