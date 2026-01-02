@@ -26,6 +26,7 @@ export const VALID_DEPLOY_TARGETS = [
   "extensions",
   "dataconnect",
   "apphosting",
+  "auth",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],
@@ -73,6 +74,8 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
   ],
+  apphosting: ["firebaseapphosting.sites.update"],
+  auth: [], // TODO: Add these
 };
 
 export const command = new Command("deploy")

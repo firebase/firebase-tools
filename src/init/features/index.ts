@@ -55,3 +55,4 @@ export {
   AiLogicInfo,
   actuate as aiLogicActuate,
 } from "./ailogic";
+export { askQuestions as authAskQuestions, actuate as authActuate, AuthInfo } from "./auth";

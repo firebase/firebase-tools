@@ -31,7 +31,9 @@ export class Config {
     "storage",
     "remoteconfig",
     "dataconnect",
+    "dataconnect",
     "apphosting",
+    "auth",
   ];
 
   public options: any;
