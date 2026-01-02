@@ -25,6 +25,7 @@ import { Options } from "../../options";
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
+  endpointMatchesDeploymentFilters,
   getEndpointFilters,
   groupEndpointsByCodebase,
   targetCodebases,
@@ -70,10 +71,18 @@ export async function prepare(
 
   context.config = normalizeAndValidate(options.config.src.functions);
   context.filters = getEndpointFilters(options, context.config); // Parse --only filters for functions.
+  context.filtersExcept = getEndpointFilters(options, context.config, "except");
 
-  const codebases = targetCodebases(context.config, context.filters);
+  const codebases = targetCodebases(context.config, context.filters, context.filtersExcept);
   if (codebases.length === 0) {
-    throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
+    if (context.filters?.length) {
+      throw new FirebaseError("No function matches given --only filters. Aborting deployment.");
+    }
+    logLabeledBullet(
+      "functions",
+      "No functions codebases to deploy after applying --except filters, skipping.",
+    );
+    return;
   }
   for (const codebase of codebases) {
     logLabeledBullet("functions", `preparing codebase ${clc.bold(codebase)} for deployment`);
@@ -118,6 +127,7 @@ export async function prepare(
     firebaseConfig,
     runtimeConfig,
     context.filters,
+    context.filtersExcept,
   );
 
   // == Phase 1.5 Prepare extensions found in codebases if any
@@ -272,7 +282,7 @@ export async function prepare(
   // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
   const matchingBackend = backend.matchingBackend(wantBackend, (endpoint) => {
-    return endpointMatchesAnyFilter(endpoint, context.filters);
+    return endpointMatchesDeploymentFilters(endpoint, context.filters, context.filtersExcept);
   });
   await promptForFailurePolicies(options, matchingBackend, haveBackend);
   await promptForMinInstances(options, matchingBackend, haveBackend);
@@ -452,8 +462,9 @@ export async function loadCodebases(
   firebaseConfig: args.FirebaseConfig,
   runtimeConfig: Record<string, unknown>,
   filters?: EndpointFilter[],
+  excludeFilters?: EndpointFilter[],
 ): Promise<Record<string, build.Build>> {
-  const codebases = targetCodebases(config, filters);
+  const codebases = targetCodebases(config, filters, excludeFilters);
   const projectId = needProjectId(options);
 
   const wantBuilds: Record<string, build.Build> = {};

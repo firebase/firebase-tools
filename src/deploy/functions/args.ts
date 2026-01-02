@@ -36,6 +36,7 @@ export interface Payload {
 export interface Context {
   projectId: string;
   filters?: deployHelper.EndpointFilter[];
+  filtersExcept?: deployHelper.EndpointFilter[];
 
   // Filled in the "prepare" phase.
   config?: projectConfig.ValidatedConfig;

@@ -26,6 +26,23 @@ export function endpointMatchesAnyFilter(
 }
 
 /**
+ * Returns true if an endpoint should be deployed based on include/exclude filters.
+ *
+ * - If includeFilters is undefined, all endpoints are included by default.
+ * - If excludeFilters is provided and the endpoint matches, it is excluded even if included.
+ */
+export function endpointMatchesDeploymentFilters(
+  endpoint: backend.Endpoint,
+  includeFilters?: EndpointFilter[],
+  excludeFilters?: EndpointFilter[],
+): boolean {
+  if (excludeFilters?.length && endpointMatchesAnyFilter(endpoint, excludeFilters)) {
+    return false;
+  }
+  return endpointMatchesAnyFilter(endpoint, includeFilters);
+}
+
+/**
  * Returns true if endpoint matches the given filter.
  */
 export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: EndpointFilter): boolean {
@@ -105,14 +122,16 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
 export function getEndpointFilters(
-  options: { only?: string },
+  options: { only?: string; except?: string },
   config: ValidatedConfig,
+  filterType: "only" | "except" = "only",
 ): EndpointFilter[] | undefined {
-  if (!options.only) {
+  const rawFilters = filterType === "only" ? options.only : options.except;
+  if (!rawFilters) {
     return undefined;
   }
 
-  const selectors = options.only.split(",");
+  const selectors = rawFilters.split(",");
   const filters: EndpointFilter[] = [];
   for (let selector of selectors) {
     if (selector.startsWith("functions:")) {
@@ -155,29 +174,32 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
 }
 
 /**
- * Returns list of codebases specified in firebase.json filtered by --only filters if present.
+ * Returns list of codebases specified in firebase.json filtered by --only/--except filters if present.
  */
-export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
-  if (!filters) {
-    return [...codebasesFromConfig];
-  }
+export function targetCodebases(
+  config: ValidatedConfig,
+  filters?: EndpointFilter[],
+  excludeFilters?: EndpointFilter[],
+): string[] {
+  let targetedCodebases = [...new Set(Object.values(config).map((c) => c.codebase))];
+  if (filters) {
+    const codebasesFromFilters = [
+      ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
+    ];
 
-  const codebasesFromFilters = [
-    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
-  ];
-
-  if (codebasesFromFilters.length === 0) {
-    return [...codebasesFromConfig];
-  }
-
-  const intersections: string[] = [];
-  for (const codebase of codebasesFromConfig) {
-    if (codebasesFromFilters.includes(codebase)) {
-      intersections.push(codebase);
+    if (codebasesFromFilters.length > 0) {
+      targetedCodebases = targetedCodebases.filter((codebase) =>
+        codebasesFromFilters.includes(codebase),
+      );
     }
   }
-  return intersections;
+
+  if (excludeFilters?.length) {
+    targetedCodebases = targetedCodebases.filter(
+      (codebase) => !isCodebaseFiltered(codebase, excludeFilters),
+    );
+  }
+  return targetedCodebases;
 }
 
 /**

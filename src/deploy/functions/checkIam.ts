@@ -1,7 +1,10 @@
 import { bold } from "colorette";
 
 import { logger } from "../../logger";
-import { getEndpointFilters, endpointMatchesAnyFilter } from "./functionsDeployHelper";
+import {
+  getEndpointFilters,
+  endpointMatchesDeploymentFilters,
+} from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { flattenArray } from "../../functional";
@@ -75,10 +78,12 @@ export async function checkHttpIam(
     return;
   }
   const filters = context.filters || getEndpointFilters(options, context.config!);
+  const excludeFilters =
+    context.filtersExcept || getEndpointFilters(options, context.config!, "except");
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
     .filter(backend.isHttpsTriggered)
-    .filter((f) => endpointMatchesAnyFilter(f, filters));
+    .filter((f) => endpointMatchesDeploymentFilters(f, filters, excludeFilters));
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));
