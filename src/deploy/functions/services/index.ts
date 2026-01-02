@@ -8,7 +8,7 @@ import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
 import { ensureFirestoreTriggerRegion } from "./firestore";
-import { ensureDataConnectTriggerRegion, obtainDataConnectBindings } from "./dataconnect";
+import { ensureDataConnectTriggerRegion } from "./dataconnect";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -136,7 +136,7 @@ const firestoreService: Service = {
 const dataconnectService: Service = {
   name: "dataconnect",
   api: "firebasedataconnect.googleapis.com",
-  requiredProjectBindings: obtainDataConnectBindings,
+  requiredProjectBindings: noopProjectBindings,
   ensureTriggerRegion: ensureDataConnectTriggerRegion,
   validateTrigger: noop,
   registerTrigger: noop,
@@ -184,10 +184,6 @@ export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
 
   if (backend.isBlockingTriggered(endpoint)) {
     return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || noOpService;
-  }
-
-  if (backend.isDataConnectGraphqlTriggered(endpoint)) {
-    return dataconnectService;
   }
 
   return noOpService;

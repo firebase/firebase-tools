@@ -709,14 +709,16 @@ describe("Fabricator", () => {
     });
 
     describe("dataConnectGraphqlTrigger", () => {
-      it("doesn't set invoker by default", async () => {
+      it("sets FDC P4SA invoker by default", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
         run.setInvokerCreate.resolves();
         const ep = endpoint({ dataConnectGraphqlTrigger: {} }, { platform: "gcfv2" });
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
-        expect(run.setInvokerCreate).to.not.have.been.called;
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+        ]);
       });
 
       it("sets explicit invoker", async () => {
@@ -733,7 +735,10 @@ describe("Fabricator", () => {
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          "custom@",
+          `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+        ]);
       });
 
       it("doesn't set private invoker on create", async () => {
@@ -910,7 +915,10 @@ describe("Fabricator", () => {
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", [
+        "custom@",
+        `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+      ]);
     });
 
     it("sets explicit invoker on taskQueueTrigger", async () => {

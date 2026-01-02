@@ -1,9 +1,7 @@
 import * as backend from "../backend";
 import { dataconnectOrigin } from "../../../api";
 import { FirebaseError } from "../../../error";
-import { iam } from "../../../gcp";
 
-const CLOUD_RUN_INVOKER_ROLE = "roles/run.invoker";
 const AUTOPUSH_DATACONNECT_SA_DOMAIN = "gcp-sa-autopush-dataconnect.iam.gserviceaccount.com";
 const STAGING_DATACONNECT_SA_DOMAIN = "gcp-sa-staging-dataconnect.iam.gserviceaccount.com";
 const PROD_DATACONNECT_SA_DOMAIN = "gcp-sa-firebasedataconnect.iam.gserviceaccount.com";
@@ -26,7 +24,11 @@ export function ensureDataConnectTriggerRegion(
   return Promise.resolve();
 }
 
-function getServiceAccount(projectNumber: string): string {
+/**
+ * Gets the P4SA for Firebase Data Connect for the given project number.
+ * @param projectNumber project identifier
+ */
+export function getDataConnectP4SA(projectNumber: string): string {
   const origin = dataconnectOrigin();
   if (origin.includes("autopush")) {
     return `service-${projectNumber}@${AUTOPUSH_DATACONNECT_SA_DOMAIN}`;
@@ -35,17 +37,4 @@ function getServiceAccount(projectNumber: string): string {
     return `service-${projectNumber}@${STAGING_DATACONNECT_SA_DOMAIN}`;
   }
   return `service-${projectNumber}@${PROD_DATACONNECT_SA_DOMAIN}`;
-}
-
-/**
- * Finds the required project level IAM bindings for the Firebase Data Connect service agent
- * @param projectNumber project identifier
- */
-export function obtainDataConnectBindings(projectNumber: string): Promise<Array<iam.Binding>> {
-  const dataConnectServiceAgent = `serviceAccount:${getServiceAccount(projectNumber)}`;
-  const cloudRunInvokerBinding = {
-    role: CLOUD_RUN_INVOKER_ROLE,
-    members: [dataConnectServiceAgent],
-  };
-  return Promise.resolve([cloudRunInvokerBinding]);
 }

@@ -47,7 +47,7 @@ describe("ensureDatabaseTriggerRegion", () => {
   });
 });
 
-describe("obtainDataConnectBindings", () => {
+describe("getDataConnectP4SA", () => {
   let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
@@ -58,45 +58,32 @@ describe("obtainDataConnectBindings", () => {
     process.env = originalEnv;
   });
 
-  it("should return the correct binding for autopush", async () => {
+  it("should return the correct service account for autopush", async () => {
     process.env.FIREBASE_DATACONNECT_URL =
       "https://autopush-firebasedataconnect.sandbox.googleapis.com";
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
 
-    const bindings = await dataconnect.obtainDataConnectBindings(projectNumber);
-
-    expect(bindings.length).to.equal(1);
-    expect(bindings[0]).to.deep.equal({
-      role: "roles/run.invoker",
-      members: [
-        `serviceAccount:service-${projectNumber}@gcp-sa-autopush-dataconnect.iam.gserviceaccount.com`,
-      ],
-    });
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-autopush-dataconnect.iam.gserviceaccount.com`,
+    );
   });
 
-  it("should return the correct binding for staging", async () => {
+  it("should return the correct service account for staging", async () => {
     process.env.FIREBASE_DATACONNECT_URL =
       "https://staging-firebasedataconnect.sandbox.googleapis.com";
 
-    const bindings = await dataconnect.obtainDataConnectBindings(projectNumber);
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
 
-    expect(bindings.length).to.equal(1);
-    expect(bindings[0]).to.deep.equal({
-      role: "roles/run.invoker",
-      members: [
-        `serviceAccount:service-${projectNumber}@gcp-sa-staging-dataconnect.iam.gserviceaccount.com`,
-      ],
-    });
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-staging-dataconnect.iam.gserviceaccount.com`,
+    );
   });
 
-  it("should return the correct binding for prod", async () => {
-    const bindings = await dataconnect.obtainDataConnectBindings(projectNumber);
+  it("should return the correct service account for prod", async () => {
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
 
-    expect(bindings.length).to.equal(1);
-    expect(bindings[0]).to.deep.equal({
-      role: "roles/run.invoker",
-      members: [
-        `serviceAccount:service-${projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
-      ],
-    });
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+    );
   });
 });
