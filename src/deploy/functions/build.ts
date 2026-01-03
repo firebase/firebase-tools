@@ -71,6 +71,15 @@ export interface HttpsTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
+export interface DataConnectGraphqlTrigger {
+  // Which service account should be able to trigger this function in addition to the Firebase Data Connect P4SA.
+  // No value means that only the Firebase Data Connect P4SA can trigger this function.
+  // For more context, see go/cf3-http-access-control
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  // The file path relative to the Firebase project directory where the GraphQL schema is stored.
+  schemaFilePath?: string;
+}
+
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
 interface CallableTrigger {
@@ -150,6 +159,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type DataConnectGraphqlTriggered = { dataConnectGraphqlTrigger: DataConnectGraphqlTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -157,6 +167,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -166,6 +177,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -559,6 +577,21 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    const dataConnectGraphqlTrigger: backend.DataConnectGraphqlTrigger = {};
+    if (endpoint.dataConnectGraphqlTrigger.invoker === null) {
+      dataConnectGraphqlTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectGraphqlTrigger.invoker !== "undefined") {
+      dataConnectGraphqlTrigger.invoker = endpoint.dataConnectGraphqlTrigger.invoker.map(
+        r.resolveString,
+      );
+    }
+    proto.copyIfPresent(
+      dataConnectGraphqlTrigger,
+      endpoint.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
+    return { dataConnectGraphqlTrigger };
   } else if (isCallableTriggered(endpoint)) {
     const trigger: CallableTriggered = { callableTrigger: {} };
     proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
