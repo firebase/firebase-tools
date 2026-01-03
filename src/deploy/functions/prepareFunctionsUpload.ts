@@ -49,8 +49,8 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   from.pipe(to);
   await from.finalize();
-  return new Promise((resolve, reject) => {
-    to.on("finish", resolve);
+  return new Promise<void>((resolve, reject) => {
+    to.on("finish", () => resolve());
     to.on("error", reject);
   });
 }
