@@ -35,11 +35,10 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
-    default: false,
+    default: true,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
@@ -62,7 +61,7 @@ export const ALL_EXPERIMENTS = experiments({
     fullDescription:
       "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
       "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
-    default: true,
+    default: false,
     public: true,
   },
   runfunctions: {
