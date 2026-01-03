@@ -92,14 +92,9 @@ async function packageSource(
       });
     }
     for (const name of additionalSources) {
-      const absPath = path.join(projectDir, name);
+      const absPath = utils.resolveWithin(projectDir, name);
       if (!fs.existsSync(absPath)) {
         throw new FirebaseError(clc.bold(absPath) + " does not exist.", { exit: 1 });
-      }
-      if (path.relative(projectDir, absPath).includes("..")) {
-        throw new FirebaseError(clc.bold(absPath) + " is outside of the project directory.", {
-          exit: 1,
-        });
       }
       const mode = fs.statSync(absPath).mode;
       const fileHash = await getSourceHash(absPath);
