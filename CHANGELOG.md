@@ -1,4 +1,5 @@
 - Fixed pricing calculation for Cloud Functions deployed to newer regions (africa-south1, europe-west8, me-west1, and others) when using minInstances. (#9696)
+- Fixed regression where v2 functions sharing the same source triggered separate builds instead of reusing builds (#9685)
 - Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
 - Fixed a bug when `firebase emulators:start` incorrectly deletes discovery file of another emulator process (#9672)
 - Added `onGraphRequest` function support (#9612)
