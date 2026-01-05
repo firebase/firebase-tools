@@ -87,7 +87,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
   }
   if (!source && !remoteSource) {
     throw new FirebaseError(
-      "codebase source must be specified. Must specify either 'source' or 'remoteSource' in a functions config.",
+      "Must specify either 'source' or 'remoteSource' in functions configuration.",
     );
   }
 

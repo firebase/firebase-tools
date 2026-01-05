@@ -34,14 +34,14 @@ describe("projectConfig", () => {
       // @ts-expect-error invalid function config for test
       expect(() => projectConfig.validate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/,
+        /Must specify either 'source' or 'remoteSource'/,
       );
     });
 
     it("fails validation given config w/ empty source", () => {
       expect(() => projectConfig.validate([{ source: "" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/,
+        /Must specify either 'source' or 'remoteSource'/,
       );
     });
 
@@ -256,14 +256,14 @@ describe("projectConfig", () => {
       // @ts-expect-error invalid function config for test
       expect(() => projectConfig.normalizeAndValidate({ runtime: "nodejs22" })).to.throw(
         FirebaseError,
-        /codebase source must be specified/,
+        /Must specify either 'source' or 'remoteSource'/,
       );
     });
 
     it("fails validation given singleton config w empty source", () => {
       expect(() => projectConfig.normalizeAndValidate({ source: "" })).to.throw(
         FirebaseError,
-        /codebase source must be specified/,
+        /Must specify either 'source' or 'remoteSource'/,
       );
     });
 
@@ -271,7 +271,7 @@ describe("projectConfig", () => {
       // @ts-expect-error invalid function config for test
       expect(() => projectConfig.normalizeAndValidate([{ runtime: "nodejs22" }])).to.throw(
         FirebaseError,
-        /codebase source must be specified/,
+        /Must specify either 'source' or 'remoteSource'/,
       );
     });
 

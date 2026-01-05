@@ -222,6 +222,74 @@ describe("prepare", () => {
       );
       expect(envs.remote).to.deep.equal(DEFAULT_ENVS);
     });
+
+    it("should pass dir to getRemoteSource for monorepo support", async () => {
+      const config: ValidatedConfig = [
+        {
+          codebase: "remote",
+          remoteSource: { repository: "user/repo", ref: "v1.0.0", dir: "packages/functions" },
+          runtime: "nodejs20",
+        },
+      ];
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig };
+
+      await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
+
+      expect(remoteSource.getRemoteSource).to.have.been.calledWith(
+        "user/repo",
+        "v1.0.0",
+        sinon.match.string,
+        "packages/functions",
+      );
+    });
+
+    it("should require functions.yaml for remote sources", async () => {
+      const config: ValidatedConfig = [
+        {
+          codebase: "remote",
+          remoteSource: { repository: "user/repo", ref: "main" },
+          runtime: "nodejs20",
+        },
+      ];
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig };
+
+      await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
+
+      expect(remoteSource.requireFunctionsYaml).to.have.been.calledWith(EXTRACTED_SOURCE_DIR);
+    });
+
+    it("should not call getRemoteSource for local sources", async () => {
+      const config: ValidatedConfig = [
+        { source: "functions", codebase: "local", runtime: "nodejs20" },
+      ];
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig };
+
+      await prepare.loadCodebases({
+        projectId: "project",
+        projectDir: "/project",
+        config,
+        firebaseConfig,
+        runtimeConfig,
+      });
+
+      expect(remoteSource.getRemoteSource).to.not.have.been.called;
+      expect(remoteSource.requireFunctionsYaml).to.not.have.been.called;
+    });
   });
 
   describe("inferDetailsFromExisting", () => {

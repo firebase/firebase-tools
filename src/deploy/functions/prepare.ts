@@ -187,7 +187,9 @@ export async function prepare(
       isEmulator: false,
     });
 
-    // functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    if (isLocalConfig(config) || config.configDir) {
+      functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -495,7 +497,7 @@ export async function loadCodebases(context: DiscoveryContext): Promise<LoadedCo
       const sourceDirName = codebaseConfig.source;
       if (!sourceDirName) {
         throw new FirebaseError(
-          `No functions code detected at default location(./functions), and no functions source defined in firebase.json`,
+          `No functions code detected at default location (./functions), and no functions source defined in firebase.json`,
         );
       }
       sourceDir = path.resolve(context.projectDir, sourceDirName);
@@ -520,7 +522,7 @@ export async function loadCodebases(context: DiscoveryContext): Promise<LoadedCo
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
-        `${firebaseJsonRuntime} specified in firebase.json.Valid values are: \n` +
+        `${firebaseJsonRuntime} specified in firebase.json. Valid values are:\n` +
         Object.keys(supported.RUNTIMES)
           .map((s) => `- ${s}`)
           .join("\n"),
@@ -578,9 +580,6 @@ export async function loadCodebases(context: DiscoveryContext): Promise<LoadedCo
 // Genkit almost always requires an API key, so warn if the customer is about to deploy
 // a function and doesn't have one. To avoid repetitive nagging, only warn on the first
 // deploy of the function.
-/**
- *
- */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -615,9 +614,6 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
 
 // Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
 // require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
-/**
- *
- */
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,
