@@ -304,6 +304,48 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
+/** Upsert a secondary schema, handling invalid connector errors. */
+export async function upsertSecondarySchema(args: {
+  options: Options;
+  schema: Schema;
+  stats?: DeployStats;
+}): Promise<void> {
+  const { options, schema, stats } = args;
+  const { serviceName } = getIdentifiers(schema);
+  try {
+    await upsertSchema(schema, false);
+  } catch (err: any) {
+    if (err?.status !== 400) {
+      throw err;
+    }
+    const invalidConnectors = errors.getInvalidConnectors(err);
+    if (!invalidConnectors.length) {
+      // If we got a different type of error, throw it
+      const gqlErrs = errors.getGQLErrors(err);
+      if (gqlErrs) {
+        throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
+      }
+      throw err;
+    }
+    if (stats) {
+      if (invalidConnectors.length) {
+        stats.numSchemaInvalidConnectors += invalidConnectors.length;
+      }
+    }
+    const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
+      options,
+      serviceName,
+      invalidConnectors,
+      false,
+    );
+    if (shouldDeleteInvalidConnectors) {
+      await deleteInvalidConnectors(invalidConnectors);
+    }
+    // Then, try to upsert schema again. If there still is an error, just throw it now
+    await upsertSchema(schema, false);
+  }
+}
+
 export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
   const role = options.role as string;
   const email = options.email as string;
