@@ -53,7 +53,6 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
-import * as experiments from "../../experiments";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -95,16 +94,11 @@ export async function prepare(
 
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  const allowFunctionsConfig = experiments.isEnabled("legacyRuntimeConfigCommands");
 
   const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
-  if (
-    allowFunctionsConfig &&
-    checkAPIsEnabled[1] &&
-    targetedCodebaseConfigs.some(shouldUseRuntimeConfig)
-  ) {
+  if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
@@ -230,13 +224,33 @@ export async function prepare(
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
+      const schPathSet = new Set<string>();
+      for (const e of backend.allEndpoints(wantBackend)) {
+        if (
+          backend.isDataConnectGraphqlTriggered(e) &&
+          e.dataConnectGraphqlTrigger.schemaFilePath
+        ) {
+          schPathSet.add(e.dataConnectGraphqlTrigger.schemaFilePath);
+        }
+      }
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [...schPathSet],
+      );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
       const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload);
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [],
+        configForUpload,
+      );
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }

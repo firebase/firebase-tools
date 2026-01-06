@@ -1,3 +1,4 @@
+- Fixed regression where v2 functions sharing the same source triggered separate builds instead of reusing builds (#9685)
 - Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
 - Fixed a bug when `firebase emulators:start` incorrectly deletes discovery file of another emulator process (#9672)
 - Added support for enabling Firebase Authentication providers via `firebase deploy`. You can configure providers in `firebase.json` like so:
@@ -16,3 +17,4 @@
   }
 }
 ```
+- Added `onGraphRequest` function support (#9612)
