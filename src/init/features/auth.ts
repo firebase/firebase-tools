@@ -16,10 +16,23 @@ export interface AuthInfo {
 }
 
 export async function askQuestions(setup: Setup): Promise<void> {
+  const authConfig = setup.config.auth;
   const choices = [
-    { name: "Google Sign-In", value: "google", checked: false },
-    { name: "Email/Password", value: "email", checked: false },
-    { name: "Anonymous", value: "anonymous", checked: false },
+    {
+      name: "Google Sign-In",
+      value: "google",
+      checked: !!authConfig?.providers?.googleSignIn,
+    },
+    {
+      name: "Email/Password",
+      value: "email",
+      checked: !!authConfig?.providers?.emailPassword,
+    },
+    {
+      name: "Anonymous",
+      value: "anonymous",
+      checked: !!authConfig?.providers?.anonymous,
+    },
   ];
 
   const providers = await checkbox<string>({
@@ -28,7 +41,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     choices: choices,
   });
 
-  const providersConfig: any = {};
+  const providersConfig: AuthInfo["providers"] = {};
 
   if (providers.includes("anonymous")) {
     providersConfig.anonymous = true;
@@ -46,12 +59,17 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
     googleConfig.oAuthBrandDisplayName = await input({
       message: "What display name would you like to use for your OAuth brand?",
-      default: setup.project?.projectId || "My App",
+      default:
+        authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName ||
+        setup.project?.projectId ||
+        "My App",
     });
 
     googleConfig.supportEmail = await input({
       message: "What support email would you like to register for your OAuth brand?",
-      default: setup.project ? `support@${setup.project.projectId}.firebaseapp.com` : undefined,
+      default:
+        authConfig?.providers?.googleSignIn?.supportEmail ||
+        (setup.project ? `support@${setup.project.projectId}.firebaseapp.com` : undefined),
     });
 
     providersConfig.googleSignIn = googleConfig;
