@@ -55,9 +55,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
     logger.info("");
     logger.info("Configuring Google Sign-In...");
 
-    const googleConfig: any = {};
-
-    googleConfig.oAuthBrandDisplayName = await input({
+    const oAuthBrandDisplayName = await input({
       message: "What display name would you like to use for your OAuth brand?",
       default:
         authConfig?.providers?.googleSignIn?.oAuthBrandDisplayName ||
@@ -65,14 +63,17 @@ export async function askQuestions(setup: Setup): Promise<void> {
         "My App",
     });
 
-    googleConfig.supportEmail = await input({
+    const supportEmail = await input({
       message: "What support email would you like to register for your OAuth brand?",
       default:
         authConfig?.providers?.googleSignIn?.supportEmail ||
         (setup.project ? `support@${setup.project.projectId}.firebaseapp.com` : undefined),
     });
 
-    providersConfig.googleSignIn = googleConfig;
+    providersConfig.googleSignIn = {
+      oAuthBrandDisplayName,
+      supportEmail,
+    };
   }
 
   if (!setup.featureInfo) {
