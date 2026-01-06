@@ -163,7 +163,7 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.template.containerConcurrency = 50;
+      expectedServiceInput.template.maxInstanceRequestConcurrency = 50;
 
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
