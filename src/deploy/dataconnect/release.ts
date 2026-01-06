@@ -104,7 +104,7 @@ export default async function (context: Context, options: Options): Promise<void
     .flatMap((s) => s);
   for (const schema of wantSecondarySchemas) {
     await upsertSecondarySchema({ options, schema, stats: dataconnect.deployStats });
-    utils.logLabeledSuccess("dataconnect", `Migrated schema ${schema.name}`);
+    utils.logLabeledSuccess("dataconnect", `Deployed schema ${schema.name}`);
     dataconnect.deployStats.numSchemaMigrated++;
   }
 

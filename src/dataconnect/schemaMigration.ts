@@ -311,7 +311,7 @@ export async function upsertSecondarySchema(args: {
   stats?: DeployStats;
 }): Promise<void> {
   const { options, schema, stats } = args;
-  const { serviceName } = getIdentifiers(schema);
+  const serviceName = schema.name.replace(`/schemas/${schema.name.split("/").pop()}`, "");
   try {
     await upsertSchema(schema, false);
   } catch (err: any) {
@@ -328,9 +328,7 @@ export async function upsertSecondarySchema(args: {
       throw err;
     }
     if (stats) {
-      if (invalidConnectors.length) {
-        stats.numSchemaInvalidConnectors += invalidConnectors.length;
-      }
+      stats.numSchemaInvalidConnectors += invalidConnectors.length;
     }
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
       options,
