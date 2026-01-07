@@ -408,7 +408,7 @@ export type Endpoint = TargetIds &
     // State of the endpoint.
     state?: EndpointState;
 
-  // Fields for Cloud Run platform (for no-build path)
+    // Fields for Cloud Run platform (for no-build path)
     baseImageUri?: string;
     command?: string[];
     args?: string[];

@@ -399,7 +399,7 @@ export function envWithTypes(
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, params.ParamValue>) { }
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -558,7 +558,7 @@ export function toBackend(
           if (!backend.isValidEgressSetting(egressSettings)) {
             throw new FirebaseError(
               `Value "${egressSettings}" is an invalid ` +
-              "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
+                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
             );
           }
           bkEndpoint.vpc.egressSettings = egressSettings;
