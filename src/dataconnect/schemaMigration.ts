@@ -311,7 +311,7 @@ export async function upsertSecondarySchema(args: {
   stats?: DeployStats;
 }): Promise<void> {
   const { options, schema, stats } = args;
-  const serviceName = schema.name.replace(`/schemas/${schema.name.split("/").pop()}`, "");
+  const serviceName = serviceNameFromSchema(schema);
   try {
     await upsertSchema(schema, false);
   } catch (err: any) {
@@ -414,13 +414,19 @@ export function getIdentifiers(schema: Schema): {
     );
   }
   const instanceId = instanceName.split("/").pop()!;
-  const serviceName = schema.name.replace(`/schemas/${MAIN_SCHEMA_ID}`, "");
+  const serviceName = serviceNameFromSchema(schema);
   return {
     databaseId,
     instanceId,
     instanceName,
     serviceName,
   };
+}
+
+/** Extracts the service name from the schema name. */
+export function serviceNameFromSchema(schema: Schema): string {
+  const regex = /\/schemas\/[^/]*$/;
+  return schema.name.replace(regex, "");
 }
 
 function suggestedCommand(serviceName: string, invalidConnectorNames: string[]): string {
