@@ -225,7 +225,6 @@ export interface SecretEnvVar {
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
-// Run is an automatic migration from gcfv2 and is not used on the wire.
 export type FunctionsPlatform = backend.FunctionsPlatform;
 export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
@@ -241,7 +240,7 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
-  // Defaults to "gcfv2". "Run" will be an additional option defined later
+  // Defaults to "gcfv2".
   platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
@@ -288,7 +287,7 @@ export type Endpoint = Triggered & {
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   labels?: Record<string, string | Expression<string>> | null;
 
-  // Fields for "run" platform (no-build)
+  // Fields for Cloud Run platform (for no-build path)
   baseImageUri?: string;
   command?: string[];
   args?: string[];
@@ -400,7 +399,7 @@ export function envWithTypes(
 // The class also recognizes that if the input is not null the output cannot be
 // null.
 class Resolver {
-  constructor(private readonly paramValues: Record<string, params.ParamValue>) {}
+  constructor(private readonly paramValues: Record<string, params.ParamValue>) { }
 
   // NB: The (Extract<T, null> | number) says "If T can be null, the return value"
   // can be null. If we know input is not null, the return type is known to not
@@ -559,7 +558,7 @@ export function toBackend(
           if (!backend.isValidEgressSetting(egressSettings)) {
             throw new FirebaseError(
               `Value "${egressSettings}" is an invalid ` +
-                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
+              "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
             );
           }
           bkEndpoint.vpc.egressSettings = egressSettings;

@@ -24,9 +24,6 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
-/**
- *
- */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -154,9 +151,6 @@ async function packageSource(
   return { pathToSource: tmpFile, hash };
 }
 
-/**
- *
- */
 export async function prepareFunctionsUpload(
   projectDir: string,
   sourceDir: string,
@@ -168,9 +162,6 @@ export async function prepareFunctionsUpload(
   return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
 
-/**
- *
- */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 
