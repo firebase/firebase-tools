@@ -4,6 +4,9 @@ import * as yaml from "js-yaml";
 import { DelegateContext, RuntimeDelegate } from "./index";
 import { buildFromV1Alpha1 } from "./discovery/v1alpha1";
 
+/**
+ *
+ */
 export async function tryCreateDelegate(
   context: DelegateContext,
 ): Promise<RuntimeDelegate | undefined> {
@@ -41,7 +44,7 @@ export async function tryCreateDelegate(
         // No-op
       });
     },
-    discoverBuild: async (config, envs) => {
+    discoverBuild: async (_config, _envs) => {
       const content = await fs.readFile(yamlPath, "utf8");
       const parsed = yaml.load(content);
       // We pass stub values for project/region as they are often overridden or unused in Build object

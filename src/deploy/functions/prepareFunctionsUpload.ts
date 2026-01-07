@@ -40,9 +40,9 @@ export async function getFunctionsConfig(projectId: string): Promise<Record<stri
     if (errorCode === 500 || errorCode === 503) {
       throw new FirebaseError(
         "Cloud Runtime Config is currently experiencing issues, " +
-        "which is preventing your functions from being deployed. " +
-        "Please wait a few minutes and then try to deploy your functions again." +
-        "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project.",
+          "which is preventing your functions from being deployed. " +
+          "Please wait a few minutes and then try to deploy your functions again." +
+          "\nRun `firebase deploy --except functions` if you want to continue deploying the rest of your project.",
       );
     }
   }
@@ -144,11 +144,11 @@ async function packageSource(
 
   utils.logBullet(
     clc.cyan(clc.bold("functions:")) +
-    " packaged " +
-    clc.bold(sourceDir) +
-    " (" +
-    filesize(archive.pointer()) +
-    ") for uploading",
+      " packaged " +
+      clc.bold(sourceDir) +
+      " (" +
+      filesize(archive.pointer()) +
+      ") for uploading",
   );
   const hash = hashes.join(".");
   return { pathToSource: tmpFile, hash };
