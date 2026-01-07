@@ -99,7 +99,9 @@ export class Fabricator {
     });
     const promiseResults = await utils.allSettled(deployChangesets);
 
-    const errs = promiseResults.filter((r) => r.status === "rejected").map((r) => r.reason);
+    const errs = promiseResults
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as utils.PromiseRejectedResult).reason);
     if (errs.length) {
       logger.debug(
         "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
@@ -497,7 +499,7 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker))
+        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -577,7 +579,7 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
