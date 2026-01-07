@@ -44,7 +44,7 @@ export async function tryCreateDelegate(
         // No-op
       });
     },
-    discoverBuild: async (_config, _envs) => {
+    discoverBuild: async () => {
       const content = await fs.readFile(yamlPath, "utf8");
       const parsed = yaml.load(content);
       // We pass stub values for project/region as they are often overridden or unused in Build object
