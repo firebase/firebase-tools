@@ -37,7 +37,7 @@ import { loadRC } from "../rc";
 import { requireAuth } from "../requireAuth";
 import { timeoutFallback } from "../timeout";
 import { trackGA4 } from "../track";
-import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory, requireGeminiToS } from "./errors";
+import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory } from "./errors";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { ServerPrompt } from "./prompt";
 import { availablePrompts } from "./prompts/index";
@@ -373,16 +373,11 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     // Check if the user is logged in.
+    // Check if the user is logged in.
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
       return mcpAuthError(skipAutoAuthForStudio);
-    }
-
-    // Check if the tool requires Gemini in Firebase API.
-    if (tool.mcp._meta?.requiresGemini) {
-      const err = await requireGeminiToS(projectId);
-      if (err) return err;
     }
 
     const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
