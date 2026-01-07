@@ -33,9 +33,8 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
       /** Set this on a tool if it *always* requires a project to work. */
       requiresProject?: boolean;
       /** Set this on a tool if it *always* requires a signed-in user to work. */
+      /** Set this on a tool if it *always* requires a signed-in user to work. */
       requiresAuth?: boolean;
-      /** Set this on a tool if it uses Gemini in Firebase API in any way. */
-      requiresGemini?: boolean;
       /** Tools are grouped by feature. --only can configure what tools is available. */
       feature?: string;
     };

@@ -4,7 +4,6 @@ import { mcpError, toContent } from "../../util";
 import { setNewActive } from "../../../commands/use";
 import { assertAccount, setProjectAccount } from "../../../auth";
 import { existsSync } from "node:fs";
-import { configstore } from "../../../configstore";
 
 export const update_environment = tool(
   "core",
@@ -31,12 +30,6 @@ export const update_environment = tool(
         .describe(
           "The email address of the signed-in user to authenticate as when interacting with the current project directory.",
         ),
-      accept_gemini_tos: z
-        .boolean()
-        .optional()
-        .describe(
-          "Accept the Gemini in Firebase terms of service. Always prompt the user for confirmation before accepting on their behalf.",
-        ),
     }),
     annotations: {
       title: "Update Firebase Environment",
@@ -48,10 +41,7 @@ export const update_environment = tool(
       requiresProject: false,
     },
   },
-  async (
-    { project_dir, active_project, active_user_account, accept_gemini_tos },
-    { config, rc, host },
-  ) => {
+  async ({ project_dir, active_project, active_user_account }, { config, rc, host }) => {
     let output = "";
     if (project_dir) {
       if (!existsSync(project_dir))
@@ -69,10 +59,6 @@ export const update_environment = tool(
       assertAccount(active_user_account, { mcp: true });
       setProjectAccount(host.cachedProjectDir!, active_user_account);
       output += `- Updated active account to '${active_user_account}'\n`;
-    }
-    if (accept_gemini_tos) {
-      configstore.set("gemini", true);
-      output += `- Accepted the Gemini in Firebase terms of service\n`;
     }
     if (output === "") output = "No changes were made.";
     return toContent(output);

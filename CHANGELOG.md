@@ -2,3 +2,4 @@
 - Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
 - Fixed a bug when `firebase emulators:start` incorrectly deletes discovery file of another emulator process (#9672)
 - Added `onGraphRequest` function support (#9612)
+- Removed MCP tools and prompts that required Gemini in Firebase terms of service.
