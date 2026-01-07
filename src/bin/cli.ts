@@ -49,7 +49,7 @@ export function cli(pkg: any) {
   fetchMOTD();
 
   process.on("exit", (code) => {
-    code = process.exitCode || code;
+    code = typeof process.exitCode === "number" ? process.exitCode : code;
     if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
       fs.unlinkSync(logFilename);
     }

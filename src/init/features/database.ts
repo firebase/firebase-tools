@@ -59,7 +59,7 @@ function writeDBRules(rules: string, filename: string, config: Config): void {
 }
 
 async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
-  const selectedLocation = await select({
+  const selectedLocation = await select<DatabaseLocation>({
     message: "Please choose the location for your default Realtime Database instance:",
     choices: [
       { name: "us-central1", value: DatabaseLocation.US_CENTRAL1 },
