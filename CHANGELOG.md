@@ -1,1 +1,0 @@
-- Fixed an issue causing ESM errors on Node <20.19 and <22.12.
