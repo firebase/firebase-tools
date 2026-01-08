@@ -27,6 +27,20 @@ Your `firebase.json` should include the `firestore` key pointing to your rules a
 }
 ```
 
+## Deploy rules and indexes
+To deploy all rules and indexes
+```
+firebase deploy --only firestore
+```
+To deploy just rules
+```
+firebase deploy --only firestore:rules
+```
+To deploy just indexes
+```
+firebase deploy --only firestore:indexes
+```
+
 ## Local Emulation
 
 To run Firestore locally for development and testing:
