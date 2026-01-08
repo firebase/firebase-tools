@@ -25,6 +25,7 @@ import * as run from "../../../gcp/run";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
+import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -421,6 +422,15 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase Data Connect P4SA must always be an invoker.
+      const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
+      invoker.push(getDataConnectP4SA(this.projectNumber));
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
       await this.executor
@@ -547,6 +557,14 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      invoker =
+        endpoint.dataConnectGraphqlTrigger.invoker === null
+          ? []
+          : endpoint.dataConnectGraphqlTrigger.invoker;
+      if (invoker) {
+        invoker.push(getDataConnectP4SA(this.projectNumber));
+      }
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
