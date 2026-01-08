@@ -45,9 +45,13 @@ function namespacePrompts(
 export async function availablePrompts(
   ctx: McpContext,
   activeFeatures?: ServerFeature[],
+  detectedFeatures?: ServerFeature[],
 ): Promise<ServerPrompt[]> {
-  const allPrompts = getAllPrompts(activeFeatures);
+  if (activeFeatures?.length) {
+    return getAllPrompts(activeFeatures);
+  }
 
+  const allPrompts = getAllPrompts(detectedFeatures);
   const availabilities = await Promise.all(
     allPrompts.map((p) => {
       if (p.isAvailable) {
