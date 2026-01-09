@@ -1,0 +1,1 @@
+- Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
