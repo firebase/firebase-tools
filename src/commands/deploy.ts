@@ -74,7 +74,7 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
   ],
-  apphosting: ["firebaseapphosting.sites.update"],
+  apphosting: [],
   auth: ["firebase.projects.update", "firebaseauth.configs.update"],
 };
 
