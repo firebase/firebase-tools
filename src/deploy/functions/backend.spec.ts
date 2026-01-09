@@ -94,7 +94,7 @@ describe("Backend", () => {
           },
         },
       ],
-      containerConcurrency: 80,
+      maxInstanceRequestConcurrency: 80,
     },
     generation: 1,
     createTime: "2023-01-01T00:00:00Z",
