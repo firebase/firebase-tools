@@ -57,9 +57,11 @@ export interface TestExecutionResult {
 }
 
 export interface TestCase {
-  startUri: string;
+  id?: string;
+  startUri?: string;
   displayName: string;
   instructions: Instructions;
+  prerequisiteTestCaseId?: string;
 }
 
 export interface Instructions {
