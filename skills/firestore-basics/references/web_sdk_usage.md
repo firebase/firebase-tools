@@ -4,8 +4,10 @@ This guide focuses on the **Modular Web SDK** (v9+), which is tree-shakeable and
 
 ## Initialization
 
+```javascript
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+```
 
 const firebaseConfig = {
   // Your config options. Get the values by running 'firebase apps:sdkconfig <platform> <app-id>'

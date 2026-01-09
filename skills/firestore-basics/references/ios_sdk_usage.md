@@ -48,7 +48,7 @@ db.collection("cities").document("LA").setData(city) { err in
 db.collection("cities").document("LA").setData([ "population": 3900000 ], merge: true)
 ```
 
-### Add a Document with Auto-ID (`addDocument`)
+###// Add a Document with Auto-ID (`addDocument`)
 
 ```swift
 var ref: DocumentReference? = nil
@@ -59,7 +59,7 @@ ref = db.collection("cities").addDocument(data: [
     if let err = err {
         print("Error adding document: \(err)")
     } else {
-        print("Document added with ID: \(ref!.documentID)")
+        print("Document added with ID: \(ref?.documentID ?? "unknown")")
     }
 }
 ```
@@ -141,7 +141,7 @@ db.collection("cities").getDocuments() { (querySnapshot, err) in
     if let err = err {
         print("Error getting documents: \(err)")
     } else {
-        for document in querySnapshot!.documents {
+        for document in querySnapshot?.documents ?? [] {
             print("\(document.documentID) => \(document.data())")
         }
     }

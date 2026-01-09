@@ -79,16 +79,14 @@ Create a file named `firestore.indexes.json` with an empty configuration to star
 
 
 ## Deploy rules and indexes
-To deploy all rules and indexes
-```
+```bash
+# To deploy all rules and indexes
 firebase deploy --only firestore
-```
-To deploy just rules
-```
+
+# To deploy just rules
 firebase deploy --only firestore:rules
-```
-To deploy just indexes
-```
+
+# To deploy just indexes
 firebase deploy --only firestore:indexes
 ```
 

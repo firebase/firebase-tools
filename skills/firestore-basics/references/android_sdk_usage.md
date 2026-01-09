@@ -7,6 +7,7 @@ This guide uses **Kotlin** and **KTX extensions**, which correspond to the moder
 ```kotlin
 // In your Activity or Application class
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.ktx.Firebase
 
 val db = Firebase.firestore
@@ -73,7 +74,7 @@ db.runTransaction { transaction ->
     val snapshot = transaction.get(sfDocRef)
     
     // Note: You can also use FieldValue.increment() for simple counters
-    val newPopulation = snapshot.getDouble("population")!! + 1
+    val newPopulation = (snapshot.getDouble("population") ?: 0.0) + 1
     transaction.update(sfDocRef, "population", newPopulation)
     
     // Success
@@ -151,6 +152,6 @@ db.collection("cities")
 
 ```kotlin
 db.collection("cities")
-    .orderBy("name", Query.Direction.KEY_ASCENDING)
+    .orderBy("name", Query.Direction.ASCENDING)
     .limit(3)
 ```

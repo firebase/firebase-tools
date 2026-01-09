@@ -65,14 +65,12 @@ match /users/{userId} {
 ### Allow only verified emails
 Requires users to verify ownership of the email address before using it to read or write data
 ```
-  match /databases/{database}/documents {
-    // Allow access based on email domain
-    match /some_collection/{document} {
-     allow read: if request.auth != null
-                 && request.auth.email_verified
-                 && request.auth.email.endsWith('@example.com')
-    }
-  }
+// Allow access based on email domain
+match /some_collection/{document} {
+  allow read: if request.auth != null
+              && request.auth.email_verified
+              && request.auth.email.endsWith('@example.com');
+}
 ```
 
 ### Validate data in write operations
