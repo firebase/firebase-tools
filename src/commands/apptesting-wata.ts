@@ -13,7 +13,7 @@ import { needProjectId } from "../projectUtils";
 import { consoleUrl } from "../utils";
 import { AppPlatform, listFirebaseApps, checkForApps } from "../management/apps";
 
-export const command = new Command("apptesting:execute <target>")
+export const command = new Command("apptesting:wata <target>")
   .description("Run automated tests written in natural language driven by AI")
   .option(
     "--app <app_id>",
