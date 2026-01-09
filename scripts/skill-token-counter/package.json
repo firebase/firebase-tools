@@ -1,0 +1,19 @@
+{
+  "name": "skill-token-counter",
+  "version": "1.0.0",
+  "description": "Utility to count tokens in a skill definition",
+  "main": "index.ts",
+  "scripts": {
+    "count": "tsx index.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.35.0",
+    "glob": "^10.3.10",
+    "gray-matter": "^4.0.3",
+    "tsx": "^4.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.3"
+  }
+}
