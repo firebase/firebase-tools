@@ -1,0 +1,1 @@
+- Fix proxy.js/proxy.ts in Next.js 16 (#9631)
