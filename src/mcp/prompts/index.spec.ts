@@ -50,10 +50,9 @@ describe("availablePrompts", () => {
 
   it("should include feature-specific prompts when activeFeatures is provided", async () => {
     const prompts = await availablePrompts(mockContext, ["crashlytics"]);
-    const crashPrompt = prompts.find((p) => p.mcp._meta?.feature === "crashlytics");
 
-    // Should exist because we bypass availability check
-    expect(crashPrompt).to.exist;
+    const features = [...new Set(prompts.map((p) => p.mcp._meta?.feature))];
+    expect(features).to.have.members(["core", "crashlytics"]);
 
     // getDefaultFeatureAvailabilityCheck execution is deferred/lazy-loaded in prompt.ts
     // Since activeFeatures bypasses checking .isAvailable on the prompt, the stub should NOT be called.
@@ -71,9 +70,8 @@ describe("availablePrompts", () => {
     getDefaultFeatureAvailabilityCheckStub.withArgs("crashlytics").returns(async () => true);
 
     const prompts = await availablePrompts(mockContext, [], ["crashlytics"]);
-    const crashPrompt = prompts.find((p) => p.mcp._meta?.feature === "crashlytics");
-
-    expect(crashPrompt).to.exist;
+    const features = [...new Set(prompts.map((p) => p.mcp._meta?.feature))];
+    expect(features).to.have.members(["core", "crashlytics"]);
 
     // Fallback logic calls isAvailable(), which invokes our lazy check, calling getDefault...
     expect(getDefaultFeatureAvailabilityCheckStub.called).to.be.true;
