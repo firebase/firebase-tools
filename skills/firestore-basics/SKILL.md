@@ -16,7 +16,7 @@ To set up Cloud Firestore in your Firebase project and local environment, see [p
 
 For guidance on writing and deploying Firestore Security Rules to protect your data, see [security_rules.md](references/security_rules.md).
 
-## SDK UsageGuides
+## SDK Usage
 
 To learn how to use Cloud Firestore in your application code, choose your platform:
 

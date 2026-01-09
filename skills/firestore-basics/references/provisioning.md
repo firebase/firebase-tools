@@ -1,22 +1,16 @@
 # Provisioning Cloud Firestore
 
-## CLI Initialization
+## Manual Initialization
 
-To set up Firestore in your project directory, use the Firebase CLI:
+For non-interactive environments (like AI agents), it is recommended to manually create the necessary configuration files instead of using `firebase init`.
 
-```bash
-firebase init firestore
-```
+1.  **Create `firebase.json`**: This file configures the Firebase CLI.
+2.  **Create `firestore.rules`**: This file contains your security rules.
+3.  **Create `firestore.indexes.json`**: This file contains your index definitions.
 
-This command will:
-1.  Ask you to select a default Firebase project (or create a new one).
-2.  Create a `firestore.rules` file for your security rules.
-3.  Create a `firestore.indexes.json` file for your index definitions.
-4.  Update your `firebase.json` configuration file.
+### 1. Create `firebase.json`
 
-## Configuration (firebase.json)
-
-Your `firebase.json` should include the `firestore` key pointing to your rules and indexes:
+Create a file named `firebase.json` in your project root with the following content. If this file already exists, instead append to the existing JSON:
 
 ```json
 {
@@ -26,6 +20,63 @@ Your `firebase.json` should include the `firestore` key pointing to your rules a
   }
 }
 ```
+
+This will use the default database. To use a different database, specify the database ID and location. You can check the list of available databases using `firebase firestore:databases:list`. If the database does not exist, it will be created when you deploy:
+
+```json
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json",
+    "database": "my-database-id",
+    "location": "us-central1"
+  }
+}
+```
+ 
+ To use Enterprise edition, specify the `enterprise` field.
+
+```json
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json",
+    "enterprise": true,
+    "database": "my-database-id",
+    "location": "us-central1"
+  }
+}
+```
+
+### 2. Create `firestore.rules`
+
+Create a file named `firestore.rules`. A good starting point (locking down the database) is:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+*See [security_rules.md](security_rules.md) for how to write actual rules.*
+
+### 3. Create `firestore.indexes.json`
+
+Create a file named `firestore.indexes.json` with an empty configuration to start:
+
+```json
+{
+  "indexes": [],
+  "fieldOverrides": []
+}
+```
+
+*See [indexes.md](indexes.md) for how to configure indexes.*
+
 
 ## Deploy rules and indexes
 To deploy all rules and indexes
