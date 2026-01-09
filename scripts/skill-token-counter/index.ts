@@ -49,8 +49,10 @@ async function main() {
   const frontmatterString = JSON.stringify(parsed.data, null, 2);
   const bodyString = parsed.content;
 
-  const frontmatterTokens = await countTokens(frontmatterString);
-  const bodyTokens = await countTokens(bodyString);
+  const [frontmatterTokens, bodyTokens] = await Promise.all([
+    countTokens(frontmatterString),
+    countTokens(bodyString),
+  ]);
 
   console.log(`SKILL.md Frontmatter: ${frontmatterTokens} tokens`);
   console.log(`SKILL.md Body:        ${bodyTokens} tokens`);
@@ -63,12 +65,21 @@ async function main() {
 
   if (referenceFiles.length > 0) {
     console.log("\nReferences:");
-    for (const refFile of referenceFiles) {
-      const content = fs.readFileSync(refFile, "utf-8");
-      const tokens = await countTokens(content);
-      totalTokens += tokens;
-      const filename = path.basename(refFile);
-      console.log(`  ${filename.padEnd(25)} ${tokens} tokens`);
+
+    const results = await Promise.all(
+      referenceFiles.map(async (refFile) => {
+        const content = fs.readFileSync(refFile, "utf-8");
+        const tokens = await countTokens(content);
+        return {
+          filename: path.basename(refFile),
+          tokens,
+        };
+      }),
+    );
+
+    for (const result of results) {
+      totalTokens += result.tokens;
+      console.log(`  ${result.filename.padEnd(25)} ${result.tokens} tokens`);
     }
   } else {
     console.log("\nNo references found in references/");
@@ -77,7 +88,7 @@ async function main() {
   console.log(`\nTotal Tokens: ${totalTokens}`);
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
