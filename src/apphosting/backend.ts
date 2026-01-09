@@ -79,6 +79,7 @@ export async function doSetup(
   serviceAccount?: string,
   primaryRegion?: string,
   rootDir?: string,
+  runtime?: string,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -125,6 +126,22 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
+  if (!runtime) {
+    if (nonInteractive) {
+      runtime = "nodejs";
+    } else {
+      runtime = await select({
+        message: "Which runtime do you want to use?",
+        choices: [
+          { name: "Node.js (default)", value: "nodejs" },
+          { name: "Python 3.12", value: "python312" },
+          { name: "Go 1.22", value: "go122" },
+        ],
+        default: "nodejs",
+      });
+    }
+  }
+
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
     webAppName ? webAppName : null,
@@ -143,6 +160,7 @@ export async function doSetup(
     gitRepositoryLink,
     webApp?.id,
     rootDir,
+    runtime,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -352,6 +370,7 @@ export async function createBackend(
   repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
+  runtime?: string,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -365,6 +384,7 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
+    runtime: runtime ? { value: runtime } : undefined,
   };
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
