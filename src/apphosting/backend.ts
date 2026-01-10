@@ -134,8 +134,7 @@ export async function doSetup(
         message: "Which runtime do you want to use?",
         choices: [
           { name: "Node.js (default)", value: "nodejs" },
-          { name: "Python 3.12", value: "python312" },
-          { name: "Go 1.22", value: "go122" },
+          { name: "Node.js 22", value: "nodejs22" },
         ],
         default: "nodejs",
       });

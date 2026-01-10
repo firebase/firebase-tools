@@ -30,7 +30,7 @@ export const command = new Command("apphosting:backends:create")
   .option("--root-dir <rootDir>", "specify the root directory for the backend.")
   .option(
     "--runtime <runtime>",
-    "specify the runtime for the backend (e.g., nodejs, python312, go122)",
+    "specify the runtime for the backend (e.g., nodejs, nodejs22)",
   )
   .before(requireAuth)
   .before(ensureApiEnabled)
