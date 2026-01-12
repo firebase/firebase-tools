@@ -1,1 +1,2 @@
+- Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
 - Fix proxy.js/proxy.ts in Next.js 16 (#9631)
