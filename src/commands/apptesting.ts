@@ -22,7 +22,7 @@ const defaultDevices = [
   },
 ];
 
-export const command = new Command("apptesting:mobile-execute <target>")
+export const command = new Command("apptesting:execute <target>")
   .description("Run mobile automated tests written in natural language driven by AI")
   .option(
     "--app <app_id>",
@@ -87,7 +87,7 @@ export const command = new Command("apptesting:mobile-execute <target>")
     logger.info(
       clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(testInvocations.length)}`),
     );
-    logger.info(await marked(`View progress and results in the [Firebase Console]`));
+    logger.info(await marked(`View progress and results in the Firebase Console`));
   });
 
 function pluralizeTests(numTests: number) {
