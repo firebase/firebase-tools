@@ -1,2 +1,3 @@
+- Removed MCP tools and prompts that required Gemini in Firebase terms of service.
 - Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
 - Removed timeout when connecting to Cloud SQL. Hopefully, should mitigate issue #9314. (#9725)
