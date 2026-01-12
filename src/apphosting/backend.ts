@@ -29,6 +29,8 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 
+const DEFAULT_RUNTIME = "nodejs";
+
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -128,15 +130,15 @@ export async function doSetup(
 
   if (!runtime) {
     if (nonInteractive) {
-      runtime = "nodejs";
+      runtime = DEFAULT_RUNTIME;
     } else {
       runtime = await select({
         message: "Which runtime do you want to use?",
         choices: [
-          { name: "Node.js (default)", value: "nodejs" },
+          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
           { name: "Node.js 22", value: "nodejs22" },
         ],
-        default: "nodejs",
+        default: DEFAULT_RUNTIME,
       });
     }
   }

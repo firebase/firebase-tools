@@ -125,63 +125,37 @@ describe("apphosting setup functions", () => {
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
-    it("should create a new backend with runtime", async () => {
-      createBackendStub.resolves(op);
-      pollOperationStub.resolves(completeBackend);
+    const runtimes = ["nodejs22", ""];
+    for (const runtime of runtimes) {
+      it(`should create a new backend with runtime ${runtime}`, async () => {
+        createBackendStub.resolves(op);
+        pollOperationStub.resolves(completeBackend);
 
-      await createBackend(
-        projectId,
-        location,
-        backendId,
-        "custom-service-account",
-        cloudBuildConnRepo,
-        webAppId,
-        "/",
-        "nodejs",
-      );
+        await createBackend(
+          projectId,
+          location,
+          backendId,
+          "custom-service-account",
+          cloudBuildConnRepo,
+          webAppId,
+          "/",
+          runtime,
+        );
 
-      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
-        servingLocality: "GLOBAL_ACCESS",
-        codebase: {
-          repository: cloudBuildConnRepo.name,
-          rootDirectory: "/",
-        },
-        labels: deploymentTool.labels(),
-        serviceAccount: "custom-service-account",
-        appId: webAppId,
-        runtime: { value: "nodejs" },
-      };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
-    });
-
-    it("should create a new backend with nodejs22 runtime", async () => {
-      createBackendStub.resolves(op);
-      pollOperationStub.resolves(completeBackend);
-
-      await createBackend(
-        projectId,
-        location,
-        backendId,
-        "custom-service-account",
-        cloudBuildConnRepo,
-        webAppId,
-        "/",
-        "nodejs22",
-      );
-
-      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
-        servingLocality: "GLOBAL_ACCESS",
-        codebase: {
-          repository: cloudBuildConnRepo.name,
-          rootDirectory: "/",
-        },
-        labels: deploymentTool.labels(),
-        serviceAccount: "custom-service-account",
-        appId: webAppId,
-        runtime: { value: "nodejs22" },
-      };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
-    });
+        const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+          servingLocality: "GLOBAL_ACCESS",
+          codebase: {
+            repository: cloudBuildConnRepo.name,
+            rootDirectory: "/",
+          },
+          labels: deploymentTool.labels(),
+          serviceAccount: "custom-service-account",
+          appId: webAppId,
+          runtime: runtime ? { value: runtime } : undefined,
+        };
+        expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+      });
+    }
 
     it("should set default rollout policy to 100% all at once", async () => {
       const completeTraffic: apphosting.Traffic = {
