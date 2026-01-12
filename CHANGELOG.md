@@ -1,2 +1,2 @@
 - Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
-- Removed timeout when connecting to Cloud SQL. Should fix (#9314). (#9725)
+- Removed timeout when connecting to Cloud SQL. Hopefully, should mitigate issue #9314. (#9725)
