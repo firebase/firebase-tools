@@ -623,42 +623,17 @@ export class Fabricator {
       logger.debug("Precondition failed. Cannot create a Cloud Run function without storage");
       throw new Error("Precondition failed");
     }
-    const service: Omit<runV2.Service, runV2.ServiceOutputFields> = {
-      name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`,
-      template: {
-        containers: [
-          {
-            name: "worker",
-            image: "scratch",
-            command: endpoint.command,
-            args: endpoint.args,
-            baseImageUri: endpoint.baseImageUri,
-            sourceCode: {
-              cloudStorageSource: {
-                bucket: storageSource.bucket,
-                object: storageSource.object,
-                generation: storageSource.generation ? String(storageSource.generation) : undefined,
-              },
-            },
-            resources: {
-              limits: {
-                cpu: String(endpoint.cpu || 1),
-                memory: `${endpoint.availableMemoryMb || 256}Mi`,
-              },
-              cpuIdle: true,
-              startupCpuBoost: true,
-            },
-          },
-        ],
-        maxInstanceRequestConcurrency: endpoint.concurrency || 80,
-        scaling: {
-          minInstanceCount: endpoint.minInstances || 0,
-          maxInstanceCount: endpoint.maxInstances || 100,
-        },
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+    container.command = endpoint.command;
+    container.args = endpoint.args;
+    container.baseImageUri = endpoint.baseImageUri;
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
       },
-      client: "cli-firebase",
-      labels: { ...endpoint.labels, "goog-managed-by": "firebase-functions" },
-      annotations: {},
     };
 
     await this.executor

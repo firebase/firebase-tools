@@ -52,16 +52,10 @@ async function uploadSourceV1(
 }
 
 // Trampoline to allow tests to mock out createStream.
-/**
- *
- */
 export function createReadStream(filePath: string): NodeJS.ReadableStream {
   return fs.createReadStream(filePath);
 }
 
-/**
- *
- */
 export async function uploadSourceV2(
   projectId: string,
   projectNumber: string,
@@ -86,9 +80,6 @@ export async function uploadSourceV2(
     ),
   };
 
-  // Legacy behavior: use the GCF API
-  // We use BYO bucket if the "runfunctions" experiment is enabled OR if we have any platform: run endpoints.
-  // Otherwise, we use the GCF API.
   if (!experiments.isEnabled("runfunctions") && !v2Endpoints.some((e) => e.platform === "run")) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
       logLabeledWarning(

@@ -64,7 +64,7 @@ async function packageSource(
   options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
   const exportType = options?.exportType || "zip";
-  const postfix = exportType === "tar.gz" ? ".tar.gz" : ".zip";
+  const postfix = `.${exportType}`;
   const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",

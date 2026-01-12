@@ -56,6 +56,7 @@ describe("Fabricator", () => {
     scheduler.jobFromEndpoint.restore();
     tasks.queueFromEndpoint.restore();
     tasks.queueNameForEndpoint.restore();
+    runv2.serviceFromEndpoint.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
     gcf.deleteFunction.rejects(new Error("unexpected gcf.deleteFunction"));

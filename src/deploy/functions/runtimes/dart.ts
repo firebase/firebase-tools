@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as yaml from "js-yaml";
 import { DelegateContext, RuntimeDelegate } from "./index";
-import { buildFromV1Alpha1 } from "./discovery/v1alpha1";
+import * as discovery from "./discovery";
 
 /**
  *
@@ -23,8 +23,8 @@ export async function tryCreateDelegate(
   }
 
   return {
-    language: "dart" as any, // "dart" is not yet in supported.Language union, but we added it to types?
-    runtime: runtime as any,
+    language: "dart",
+    runtime: runtime,
     bin: "", // No bin needed for no-build
     validate: async () => {
       // Basic validation that the file is parseable
@@ -45,13 +45,12 @@ export async function tryCreateDelegate(
       });
     },
     discoverBuild: async () => {
-      const content = await fs.readFile(yamlPath, "utf8");
-      const parsed = yaml.load(content);
-      // We pass stub values for project/region as they are often overridden or unused in Build object
-      // until resolveBackend.
-      // However, buildFromV1Alpha1 might use them for defaults.
-      // Using context.projectId.
-      return buildFromV1Alpha1(parsed, context.projectId, "us-central1", runtime as any);
+      const build = await discovery.detectFromYaml(context.sourceDir, context.projectId, runtime);
+      if (!build) {
+        // This should not happen because we checked for existence in tryCreateDelegate
+        throw new Error("Could not find functions.yaml");
+      }
+      return build;
     },
   };
 }
