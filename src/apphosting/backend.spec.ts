@@ -120,8 +120,9 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
+        runtime: undefined,
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
     it("should create a new backend with runtime", async () => {
@@ -150,7 +151,7 @@ describe("apphosting setup functions", () => {
         appId: webAppId,
         runtime: { value: "nodejs" },
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
     it("should create a new backend with nodejs22 runtime", async () => {
@@ -179,7 +180,7 @@ describe("apphosting setup functions", () => {
         appId: webAppId,
         runtime: { value: "nodejs22" },
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
     it("should set default rollout policy to 100% all at once", async () => {
