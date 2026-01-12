@@ -62,7 +62,7 @@ function getToolsByName(names: string[]): ServerTool[] {
   return Array.from(selectedTools);
 }
 
-function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
+export function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
   const features = new Set(
     serverFeatures?.length ? serverFeatures : (Object.keys(tools) as ServerFeature[]),
   );
@@ -79,13 +79,18 @@ function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
 export async function availableTools(
   ctx: McpContext,
   activeFeatures?: ServerFeature[],
+  detectedFeatures?: ServerFeature[],
   enabledTools?: string[],
 ): Promise<ServerTool[]> {
   if (enabledTools?.length) {
     return getToolsByName(enabledTools);
   }
 
-  const allTools = getToolsByFeature(activeFeatures);
+  if (activeFeatures?.length) {
+    return getToolsByFeature(activeFeatures);
+  }
+
+  const allTools = getToolsByFeature(detectedFeatures);
   const availabilities = await Promise.all(
     allTools.map((t) => {
       if (t.isAvailable) {
