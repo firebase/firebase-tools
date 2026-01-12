@@ -1,13 +1,17 @@
-specVersion: "v1"
-serviceId: "bugbash"
-location: "us-east4"
+specVersion: v1
+serviceId: bugbash
+location: us-east4
 schemas:
-  - source: "./schema"
+  - source: ./schema
     datasource:
       postgresql:
-        database: "fdcdb"
+        database: fdcdb
         cloudSql:
-          instanceId: "bugbash-fdc"
-          # schemaValidation: "STRICT"     # STRICT mode makes Postgres schema match Data Connect exactly.
-          # schemaValidation: "COMPATIBLE" # COMPATIBLE mode makes Postgres schema compatible with Data Connect.
-connectorDirs: ["./example"]
+          instanceId: bugbash-fdc
+  - source: ./schema_resolver
+    id: resolver
+    datasource:
+      httpGraphql:
+        uri: https://resolver-PROJECT_NUMBER.us-east4.run.app/graphql
+connectorDirs:
+  - ./example
