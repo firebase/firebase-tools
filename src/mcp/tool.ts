@@ -53,12 +53,14 @@ export function tool<InputSchema extends ZodTypeAny>(
 ): ServerTool {
   const { isAvailable, ...mcpOptions } = options;
 
-  // default to the feature level availability check, but allow override
-  const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
-
   return {
     mcp: { ...mcpOptions, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
     fn,
-    isAvailable: isAvailableFunc,
+    isAvailable: (ctx: McpContext) => {
+      // default to the feature level availability check, but allow override
+      // We resolve this at runtime to allow for easier testing/mocking
+      const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
+      return isAvailableFunc(ctx);
+    },
   };
 }
