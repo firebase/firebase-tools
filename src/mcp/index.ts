@@ -37,7 +37,7 @@ import { loadRC } from "../rc";
 import { requireAuth } from "../requireAuth";
 import { timeoutFallback } from "../timeout";
 import { trackGA4 } from "../track";
-import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory, requireGeminiToS } from "./errors";
+import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory } from "./errors";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { ServerPrompt } from "./prompt";
 import { availablePrompts } from "./prompts/index";
@@ -182,6 +182,7 @@ export class FirebaseMcpServer {
 
   async detectProjectSetup(): Promise<void> {
     await this.detectProjectRoot();
+    if (this.activeFeatures?.length || this.enabledTools?.length) return;
     // Detecting active features requires that the project directory has been appropriately set
     await this.detectActiveFeatures();
   }
@@ -248,13 +249,12 @@ export class FirebaseMcpServer {
   }
 
   async getAvailableTools(): Promise<ServerTool[]> {
-    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
     const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
-    return availableTools(ctx, features, this.enabledTools);
+    return availableTools(ctx, this.activeFeatures, this.detectedFeatures, this.enabledTools);
   }
 
   async getTool(name: string): Promise<ServerTool | null> {
@@ -263,13 +263,12 @@ export class FirebaseMcpServer {
   }
 
   async getAvailablePrompts(): Promise<ServerPrompt[]> {
-    const features = this.activeFeatures?.length ? this.activeFeatures : this.detectedFeatures;
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
     const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
-    return availablePrompts(ctx, features);
+    return availablePrompts(ctx, this.activeFeatures, this.detectedFeatures);
   }
 
   async getPrompt(name: string): Promise<ServerPrompt | null> {
@@ -373,16 +372,11 @@ export class FirebaseMcpServer {
     projectId = projectId || "";
 
     // Check if the user is logged in.
+    // Check if the user is logged in.
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
     if (tool.mcp._meta?.requiresAuth && !accountEmail) {
       return mcpAuthError(skipAutoAuthForStudio);
-    }
-
-    // Check if the tool requires Gemini in Firebase API.
-    if (tool.mcp._meta?.requiresGemini) {
-      const err = await requireGeminiToS(projectId);
-      if (err) return err;
     }
 
     const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
