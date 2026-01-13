@@ -1,6 +1,6 @@
 ---
-name: firebase-data-connect
-description: Comprehensive guide for developing with Firebase Data Connect. Use this skill when users need to: (1) Provision a new Data Connect service, (2) Write Data Connect schemas (.gql files with @table), (3) Write queries and mutations, or (4) Generate and use typed SDKs.
+name: data-connect-basics
+description: Comprehensive guide for developing with Firebase Data Connect. Use this skill when users need to (1) Provision a new Data Connect service, (2) Write Data Connect schemas (.gql files with @table), (3) Write queries and mutations, or (4) Generate and use typed SDKs.
 ---
 
 # Firebase Data Connect
