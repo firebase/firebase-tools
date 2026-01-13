@@ -233,7 +233,6 @@ export async function prepare(
           schPathSet.add(e.dataConnectGraphqlTrigger.schemaFilePath);
         }
       }
-      const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
       const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
         ? "tar.gz"
         : "zip";
@@ -242,7 +241,7 @@ export async function prepare(
         sourceDir,
         localCfg,
         [...schPathSet],
-        configForUpload,
+        undefined,
         { exportType },
       );
       source.functionsSourceV2 = packagedSource?.pathToSource;
