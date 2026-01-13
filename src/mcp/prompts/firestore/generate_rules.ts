@@ -1,7 +1,7 @@
 import { prompt } from "../../prompt";
 
 export const generateRules = prompt(
-  "core",
+  "firestore",
   {
     name: "generate_rules",
     description:
@@ -284,7 +284,7 @@ npm test
 
 Provide your response in this structure:
 
-''''
+'''
 ## Analysis Summary
 [Your codebase analysis findings]
 
@@ -332,7 +332,7 @@ rules_test/
   - rules_test/firestore.rules
   - rules_test/tests/firestore.test.js
   - rules_test/README.md
-''''
+'''
 
 **After providing the analysis and summary, create all necessary files:**
 

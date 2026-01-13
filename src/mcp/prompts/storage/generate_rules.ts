@@ -1,7 +1,7 @@
 import { prompt } from "../../prompt";
 
 export const generateRules = prompt(
-  "core",
+  "storage",
   {
     name: "generate_rules",
     description:
@@ -34,7 +34,7 @@ Follow this structured workflow strictly:
 
 2. **Document your findings** in a structured format:
 
-'
+'''
 Language: [detected language - for context only]
 Storage Paths: [list all storage paths and their purposes]
 File Types: [allowed file types per path]
@@ -42,7 +42,7 @@ Size Limits: [file size constraints]
 Access Patterns: [who can upload/read/delete what, under what conditions]
 Authentication: [auth methods used]
 Metadata Requirements: [any custom or required metadata]
-'
+'''
 
 ### Phase-2: Security Rules Generation
 
@@ -130,7 +130,7 @@ The test suite must:
 
 Provide your response in this structure:
 
-'markdown
+'''markdown
 ## Analysis Summary
 [Your codebase analysis findings]
 
@@ -163,7 +163,7 @@ storage_rules_test/
 3. **'storage.rules'** - The generated security rules (copied / symlinked)
 4. **'tests/storage.test.js'** - Complete test suite
 5. **'test-files/'** - Directory containing mock files for testing (images, documents, etc.)
-5. **'README.md'** - Instructions for running tests
+6. **'README.md'** - Instructions for running tests
 
 ## Test Results
 [Test execution results and any fixes applied]
@@ -186,7 +186,7 @@ storage_rules_test/
 
 ## Setup and Run Instructions
 
-'bash
+'''bash
 # Navigate to test directory
 cd storage_rules_test
 
@@ -195,9 +195,9 @@ npm install
 
 # Start Firebase Emulator and run the tests
 npm test
-'
+'''
 
-'
+'''
 
 **After providing the analysis and summary, create all necessary files:**
 
@@ -240,7 +240,7 @@ Files to Create:
      - 'test-invalid.exe' (invalid file type)
    - Or document how to generate these files in tests
 
-6. 'storage_rules_test/README.md'
+7. 'storage_rules_test/README.md'
    - Setup instructions
    - How to run tests
    - How to deploy rules
