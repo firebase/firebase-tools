@@ -250,7 +250,7 @@ export class Uploader {
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
-        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`,
+        }: headers=${JSON.stringify(res.response.headers.raw())} ${errorMessage}`,
       );
       throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }
