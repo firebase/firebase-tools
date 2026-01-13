@@ -7,7 +7,6 @@ import { getProjectId } from "../projectUtils";
 import { pickServices } from "../dataconnect/load";
 import { getProjectDefaultAccount } from "../auth";
 import { logLabeledSuccess } from "../utils";
-import { Config } from "../config";
 import { EmulatorHub } from "../emulator/hub";
 import { handleBuildErrors } from "../dataconnect/build";
 import { FirebaseError } from "../error";
