@@ -13,15 +13,22 @@ import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
 
+import { detectAIAgent } from "./utils";
+
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
+const agent = detectAIAgent();
+const agentStr = agent === "unknown" ? "None" : agent;
+const platform = process.env.IS_FIREBASE_MCP ? "FirebaseMCP" : "FirebaseCLI";
+const clientVersion = `${platform}/${CLI_VERSION}/${agentStr}`;
+
 export const STANDARD_HEADERS: Record<string, string> = {
   Connection: "keep-alive",
-  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
-  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+  "User-Agent": clientVersion,
+  "X-Client-Version": clientVersion,
 };
 
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
