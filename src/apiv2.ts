@@ -9,11 +9,10 @@ import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
+import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
-
-import { detectAIAgent } from "./utils";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
@@ -22,7 +21,7 @@ const CLI_VERSION: string = pkg.version;
 
 const agent = detectAIAgent();
 const agentStr = agent === "unknown" ? "None" : agent;
-const platform = process.env.IS_FIREBASE_MCP ? "FirebaseMCP" : "FirebaseCLI";
+const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
 const clientVersion = `${platform}/${CLI_VERSION}/${agentStr}`;
 
 export const STANDARD_HEADERS: Record<string, string> = {

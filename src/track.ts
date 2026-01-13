@@ -4,10 +4,8 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio } from "./env";
-import { detectAIAgent } from "./utils";
+import { isFirebaseStudio, detectAIAgent } from "./env";
 const pkg = require("../package.json");
-
 
 type cliEventNames =
   | "command_execution"
