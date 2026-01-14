@@ -1,2 +1,4 @@
-- Updated TypeScript templates for `ext:dev:init` to fix build failures (#9524)
-- Fixed a bug when `firebase emulators:start` incorrectly deletes discovery file of another emulator process (#9672)
+- Fixed pricing calculation for Cloud Functions deployed to newer regions (africa-south1, europe-west8, me-west1, and others) when using minInstances. (#9696)
+- Removed MCP tools and prompts that required Gemini in Firebase terms of service.
+- Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
+- Removed timeout when connecting to Cloud SQL. Hopefully, should mitigate issue #9314. (#9725)

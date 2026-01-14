@@ -21,14 +21,14 @@ describe("availableTools", () => {
   };
 
   it("should return specific tools when enabledTools is provided", async () => {
-    const tools = await availableTools(mockContext, [], ["firebase_login"]);
+    const tools = await availableTools(mockContext, [], [], ["firebase_login"]);
 
     expect(tools).to.have.length(1);
     expect(tools[0].mcp.name).to.equal("firebase_login");
   }).timeout(2000);
 
   it("should return core tools by default", async () => {
-    const tools = await availableTools(mockContext, []);
+    const tools = await availableTools(mockContext, [], []);
     // an example of a core tool
     const loginTool = tools.find((t) => t.mcp.name === "firebase_login");
 
@@ -48,4 +48,11 @@ describe("availableTools", () => {
 
     expect(firestoreTool).to.not.exist;
   }).timeout(2000);
+
+  it("should fallback to detected features if activeFeatures is empty", async () => {
+    const tools = await availableTools(mockContext, [], ["firestore"]);
+    const firestoreTool = tools.find((t) => t.mcp.name.startsWith("firestore_"));
+
+    expect(firestoreTool).to.exist;
+  });
 });
