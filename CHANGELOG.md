@@ -1,3 +1,6 @@
+- Fixed pricing calculation for Cloud Functions deployed to newer regions (africa-south1, europe-west8, me-west1, and others) when using minInstances. (#9696)
 - Removed MCP tools and prompts that required Gemini in Firebase terms of service.
 - Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
 - Removed timeout when connecting to Cloud SQL. Hopefully, should mitigate issue #9314. (#9725)
+- Added `/firestore:generate_rules` and `/storage:generate_rules` MCP prompts.
+- Update Data Connect Emulator to 3.0.2, which addresses some internal errors #9738
