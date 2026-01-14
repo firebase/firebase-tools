@@ -12,7 +12,7 @@
         "@apphosting/build": "^0.1.6",
         "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.14",
-        "@electric-sql/pglite-tools": "^0.2.8",
+        "@electric-sql/pglite-tools": "^0.2.19",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
         "@google-cloud/pubsub": "^5.2.0",
         "@inquirer/prompts": "^7.10.1",
@@ -968,12 +968,12 @@
       "license": "Apache-2.0"
     },
     "node_modules/@electric-sql/pglite-tools": {
-      "version": "0.2.8",
-      "resolved": "https://registry.npmjs.org/@electric-sql/pglite-tools/-/pglite-tools-0.2.8.tgz",
-      "integrity": "sha512-MBWelYjUZThOBrktPU4beuuX4hrUdIPRgfLbTgltLMT6Chh2R7ATxHsT9Nr7L9fXUSYlZCyoIf+n8pis3uoiiw==",
+      "version": "0.2.19",
+      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/@electric-sql/pglite-tools/-/pglite-tools-0.2.19.tgz",
+      "integrity": "sha512-Ls4ZcSymnFRlEHtDyO3k9qPXLg7awfRAE3YnXk4WLsint17JBsU4UEX8le9YE8SgPkWNnQC898SqbFGGU/5JUA==",
       "license": "Apache-2.0",
       "peerDependencies": {
-        "@electric-sql/pglite": "0.3.3"
+        "@electric-sql/pglite": "0.3.14"
       }
     },
     "node_modules/@emmetio/abbreviation": {
@@ -22862,9 +22862,9 @@
       "integrity": "sha512-3DB258dhqdsArOI1fIt7cb9RpUOgcDg5hXWVgVHAeqVQ/qxtFy605QKs4gx6mFq3jWsSPqDN8TgSEsqC3OfV9Q=="
     },
     "@electric-sql/pglite-tools": {
-      "version": "0.2.8",
-      "resolved": "https://registry.npmjs.org/@electric-sql/pglite-tools/-/pglite-tools-0.2.8.tgz",
-      "integrity": "sha512-MBWelYjUZThOBrktPU4beuuX4hrUdIPRgfLbTgltLMT6Chh2R7ATxHsT9Nr7L9fXUSYlZCyoIf+n8pis3uoiiw==",
+      "version": "0.2.19",
+      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/@electric-sql/pglite-tools/-/pglite-tools-0.2.19.tgz",
+      "integrity": "sha512-Ls4ZcSymnFRlEHtDyO3k9qPXLg7awfRAE3YnXk4WLsint17JBsU4UEX8le9YE8SgPkWNnQC898SqbFGGU/5JUA==",
       "requires": {}
     },
     "@emmetio/abbreviation": {
@@ -26646,7 +26646,7 @@
       "resolved": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
       "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
       "requires": {
-        "ajv": "^8.0.0"
+        "ajv": "^8.17.1"
       }
     },
     "ansi-align": {
