@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "firebase": {
+      "description": "Firebase MCP server - understand and manage your Firebase project, resources, and data",
+      "command": "npx",
+      "args": ["-y", "firebase-tools", "mcp", "--dir", "."],
+      "env": {
+        "IS_FIREBASE_MCP": "true"
+      }
+    }
+  }
+}
