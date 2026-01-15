@@ -105,7 +105,7 @@ steps:
         if [ "${_VERSION}" == "preview" ]; then
           ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
         else
-          GITHUB_TOKEN=$(cat ~/.config/hub)./scripts/publish.sh "${_VERSION}"
+          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
         fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
