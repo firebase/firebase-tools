@@ -42,21 +42,25 @@ describe("tool", () => {
     expect(testTool.fn).to.equal(testFn);
   });
 
-  it("should use the default availability check for the feature if none is provided", () => {
-    const fakeDefaultCheck = async () => true;
+  it("should use the default availability check for the feature if none is provided", async () => {
+    const fakeDefaultCheck = sandbox.stub().returns(true);
     getDefaultFeatureAvailabilityCheckStub.withArgs("core").returns(fakeDefaultCheck);
 
     const testTool = tool("core", { name: "test_tool", inputSchema: z.object({}) }, async () => ({
       content: [],
     }));
 
-    expect(testTool.isAvailable).to.equal(fakeDefaultCheck);
+    const isAvailable = await testTool.isAvailable(mockContext);
+
+    expect(isAvailable).to.be.true;
+    expect(fakeDefaultCheck.called).to.be.true;
     expect(getDefaultFeatureAvailabilityCheckStub.calledOnceWith("core")).to.be.true;
   });
 
   it("should override the default and use the provided availability check", async () => {
-    const fakeDefaultCheck = async () => true;
-    const overrideCheck = async () => false; // This will be the override.
+    const fakeDefaultCheck = sandbox.stub().returns(true);
+    const overrideCheck = sandbox.stub().returns(false);
+    // This will be the override.
     getDefaultFeatureAvailabilityCheckStub.withArgs("core").returns(fakeDefaultCheck);
 
     const testTool = tool(
@@ -69,10 +73,12 @@ describe("tool", () => {
       async () => ({ content: [] }),
     );
 
-    expect(testTool.isAvailable).to.equal(overrideCheck);
-
     const isAvailable = await testTool.isAvailable(mockContext);
     expect(isAvailable).to.be.false;
+
+    expect(fakeDefaultCheck.notCalled).to.be.true;
+    expect(overrideCheck.called).to.be.true;
+
     expect(getDefaultFeatureAvailabilityCheckStub.notCalled).to.be.true;
   });
 });
