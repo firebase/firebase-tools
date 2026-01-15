@@ -730,6 +730,6 @@ export function serviceFromEndpoint(
     proto.renameIfPresent(service.scaling, endpoint, "maxInstanceCount", "maxInstances");
   }
 
-  // TODO: other trigger types, service accounts, concurrency, etc.
+  // TODO: other trigger types (callable, scheduled, etc), service accounts, timeoutSeconds, VPC, ingress settings
   return service;
 }

@@ -5,7 +5,9 @@ import { DelegateContext, RuntimeDelegate } from "./index";
 import * as discovery from "./discovery";
 
 /**
- *
+ * Create a runtime delegate for the Dart runtime, if applicable.
+ * @param context runtimes.DelegateContext
+ * @return Delegate Dart runtime delegate
  */
 export async function tryCreateDelegate(
   context: DelegateContext,

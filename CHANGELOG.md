@@ -1,3 +1,4 @@
+- Added initial zip deploy support in functions deploy for HTTP functions (#9707)
 - Fixed pricing calculation for Cloud Functions deployed to newer regions (africa-south1, europe-west8, me-west1, and others) when using minInstances. (#9696)
 - Removed MCP tools and prompts that required Gemini in Firebase terms of service.
 - Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
