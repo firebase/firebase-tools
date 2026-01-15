@@ -55,7 +55,7 @@ You can **exempt** fields from automatic indexing to save storage or strictly en
 
 ## Management
 
-### `firebase.json`
+### Config files
 Your indexes should be defined in `firestore.indexes.json` (pointed to by `firebase.json`).
 
 ```json
