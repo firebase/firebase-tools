@@ -104,7 +104,7 @@ async function invokeMataTests(
     const testInvocations: ReleaseTest[] = [];
     for (const testDef of testDefs) {
       const aiInstruction: AIInstruction = {
-        steps: testDef.testCase.instructions.steps,
+        steps: testDef.testCase.steps,
       };
       testInvocations.push(await client.createReleaseTest(releaseName, devices, aiInstruction));
     }

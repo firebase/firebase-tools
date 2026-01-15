@@ -31,7 +31,7 @@ describe("parseTestFiles", () => {
         "my_test.yaml",
         stringify({
           defaultConfig: { route: "/mypage" },
-          tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }],
+          tests: [{ displayName: "my test", steps: [{ goal: "click a button" }] }],
         }),
       );
       await expect(parseTestFiles(tempdir.name, "foo.com")).to.be.rejectedWith(
@@ -45,7 +45,7 @@ describe("parseTestFiles", () => {
         "my_test.yaml",
         stringify({
           defaultConfig: { route: "/mypage" },
-          tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }],
+          tests: [{ displayName: "my test", steps: [{ goal: "click a button" }] }],
         }),
       );
       writeFile("my_test2.yaml", "foo");
@@ -57,13 +57,11 @@ describe("parseTestFiles", () => {
             prerequisiteTestCaseId: undefined,
             displayName: "my test",
             startUri: "http://www.foo.com/mypage",
-            instructions: {
-              steps: [
-                {
-                  goal: "click a button",
-                },
-              ],
-            },
+            steps: [
+              {
+                goal: "click a button",
+              },
+            ],
           },
           testExecution: [{ config: { browser: Browser.CHROME } }],
         },
@@ -80,15 +78,13 @@ describe("parseTestFiles", () => {
             prerequisiteTestCaseId: undefined,
             displayName: "Smoke test",
             startUri: "http://www.foo.com",
-            instructions: {
-              steps: [
-                {
-                  goal: "View the provided application",
-                  hint: "No additional actions should be necessary",
-                  successCriteria: "The application should load with no obvious errors",
-                },
-              ],
-            },
+            steps: [
+              {
+                goal: "View the provided application",
+                hint: "No additional actions should be necessary",
+                successCriteria: "The application should load with no obvious errors",
+              },
+            ],
           },
           testExecution: [{ config: { browser: Browser.CHROME } }],
         },
@@ -98,16 +94,16 @@ describe("parseTestFiles", () => {
     it("parses multiple test case files", async () => {
       writeFile(
         "my_test.yaml",
-        stringify({ tests: [{ testName: "my test", steps: [{ goal: "click a button" }] }] }),
+        stringify({ tests: [{ displayName: "my test", steps: [{ goal: "click a button" }] }] }),
       );
       writeFile(
         "my_test2.yaml",
         stringify({
           defaultConfig: { browsers: ["CHROME"] },
           tests: [
-            { testName: "my second test", steps: [{ goal: "click a button" }] },
+            { displayName: "my second test", steps: [{ goal: "click a button" }] },
             {
-              testName: "my third test",
+              displayName: "my third test",
               testConfig: { browsers: ["firefox"], route: "/mypage" },
               steps: [{ goal: "type something" }],
             },
@@ -123,13 +119,11 @@ describe("parseTestFiles", () => {
             prerequisiteTestCaseId: undefined,
             displayName: "my test",
             startUri: "https://www.foo.com",
-            instructions: {
-              steps: [
-                {
-                  goal: "click a button",
-                },
-              ],
-            },
+            steps: [
+              {
+                goal: "click a button",
+              },
+            ],
           },
           testExecution: [{ config: { browser: "CHROME" } }],
         },
@@ -139,13 +133,11 @@ describe("parseTestFiles", () => {
             prerequisiteTestCaseId: undefined,
             displayName: "my second test",
             startUri: "https://www.foo.com",
-            instructions: {
-              steps: [
-                {
-                  goal: "click a button",
-                },
-              ],
-            },
+            steps: [
+              {
+                goal: "click a button",
+              },
+            ],
           },
           testExecution: [{ config: { browser: "CHROME" } }],
         },
@@ -156,13 +148,11 @@ describe("parseTestFiles", () => {
             prerequisiteTestCaseId: undefined,
             displayName: "my third test",
             startUri: "https://www.foo.com/mypage",
-            instructions: {
-              steps: [
-                {
-                  goal: "type something",
-                },
-              ],
-            },
+            steps: [
+              {
+                goal: "type something",
+              },
+            ],
           },
           testExecution: [{ config: { browser: "firefox" } }],
         },
@@ -171,10 +161,10 @@ describe("parseTestFiles", () => {
   });
 
   describe("filtering", () => {
-    function createBasicTest(testNames: string[]) {
+    function createBasicTest(displayNames: string[]) {
       return stringify({
-        tests: testNames.map((testName) => ({
-          testName,
+        tests: displayNames.map((displayName) => ({
+          displayName,
           steps: [{ goal: "do something" }],
         })),
       });
@@ -214,6 +204,7 @@ describe("parseTestFiles", () => {
       expect(await getTestCaseNames("a$", "xx")).to.eql(["axx"]);
     });
   });
+
   describe("prerequisite test cases", () => {
     it("merges the steps from the prerequisite test case", async () => {
       writeFile(
@@ -222,11 +213,11 @@ describe("parseTestFiles", () => {
           tests: [
             {
               id: "my-first-test",
-              testName: "my first test",
+              displayName: "my first test",
               steps: [{ goal: "do something first" }],
             },
             {
-              testName: "my second test",
+              displayName: "my second test",
               prerequisiteTestCaseId: "my-first-test",
               steps: [{ goal: "do something second" }],
             },
@@ -237,7 +228,7 @@ describe("parseTestFiles", () => {
       const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
       expect(tests.length).to.equal(2);
       const secondTest = tests[1];
-      expect(secondTest.testCase.instructions.steps).to.eql([
+      expect(secondTest.testCase.steps).to.eql([
         { goal: "do something first" },
         { goal: "do something second" },
       ]);
@@ -249,7 +240,7 @@ describe("parseTestFiles", () => {
         stringify({
           tests: [
             {
-              testName: "my second test",
+              displayName: "my second test",
               prerequisiteTestCaseId: "my-first-test",
               steps: [{ goal: "do something second" }],
             },
@@ -269,7 +260,7 @@ describe("parseTestFiles", () => {
         stringify({
           tests: [
             {
-              testName: "my test",
+              displayName: "my test",
               steps: [{ goal: "do something" }],
             },
           ],
@@ -278,7 +269,7 @@ describe("parseTestFiles", () => {
 
       const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
       expect(tests.length).to.equal(1);
-      expect(tests[0].testCase.instructions.steps).to.eql([{ goal: "do something" }]);
+      expect(tests[0].testCase.steps).to.eql([{ goal: "do something" }]);
     });
 
     it("works correctly with filtering", async () => {
@@ -288,11 +279,11 @@ describe("parseTestFiles", () => {
           tests: [
             {
               id: "my-first-test",
-              testName: "my first test",
+              displayName: "my first test",
               steps: [{ goal: "do something first" }],
             },
             {
-              testName: "my second test",
+              displayName: "my second test",
               prerequisiteTestCaseId: "my-first-test",
               steps: [{ goal: "do something second" }],
             },
@@ -308,7 +299,7 @@ describe("parseTestFiles", () => {
       );
       expect(tests.length).to.equal(1);
       const secondTest = tests[0];
-      expect(secondTest.testCase.instructions.steps).to.eql([
+      expect(secondTest.testCase.steps).to.eql([
         { goal: "do something first" },
         { goal: "do something second" },
       ]);
@@ -321,17 +312,17 @@ describe("parseTestFiles", () => {
           tests: [
             {
               id: "my-first-test",
-              testName: "my first test",
+              displayName: "my first test",
               steps: [{ goal: "do something first" }],
             },
             {
               id: "my-second-test",
-              testName: "my second test",
+              displayName: "my second test",
               prerequisiteTestCaseId: "my-first-test",
               steps: [{ goal: "do something second" }],
             },
             {
-              testName: "my third test",
+              displayName: "my third test",
               prerequisiteTestCaseId: "my-second-test",
               steps: [{ goal: "do something third" }],
             },
@@ -342,7 +333,7 @@ describe("parseTestFiles", () => {
       const tests = await parseTestFiles(tempdir.name, "https://www.foo.com");
       expect(tests.length).to.equal(3);
       const thirdTest = tests[2];
-      expect(thirdTest.testCase.instructions.steps).to.eql([
+      expect(thirdTest.testCase.steps).to.eql([
         { goal: "do something first" },
         { goal: "do something second" },
         { goal: "do something third" },
@@ -356,13 +347,13 @@ describe("parseTestFiles", () => {
           tests: [
             {
               id: "my-first-test",
-              testName: "my first test",
+              displayName: "my first test",
               prerequisiteTestCaseId: "my-second-test",
               steps: [{ goal: "do something first" }],
             },
             {
               id: "my-second-test",
-              testName: "my second test",
+              displayName: "my second test",
               prerequisiteTestCaseId: "my-first-test",
               steps: [{ goal: "do something second" }],
             },

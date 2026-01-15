@@ -61,7 +61,7 @@ export async function parseTestFiles(
           `Invalid prerequisiteTestCaseId. There is no test case with id ${prerequisiteTestCaseId}`,
         );
       }
-      prerequisiteSteps.unshift(...prerequisiteTestCaseInvocation.testCase.instructions.steps);
+      prerequisiteSteps.unshift(...prerequisiteTestCaseInvocation.testCase.steps);
       prerequisiteTestCaseId = prerequisiteTestCaseInvocation.testCase.prerequisiteTestCaseId;
     }
 
@@ -69,10 +69,7 @@ export async function parseTestFiles(
       ...invocation,
       testCase: {
         ...invocation.testCase,
-        instructions: {
-          ...invocation.testCase.instructions,
-          steps: prerequisiteSteps.concat(invocation.testCase.instructions.steps),
-        },
+        steps: prerequisiteSteps.concat(invocation.testCase.steps),
       },
     };
   });
@@ -136,6 +133,8 @@ function toTestCaseInvocation(
   targetUri: any,
   defaultConfig: any,
 ): TestCaseInvocation {
+  console.log(`testDef is ${testDef}`);
+
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??
@@ -145,8 +144,8 @@ function toTestCaseInvocation(
       id: testDef.id,
       prerequisiteTestCaseId: testDef.prerequisiteTestCaseId,
       startUri: targetUri + route,
-      displayName: testDef.testName,
-      instructions: { steps },
+      displayName: testDef.displayName,
+      steps: steps,
     },
     testExecution: browsers.map((browser) => ({ config: { browser } })),
   };

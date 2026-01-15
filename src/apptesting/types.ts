@@ -60,12 +60,8 @@ export interface TestCase {
   id?: string;
   startUri?: string;
   displayName: string;
-  instructions: Instructions;
-  prerequisiteTestCaseId?: string;
-}
-
-export interface Instructions {
   steps: TestStep[];
+  prerequisiteTestCaseId?: string;
 }
 
 export interface InvokeTestCasesRequest {
