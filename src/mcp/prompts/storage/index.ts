@@ -1,6 +1,6 @@
 import type { ServerPrompt } from "../../prompt";
-import { generateRules } from "./generate_rules";
+import { generateSecurityRules } from "./generate_security_rules";
 
 export const storagePrompts: ServerPrompt[] = [];
 
-storagePrompts.push(generateRules);
+storagePrompts.push(generateSecurityRules);
