@@ -1,0 +1,1 @@
+- Renamed MCP prompts `/firestore:generate_rules` to `/firestore:generate_security_rules` and `/storage:generate_rules` to `/storage:generate_security_rules`.
