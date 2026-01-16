@@ -30,7 +30,7 @@ Using Gradle (Kotlin DSL recommended):
 ```kotlin
 plugins {
   id("com.android.application") version "8.x" apply false
-  id("com.google.gms.google-services") version "4.4.0" apply false
+  id("com.google.gms.google-services") version "4.4.4" apply false
 }
 ```
 
@@ -43,7 +43,7 @@ plugins {
 
 dependencies {
   // Import the BoM for the Firebase platform
-  implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+  implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
 
   // Add the dependency for the Firebase products you want to use
   // When using the BoM, don't specify versions in Firebase dependencies
