@@ -263,6 +263,7 @@ export function load(client: CLIClient): CLIClient {
   client.use = loadCommand("use");
   if (experiments.isEnabled("apptesting")) {
     client.apptesting = {};
+    client.apptesting.execute = loadCommand("apptesting");
     client.apptesting.wata = loadCommand("apptesting-wata");
   }
 

@@ -1,5 +1,5 @@
 tests:
-  - testName: Smoke test
+  - displayName: Smoke test
     steps:
       - goal: View the provided application
         hint: No additional actions should be necessary 

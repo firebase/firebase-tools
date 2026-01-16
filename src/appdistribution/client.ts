@@ -279,6 +279,7 @@ export class AppDistributionClient {
     aiInstruction?: AIInstruction,
     loginCredential?: LoginCredential,
     testCaseName?: string,
+    displayName?: string,
   ): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
@@ -289,6 +290,7 @@ export class AppDistributionClient {
           loginCredential,
           testCase: testCaseName,
           aiInstructions: aiInstruction,
+          displayName: displayName,
         },
       });
       return response.body;
