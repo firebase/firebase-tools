@@ -1,9 +1,9 @@
 import { prompt } from "../../prompt";
 
-export const generateRules = prompt(
+export const generateSecurityRules = prompt(
   "storage",
   {
-    name: "generate_rules",
+    name: "generate_security_rules",
     description:
       "Generate secure Firebase Storage Security Rules and corresponding unit tests for your project.",
     arguments: [],
@@ -142,10 +142,10 @@ Provide your response in this structure:
 
 ## Generated Files Structure
 
-A complete 'storage_rules_test/' directory will be created as an independent Node.js project:
+A complete 'security_rules_test_storage/' directory will be created as an independent Node.js project:
 
 '
-storage_rules_test/
+security_rules_test_storage/
 ├── package.json
 ├── firebase.json
 ├── storage.rules (symlinked or copied from root)
@@ -177,18 +177,18 @@ storage_rules_test/
 - Bucket: [bucket-name]
 - Files created:
   - storage.rules (project root)
-  - storage_rules_test/package.json
-  - storage_rules_test/firebase.json
-  - storage_rules_test/storage.rules
-  - storage_rules_test/tests/storage.test.js
-  - storage_rules_test/test-files/[mock files]
-  - storage_rules_test/README.md
+  - security_rules_test_storage/package.json
+  - security_rules_test_storage/firebase.json
+  - security_rules_test_storage/storage.rules
+  - security_rules_test_storage/tests/storage.test.js
+  - security_rules_test_storage/test-files/[mock files]
+  - security_rules_test_storage/README.md
 
 ## Setup and Run Instructions
 
 '''bash
 # Navigate to test directory
-cd storage_rules_test
+cd security_rules_test_storage
 
 # Install dependencies
 npm install
@@ -209,21 +209,21 @@ Files to Create:
    - File type and size validations
    - Authentication and authorization logic
 
-2. 'storage_rules_test/package.json'
+2. 'security_rules_test_storage/package.json'
    - Include dependencies: '@firebase/rules-unit-testing', 'jest'
    - Include scripts: 'test', 'emulator:start'
    - Use the provided Project ID and Bucket Name
 
-3. 'storage_rules_test/firebase.json'
+3. 'security_rules_test_storage/firebase.json'
    - Configure Firebase Storage emulator
    - Reference the rules file
    - Use the provided Project ID and Bucket Name
    - Configure emulator port (default: 9199)
 
-4. 'storage_rules_test/storage.rules'
+4. 'security_rules_test_storage/storage.rules'
    - Copy of the generated rules
 
-5. 'storage_rules_test/tests/storage.test.js' (or '.ts' if TypeScript)
+5. 'security_rules_test_storage/tests/storage.test.js' (or '.ts' if TypeScript)
    - Complete test suite using '@firebase/rules-unit-testing'
    - All upload/read/delete operations tested
    - File type validation tests
@@ -232,7 +232,7 @@ Files to Create:
    - Clear test Descriptions
    - Helper functions for creating mock files
 
-6. 'storage_rules_test/test-files/' (directory)
+6. 'security_rules_test_storage/test-files/' (directory)
    - Create mock files for testing:
      - 'test-image.jpg' (small valid image)
      - 'test-image-large.jpg' (oversized image for size validation)
@@ -240,7 +240,7 @@ Files to Create:
      - 'test-invalid.exe' (invalid file type)
    - Or document how to generate these files in tests
 
-7. 'storage_rules_test/README.md'
+7. 'security_rules_test_storage/README.md'
    - Setup instructions
    - How to run tests
    - How to deploy rules
@@ -254,7 +254,7 @@ Files to Create:
 3. **Do not modify rules during test validation** - only fix test code
 4. **Always use firebase_validate_security_rules** before generating the tests
 5. **Tests must be JavaScript / TypeScript only** - regardless of the codebase language
-6. **Create a self-contained test environment** - the 'storage_rules_test/' directory should be independently runnable
+6. **Create a self-contained test environment** - the 'security_rules_test_storage/' directory should be independently runnable
 7. **Provide complete, runnable code** - no placeholders or TODOs
 8. **Test with realistic file scenarios** - include various file types and sizes
 9. **Document all assumptions** about storage structure, file types, and access patterns

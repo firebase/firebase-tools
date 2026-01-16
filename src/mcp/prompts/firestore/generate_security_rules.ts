@@ -1,9 +1,9 @@
 import { prompt } from "../../prompt";
 
-export const generateRules = prompt(
+export const generateSecurityRules = prompt(
   "firestore",
   {
-    name: "generate_rules",
+    name: "generate_security_rules",
     description:
       "Generate secure Firebase Firestore Security Rules and corresponding unit tests for your project.",
     arguments: [],
@@ -261,7 +261,7 @@ The test suite must:
 
 '''bash
 # Step-1: Navigate to test directory
-cd rules_test
+cd security_rules_test_firestore
 
 # Step-2: Install dependencies
 npm install
@@ -296,10 +296,10 @@ Provide your response in this structure:
 
 ## Generated Files Structure
 
-A complete 'rules_test/' directory will be created as an independent Node.js project:
+A complete 'security_rules_test_firestore/' directory will be created as an independent Node.js project:
 
 '''
-rules_test/
+security_rules_test_firestore/
 ├── package.json
 ├── firebase.json
 ├── firestore.rules (symlinked or copied from root)
@@ -327,11 +327,11 @@ rules_test/
 - Project ID: [project-id]
 - Files created:
   - firestore.rules (project root)
-  - rules_test/package.json
-  - rules_test/firebase.json
-  - rules_test/firestore.rules
-  - rules_test/tests/firestore.test.js
-  - rules_test/README.md
+  - security_rules_test_firestore/package.json
+  - security_rules_test_firestore/firebase.json
+  - security_rules_test_firestore/firestore.rules
+  - security_rules_test_firestore/tests/firestore.test.js
+  - security_rules_test_firestore/README.md
 '''
 
 **After providing the analysis and summary, create all necessary files:**
@@ -341,26 +341,26 @@ Files to Create:
 1. 'firestore.rules' (in project root)
    - Complete Firebase Security Rules with comments
 
-2. 'rules_test/package.json'
+2. 'security_rules_test_firestore/package.json'
    - Include dependencies: '@firebase/rules-unit-testing', 'jest'
    - Include scripts: 'test', 'emulator:start'
    - Use the provided Project ID
 
-3. 'rules_test/firebase.json'
+3. 'security_rules_test_firestore/firebase.json'
    - Configure Firestore emulator
    - Reference the rules file
    - Use the provided Project ID
 
-4. 'rules_test/firestore.rules'
+4. 'security_rules_test_firestore/firestore.rules'
    - Copy of the generated rules
 
-5. 'rules_test/tests/firestore.test.js' (or '.ts' if TypeScript)
+5. 'security_rules_test_firestore/tests/firestore.test.js' (or '.ts' if TypeScript)
    - Complete test suite using '@firebase/rules-unit-testing'
    - All CRUD operations tested
    - Auth scenarios covered
    - Clear test Descriptions
 
-6. 'rules_test/README.md'
+6. 'security_rules_test_firestore/README.md'
    - Prerequisites checklist
    - Step-by-step commands with exact terminal instructions
    - Expected output
@@ -376,7 +376,7 @@ Files to Create:
 5.  **Do not modify rules during test validation** - only fix test code
 6.  **Always use firebase_validate_security_rules** before generating the tests
 7.  **Tests must be JavaScript / TypeScript only** - regardless of the codebase language
-8.  **Create a self-contained test environment** - the 'rules_test/' directory should be independently runnable
+8.  **Create a self-contained test environment** - the 'security_rules_test_firestore/' directory should be independently runnable
 9.  **Provide complete, runnable code** - no placeholders or TODOs
 10. **Document all assumptions** about data structure or access patterns
 `,
