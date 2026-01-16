@@ -11,7 +11,7 @@ COPY package.json /usr/local/node_packages/
 COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
-RUN npm install
+RUN npm install && npm update
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 
 WORKDIR /
