@@ -106,7 +106,16 @@ async function invokeMataTests(
       const aiInstruction: AIInstruction = {
         steps: testDef.testCase.steps,
       };
-      testInvocations.push(await client.createReleaseTest(releaseName, devices, aiInstruction));
+      testInvocations.push(
+        await client.createReleaseTest(
+          releaseName,
+          devices,
+          aiInstruction,
+          undefined,
+          undefined,
+          testDef.testCase.displayName,
+        ),
+      );
     }
     return testInvocations;
   } catch (err: unknown) {
