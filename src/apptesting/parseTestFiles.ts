@@ -133,8 +133,6 @@ function toTestCaseInvocation(
   targetUri: any,
   defaultConfig: any,
 ): TestCaseInvocation {
-  console.log(`testDef is ${testDef}`);
-
   const steps = testDef.steps ?? [];
   const route = testDef.testConfig?.route ?? defaultConfig?.route ?? "";
   const browsers: Browser[] = testDef.testConfig?.browsers ??

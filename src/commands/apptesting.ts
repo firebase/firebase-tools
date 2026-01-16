@@ -22,7 +22,7 @@ const defaultDevices = [
   },
 ];
 
-export const command = new Command("apptesting:execute <target>")
+export const command = new Command("apptesting:execute <release-binary-file>")
   .description("Run mobile automated tests written in natural language driven by AI")
   .option(
     "--app <app_id>",
