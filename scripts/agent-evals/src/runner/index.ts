@@ -30,6 +30,10 @@ export interface AgentTestOptions {
   // List of MCP Tool mocks to apply, in order. Later mocks overwrite earlier
   // mocks.
   toolMocks?: ToolMockName[];
+  // List of paths to skills to enable for this test
+  skills?: string[];
+  // Whether to enable the Firebase MCP server. Defaults to true.
+  enableMcp?: boolean;
 }
 
 export async function startAgentTest(
@@ -53,7 +57,13 @@ export async function startAgentTest(
     copyFirebaseCliConfigstore(HOME_CONFIGSTORE_DIR, toDir);
   }
 
-  const run = new GeminiCliRunner(testName, dirs, options?.toolMocks || []);
+  const run = new GeminiCliRunner(
+    testName,
+    dirs,
+    options?.toolMocks || [],
+    options?.skills,
+    options?.enableMcp,
+  );
   await run.waitForReadyPrompt();
 
   addCleanup(async () => {
