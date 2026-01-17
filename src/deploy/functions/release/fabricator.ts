@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as spawn from "cross-spawn";
 
 import { DEFAULT_RETRY_CODES, Executor } from "./executor";
 import { FirebaseError } from "../../../error";
@@ -60,6 +61,7 @@ export interface FabricatorArgs {
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
+  spawn?: typeof spawn;
 }
 
 const rethrowAs =
@@ -76,6 +78,7 @@ export class Fabricator {
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
+  spawn: typeof spawn;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -83,6 +86,7 @@ export class Fabricator {
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
+    this.spawn = args.spawn || spawn;
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -185,9 +189,16 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
     } else if (endpoint.platform === "run") {
-      throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", {
-        exit: 1,
-      });
+      if (endpoint.zipSource) {
+        await this.runZipDeploy(endpoint);
+        const service = await run.getService(endpoint.runServiceId || endpoint.id);
+        endpoint.uri = service.status?.url;
+        endpoint.runServiceId = endpoint.id;
+      } else {
+        throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", {
+          exit: 1,
+        });
+      }
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -212,7 +223,14 @@ export class Fabricator {
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
     } else if (update.endpoint.platform === "run") {
-      throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 });
+      if (update.endpoint.zipSource) {
+        await this.runZipDeploy(update.endpoint);
+        const service = await run.getService(update.endpoint.runServiceId || update.endpoint.id);
+        update.endpoint.uri = service.status?.url;
+        update.endpoint.runServiceId = update.endpoint.id;
+      } else {
+        throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 });
+      }
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -812,5 +830,52 @@ export class Fabricator {
               ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
                 `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`,
               )}`;
+  }
+
+  async runZipDeploy(endpoint: backend.Endpoint): Promise<void> {
+    const args = [
+      "beta",
+      "run",
+      "deploy",
+      endpoint.runServiceId || endpoint.id,
+      "--source",
+      endpoint.zipSource!,
+      "--no-build",
+      "--region",
+      endpoint.region,
+      "--project",
+      endpoint.project,
+    ];
+
+    if (endpoint.baseImage) {
+      args.push("--base-image", endpoint.baseImage);
+    }
+    if (endpoint.command) {
+      args.push("--command", endpoint.command);
+    }
+    if (endpoint.args) {
+      for (const arg of endpoint.args) {
+        args.push("--args", arg);
+      }
+    }
+
+    await this.executor.run(async () => {
+      const cmd = "gcloud " + args.join(" ");
+      utils.logLabeledBullet("functions", `Running: ${cmd}`);
+      const child = this.spawn("gcloud", args, {
+        stdio: "inherit",
+      });
+
+      return new Promise<void>((resolve, reject) => {
+        child.on("error", (err) => reject(err));
+        child.on("close", (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`gcloud run deploy failed with code ${code}`));
+          }
+        });
+      });
+    });
   }
 }
