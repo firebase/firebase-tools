@@ -105,11 +105,6 @@ export class GeminiCliRunner implements AgentTestRunner {
         cpSync(skillPath, dest, { recursive: true });
         skillPaths.push(dest);
       }
-      // Explicitly include the skill directories so the agent loads them
-      // We use the array format for args
-      if (skillPaths.length > 0) {
-        cliArgs.push("--include-directories", skillPaths.join(","));
-      }
     }
 
     console.debug(`Initializing Gemini user settings in ${dirs.userDir}`);
