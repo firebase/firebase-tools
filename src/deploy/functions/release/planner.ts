@@ -308,6 +308,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
 
   // We need to call from module exports so tests can stub this behavior, but that
   // breaks the type system.
+  // TODO(b/215563538): remove
   // eslint-disable-next-line
   exports.checkForV2Upgrade(want, have);
 }
