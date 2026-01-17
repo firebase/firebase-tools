@@ -1,10 +1,60 @@
 import * as archiver from "archiver";
 import * as fs from "fs";
 import * as path from "path";
+import * as tar from "tar";
 import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+
+export async function createTarArchive(
+  config: AppHostingSingle,
+  rootDir: string,
+  targetSubDir?: string,
+): Promise<string> {
+  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
+
+  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
+  // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
+  // const ignore = config.ignore || [".git"];
+  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
+  //const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
+  //ignore.push(...gitIgnorePatterns);
+  const rdrFiles = await fsAsync.readdirRecursive({
+    path: targetDir,
+    ignore: ignore,
+    isGitIgnore: true,
+  });
+  const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+  console.log(allFiles);
+
+
+  // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
+  try {
+    fs.statSync(rootDir);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      throw new FirebaseError(`Could not read directory "${rootDir}"`);
+    }
+    throw err;
+  }
+  if (!allFiles.length) {
+    throw new FirebaseError(
+      `Cannot create a tar archive with 0 files from directory "${rootDir}"`,
+    );
+  }
+
+  await tar.create(
+    {
+      gzip: true,
+      file: tmpFile,
+      cwd: rootDir,
+      portable: true,
+    },
+    allFiles,
+  );
+  return tmpFile
+}
 
 /**
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
