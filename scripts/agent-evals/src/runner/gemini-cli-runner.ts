@@ -77,6 +77,9 @@ export class GeminiCliRunner implements AgentTestRunner {
         otlpEndpoint: "",
         outfile: this.telemetryPath,
       },
+      experimental: {
+        skills: true,
+      },
       mcpServers: enableMcp
         ? {
           firebase: {
@@ -223,14 +226,12 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
   }
 
-  public async expectSkill(skillName: string, activated: boolean): Promise<void> {
+  public async expectSkillActivated(skillName: string): Promise<void> {
     const skillsDir = path.join(this.dirs.runDir, ".gemini", "skills");
     const skillPath = path.join(skillsDir, skillName);
 
-    // If we expect the skill to be activated, it must be present (symlinked)
-    // If not activated, it might or might not be present, but we enforce presence if expecting success=false? 
-    // Actually simplicity: if activated=true, enforce presence.
-    if (activated && !existsSync(skillPath)) {
+    // If we expect the skill to be activated, it must be present
+    if (!existsSync(skillPath)) {
       throwFailure(`Expected skill "${skillName}" to be enabled, but the path ${skillPath} does not exist.`);
     }
 
@@ -238,16 +239,15 @@ export class GeminiCliRunner implements AgentTestRunner {
     const foundCall = await poll(() => {
       const logs = this.readToolLogs();
       return logs.some(log =>
-        (log.name === "Activate_Tool" || log.name === "activate_skill" || log.name === "read_file") &&
+        (log.name === "activate_skill" || log.name === "read_file") &&
         log.args.includes(skillName) &&
         log.success
       );
     }, timeout);
 
-    if (activated && !foundCall) {
-      throwFailure(`Expected skill "${skillName}" to be activated (Activate_Tool call found in logs), but it was not found.`);
-    } else if (!activated && foundCall) {
-      throwFailure(`Found activated skill "${skillName}", but expected it to be inactive.`);
+    if (!foundCall) {
+      const logs = this.readToolLogs();
+      throwFailure(`Expected skill "${skillName}" to be activated (activate_skill/read_file call found in logs), but it was not found.`);
     }
   }
 
@@ -287,16 +287,21 @@ export class GeminiCliRunner implements AgentTestRunner {
           );
         }
       },
-      expectSkill: async (skillName: string, activated: boolean) => {
-        // Negated expectation:
-        // if activated=true, we expect it NOT to be activated?
-        // or expectSkill(name, activated) -> check if expectation holds.
-        // dont.expectSkill(name, true) -> verify it was NOT activated?
-        // dont.expectSkill(name, false) -> verify it WAS activated? (double verification?)
-        // Usually `dont` just negates the "success" condition.
-        // So expectSkill(name, true) -> success if activated.
-        // dont.expectSkill(name, true) -> fail if activated.
-        await this.expectSkill(skillName, !activated);
+      expectSkillActivated: async (skillName: string) => {
+        // Assert that the skill was NOT activated.
+        try {
+          // We wait a short time to see if it IS activated.
+          // If expectSkillActivated succeeds (finds it), we fail.
+          await this.expectSkillActivated(skillName);
+          throwFailure(`Expected skill "${skillName}" NOT to be activated, but it was.`);
+        } catch (e: any) {
+          // If it timed out or wasn't found, then we successfully "didn't activate".
+          // We must ensure the error is specifically "not found".
+          if (e.message && e.message.includes("but it was not found")) {
+            return;
+          }
+          throw e;
+        }
       }
     };
   }

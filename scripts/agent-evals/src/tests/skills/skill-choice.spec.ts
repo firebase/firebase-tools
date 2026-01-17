@@ -6,7 +6,6 @@ import "../../helpers/hooks.js";
 const FIREBASE_BASICS_PATH = path.resolve(process.cwd(), "../../skills/firebase-basics");
 const FIRESTORE_BASICS_PATH = path.resolve(process.cwd(), "../../skills/firestore-basics");
 
-// Data Connect is currently missing SKILL.md, so we exclude it to avoid errors.
 const ALL_SKILLS = [FIREBASE_BASICS_PATH, FIRESTORE_BASICS_PATH];
 
 describe("Skill Choice: Selection Logic", function (this: Mocha.Suite) {
@@ -65,11 +64,11 @@ describe("Skill Choice: Selection Logic", function (this: Mocha.Suite) {
       await run.type(tc.prompt);
 
       // Verify expected skill activated
-      await run.expectSkill(tc.expectedSkill, true);
+      await run.expectSkillActivated(tc.expectedSkill);
 
       // Verify unexpected skills DID NOT activate
       for (const unexpected of tc.unexpectedSkills) {
-        await run.expectSkill(unexpected, false);
+        await run.dont.expectSkillActivated(unexpected);
       }
     });
   }

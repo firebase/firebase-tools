@@ -48,7 +48,12 @@ describe("Skill Activation: Firebase Basics", function (this: Mocha.Suite) {
       });
 
       await run.type(tc.prompt);
-      await run.expectSkill("firebase-basics", tc.expectSkillEnabled);
+
+      if (tc.expectSkillEnabled) {
+        await run.expectSkillActivated("firebase-basics");
+      } else {
+        await run.dont.expectSkillActivated("firebase-basics");
+      }
     });
 
     it(`${tc.expectSkillEnabled ? 'should' : 'should not'} activate firebase-basics skill for prompt: ${tc.prompt} ("MCP Disabled")`, async function (this: Mocha.Context) {
@@ -61,7 +66,12 @@ describe("Skill Activation: Firebase Basics", function (this: Mocha.Suite) {
       });
 
       await run.type(tc.prompt);
-      await run.expectSkill("firebase-basics", tc.expectSkillEnabled);
+
+      if (tc.expectSkillEnabled) {
+        await run.expectSkillActivated("firebase-basics");
+      } else {
+        await run.dont.expectSkillActivated("firebase-basics");
+      }
     });
   }
 });

@@ -22,9 +22,10 @@ export interface AgentTestMatchers {
   expectMemory(text: string | RegExp): Promise<void>;
 
   /**
-   * Asserts that a skill with the given name was activated (or not).
+   * Asserts that a skill with the given name was activated.
+   * Use runner.dont.expectSkillActivated(name) to assert it was NOT activated.
    */
-  expectSkill(skillName: string, activated: boolean): Promise<void>;
+  expectSkillActivated(skillName: string): Promise<void>;
 }
 
 export interface AgentTestRunner extends AgentTestMatchers {
