@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, cpSync } from "fs";
 import * as path from "path";
 import * as os from "os";
 import { InteractiveCLI, poll } from "./interactive-cli";
@@ -54,6 +54,8 @@ export class GeminiCliRunner implements AgentTestRunner {
     private readonly testName: string,
     readonly dirs: RunDirectories,
     toolMocks: ToolMockName[],
+    skills?: string[],
+    enableMcp: boolean = true,
   ) {
     console.debug(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
     // Create a settings file to point the CLI to a local telemetry log
@@ -75,16 +77,37 @@ export class GeminiCliRunner implements AgentTestRunner {
         otlpEndpoint: "",
         outfile: this.telemetryPath,
       },
-      mcpServers: {
-        firebase: {
-          command: "node",
-          args: ["--import", mockPath, firebasePath, "experimental:mcp"],
-          env: {
-            TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+      mcpServers: enableMcp
+        ? {
+          firebase: {
+            command: "node",
+            args: ["--import", mockPath, firebasePath, "experimental:mcp"],
+            env: {
+              TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+            },
           },
-        },
-      },
+        }
+        : undefined,
     });
+
+    const cliArgs = ["--yolo"];
+    if (skills?.length) {
+      const skillsDir = path.join(dirs.runDir, ".gemini", "skills");
+      mkdirSync(skillsDir, { recursive: true });
+      const skillPaths: string[] = [];
+      for (const skillPath of skills) {
+        const skillName = path.basename(skillPath);
+        const dest = path.join(skillsDir, skillName);
+        console.debug(`Copying skill ${skillPath} to ${dest}`);
+        cpSync(skillPath, dest, { recursive: true });
+        skillPaths.push(dest);
+      }
+      // Explicitly include the skill directories so the agent loads them
+      // We use the array format for args
+      if (skillPaths.length > 0) {
+        cliArgs.push("--include-directories", skillPaths.join(","));
+      }
+    }
 
     console.debug(`Initializing Gemini user settings in ${dirs.userDir}`);
     // Write user Gemini Settings
@@ -99,7 +122,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
-    this.cli = new InteractiveCLI("gemini", ["--yolo"], {
+    this.cli = new InteractiveCLI("gemini", cliArgs, {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
       showOutput: true,
@@ -200,6 +223,34 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
   }
 
+  public async expectSkill(skillName: string, activated: boolean): Promise<void> {
+    const skillsDir = path.join(this.dirs.runDir, ".gemini", "skills");
+    const skillPath = path.join(skillsDir, skillName);
+
+    // If we expect the skill to be activated, it must be present (symlinked)
+    // If not activated, it might or might not be present, but we enforce presence if expecting success=false? 
+    // Actually simplicity: if activated=true, enforce presence.
+    if (activated && !existsSync(skillPath)) {
+      throwFailure(`Expected skill "${skillName}" to be enabled, but the path ${skillPath} does not exist.`);
+    }
+
+    const timeout = 5000;
+    const foundCall = await poll(() => {
+      const logs = this.readToolLogs();
+      return logs.some(log =>
+        (log.name === "Activate_Tool" || log.name === "activate_skill" || log.name === "read_file") &&
+        log.args.includes(skillName) &&
+        log.success
+      );
+    }, timeout);
+
+    if (activated && !foundCall) {
+      throwFailure(`Expected skill "${skillName}" to be activated (Activate_Tool call found in logs), but it was not found.`);
+    } else if (!activated && foundCall) {
+      throwFailure(`Found activated skill "${skillName}", but expected it to be inactive.`);
+    }
+  }
+
   get dont(): AgentTestMatchers {
     return {
       expectText: async (text: string | RegExp) => {
@@ -236,6 +287,17 @@ export class GeminiCliRunner implements AgentTestRunner {
           );
         }
       },
+      expectSkill: async (skillName: string, activated: boolean) => {
+        // Negated expectation:
+        // if activated=true, we expect it NOT to be activated?
+        // or expectSkill(name, activated) -> check if expectation holds.
+        // dont.expectSkill(name, true) -> verify it was NOT activated?
+        // dont.expectSkill(name, false) -> verify it WAS activated? (double verification?)
+        // Usually `dont` just negates the "success" condition.
+        // So expectSkill(name, true) -> success if activated.
+        // dont.expectSkill(name, true) -> fail if activated.
+        await this.expectSkill(skillName, !activated);
+      }
     };
   }
 

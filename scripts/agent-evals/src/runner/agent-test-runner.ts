@@ -20,6 +20,11 @@ export interface AgentTestMatchers {
    * an event is not found
    */
   expectMemory(text: string | RegExp): Promise<void>;
+
+  /**
+   * Asserts that a skill with the given name was activated (or not).
+   */
+  expectSkill(skillName: string, activated: boolean): Promise<void>;
 }
 
 export interface AgentTestRunner extends AgentTestMatchers {
