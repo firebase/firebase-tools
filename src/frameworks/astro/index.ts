@@ -3,7 +3,13 @@ import { copy, existsSync } from "fs-extra";
 import { join } from "path";
 import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
 import { FirebaseError } from "../../error";
-import { readJSON, simpleProxy, warnIfCustomBuildScript, getNodeModuleBin } from "../utils";
+import {
+  readJSON,
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
+  getBuildScript,
+} from "../utils";
 import { getAstroVersion, getBootstrapScript, getConfig } from "./utils";
 
 export const name = "Astro";
@@ -26,7 +32,10 @@ const DEFAULT_BUILD_SCRIPT = ["astro build"];
 
 export async function build(cwd: string): Promise<BuildResult> {
   const cli = getNodeModuleBin("astro", cwd);
-  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const buildScript = await getBuildScript(join(cwd, "package.json"));
+  if (buildScript) {
+    warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
+  }
   const { output, adapter } = await getConfig(cwd);
   const wantsBackend = output !== "static";
   if (wantsBackend && adapter?.name !== "@astrojs/node") {

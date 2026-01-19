@@ -17,6 +17,7 @@ import {
   getNodeModuleBin,
   warnIfCustomBuildScript,
   findDependency,
+  getBuildScript,
 } from "../utils";
 import {
   getAllTargets,
@@ -64,7 +65,10 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     baseHref: baseUrl,
     ssr,
   } = await getBuildConfig(dir, configuration);
-  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  const buildScript = await getBuildScript(join(dir, "package.json"));
+  if (buildScript) {
+    warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
+  }
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);

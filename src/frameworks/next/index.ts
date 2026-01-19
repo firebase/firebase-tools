@@ -28,6 +28,7 @@ import {
   findDependency,
   validateLocales,
   getNodeModuleBin,
+  getBuildScript,
 } from "../utils";
 import {
   BuildResult,
@@ -87,7 +88,7 @@ import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
 import { parseStrict } from "../../functions/env";
 
-const DEFAULT_BUILD_SCRIPT = ["next build"];
+const DEFAULT_BUILD_SCRIPT = ["next build", "next build --webpack"];
 const PUBLIC_DIR = "public";
 
 export const supportedRange = "12 - 15.0";
@@ -119,10 +120,13 @@ export async function discover(dir: string) {
  */
 export async function build(
   dir: string,
-  target: string,
+  _target: string,
   context?: FrameworkContext,
 ): Promise<BuildResult> {
-  await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  const buildScript = await getBuildScript(dir);
+  if (buildScript) {
+    warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
+  }
 
   const reactVersion = getReactVersion(dir);
   if (reactVersion && gte(reactVersion, "18.0.0")) {
@@ -162,7 +166,11 @@ export async function build(
   const cli = getNodeModuleBin("next", dir);
 
   const nextBuild = new Promise((resolve, reject) => {
-    const buildProcess = spawn(cli, ["build"], { cwd: dir, env });
+    const buildProcess = spawn(
+      cli,
+      ["build", ...(buildScript?.includes("--webpack") ? ["--webpack"] : [])],
+      { cwd: dir, env },
+    );
     buildProcess.stdout?.on("data", (data) => logger.info(data.toString()));
     buildProcess.stderr?.on("data", (data) => logger.info(data.toString()));
     buildProcess.on("error", (err) => {
@@ -417,7 +425,7 @@ export async function init(setup: any, config: any) {
   });
   execSync(
     `npx --yes create-next-app@"${supportedRange}" -e hello-world ` +
-      `${setup.featureInfo.hosting.source} --use-npm --${language}`,
+    `${setup.featureInfo.hosting.source} --use-npm --${language}`,
     { stdio: "inherit", cwd: config.projectDir },
   );
 }
