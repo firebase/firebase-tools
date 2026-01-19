@@ -76,8 +76,6 @@ describe("Frameworks utils", () => {
       const defaultBuildScripts = ["next build"];
       packageJson.scripts.build = buildScript;
 
-      sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
-
       warnIfCustomBuildScript(buildScript, framework, defaultBuildScripts);
 
       expect(consoleLogSpy.callCount).to.equal(0);
@@ -88,7 +86,6 @@ describe("Frameworks utils", () => {
       const defaultBuildScripts = ["next build"];
       packageJson.scripts.build = buildScript;
 
-      sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
       warnIfCustomBuildScript(buildScript, framework, defaultBuildScripts);
 
       expect(consoleLogSpy).to.be.calledOnceWith(
@@ -161,7 +158,7 @@ describe("Frameworks utils", () => {
     it("should return the build script from package.json", async () => {
       packageJson.scripts.build = "test build script";
 
-      sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
+      sandbox.stub(fs.promises, "readFile").withArgs("dir/package.json").resolves(JSON.stringify(packageJson));
 
       const buildScript = await getBuildScript("dir/package.json");
       expect(buildScript).to.equal("test build script");
@@ -179,7 +176,7 @@ describe("Frameworks utils", () => {
     });
 
     it("should return undefined if package.json is not found", async () => {
-      sandbox.stub(fs.promises, "readFile").rejects(new Error());
+      sandbox.stub(fs.promises, "readFile").withArgs("dir/package.json").rejects(new Error());
       const buildScript = await getBuildScript("dir/package.json");
       expect(buildScript).to.be.undefined;
     });
