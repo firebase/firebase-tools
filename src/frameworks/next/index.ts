@@ -123,7 +123,7 @@ export async function build(
   _target: string,
   context?: FrameworkContext,
 ): Promise<BuildResult> {
-  const buildScript = await getBuildScript(dir);
+  const buildScript = await getBuildScript(join(dir, "package.json"));
   if (buildScript) {
     warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
   }
