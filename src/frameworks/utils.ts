@@ -67,7 +67,7 @@ export function warnIfCustomBuildScript(
  * Get the build script from package.json.
  *
  * @param packageJsonPath - The path to the package.json file.
- * @returns The build script from package.json.
+ * @returns The build script from package.json, or undefined if the build script or package.json is not found.
  */
 export async function getBuildScript(packageJsonPath: string): Promise<string | undefined> {
   try {
