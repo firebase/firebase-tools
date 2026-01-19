@@ -1,0 +1,1 @@
+- Add support for the --webpack flag in Next.js build (#9761)
