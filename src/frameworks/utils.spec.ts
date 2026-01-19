@@ -170,7 +170,10 @@ describe("Frameworks utils", () => {
     it("should return undefined if no build script exists", async () => {
       delete packageJson.scripts.build;
 
-      sandbox.stub(fs.promises, "readFile").withArgs("dir/package.json").resolves(JSON.stringify(packageJson));
+      sandbox
+        .stub(fs.promises, "readFile")
+        .withArgs("dir/package.json")
+        .resolves(JSON.stringify(packageJson));
       const buildScript = await getBuildScript("dir/package.json");
       expect(buildScript).to.be.undefined;
     });
