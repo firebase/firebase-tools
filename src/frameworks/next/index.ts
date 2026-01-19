@@ -425,7 +425,7 @@ export async function init(setup: any, config: any) {
   });
   execSync(
     `npx --yes create-next-app@"${supportedRange}" -e hello-world ` +
-    `${setup.featureInfo.hosting.source} --use-npm --${language}`,
+      `${setup.featureInfo.hosting.source} --use-npm --${language}`,
     { stdio: "inherit", cwd: config.projectDir },
   );
 }
