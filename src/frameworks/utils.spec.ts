@@ -158,7 +158,10 @@ describe("Frameworks utils", () => {
     it("should return the build script from package.json", async () => {
       packageJson.scripts.build = "test build script";
 
-      sandbox.stub(fs.promises, "readFile").withArgs("dir/package.json").resolves(JSON.stringify(packageJson));
+      sandbox
+        .stub(fs.promises, "readFile")
+        .withArgs("dir/package.json")
+        .resolves(JSON.stringify(packageJson));
 
       const buildScript = await getBuildScript("dir/package.json");
       expect(buildScript).to.equal("test build script");
