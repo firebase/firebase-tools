@@ -82,14 +82,14 @@ export class GeminiCliRunner implements AgentTestRunner {
       },
       mcpServers: enableMcp
         ? {
-          firebase: {
-            command: "node",
-            args: ["--import", mockPath, firebasePath, "experimental:mcp"],
-            env: {
-              TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+            firebase: {
+              command: "node",
+              args: ["--import", mockPath, firebasePath, "experimental:mcp"],
+              env: {
+                TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+              },
             },
-          },
-        }
+          }
         : undefined,
     });
 
@@ -97,13 +97,11 @@ export class GeminiCliRunner implements AgentTestRunner {
     if (skills?.length) {
       const skillsDir = path.join(dirs.runDir, ".gemini", "skills");
       mkdirSync(skillsDir, { recursive: true });
-      const skillPaths: string[] = [];
       for (const skillPath of skills) {
         const skillName = path.basename(skillPath);
         const dest = path.join(skillsDir, skillName);
         console.debug(`Copying skill ${skillPath} to ${dest}`);
         cpSync(skillPath, dest, { recursive: true });
-        skillPaths.push(dest);
       }
     }
 
@@ -227,22 +225,26 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     // If we expect the skill to be activated, it must be present
     if (!existsSync(skillPath)) {
-      throwFailure(`Expected skill "${skillName}" to be enabled, but the path ${skillPath} does not exist.`);
+      throwFailure(
+        `Expected skill "${skillName}" to be enabled, but the path ${skillPath} does not exist.`,
+      );
     }
 
     const timeout = 5000;
     const foundCall = await poll(() => {
       const logs = this.readToolLogs();
-      return logs.some(log =>
-        (log.name === "activate_skill" || log.name === "read_file") &&
-        log.args.includes(skillName) &&
-        log.success
+      return logs.some(
+        (log) =>
+          (log.name === "activate_skill" || log.name === "read_file") &&
+          log.args.includes(skillName) &&
+          log.success,
       );
     }, timeout);
 
     if (!foundCall) {
-      const logs = this.readToolLogs();
-      throwFailure(`Expected skill "${skillName}" to be activated (activate_skill/read_file call found in logs), but it was not found.`);
+      throwFailure(
+        `Expected skill "${skillName}" to be activated (activate_skill/read_file call found in logs), but it was not found.`,
+      );
     }
   }
 
@@ -297,7 +299,7 @@ export class GeminiCliRunner implements AgentTestRunner {
           }
           throw e;
         }
-      }
+      },
     };
   }
 

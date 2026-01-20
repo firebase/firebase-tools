@@ -37,40 +37,25 @@ describe("Skill Activation: Firestore Basics", function (this: Mocha.Suite) {
     ];
 
   for (const tc of testCases) {
-    it(`${tc.expectSkillEnabled ? 'should' : 'should not'} activate firestore-basics skill for prompt: ${tc.prompt} ("MCP Enabled")`, async function (this: Mocha.Context) {
-      if (!process.env.GEMINI_API_KEY) {
-        this.skip();
-      }
-      const run: AgentTestRunner = await startAgentTest(this, {
-        skills: [FIRESTORE_BASICS_PATH],
-        enableMcp: true,
+    for (const mcpEnabled of [true, false]) {
+      const mcpState = mcpEnabled ? "MCP Enabled" : "MCP Disabled";
+      it(`${tc.expectSkillEnabled ? 'should' : 'should not'} activate firestore-basics skill for prompt: ${tc.prompt} ("${mcpState}")`, async function (this: Mocha.Context) {
+        if (!process.env.GEMINI_API_KEY) {
+          this.skip();
+        }
+        const run: AgentTestRunner = await startAgentTest(this, {
+          skills: [FIRESTORE_BASICS_PATH],
+          enableMcp: mcpEnabled,
+        });
+
+        await run.type(tc.prompt);
+
+        if (tc.expectSkillEnabled) {
+          await run.expectSkillActivated("firestore-basics");
+        } else {
+          await run.dont.expectSkillActivated("firestore-basics");
+        }
       });
-
-      await run.type(tc.prompt);
-
-      if (tc.expectSkillEnabled) {
-        await run.expectSkillActivated("firestore-basics");
-      } else {
-        await run.dont.expectSkillActivated("firestore-basics");
-      }
-    });
-
-    it(`${tc.expectSkillEnabled ? 'should' : 'should not'} activate firestore-basics skill for prompt: ${tc.prompt} ("MCP Disabled")`, async function (this: Mocha.Context) {
-      if (!process.env.GEMINI_API_KEY) {
-        this.skip();
-      }
-      const run: AgentTestRunner = await startAgentTest(this, {
-        skills: [FIRESTORE_BASICS_PATH],
-        enableMcp: false,
-      });
-
-      await run.type(tc.prompt);
-
-      if (tc.expectSkillEnabled) {
-        await run.expectSkillActivated("firestore-basics");
-      } else {
-        await run.dont.expectSkillActivated("firestore-basics");
-      }
-    });
+    }
   }
 });
