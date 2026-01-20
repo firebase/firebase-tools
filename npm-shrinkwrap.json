@@ -3570,29 +3570,6 @@
         "url": "https://github.com/chalk/wrap-ansi?sponsor=1"
       }
     },
-    "node_modules/@isaacs/fs-minipass": {
-      "version": "4.0.1",
-      "resolved": "https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz",
-      "integrity": "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==",
-      "license": "ISC",
-      "optional": true,
-      "dependencies": {
-        "minipass": "^7.0.4"
-      },
-      "engines": {
-        "node": ">=18.0.0"
-      }
-    },
-    "node_modules/@isaacs/fs-minipass/node_modules/minipass": {
-      "version": "7.1.2",
-      "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz",
-      "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==",
-      "license": "ISC",
-      "optional": true,
-      "engines": {
-        "node": ">=16 || 14 >=14.17"
-      }
-    },
     "node_modules/@istanbuljs/load-nyc-config": {
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/@istanbuljs/load-nyc-config/-/load-nyc-config-1.1.0.tgz",
@@ -7585,6 +7562,35 @@
       },
       "engines": {
         "node": "*"
+      }
+    },
+    "node_modules/cacache/node_modules/tar": {
+      "version": "6.2.1",
+      "resolved": "https://registry.npmjs.org/tar/-/tar-6.2.1.tgz",
+      "integrity": "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==",
+      "deprecated": "Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me",
+      "license": "ISC",
+      "optional": true,
+      "dependencies": {
+        "chownr": "^2.0.0",
+        "fs-minipass": "^2.0.0",
+        "minipass": "^5.0.0",
+        "minizlib": "^2.1.1",
+        "mkdirp": "^1.0.3",
+        "yallist": "^4.0.0"
+      },
+      "engines": {
+        "node": ">=10"
+      }
+    },
+    "node_modules/cacache/node_modules/tar/node_modules/minipass": {
+      "version": "5.0.0",
+      "resolved": "https://registry.npmjs.org/minipass/-/minipass-5.0.0.tgz",
+      "integrity": "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==",
+      "license": "ISC",
+      "optional": true,
+      "engines": {
+        "node": ">=8"
       }
     },
     "node_modules/caching-transform": {
@@ -15959,6 +15965,16 @@
         "node": "^12.13 || ^14.13 || >=16"
       }
     },
+    "node_modules/node-gyp/node_modules/chownr": {
+      "version": "2.0.0",
+      "resolved": "https://registry.npmjs.org/chownr/-/chownr-2.0.0.tgz",
+      "integrity": "sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==",
+      "license": "ISC",
+      "optional": true,
+      "engines": {
+        "node": ">=10"
+      }
+    },
     "node_modules/node-gyp/node_modules/glob": {
       "version": "7.2.3",
       "resolved": "https://registry.npmjs.org/glob/-/glob-7.2.3.tgz",
@@ -15980,6 +15996,29 @@
         "url": "https://github.com/sponsors/isaacs"
       }
     },
+    "node_modules/node-gyp/node_modules/minipass": {
+      "version": "5.0.0",
+      "resolved": "https://registry.npmjs.org/minipass/-/minipass-5.0.0.tgz",
+      "integrity": "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==",
+      "license": "ISC",
+      "optional": true,
+      "engines": {
+        "node": ">=8"
+      }
+    },
+    "node_modules/node-gyp/node_modules/mkdirp": {
+      "version": "1.0.4",
+      "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz",
+      "integrity": "sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==",
+      "license": "MIT",
+      "optional": true,
+      "bin": {
+        "mkdirp": "bin/cmd.js"
+      },
+      "engines": {
+        "node": ">=10"
+      }
+    },
     "node_modules/node-gyp/node_modules/rimraf": {
       "version": "3.0.2",
       "resolved": "https://registry.npmjs.org/rimraf/-/rimraf-3.0.2.tgz",
@@ -15994,6 +16033,25 @@
       },
       "funding": {
         "url": "https://github.com/sponsors/isaacs"
+      }
+    },
+    "node_modules/node-gyp/node_modules/tar": {
+      "version": "6.2.1",
+      "resolved": "https://registry.npmjs.org/tar/-/tar-6.2.1.tgz",
+      "integrity": "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==",
+      "deprecated": "Old versions of tar are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exhorbitant rates) by contacting i@izs.me",
+      "license": "ISC",
+      "optional": true,
+      "dependencies": {
+        "chownr": "^2.0.0",
+        "fs-minipass": "^2.0.0",
+        "minipass": "^5.0.0",
+        "minizlib": "^2.1.1",
+        "mkdirp": "^1.0.3",
+        "yallist": "^4.0.0"
+      },
+      "engines": {
+        "node": ">=10"
       }
     },
     "node_modules/node-gyp/node_modules/which": {
@@ -20256,23 +20314,6 @@
       "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
       "dev": true
     },
-    "node_modules/tar": {
-      "version": "7.5.4",
-      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.4.tgz",
-      "integrity": "sha512-AN04xbWGrSTDmVwlI4/GTlIIwMFk/XEv7uL8aa57zuvRy6s4hdBed+lVq2fAZ89XDa7Us3ANXcE3Tvqvja1kTA==",
-      "license": "BlueOak-1.0.0",
-      "optional": true,
-      "dependencies": {
-        "@isaacs/fs-minipass": "^4.0.0",
-        "chownr": "^3.0.0",
-        "minipass": "^7.1.2",
-        "minizlib": "^3.1.0",
-        "yallist": "^5.0.0"
-      },
-      "engines": {
-        "node": ">=18"
-      }
-    },
     "node_modules/tar-fs": {
       "version": "2.1.1",
       "resolved": "https://registry.npmjs.org/tar-fs/-/tar-fs-2.1.1.tgz",
@@ -20309,49 +20350,6 @@
         "b4a": "^1.6.4",
         "fast-fifo": "^1.2.0",
         "streamx": "^2.15.0"
-      }
-    },
-    "node_modules/tar/node_modules/chownr": {
-      "version": "3.0.0",
-      "resolved": "https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz",
-      "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==",
-      "license": "BlueOak-1.0.0",
-      "optional": true,
-      "engines": {
-        "node": ">=18"
-      }
-    },
-    "node_modules/tar/node_modules/minipass": {
-      "version": "7.1.2",
-      "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz",
-      "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==",
-      "license": "ISC",
-      "optional": true,
-      "engines": {
-        "node": ">=16 || 14 >=14.17"
-      }
-    },
-    "node_modules/tar/node_modules/minizlib": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz",
-      "integrity": "sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==",
-      "license": "MIT",
-      "optional": true,
-      "dependencies": {
-        "minipass": "^7.1.2"
-      },
-      "engines": {
-        "node": ">= 18"
-      }
-    },
-    "node_modules/tar/node_modules/yallist": {
-      "version": "5.0.0",
-      "resolved": "https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz",
-      "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==",
-      "license": "BlueOak-1.0.0",
-      "optional": true,
-      "engines": {
-        "node": ">=18"
       }
     },
     "node_modules/tcp-port-used": {
@@ -24774,23 +24772,6 @@
         }
       }
     },
-    "@isaacs/fs-minipass": {
-      "version": "4.0.1",
-      "resolved": "https://registry.npmjs.org/@isaacs/fs-minipass/-/fs-minipass-4.0.1.tgz",
-      "integrity": "sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==",
-      "optional": true,
-      "requires": {
-        "minipass": "^7.0.4"
-      },
-      "dependencies": {
-        "minipass": {
-          "version": "7.1.2",
-          "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz",
-          "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==",
-          "optional": true
-        }
-      }
-    },
     "@istanbuljs/load-nyc-config": {
       "version": "1.1.0",
       "resolved": "https://registry.npmjs.org/@istanbuljs/load-nyc-config/-/load-nyc-config-1.1.0.tgz",
@@ -27651,7 +27632,7 @@
         "promise-inflight": "^1.0.1",
         "rimraf": "^3.0.2",
         "ssri": "^9.0.0",
-        "tar": "7.5.4",
+        "tar": "^6.1.11",
         "unique-filename": "^2.0.0"
       },
       "dependencies": {
@@ -27754,6 +27735,28 @@
               "requires": {
                 "brace-expansion": "^1.1.7"
               }
+            }
+          }
+        },
+        "tar": {
+          "version": "6.2.1",
+          "resolved": "https://registry.npmjs.org/tar/-/tar-6.2.1.tgz",
+          "integrity": "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==",
+          "optional": true,
+          "requires": {
+            "chownr": "^2.0.0",
+            "fs-minipass": "^2.0.0",
+            "minipass": "^5.0.0",
+            "minizlib": "^2.1.1",
+            "mkdirp": "^1.0.3",
+            "yallist": "^4.0.0"
+          },
+          "dependencies": {
+            "minipass": {
+              "version": "5.0.0",
+              "resolved": "https://registry.npmjs.org/minipass/-/minipass-5.0.0.tgz",
+              "integrity": "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==",
+              "optional": true
             }
           }
         }
@@ -33847,10 +33850,16 @@
         "npmlog": "^6.0.0",
         "rimraf": "^3.0.2",
         "semver": "^7.3.5",
-        "tar": "7.5.4",
+        "tar": "^6.1.2",
         "which": "^2.0.2"
       },
       "dependencies": {
+        "chownr": {
+          "version": "2.0.0",
+          "resolved": "https://registry.npmjs.org/chownr/-/chownr-2.0.0.tgz",
+          "integrity": "sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==",
+          "optional": true
+        },
         "glob": {
           "version": "7.2.3",
           "resolved": "https://registry.npmjs.org/glob/-/glob-7.2.3.tgz",
@@ -33865,6 +33874,18 @@
             "path-is-absolute": "^1.0.0"
           }
         },
+        "minipass": {
+          "version": "5.0.0",
+          "resolved": "https://registry.npmjs.org/minipass/-/minipass-5.0.0.tgz",
+          "integrity": "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==",
+          "optional": true
+        },
+        "mkdirp": {
+          "version": "1.0.4",
+          "resolved": "https://registry.npmjs.org/mkdirp/-/mkdirp-1.0.4.tgz",
+          "integrity": "sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==",
+          "optional": true
+        },
         "rimraf": {
           "version": "3.0.2",
           "resolved": "https://registry.npmjs.org/rimraf/-/rimraf-3.0.2.tgz",
@@ -33872,6 +33893,20 @@
           "optional": true,
           "requires": {
             "glob": "^7.1.3"
+          }
+        },
+        "tar": {
+          "version": "6.2.1",
+          "resolved": "https://registry.npmjs.org/tar/-/tar-6.2.1.tgz",
+          "integrity": "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==",
+          "optional": true,
+          "requires": {
+            "chownr": "^2.0.0",
+            "fs-minipass": "^2.0.0",
+            "minipass": "^5.0.0",
+            "minizlib": "^2.1.1",
+            "mkdirp": "^1.0.3",
+            "yallist": "^4.0.0"
           }
         },
         "which": {
@@ -37036,48 +37071,6 @@
           "resolved": "https://registry.npmjs.org/tslib/-/tslib-2.6.2.tgz",
           "integrity": "sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==",
           "dev": true
-        }
-      }
-    },
-    "tar": {
-      "version": "7.5.4",
-      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.4.tgz",
-      "integrity": "sha512-AN04xbWGrSTDmVwlI4/GTlIIwMFk/XEv7uL8aa57zuvRy6s4hdBed+lVq2fAZ89XDa7Us3ANXcE3Tvqvja1kTA==",
-      "optional": true,
-      "requires": {
-        "@isaacs/fs-minipass": "^4.0.0",
-        "chownr": "^3.0.0",
-        "minipass": "^7.1.2",
-        "minizlib": "^3.1.0",
-        "yallist": "^5.0.0"
-      },
-      "dependencies": {
-        "chownr": {
-          "version": "3.0.0",
-          "resolved": "https://registry.npmjs.org/chownr/-/chownr-3.0.0.tgz",
-          "integrity": "sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==",
-          "optional": true
-        },
-        "minipass": {
-          "version": "7.1.2",
-          "resolved": "https://registry.npmjs.org/minipass/-/minipass-7.1.2.tgz",
-          "integrity": "sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==",
-          "optional": true
-        },
-        "minizlib": {
-          "version": "3.1.0",
-          "resolved": "https://registry.npmjs.org/minizlib/-/minizlib-3.1.0.tgz",
-          "integrity": "sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==",
-          "optional": true,
-          "requires": {
-            "minipass": "^7.1.2"
-          }
-        },
-        "yallist": {
-          "version": "5.0.0",
-          "resolved": "https://registry.npmjs.org/yallist/-/yallist-5.0.0.tgz",
-          "integrity": "sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==",
-          "optional": true
         }
       }
     },
