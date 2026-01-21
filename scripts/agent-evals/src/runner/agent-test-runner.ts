@@ -20,6 +20,12 @@ export interface AgentTestMatchers {
    * an event is not found
    */
   expectMemory(text: string | RegExp): Promise<void>;
+
+  /**
+   * Asserts that a skill with the given name was activated.
+   * Use runner.dont.expectSkillActivated(name) to assert it was NOT activated.
+   */
+  expectSkillActivated(skillName: string): Promise<void>;
 }
 
 export interface AgentTestRunner extends AgentTestMatchers {
