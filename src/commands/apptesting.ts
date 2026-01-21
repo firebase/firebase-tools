@@ -12,11 +12,10 @@ import { Distribution, upload } from "../appdistribution/distribution";
 import { AIInstruction, ReleaseTest, TestDevice } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
 
-// TODO rothbutter add ability to specify devices
 const defaultDevices = [
   {
     model: "MediumPhone.arm",
-    version: "30",
+    version: "36",
     locale: "en_US",
     orientation: "portrait",
   },
