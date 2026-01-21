@@ -8,6 +8,19 @@ description: Deploy and manage web apps with Firebase App Hosting. Use when depl
 ## Description
 This skill enables the agent to deploy and manage modern, full-stack web applications (Next.js, Angular, etc.) using Firebase App Hosting. 
 
+
+## Hosting vs App Hosting
+
+**Choose Firebase Hosting if:**
+- You are deploying a static site (HTML/CSS/JS).
+- You are deploying a simple SPA (React, Vue, etc. without SSR).
+- You want full control over the build and deploy process via CLI.
+
+**Choose Firebase App Hosting if:**
+- You are using a supported full-stack framework like Next.js or Angular.
+- You need Server-Side Rendering (SSR) or ISR.
+- You want an automated "git push to deploy" workflow with zero configuration.
+
 ## Instructions
 1.  **Use CLI commands**: Directly execute `firebase apphosting` commands to create backends, trigger rollouts, and manage resources
 2.  **Configure App Hosting**: Create or edit `apphosting.yaml` to configure Cloud Run settings (CPU, memory) and environment variables as requested by the user.
