@@ -334,7 +334,8 @@ export class DataConnectEmulator implements EmulatorInstance {
           database,
           serviceId,
           // NOTE: Previously, we set `maxOpenConnections: 1` to get around PGlite's limitation with prepared statements.
-          // Since we switched emulator to avoid prepared statement, multiple connections is OK.
+          // Since we switched emulator to avoid prepared statement, multiple connections are OK.
+          // Transactional operations (`mutation @transaction`) actually requires multiple connections.
         });
         this.logger.logLabeled(
           "DEBUG",
