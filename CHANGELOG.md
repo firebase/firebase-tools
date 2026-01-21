@@ -1,0 +1,1 @@
+- Fix the bug when Data Connect emulator hangs with PGlite. (Issue #9756) #9771
