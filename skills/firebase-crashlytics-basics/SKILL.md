@@ -1,6 +1,6 @@
 ---
 name: firebase-crashlytics-basics
-description: Instrument mobile applications with Firebase Crashlytics, access crash reports and debug issues. Trigger when the user requests to instrument their mobile application or access crash reports.
+description: Comprehensive guide for Firebase Crashlytics, including SDK setup, instrumentation, and accessing crash reports. Use this skill when the user needs to instrument their mobile application, configure advanced reporting, or debug issues using crash data.
 compatibility: This skill is best used with the Firebase CLI, but does not require it. Install it by running `npm install -g firebase-tools`.
 ---
 
