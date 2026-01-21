@@ -4,6 +4,7 @@ import { Label } from "../components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
+import { GraphqlErrorExtensions } from "../../../src/dataconnect/types";
 import { isExecutionResult } from "../../common/graphql";
 import { AuthParamsKind } from '../../common/messaging/protocol';
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
@@ -153,9 +154,9 @@ function GraphQLErrorsView({ errors }: { errors: readonly GraphQLError[] }) {
   );
 }
 
-function GraphQLErrorView({ error }: { error: any }) {
+function GraphQLErrorView({ error }: { error: GraphQLError }) {
   const { message, path, extensions } = error;
-  const { debugDetails, code, workarounds } = extensions ?? {};
+  const { debugDetails, code, workarounds } = (extensions ?? {}) as GraphqlErrorExtensions;
 
   return (
     <div className={style.errorItem}>
