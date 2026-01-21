@@ -1,1 +1,2 @@
 - Add support for the --webpack flag in Next.js build (#9761)
+- Fix the bug when Data Connect emulator hangs with PGlite. (Issue #9756) #9771
