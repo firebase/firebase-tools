@@ -20,9 +20,9 @@ const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
 const agent = detectAIAgent();
-const agentStr = agent === "unknown" ? "None" : agent;
+const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
 const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
-const clientVersion = `${platform}/${CLI_VERSION}/${agentStr}`;
+const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
 
 export const STANDARD_HEADERS: Record<string, string> = {
   Connection: "keep-alive",
