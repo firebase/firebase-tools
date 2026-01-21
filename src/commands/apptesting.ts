@@ -70,7 +70,7 @@ export const command = new Command("apptesting:execute <release-binary-file>")
       releaseId = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
-      testInvocations = await invokeMataTests(
+      testInvocations = await invokeTests(
         client,
         releaseId,
         tests,
@@ -93,7 +93,7 @@ function pluralizeTests(numTests: number) {
   return `${numTests} test${numTests === 1 ? "" : "s"}`;
 }
 
-async function invokeMataTests(
+async function invokeTests(
   client: AppDistributionClient,
   releaseName: string,
   testDefs: TestCaseInvocation[],
