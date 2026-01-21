@@ -1,2 +1,2 @@
 - Fix the bug when Data Connect emulator hangs with PGlite. (Issue #9756) #9771
-- Updated to v3.1.0 of the Data Connect emulator, which adds support for using `distinct: true` in combination with `orderBy`, and other internal improvements ().
+- Updated to v3.1.0 of the Data Connect emulator, which adds support for using `distinct: true` in combination with `orderBy`, and other internal improvements (#9778).
