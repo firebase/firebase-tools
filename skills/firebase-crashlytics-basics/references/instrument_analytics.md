@@ -168,4 +168,4 @@ private void performSearch(final String query) {
 
 ---
 
-By following these steps, effectively instrument Firebase Analytics events to gain deeper insights into user behavior within the application. Remember to always consider privacy and avoid logging sensitive user data.
+By following these steps, you can effectively instrument Firebase Analytics events to gain deeper insights into user behavior within the application. Remember to always consider privacy and avoid logging sensitive user data.

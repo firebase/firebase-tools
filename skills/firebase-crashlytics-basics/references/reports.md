@@ -75,5 +75,5 @@ When displaying a list of issues, use the following format:
   1. Issue <full issue id>
     * <the issue title>
     * <the issue subtitle>
-    * **Description:** <a discription of the issue based on information from the tool response>
+    * **Description:** <a description of the issue based on information from the tool response>
   ```

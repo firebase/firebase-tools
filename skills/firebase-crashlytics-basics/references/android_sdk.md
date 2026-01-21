@@ -113,7 +113,6 @@ firebaseCrashlytics {
     // Enable processing and uploading of native symbols to Crashlytics.
     // This flag is disabled by default because it requires you to have the Android NDK installed.
     nativeSymbolUploadEnabled true
-    
     // Enable uploading of ProGuard/R8 mapping files
     // This is required for de-obfuscating stack traces if your app is minified.
     mappingFileUploadEnabled true
@@ -133,7 +132,6 @@ If you are using NDK and dont see symbolicated stack traces:
 Crashlytics automatically captures ANR (Application Not Responding) events on Android 11+ devices.
 *   **Requirement:** The app must be installed from the Google Play Store (or recognized by Play Services) for ANRs to be reported in many cases, though strictly local debugging often catches them too.
 *   **No Extra Code:** You generally do not need extra code to enable ANR reporting with the latest SDKs.
-```
 
 > **Note:** For the BoM and plugin versions, please refer to the official Firebase documentation for the latest versions.
 
