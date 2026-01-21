@@ -1,0 +1,2 @@
+- Added support for emulating multiple Firestore databases at once (#9742).
+- Fixed an issue causing errors when multiple Firestore databases were configured in `firebase.json` (#8114)

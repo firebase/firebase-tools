@@ -15,7 +15,7 @@ export interface FirestoreEmulatorArgs {
   host?: string;
   websocket_port?: number;
   project_id?: string;
-  rules?: string;
+  rules?: { database: string; rules: string }[];
   functions_emulator?: string;
   auto_download?: boolean;
   seed_from_export?: string;
@@ -42,28 +42,33 @@ export class FirestoreEmulator implements EmulatorInstance {
     }
 
     if (this.args.rules && this.args.project_id) {
-      const rulesPath = this.args.rules;
-      this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
-      this.rulesWatcher.on("change", async () => {
-        // There have been some race conditions reported (on Windows) where reading the
-        // file too quickly after the watcher fires results in an empty file being read.
-        // Adding a small delay prevents that at very little cost.
-        await new Promise((res) => setTimeout(res, 5));
+      for (const c of this.args.rules) {
+        const rulesPath = c.rules;
+        this.rulesWatcher = chokidar.watch(rulesPath, { persistent: true, ignoreInitial: true });
+        this.rulesWatcher.on("change", async () => {
+          // There have been some race conditions reported (on Windows) where reading the
+          // file too quickly after the watcher fires results in an empty file being read.
+          // Adding a small delay prevents that at very little cost.
+          await new Promise((res) => setTimeout(res, 5));
 
-        utils.logLabeledBullet("firestore", "Change detected, updating rules...");
-        const newContent = fs.readFileSync(rulesPath, "utf8").toString();
-        const issues = await this.updateRules(newContent);
-        if (issues) {
-          for (const issue of issues) {
-            utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
+          utils.logLabeledBullet(
+            "firestore",
+            `Change detected, updating rules for ${c.database}...`,
+          );
+          const newContent = fs.readFileSync(rulesPath, "utf8").toString();
+          const issues = await this.updateRules(c.database, newContent);
+          if (issues) {
+            for (const issue of issues) {
+              utils.logWarning(this.prettyPrintRulesIssue(rulesPath, issue));
+            }
           }
-        }
-        if (issues.some((issue) => issue.severity === Severity.ERROR)) {
-          utils.logWarning("Failed to update rules");
-        } else {
-          utils.logLabeledSuccess("firestore", "Rules updated.");
-        }
-      });
+          if (issues.some((issue) => issue.severity === Severity.ERROR)) {
+            utils.logWarning("Failed to update rules");
+          } else {
+            utils.logLabeledSuccess("firestore", "Rules updated.");
+          }
+        });
+      }
     }
 
     return downloadableEmulators.start(Emulators.FIRESTORE, this.args);
@@ -101,7 +106,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     return Emulators.FIRESTORE;
   }
 
-  private async updateRules(content: string): Promise<Issue[]> {
+  private async updateRules(databaseId: string, content: string): Promise<Issue[]> {
     const projectId = this.args.project_id;
 
     const body = {
@@ -118,7 +123,7 @@ export class FirestoreEmulator implements EmulatorInstance {
     };
 
     const res = await EmulatorRegistry.client(Emulators.FIRESTORE).put<any, { issues?: Issue[] }>(
-      `/emulator/v1/projects/${projectId}:securityRules`,
+      `/emulator/v1/projects/${projectId}/databases/${databaseId}:securityRules`,
       body,
     );
     if (res.body && Array.isArray(res.body.issues)) {
