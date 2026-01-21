@@ -169,7 +169,7 @@ function GraphQLErrorView({ error }: { error: any }) {
           at{" "}
           {path.map((p: string | number, i: number) => (
             <React.Fragment key={i}>
-              {i > 0 && "/"}
+              {i > 0 && "."}
               <kbd>{p}</kbd>
             </React.Fragment>
           ))}
