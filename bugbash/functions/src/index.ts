@@ -1,4 +1,4 @@
-import { onGraphRequest } from 'firebase-functions/dataconnect';
+import { onGraphRequest } from 'firebase-functions/dataconnect/graphql';
 
 const opts = {
     schemaFilePath: "dataconnect/schema_resolver/schema.gql",
