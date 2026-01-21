@@ -1,11 +1,11 @@
-import { onGraphRequest } from 'firebase-functions/dataconnect/graphql';
+import { FirebaseContext, GraphqlServerOptions, onGraphRequest } from 'firebase-functions/dataconnect/graphql';
 
-const opts = {
+const opts: GraphqlServerOptions = {
     schemaFilePath: "dataconnect/schema_resolver/schema.gql",
     region: "us-east4",
     resolvers: {
         query: {
-            hello(parent, args, contextValue, info) {
+            hello(parent: unknown, args: Record<string, unknown>, contextValue: FirebaseContext, info: unknown) {
                 return `Hello ${args.name}!`;
             },
         },
