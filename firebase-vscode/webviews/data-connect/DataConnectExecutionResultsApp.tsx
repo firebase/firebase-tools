@@ -161,7 +161,9 @@ function GraphQLErrorView({ error }: { error: any }) {
     <div className={style.errorItem}>
       <div className={style.errorHeader}>
         <i className="codicon codicon-error" />
-        {code && code !== "UNKNOWN" && <span className={style.errorCode}>{code}</span>}
+        {code && code !== "OK" && code !== "UNKNOWN" && (
+          <span className={style.errorCode}>{code}</span>
+        )}
         <span>{message}</span>
       </div>
       {path && path.length > 0 && (
