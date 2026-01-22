@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Fixed] Language server now recognizes multiple schemas.
+
 ## 2.0.1
 
 - Update internal `firebase-tools` dependency to 15.3.1
