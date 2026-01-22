@@ -34,8 +34,8 @@ Follow these steps to diagnose bugs and and propose fixes for issues.
 
     ## Other potential causes
 
-    1. <Another possible root cause>
-    2. <Another possible root cause>
+      1. <Another possible root cause>
+      2. <Another possible root cause>
     ```
 
 9. If there is not enough information in the crash report to find a root cause, describe why you cannot fix the issue instead of making a guess.
