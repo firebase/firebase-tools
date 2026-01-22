@@ -280,11 +280,9 @@ export class ResolvedDataConnectConfig {
   }
 
   get relativeSchemaPaths(): string[] {
-    const paths = [this.mainSchemaDir.replace(".", this.relativePath)];
-    for (const secondarySchemaDir of this.secondarySchemaDirs) {
-      paths.push(secondarySchemaDir.replace(".", this.relativePath));
-    }
-    return paths;
+    return [this.mainSchemaDir, ...this.secondarySchemaDirs].map((dir) =>
+      dir.replace(".", this.relativePath),
+    );
   }
 
   get relativeConnectorPaths(): string[] {

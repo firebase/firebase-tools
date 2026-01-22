@@ -95,10 +95,10 @@ export function setupLanguageClient(
     // TODO: Expand to multiple services
     const config = configs.values[0];
     const generatedPath = ".dataconnect";
-    let schemaPaths = [path.join(config.relativePath, generatedPath, "**", "*.gql")];
-    for (const relativeSchemaPath of config.relativeSchemaPaths) {
-      schemaPaths.push(path.join(relativeSchemaPath, "**", "*.gql"));
-    }
+    let schemaPaths = [
+      path.join(config.relativePath, generatedPath, "**", "*.gql"),
+      ...config.relativeSchemaPaths.map((p) => path.join(p, "**", "*.gql")),
+    ];
     let documentPaths = config.relativeConnectorPaths.map((connectorPath) =>
       path.join(connectorPath, "**", "*.gql"),
     );
