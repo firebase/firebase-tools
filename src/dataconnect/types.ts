@@ -95,13 +95,18 @@ export interface GraphqlError {
     line: number;
     column: number;
   }[];
-  extensions?: {
-    file?: string;
-    warningLevel?: WarningLevel;
-    workarounds?: Workaround[];
-    [key: string]: any;
-  };
+  extensions?: GraphqlErrorExtensions;
 }
+
+export interface GraphqlErrorExtensions {
+  file?: string;
+  code?: string;
+  debugDetails?: string;
+  warningLevel?: WarningLevel;
+  workarounds?: Workaround[];
+  [key: string]: any;
+}
+
 export interface BuildResult {
   errors?: GraphqlError[];
   metadata?: DeploymentMetadata;
