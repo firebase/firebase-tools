@@ -1,5 +1,8 @@
 ## NEXT
 
+- Render GraphQL error debug details and error code in the execution panel nicely. (#9769, #9785)
+- Language server now recognizes multiple schemas. (#9768)
+
 ## 2.0.1
 
 - Update internal `firebase-tools` dependency to 15.3.1
