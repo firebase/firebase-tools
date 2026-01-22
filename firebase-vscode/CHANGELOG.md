@@ -1,6 +1,6 @@
 ## NEXT
 
-- Render GraphQL error debug details and error code in the execution panel nicely. (#9769)
+- Render GraphQL error debug details and error code in the execution panel nicely. (#9769, #9785)
 
 ## 2.0.1
 
