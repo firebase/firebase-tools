@@ -1,7 +1,7 @@
 ## NEXT
 
 - Render GraphQL error debug details and error code in the execution panel nicely. (#9769)
-- [Fixed] Language server now recognizes multiple schemas. (#9768)
+- Language server now recognizes multiple schemas. (#9768)
 
 ## 2.0.1
 
