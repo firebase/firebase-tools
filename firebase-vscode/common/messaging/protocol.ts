@@ -153,7 +153,6 @@ export interface ExecutionResults {
   respErr: GraphqlResponseError | SerializedError | undefined;
 }
 
-
 export type ValueOrError<T> =
   | { value: T; error: undefined }
   | { error: string; value: undefined };

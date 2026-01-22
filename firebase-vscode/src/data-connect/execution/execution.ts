@@ -3,7 +3,6 @@ import vscode, {
   Disposable,
   ExtensionContext,
 } from "vscode";
-import * as yaml from "yaml";
 import { ExtensionBrokerImpl } from "../../extension-broker";
 import { registerWebview } from "../../webview";
 import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
@@ -23,7 +22,7 @@ import {
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
-import { DataConnectError, toSerializedError } from "../../../common/error";
+import { toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
