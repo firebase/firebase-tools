@@ -4,6 +4,7 @@ import { Label } from "../components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
 import { ExecutionResult, GraphQLError } from "graphql";
+import { GraphqlErrorExtensions } from "../../../src/dataconnect/types";
 import { isExecutionResult } from "../../common/graphql";
 import { AuthParamsKind } from '../../common/messaging/protocol';
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
@@ -36,7 +37,7 @@ export function DataConnectExecutionResultsApp() {
     if (errors && errors.length !== 0) {
       errorsDisplay = (
         <>
-          <GraphQLErrorView errors={errors} />
+          <GraphQLErrorsView errors={errors} />
         </>
       );
     }
@@ -125,69 +126,93 @@ export function DataConnectExecutionResultsApp() {
  */
 function InternalErrorView({ error }: { error: SerializedError }) {
   return (
-    <>
-      <Label>Error</Label>
-      <p>
-        {error.message}
+    <div className={style.errorContainer}>
+      <div className={style.errorItem}>
+        <div className={style.errorHeader}>
+          <i className="codicon codicon-error" />
+          <span>{error.message}</span>
+        </div>
         {error.cause && (
-          <>
-            <br />
-            <h4>Cause:</h4>
+          <div style={{ marginLeft: "var(--space-large)" }}>
+            <Label>Cause:</Label>
             <InternalErrorView error={error.cause} />
-          </>
+          </div>
         )}
-      </p>
-    </>
+      </div>
+    </div>
   );
 }
 
 /** A view for when an execution returns status 200 but contains errors. */
-function GraphQLErrorView({ errors }: { errors: readonly GraphQLError[] }) {
-  let pathDisplay: JSX.Element | undefined;
-  // update path
-  const errorsWithPathDisplay = errors.map((error) => {
-    if (error.path) {
-      // Renders the path as a series of kbd elements separated by commas
-      return {
-        ...error,
-        pathDisplay: (
-          <>
-            {error.path?.map((path, index) => {
-              const item = <kbd>{path}</kbd>;
-
-              return index === 0 ? item : <>, {item}</>;
-            })}{" "}
-          </>
-        ),
-      };
-    }
-    return error;
-  });
-
+function GraphQLErrorsView({ errors }: { errors: readonly GraphQLError[] }) {
   return (
-    <>
-      {errorsWithPathDisplay.map((error, index) => {
-        return (
-          <p style={{ whiteSpace: "pre-wrap" }}  key={index}>
-            {pathDisplay}
-            {error.message}
-            {error.stack && <StackView stack={error.stack} />}
-          </p>
-        );
-      })}
-    </>
+    <div className={style.errorContainer}>
+      {errors.map((error, index) => (
+        <GraphQLErrorView key={index} error={error} />
+      ))}
+    </div>
   );
 }
 
-function StackView({ stack }: { stack: string }) {
+function GraphQLErrorView({ error }: { error: GraphQLError }) {
+  const { message, path, extensions } = error;
+  const { debugDetails, code, workarounds } = (extensions ?? {}) as GraphqlErrorExtensions;
+
   return (
-    <span
-      style={{
-        // Preserve stacktrace formatting
-        whiteSpace: "pre-wrap",
-      }}
-    >
-      {stack}
-    </span>
+    <div className={style.errorItem}>
+      <div className={style.errorHeader}>
+        <i className="codicon codicon-error" />
+        {code && code !== "OK" && code !== "UNKNOWN" && (
+          <span className={style.errorCode}>{code}</span>
+        )}
+        <span>{message}</span>
+      </div>
+      {path && path.length > 0 && (
+        <div className={style.errorPath}>
+          at{" "}
+          {path.map((p: string | number, i: number) => (
+            <React.Fragment key={i}>
+              {i > 0 && "."}
+              <kbd>{p}</kbd>
+            </React.Fragment>
+          ))}
+        </div>
+      )}
+      {workarounds && workarounds.length > 0 && (
+        <div className={style.workarounds}>
+          <label>Workarounds</label>
+          <pre>
+            {workarounds
+              .map((w: any) => {
+                const yaml = typeof w === "string" ? w : renderYaml(w);
+                return `- ${yaml.replace(/\n/g, "\n  ")}`;
+              })
+              .join("\n")}
+          </pre>
+        </div>
+      )}
+      {debugDetails && (
+        <div className={style.debugDetails}>
+          <label>Debug Details</label>
+          <pre>{debugDetails}</pre>
+        </div>
+      )}
+    </div>
   );
+}
+
+function renderYaml(obj: any, indent = ""): string {
+  if (typeof obj !== "object" || obj === null) {
+    return String(obj);
+  }
+
+  return Object.entries(obj)
+    .map(([key, value]) => {
+      const prefix = `${indent}${key}:`;
+      if (typeof value === "object" && value !== null) {
+        return `${prefix}\n${renderYaml(value, indent + "  ")}`;
+      }
+      return `${prefix} ${value}`;
+    })
+    .join("\n");
 }
