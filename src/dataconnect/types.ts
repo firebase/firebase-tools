@@ -286,12 +286,14 @@ export interface ExecuteOperationRequest {
 }
 
 export interface GraphqlResponseError {
+  // One Platform standard puts error body under `error` field.
   error?: {
     code?: number;
     message?: string;
     status?: string;
     details?: GraphqlError[];
   };
+  // However, the GRPC library in emulator service them at top-level.
   code?: number;
   message?: string;
   details?: GraphqlError[];
