@@ -4,10 +4,8 @@ import { broker, useBroker } from "../globals/html-broker";
 import { Label } from "../components/ui/Text";
 import style from "./data-connect-execution-results.entry.scss";
 import { SerializedError } from "../../common/error";
-import { ExecutionResult, GraphQLError } from "graphql";
-import { GraphqlErrorExtensions } from "../../../src/dataconnect/types";
-import { isExecutionResult } from "../../common/graphql";
-import { AuthParamsKind } from '../../common/messaging/protocol';
+import { GraphqlError, GraphqlErrorExtensions } from "../../../src/dataconnect/types";
+import { AuthParamsKind, ExecutionResults } from '../../common/messaging/protocol';
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
 
 // Prevent webpack from removing the `style` import above
@@ -20,40 +18,32 @@ function DataConnectExecutionResultsApp() {
     // an execution result has already been set.
     initialRequest: "getDataConnectResults",
   });
-  const results: ExecutionResult | SerializedError | undefined =
-    dataConnectResults?.results;
+  const results: ExecutionResults | undefined = dataConnectResults?.results;
 
   if (!dataConnectResults || !results) {
     return null;
   }
 
-  let response: unknown;
-  let errorsDisplay: JSX.Element | undefined;
+  let respErrorsDisplay: JSX.Element | undefined;
+  if (results?.respErr) {
+    respErrorsDisplay = <InternalErrorView error={results?.respErr} />;
+  }
 
-  if (isExecutionResult(results)) {
-    // We display the response even if there are errors, just
-    // in case the user wants to see the response anyway.
-    response = results.data;
-    const errors = results.errors;
-    if (errors && errors.length !== 0) {
-      errorsDisplay = (
-        <>
-          <GraphQLErrorsView errors={errors} />
-        </>
-      );
-    }
-  } else {
-    // We don't display a "response" here, because this is an error
-    // that occurred without returning a valid GraphQL response.
-    errorsDisplay = <InternalErrorView error={results} />;
+  let gqlErrorsDisplay: JSX.Element | undefined;
+  if (results.gqlErrors?.length) {
+    gqlErrorsDisplay = (
+      <>
+        <GraphQLErrorsView errors={results.gqlErrors} />
+      </>
+    );
   }
 
   let resultsDisplay: JSX.Element | undefined;
-  if (response) {
+  if (results.data) {
     resultsDisplay = (
       <code>
         <label>Result Data</label>
-        <pre>{JSON.stringify(response, null, 2)}</pre>
+        <pre>{JSON.stringify(results.data, null, 2)}</pre>
       </code>
     );
   }
@@ -109,7 +99,8 @@ function DataConnectExecutionResultsApp() {
         {dataConnectResults.displayName}
       </h2>
       <br />
-      {errorsDisplay}
+      {respErrorsDisplay}
+      {gqlErrorsDisplay}
       {resultsDisplay}
       <br />
       {authDisplay}
@@ -145,17 +136,17 @@ function InternalErrorView({ error }: { error: SerializedError }) {
 }
 
 /** A view for when an execution returns status 200 but contains errors. */
-function GraphQLErrorsView({ errors }: { errors: readonly GraphQLError[] }) {
+function GraphQLErrorsView({ errors }: { errors: readonly GraphqlError[] }) {
   return (
     <div className={style.errorContainer}>
-      {errors.map((error, index) => (
+      {errors.filter(e => e.message).map((error, index) => (
         <GraphQLErrorView key={index} error={error} />
       ))}
     </div>
   );
 }
 
-function GraphQLErrorView({ error }: { error: GraphQLError }) {
+function GraphQLErrorView({ error }: { error: GraphqlError }) {
   const { message, path, extensions } = error;
   const { debugDetails, code, workarounds } = (extensions ?? {}) as GraphqlErrorExtensions;
 

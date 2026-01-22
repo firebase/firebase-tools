@@ -277,7 +277,7 @@ export interface ExecuteGraphqlRequest {
 
 export interface GraphqlResponse {
   data: Record<string, any>;
-  errors: any[];
+  errors: GraphqlError[];
 }
 
 export interface ExecuteOperationRequest {
@@ -286,7 +286,15 @@ export interface ExecuteOperationRequest {
 }
 
 export interface GraphqlResponseError {
-  error: { code: number; message: string; status: string; details: any[] };
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+    details?: GraphqlError[];
+  };
+  code?: number;
+  message?: string;
+  details?: GraphqlError[];
 }
 
 export const isGraphQLResponse = (g: any): g is GraphqlResponse => !!g.data || !!g.errors;

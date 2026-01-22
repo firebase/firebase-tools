@@ -10,6 +10,7 @@ import { RCData } from "../../../src/rc";
 import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
+import { GraphqlError, GraphqlResponseError } from "../dataconnect/types";
 
 export enum AuthParamsKind {
   ADMIN = "admin",
@@ -138,10 +139,20 @@ export interface WebviewToExtensionParamsMap {
 export interface DataConnectResults {
   displayName: string;
   query: string;
-  results: ExecutionResult | SerializedError;
   variables: string;
   auth: AuthParams;
+  results: ExecutionResults;
 }
+
+export interface ExecutionResults {
+  // Results
+  // If non-200 status: respErr and maybe errors is set
+  // If 200 status: data and maybe errors is set
+  data?: any; // data can be any valid JSON value.
+  gqlErrors?: GraphqlError[];
+  respErr: GraphqlResponseError | SerializedError | undefined;
+}
+
 
 export type ValueOrError<T> =
   | { value: T; error: undefined }
