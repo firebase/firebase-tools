@@ -285,7 +285,7 @@ export interface ExecuteGraphqlRequest {
 
 export interface GraphqlResponse {
   data: Record<string, any>;
-  errors: any[];
+  errors: GraphqlError[];
 }
 
 export interface ExecuteOperationRequest {
@@ -294,11 +294,23 @@ export interface ExecuteOperationRequest {
 }
 
 export interface GraphqlResponseError {
-  error: { code: number; message: string; status: string; details: any[] };
+  // One Platform standard puts error body under `error` field.
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+    details?: GraphqlError[];
+  };
+  // However, the GRPC library in emulator service them at top-level.
+  code?: number;
+  message?: string;
+  status?: string;
+  details?: GraphqlError[];
 }
 
 export const isGraphQLResponse = (g: any): g is GraphqlResponse => !!g.data || !!g.errors;
-export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g.error;
+export const isGraphQLResponseError = (g: any): g is GraphqlResponseError =>
+  !!g.error?.message || !!g.message;
 
 interface ImpersonationAuthenticated {
   authClaims: any;
