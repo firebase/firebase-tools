@@ -6,10 +6,10 @@ import {
   mainSchemaYaml,
   ServiceInfo,
 } from "../../dataconnect/types";
-import { listConnectors, upsertConnector, upsertSchema } from "../../dataconnect/client";
+import { listConnectors, upsertConnector } from "../../dataconnect/client";
 import { promptDeleteConnector } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { migrateSchema } from "../../dataconnect/schemaMigration";
+import { migrateSchema, upsertSecondarySchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
 import { parseServiceName } from "../../dataconnect/names";
 import { logger } from "../../logger";
@@ -103,8 +103,8 @@ export default async function (context: Context, options: Options): Promise<void
     .map((s) => s.schemas.filter((s) => !isMainSchema(s)))
     .flatMap((s) => s);
   for (const schema of wantSecondarySchemas) {
-    await upsertSchema(schema, false);
-    utils.logLabeledSuccess("dataconnect", `Migrated schema ${schema.name}`);
+    await upsertSecondarySchema({ options, schema, stats: dataconnect.deployStats });
+    utils.logLabeledSuccess("dataconnect", `Deployed schema ${schema.name}`);
     dataconnect.deployStats.numSchemaMigrated++;
   }
 

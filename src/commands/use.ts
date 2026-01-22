@@ -110,7 +110,7 @@ async function addAlias(options: UseOptions) {
     );
   }
   const projects = await listFirebaseProjects();
-  const project = await select({
+  const project = await select<string>({
     message: "Which project do you want to add?",
     choices: projects.map((p) => p.projectId).sort(),
   });

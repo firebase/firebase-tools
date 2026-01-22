@@ -72,7 +72,6 @@ export async function execute(
   };
   const pool = new pg.Pool({
     ...(await connector.getOptions(connectionOpts)),
-    connectionTimeoutMillis: 1000,
     password: opts.password,
     user: opts.username,
     database: opts.databaseId,

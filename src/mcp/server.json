@@ -14,7 +14,7 @@
       "identifier": "firebase-tools",
       "runtimeHint": "npx",
       "runtimeArguments": [{"type": "positional", "value": "mcp"}],
-      "version": "14.25.1",
+      "version": "14.27.0",
       "transport": {
         "type": "stdio"
       }

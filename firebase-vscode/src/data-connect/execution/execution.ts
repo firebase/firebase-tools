@@ -20,9 +20,6 @@ import {
   OperationDefinitionNode,
   OperationTypeNode,
   print,
-  buildClientSchema,
-  validate,
-  parse,
 } from "graphql";
 import { DataConnectService } from "../service";
 import { DataConnectError, toSerializedError } from "../../../common/error";
@@ -30,7 +27,6 @@ import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
-import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
