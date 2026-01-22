@@ -22,7 +22,7 @@ import {
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
-import { toSerializedError } from "../../../common/error";
+import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
@@ -256,7 +256,10 @@ export function registerExecution(
     } catch (error) {
       item.state = ExecutionState.ERRORED;
       item.results = {
-        respErr: toSerializedError(error as Error),
+        respErr: toSerializedError(
+          error instanceof Error
+            ? error
+            : new DataConnectError("Unknown error", error)),
       };
     }
 
