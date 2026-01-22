@@ -144,10 +144,12 @@ export interface DataConnectResults {
   results: ExecutionResults;
 }
 
+// If non-200 status: respErr and errors from `details` is set
+// If 200 status:
+//   - success: only data is set
+//   - request error: only errors is set
+//   - field error: both data and errors are set
 export interface ExecutionResults {
-  // Results
-  // If non-200 status: respErr and maybe errors is set
-  // If 200 status: data and maybe errors is set
   data?: any; // data can be any valid JSON value.
   gqlErrors?: GraphqlError[];
   respErr: GraphqlResponseError | SerializedError | undefined;
