@@ -114,7 +114,7 @@ export const cursor: AIToolModule = {
     return { files };
   },
 
-  getSkillPath(projectPath: string): string {
-    return path.join(projectPath, CURSOR_SKILLS_DIR);
+  getSkillPath(): string {
+    return CURSOR_SKILLS_DIR;
   },
 };

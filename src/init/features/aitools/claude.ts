@@ -63,7 +63,7 @@ export const claude: AIToolModule = {
     return { files };
   },
 
-  getSkillPath(projectPath: string): string {
-    return path.join(projectPath, CLAUDE_SKILLS_DIR);
+  getSkillPath(): string {
+    return CLAUDE_SKILLS_DIR;
   },
 };
