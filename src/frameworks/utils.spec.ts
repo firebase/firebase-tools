@@ -1,9 +1,15 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
 import * as fs from "fs";
-import { resolve, join } from "path";
+import { join, resolve } from "path";
+import * as sinon from "sinon";
 
-import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils";
+import {
+  conjoinOptions,
+  getBuildScript,
+  getNodeModuleBin,
+  isUrl,
+  warnIfCustomBuildScript,
+} from "./utils";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
@@ -65,26 +71,22 @@ describe("Frameworks utils", () => {
       sandbox.restore();
     });
 
-    it("should not print warning when a default build script is found.", async () => {
+    it("should not print warning when a default build script is found.", () => {
       const buildScript = "next build";
       const defaultBuildScripts = ["next build"];
       packageJson.scripts.build = buildScript;
 
-      sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
-
-      await warnIfCustomBuildScript("fakedir/", framework, defaultBuildScripts);
+      warnIfCustomBuildScript(buildScript, framework, defaultBuildScripts);
 
       expect(consoleLogSpy.callCount).to.equal(0);
     });
 
-    it("should print warning when a custom build script is found.", async () => {
+    it("should print warning when a custom build script is found.", () => {
       const buildScript = "echo 'Custom build script' && next build";
       const defaultBuildScripts = ["next build"];
       packageJson.scripts.build = buildScript;
 
-      sandbox.stub(fs.promises, "readFile").resolves(JSON.stringify(packageJson));
-
-      await warnIfCustomBuildScript("fakedir/", framework, defaultBuildScripts);
+      warnIfCustomBuildScript(buildScript, framework, defaultBuildScripts);
 
       expect(consoleLogSpy).to.be.calledOnceWith(
         `\nWARNING: Your package.json contains a custom build that is being ignored. Only the ${framework} default build script (e.g, "${defaultBuildScripts[0]}") is respected. If you have a more advanced build process you should build a custom integration https://firebase.google.com/docs/hosting/express\n`,
@@ -133,6 +135,53 @@ describe("Frameworks utils", () => {
       expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
         `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`,
       );
+    });
+  });
+
+  describe("getBuildScript", () => {
+    let sandbox: sinon.SinonSandbox;
+    const packageJson: Record<string, Record<string, string>> = {
+      scripts: {
+        build: "",
+      },
+    };
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      packageJson.scripts.build = "";
+    });
+
+    it("should return the build script from package.json", async () => {
+      packageJson.scripts.build = "test build script";
+
+      sandbox
+        .stub(fs.promises, "readFile")
+        .withArgs("dir/package.json")
+        .resolves(JSON.stringify(packageJson));
+
+      const buildScript = await getBuildScript("dir/package.json");
+      expect(buildScript).to.equal("test build script");
+    });
+
+    it("should return undefined if no build script exists", async () => {
+      delete packageJson.scripts.build;
+
+      sandbox
+        .stub(fs.promises, "readFile")
+        .withArgs("dir/package.json")
+        .resolves(JSON.stringify(packageJson));
+      const buildScript = await getBuildScript("dir/package.json");
+      expect(buildScript).to.be.undefined;
+    });
+
+    it("should return undefined if package.json is not found", async () => {
+      sandbox.stub(fs.promises, "readFile").withArgs("dir/package.json").rejects(new Error());
+      const buildScript = await getBuildScript("dir/package.json");
+      expect(buildScript).to.be.undefined;
     });
   });
 });

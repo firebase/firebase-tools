@@ -4,7 +4,13 @@ import { join, posix } from "path";
 import { lt } from "semver";
 import { spawn, sync as spawnSync } from "cross-spawn";
 import { FrameworkType, SupportLevel } from "../interfaces";
-import { simpleProxy, warnIfCustomBuildScript, getNodeModuleBin, relativeRequire } from "../utils";
+import {
+  simpleProxy,
+  warnIfCustomBuildScript,
+  getNodeModuleBin,
+  relativeRequire,
+  getBuildScript,
+} from "../utils";
 import { getNuxtVersion } from "./utils";
 
 export const name = "Nuxt";
@@ -39,7 +45,10 @@ export async function discover(dir: string) {
 }
 
 export async function build(cwd: string) {
-  await warnIfCustomBuildScript(cwd, name, DEFAULT_BUILD_SCRIPT);
+  const buildScript = await getBuildScript(join(cwd, "package.json"));
+  if (buildScript) {
+    warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
+  }
   const cli = getNodeModuleBin("nuxt", cwd);
   const {
     ssr: wantsBackend,

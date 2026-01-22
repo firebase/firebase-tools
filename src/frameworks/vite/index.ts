@@ -12,6 +12,7 @@ import {
   findDependency,
   getNodeModuleBin,
   relativeRequire,
+  getBuildScript,
 } from "../utils";
 
 export const name = "Vite";
@@ -83,7 +84,10 @@ export async function discover(dir: string, plugin?: string, npmDependency?: str
 export async function build(root: string, target: string) {
   const { build } = await relativeRequire(root, "vite");
 
-  await warnIfCustomBuildScript(root, name, DEFAULT_BUILD_SCRIPT);
+  const buildScript = await getBuildScript(join(root, "package.json"));
+  if (buildScript) {
+    warnIfCustomBuildScript(buildScript, name, DEFAULT_BUILD_SCRIPT);
+  }
 
   // SvelteKit uses process.cwd() unfortunately, chdir
   const cwd = process.cwd();
