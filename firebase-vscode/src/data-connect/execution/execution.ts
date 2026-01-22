@@ -249,7 +249,7 @@ export function registerExecution(
           // Emulator returns `{ code, message, details }`
           gqlErrors: body.details || body.error?.details,
           respErr: {
-            message: `Request failed with status ${resp.status}: ${body.message || body.error?.message}}`,
+            message: `Request failed with status ${resp.status}: ${body.message || body.error?.message}`,
           },
         };
       }
