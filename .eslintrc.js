@@ -111,7 +111,7 @@ module.exports = {
       rules: {},
     },
     {
-      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts"],
+      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
       rules: { camelcase: "off" },
     },
   ],

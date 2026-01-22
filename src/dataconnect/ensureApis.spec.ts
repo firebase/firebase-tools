@@ -21,10 +21,4 @@ describe("ensureApis", () => {
     expect(ensureStub).to.be.calledWith("my-project", api.dataconnectOrigin(), "dataconnect");
     expect(ensureStub).to.be.calledWith("my-project", api.cloudSQLAdminOrigin(), "dataconnect");
   });
-
-  it("should ensure Cloud AI Companion API is enabled", async () => {
-    ensureStub.resolves();
-    await apis.ensureGIFApis("my-project");
-    expect(ensureStub).to.be.calledWith("my-project", api.cloudAiCompanionOrigin(), "dataconnect");
-  });
 });

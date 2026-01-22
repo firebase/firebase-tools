@@ -587,7 +587,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
   });
 }
 
-export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
+export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 21;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools no longer supports Java versions before 11. " +
-  "Please install a JDK at version 11 or above to get a compatible runtime.";
+  "firebase-tools no longer supports Java version before 21. " +
+  "Please install a JDK at version 21 or above to get a compatible runtime.";

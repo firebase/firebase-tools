@@ -1,0 +1,26 @@
+{
+  "name": "agent-evals",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "tsc && echo '{ \"name\": \"firebase-tools-agent-evals\" }' > lib/package.json",
+    "test": "npm run build && mocha 'lib/**/*.spec.js' --reporter spec",
+    "test:dev": "SKIP_REBUILD=true COPY_FIREBASE_CLI_CONFIG=true npm run test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.9.0",
+    "@typescript-eslint/parser": "^5.9.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "mocha": "^11.7.1",
+    "node-pty": "^1.1.0",
+    "strip-ansi": "^7.1.0",
+    "tsx": "^4.11.0"
+  }
+}

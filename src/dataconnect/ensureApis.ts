@@ -1,5 +1,6 @@
 import * as api from "../api";
-import { ensure } from "../ensureApiEnabled";
+import { configstore } from "../configstore";
+import { check, ensure } from "../ensureApiEnabled";
 
 const prefix = "dataconnect";
 
@@ -10,6 +11,18 @@ export async function ensureApis(projectId: string, silent: boolean = false): Pr
   ]);
 }
 
-export async function ensureGIFApis(projectId: string): Promise<void> {
-  await ensure(projectId, api.cloudAiCompanionOrigin(), prefix);
+/**
+ * Check if GIF APIs are enabled.
+ * If the Gemini in Firebase ToS is accepted, ensure the API is enabled.
+ * Otherwise, return false. The caller should prompt the user to accept the ToS.
+ */
+export async function ensureGIFApiTos(projectId: string): Promise<boolean> {
+  if (configstore.get("gemini")) {
+    await ensure(projectId, api.cloudAiCompanionOrigin(), "");
+  } else {
+    if (!(await check(projectId, api.cloudAiCompanionOrigin(), ""))) {
+      return false;
+    }
+  }
+  return true;
 }

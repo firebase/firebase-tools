@@ -2,25 +2,34 @@ import { z } from "zod";
 
 import { tool } from "../../tool";
 import * as dataplane from "../../../dataconnect/dataplaneClient";
-import { pickService } from "../../../dataconnect/load";
+import { pickOneService } from "../../../dataconnect/load";
 import { graphqlResponseToToolResponse, parseVariables } from "../../util/dataconnect/converter";
 import { getDataConnectEmulatorClient } from "../../util/dataconnect/emulator";
 import { Client } from "../../../apiv2";
 
 export const execute = tool(
+  "dataconnect",
   {
     name: "execute",
-    description: "Executes a GraphQL operation against a Data Connect service or its emulator.",
+    description:
+      "Use this to execute a GraphQL operation against a Data Connect service or its emulator.",
     inputSchema: z.object({
       query: z.string().describe(`A Firebase Data Connect GraphQL query or mutation to execute.
 You can use the \`dataconnect_generate_operation\` tool to generate a query.
 Example Data Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
 `),
-      service_id: z.string().optional()
-        .describe(`Data Connect Service ID to dis-ambulate if there are multiple.
-It's only necessary if there are multiple dataconnect sources in \`firebase.json\`.
-You can find candidate service_id in \`dataconnect.yaml\`
-`),
+      service_id: z
+        .string()
+        .optional()
+        .describe(
+          `Service ID of the Data Connect service to compile. Used to disambiguate when there are multiple Data Connect services in firebase.json.`,
+        ),
+      location_id: z
+        .string()
+        .optional()
+        .describe(
+          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
+        ),
       variables_json: z
         .string()
         .optional()
@@ -54,13 +63,19 @@ You can find candidate service_id in \`dataconnect.yaml\`
     {
       query,
       service_id,
+      location_id,
       variables_json: unparsedVariables,
       use_emulator,
       auth_token_json: unparsedAuthToken,
     },
     { projectId, config, host },
   ) => {
-    const serviceInfo = await pickService(projectId, config, service_id || undefined);
+    const serviceInfo = await pickOneService(
+      projectId,
+      config,
+      service_id || undefined,
+      location_id || undefined,
+    );
     let apiClient: Client;
     if (use_emulator) {
       apiClient = await getDataConnectEmulatorClient(host);
@@ -72,7 +87,6 @@ You can find candidate service_id in \`dataconnect.yaml\`
       executeGraphQL = dataplane.executeGraphQLRead;
     }
     const response = await executeGraphQL(apiClient, serviceInfo.serviceName, {
-      name: "",
       query,
       variables: parseVariables(unparsedVariables),
       extensions: {

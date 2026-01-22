@@ -106,11 +106,6 @@ export interface FunctionsRuntimeFeatures {
   timeout?: boolean;
 }
 
-export class HttpConstants {
-  static readonly CALLABLE_AUTH_HEADER: string = "x-callable-context-auth";
-  static readonly ORIGINAL_AUTH_HEADER: string = "x-original-auth";
-}
-
 export class EmulatedTrigger {
   /*
   Here we create a trigger from a single definition (data about what resources does this trigger on, etc) and
@@ -204,6 +199,8 @@ export function emulatedFunctionsFromEndpoints(
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.dataConnectGraphqlTrigger;
     } else if (backend.isCallableTriggered(endpoint)) {
       def.httpsTrigger = {};
       def.labels = { ...def.labels, "deployment-callable": "true" };

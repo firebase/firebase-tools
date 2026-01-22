@@ -10,8 +10,10 @@ import { requireHostingSite } from "../requireHostingSite";
 import { errNoDefaultSite } from "../getDefaultHostingSite";
 import { FirebaseError } from "../error";
 import { bold } from "colorette";
-import { interactiveCreateHostingSite } from "../hosting/interactive";
+import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
+import { createSite } from "../hosting/api";
+import { Options } from "../options";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -98,26 +100,26 @@ export const command = new Command("deploy")
       "In order to provide better validation, this may still enable APIs on the target project",
   )
   .before(requireConfig)
-  .before((options) => {
+  .before((options: Options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
     return requirePermissions(options, permissions);
   })
-  .before((options) => {
+  .before((options: Options) => {
     if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project);
+      return checkServiceAccountIam(options.project!);
     }
   })
-  .before(async (options) => {
+  .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys
     if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      let createSite = false;
+      let shouldCreateSite = false;
       try {
         await requireHostingSite(options);
       } catch (err: unknown) {
@@ -128,10 +130,10 @@ export const command = new Command("deploy")
         if (isPermissionError) {
           throw err;
         } else if (err === errNoDefaultSite) {
-          createSite = true;
+          shouldCreateSite = true;
         }
       }
-      if (!createSite) {
+      if (!shouldCreateSite) {
         return;
       }
       if (options.nonInteractive) {
@@ -142,7 +144,8 @@ export const command = new Command("deploy")
         );
       }
       logBullet("No Hosting site detected.");
-      await interactiveCreateHostingSite("", "", options);
+      const siteId = await pickHostingSiteName("", options);
+      await createSite(options.project!, siteId);
     }
   })
   .before(checkValidTargetFilters)

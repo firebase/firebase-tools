@@ -9,7 +9,6 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
 import { logger, useFileLogger } from "../logger";
 import * as client from "..";
 import * as fsutils from "../fsutils";
@@ -17,6 +16,8 @@ import * as utils from "../utils";
 
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
+
+import { isCommandModule } from "../command";
 
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
@@ -48,7 +49,7 @@ export function cli(pkg: any) {
   fetchMOTD();
 
   process.on("exit", (code) => {
-    code = process.exitCode || code;
+    code = typeof process.exitCode === "number" ? process.exitCode : code;
     if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
       fs.unlinkSync(logFilename);
     }
@@ -107,12 +108,43 @@ export function cli(pkg: any) {
     errorOut(err);
   });
 
-  if (!handlePreviewToggles(args)) {
-    // determine if there are any arguments. if not, display help
-    if (!args.length) {
-      client.cli.help();
-    } else {
-      cmd = client.cli.parse(process.argv);
-    }
+  // If this is a help command, load all commands so we can display them.
+  const commandName = args[0];
+  const isHelp =
+    !args.length ||
+    commandName === "help" ||
+    (args.length === 1 && commandName === "ext") ||
+    commandName === "--help";
+  const hasHelpFlag = args.includes("--help") || args.includes("-h");
+
+  if (hasHelpFlag) {
+    client.getCommand(commandName);
+  }
+
+  if (isHelp) {
+    const seen = new Set();
+    const loadAll = (obj: any) => {
+      if (seen.has(obj)) return;
+      seen.add(obj);
+      for (const [key, value] of Object.entries(obj)) {
+        if (isCommandModule(value)) {
+          value.load();
+        } else if (
+          typeof value === "object" &&
+          value !== null &&
+          !Array.isArray(value) &&
+          key !== "cli"
+        ) {
+          loadAll(value);
+        }
+      }
+    };
+    loadAll(client);
+  }
+  // If there are no args, display help
+  if (!args.length) {
+    client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
   }
 }

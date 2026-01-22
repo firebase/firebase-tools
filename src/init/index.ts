@@ -25,6 +25,7 @@ export interface Setup {
   /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
+  projectNumber?: string;
   projectLocation?: string;
   isBillingEnabled?: boolean;
 
@@ -36,8 +37,12 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
+  dataconnectResolver?: features.DataconnectResolverInfo;
+  dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
+  ailogic?: features.AiLogicInfo;
+  hosting?: features.HostingInfo;
 }
 
 interface Feature {
@@ -77,8 +82,17 @@ const featuresList: Feature[] = [
     askQuestions: features.dataconnectSdkAskQuestions,
     actuate: features.dataconnectSdkActuate,
   },
+  {
+    name: "dataconnect:resolver",
+    askQuestions: features.dataconnectResolverAskQuestions,
+    actuate: features.dataconnectResolverActuate,
+  },
   { name: "functions", doSetup: features.functions },
-  { name: "hosting", doSetup: features.hosting },
+  {
+    name: "hosting",
+    askQuestions: features.hostingAskQuestions,
+    actuate: features.hostingActuate,
+  },
   {
     name: "storage",
     askQuestions: features.storageAskQuestions,
@@ -95,6 +109,11 @@ const featuresList: Feature[] = [
     name: "apptesting",
     askQuestions: features.apptestingAskQuestions,
     actuate: features.apptestingAcutate,
+  },
+  {
+    name: "ailogic",
+    askQuestions: features.aiLogicAskQuestions,
+    actuate: features.aiLogicActuate,
   },
   { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
 ];
@@ -135,7 +154,7 @@ export async function init(setup: Setup, config: Config, options: any): Promise<
     }
 
     const duration = Math.floor((process.uptime() - start) * 1000);
-    await trackGA4("product_init", { feature: nextFeature }, duration);
+    void trackGA4("product_init", { feature: nextFeature }, duration);
 
     return init(setup, config, options);
   }
@@ -161,7 +180,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
     }
 
     const duration = Math.floor((process.uptime() - start) * 1000);
-    await trackGA4("product_init_mcp", { feature: nextFeature }, duration);
+    void trackGA4("product_init_mcp", { feature: nextFeature }, duration);
 
     return actuate(setup, config, options);
   }

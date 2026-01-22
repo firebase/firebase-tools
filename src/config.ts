@@ -6,7 +6,6 @@ import * as _ from "lodash";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
-const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
@@ -17,7 +16,6 @@ import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 import { loadCJSON } from "./loadCJSON";
-const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
   static DEFAULT_FUNCTIONS_SOURCE = "functions";
@@ -69,7 +67,7 @@ export class Config {
     }
 
     // If a top-level key contains a string path pointing to a suported file
-    // type (JSON or Bolt), we read the file.
+    // type (JSON ), we read the file.
     //
     // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
@@ -167,10 +165,9 @@ export class Config {
         return loadCJSON(fullPath);
       /* istanbul ignore-next */
       case ".bolt":
-        if (target === "database") {
-          this.notes.databaseRules = "bolt";
-        }
-        return parseBoltRules(fullPath);
+        throw new FirebaseError(
+          "As of firebase-tools@15.0.0, .bolt rules are no longer supported.",
+        );
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
@@ -212,7 +209,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any = {}) {
+  readProjectFile(p: string, options: { json?: boolean; fallback?: any } = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");
@@ -297,13 +294,24 @@ export class Config {
     this.writeProjectFile(path, content);
   }
 
-  public static load(options: any, allowMissing?: boolean): Config | null {
+  public static load(options: { cwd?: string; configPath?: string }, allowMissing?: false): Config;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing: true,
+  ): Config | null;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing?: boolean,
+  ): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
-        const data = cjson.load(filePath);
+        let data: unknown = {};
+        if (fs.statSync(filePath).size > 0) {
+          data = loadCJSON(filePath);
+        }
 
         // Validate config against JSON Schema. For now we just print these to debug
         // logs but in a future CLI version they could be warnings and/or errors.

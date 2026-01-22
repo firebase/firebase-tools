@@ -8,16 +8,17 @@ import { Setup } from "../..";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
-import { ensureApis, ensureGIFApis } from "../../../dataconnect/ensureApis";
+import { ensureApis, ensureGIFApiTos } from "../../../dataconnect/ensureApis";
+import * as experiments from "../../../experiments";
 import {
   listLocations,
   listAllServices,
-  getSchema,
+  listSchemas,
   listConnectors,
   createService,
   upsertSchema,
 } from "../../../dataconnect/client";
-import { Schema, Service, File, SCHEMA_ID } from "../../../dataconnect/types";
+import { Schema, Service, File, MAIN_SCHEMA_ID, isMainSchema } from "../../../dataconnect/types";
 import { parseCloudSQLInstanceName, parseServiceName } from "../../../dataconnect/names";
 import { logger } from "../../../logger";
 import { readTemplateSync } from "../../../templates";
@@ -28,6 +29,8 @@ import {
   promiseWithSpinner,
   logLabeledError,
   newUniqueId,
+  logLabeledWarning,
+  logLabeledSuccess,
 } from "../../../utils";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import * as sdk from "./sdk";
@@ -39,16 +42,34 @@ import {
 } from "../../../gemini/fdcExperience";
 import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
+import { isEnabled } from "../../../experiments";
+
+// Default GCP region for Data Connect
+export const FDC_DEFAULT_REGION = "us-east4";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
+const DATACONNECT_WEBHOOKS_YAML_TEMPLATE = readTemplateSync(
+  "init/dataconnect/dataconnect-fdcwebhooks.yaml",
+);
+const SECONDARY_SCHEMA_YAML_TEMPLATE = readTemplateSync("init/dataconnect/secondary_schema.yaml");
 const CONNECTOR_YAML_TEMPLATE = readTemplateSync("init/dataconnect/connector.yaml");
 const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/schema.gql");
 const QUERIES_TEMPLATE = readTemplateSync("init/dataconnect/queries.gql");
 const MUTATIONS_TEMPLATE = readTemplateSync("init/dataconnect/mutations.gql");
+const SEED_DATA_TEMPLATE = readTemplateSync("init/dataconnect/seed_data.gql");
+
+export type Source =
+  | "mcp_init"
+  | "init"
+  | "init_resolver"
+  | "init_sdk"
+  | "gen_sdk_init"
+  | "gen_sdk_init_sdk"
+  | "deploy";
 
 export interface RequiredInfo {
   // The GA analytics metric to track how developers go through `init dataconnect`.
-  analyticsFlow: string;
+  flow: string;
   appDescription: string;
   serviceId: string;
   locationId: string;
@@ -66,6 +87,11 @@ export interface ServiceGQL {
     id: string;
     path: string;
     files: File[];
+  }[];
+  secondarySchemaGqls?: {
+    id: string;
+    files: File[];
+    uri: string;
   }[];
   seedDataGql?: string;
 }
@@ -88,13 +114,14 @@ const templateServiceInfo: ServiceGQL = {
       ],
     },
   ],
+  seedDataGql: SEED_DATA_TEMPLATE,
 };
 
 // askQuestions prompts the user about the Data Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
 export async function askQuestions(setup: Setup): Promise<void> {
   const info: RequiredInfo = {
-    analyticsFlow: "cli",
+    flow: "",
     appDescription: "",
     serviceId: "",
     locationId: "",
@@ -103,7 +130,6 @@ export async function askQuestions(setup: Setup): Promise<void> {
     shouldProvisionCSQL: false,
   };
   if (setup.projectId) {
-    const hasBilling = await isBillingEnabled(setup);
     await ensureApis(setup.projectId);
     await promptForExistingServices(setup, info);
     if (!info.serviceGql) {
@@ -113,17 +139,25 @@ export async function askQuestions(setup: Setup): Promise<void> {
           "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
         );
       }
-      info.appDescription = await input({
-        message: `Describe your app to automatically generate a schema with Gemini [Enter to skip]:`,
+      const wantToGenerate = await confirm({
+        message: "Do you want to generate schema and queries with Gemini?",
+        default: false,
       });
-      if (info.appDescription) {
+      if (wantToGenerate) {
         configstore.set("gemini", true);
-        await ensureGIFApis(setup.projectId);
+        await ensureGIFApiTos(setup.projectId);
+        info.appDescription = await input({
+          message: `Describe your app idea:`,
+          validate: async (s: string) => {
+            if (s.length > 0) {
+              return true;
+            }
+            return "Please enter a description for your app idea.";
+          },
+        });
       }
     }
-    if (hasBilling) {
-      await promptForCloudSQL(setup, info);
-    }
+    await promptForCloudSQL(setup, info);
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
@@ -146,18 +180,32 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
   // Populate the default values of required fields.
   info.serviceId = info.serviceId || defaultServiceId();
   info.cloudSqlInstanceId = info.cloudSqlInstanceId || `${info.serviceId.toLowerCase()}-fdc`;
-  info.locationId = info.locationId || `us-central1`;
+  info.locationId = info.locationId || FDC_DEFAULT_REGION;
   info.cloudSqlDatabase = info.cloudSqlDatabase || `fdcdb`;
 
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, info, options);
     await sdk.actuate(setup, config);
   } finally {
-    void trackGA4("dataconnect_init", {
-      project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-      flow: info.analyticsFlow,
-      provision_cloud_sql: String(info.shouldProvisionCSQL),
-    });
+    const sdkInfo = setup.featureInfo?.dataconnectSdk;
+    const source: Source = setup.featureInfo?.dataconnectSource || "init";
+    void trackGA4(
+      "dataconnect_init",
+      {
+        source,
+        flow: info.flow.substring(1), // Trim the leading `_`
+        project_status: setup.projectId
+          ? (await isBillingEnabled(setup))
+            ? info.shouldProvisionCSQL
+              ? "blaze_provisioned_csql"
+              : "blaze"
+            : "spark"
+          : "missing",
+        ...(sdkInfo ? sdk.initAppCounters(sdkInfo) : {}),
+      },
+      Date.now() - startTime,
+    );
   }
 
   if (info.appDescription) {
@@ -166,9 +214,6 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
-  }
-  if (!setup.isBillingEnabled) {
-    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project"));
   }
   setup.instructions.push(
     `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
@@ -184,20 +229,19 @@ async function actuateWithInfo(
   const projectId = setup.projectId;
   if (!projectId) {
     // If no project is present, just save the template files.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
 
   await ensureApis(projectId, /* silent =*/ true);
-  const provisionCSQL = info.shouldProvisionCSQL && (await isBillingEnabled(setup));
-  if (provisionCSQL) {
-    // Kicks off Cloud SQL provisioning if the project has billing enabled.
+  if (info.shouldProvisionCSQL) {
     await setupCloudSql({
       projectId: projectId,
       location: info.locationId,
       instanceId: info.cloudSqlInstanceId,
       databaseId: info.cloudSqlDatabase,
       requireGoogleMlIntegration: false,
+      source: setup.featureInfo?.dataconnectSource || "init",
     });
   }
 
@@ -210,11 +254,11 @@ async function actuateWithInfo(
     }
     if (info.serviceGql) {
       // Save the downloaded service from the backend.
-      info.analyticsFlow += "_save_downloaded";
+      info.flow += "_save_downloaded";
       return await writeFiles(config, info, info.serviceGql, options);
     }
     // Use the static template if it starts from scratch or the existing service has no GQL source.
-    info.analyticsFlow += "_save_template";
+    info.flow += "_save_template";
     return await writeFiles(config, info, templateServiceInfo, options);
   }
   const serviceAlreadyExists = !(await createService(projectId, info.locationId, info.serviceId));
@@ -236,7 +280,7 @@ async function actuateWithInfo(
       "dataconnect",
       `Data Connect Service ${serviceName} already exists. Skip saving them...`,
     );
-    info.analyticsFlow += "_save_gemini_service_already_exists";
+    info.flow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
@@ -246,7 +290,7 @@ async function actuateWithInfo(
       projectId,
       info,
       schemaFiles,
-      provisionCSQL,
+      info.shouldProvisionCSQL,
     );
     await upsertSchema(saveSchemaGql);
     if (waitForCloudSQLProvision) {
@@ -278,7 +322,7 @@ async function actuateWithInfo(
         ],
       },
     ];
-    info.analyticsFlow += "_save_gemini";
+    info.flow += "_save_gemini";
     await writeFiles(
       config,
       info,
@@ -289,7 +333,7 @@ async function actuateWithInfo(
     logLabeledError("dataconnect", `Operation Generation failed...`);
     // GiF generate operation API has stability concerns.
     // Fallback to save only the generated schema.
-    info.analyticsFlow += "_save_gemini_operation_error";
+    info.flow += "_save_gemini_operation_error";
     await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
     throw err;
   }
@@ -306,7 +350,7 @@ function schemasDeploySequence(
     // No Cloud SQL is being provisioned, just deploy the schema sources as a unlinked schema.
     return [
       {
-        name: `${serviceName}/schemas/${SCHEMA_ID}`,
+        name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
         datasources: [{ postgresql: {} }],
         source: {
           files: schemaFiles,
@@ -319,7 +363,7 @@ function schemasDeploySequence(
   // wait for Cloud SQL provision to finish and setup its initial SQL schemas.
   return [
     {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       datasources: [
         {
           postgresql: {
@@ -336,7 +380,7 @@ function schemasDeploySequence(
       },
     },
     {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       datasources: [
         {
           postgresql: {
@@ -362,10 +406,13 @@ async function writeFiles(
   options: any,
 ): Promise<void> {
   const dir: string = config.get("dataconnect.source") || "dataconnect";
-  const subbedDataconnectYaml = subDataconnectYamlValues({
-    ...info,
-    connectorDirs: serviceGql.connectors.map((c) => c.path),
-  });
+  const subbedDataconnectYaml = subDataconnectYamlValues(
+    {
+      ...info,
+      connectorDirs: serviceGql.connectors.map((c) => c.path),
+    },
+    serviceGql.secondarySchemaGqls?.map((sch) => ({ id: sch.id, uri: sch.uri })),
+  );
   config.set("dataconnect", { source: dir });
   await config.askWriteProjectFile(
     join(dir, "dataconnect.yaml"),
@@ -390,6 +437,17 @@ async function writeFiles(
   } else {
     // Even if the schema is empty, lets give them an empty .gql file to get started.
     fs.ensureFileSync(join(dir, "schema", "schema.gql"));
+  }
+  if (serviceGql.secondarySchemaGqls?.length) {
+    for (const sch of serviceGql.secondarySchemaGqls) {
+      for (const f of sch.files) {
+        await config.askWriteProjectFile(
+          join(dir, `schema_${sch.id}`, f.path),
+          f.content,
+          !!options.force,
+        );
+      }
+    }
   }
 
   for (const c of serviceGql.connectors) {
@@ -424,21 +482,54 @@ async function writeConnectorFiles(
   }
 }
 
-function subDataconnectYamlValues(replacementValues: {
-  serviceId: string;
-  cloudSqlInstanceId: string;
-  cloudSqlDatabase: string;
-  connectorDirs: string[];
-  locationId: string;
-}): string {
+function subDataconnectYamlValues(
+  replacementValues: {
+    serviceId: string;
+    cloudSqlInstanceId: string;
+    cloudSqlDatabase: string;
+    connectorDirs: string[];
+    locationId: string;
+  },
+  secondarySchemas?: {
+    id: string;
+    uri: string;
+  }[],
+): string {
   const replacements: Record<string, string> = {
     serviceId: "__serviceId__",
+    locationId: "__location__",
     cloudSqlDatabase: "__cloudSqlDatabase__",
     cloudSqlInstanceId: "__cloudSqlInstanceId__",
     connectorDirs: "__connectorDirs__",
-    locationId: "__location__",
+    secondarySchemaId: "__secondarySchemaId__",
+    secondarySchemaSource: "__secondarySchemaSource__",
+    secondarySchemaUri: "__secondarySchemaUri__",
   };
-  let replaced = DATACONNECT_YAML_TEMPLATE;
+  let replaced = experiments.isEnabled("fdcwebhooks")
+    ? DATACONNECT_WEBHOOKS_YAML_TEMPLATE
+    : DATACONNECT_YAML_TEMPLATE;
+  if (secondarySchemas && secondarySchemas.length > 0) {
+    let secondaryReplaced = "";
+    for (const schema of secondarySchemas) {
+      secondaryReplaced += SECONDARY_SCHEMA_YAML_TEMPLATE;
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaId,
+        JSON.stringify(schema.id),
+      );
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaSource,
+        `"./schema_${schema.id}"`,
+      );
+      secondaryReplaced = secondaryReplaced.replace(
+        replacements.secondarySchemaUri,
+        JSON.stringify(schema.uri),
+      );
+    }
+    replaced = replaced.replace("#__secondarySchemaPlaceholder__\n", secondaryReplaced);
+  } else {
+    // If no secondary schemas, remove the secondary schema placeholder.
+    replaced = replaced.replace("#__secondarySchemaPlaceholder__\n", "");
+  }
   for (const [k, v] of Object.entries(replacementValues)) {
     replaced = replaced.replace(replacements[k], JSON.stringify(v));
   }
@@ -469,11 +560,11 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
-    info.analyticsFlow += "_pick_new_service";
+    info.flow += "_pick_new_service";
     return;
   }
   // Choose to use an existing service.
-  info.analyticsFlow += "_pick_existing_service";
+  info.flow += "_pick_existing_service";
   const serviceName = parseServiceName(choice.name);
   info.serviceId = serviceName.serviceId;
   info.locationId = serviceName.location;
@@ -481,8 +572,19 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
 }
 
 async function downloadService(info: RequiredInfo, serviceName: string): Promise<void> {
-  const schema = await getSchema(serviceName);
-  if (!schema) {
+  let schemas: Schema[] = [];
+  try {
+    schemas = await listSchemas(serviceName, [
+      "schemas.name",
+      "schemas.datasources",
+      "schemas.source",
+    ]);
+  } catch (err: any) {
+    if (err.status !== 404) {
+      throw err;
+    }
+  }
+  if (!schemas.length) {
     return;
   }
   info.serviceGql = {
@@ -495,15 +597,30 @@ async function downloadService(info: RequiredInfo, serviceName: string): Promise
       },
     ],
   };
-  const primaryDatasource = schema.datasources.find((d) => d.postgresql);
-  if (primaryDatasource?.postgresql?.cloudSql?.instance) {
-    const instanceName = parseCloudSQLInstanceName(primaryDatasource.postgresql.cloudSql.instance);
-    info.cloudSqlInstanceId = instanceName.instanceId;
+  for (const sch of schemas) {
+    if (isMainSchema(sch)) {
+      const primaryDatasource = sch.datasources.find((d) => d.postgresql);
+      if (primaryDatasource?.postgresql?.cloudSql?.instance) {
+        const instanceName = parseCloudSQLInstanceName(
+          primaryDatasource.postgresql.cloudSql.instance,
+        );
+        info.cloudSqlInstanceId = instanceName.instanceId;
+      }
+      info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
+      if (sch.source.files?.length) {
+        info.serviceGql.schemaGql = sch.source.files;
+      }
+    } else {
+      if (!info.serviceGql.secondarySchemaGqls) {
+        info.serviceGql.secondarySchemaGqls = [];
+      }
+      info.serviceGql.secondarySchemaGqls.push({
+        id: sch.name.split("/").pop()!,
+        files: sch.source.files || [],
+        uri: sch.datasources[0].httpGraphql?.uri ?? "",
+      });
+    }
   }
-  if (schema.source.files?.length) {
-    info.serviceGql.schemaGql = schema.source.files;
-  }
-  info.cloudSqlDatabase = primaryDatasource?.postgresql?.database ?? "";
   const connectors = await listConnectors(serviceName, [
     "connectors.name",
     "connectors.source.files",
@@ -572,6 +689,25 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   if (!setup.projectId) {
     return;
   }
+  const instrumentlessTrialEnabled = isEnabled("fdcift");
+  const billingEnabled = await isBillingEnabled(setup);
+  const freeTrialUsed = await checkFreeTrialInstanceUsed(setup.projectId);
+  const freeTrialAvailable = !freeTrialUsed && (billingEnabled || instrumentlessTrialEnabled);
+
+  if (!billingEnabled && !instrumentlessTrialEnabled) {
+    setup.instructions.push(upgradeInstructions(setup.projectId || "your-firebase-project", false));
+    return;
+  }
+
+  if (freeTrialUsed) {
+    logLabeledWarning(
+      "dataconnect",
+      "CloudSQL no cost trial has already been used on this project.",
+    );
+  } else if (instrumentlessTrialEnabled || billingEnabled) {
+    logLabeledSuccess("dataconnect", "CloudSQL no cost trial available!");
+  }
+
   // Check for existing Cloud SQL instances, if we didn't already set one.
   if (info.cloudSqlInstanceId === "") {
     const instances = await cloudsql.listInstances(setup.projectId);
@@ -585,21 +721,31 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
     // If we've already chosen a region (ie service already exists), only list instances from that region.
     choices = choices.filter((c) => info.locationId === "" || info.locationId === c.location);
     if (choices.length) {
-      if (!(await checkFreeTrialInstanceUsed(setup.projectId))) {
+      if (freeTrialAvailable) {
         choices.push({ name: "Create a new free trial instance", value: "", location: "" });
       } else {
-        choices.push({ name: "Create a new CloudSQL instance", value: "", location: "" });
+        choices.push({
+          name: `Create a new CloudSQL instance${billingEnabled ? "" : " (requires billing account)"}`,
+          value: "",
+          location: "",
+        });
       }
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
         choices,
       });
       if (info.cloudSqlInstanceId !== "") {
-        info.analyticsFlow += "_pick_existing_csql";
+        info.flow += "_pick_existing_csql";
         // Infer location if a CloudSQL instance is chosen.
         info.locationId = choices.find((c) => c.value === info.cloudSqlInstanceId)!.location;
       } else {
-        info.analyticsFlow += "_pick_new_csql";
+        info.flow += "_pick_new_csql";
+        if (!billingEnabled && freeTrialUsed) {
+          setup.instructions.push(
+            upgradeInstructions(setup.projectId || "your-firebase-project", true),
+          );
+          return;
+        }
         info.cloudSqlInstanceId = await input({
           message: `What ID would you like to use for your new CloudSQL instance?`,
           default: newUniqueId(
@@ -612,14 +758,9 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   }
 
   if (info.locationId === "") {
-    const choices = await locationChoices(setup);
-    info.locationId = await select<string>({
-      message: "What location would like to use?",
-      choices,
-      default: "us-central1",
-    });
+    await promptForLocation(setup, info);
     info.shouldProvisionCSQL = await confirm({
-      message: `Would you like to provision your Cloud SQL instance and database now?`,
+      message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
       default: true,
     });
   }
@@ -640,6 +781,17 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   return;
 }
 
+async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void> {
+  if (info.locationId === "") {
+    const choices = await locationChoices(setup);
+    info.locationId = await select<string>({
+      message: "What location would you like to use?",
+      choices,
+      default: FDC_DEFAULT_REGION,
+    });
+  }
+}
+
 async function locationChoices(setup: Setup) {
   if (setup.projectId) {
     const locations = await listLocations(setup.projectId);
@@ -649,14 +801,39 @@ async function locationChoices(setup: Setup) {
   } else {
     // Hardcoded locations for when there is no project set up.
     return [
-      { name: "us-central1", value: "us-central1" },
-      { name: "europe-north1", value: "europe-north1" },
-      { name: "europe-central2", value: "europe-central2" },
-      { name: "europe-west1", value: "europe-west1" },
-      { name: "southamerica-west1", value: "southamerica-west1" },
-      { name: "us-east4", value: "us-east4" },
-      { name: "us-west1", value: "us-west1" },
+      { name: "asia-east1", value: "asia-east1" },
+      { name: "asia-east2", value: "asia-east2" },
+      { name: "asia-northeast1", value: "asia-northeast1" },
+      { name: "asia-northeast2", value: "asia-northeast2" },
+      { name: "asia-northeast3", value: "asia-northeast3" },
+      { name: "asia-south1", value: "asia-south1" },
       { name: "asia-southeast1", value: "asia-southeast1" },
+      { name: "asia-southeast2", value: "asia-southeast2" },
+      { name: "australia-southeast1", value: "australia-southeast1" },
+      { name: "australia-southeast2", value: "australia-southeast2" },
+      { name: "europe-central2", value: "europe-central2" },
+      { name: "europe-north1", value: "europe-north1" },
+      { name: "europe-southwest1", value: "europe-southwest1" },
+      { name: "europe-west1", value: "europe-west1" },
+      { name: "europe-west2", value: "europe-west2" },
+      { name: "europe-west3", value: "europe-west3" },
+      { name: "europe-west4", value: "europe-west4" },
+      { name: "europe-west6", value: "europe-west6" },
+      { name: "europe-west8", value: "europe-west8" },
+      { name: "europe-west9", value: "europe-west9" },
+      { name: "me-west1", value: "me-west1" },
+      { name: "northamerica-northeast1", value: "northamerica-northeast1" },
+      { name: "northamerica-northeast2", value: "northamerica-northeast2" },
+      { name: "southamerica-east1", value: "southamerica-east1" },
+      { name: "southamerica-west1", value: "southamerica-west1" },
+      { name: "us-central1", value: "us-central1" },
+      { name: "us-east1", value: "us-east1" },
+      { name: "us-east4", value: "us-east4" },
+      { name: "us-south1", value: "us-south1" },
+      { name: "us-west1", value: "us-west1" },
+      { name: "us-west2", value: "us-west2" },
+      { name: "us-west3", value: "us-west3" },
+      { name: "us-west4", value: "us-west4" },
     ];
   }
 }

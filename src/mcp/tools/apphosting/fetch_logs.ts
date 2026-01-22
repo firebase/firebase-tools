@@ -8,10 +8,11 @@ import { fetchServiceLogs } from "../../../gcp/run";
 import { listEntries } from "../../../gcp/cloudlogging";
 
 export const fetch_logs = tool(
+  "apphosting",
   {
     name: "fetch_logs",
     description:
-      "Fetches the most recent logs for a specified App Hosting backend. If `buildLogs` is specified, the logs from the build process for the latest build are returned. The most recent logs are listed first.",
+      "Use this to fetch the most recent logs for a specified App Hosting backend. If `buildLogs` is specified, the logs from the build process for the latest build are returned. The most recent logs are listed first.",
     inputSchema: z.object({
       buildLogs: z
         .boolean()
@@ -61,8 +62,8 @@ export const fetch_logs = tool(
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const timestampFilter = `timestamp >= "${thirtyDaysAgo.toISOString()}"`;
       const filter = `resource.type="build" resource.labels.build_id="${buildId}" ${timestampFilter}`;
-      const entries = await listEntries(projectId, filter, 100, "asc");
-      if (!Array.isArray(entries) || !entries.length) {
+      const { entries } = await listEntries(projectId, filter, 100, "asc");
+      if (!entries.length) {
         return toContent("No logs found.");
       }
       return toContent(entries);

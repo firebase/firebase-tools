@@ -187,7 +187,7 @@ export async function selectBackendServiceAccounts(
     accum.add(row.runServiceAccount);
     return accum;
   }, new Set<string>());
-  const chosen = await prompt.checkbox({
+  const chosen = await prompt.checkbox<string>({
     message:
       "Which service accounts would you like to grant access? " +
       "Press Space to select accounts, then Enter to confirm your choices.",

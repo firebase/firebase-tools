@@ -10,7 +10,11 @@ export {
   actuate as firestoreActuate,
 } from "./firestore";
 export { doSetup as functions } from "./functions";
-export { doSetup as hosting } from "./hosting";
+export {
+  askQuestions as hostingAskQuestions,
+  actuate as hostingActuate,
+  RequiredInfo as HostingInfo,
+} from "./hosting";
 export {
   askQuestions as storageAskQuestions,
   RequiredInfo as StorageInfo,
@@ -25,6 +29,7 @@ export { initGitHub as hostingGithub } from "./hosting/github";
 export {
   askQuestions as dataconnectAskQuestions,
   RequiredInfo as DataconnectInfo,
+  Source as DataconnectSource,
   actuate as dataconnectActuate,
 } from "./dataconnect";
 export {
@@ -32,6 +37,11 @@ export {
   SdkRequiredInfo as DataconnectSdkInfo,
   actuate as dataconnectSdkActuate,
 } from "./dataconnect/sdk";
+export {
+  askQuestions as dataconnectResolverAskQuestions,
+  ResolverRequiredInfo as DataconnectResolverInfo,
+  actuate as dataconnectResolverActuate,
+} from "./dataconnect/resolver";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
 export {
@@ -40,3 +50,8 @@ export {
   actuate as apptestingAcutate,
 } from "./apptesting";
 export { doSetup as aitools } from "./aitools";
+export {
+  askQuestions as aiLogicAskQuestions,
+  AiLogicInfo,
+  actuate as aiLogicActuate,
+} from "./ailogic";

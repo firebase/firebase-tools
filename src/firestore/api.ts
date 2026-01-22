@@ -15,34 +15,58 @@ import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
 import { optionalValueMatches } from "../functional";
+import { pollOperation } from "../operation-poller";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
   printer = new PrettyPrint();
 
   /**
-   * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
-   * Keeps explicit __name__ fields with DESCENDING order.
-   * @param indexes Array of indexes to process
-   * @return Processed array of indexes with filtered fields
+   * Process indexes by appending the implicit __name__ fields with default order for STANDARD edition database.
+   * No-op if exists __name__ field at the end.
+   * No-op is ENTERPRISE edition databases.
+   * @param index Spec index to process
+   * @return Processed spec index with potential additional __name__ suffix
    */
-  public static processIndexes(indexes: types.Index[]): types.Index[] {
-    return indexes.map((index: types.Index): types.Index => {
-      // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
-      // this matches the direction of the last non-name field in the index.
-      let fields = index.fields;
-      const lastField = index.fields?.[index.fields.length - 1];
-      if (lastField?.fieldPath === "__name__") {
-        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
-        if (lastField?.order === defaultDirection) {
-          fields = fields.slice(0, -1);
-        }
+  public static processIndex(index: Spec.Index): Spec.Index {
+    // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
+    // this matches the direction of the last non-name non-vector field in the index.
+    let fields = index.fields;
+    const suffixOrder: types.Order = FirestoreApi.lastIndexFieldOrder(fields);
+    const nameSuffix = { fieldPath: "__name__", order: suffixOrder } as types.IndexField;
+
+    const lastField = index.fields?.[index.fields.length - 1];
+    if (lastField.vectorConfig) {
+      // lastField is vector field, refer to the second from last field
+      const vectorField = lastField;
+      fields = fields.slice(0, -1);
+
+      if (fields.length === 0 || fields?.[fields.length - 1].fieldPath !== "__name__") {
+        fields.push(nameSuffix);
       }
+      fields.push(vectorField);
       return {
         ...index,
         fields,
       };
-    });
+    }
+    if (lastField?.fieldPath !== "__name__") {
+      fields.push(nameSuffix);
+    }
+    return {
+      ...index,
+      fields,
+    };
+  }
+
+  public static lastIndexFieldOrder(fields: types.IndexField[]): types.Order {
+    let lastIndexFieldOrder: types.Order = types.Order.ASCENDING;
+    for (const field of fields) {
+      if (field.order) {
+        lastIndexFieldOrder = field.order;
+      }
+    }
+    return lastIndexFieldOrder;
   }
 
   /**
@@ -212,7 +236,7 @@ export class FirestoreApi {
       return [];
     }
 
-    return FirestoreApi.processIndexes(indexes);
+    return indexes;
   }
 
   /**
@@ -559,14 +583,19 @@ export class FirestoreApi {
 
     // TODO(b/439901837): Compare `unique` index configuration when it's supported.
 
-    if (index.fields.length !== spec.fields.length) {
+    let specIdx = spec;
+    if (edition === DatabaseEdition.STANDARD) {
+      specIdx = FirestoreApi.processIndex(specIdx);
+    }
+
+    if (index.fields.length !== specIdx.fields.length) {
       return false;
     }
 
     let i = 0;
     while (i < index.fields.length) {
       const iField = index.fields[i];
-      const sField = spec.fields[i];
+      const sField = specIdx.fields[i];
 
       if (iField.fieldPath !== sField.fieldPath) {
         return false;
@@ -776,11 +805,16 @@ export class FirestoreApi {
       cmekConfig: req.cmekConfig,
     };
     const options = { queryParams: { databaseId: req.databaseId } };
-    const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
-      url,
-      payload,
-      options,
-    );
+    const res = await this.apiClient.post<
+      types.DatabaseReq,
+      { name: string; response?: types.DatabaseResp }
+    >(url, payload, options);
+    await pollOperation({
+      apiOrigin: firestoreOrigin(),
+      apiVersion: "v1",
+      operationResourceName: res.body.name,
+      masterTimeout: 600000,
+    });
     const database = res.body.response;
     if (!database) {
       throw new FirebaseError("Not found");
@@ -891,6 +925,39 @@ export class FirestoreApi {
     }
 
     return database;
+  }
+
+  /**
+   * Clone one Firestore Database to another.
+   * @param project the source project ID
+   * @param pitrSnapshot Source database PITR snapshot specification
+   * @param databaseId ID of the target database
+   * @param encryptionConfig the encryption configuration of the new database
+   */
+  async cloneDatabase(
+    project: string,
+    pitrSnapshot: types.PITRSnapshot,
+    databaseId: string,
+    encryptionConfig?: types.EncryptionConfig,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases:clone`;
+    const payload: types.CloneDatabaseReq = {
+      databaseId,
+      pitrSnapshot,
+      encryptionConfig,
+    };
+    const options = { queryParams: { databaseId: databaseId } };
+    const res = await this.apiClient.post<types.CloneDatabaseReq, types.Operation>(
+      url,
+      payload,
+      options,
+    );
+    const lro = res.body;
+    if (!lro) {
+      throw new FirebaseError("Not found");
+    }
+
+    return lro;
   }
 
   /**

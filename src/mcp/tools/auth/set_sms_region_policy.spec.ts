@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import { set_sms_region_policy } from "./set_sms_region_policy";
 import * as auth from "../../../gcp/auth";
 import { toContent } from "../../util";
-import { ServerToolContext } from "../../tool";
+import { McpContext } from "../../types";
 
 describe("set_sms_region_policy tool", () => {
   const projectId = "test-project";
@@ -27,7 +27,7 @@ describe("set_sms_region_policy tool", () => {
 
     const result = await set_sms_region_policy.fn({ policy_type: "ALLOW", country_codes }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(setAllowSmsRegionPolicyStub).to.be.calledWith(projectId, upperCaseCountryCodes);
     expect(setDenySmsRegionPolicyStub).to.not.be.called;
@@ -39,7 +39,7 @@ describe("set_sms_region_policy tool", () => {
 
     const result = await set_sms_region_policy.fn({ policy_type: "DENY", country_codes }, {
       projectId,
-    } as ServerToolContext);
+    } as McpContext);
 
     expect(setDenySmsRegionPolicyStub).to.be.calledWith(projectId, upperCaseCountryCodes);
     expect(setAllowSmsRegionPolicyStub).to.not.be.called;

@@ -4,10 +4,11 @@ import { mcpError, toContent } from "../../util";
 import { sendFcmMessage } from "../../../messaging/sendMessage";
 
 export const send_message = tool(
+  "messaging",
   {
     name: "send_message",
     description:
-      "Sends a message to a Firebase Cloud Messaging registration token or topic. ONLY ONE of `registration_token` or `topic` may be supplied in a specific call.",
+      "Use this to send a message to a Firebase Cloud Messaging registration token or topic. ONLY ONE of `registration_token` or `topic` may be supplied in a specific call.",
     inputSchema: z.object({
       registration_token: z
         .string()

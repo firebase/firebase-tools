@@ -174,6 +174,8 @@ export const cloudAiCompanionOrigin = () =>
 
 export const appTestingOrigin = () =>
   utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");
+export const cloudTestingOrigin = () =>
+  utils.envOverride("CLOUD_TESTING_URL", "https://testing.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {

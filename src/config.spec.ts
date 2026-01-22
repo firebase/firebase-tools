@@ -1,5 +1,6 @@
 import * as path from "path";
 import * as fs from "fs";
+import * as os from "os";
 
 import { expect } from "chai";
 
@@ -7,6 +8,7 @@ import { Config } from "./config";
 import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
 import { FIXTURE_DIR as SIMPLE_CONFIG_DIR } from "./test/fixtures/config-imports";
 import { FIXTURE_DIR as DUP_TOP_LEVEL_CONFIG_DIR } from "./test/fixtures/dup-top-level";
+import { FIREBASE_JSON_PATH as EMPTY_CONFIG_PATH } from "./test/fixtures/empty-config";
 
 describe("Config", () => {
   describe("#load", () => {
@@ -17,9 +19,16 @@ describe("Config", () => {
         configPath: path.relative(cwd, VALID_CONFIG_PATH),
       });
       expect(config).to.not.be.null;
-      if (config) {
-        expect(config.get("database.rules")).to.eq("config/security-rules.json");
-      }
+      expect(config?.get("database.rules")).to.eq("config/security-rules.json");
+    });
+    it("should fall back to {} when the file is empty", () => {
+      const cwd = __dirname;
+      const config = Config.load({
+        cwd,
+        configPath: path.relative(cwd, EMPTY_CONFIG_PATH),
+      });
+      expect(config).to.not.be.null;
+      expect(config?.data).to.deep.eq({});
     });
   });
 
@@ -70,8 +79,19 @@ describe("Config", () => {
   });
 
   describe("functions.source", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-test"));
+    });
+
+    afterEach(() => {
+      if (tmpDir) {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+    });
+
     it("injects default source when default dir exists but source is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config({ functions: {} }, { cwd: tmpDir, projectDir: tmpDir });
@@ -79,8 +99,6 @@ describe("Config", () => {
     });
 
     it("does not injects default source when default dir is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
-
       const cfg = new Config(
         { functions: { runtime: "nodejs20" } },
         { cwd: tmpDir, projectDir: tmpDir },
@@ -89,7 +107,6 @@ describe("Config", () => {
     });
 
     it("does not inject source for remoteSource", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -105,7 +122,6 @@ describe("Config", () => {
     });
 
     it("injects into the first empty entry only when default dir exists", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -128,7 +144,6 @@ describe("Config", () => {
     });
 
     it("injects only one entry when multiple are empty", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -144,7 +159,6 @@ describe("Config", () => {
     });
 
     it("does not inject when no entry is empty", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
       fs.mkdirSync(path.join(tmpDir, Config.DEFAULT_FUNCTIONS_SOURCE));
 
       const cfg = new Config(
@@ -165,8 +179,6 @@ describe("Config", () => {
     });
 
     it("does not inject for arrays when default dir is missing", () => {
-      const tmpDir = fs.mkdtempSync("firebase-test");
-
       const cfg = new Config(
         {
           functions: [{}, { source: "something" }],

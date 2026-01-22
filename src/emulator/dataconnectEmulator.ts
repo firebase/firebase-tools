@@ -17,7 +17,7 @@ import {
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
-import { BuildResult, requiresVector } from "../dataconnect/types";
+import { BuildResult, mainSchemaYaml, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
@@ -114,7 +114,8 @@ export class DataConnectEmulator implements EmulatorInstance {
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
       const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const dbId =
+        mainSchemaYaml(info.dataConnectYaml).datasource.postgresql?.database || "postgres";
       const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;

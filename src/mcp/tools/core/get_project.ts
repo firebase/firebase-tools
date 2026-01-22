@@ -4,9 +4,10 @@ import { getProject } from "../../../management/projects";
 import { toContent } from "../../util";
 
 export const get_project = tool(
+  "core",
   {
     name: "get_project",
-    description: "Retrieves information about the currently active Firebase project.",
+    description: "Use this to retrieve information about the currently active Firebase Project.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Current Firebase Project",

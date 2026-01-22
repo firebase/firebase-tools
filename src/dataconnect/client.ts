@@ -83,11 +83,12 @@ export async function deleteService(serviceName: string): Promise<types.Service>
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+export async function getSchema(
+  serviceName: string,
+  schemaId: string = types.MAIN_SCHEMA_ID,
+): Promise<types.Schema | undefined> {
   try {
-    const res = await dataconnectClient().get<types.Schema>(
-      `${serviceName}/schemas/${types.SCHEMA_ID}`,
-    );
+    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`);
     return res.body;
   } catch (err: any) {
     if (err.status !== 404) {
@@ -140,13 +141,13 @@ export async function upsertSchema(
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 120000,
+    masterTimeout: 10000,
   });
 }
 
 export async function deleteSchema(serviceName: string): Promise<void> {
   const op = await dataconnectClient().delete<types.Schema>(
-    `${serviceName}/schemas/${types.SCHEMA_ID}`,
+    `${serviceName}/schemas/${types.MAIN_SCHEMA_ID}`,
   );
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),

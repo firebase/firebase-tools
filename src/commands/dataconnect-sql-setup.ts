@@ -1,7 +1,6 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/load";
 import { FirebaseError } from "../error";
 import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
@@ -10,9 +9,18 @@ import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissi
 import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
+import { pickOneService } from "../dataconnect/load";
+import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
-export const command = new Command("dataconnect:sql:setup [serviceId]")
+type SetupOptions = Options & { service?: string; location?: string };
+
+export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
@@ -20,19 +28,26 @@ export const command = new Command("dataconnect:sql:setup [serviceId]")
     "cloudsql.instances.connect",
   ])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: SetupOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const instanceId =
-      serviceInfo.dataConnectYaml.schema.datasource.postgresql?.cloudSql.instanceId;
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
+    const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
+      .instanceId;
     if (!instanceId) {
       throw new FirebaseError(
         "dataconnect.yaml is missing field schema.datasource.postgresql.cloudsql.instanceId",
       );
     }
 
-    const { serviceName, instanceName, databaseId } = getIdentifiers(serviceInfo.schema);
+    const { serviceName, instanceName, databaseId } = getIdentifiers(
+      mainSchema(serviceInfo.schemas),
+    );
     await ensureServiceIsConnectedToCloudSql(
       serviceName,
       instanceName,

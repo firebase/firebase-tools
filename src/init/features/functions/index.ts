@@ -120,6 +120,8 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   setup.config.functions.push({
     source,
     codebase,
+    // Disable legacy runtime config for new codebases by default
+    disallowLegacyRuntimeConfig: true,
   });
   setup.functions.source = source;
   setup.functions.codebase = codebase;

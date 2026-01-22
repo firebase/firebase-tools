@@ -12,8 +12,9 @@ import * as fsAsync from "../../fsAsync";
  */
 export async function createArchive(
   config: AppHostingSingle,
-  projectRoot?: string,
-): Promise<{ projectSourcePath: string; zippedSourcePath: string }> {
+  rootDir: string,
+  targetSubDir?: string,
+): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
@@ -21,22 +22,20 @@ export async function createArchive(
   });
   const archive = archiver("zip");
 
-  if (!projectRoot) {
-    projectRoot = process.cwd();
-  }
+  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(projectRoot);
+  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
   ignore.push(...gitIgnorePatterns);
   try {
     const files = await fsAsync.readdirRecursive({
-      path: projectRoot,
+      path: targetDir,
       ignore: ignore,
       isGitIgnore: true,
     });
     for (const file of files) {
-      const name = path.relative(projectRoot, file.name);
+      const name = path.relative(rootDir, file.name);
       archive.file(file.name, {
         name,
         mode: file.mode,
@@ -49,7 +48,7 @@ export async function createArchive(
       { original: err as Error, exit: 1 },
     );
   }
-  return { projectSourcePath: projectRoot, zippedSourcePath: tmpFile };
+  return tmpFile;
 }
 
 function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
