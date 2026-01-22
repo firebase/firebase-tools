@@ -1,9 +1,11 @@
 import { Config } from "../../../config";
 import { AIToolModule, AIToolConfigResult } from "./types";
 import { updateFirebaseSection } from "./promptUpdater";
+import * as path from "path";
 
 const MCP_CONFIG_PATH = ".mcp.json";
 const CLAUDE_PROMPT_PATH = "CLAUDE.md";
+const CLAUDE_SKILLS_DIR = "~/.claude/skills";
 
 export const claude: AIToolModule = {
   name: "claude",
@@ -59,5 +61,9 @@ export const claude: AIToolModule = {
     });
 
     return { files };
+  },
+
+  getSkillPath(projectPath: string): string {
+    return path.join(projectPath, CLAUDE_SKILLS_DIR);
   },
 };
