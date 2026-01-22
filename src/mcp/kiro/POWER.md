@@ -2,7 +2,7 @@
 name: "firebase"
 displayName: "Build with Firebase"
 description: "Build full-stack applications with Firebase's suite of backend services including Authentication, Firestore, App Hosting, Cloud Functions, Storage, Crashlytics, and Cloud Messaging"
-keywords: ["firebase", "firestore", "auth", "authentication", "database", "realtime", "cloud functions", "storage", "hosting", "backend", "cloud messaging", "fcm", "nosql", "serverless", "baas", "crashlytics"]
+keywords: ["firebase", "firestore", "auth", "authentication", "database", "realtime", "cloud functions", "storage", "hosting", "app hosting", "backend", "cloud messaging", "fcm", "nosql", "serverless", "baas", "crashlytics"]
 mcpServers: ["firebase"]
 ---
 
