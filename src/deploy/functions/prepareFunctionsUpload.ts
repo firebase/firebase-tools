@@ -10,8 +10,11 @@ import { dynamicImport } from "../../dynamicImport";
 import { FirebaseError } from "../../error";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
-import type { logger } from "../../logger";
-import type { getSourceHash } from "./cache/hash";
+import * as functionsConfig from "../../functionsConfig";
+import { logger } from "../../logger";
+import * as utils from "../../utils";
+import * as backend from "./backend";
+import { getSourceHash } from "./cache/hash";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 

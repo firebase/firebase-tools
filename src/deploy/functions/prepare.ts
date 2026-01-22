@@ -16,9 +16,12 @@ import { assertExhaustive } from "../../functional";
 import * as functionsEnv from "../../functions/env";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import {
-  configForCodebase, isLocalConfig,
-  normalizeAndValidate, requireLocal, shouldUseRuntimeConfig,
-  ValidatedConfig
+  configForCodebase,
+  isLocalConfig,
+  normalizeAndValidate,
+  requireLocal,
+  shouldUseRuntimeConfig,
+  ValidatedConfig,
 } from "../../functions/projectConfig";
 import * as functionsConfig from "../../functionsConfig";
 import * as proto from "../../gcp/proto";
@@ -92,7 +95,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -524,9 +527,7 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    const prefix = isLocalConfig(codebaseConfig)
-      ? (codebaseConfig.prefix as string | undefined) ?? ""
-      : "";
+    const prefix = isLocalConfig(codebaseConfig) ? codebaseConfig.prefix ?? "" : "";
     build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }
