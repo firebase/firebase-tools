@@ -29,6 +29,18 @@ export const command = new Command("firestore:databases:create <database>")
     "--point-in-time-recovery <enablement>",
     "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
+  .option(
+    "--realtime-updates <realtimeUpdates",
+    "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'DISABLED' for ENTERPRISE edition and 'ENABLED' for STANDARD edition",
+  )
+  .option(
+    "--firestore-data-access <firestoreDataAccess>",
+    "Whether the Firestore API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for STANDARD edition and 'DISABLED' for ENTERPRISE edition.",
+  )
+  .option(
+    "--mongodb-compatible-data-access <mongodbCompatibleDataAccess>",
+    "Whether the MongoDB compatible API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition. The value is always 'DISABLED' for STANDARD edition.",
+  )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
     "-k, --kms-key-name <kmsKeyName>",
@@ -88,6 +100,50 @@ export const command = new Command("firestore:databases:create <database>")
         ? types.PointInTimeRecoveryEnablement.ENABLED
         : types.PointInTimeRecoveryEnablement.DISABLED;
 
+    if (
+      options.realtimeUpdates &&
+      options.realtimeUpdates !== types.RealtimeUpdatesModeOption.ENABLED &&
+      options.realtimeUpdates !== types.RealtimeUpdatesModeOption.DISABLED
+    ) {
+      throw new FirebaseError(`Invalid value for flag --realtime-updates. ${helpCommandText}`);
+    }
+    let realtimeUpdatesMode: types.RealtimeUpdatesMode | undefined;
+    if (options.realtimeUpdates === types.RealtimeUpdatesModeOption.ENABLED) {
+      realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
+    } else if (options.realtimeUpdates === types.RealtimeUpdatesModeOption.DISABLED) {
+      realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
+    }
+
+    if (
+      options.firestoreDataAccess &&
+      options.firestoreDataAccess !== types.DataAccessModeOption.ENABLED &&
+      options.firestoreDataAccess !== types.DataAccessModeOption.DISABLED
+    ) {
+      throw new FirebaseError(`Invalid value for flag --firestore-data-access. ${helpCommandText}`);
+    }
+    let firestoreDataAccessMode: types.DataAccessMode | undefined;
+    if (options.firestoreDataAccess === types.DataAccessModeOption.ENABLED) {
+      firestoreDataAccessMode = types.DataAccessMode.ENABLED;
+    } else if (options.firestoreDataAccess === types.DataAccessModeOption.DISABLED) {
+      firestoreDataAccessMode = types.DataAccessMode.DISABLED;
+    }
+
+    if (
+      options.mongodbCompatibleDataAccess &&
+      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.ENABLED &&
+      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.DISABLED
+    ) {
+      throw new FirebaseError(
+        `Invalid value for flag --mongodb-compatible-data-access. ${helpCommandText}`,
+      );
+    }
+    let mongodbCompatibleDataAccessMode: types.DataAccessMode | undefined;
+    if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.ENABLED) {
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.ENABLED;
+    } else if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.DISABLED) {
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.DISABLED;
+    }
+
     let cmekConfig: types.CmekConfig | undefined;
     if (options.kmsKeyName) {
       cmekConfig = {
@@ -103,6 +159,9 @@ export const command = new Command("firestore:databases:create <database>")
       databaseEdition,
       deleteProtectionState,
       pointInTimeRecoveryEnablement,
+      realtimeUpdatesMode,
+      firestoreDataAccessMode,
+      mongodbCompatibleDataAccessMode,
       cmekConfig,
     };
 

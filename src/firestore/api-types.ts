@@ -138,6 +138,26 @@ export enum PointInTimeRecoveryEnablement {
   DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
 }
 
+export enum RealtimeUpdatesModeOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
+export enum RealtimeUpdatesMode {
+  ENABLED = "REALTIME_UPDATES_MODE_ENABLED",
+  DISABLED = "REALTIME_UPDATES_MODE_DISABLED",
+}
+
+export enum DataAccessModeOption {
+  ENABLED = "ENABLED",
+  DISABLED = "DISABLED",
+}
+
+export enum DataAccessMode {
+  ENABLED = "DATA_ACCESS_MODE_ENABLED",
+  DISABLED = "DATA_ACCESS_MODE_DISABLED",
+}
+
 export enum DatabaseEdition {
   DATABASE_EDITION_UNSPECIFIED = "DATABASE_EDITION_UNSPECIFIED",
   STANDARD = "STANDARD",
@@ -150,6 +170,9 @@ export interface DatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -161,6 +184,9 @@ export interface CreateDatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -179,6 +205,9 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  realtimeUpdatesMode: RealtimeUpdatesMode;
+  firestoreDataAccessMode: DataAccessMode;
+  mongodbCompatibleDataAccessMode: DataAccessMode;
   cmekConfig?: CmekConfig;
   databaseEdition?: DatabaseEdition;
 }

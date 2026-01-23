@@ -45,6 +45,9 @@ describe("firestore:databases:create", () => {
       etag: "test-etag",
       versionRetentionPeriod: "1h",
       earliestVersionTime: "2025-07-28T11:00:00Z",
+      realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
+      firestoreDataAccessMode: types.DataAccessMode.ENABLED,
+      mongodbCompatibleDataAccessMode: types.DataAccessMode.DISABLED,
       ...overrides,
     };
   };
@@ -70,6 +73,9 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.STANDARD,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: undefined,
+        firestoreDataAccessMode: undefined,
+        mongodbCompatibleDataAccessMode: undefined,
         cmekConfig: undefined,
       }),
     ).to.be.true;
@@ -149,6 +155,9 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.ENTERPRISE,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: undefined,
+        firestoreDataAccessMode: undefined,
+        mongodbCompatibleDataAccessMode: undefined,
         cmekConfig: undefined,
       }),
     ).to.be.true;
@@ -178,6 +187,9 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.STANDARD,
         deleteProtectionState: types.DatabaseDeleteProtectionState.ENABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: undefined,
+        firestoreDataAccessMode: undefined,
+        mongodbCompatibleDataAccessMode: undefined,
         cmekConfig: undefined,
       }),
     ).to.be.true;
@@ -207,6 +219,9 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.STANDARD,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.ENABLED,
+        realtimeUpdatesMode: undefined,
+        firestoreDataAccessMode: undefined,
+        mongodbCompatibleDataAccessMode: undefined,
         cmekConfig: undefined,
       }),
     ).to.be.true;
@@ -239,9 +254,78 @@ describe("firestore:databases:create", () => {
         databaseEdition: types.DatabaseEdition.STANDARD,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: undefined,
+        firestoreDataAccessMode: undefined,
+        mongodbCompatibleDataAccessMode: undefined,
         cmekConfig: {
           kmsKeyName: KMS_KEY,
         },
+      }),
+    ).to.be.true;
+  });
+
+  it("should handle firestoreDataAccess with realtimeUpdates ENABLED", async () => {
+    const options = {
+      project: PROJECT,
+      location: LOCATION,
+      edition: "enterprise",
+      realtimeUpdates: "ENABLED",
+      firestoreDataAccess: "ENABLED",
+      mongodbCompatibleDataAccess: "DISABLED",
+      json: true,
+    };
+    const expectedDatabase = mockDatabaseResp({});
+    firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+    const result = await command.runner()(DATABASE, options);
+
+    expect(result).to.deep.equal(expectedDatabase);
+    expect(
+      firestoreApiStub.createDatabase.calledOnceWith({
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.ENTERPRISE,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.ENABLED,
+        firestoreDataAccessMode: types.DataAccessMode.ENABLED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.DISABLED,
+        cmekConfig: undefined,
+      }),
+    ).to.be.true;
+  });
+
+  it("should handle firestoreDataAccess with realtimeUpdates DISABLED", async () => {
+    const options = {
+      project: PROJECT,
+      location: LOCATION,
+      edition: "enterprise",
+      realtimeUpdates: "DISABLED",
+      firestoreDataAccess: "ENABLED",
+      mongodbCompatibleDataAccess: "DISABLED",
+      json: true,
+    };
+    const expectedDatabase = mockDatabaseResp({});
+    firestoreApiStub.createDatabase.resolves(expectedDatabase);
+
+    const result = await command.runner()(DATABASE, options);
+
+    expect(result).to.deep.equal(expectedDatabase);
+    expect(
+      firestoreApiStub.createDatabase.calledOnceWith({
+        project: PROJECT,
+        databaseId: DATABASE,
+        locationId: LOCATION,
+        type: types.DatabaseType.FIRESTORE_NATIVE,
+        databaseEdition: types.DatabaseEdition.ENTERPRISE,
+        deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
+        pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        realtimeUpdatesMode: types.RealtimeUpdatesMode.DISABLED,
+        firestoreDataAccessMode: types.DataAccessMode.ENABLED,
+        mongodbCompatibleDataAccessMode: types.DataAccessMode.DISABLED,
+        cmekConfig: undefined,
       }),
     ).to.be.true;
   });
