@@ -32,7 +32,7 @@ export const importFromGithub = prompt(
 *   Ask the user for the GitHub repository URL.
 *   Ask for the Firebase Project ID to use.
 *   Ask the user to confirm that the code in the GitHub repository was working correctly when last deployed.
-*   Propose a name for the NEW test backend (e.g., 'import-test-\${Date.now()}'). Get user confirmation.
+*   Propose a name for the NEW test backend (e.g., 'import-test-<timestamp>'). Get user confirmation.
 *   Ask for the desired region for the new backend (default: 'us-central1').
 
 **Phase 2: Code Import & Preparation**
