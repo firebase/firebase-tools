@@ -36,7 +36,7 @@ export const importFromGithub = prompt(
 *   Ask for the desired region for the new backend (default: 'us-central1').
 
 **Phase 2: Code Import & Preparation**
-*   Clone the repository into the current empty workspace.
+*   Clone the repository into the current workspace. If the workspace is not empty, warn the user and ask for confirmation before proceeding.
 *   Run 'npm install' or equivalent.
 
 **Phase 3: NEW Test Backend Creation**
