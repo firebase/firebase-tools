@@ -83,9 +83,10 @@ Follow the steps below taking note of any user instructions provided above.
      Create \`firebase.json\ with an "apphosting" configuration, setting backendId to the app's name in package.json: \`{"apphosting": {"backendId": "<backendId>"}}\
   4b. If the app does NOT require SSR, configure Firebase Hosting:
     Create \`firebase.json\ with a "hosting" configuration. Add a \`{"hosting": {"predeploy": "<build_script>"}}\` config to build before deploying.
-5. Check if there is an active Firebase project for this environment (the \`firebase_get_environment\` tool may be helpful). If there is, provide the active project ID to the user and ask them if they want to proceed using that project. If there is not an active project, give the user two options: Provide an existing project ID or create a new project. Only use the list_projects tool on user request. Wait for their response before proceeding.
-  5a. If the user chooses to use an existing Firebase project, the \`firebase_list_projects\` tool may be helpful. Set the selected project as the active project (the \`firebase_update_environment\` tool may be helpful).
-  5b. If the user chooses to create a new project, use the \`firebase_create_project	\` tool. Then set the new project as the active project (the \`firebase_update_environment\` tool may be helpful).
+5. Check if there is an active Firebase project for this environment (the \`firebase_get_environment\` tool may be helpful).
+   - If there is an active project, ASK the user to confirm they want to use it.
+   - If there is NO active project, ASK the user to provide a project ID or if they want to create a new one. Do NOT list projects or guess unless explicitly asked.
+   - Once a project is decided, set it as active using \`firebase_update_environment\`.
 6. If firebase.json contains an "apphosting" configuration, check if a backend exists matching the provided backendId (the \`apphosting_list_backends\` tool may be helpful).
    If it doesn't exist, create one by running the \`${firebaseCliCommand} apphosting:backends:create --backend <backendId> --primary-region us-central1 --root-dir .\` shell.
 7. Only after making sure Firebase has been initialized, run the \`${firebaseCliCommand} deploy\` shell command to perform the deploy. This may take a few minutes.
