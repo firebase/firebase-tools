@@ -14,6 +14,8 @@ import * as experiments from "../../../experiments";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import { trackGA4 } from "../../../track";
 import { Source } from ".";
+import * as functions from "../functions";
+import { Options } from "../../../options";
 
 export interface ResolverRequiredInfo {
   id: string;
@@ -21,7 +23,7 @@ export interface ResolverRequiredInfo {
   serviceInfo: ServiceInfo;
 }
 
-export async function askQuestions(setup: Setup, config: Config): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   const resolverInfo: ResolverRequiredInfo = {
     id: "",
     uri: "",
@@ -68,6 +70,8 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
 
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnectResolver = resolverInfo;
+
+  await functions.askQuestions(setup, config, options);
 }
 
 export async function actuate(setup: Setup, config: Config) {
@@ -96,6 +100,7 @@ export async function actuate(setup: Setup, config: Config) {
       Date.now() - startTime,
     );
   }
+  await functions.actuate(setup, config);
 }
 
 function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
