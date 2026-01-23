@@ -1,1 +1,1 @@
-- Fix the bug when Data Connect emulator hangs with PGlite. (Issue #9756) #9771
+- Loads experiments earlier in CLI startup so they can be used earlier. (#9797)
