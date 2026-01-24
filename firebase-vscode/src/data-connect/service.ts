@@ -51,34 +51,6 @@ export class DataConnectService {
     return dcs?.getApiServicePathByPath(projectId, path);
   }
 
-  private async handleProdResponse(
-    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
-  ): Promise<ExecutionResult> {
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${response.status}`);
-    if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse = response as ClientResponse<GraphqlResponseError>;
-      throw new DataConnectError(
-        `Prod Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
-      );
-    }
-    const successResponse = response as ClientResponse<GraphqlResponse>;
-    return successResponse.body;
-  }
-
-  private async handleEmulatorResponse(
-    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
-  ): Promise<ExecutionResult> {
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${response.status}`);
-    if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse = response as ClientResponse<GraphqlResponseError>;
-      throw new DataConnectError(
-        `Emulator Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
-      );
-    }
-    const successResponse = response as ClientResponse<GraphqlResponse>;
-    return successResponse.body;
-  }
-
   /** Encode a body while handling the fact that "variables" is raw JSON.
    *
    * If the JSON is invalid, will throw.
@@ -180,14 +152,16 @@ export class DataConnectService {
     }
   }
 
-  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest) {
+  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest):
+    Promise<ClientResponse<GraphqlResponse | GraphqlResponseError>> {
     if (instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
       pluginLogger.info(
         `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(body, undefined, 4)}`,
       );
       const resp = await executeGraphQL(client, servicePath, body);
-      return this.handleProdResponse(resp);
+      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${resp.status}`);
+      return resp;
     } else {
       const endpoint = this.emulatorsController.getLocalEndpoint();
       if (!endpoint) {
@@ -200,7 +174,8 @@ export class DataConnectService {
         apiVersion: DATACONNECT_API_VERSION,
       });
       const resp = await executeGraphQL(client, servicePath, body);
-      return this.handleEmulatorResponse(resp);
+      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${resp.status}`);
+      return resp;
     }
   }
 
