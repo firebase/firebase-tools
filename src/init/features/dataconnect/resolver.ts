@@ -1,5 +1,4 @@
 import * as clc from "colorette";
-import * as fs from "fs-extra";
 import { join, relative } from "path";
 import * as yaml from "yaml";
 
@@ -16,6 +15,9 @@ import { trackGA4 } from "../../../track";
 import { Source } from ".";
 import * as functions from "../functions";
 import { Options } from "../../../options";
+import { readTemplateSync } from "../../../templates";
+
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/secondary_schema.gql");
 
 export interface ResolverRequiredInfo {
   id: string;
@@ -116,8 +118,14 @@ function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
     dataConnectYamlContents,
   );
 
-  // Write an empty schema.gql file.
-  fs.ensureFileSync(join(info.serviceInfo.sourceDirectory, `schema_${info.id}`, "schema.gql"));
+  // Write the schema.gql file pre-populated with a template.
+  config.writeProjectFile(
+    relative(
+      config.projectDir,
+      join(info.serviceInfo.sourceDirectory, `schema_${info.id}`, "schema.gql"),
+    ),
+    SCHEMA_TEMPLATE,
+  );
 }
 
 /** Add secondary schema configuration to dataconnect.yaml in place */
