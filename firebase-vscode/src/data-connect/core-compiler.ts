@@ -5,6 +5,10 @@ import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
 import { ResolvedDataConnectConfigs } from "./config";
 import { GraphqlError, WarningLevel } from "../../src/dataconnect/types";
+<<<<<<< HEAD
+import path, { join } from 'path';
+=======
+>>>>>>> origin/fz/warning-level
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphqlError[] } };
@@ -52,7 +56,7 @@ function convertGQLErrorToDiagnostic(
     if (!file) {
       continue;
     }
-    const absFilePath = `${dcPath}/${file}`;
+    const absFilePath = path.join(dcPath, file);
     perFileDiagnostics[absFilePath] = perFileDiagnostics[absFilePath] || [];
     perFileDiagnostics[absFilePath].push({
       source: "Firebase Data Connect: Compiler",
