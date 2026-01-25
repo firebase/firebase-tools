@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
 import { Range, DiagnosticSeverity, Diagnostic, Uri, Position } from "vscode";
 import fetch from "node-fetch";
-import { GraphQLError } from "graphql";
 import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
 import { ResolvedDataConnectConfigs } from "./config";
+import { GraphqlError, WarningLevel } from "../../src/dataconnect/types";
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
-type CompilerResponse = { result?: { errors?: GraphQLError[] } };
+type CompilerResponse = { result?: { errors?: GraphqlError[] } };
 
 const fdcDiagnosticCollection =
   vscode.languages.createDiagnosticCollection("Dataconnect");
@@ -43,24 +43,23 @@ export async function runDataConnectCompiler(
 
 function convertGQLErrorToDiagnostic(
   configs: ResolvedDataConnectConfigs,
-  gqlErrors: GraphQLError[],
+  gqlErrors: GraphqlError[],
 ): DiagnosticTuple[] {
   const perFileDiagnostics: Record<string, Diagnostic[]> = {};
   const dcPath = configs.values[0].path;
   for (const error of gqlErrors) {
-    if (error.message.includes("INSECURE")) {
-      // Don't surface insecure operation issues for now; we need to be able to compare with a deployed source for these to be accurately presented.
+    const file = error.extensions?.file;
+    if (!file) {
       continue;
     }
-    const absFilePath = `${dcPath}/${error.extensions["file"]}`;
-    const perFileDiagnostic = perFileDiagnostics[absFilePath] || [];
-    perFileDiagnostic.push({
+    const absFilePath = `${dcPath}/${file}`;
+    perFileDiagnostics[absFilePath] = perFileDiagnostics[absFilePath] || [];
+    perFileDiagnostics[absFilePath].push({
       source: "Firebase Data Connect: Compiler",
       message: error.message,
-      severity: DiagnosticSeverity.Error,
+      severity: warningLevelToDiagnosticSeverity(error.extensions?.warningLevel),
       range: locationToRange(error.locations?.[0] || { line: 0, column: 0 }),
     });
-    perFileDiagnostics[absFilePath] = perFileDiagnostic;
   }
   return Object.keys(perFileDiagnostics).map((key) => {
     return [
@@ -68,6 +67,21 @@ function convertGQLErrorToDiagnostic(
       perFileDiagnostics[key],
     ] as DiagnosticTuple;
   });
+}
+
+function warningLevelToDiagnosticSeverity(level?: WarningLevel): DiagnosticSeverity {
+  if (!level) {
+    return DiagnosticSeverity.Error;
+  }
+  switch (level) {
+    case "LOG_ONLY":
+      return DiagnosticSeverity.Information;
+    case "INTERACTIVE_ACK":
+    case "REQUIRE_ACK":
+      return DiagnosticSeverity.Warning;
+    case "REQUIRE_FORCE":
+      return DiagnosticSeverity.Error;
+  }
 }
 
 // Basic conversion from GraphQLError.SourceLocation to Range
