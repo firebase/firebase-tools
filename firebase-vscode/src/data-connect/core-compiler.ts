@@ -1,14 +1,11 @@
 import * as vscode from "vscode";
+import * as path from 'path';
 import { Range, DiagnosticSeverity, Diagnostic, Uri, Position } from "vscode";
 import fetch from "node-fetch";
 import { Observable, of } from "rxjs";
 import { backOff } from "exponential-backoff";
 import { ResolvedDataConnectConfigs } from "./config";
 import { GraphqlError, WarningLevel } from "../../src/dataconnect/types";
-<<<<<<< HEAD
-import path, { join } from 'path';
-=======
->>>>>>> origin/fz/warning-level
 
 type DiagnosticTuple = [Uri, Diagnostic[]];
 type CompilerResponse = { result?: { errors?: GraphqlError[] } };
