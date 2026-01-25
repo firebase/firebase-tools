@@ -82,6 +82,8 @@ function warningLevelToDiagnosticSeverity(level?: WarningLevel): DiagnosticSever
       return DiagnosticSeverity.Warning;
     case "REQUIRE_FORCE":
       return DiagnosticSeverity.Error;
+    default:
+      return DiagnosticSeverity.Error;
   }
 }
 
