@@ -269,14 +269,15 @@ describe("utils", () => {
   describe("datetimeString", () => {
     it("should output the date in the correct format", () => {
       // Don't worry about the hour since timezones screw everything up.
+      // Timezone differences may cause the day to be off by one, so we allow for that.
       expect(utils.datetimeString(new Date("February 22, 2020 11:35:45-07:00"))).to.match(
-        /^2020-02-22 \d\d:35:45$/,
+        /^2020-02-2[2|3] \d\d:35:45$/,
       );
       expect(utils.datetimeString(new Date("February 7, 2020 11:35:45-07:00"))).to.match(
-        /^2020-02-07 \d\d:35:45$/,
+        /^2020-02-0[7|8] \d\d:35:45$/,
       );
       expect(utils.datetimeString(new Date("February 7, 2020 8:01:01-07:00"))).to.match(
-        /^2020-02-07 \d\d:01:01$/,
+        /^2020-02-0[7|8] \d\d:01:01$/,
       );
     });
   });
