@@ -22,7 +22,7 @@ This skill enables the agent to deploy and manage modern, full-stack web applica
 - You want an automated "git push to deploy" workflow with zero configuration.
 
 ## Instructions
-1.  **Use CLI commands**: Directly execute `firebase apphosting` commands to create backends, trigger rollouts, and manage resources
+1.  **Use CLI commands**: Execute `firebase apphosting` commands to create backends, trigger rollouts, and manage resources.
 2.  **Configure App Hosting**: Create or edit `apphosting.yaml` to configure Cloud Run settings (CPU, memory) and environment variables as requested by the user.
 3.  **Manage Secrets**: Use `firebase apphosting:secrets` commands to set and grant access to secrets.
 4.  **Setup Emulation**: Configure `apphosting.emulator.yaml` and use the local emulator (`firebase emulators:start --only apphosting`) to verify changes.
@@ -33,7 +33,7 @@ This skill enables the agent to deploy and manage modern, full-stack web applica
 Firebase App Hosting is a serverless hosting solution designed specifically for modern, full-stack web applications. It automates the build and deployment process directly from your GitHub repository.
 
 ### Key Features
-- **Zero-config builds**: Automatically detects and builds Next.js and Angular apps using Cloud Build packs.
+- **Zero-config builds**: Automatically detects and builds Next.js and Angular apps using Cloud buildpacks.
 - **GitHub Integration**: Deploys automatically when you push to your live branch (e.g., `main`).
 - **Backend Infrastructure**: Provisions Cloud Run services, Cloud Build triggers, and other necessary resources automatically.
 - **Global CDN**: Serves static content from a global CDN for high performance.
