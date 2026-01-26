@@ -2,7 +2,7 @@
 
 The `hosting` section of `firebase.json` configures how your site is deployed and served.
 
-## key Attributes
+## Key Attributes
 
 ### `public` (Required)
 Specifies the directory to deploy to Firebase Hosting.
