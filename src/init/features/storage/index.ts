@@ -1,11 +1,11 @@
 import * as clc from "colorette";
 
-import { logger } from "../../logger";
-import { input } from "../../prompt";
-import { readTemplateSync } from "../../templates";
-import { Config } from "../../config";
-import { Setup } from "..";
-import { FirebaseError } from "../../error";
+import { logger } from "../../../logger";
+import { input } from "../../../prompt";
+import { readTemplateSync } from "../../../templates";
+import { Config } from "../../../config";
+import { Setup } from "../..";
+import { FirebaseError } from "../../../error";
 
 export interface RequiredInfo {
   rulesFilename: string;

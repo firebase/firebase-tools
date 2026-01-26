@@ -2,9 +2,9 @@ import { expect } from "chai";
 import * as _ from "lodash";
 import * as sinon from "sinon";
 
-import { Config } from "../../config";
-import { askQuestions, actuate } from "./storage";
-import * as prompt from "../../prompt";
+import { Config } from "../../../config";
+import { askQuestions, actuate } from "./index";
+import * as prompt from "../../../prompt";
 
 describe("storage", () => {
   const sandbox: sinon.SinonSandbox = sinon.createSandbox();
