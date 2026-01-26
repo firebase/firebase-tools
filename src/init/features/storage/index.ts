@@ -6,6 +6,7 @@ import { readTemplateSync } from "../../../templates";
 import { Config } from "../../../config";
 import { Setup } from "../..";
 import { FirebaseError } from "../../../error";
+import { getRulesFromConsole } from "./rules";
 
 export interface RequiredInfo {
   rulesFilename: string;
@@ -28,6 +29,15 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
     rules: RULES_TEMPLATE,
     writeRules: true,
   };
+
+  if (setup.projectId) {
+    const downloadedRules = await getRulesFromConsole(setup.projectId);
+    if (downloadedRules) {
+      info.rules = downloadedRules;
+      logger.info(`Downloaded the existing Storage Security Rules from the Firebase console`);
+    }
+  }
+
   info.rulesFilename = await input({
     message: "What file should be used for Storage Rules?",
     default: DEFAULT_RULES_FILE,
