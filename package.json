@@ -54,7 +54,8 @@
     "prompts",
     "schema",
     "standalone",
-    "templates"
+    "templates",
+    "skills"
   ],
   "repository": {
     "type": "git",

@@ -1,4 +1,6 @@
 import { Config } from "../../../config";
+import * as path from "path";
+import * as os from "os";
 import { readTemplateSync } from "../../../templates";
 import { AIToolModule, AIToolConfigResult } from "./types";
 import {
@@ -100,5 +102,9 @@ export const gemini: AIToolModule = {
     files.push({ path: contextPath, updated: mainResult.updated });
 
     return { files };
+  },
+
+  getSkillPath(): string {
+    return path.join(os.homedir(), ".gemini/skills");
   },
 };

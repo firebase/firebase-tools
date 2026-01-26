@@ -4,6 +4,7 @@ import { updateFirebaseSection } from "./promptUpdater";
 
 const MCP_CONFIG_PATH = ".mcp.json";
 const CLAUDE_PROMPT_PATH = "CLAUDE.md";
+const CLAUDE_SKILLS_DIR = "~/.claude/skills";
 
 export const claude: AIToolModule = {
   name: "claude",
@@ -59,5 +60,9 @@ export const claude: AIToolModule = {
     });
 
     return { files };
+  },
+
+  getSkillPath(): string {
+    return CLAUDE_SKILLS_DIR;
   },
 };
