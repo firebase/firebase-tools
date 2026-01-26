@@ -1,1 +1,2 @@
 - Loads experiments earlier in CLI startup so they can be used earlier. (#9797)
+- Fixed issue where `AuthBlockingEvent` had invalid format for `metadata.creationTime` and `metadata.lastSignInTime`. (#8109)
