@@ -80,7 +80,7 @@ export interface Diff {
   destructive: boolean;
 }
 
-export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
+export type WarningLevel = "LOG_ONLY" | "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
 
 export interface Workaround {
   description: string;
