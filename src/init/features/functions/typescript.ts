@@ -56,7 +56,7 @@ export async function setup(setup: any, config: any): Promise<any> {
   if (setup.featureInfo?.dataconnectResolver) {
     await config.askWriteProjectFile(
       `${setup.functions.source}/src/index.ts`,
-      subResolverId(setup.featureInfo.dataconnectResolver.id),
+      templateWithSubbedResolverId(setup.featureInfo.dataconnectResolver.id),
     );
   } else {
     await config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
@@ -65,7 +65,7 @@ export async function setup(setup: any, config: any): Promise<any> {
   await askInstallDependencies(setup.functions, config);
 }
 
-function subResolverId(resolverId: string): string {
+function templateWithSubbedResolverId(resolverId: string): string {
   let replaced = GRAPH_INDEX_TEMPLATE;
   replaced = replaced.replaceAll("__resolverId__", resolverId);
   return replaced;

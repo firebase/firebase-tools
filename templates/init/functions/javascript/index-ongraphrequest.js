@@ -22,17 +22,17 @@ const {onGraphRequest} = require("firebase-functions/dataconnect/graphql");
 // functions should each use functions.runWith({ maxInstances: 10 }) instead.
 // In the v1 API, each function can only serve one request per container, so
 // this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+setGlobalOptions({maxInstances: 10});
 
 const opts = {
-    schemaFilePath: "dataconnect/schema___resolverId__/schema.gql",
-    resolvers: {
-        query: {
-            hello(_parent, args, _contextValue, _info) {
-                return `Hello ${args.name}!`;
-            },
-        },
+  schemaFilePath: "dataconnect/schema___resolverId__/schema.gql",
+  resolvers: {
+    query: {
+      hello(_parent, args, _contextValue, _info) {
+        return `Hello ${args.name}!`;
+      },
     },
+  },
 }
 
 exports.__resolverId__ = onGraphRequest(opts);

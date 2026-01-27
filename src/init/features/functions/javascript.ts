@@ -5,6 +5,7 @@ import { readTemplateSync } from "../../../templates";
 import * as supported from "../../../deploy/functions/runtimes/supported";
 
 const INDEX_TEMPLATE = readTemplateSync("init/functions/javascript/index.js");
+const GRAPH_INDEX_TEMPLATE = readTemplateSync("init/functions/javascript/index-ongraphrequest.js");
 const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/javascript/package.lint.json");
 const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
   "init/functions/javascript/package.nolint.json",
@@ -37,7 +38,21 @@ export async function setup(setup: any, config: any): Promise<any> {
     );
   }
 
-  await config.askWriteProjectFile(`${setup.functions.source}/index.js`, INDEX_TEMPLATE);
+  if (setup.featureInfo?.dataconnectResolver) {
+    await config.askWriteProjectFile(
+      `${setup.functions.source}/index.js`,
+      templateWithSubbedResolverId(setup.featureInfo.dataconnectResolver.id),
+    );
+  } else {
+    await config.askWriteProjectFile(`${setup.functions.source}/index.js`, INDEX_TEMPLATE);
+  }
+
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await askInstallDependencies(setup.functions, config);
+}
+
+function templateWithSubbedResolverId(resolverId: string): string {
+  let replaced = GRAPH_INDEX_TEMPLATE;
+  replaced = replaced.replaceAll("__resolverId__", resolverId);
+  return replaced;
 }
