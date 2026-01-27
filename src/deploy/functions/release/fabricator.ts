@@ -65,10 +65,10 @@ export interface FabricatorArgs {
 
 const rethrowAs =
   <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
-    (err: unknown): T => {
-      logger.error((err as Error).message);
-      throw new reporter.DeploymentError(endpoint, op, err);
-    };
+  (err: unknown): T => {
+    logger.error((err as Error).message);
+    throw new reporter.DeploymentError(endpoint, op, err);
+  };
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
 export class Fabricator {
@@ -734,8 +734,9 @@ export class Fabricator {
         }
 
         if (+service.spec.template.spec.containers[0].resources.limits.cpu !== endpoint.cpu) {
-          service.spec.template.spec.containers[0].resources.limits.cpu = `${endpoint.cpu as number
-            }`;
+          service.spec.template.spec.containers[0].resources.limits.cpu = `${
+            endpoint.cpu as number
+          }`;
           changed = true;
         }
 
@@ -924,7 +925,7 @@ export class Fabricator {
     const functionNames = endpoints.map((endpoint) => endpoint.id).join(",");
     return `${clc.bold(clc.magenta(`functions:`))} You can re-deploy skipped functions with:
               ${clc.bold(`firebase deploy --only functions:${functionNames}`)} or ${clc.bold(
-      `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`,
-    )}`;
+                `FUNCTIONS_DEPLOY_UNCHANGED=true firebase deploy`,
+              )}`;
   }
 }
