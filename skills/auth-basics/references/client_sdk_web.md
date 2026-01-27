@@ -12,20 +12,6 @@ const auth = getAuth(app);
 export { auth };
 ```
 
-## Connect to Emulator
-
-If you are running the Authentication emulator (usually on port 9099), connect to it immediately after initialization.
-
-```javascript
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-
-const auth = getAuth();
-// Connect to emulator if running locally
-if (location.hostname === "localhost") {
-  connectAuthEmulator(auth, "http://localhost:9099");
-}
-```
-
 ## Sign Up with Email/Password
 
 ```javascript
@@ -42,24 +28,6 @@ createUserWithEmailAndPassword(auth, email, password)
     const errorCode = error.code;
     const errorMessage = error.message;
     // ..
-  });
-```
-
-## Sign In with Email/Password
-
-```javascript
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-
-const auth = getAuth();
-signInWithEmailAndPassword(auth, email, password)
-  .then((userCredential) => {
-    // Signed in 
-    const user = userCredential.user;
-    // ...
-  })
-  .catch((error) => {
-    const errorCode = error.code;
-    const errorMessage = error.message;
   });
 ```
 
@@ -86,6 +54,226 @@ signInWithPopup(auth, provider)
     const errorMessage = error.message;
     // ...
   });
+```
+
+## Sign In with Facebook (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, FacebookAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new FacebookAuthProvider();
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    // The signed-in user info.
+    const user = result.user;
+    // This gives you a Facebook Access Token. You can use it to access the Facebook API.
+    const credential = FacebookAuthProvider.credentialFromResult(result);
+    const accessToken = credential.accessToken;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In with Apple (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, OAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new OAuthProvider('apple.com');
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    const user = result.user;
+    // Apple credential
+    const credential = OAuthProvider.credentialFromResult(result);
+    const accessToken = credential.accessToken;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In with Twitter (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, TwitterAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new TwitterAuthProvider();
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    const user = result.user;
+    // Twitter credential
+    const credential = TwitterAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+    const secret = credential.secret;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In with GitHub (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, GithubAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new GithubAuthProvider();
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    const user = result.user;
+    const credential = GithubAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In with Microsoft (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, OAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new OAuthProvider('microsoft.com');
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    const user = result.user;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const accessToken = credential.accessToken;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In with Yahoo (Popup)
+
+```javascript
+import { getAuth, signInWithPopup, OAuthProvider } from "firebase/auth";
+
+const auth = getAuth();
+const provider = new OAuthProvider('yahoo.com');
+
+signInWithPopup(auth, provider)
+  .then((result) => {
+    const user = result.user;
+    const credential = OAuthProvider.credentialFromResult(result);
+    const accessToken = credential.accessToken;
+  })
+  .catch((error) => {
+    // Handle Errors here.
+  });
+```
+
+## Sign In Anonymously
+
+```javascript
+import { getAuth, signInAnonymously } from "firebase/auth";
+
+const auth = getAuth();
+signInAnonymously(auth)
+  .then(() => {
+    // Signed in..
+  })
+  .catch((error) => {
+    const errorCode = error.code;
+    const errorMessage = error.message;
+  });
+```
+
+## Phone Authentication
+
+Requires `RecaptchaVerifier`.
+
+```javascript
+import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+
+const auth = getAuth();
+window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', {
+  'size': 'invisible',
+  'callback': (response) => {
+    // reCAPTCHA solved - can proceed with signInWithPhoneNumber
+    onSignInSubmit();
+  }
+});
+
+function onSignInSubmit() {
+  const phoneNumber = getPhoneNumberFromUserInput();
+  const appVerifier = window.recaptchaVerifier;
+
+  signInWithPhoneNumber(auth, phoneNumber, appVerifier)
+    .then((confirmationResult) => {
+      // SMS sent. Prompt user to type the code from the message.
+      window.confirmationResult = confirmationResult;
+      const code = window.prompt("Enter SMS code");
+      return confirmationResult.confirm(code);
+    })
+    .then((result) => {
+      // User signed in successfully.
+      const user = result.user;
+    })
+    .catch((error) => {
+      // Error; SMS not sent or code invalid
+    });
+}
+```
+
+## Email Link Authentication
+
+**1. Send Auth Link**
+
+```javascript
+import { getAuth, sendSignInLinkToEmail } from "firebase/auth";
+
+const auth = getAuth();
+const actionCodeSettings = {
+  // URL you want to redirect back to. The domain must be in the authorized domains list in Firebase Console.
+  url: 'https://www.example.com/finishSignUp?cartId=1234',
+  handleCodeInApp: true,
+};
+
+sendSignInLinkToEmail(auth, email, actionCodeSettings)
+  .then(() => {
+    // Save the email locally so you don't need to ask the user for it again
+    window.localStorage.setItem('emailForSignIn', email);
+  })
+  .catch((error) => {
+    // Error
+  });
+```
+
+**2. Complete Sign In (on landing page)**
+
+```javascript
+import { getAuth, isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
+
+const auth = getAuth();
+
+if (isSignInWithEmailLink(auth, window.location.href)) {
+  let email = window.localStorage.getItem('emailForSignIn');
+  if (!email) {
+    email = window.prompt('Please provide your email for confirmation');
+  }
+
+  signInWithEmailLink(auth, email, window.location.href)
+    .then((result) => {
+      window.localStorage.removeItem('emailForSignIn');
+      // You can check result.user
+    })
+    .catch((error) => {
+      // Error
+    });
+}
 ```
 
 ## Observe Auth State
@@ -120,4 +308,18 @@ signOut(auth).then(() => {
 }).catch((error) => {
   // An error happened.
 });
+```
+
+## Connect to Emulator
+
+If you are running the Authentication emulator (usually on port 9099), connect to it immediately after initialization.
+
+```javascript
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+
+const auth = getAuth();
+// Connect to emulator if running locally
+if (location.hostname === "localhost") {
+  connectAuthEmulator(auth, "http://localhost:9099");
+}
 ```
