@@ -59,7 +59,7 @@ Configure Firebase Authentication in `firebase.json` by adding an 'auth' block:
 #### Option 2. Enabling Authentication in Console
 Enable other providers in the Firebase Console.
 
-1.  Go to the https://firebase.corp.google.com/u/0/project/_/authentication/providers
+1.  Go to the https://console.firebase.google.com/project/_/authentication/providers
 2.  Select your project.
 3.  Enable the desired Sign-in providers (e.g., Email/Password, Google).
 
