@@ -336,6 +336,9 @@ describe("Backend", () => {
             "firebase-functions-codebase": "default",
           },
           secretEnvironmentVariables: [],
+          ingressSettings: "ALLOW_ALL" as const,
+          timeoutSeconds: 60,
+          serviceAccount: null,
         };
         delete wantEndpoint.state;
 
