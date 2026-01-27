@@ -62,12 +62,11 @@ export const command = new Command("dataconnect:compile")
           buildResult.errors,
           options.nonInteractive,
           options.force,
-          !!options.dryRun,
+          false,
         );
       }
 
       // 2. Generate SDKs
-      // api-proposal says: "Generates or updates the local .dataconnect/ metadata folder and generated SDKs"
       await DataConnectEmulator.generate({
         configDir,
         account,
