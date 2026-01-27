@@ -3330,8 +3330,8 @@ function generateBlockingFunctionJwt(
 
   if (user.lastLoginAt || user.createdAt) {
     jwt.user_record.metadata = {
-      last_sign_in_time: user.lastLoginAt,
-      creation_time: user.createdAt,
+      last_sign_in_time: user.lastLoginAt ? parseInt(user.lastLoginAt) : undefined,
+      creation_time: user.createdAt ? parseInt(user.createdAt) : undefined,
     };
   }
 
@@ -3574,8 +3574,8 @@ export interface BlockingFunctionsJwtPayload {
       enrolled_factors: EnrolledFactor[];
     };
     metadata?: {
-      last_sign_in_time?: string;
-      creation_time?: string;
+      last_sign_in_time?: number;
+      creation_time?: number;
     };
     custom_claims?: Record<string, unknown>;
     tenant_id?: string; // should match top level tenant_id
