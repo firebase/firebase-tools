@@ -4,7 +4,11 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { getFunctionLabel } from "./functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesFilter,
+  getFunctionLabel,
+} from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -395,6 +399,37 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       throw new FirebaseError(
         "Secret version is unexpectedly undefined. This should never happen.",
       );
+    }
+  }
+}
+
+/**
+ * Check that all filters match at least one endpoint.
+ */
+export function checkFiltersIntegrity(
+  wantBackends: Record<string, backend.Backend>,
+  filters?: EndpointFilter[]
+): void {
+  if (!filters) {
+    return;
+  }
+  for (const filter of filters) {
+    let matched = false;
+    for (const b of Object.values(wantBackends)) {
+      if (backend.someEndpoint(b, (e) => endpointMatchesFilter(e, filter))) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      const parts = [];
+      if (filter.codebase) {
+        parts.push(filter.codebase);
+      }
+      if (filter.idChunks) {
+        parts.push(filter.idChunks.join("-"));
+      }
+      throw new FirebaseError(`No function matches the filter: ${parts.join(":")}`);
     }
   }
 }
