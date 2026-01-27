@@ -154,6 +154,7 @@ export enum DataAccessModeOption {
 }
 
 export enum DataAccessMode {
+  UNSPECIFIED = "DATA_ACCESS_MODE_UNSPECIFIED",
   ENABLED = "DATA_ACCESS_MODE_ENABLED",
   DISABLED = "DATA_ACCESS_MODE_DISABLED",
 }

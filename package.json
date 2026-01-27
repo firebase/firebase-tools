@@ -25,7 +25,6 @@
     "lint:ts": "eslint --config .eslintrc.js --ext .ts,.js .",
     "mocha:fast": "mocha 'src/**/*.spec.{ts,js}'",
     "mocha": "nyc --reporter=html mocha 'src/**/*.spec.{ts,js}'",
-    "mocha:commands": "nyc --reporter=html mocha 'src/commands/*.spec.{ts,js}'",
     "prepare": "npm run clean && npm run build:publish",
     "test": "npm run lint:quiet && npm run test:compile && npm run mocha",
     "test:appdistribution": "npm run lint:quiet && npm run test:compile && nyc mocha 'src/appdistribution/*.spec.{ts,js}'",

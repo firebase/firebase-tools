@@ -31,15 +31,15 @@ export const command = new Command("firestore:databases:create <database>")
   )
   .option(
     "--realtime-updates <realtimeUpdates",
-    "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'DISABLED' for ENTERPRISE edition and 'ENABLED' for STANDARD edition",
+    "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition when firestore-data-access is enabled.",
   )
   .option(
     "--firestore-data-access <firestoreDataAccess>",
-    "Whether the Firestore API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for STANDARD edition and 'DISABLED' for ENTERPRISE edition.",
+    "Whether the Firestore API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition.",
   )
   .option(
     "--mongodb-compatible-data-access <mongodbCompatibleDataAccess>",
-    "Whether the MongoDB compatible API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition. The value is always 'DISABLED' for STANDARD edition.",
+    "Whether the MongoDB compatible API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'DISABLED' for ENTERPRISE edition",
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
@@ -101,6 +101,52 @@ export const command = new Command("firestore:databases:create <database>")
         : types.PointInTimeRecoveryEnablement.DISABLED;
 
     if (
+      options.firestoreDataAccess &&
+      options.firestoreDataAccess !== types.DataAccessModeOption.ENABLED &&
+      options.firestoreDataAccess !== types.DataAccessModeOption.DISABLED
+    ) {
+      throw new FirebaseError(`Invalid value for flag --firestore-data-access. ${helpCommandText}`);
+    }
+    let userFirestoreDataAccess: types.DataAccessMode | undefined;
+    if (options.firestoreDataAccess === types.DataAccessModeOption.ENABLED) {
+      userFirestoreDataAccess = types.DataAccessMode.ENABLED;
+    } else if (options.firestoreDataAccess === types.DataAccessModeOption.DISABLED) {
+      userFirestoreDataAccess = types.DataAccessMode.DISABLED;
+    }
+
+    if (
+      options.mongodbCompatibleDataAccess &&
+      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.ENABLED &&
+      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.DISABLED
+    ) {
+      throw new FirebaseError(
+        `Invalid value for flag --mongodb-compatible-data-access. ${helpCommandText}`,
+      );
+    }
+
+    let userMongodbDataAccess: types.DataAccessMode | undefined;
+    if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.ENABLED) {
+      userMongodbDataAccess = types.DataAccessMode.ENABLED;
+    } else if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.DISABLED) {
+      userMongodbDataAccess = types.DataAccessMode.DISABLED;
+    }
+
+    let firestoreDataAccessMode: types.DataAccessMode | undefined = userFirestoreDataAccess;
+    if (firestoreDataAccessMode == null) {
+      firestoreDataAccessMode = getDefaultFirestoreDataAccessMode(
+        databaseEdition,
+        userMongodbDataAccess,
+      );
+    }
+    let mongodbCompatibleDataAccessMode: types.DataAccessMode | undefined = userMongodbDataAccess;
+    if (mongodbCompatibleDataAccessMode == null) {
+      mongodbCompatibleDataAccessMode = getDefaultMongodbDataAccessMode(
+        databaseEdition,
+        userFirestoreDataAccess,
+      );
+    }
+
+    if (
       options.realtimeUpdates &&
       options.realtimeUpdates !== types.RealtimeUpdatesModeOption.ENABLED &&
       options.realtimeUpdates !== types.RealtimeUpdatesModeOption.DISABLED
@@ -113,35 +159,14 @@ export const command = new Command("firestore:databases:create <database>")
     } else if (options.realtimeUpdates === types.RealtimeUpdatesModeOption.DISABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
     }
-
+    // If not specified by the user, default realtimeUpdatesMode to ENABLED when
+    // firestoreDataAccessMode == ENABLED.
     if (
-      options.firestoreDataAccess &&
-      options.firestoreDataAccess !== types.DataAccessModeOption.ENABLED &&
-      options.firestoreDataAccess !== types.DataAccessModeOption.DISABLED
+      realtimeUpdatesMode == null &&
+      databaseEdition === types.DatabaseEdition.ENTERPRISE &&
+      firestoreDataAccessMode === types.DataAccessMode.ENABLED
     ) {
-      throw new FirebaseError(`Invalid value for flag --firestore-data-access. ${helpCommandText}`);
-    }
-    let firestoreDataAccessMode: types.DataAccessMode | undefined;
-    if (options.firestoreDataAccess === types.DataAccessModeOption.ENABLED) {
-      firestoreDataAccessMode = types.DataAccessMode.ENABLED;
-    } else if (options.firestoreDataAccess === types.DataAccessModeOption.DISABLED) {
-      firestoreDataAccessMode = types.DataAccessMode.DISABLED;
-    }
-
-    if (
-      options.mongodbCompatibleDataAccess &&
-      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.ENABLED &&
-      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.DISABLED
-    ) {
-      throw new FirebaseError(
-        `Invalid value for flag --mongodb-compatible-data-access. ${helpCommandText}`,
-      );
-    }
-    let mongodbCompatibleDataAccessMode: types.DataAccessMode | undefined;
-    if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.ENABLED) {
-      mongodbCompatibleDataAccessMode = types.DataAccessMode.ENABLED;
-    } else if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.DISABLED) {
-      mongodbCompatibleDataAccessMode = types.DataAccessMode.DISABLED;
+      realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
     }
 
     let cmekConfig: types.CmekConfig | undefined;
@@ -179,3 +204,68 @@ export const command = new Command("firestore:databases:create <database>")
 
     return databaseResp;
   });
+
+/**
+ * Used to determine the default firestoreDataAccessMode if unspecified by the
+ * user.
+ *
+ * If the user specifically enabled mongodbCompatibleDataAccess, then this
+ * is DISABLED.
+ *
+ * If the user left mongodbCompatibleDataAccess unspecified, then this is
+ * ENABLED, with the intention of firestoreDataAccess == ENABLED and
+ * mongodbCompatibleDataAccess == DISABLED
+ */
+function getDefaultFirestoreDataAccessMode(
+  databaseEdition: types.DatabaseEdition,
+  userMongodbDataAccess?: types.DataAccessMode,
+): types.DataAccessMode {
+  // Data Access Modes are only used for ENTERPRISE.
+  if (databaseEdition !== types.DatabaseEdition.ENTERPRISE) {
+    return types.DataAccessMode.UNSPECIFIED;
+  }
+
+  switch (userMongodbDataAccess) {
+    // At the moment, only one DataAccessMode can be enabled, so if the user
+    // specified one as enabled, then disable the otherone, otherwise maintain
+    // the normal default.
+    case types.DataAccessMode.ENABLED:
+      return types.DataAccessMode.DISABLED;
+
+    // If mongodb is unspecified, default to firestore ENABLED.
+    default:
+      return types.DataAccessMode.ENABLED;
+  }
+}
+
+/**
+ * Used to determine the default mongodbCompatibleDataAccessMode if unspecified
+ * by the user.
+ *
+ * If the user specifically enabled firestoreDataAccess, then this is DISABLED.
+ *
+ * If the user left firestoreDataAccess unspecified, then this is DISABLED, with
+ * the intention of firestoreDataAccess == ENABLED and
+ * mongodbCompatibleDataAccess == DISABLED
+ */
+function getDefaultMongodbDataAccessMode(
+  databaseEdition: types.DatabaseEdition,
+  userFirestoreDataAccess?: types.DataAccessMode,
+): types.DataAccessMode {
+  // Data Access Modes are only used for ENTERPRISE.
+  if (databaseEdition !== types.DatabaseEdition.ENTERPRISE) {
+    return types.DataAccessMode.UNSPECIFIED;
+  }
+  switch (userFirestoreDataAccess) {
+    // At the moment, only one DataAccessMode can be enabled, so if the user
+    // specified one as enabled, then disable the otherone, otherwise maintain
+    // the normal default.
+    case types.DataAccessMode.ENABLED:
+      return types.DataAccessMode.DISABLED;
+
+    // If firestore data access mode is unspecified, default to mongodb
+    // DISABLED.
+    default:
+      return types.DataAccessMode.DISABLED;
+  }
+}

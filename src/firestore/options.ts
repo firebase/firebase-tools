@@ -18,6 +18,9 @@ export interface FirestoreOptions extends Options {
   type?: types.DatabaseType;
   deleteProtection?: types.DatabaseDeleteProtectionStateOption;
   pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
+  realtimeUpdates?: types.RealtimeUpdatesModeOption;
+  firestoreDataAccess?: types.DataAccessModeOption;
+  mongodbCompatibleDataAccess?: types.DataAccessModeOption;
   edition?: string;
 
   // backup schedules
