@@ -30,15 +30,15 @@ export const command = new Command("firestore:databases:create <database>")
     "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
-    "--realtime-updates <realtimeUpdates",
+    "--realtime-updates <enablement",
     "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition when firestore-data-access is enabled.",
   )
   .option(
-    "--firestore-data-access <firestoreDataAccess>",
+    "--firestore-data-access <enablement>",
     "Whether the Firestore API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition.",
   )
   .option(
-    "--mongodb-compatible-data-access <mongodbCompatibleDataAccess>",
+    "--mongodb-compatible-data-access <enablement>",
     "Whether the MongoDB compatible API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'DISABLED' for ENTERPRISE edition",
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
