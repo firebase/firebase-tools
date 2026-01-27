@@ -244,6 +244,9 @@ describe("runv2", () => {
         },
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -295,6 +298,9 @@ describe("runv2", () => {
         },
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -449,6 +455,9 @@ describe("runv2", () => {
         labels: {},
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
         // concurrency, minInstances, maxInstances will be undefined
       };
 

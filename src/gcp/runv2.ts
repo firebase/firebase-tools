@@ -609,6 +609,15 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
+    timeoutSeconds: service.template.timeout
+      ? proto.secondsFromDuration(service.template.timeout)
+      : 60,
+    serviceAccount: service.template.serviceAccount || null,
+    ingressSettings: (service.annotations?.["run.googleapis.com/ingress"] === "internal"
+      ? "ALLOW_INTERNAL_ONLY"
+      : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
+        ? "ALLOW_INTERNAL_AND_GCLB"
+        : "ALLOW_ALL") as backend.IngressSettings,
     // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
     ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
       ? { httpsTrigger: {} }
@@ -639,6 +648,12 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       version: e.valueSource.secretKeyRef.version || "latest",
     };
   });
+  if (service.template.vpcAccess) {
+    endpoint.vpc = {
+      connector: service.template.vpcAccess.connector || "",
+      egressSettings: service.template.vpcAccess.egress || null,
+    };
+  }
   return endpoint;
 }
 
@@ -730,6 +745,35 @@ export function serviceFromEndpoint(
     proto.renameIfPresent(service.scaling, endpoint, "maxInstanceCount", "maxInstances");
   }
 
-  // TODO: other trigger types (callable, scheduled, etc), service accounts, timeoutSeconds, VPC, ingress settings
+  // TODO: other trigger types (callable, scheduled, etc)
+
+  if (endpoint.serviceAccount) {
+    template.serviceAccount = endpoint.serviceAccount;
+  }
+
+  if (endpoint.timeoutSeconds) {
+    template.timeout = proto.durationFromSeconds(endpoint.timeoutSeconds);
+  }
+
+  if (endpoint.vpc) {
+    template.vpcAccess = {
+      connector: endpoint.vpc.connector,
+      egress: endpoint.vpc.egressSettings || undefined,
+    };
+  }
+
+  if (endpoint.ingressSettings) {
+    const ingressAnnotation =
+      endpoint.ingressSettings === "ALLOW_INTERNAL_ONLY"
+        ? "internal"
+        : endpoint.ingressSettings === "ALLOW_INTERNAL_AND_GCLB"
+          ? "internal-and-cloud-load-balancing"
+          : "all";
+    service.annotations = {
+      ...service.annotations,
+      "run.googleapis.com/ingress": ingressAnnotation,
+    };
+  }
+
   return service;
 }

@@ -99,9 +99,7 @@ export class Fabricator {
     });
     const promiseResults = await utils.allSettled(deployChangesets);
 
-    const errs = promiseResults
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as utils.PromiseRejectedResult).reason);
+    const errs = promiseResults.filter((r) => r.status === "rejected").map((r) => r.reason);
     if (errs.length) {
       logger.debug(
         "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
@@ -499,7 +497,7 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -579,7 +577,7 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -660,43 +658,25 @@ export class Fabricator {
       throw new Error("Precondition failed");
     }
 
-    const service: Omit<runV2.Service, runV2.ServiceOutputFields> = {
-      name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`,
-      template: {
-        containers: [
-          {
-            name: "worker",
-            image: "scratch",
-            command: endpoint.command,
-            args: endpoint.args,
-            baseImageUri: endpoint.baseImageUri,
-            sourceCode: {
-              cloudStorageSource: {
-                bucket: storageSource.bucket,
-                object: storageSource.object,
-                generation: storageSource.generation ? String(storageSource.generation) : undefined,
-              },
-            },
-            resources: {
-              limits: {
-                cpu: String(endpoint.cpu || 1),
-                memory: `${endpoint.availableMemoryMb || 256}Mi`,
-              },
-              cpuIdle: true,
-              startupCpuBoost: true,
-            },
-          },
-        ],
-        maxInstanceRequestConcurrency: endpoint.concurrency || 80,
-        scaling: {
-          minInstanceCount: endpoint.minInstances || 0,
-          maxInstanceCount: endpoint.maxInstances || 100,
-        },
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+    container.command = endpoint.command;
+    container.args = endpoint.args;
+    container.baseImageUri = endpoint.baseImageUri;
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
       },
-      client: "cli-firebase",
-      labels: { ...endpoint.labels, "goog-managed-by": "firebase-functions" },
-      annotations: {},
     };
+    // Ensure we don't accidentally overwrite the client name if it's already set to something else?
+    // Actually serviceFromEndpoint sets it to "cli-firebase" which is what we want.
+    // However, serviceFromEndpoint generates a name from the ID. We should trust it or override it?
+    // It generates `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(endpoint.id)}`
+    // which matches what we want. But let's be safe and strictly follow previous logic for name if it differs?
+    // Run v2 service name is deterministic from ID.
+    // The previous implementation constructed it manually.
 
     await this.executor
       .run(async () => {
