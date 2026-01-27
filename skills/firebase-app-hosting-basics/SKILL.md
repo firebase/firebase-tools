@@ -1,5 +1,5 @@
 ---
-name: app-hosting-basics
+name: firebase-app-hosting-basics
 description: Deploy and manage web apps with Firebase App Hosting. Use when deploying Next.js/Angular apps, managing backends/rollouts/secrets via CLI, or configuring apphosting.yaml.
 ---
 
