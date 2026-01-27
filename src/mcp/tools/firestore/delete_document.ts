@@ -10,7 +10,7 @@ export const delete_document = tool(
   {
     name: "delete_document",
     description:
-      "Use this to delete a Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
+      "Use this to delete Firestore documents from a database in the current project by full document paths. Use this if you know the exact path of a document.",
     inputSchema: z.object({
       database: z
         .string()
