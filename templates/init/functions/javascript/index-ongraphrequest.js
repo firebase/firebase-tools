@@ -1,13 +1,13 @@
 /**
  * Import the onGraphRequest function trigger from its submodules:
  *
- * import {onGraphRequest} from "firebase-functions/v2/dataconnect/graphql";
+ * const {onGraphRequest} = require("firebase-functions/v2/dataconnect/graphql");
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
-import {FirebaseContext,onGraphRequest} from "firebase-functions/dataconnect/graphql";
+const {setGlobalOptions} = require("firebase-functions");
+const {onGraphRequest} = require("firebase-functions/dataconnect/graphql");
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -28,11 +28,11 @@ const opts = {
     schemaFilePath: "dataconnect/schema___resolverId__/schema.gql",
     resolvers: {
         query: {
-            hello(_parent: unknown, args: Record<string, unknown>, _contextValue: FirebaseContext, _info: unknown) {
+            hello(_parent, args, _contextValue, _info) {
                 return `Hello ${args.name}!`;
             },
         },
     },
 }
 
-export const __resolverId__ = onGraphRequest(opts);
+exports.__resolverId__ = onGraphRequest(opts);

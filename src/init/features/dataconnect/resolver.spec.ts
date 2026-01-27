@@ -16,6 +16,8 @@ import * as load from "../../../dataconnect/load";
 import { DataConnectYaml, ServiceInfo } from "../../../dataconnect/types";
 import * as experiments from "../../../experiments";
 import * as prompt from "../../../prompt";
+import { Options } from "../../../options";
+import { RC } from "../../../rc";
 
 const expect = chai.expect;
 
@@ -99,6 +101,7 @@ describe("addSchemaToDataConnectYaml", () => {
 describe("askQuestions", () => {
   let setup: Setup;
   let config: Config;
+  let options: Options;
   let experimentsStub: sinon.SinonStub;
   let loadAllStub: sinon.SinonStub;
   let selectStub: sinon.SinonStub;
@@ -111,6 +114,17 @@ describe("askQuestions", () => {
       instructions: [],
     };
     config = new Config({}, { projectDir: "." });
+    options = {
+      configPath: "",
+      only: "",
+      except: "",
+      filteredTargets: [],
+      force: false,
+      nonInteractive: false,
+      debug: false,
+      config: config,
+      rc: new RC(),
+    };
     experimentsStub = sinon.stub(experiments, "isEnabled");
     loadAllStub = sinon.stub(load, "loadAll");
     selectStub = sinon.stub(prompt, "select");
@@ -126,7 +140,7 @@ describe("askQuestions", () => {
     loadAllStub.resolves([]);
 
     try {
-      await askQuestions(setup, config);
+      await askQuestions(setup, config, options);
     } catch (err: any) {
       expect(err.message).to.equal(
         `No Firebase Data Connect workspace found. Run ${clc.bold(
@@ -146,7 +160,7 @@ describe("askQuestions", () => {
     ]);
     inputStub.onFirstCall().resolves("test_resolver");
 
-    await askQuestions(setup, config);
+    await askQuestions(setup, config, options);
 
     expect(selectStub.called).to.be.false;
     expect(inputStub.calledOnce).to.be.true;
@@ -174,7 +188,7 @@ describe("askQuestions", () => {
     });
     inputStub.onFirstCall().resolves("test_resolver");
 
-    await askQuestions(setup, config);
+    await askQuestions(setup, config, options);
 
     expect(selectStub.calledOnce).to.be.true;
     expect(inputStub.calledOnce).to.be.true;
@@ -198,7 +212,7 @@ describe("askQuestions", () => {
     ]);
     inputStub.onFirstCall().resolves("test_resolver");
 
-    await askQuestions(setup, config);
+    await askQuestions(setup, config, options);
 
     expect(selectStub.called).to.be.false;
     expect(inputStub.calledOnce).to.be.true;

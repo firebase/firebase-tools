@@ -12,6 +12,7 @@ const ESLINT_TEMPLATE = readTemplateSync("init/functions/typescript/_eslintrc");
 const TSCONFIG_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.json");
 const TSCONFIG_DEV_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.dev.json");
 const INDEX_TEMPLATE = readTemplateSync("init/functions/typescript/index.ts");
+const GRAPH_INDEX_TEMPLATE = readTemplateSync("init/functions/typescript/index-ongraphrequest.ts");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
 
 export async function setup(setup: any, config: any): Promise<any> {
@@ -52,8 +53,20 @@ export async function setup(setup: any, config: any): Promise<any> {
   }
 
   await config.askWriteProjectFile(`${setup.functions.source}/tsconfig.json`, TSCONFIG_TEMPLATE);
-
-  await config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
+  if (setup.featureInfo?.dataconnectResolver) {
+    await config.askWriteProjectFile(
+      `${setup.functions.source}/src/index.ts`,
+      subResolverId(setup.featureInfo.dataconnectResolver.id),
+    );
+  } else {
+    await config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
+  }
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await askInstallDependencies(setup.functions, config);
+}
+
+function subResolverId(resolverId: string): string {
+  let replaced = GRAPH_INDEX_TEMPLATE;
+  replaced = replaced.replaceAll("__resolverId__", resolverId);
+  return replaced;
 }

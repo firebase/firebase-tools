@@ -155,7 +155,7 @@ async function overwriteCodebase(setup: any): Promise<void> {
  * User dialogue to set up configuration for functions codebase language choice.
  */
 async function languageSetup(setup: any): Promise<void> {
-  // During genkit setup, always select TypeScript here.
+  // During genkit setup, Typescript is always selected.
   if (setup.languageOverride) {
     return;
   }
@@ -169,11 +169,14 @@ async function languageSetup(setup: any): Promise<void> {
       name: "TypeScript",
       value: "typescript",
     },
-    {
+  ];
+  if (!setup.featureInfo?.dataconnectResolver) {
+    // Data Connect resolvers do not yet support Python.
+    choices.push({
       name: "Python",
       value: "python",
-    },
-  ];
+    });
+  }
   const language = await select({
     message: "What language would you like to use to write Cloud Functions?",
     default: "javascript",

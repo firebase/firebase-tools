@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as promptImport from "../../prompt";
 import { Config } from "../../config";
 import { Setup } from "..";
-import { doSetup } from "./functions";
+import { actuate, askQuestions } from "./functions";
 import { Options } from "../../options";
 import { RC } from "../../rc";
 
@@ -78,7 +78,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, emptyConfig, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
@@ -105,7 +106,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, emptyConfig, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
@@ -144,7 +146,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, config, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions).to.deep.equal([
           {
@@ -192,7 +195,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, config, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions).to.deep.equal([
           {

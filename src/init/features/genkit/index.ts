@@ -19,7 +19,7 @@ import * as path from "path";
 import * as semver from "semver";
 import * as clc from "colorette";
 
-import { doSetup as functionsSetup } from "../functions";
+import * as functions from "../functions";
 import { Config } from "../../../config";
 import { confirm, select } from "../../../prompt";
 import { wrapSpawn, spawnWithOutput } from "../../spawn";
@@ -189,7 +189,8 @@ export async function doSetup(initSetup: Setup, config: Config, options: Options
 
     // Functions with genkit should always be typescript
     setup.languageOverride = "typescript";
-    await functionsSetup(setup, config, options);
+    await functions.askQuestions(setup, config, options);
+    await functions.actuate(setup, config);
     delete setup.languageOverride;
     logger.info();
   }
