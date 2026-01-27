@@ -10,6 +10,7 @@ import {
 
 const CURSOR_MCP_PATH = ".cursor/mcp.json";
 const CURSOR_RULES_DIR = ".cursor/rules";
+const CURSOR_SKILLS_DIR = "~/.cursor/skills";
 
 export const cursor: AIToolModule = {
   name: "cursor",
@@ -49,7 +50,7 @@ export const cursor: AIToolModule = {
     try {
       const existingMcp = config.readProjectFile(CURSOR_MCP_PATH);
       if (existingMcp) {
-        existingMcpConfig = JSON.parse(existingMcp);
+        existingMcpConfig = JSON.parse(existingMcp) as any;
       }
     } catch (e) {
       // File doesn't exist or is invalid JSON, start fresh
@@ -110,5 +111,10 @@ export const cursor: AIToolModule = {
     files.push({ path: firebaseMDCPath, updated: mainResult.updated });
 
     return { files };
+    return { files };
+  },
+
+  getSkillPath(): string {
+    return CURSOR_SKILLS_DIR;
   },
 };
