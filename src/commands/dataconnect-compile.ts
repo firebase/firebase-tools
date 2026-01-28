@@ -58,12 +58,7 @@ export const command = new Command("dataconnect:compile")
       const buildResult = await DataConnectEmulator.build(buildArgs);
 
       if (buildResult?.errors?.length) {
-        await handleBuildErrors(
-          buildResult.errors,
-          options.nonInteractive,
-          options.force,
-          false,
-        );
+        await handleBuildErrors(buildResult.errors, options.nonInteractive, options.force, false);
       }
 
       // 2. Generate SDKs
