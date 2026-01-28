@@ -11,7 +11,7 @@ import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  // Your config object
+  // Your Firebase app config object. Get this by running 'firebase apps:sdkconfig [options] web [appId]
 };
 
 const app = initializeApp(firebaseConfig);
