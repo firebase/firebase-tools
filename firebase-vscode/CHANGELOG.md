@@ -1,5 +1,7 @@
 ## NEXT
 
+- Surface Compiler error / warnings at the right diagnosis level (#9805)
+
 ## 2.1.0
 
 - Update internal `firebase-tools` dependency to 15.4.0
