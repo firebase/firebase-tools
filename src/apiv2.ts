@@ -275,6 +275,15 @@ export class Client {
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
     } catch (thrown: any) {
+      // Check for the specific project number in the error message or the original error
+      const originalErrorMessage = thrown.original?.message || thrown.message || "";
+      if (originalErrorMessage.includes("563584335869")) {
+        throw new FirebaseError(
+          "An Internal error has occurred. If this persists, please open an issue at https://github.com/firebase/firebase-tools",
+          { original: thrown },
+        );
+      }
+
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }

@@ -174,6 +174,23 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should intercept 563584335869 quota errors and throw a generic error", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .replyWithError("quota exceeded for project 563584335869");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /An Internal error has occurred/,
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should error with a FirebaseError if an invalid responseType is provided", async () => {
       nock("https://example.com").get("/path/to/foo").reply(200, "");
 
