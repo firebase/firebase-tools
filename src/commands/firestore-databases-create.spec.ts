@@ -164,7 +164,7 @@ describe("firestore:databases:create", () => {
       project: PROJECT,
       location: LOCATION,
       edition: "enterprise",
-      firestoreDataAccess: types.DataAccessModeOption.ENABLED,
+      firestoreDataAccess: types.EnablementOption.ENABLED,
       json: true,
     };
     const expectedDatabase = mockDatabaseResp({
@@ -195,7 +195,7 @@ describe("firestore:databases:create", () => {
       project: PROJECT,
       location: LOCATION,
       edition: "enterprise",
-      firestoreDataAccess: types.DataAccessModeOption.DISABLED,
+      firestoreDataAccess: types.EnablementOption.DISABLED,
       json: true,
     };
     const expectedDatabase = mockDatabaseResp({
@@ -228,7 +228,7 @@ describe("firestore:databases:create", () => {
       project: PROJECT,
       location: LOCATION,
       edition: "enterprise",
-      mongodbCompatibleDataAccess: types.DataAccessModeOption.ENABLED,
+      mongodbCompatibleDataAccess: types.EnablementOption.ENABLED,
       json: true,
     };
     const expectedDatabase = mockDatabaseResp({
@@ -259,7 +259,7 @@ describe("firestore:databases:create", () => {
       project: PROJECT,
       location: LOCATION,
       edition: "enterprise",
-      mongodbCompatibleDataAccess: types.DataAccessModeOption.DISABLED,
+      mongodbCompatibleDataAccess: types.EnablementOption.DISABLED,
       json: true,
     };
     const expectedDatabase = mockDatabaseResp({

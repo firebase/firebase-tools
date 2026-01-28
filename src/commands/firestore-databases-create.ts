@@ -31,15 +31,15 @@ export const command = new Command("firestore:databases:create <database>")
   )
   .option(
     "--realtime-updates <enablement>",
-    "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition when firestore-data-access is enabled.",
+    "Whether realtime updates are enabled for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Defaults to 'ENABLED' when firestore-data-access is enabled, otherwise the server default is used.",
   )
   .option(
     "--firestore-data-access <enablement>",
-    "Whether the Firestore API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition.",
+    "Whether the Firestore API can be used for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Default is 'ENABLED'.",
   )
   .option(
     "--mongodb-compatible-data-access <enablement>",
-    "Whether the MongoDB compatible API can be used for this database. 'ENABLED' or 'DISABLED'. Default is 'DISABLED' for ENTERPRISE edition",
+    "Whether the MongoDB compatible API can be used for this database, for example 'ENABLED' or 'DISABLED'. Can only be specified for 'enterprise' edition databases. Default is 'DISABLED'.",
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
@@ -74,60 +74,43 @@ export const command = new Command("firestore:databases:create <database>")
       databaseEdition = edition as types.DatabaseEdition;
     }
 
-    if (
-      options.deleteProtection &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
-    ) {
-      throw new FirebaseError(`Invalid value for flag --delete-protection. ${helpCommandText}`);
-    }
+    types.validateEnablementOption(options.deleteProtection, "delete-protection", helpCommandText);
     const deleteProtectionState: types.DatabaseDeleteProtectionState =
-      options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED
+      options.deleteProtection === types.EnablementOption.ENABLED
         ? types.DatabaseDeleteProtectionState.ENABLED
         : types.DatabaseDeleteProtectionState.DISABLED;
 
-    if (
-      options.pointInTimeRecovery &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
-    ) {
-      throw new FirebaseError(
-        `Invalid value for flag --point-in-time-recovery. ${helpCommandText}`,
-      );
-    }
+    types.validateEnablementOption(
+      options.pointInTimeRecovery,
+      "point-in-time-recovery",
+      helpCommandText,
+    );
     const pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement =
-      options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED
+      options.pointInTimeRecovery === types.EnablementOption.ENABLED
         ? types.PointInTimeRecoveryEnablement.ENABLED
         : types.PointInTimeRecoveryEnablement.DISABLED;
 
-    if (
-      options.firestoreDataAccess &&
-      options.firestoreDataAccess !== types.DataAccessModeOption.ENABLED &&
-      options.firestoreDataAccess !== types.DataAccessModeOption.DISABLED
-    ) {
-      throw new FirebaseError(`Invalid value for flag --firestore-data-access. ${helpCommandText}`);
-    }
+    types.validateEnablementOption(
+      options.firestoreDataAccess,
+      "firestore-data-access",
+      helpCommandText,
+    );
     let userFirestoreDataAccess: types.DataAccessMode | undefined;
-    if (options.firestoreDataAccess === types.DataAccessModeOption.ENABLED) {
+    if (options.firestoreDataAccess === types.EnablementOption.ENABLED) {
       userFirestoreDataAccess = types.DataAccessMode.ENABLED;
-    } else if (options.firestoreDataAccess === types.DataAccessModeOption.DISABLED) {
+    } else if (options.firestoreDataAccess === types.EnablementOption.DISABLED) {
       userFirestoreDataAccess = types.DataAccessMode.DISABLED;
     }
 
-    if (
-      options.mongodbCompatibleDataAccess &&
-      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.ENABLED &&
-      options.mongodbCompatibleDataAccess !== types.DataAccessModeOption.DISABLED
-    ) {
-      throw new FirebaseError(
-        `Invalid value for flag --mongodb-compatible-data-access. ${helpCommandText}`,
-      );
-    }
-
+    types.validateEnablementOption(
+      options.mongodbCompatibleDataAccess,
+      "mongodb-compatible-data-access",
+      helpCommandText,
+    );
     let userMongodbDataAccess: types.DataAccessMode | undefined;
-    if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.ENABLED) {
+    if (options.mongodbCompatibleDataAccess === types.EnablementOption.ENABLED) {
       userMongodbDataAccess = types.DataAccessMode.ENABLED;
-    } else if (options.mongodbCompatibleDataAccess === types.DataAccessModeOption.DISABLED) {
+    } else if (options.mongodbCompatibleDataAccess === types.EnablementOption.DISABLED) {
       userMongodbDataAccess = types.DataAccessMode.DISABLED;
     }
 
@@ -146,17 +129,11 @@ export const command = new Command("firestore:databases:create <database>")
       );
     }
 
-    if (
-      options.realtimeUpdates &&
-      options.realtimeUpdates !== types.RealtimeUpdatesModeOption.ENABLED &&
-      options.realtimeUpdates !== types.RealtimeUpdatesModeOption.DISABLED
-    ) {
-      throw new FirebaseError(`Invalid value for flag --realtime-updates. ${helpCommandText}`);
-    }
+    types.validateEnablementOption(options.realtimeUpdates, "realtime-updates", helpCommandText);
     let realtimeUpdatesMode: types.RealtimeUpdatesMode | undefined;
-    if (options.realtimeUpdates === types.RealtimeUpdatesModeOption.ENABLED) {
+    if (options.realtimeUpdates === types.EnablementOption.ENABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.ENABLED;
-    } else if (options.realtimeUpdates === types.RealtimeUpdatesModeOption.DISABLED) {
+    } else if (options.realtimeUpdates === types.EnablementOption.DISABLED) {
       realtimeUpdatesMode = types.RealtimeUpdatesMode.DISABLED;
     }
     // If not specified by the user, default realtimeUpdatesMode to ENABLED when
