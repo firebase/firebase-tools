@@ -34,6 +34,7 @@ const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
 const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
+export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
 export type HttpMethod =
   | "GET"
@@ -275,6 +276,17 @@ export class Client {
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
     } catch (thrown: any) {
+      const originalErrorMessage = thrown.original?.message || thrown.message || "";
+      if (originalErrorMessage.includes(CLI_OAUTH_PROJECT_NUMBER)) {
+        // Error messages mentioning the CLI's OAuth project number should not be shared with end users,
+        // since they will never be actionable for them. If we do display them, support gets a bunch of tickets asking for quota
+        // increases on the wrong project.
+        throw new FirebaseError(
+          "An Internal error has occurred. Please try again in a few minutes. If this error persists, please open an issue at https://github.com/firebase/firebase-tools",
+          { original: thrown },
+        );
+      }
+
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }
