@@ -104,8 +104,8 @@ val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActi
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
             // Google Sign In was successful, authenticate with Firebase
-            val account = task.getResult(ApiException::class.java)!!
-            firebaseAuthWithGoogle(account.idToken!!)
+            val account = task.getResult(ApiException::class.java)
+            account?.idToken?.let { firebaseAuthWithGoogle(it) }
         } catch (e: ApiException) {
             // Google Sign In failed, update UI appropriately
             Log.w(TAG, "Google sign in failed", e)
@@ -244,47 +244,6 @@ auth.signInAnonymously()
             updateUI(null)
         }
     }
-```
-
-## Phone Authentication
-
-```kotlin
-val options = PhoneAuthOptions.newBuilder(auth)
-    .setPhoneNumber(phoneNumber)       // Phone number to verify
-    .setTimeout(60L, TimeUnit.SECONDS) // Timeout and unit
-    .setActivity(this)                 // Activity (for callback binding)
-    .setCallbacks(callbacks)           // OnVerificationStateChangedCallbacks
-    .build()
-PhoneAuthProvider.verifyPhoneNumber(options)
-
-// Callbacks
-val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-    override fun onVerificationCompleted(credential: PhoneAuthCredential) {
-        // This callback will be invoked in two situations:
-        // 1 - Instant verification. In some cases the phone number can be instantly
-        //     verified without needing to send or enter a verification code.
-        // 2 - Auto-retrieval. On some devices Google Play services can automatically
-        //     detect the incoming verification SMS and perform verification without
-        //     user action.
-        signInWithPhoneAuthCredential(credential)
-    }
-
-    override fun onVerificationFailed(e: FirebaseException) {
-        // This callback is invoked in an invalid request for verification, such as an
-        // invalid phone number format.
-        // Handle error safely using e.localizedMessage
-    }
-
-    override fun onCodeSent(
-        verificationId: String,
-        token: PhoneAuthProvider.ForceResendingToken
-    ) {
-        // The SMS verification code has been sent to the provided phone number, we
-        // now need to ask the user to enter the code and then construct a credential
-        // by combining the code with a verification ID.
-        // Save verificationId and forceResendingToken for later use.
-    }
-}
 ```
 
 ## Email Link Authentication

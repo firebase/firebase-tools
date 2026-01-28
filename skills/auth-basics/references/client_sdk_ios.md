@@ -237,41 +237,6 @@ Auth.auth().signInAnonymously { authResult, error in
   let user = authResult?.user
   let isAnonymous = user?.isAnonymous  // true
 }
-```
-
-## Phone Authentication
-
-```swift
-// 1. Verify Phone Number
-PhoneAuthProvider.provider()
-  .verifyPhoneNumber(phoneNumber, uiDelegate: nil) { verificationID, error in
-      if let error = error {
-        print("Error: \(error.localizedDescription)")
-        return
-      }
-      // Sign in using the verificationID and the code sent to the user
-      if let verificationID = verificationID {
-          UserDefaults.standard.set(verificationID, forKey: "authVerificationID")
-      }
-  }
-
-// 2. Sign In with Code
-let verificationID = UserDefaults.standard.string(forKey: "authVerificationID")
-if let verificationID = verificationID {
-    let credential = PhoneAuthProvider.provider().credential(
-        withVerificationID: verificationID,
-        verificationCode: "123456"
-    )
-
-    Auth.auth().signIn(with: credential) { authResult, error in
-        if let error = error {
-            print("Error: \(error.localizedDescription)")
-            return
-        }
-        // User is signed in
-    }
-}
-```
 
 ## Email Link Authentication
 
@@ -343,6 +308,6 @@ let firebaseAuth = Auth.auth()
 do {
   try firebaseAuth.signOut()
 } catch let signOutError as NSError {
-  print("Error signing out: %@", signOutError)
+  print("Error signing out: \(signOutError)")
 }
 ```

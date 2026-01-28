@@ -34,7 +34,6 @@ import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 const auth = getAuth();
 createUserWithEmailAndPassword(auth, email, password)
   .then((userCredential) => {
-    // Signed in 
     const user = userCredential.user;
     // ...
   })
@@ -203,43 +202,6 @@ signInAnonymously(auth)
     const errorCode = error.code;
     const errorMessage = error.message;
   });
-```
-
-## Phone Authentication
-
-Requires `RecaptchaVerifier`.
-
-```javascript
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
-
-const auth = getAuth();
-window.recaptchaVerifier = new RecaptchaVerifier(auth, 'sign-in-button', {
-  'size': 'invisible',
-  'callback': (response) => {
-    // reCAPTCHA solved - can proceed with signInWithPhoneNumber
-    onSignInSubmit();
-  }
-});
-
-function onSignInSubmit() {
-  const phoneNumber = getPhoneNumberFromUserInput();
-  const appVerifier = window.recaptchaVerifier;
-
-  signInWithPhoneNumber(auth, phoneNumber, appVerifier)
-    .then((confirmationResult) => {
-      // SMS sent. Prompt user to type the code from the message.
-      window.confirmationResult = confirmationResult;
-      const code = window.prompt("Enter SMS code");
-      return confirmationResult.confirm(code);
-    })
-    .then((result) => {
-      // User signed in successfully.
-      const user = result.user;
-    })
-    .catch((error) => {
-      // Error; SMS not sent or code invalid
-    });
-}
 ```
 
 ## Email Link Authentication
