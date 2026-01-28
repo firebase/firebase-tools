@@ -30,7 +30,7 @@ export const command = new Command("firestore:databases:create <database>")
     "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
-    "--realtime-updates <enablement",
+    "--realtime-updates <enablement>",
     "whether realtime updates are enabled for this database. 'ENABLED' or 'DISABLED'. Default is 'ENABLED' for ENTERPRISE edition when firestore-data-access is enabled.",
   )
   .option(
