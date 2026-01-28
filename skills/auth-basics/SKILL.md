@@ -44,15 +44,15 @@ Configure Firebase Authentication in `firebase.json` by adding an 'auth' block:
 
 ```
 {
-    "providers": {
-      "anonymous": true,
-      "emailPassword": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "Your Brand Name",
-        "supportEmail": "support@example.com",
-        "authorizedRedirectUris": ["https://example.com"],
-      },
-  },
+  "providers": {
+    "anonymous": true,
+    "emailPassword": true,
+    "googleSignIn": {
+      "oAuthBrandDisplayName": "Your Brand Name",
+      "supportEmail": "support@example.com",
+      "authorizedRedirectUris": ["https://example.com"]
+    }
+  }
 }
 ```
 

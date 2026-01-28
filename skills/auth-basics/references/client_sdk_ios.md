@@ -290,20 +290,28 @@ Auth.auth().signIn(with: credential) { authResult, error in
 let actionCodeSettings = ActionCodeSettings()
 actionCodeSettings.url = URL(string: "https://www.example.com/finishSignUp?cartId=1234")
 actionCodeSettings.handleCodeInApp = true
-actionCodeSettings.setAndroidPackageName("com.example.android", installIfNotAvailable: false, minimumVersion: "12")
+actionCodeSettings.setIOSBundleID("com.example.ios")
 
 Auth.auth().sendSignInLink(toEmail: email, actionCodeSettings: actionCodeSettings) { error in
   if let error = error {
     print("Error: \(error.localizedDescription)")
     return
   }
-  // The link was successfully sent.
+  // The link was successfully sent. Inform the user.
+  // Save the email locally so you don't need to ask the user for it again
+  UserDefaults.standard.set(email, forKey: "Email")
 }
 
 // 2. Complete Sign-in (in handling link)
 let link = "https://www.example.com/finishSignUp?..." // Retrieve from Universal Link
 if Auth.auth().isSignIn(withEmailLink: link) {
-    Auth.auth().signIn(withEmail: "user@example.com", link: link) { authResult, error in
+    // Retrieve this from wherever you stored it
+    guard let email = UserDefaults.standard.string(forKey: "Email") else {
+        print("Email not found, ask user for email")
+        return
+    }
+
+    Auth.auth().signIn(withEmail: email, link: link) { authResult, error in
        if let error = error {
          print("Error: \(error.localizedDescription)")
          return
@@ -333,7 +341,9 @@ override func viewWillAppear(_ animated: Bool) {
 }
 
 override func viewWillDisappear(_ animated: Bool) {
-    Auth.auth().removeStateDidChangeListener(handle!)
+    if let handle = handle {
+        Auth.auth().removeStateDidChangeListener(handle)
+    }
 }
 ```
 

@@ -126,7 +126,7 @@ auth.startActivityForSignInWithProvider(this, provider.build())
     .addOnSuccessListener {
         // User is signed in.
         // IdP data available in
-        // authResult.getAdditionalUserInfo().getProfile().
+        // it.additionalUserInfo.profile
          val user = it.user
          val credential = it.credential
     }

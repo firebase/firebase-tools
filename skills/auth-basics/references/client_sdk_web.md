@@ -12,6 +12,20 @@ const auth = getAuth(app);
 export { auth };
 ```
 
+## Connect to Emulator
+
+If you are running the Authentication emulator (usually on port 9099), connect to it immediately after initialization.
+
+```javascript
+import { getAuth, connectAuthEmulator } from "firebase/auth";
+
+const auth = getAuth();
+// Connect to emulator if running locally
+if (location.hostname === "localhost") {
+  connectAuthEmulator(auth, "http://localhost:9099");
+}
+```
+
 ## Sign Up with Email/Password
 
 ```javascript
@@ -308,18 +322,4 @@ signOut(auth).then(() => {
 }).catch((error) => {
   // An error happened.
 });
-```
-
-## Connect to Emulator
-
-If you are running the Authentication emulator (usually on port 9099), connect to it immediately after initialization.
-
-```javascript
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-
-const auth = getAuth();
-// Connect to emulator if running locally
-if (location.hostname === "localhost") {
-  connectAuthEmulator(auth, "http://localhost:9099");
-}
 ```
