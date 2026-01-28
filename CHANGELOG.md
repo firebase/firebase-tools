@@ -1,3 +1,4 @@
+- Added `firebase dataconnect:compile` command.
 - Loads experiments earlier in CLI startup so they can be used earlier. (#9797)
 - Fixed issue where Storage security rules is overwritten when running `firebase init storage`. (#8170)
 - Add support for firestoreDataAccessMode, mongodbCompatibleDataAccessMode, and
