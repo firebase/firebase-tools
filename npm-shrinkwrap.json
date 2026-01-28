@@ -5097,11 +5097,10 @@
       "dev": true
     },
     "node_modules/@types/markdown-it": {
-      "version": "14.1.2",
-      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/@types/markdown-it/-/markdown-it-14.1.2.tgz",
-      "integrity": "sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==",
+      "version": "14.1.1",
+      "resolved": "https://registry.npmjs.org/@types/markdown-it/-/markdown-it-14.1.1.tgz",
+      "integrity": "sha512-4NpsnpYl2Gt1ljyBGrKMxFYAYvpqbnnkgP/i/g+NLpjEUa3obn1XJCur9YbEXKDAkaXqsR1LbDnGEJ0MmKFxfg==",
       "dev": true,
-      "license": "MIT",
       "optional": true,
       "dependencies": {
         "@types/linkify-it": "^5",
@@ -9052,6 +9051,27 @@
       "integrity": "sha1-rT/0yG7C0CkyL1oCw6mmBslbP1k=",
       "engines": {
         "node": ">= 0.8"
+      }
+    },
+    "node_modules/encoding": {
+      "version": "0.1.13",
+      "resolved": "https://registry.npmjs.org/encoding/-/encoding-0.1.13.tgz",
+      "integrity": "sha512-ETBauow1T35Y/WZMkio9jiM0Z5xjHHmJ4XmjZOq1l/dXz3lr2sRn87nJy20RupqSh1F2m3HHPSp8ShIPQJrJ3A==",
+      "optional": true,
+      "dependencies": {
+        "iconv-lite": "^0.6.2"
+      }
+    },
+    "node_modules/encoding/node_modules/iconv-lite": {
+      "version": "0.6.3",
+      "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.6.3.tgz",
+      "integrity": "sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==",
+      "optional": true,
+      "dependencies": {
+        "safer-buffer": ">= 2.1.2 < 3.0.0"
+      },
+      "engines": {
+        "node": ">=0.10.0"
       }
     },
     "node_modules/end-of-stream": {
@@ -14177,10 +14197,9 @@
     },
     "node_modules/markdown-it": {
       "version": "14.1.0",
-      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/markdown-it/-/markdown-it-14.1.0.tgz",
+      "resolved": "https://registry.npmjs.org/markdown-it/-/markdown-it-14.1.0.tgz",
       "integrity": "sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==",
       "dev": true,
-      "license": "MIT",
       "optional": true,
       "dependencies": {
         "argparse": "^2.0.1",
@@ -25883,9 +25902,9 @@
       "dev": true
     },
     "@types/markdown-it": {
-      "version": "14.1.2",
-      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/@types/markdown-it/-/markdown-it-14.1.2.tgz",
-      "integrity": "sha512-promo4eFwuiW+TfGxhi+0x3czqTYJkG8qB17ZUJiVF10Xm7NLVRSLUsfRTU/6h1e24VvRnXCx+hG7li58lkzog==",
+      "version": "14.1.1",
+      "resolved": "https://registry.npmjs.org/@types/markdown-it/-/markdown-it-14.1.1.tgz",
+      "integrity": "sha512-4NpsnpYl2Gt1ljyBGrKMxFYAYvpqbnnkgP/i/g+NLpjEUa3obn1XJCur9YbEXKDAkaXqsR1LbDnGEJ0MmKFxfg==",
       "dev": true,
       "optional": true,
       "requires": {
@@ -28816,6 +28835,26 @@
       "version": "1.0.2",
       "resolved": "https://registry.npmjs.org/encodeurl/-/encodeurl-1.0.2.tgz",
       "integrity": "sha1-rT/0yG7C0CkyL1oCw6mmBslbP1k="
+    },
+    "encoding": {
+      "version": "0.1.13",
+      "resolved": "https://registry.npmjs.org/encoding/-/encoding-0.1.13.tgz",
+      "integrity": "sha512-ETBauow1T35Y/WZMkio9jiM0Z5xjHHmJ4XmjZOq1l/dXz3lr2sRn87nJy20RupqSh1F2m3HHPSp8ShIPQJrJ3A==",
+      "optional": true,
+      "requires": {
+        "iconv-lite": "^0.6.2"
+      },
+      "dependencies": {
+        "iconv-lite": {
+          "version": "0.6.3",
+          "resolved": "https://registry.npmjs.org/iconv-lite/-/iconv-lite-0.6.3.tgz",
+          "integrity": "sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==",
+          "optional": true,
+          "requires": {
+            "safer-buffer": ">= 2.1.2 < 3.0.0"
+          }
+        }
+      }
     },
     "end-of-stream": {
       "version": "1.4.1",
@@ -32627,7 +32666,7 @@
     },
     "markdown-it": {
       "version": "14.1.0",
-      "resolved": "https://us-npm.pkg.dev/artifact-foundry-prod/ah-3p-staging-npm/markdown-it/-/markdown-it-14.1.0.tgz",
+      "resolved": "https://registry.npmjs.org/markdown-it/-/markdown-it-14.1.0.tgz",
       "integrity": "sha512-a54IwgWPaeBCAAsv13YgmALOF1elABB08FxO9i+r4VFk5Vl4pKokRPeX8u5TCgSsPi6ec1otfLjdOpVcgbpshg==",
       "dev": true,
       "optional": true,
