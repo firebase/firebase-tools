@@ -4,11 +4,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import {
-  EndpointFilter,
-  endpointMatchesFilter,
-  getFunctionLabel,
-} from "./functionsDeployHelper";
+import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -408,7 +404,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
  */
 export function checkFiltersIntegrity(
   wantBackends: Record<string, backend.Backend>,
-  filters?: EndpointFilter[]
+  filters?: EndpointFilter[],
 ): void {
   if (!filters) {
     return;
