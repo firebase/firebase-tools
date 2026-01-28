@@ -1,5 +1,5 @@
 ---
-name: hosting-basics
+name: firebase-hosting-basics
 description: Skill for working with Firebase Hosting (Classic). Use this when you want to deploy static web apps, Single Page Apps (SPAs), or simple microservices. Do NOT use for Firebase App Hosting.
 ---
 
@@ -33,10 +33,10 @@ Firebase Hosting provides production-grade web content hosting for developers. W
 ## Instructions
 
 ### 1. Configuration (`firebase.json`)
-For details on configuring Hosting behavior, including public directories, redirects, rewrites, and headers, see [configuration.md](configuration.md).
+For details on configuring Hosting behavior, including public directories, redirects, rewrites, and headers, see [configuration.md](references/configuration.md).
 
 ### 2. Deploying
-For instructions on deploying your site, using preview channels, and managing releases, see [deploying.md](deploying.md).
+For instructions on deploying your site, using preview channels, and managing releases, see [deploying.md](references/deploying.md).
 
 ### 3. Emulation
 To test your app locally:
