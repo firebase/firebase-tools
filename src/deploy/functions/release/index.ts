@@ -150,7 +150,7 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
       logger.info(
         clc.bold("Function URL"),
         `(${getFunctionLabel(httpsFunc)}):`,
-        `https://${httpsFunc.id.toLowerCase()}-${projectNumber}.${httpsFunc.region}.run.app`,
+        `https://${httpsFunc.id.toLowerCase().replaceAll("_", "-")}-${projectNumber}.${httpsFunc.region}.run.app`,
       );
       continue;
     }

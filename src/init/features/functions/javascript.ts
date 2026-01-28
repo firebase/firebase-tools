@@ -53,6 +53,8 @@ export async function setup(setup: any, config: any): Promise<any> {
 
 function templateWithSubbedResolverId(resolverId: string): string {
   let replaced = GRAPH_INDEX_TEMPLATE;
-  replaced = replaced.replaceAll("__resolverId__", resolverId);
+  const resolverIdWithUnderscores = resolverId.replaceAll("-", "_");
+  replaced = replaced.replace("__resolverId__", resolverId);
+  replaced = replaced.replace("__resolverIdWithUnderscores__", resolverIdWithUnderscores);
   return replaced;
 }

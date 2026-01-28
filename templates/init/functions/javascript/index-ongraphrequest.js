@@ -35,4 +35,4 @@ const opts = {
   },
 }
 
-exports.__resolverId__ = onGraphRequest(opts);
+exports.__resolverIdWithUnderscores__ = onGraphRequest(opts);
