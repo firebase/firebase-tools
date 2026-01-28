@@ -35,7 +35,7 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
 
   info.rules = getDefaultRules();
   if (setup.projectId) {
-    const downloadedRules = await getRulesFromConsole(setup.projectId);
+    const downloadedRules = await getRulesFromConsole(setup.projectId, info.databaseId);
     if (downloadedRules) {
       info.rules = downloadedRules;
       utils.logBullet(`Downloaded the existing Firestore Security Rules from the Firebase console`);
@@ -45,8 +45,14 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
   info.writeRules = await config.confirmWriteProjectFile(info.rulesFilename, info.rules);
 }
 
-async function getRulesFromConsole(projectId: string): Promise<string | null> {
-  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore");
+async function getRulesFromConsole(projectId: string, databaseId: string): Promise<string | null> {
+  // The (default) database does not have a resource name since its releases.name looks like:
+  // projects/{project_id}/releases/cloud.firestore
+  //
+  // A named database would have a resource name, and the releases.name looks like:
+  // projects/{project_id}/releases/cloud.firestore/{database_id}
+  const resourceName = databaseId === "(default)" ? undefined : databaseId;
+  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore", resourceName);
   if (!name) {
     return null;
   }
