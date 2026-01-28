@@ -1,4 +1,4 @@
-# Firebase CLI and MCP Server [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwibWNwIiwiLS1kaXIiLCIuIl19)
+q# Firebase CLI and MCP Server [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwibWNwIiwiLS1kaXIiLCIuIl19)
 
 The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line. This repository is also the home of the official Firebase MCP Server. For more information, please see the [Firebase MCP Server documentation](./src/mcp).
 
