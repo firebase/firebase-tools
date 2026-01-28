@@ -83,7 +83,7 @@ jobs:
 
   #   steps:
   #     - name: Setup Java JDK
-  #       uses: actions/setup-java@v3.3.0
+  #       uses: actions/setup-java@v5.1.0
   #       with:
   #         java-version: 21
   #         distribution: temurin
@@ -212,7 +212,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
       - name: Setup Java JDK
-        uses: actions/setup-java@v3.3.0
+        uses: actions/setup-java@v5.1.0
         with:
           java-version: 21
           distribution: temurin
@@ -273,7 +273,7 @@ jobs:
           # - npm run test:frameworks
     steps:
       - name: Setup Java JDK
-        uses: actions/setup-java@v3.3.0
+        uses: actions/setup-java@v5.1.0
         with:
           java-version: 21
           distribution: temurin
