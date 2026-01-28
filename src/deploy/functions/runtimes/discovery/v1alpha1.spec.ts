@@ -635,6 +635,36 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies zip deploy fields", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            platform: "run",
+            httpsTrigger: {},
+            source: ".",
+            baseImage: "base-image",
+            command: "command",
+            args: ["arg1", "arg2"],
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          platform: "run",
+          httpsTrigger: {},
+          zipSource: ".",
+          baseImage: "base-image",
+          command: "command",
+          args: ["arg1", "arg2"],
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("allows some fields of the endpoint to have a Field<> type", () => {
       const yaml: v1alpha1.WireManifest = {
         specVersion: "v1alpha1",

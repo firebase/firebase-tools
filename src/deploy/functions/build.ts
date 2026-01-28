@@ -226,8 +226,8 @@ export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 |
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
 // Run is an automatic migration from gcfv2 and is not used on the wire.
-export type FunctionsPlatform = Exclude<backend.FunctionsPlatform, "run">;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
@@ -242,7 +242,13 @@ export type Endpoint = Triggered & {
   omit?: Field<boolean>;
 
   // Defaults to "gcfv2". "Run" will be an additional option defined later
-  platform?: "gcfv1" | "gcfv2";
+  platform?: "gcfv1" | "gcfv2" | "run";
+
+  // Zip Deploy Fields
+  zipSource?: string;
+  baseImage?: string;
+  command?: string;
+  args?: string[];
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
   // Will become optional once "run" is supported as a platform
@@ -495,6 +501,11 @@ export function toBackend(
         entryPoint: bdEndpoint.entryPoint,
         platform: bdEndpoint.platform,
         runtime: bdEndpoint.runtime,
+        // Zip Deploy Fields
+        zipSource: bdEndpoint.zipSource,
+        baseImage: bdEndpoint.baseImage,
+        command: bdEndpoint.command,
+        args: bdEndpoint.args,
         ...trigger,
       };
       proto.copyIfPresent(
