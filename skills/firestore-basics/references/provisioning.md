@@ -2,7 +2,7 @@
 
 ## Manual Initialization
 
-For non-interactive environments (like AI agents), it is recommended to manually create the necessary configuration files instead of using `firebase init`.
+Initialize the following firebase configuration files manually. Do not use `firebase init`, as it expects interactive inputs.
 
 1.  **Create `firebase.json`**: This file configures the Firebase CLI.
 2.  **Create `firestore.rules`**: This file contains your security rules.

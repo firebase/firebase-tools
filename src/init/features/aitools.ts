@@ -1,8 +1,10 @@
+import * as fs from "fs";
+import * as path from "path";
 import * as utils from "../../utils";
-import { checkbox } from "../../prompt";
+import { checkbox, select } from "../../prompt";
 import { Setup } from "../index";
 import { Config } from "../../config";
-import { AI_TOOLS, AIToolChoice } from "./aitools/index";
+import { AI_TOOLS, AIToolChoice, AIToolModule } from "./aitools/index";
 import { logger } from "../../logger";
 
 interface AgentsInitSelections {
@@ -15,17 +17,128 @@ const AGENT_CHOICES: AIToolChoice[] = Object.values(AI_TOOLS).map((tool) => ({
   checked: false,
 }));
 
+// We'll look for skills relative to where the code is running
+// In development: <repo>/skills
+// In production: <lib>/skills (we need to make sure this is copied/available)
+function getSkillsDir(): string {
+  // We are in src/init/features (or lib/init/features)
+  // ../../../ maps to the root of the package
+  const skillsDir = path.join(__dirname, "../../../skills");
+  if (fs.existsSync(skillsDir)) {
+    logger.debug(`Found skills directory at ${skillsDir}`);
+    return skillsDir;
+  }
+
+  return "";
+}
+
+async function setupSkills(config: Config) {
+  const toolsWithSkills = Object.values(AI_TOOLS).filter((t) => t["getSkillPath"]);
+
+  if (toolsWithSkills.length === 0) {
+    utils.logWarning("No tools currently support automatic skill setup.");
+    return;
+  }
+
+  const choices = toolsWithSkills.map((t) => ({
+    name: t.displayName,
+    value: t,
+  }));
+
+  const selectedTool = await select<AIToolModule>({
+    message: "For which platform would you like to set up agent skills?",
+    choices,
+  });
+
+  if (!selectedTool || !selectedTool.getSkillPath) {
+    return;
+  }
+
+  const skillPath = selectedTool.getSkillPath(config.projectDir);
+  const skillsDir = getSkillsDir();
+
+  if (!skillsDir) {
+    utils.logWarning(
+      "Could not locate skills definitions. Please update firebase-tools to the latest version.",
+    );
+    return;
+  }
+
+  if (!fs.existsSync(skillPath)) {
+    // If the rules directory doesn't exist, we should probably create it or verify the tool is configured
+    // For Cursor, it's .cursor/rules, which might not exist yet if they haven't run init aitools
+    utils.logBullet(`Creating directory: ${skillPath}`);
+    fs.mkdirSync(skillPath, { recursive: true });
+  }
+
+  // List all skills
+  const skills = fs.readdirSync(skillsDir).filter((f) => {
+    const fullPath = path.join(skillsDir, f);
+    return fs.statSync(fullPath).isDirectory();
+  });
+
+  if (skills.length === 0) {
+    utils.logWarning("No skills found.");
+    return;
+  }
+
+  logger.info();
+  logger.info(`Found ${skills.length} skills. Symlinking to ${skillPath}...`);
+
+  for (const skill of skills) {
+    const sourcePath = path.join(skillsDir, skill);
+    const targetPath = path.join(skillPath, skill);
+
+    try {
+      if (fs.existsSync(targetPath)) {
+        const stats = fs.lstatSync(targetPath);
+        if (stats.isSymbolicLink()) {
+          fs.unlinkSync(targetPath);
+        } else {
+          // It's a real file/directory. Backup? warn?
+          // For now, let's warn and skip
+          utils.logWarning(`Target ${skill} already exists and is not a symlink. Skipping.`);
+          continue;
+        }
+      }
+
+      fs.symlinkSync(sourcePath, targetPath);
+      utils.logSuccess(`Linked skill: ${skill}`);
+    } catch (e: any) {
+      utils.logWarning(`Failed to link skill ${skill}: ${e.message}`);
+    }
+  }
+
+  logger.info();
+  utils.logSuccess(`Successfully set up agent skills for ${selectedTool.displayName}`);
+}
+
 export async function doSetup(setup: Setup, config: Config) {
   logger.info();
   logger.info(
     "This command will configure AI coding assistants to work with your Firebase project by:",
   );
   utils.logBullet("• Setting up the Firebase MCP server for direct Firebase operations");
-  utils.logBullet("• Installing context files that help AI understand:");
+  utils.logBullet("• Installing agent skills that help AI understand:");
   utils.logBullet("  - Firebase project structure and firebase.json configuration");
   utils.logBullet("  - Common Firebase CLI commands and debugging practices");
   utils.logBullet("  - Product-specific guidance (Functions, Firestore, Hosting, etc.)");
   logger.info();
+
+  logger.info();
+
+  const action = await select<string>({
+    message: "What do you like to set up?",
+    choices: [
+      { name: "MCP Server and Context Files", value: "tools" },
+      { name: "Agent Skills", value: "skills" },
+    ],
+  });
+
+  if (action === "skills") {
+    await setupSkills(config);
+    return;
+  }
 
   const selections: AgentsInitSelections = {};
 

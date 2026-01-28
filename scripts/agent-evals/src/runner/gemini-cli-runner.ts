@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from "fs";
+import { mkdirSync, writeFileSync, readFileSync, existsSync, cpSync } from "fs";
 import * as path from "path";
 import * as os from "os";
 import { InteractiveCLI, poll } from "./interactive-cli";
@@ -54,6 +54,8 @@ export class GeminiCliRunner implements AgentTestRunner {
     private readonly testName: string,
     readonly dirs: RunDirectories,
     toolMocks: ToolMockName[],
+    skills?: string[],
+    enableMcp: boolean = true,
   ) {
     console.debug(`Creating telemetry log: ${dirs.testDir}/telemetry.log`);
     // Create a settings file to point the CLI to a local telemetry log
@@ -75,16 +77,33 @@ export class GeminiCliRunner implements AgentTestRunner {
         otlpEndpoint: "",
         outfile: this.telemetryPath,
       },
-      mcpServers: {
-        firebase: {
-          command: "node",
-          args: ["--import", mockPath, firebasePath, "experimental:mcp"],
-          env: {
-            TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
-          },
-        },
+      experimental: {
+        skills: true,
       },
+      mcpServers: enableMcp
+        ? {
+            firebase: {
+              command: "node",
+              args: ["--import", mockPath, firebasePath, "experimental:mcp"],
+              env: {
+                TOOL_MOCKS: `${toolMocks?.join(",") || ""}`,
+              },
+            },
+          }
+        : undefined,
     });
+
+    const cliArgs = ["--yolo"];
+    if (skills?.length) {
+      const skillsDir = path.join(dirs.runDir, ".gemini", "skills");
+      mkdirSync(skillsDir, { recursive: true });
+      for (const skillPath of skills) {
+        const skillName = path.basename(skillPath);
+        const dest = path.join(skillsDir, skillName);
+        console.debug(`Copying skill ${skillPath} to ${dest}`);
+        cpSync(skillPath, dest, { recursive: true });
+      }
+    }
 
     console.debug(`Initializing Gemini user settings in ${dirs.userDir}`);
     // Write user Gemini Settings
@@ -99,7 +118,7 @@ export class GeminiCliRunner implements AgentTestRunner {
 
     this.writeGeminiInstallId(dirs.userDir);
 
-    this.cli = new InteractiveCLI("gemini", ["--yolo"], {
+    this.cli = new InteractiveCLI("gemini", cliArgs, {
       cwd: dirs.runDir,
       readyPrompt: READY_PROMPT,
       showOutput: true,
@@ -200,6 +219,35 @@ export class GeminiCliRunner implements AgentTestRunner {
     }
   }
 
+  public async expectSkillActivated(skillName: string): Promise<void> {
+    const skillsDir = path.join(this.dirs.runDir, ".gemini", "skills");
+    const skillPath = path.join(skillsDir, skillName);
+
+    // If we expect the skill to be activated, it must be present
+    if (!existsSync(skillPath)) {
+      throwFailure(
+        `Expected skill "${skillName}" to be enabled, but the path ${skillPath} does not exist.`,
+      );
+    }
+
+    const timeout = 5000;
+    const foundCall = await poll(() => {
+      const logs = this.readToolLogs();
+      return logs.some(
+        (log) =>
+          (log.name === "activate_skill" || log.name === "read_file") &&
+          log.args.includes(skillName) &&
+          log.success,
+      );
+    }, timeout);
+
+    if (!foundCall) {
+      throwFailure(
+        `Expected skill "${skillName}" to be activated (activate_skill/read_file call found in logs), but it was not found.`,
+      );
+    }
+  }
+
   get dont(): AgentTestMatchers {
     return {
       expectText: async (text: string | RegExp) => {
@@ -234,6 +282,22 @@ export class GeminiCliRunner implements AgentTestRunner {
           throwFailure(
             `Found memory matching "${text}" in GEMINI.md, but expected it to be absent.`,
           );
+        }
+      },
+      expectSkillActivated: async (skillName: string) => {
+        // Assert that the skill was NOT activated.
+        try {
+          // We wait a short time to see if it IS activated.
+          // If expectSkillActivated succeeds (finds it), we fail.
+          await this.expectSkillActivated(skillName);
+          throwFailure(`Expected skill "${skillName}" NOT to be activated, but it was.`);
+        } catch (e: any) {
+          // If it timed out or wasn't found, then we successfully "didn't activate".
+          // We must ensure the error is specifically "not found".
+          if (e.message && e.message.includes("but it was not found")) {
+            return;
+          }
+          throw e;
         }
       },
     };

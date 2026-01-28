@@ -1,0 +1,13 @@
+{
+  "name": "firebase",
+  "description": "Official Claude plugin for Firebase. Manage projects, add backend services, develop AI features, deploy & host apps, and more",
+  "version": "1.1.0",
+  "author": {
+    "name": "Firebase",
+    "url": "https://firebase.google.com/"
+  },
+  "homepage": "https://github.com/firebase/firebase-tools",
+  "repository": "https://github.com/firebase/firebase-tools.git",
+  "license": "MIT",
+  "keywords": ["firebase", "mcp", "cloud", "firestore", "database", "hosting", "functions", "cli"]
+}

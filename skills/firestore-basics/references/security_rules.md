@@ -213,3 +213,87 @@ match /cities/{document=**} {
 ```bash
 firebase deploy --only firestore:rules
 ```
+
+## Security Rules Development Workflow
+
+For complex applications, follow this structured 6-phase workflow to ensure your rules are secure and comprehensive.
+
+### Phase 1: Codebase Analysis
+
+Before writing rules, scan your codebase to identify:
+1.  **Collections & Paths**: List all collections and document structures.
+2.  **Data Models**: Define required fields, data types, and constraints (e.g., string length, regex patterns).
+3.  **Access Patterns**: Document who can read/write what and under what conditions (e.g., exact ownership, role-based).
+4.  **Authentication**: Identify if you use Firebase Auth, anonymous auth, or custom tokens.
+
+### Phase 2: Security Rules Generation
+
+Write your rules following these core principles:
+*   **Default Deny**: Start with `allow read, write: if false;` and whitelist specific operations.
+*   **Least Privilege**: Grant only the minimum permissions required.
+*   **Validate Data**: Check types (e.g., `is string`), required fields, and values on `create` and `update`.
+*   **UID Protection**: Ensure users cannot create documents with another user's UID or change ownership.
+
+#### Recommended Structure
+
+It is helpful to define a `User` type or similar helper functions at the top of your rules file.
+
+```javascript
+// Helper Functions
+function isAuthenticated() {
+  return request.auth != null;
+}
+
+function isOwner(userId) {
+  return isAuthenticated() && request.auth.uid == userId;
+}
+
+// Validate data types and required fields
+function isValidUser() {
+  let user = request.resource.data;
+  return user.keys().hasAll(['name', 'email', 'createdAt']) &&
+         user.name is string && user.name.size() > 0 &&
+         user.email is string && user.email.matches('.+@.+\\..+') &&
+         user.createdAt is timestamp;
+}
+
+// Prevent UID tampering
+function isUidUnchanged() {
+  return request.resource.data.uid == resource.data.uid;
+}
+```
+
+### Phase 3: Devil's Advocate Attack
+
+Attempt to mentally "break" your rules by checking for common vulnerabilities:
+1.  Can I read data I shouldn't?
+2.  Can I create a document with someone else's UID?
+3.  Can I update a document and steal ownership (change the `uid` field)?
+4.  Can I send a massive string to a field with no length limit?
+5.  Can I delete a document I don't own?
+6.  Can I bypass validation by sending `null` or missing fields?
+
+If *any* of these succeed, fix the rule and repeat.
+
+### Phase 4: Syntactic Validation
+
+Use `firebase deploy --only firestore:rules --dry-run` to validate syntax.
+
+### Phase 5: Test Suite Generation
+
+Create a comprehensive test suite using `@firebase/rules-unit-testing`. Ideally, create a dedicated `rules_test/` directory.
+
+**Test Coverage Checklist:**
+*   [ ] **Authorized Operations**: Users *can* do what they are supposed to.
+*   [ ] **Unauthorized Operations**: Users *cannot* do what is forbidden.
+*   [ ] **UID Tampering**: Users cannot create/update data with another's UID.
+*   [ ] **Data Validation**: Invalid types, missing fields, or malformed data (bad emails, URLs) must fail.
+*   [ ] **Immutable Fields**: Fields like `createdAt` or `authorId` cannot be changed on update.
+
+### Phase 6: Test Validation Loop
+
+1.  Start the emulator: `firebase emulators:start --only firestore`
+2.  Run tests: `npm test` (inside your test directory)
+3.  If tests fail due to **rules**: Fix the rules.
+4.  If tests fail due to **test bugs**: Fix the tests.
+5.  Repeat until 100% pass rate.

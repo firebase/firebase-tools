@@ -4,11 +4,13 @@ import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
 import { apptestingPrompts } from "./apptesting";
+import { firestorePrompts } from "./firestore";
+import { storagePrompts } from "./storage";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: namespacePrompts(corePrompts, "core"),
-  firestore: [],
-  storage: [],
+  firestore: namespacePrompts(firestorePrompts, "firestore"),
+  storage: namespacePrompts(storagePrompts, "storage"),
   dataconnect: namespacePrompts(dataconnectPrompts, "dataconnect"),
   auth: [],
   messaging: [],
