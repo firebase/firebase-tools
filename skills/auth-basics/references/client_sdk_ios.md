@@ -4,7 +4,6 @@
 
 First, ensure you have [added Firebase to your Apple project](https://firebase.google.com/docs/ios/setup).
 
-
 In your `App` struct or `AppDelegate`:
 
 ```swift
@@ -37,15 +36,12 @@ struct YourApp: App {
 
 ## Connect to Emulator
 
-
-
 ```swift
 // Connect to emulator. Add this in your App Delegate or just after FirebaseApp.configure()
 Auth.auth().useEmulator(withHost:"127.0.0.1", port:9099)
 ```
 
 ## Sign Up with Email/Password
-
 
 ```swift
 Auth.auth().createUser(withEmail: email, password: password) { authResult, error in
@@ -61,7 +57,6 @@ Auth.auth().createUser(withEmail: email, password: password) { authResult, error
 
 ## Sign In with Google
 Requires `GoogleSignIn` dependency.
-
 
 ```swift
 import GoogleSignIn
@@ -91,7 +86,6 @@ func signInWithGoogle() {
 
 ## Sign In with Facebook
 
-
 ```swift
 let provider = OAuthProvider(providerID: "facebook.com")
 provider.customParameters = [
@@ -116,7 +110,6 @@ provider.getCredentialWith(nil) { credential, error in
 ```
 
 ## Sign In with Apple
-
 
 ```swift
 let provider = OAuthProvider(providerID: "apple.com")
@@ -146,7 +139,6 @@ provider.getCredentialWith(nil) { credential, error in
 
 ## Sign In with Twitter
 
-
 ```swift
 let provider = OAuthProvider(providerID: "twitter.com")
 
@@ -168,7 +160,6 @@ provider.getCredentialWith(nil) { credential, error in
 ```
 
 ## Sign In with GitHub
-
 
 ```swift
 let provider = OAuthProvider(providerID: "github.com")
@@ -192,7 +183,6 @@ provider.getCredentialWith(nil) { credential, error in
 
 ## Sign In with Microsoft
 
-
 ```swift
 let provider = OAuthProvider(providerID: "microsoft.com")
 
@@ -214,7 +204,6 @@ provider.getCredentialWith(nil) { credential, error in
 ```
 
 ## Sign In with Yahoo
-
 
 ```swift
 let provider = OAuthProvider(providerID: "yahoo.com")
@@ -238,7 +227,6 @@ provider.getCredentialWith(nil) { credential, error in
 
 ## Sign In Anonymously
 
-
 ```swift
 Auth.auth().signInAnonymously { authResult, error in
   if let error = error {
@@ -253,7 +241,6 @@ Auth.auth().signInAnonymously { authResult, error in
 
 ## Phone Authentication
 
-
 ```swift
 // 1. Verify Phone Number
 PhoneAuthProvider.provider()
@@ -263,27 +250,30 @@ PhoneAuthProvider.provider()
         return
       }
       // Sign in using the verificationID and the code sent to the user
-      UserDefaults.standard.set(verificationID, forKey: "authVerificationID")
+      if let verificationID = verificationID {
+          UserDefaults.standard.set(verificationID, forKey: "authVerificationID")
+      }
   }
 
 // 2. Sign In with Code
 let verificationID = UserDefaults.standard.string(forKey: "authVerificationID")
-let credential = PhoneAuthProvider.provider().credential(
-  withVerificationID: verificationID,
-  verificationCode: "123456"
-)
+if let verificationID = verificationID {
+    let credential = PhoneAuthProvider.provider().credential(
+        withVerificationID: verificationID,
+        verificationCode: "123456"
+    )
 
-Auth.auth().signIn(with: credential) { authResult, error in
-  if let error = error {
-    print("Error: \(error.localizedDescription)")
-    return
-  }
-  // User is signed in
+    Auth.auth().signIn(with: credential) { authResult, error in
+        if let error = error {
+            print("Error: \(error.localizedDescription)")
+            return
+        }
+        // User is signed in
+    }
 }
 ```
 
 ## Email Link Authentication
-
 
 ```swift
 // 1. Send Link
@@ -323,7 +313,6 @@ if Auth.auth().isSignIn(withEmailLink: link) {
 
 ## Observe Auth State
 
-
 ```swift
 var handle: AuthStateDidChangeListenerHandle?
 
@@ -348,7 +337,6 @@ override func viewWillDisappear(_ animated: Bool) {
 ```
 
 ## Sign Out
-
 
 ```swift
 let firebaseAuth = Auth.auth()

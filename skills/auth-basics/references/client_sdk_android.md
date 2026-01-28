@@ -4,7 +4,6 @@
 
 First, ensure you have [added Firebase to your Android project](https://firebase.google.com/docs/android/setup).
 
-
 ```kotlin
 // Import the BoM for the Firebase platform
 implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
@@ -31,7 +30,6 @@ override fun onCreate(savedInstanceState: Bundle?) {
 ## Connect to Emulator
 If you are running the Authentication emulator locally.
 
-
 ```kotlin
 // 10.0.2.2 is the special IP for localhost from the Android emulator
 val auth = Firebase.auth
@@ -39,7 +37,6 @@ auth.useEmulator("10.0.2.2", 9099)
 ```
 
 ## Sign Up with Email/Password
-
 
 ```kotlin
 auth.createUserWithEmailAndPassword(email, password)
@@ -60,7 +57,6 @@ auth.createUserWithEmailAndPassword(email, password)
 ```
 
 ## Sign In with Email/Password
-
 
 ```kotlin
 auth.signInWithEmailAndPassword(email, password)
@@ -83,7 +79,6 @@ auth.signInWithEmailAndPassword(email, password)
 ## Sign In with Google
 Requires `play-services-auth` dependency.
 
-
 ```kotlin
 // Configure Google Sign In
 val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -93,21 +88,44 @@ val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
 
 val googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-// Start the sign in flow
-val signInIntent = googleSignInClient.signInIntent
-startActivityForResult(signInIntent, RC_SIGN_IN)
+// Initialize the launcher
+val signInLauncher = registerForActivityResult(
+    FirebaseAuthUIActivityResultContract()
+) { res ->
+    // This is for FirebaseUI, but for standard Google Sign In we use:
+    // ActivityResultContracts.StartActivityForResult()
+}
 
-// ... handle result ...
+// -------------------------------------------------------------------------
+// Standard Google Sign In with Activity Result API
+// -------------------------------------------------------------------------
+val resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    if (result.resultCode == Activity.RESULT_OK) {
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            // Google Sign In was successful, authenticate with Firebase
+            val account = task.getResult(ApiException::class.java)!!
+            firebaseAuthWithGoogle(account.idToken!!)
+        } catch (e: ApiException) {
+            // Google Sign In failed, update UI appropriately
+            Log.w(TAG, "Google sign in failed", e)
+        }
+    }
+}
+
+// Start sign in
+resultLauncher.launch(googleSignInClient.signInIntent)
+
 private fun firebaseAuthWithGoogle(idToken: String) {
     val credential = GoogleAuthProvider.getCredential(idToken, null)
     auth.signInWithCredential(credential)
         .addOnCompleteListener(this) { task ->
             if (task.isSuccessful) {
-                // Sign in success, update UI with the signed-in user's information
+                // Sign in success
                 val user = auth.currentUser
                 updateUI(user)
             } else {
-                // If sign in fails, display a message to the user.
+                // If sign in fails
                 updateUI(null)
             }
         }
@@ -115,7 +133,6 @@ private fun firebaseAuthWithGoogle(idToken: String) {
 ```
 
 ## Sign In with Facebook
-
 
 ```kotlin
 val provider = OAuthProvider.newBuilder("facebook.com")
@@ -137,7 +154,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 
 ## Sign In with Apple
 
-
 ```kotlin
 val provider = OAuthProvider.newBuilder("apple.com")
 provider.scopes = listOf("email", "name")
@@ -154,7 +170,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 
 ## Sign In with Twitter
 
-
 ```kotlin
 val provider = OAuthProvider.newBuilder("twitter.com")
 
@@ -169,7 +184,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 ```
 
 ## Sign In with GitHub
-
 
 ```kotlin
 val provider = OAuthProvider.newBuilder("github.com")
@@ -186,7 +200,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 
 ## Sign In with Microsoft
 
-
 ```kotlin
 val provider = OAuthProvider.newBuilder("microsoft.com")
 
@@ -201,7 +214,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 
 ## Sign In with Yahoo
 
-
 ```kotlin
 val provider = OAuthProvider.newBuilder("yahoo.com")
 
@@ -215,7 +227,6 @@ auth.startActivityForSignInWithProvider(this, provider.build())
 ```
 
 ## Sign In Anonymously
-
 
 ```kotlin
 auth.signInAnonymously()
@@ -236,7 +247,6 @@ auth.signInAnonymously()
 ```
 
 ## Phone Authentication
-
 
 ```kotlin
 val options = PhoneAuthOptions.newBuilder(auth)
@@ -262,6 +272,7 @@ val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks()
     override fun onVerificationFailed(e: FirebaseException) {
         // This callback is invoked in an invalid request for verification, such as an
         // invalid phone number format.
+        // Handle error safely using e.localizedMessage
     }
 
     override fun onCodeSent(
@@ -277,7 +288,6 @@ val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks()
 ```
 
 ## Email Link Authentication
-
 
 ```kotlin
 // 1. Send Link
@@ -295,44 +305,69 @@ Firebase.auth.sendSignInLinkToEmail(email, actionCodeSettings)
     .addOnCompleteListener { task ->
         if (task.isSuccessful) {
             Log.d(TAG, "Email sent.")
+            // Persist the email locally to retrieve it later
+            val pref = getSharedPreferences("PREF", Context.MODE_PRIVATE)
+            pref.edit().putString("EMAIL", email).apply()
         }
     }
 
 // 2. Complete Sign-in (in handling activity)
 if (isSignInWithEmailLink(intent)) {
-    // Retrieve this from wherever you stored it
-    val email = "user@example.com"
+    // Retrieve the email from shared preferences
+    val pref = getSharedPreferences("PREF", Context.MODE_PRIVATE)
+    val email = pref.getString("EMAIL", "") ?: ""
     
-    auth.signInWithEmailLink(email, link)
-        .addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d(TAG, "Successfully signed in with email link!")
-                val result = task.result
-                // You can access the new user via result.user
-            } else {
-                Log.e(TAG, "Error signing in with email link", task.exception)
+    if (email.isNotEmpty()) {
+        auth.signInWithEmailLink(email, link)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "Successfully signed in with email link!")
+                    val result = task.result
+                    // You can access the new user via result.user
+                    // Clear the saved email
+                    pref.edit().remove("EMAIL").apply()
+                } else {
+                    Log.e(TAG, "Error signing in with email link", task.exception)
+                }
             }
-        }
+    } else {
+        // Ask user for email if not found
+    }
 }
 ```
 
 ## Observe Auth State
 
-
 ```kotlin
-public override fun onStart() {
-    super.onStart()
-    // Check if user is signed in (non-null) and update UI accordingly.
-    val currentUser = auth.currentUser
-    if(currentUser != null){
-        updateUI(currentUser)
+private lateinit var authStateListener: FirebaseAuth.AuthStateListener
 
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    /* Initialize auth */
+    authStateListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        val user = firebaseAuth.currentUser
+        if (user != null) {
+            // User is signed in
+            updateUI(user)
+        } else {
+            // User is signed out
+            updateUI(null)
+        }
     }
+}
+
+override fun onStart() {
+    super.onStart()
+    auth.addAuthStateListener(authStateListener)
+}
+
+override fun onStop() {
+    super.onStop()
+    auth.removeAuthStateListener(authStateListener)
 }
 ```
 
 ## Sign Out
-
 
 ```kotlin
 Firebase.auth.signOut()
