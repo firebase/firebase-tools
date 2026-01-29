@@ -1,4 +1,5 @@
 - Added `firebase dataconnect:compile` command.
+- Added initial zip deploy support in functions deploy for HTTP functions (#9707)
 - Loads experiments earlier in CLI startup so they can be used earlier. (#9797)
 - Fixed issue where `AuthBlockingEvent` had invalid format for `metadata.creationTime` and `metadata.lastSignInTime`. (#8109)
 - Fixed issue where Storage security rules is overwritten when running `firebase init storage`. (#8170)

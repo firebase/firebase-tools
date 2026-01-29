@@ -60,7 +60,7 @@ describe("runv2", () => {
           },
         },
       ],
-      containerConcurrency: backend.DEFAULT_CONCURRENCY,
+      maxInstanceRequestConcurrency: backend.DEFAULT_CONCURRENCY,
     },
     client: "cli-firebase",
   };
@@ -163,7 +163,7 @@ describe("runv2", () => {
           name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${FUNCTION_ID.toLowerCase()}`,
         }),
       );
-      expectedServiceInput.template.containerConcurrency = 50;
+      expectedServiceInput.template.maxInstanceRequestConcurrency = 50;
 
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
@@ -244,6 +244,9 @@ describe("runv2", () => {
         },
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -295,6 +298,9 @@ describe("runv2", () => {
         },
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
       };
 
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
@@ -402,7 +408,7 @@ describe("runv2", () => {
 
     it("should copy concurrency, min/max instances", () => {
       const service: runv2.Service = JSON.parse(JSON.stringify(BASE_RUN_SERVICE));
-      service.template.containerConcurrency = 10;
+      service.template.maxInstanceRequestConcurrency = 10;
       service.scaling = {
         minInstanceCount: 2,
         maxInstanceCount: 5,
@@ -449,6 +455,9 @@ describe("runv2", () => {
         labels: {},
         environmentVariables: {},
         secretEnvironmentVariables: [],
+        ingressSettings: "ALLOW_ALL",
+        serviceAccount: null,
+        timeoutSeconds: 60,
         // concurrency, minInstances, maxInstances will be undefined
       };
 
