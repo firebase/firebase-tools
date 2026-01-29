@@ -16,8 +16,6 @@ describe("apphosting:backends:create", () => {
   const ROOT_DIR = ".";
 
   let doSetupStub: sinon.SinonStub;
-  let needProjectIdStub: sinon.SinonStub;
-  let requireAuthStub: sinon.SinonStub;
 
   before(() => {
     nock.disableNetConnect();
@@ -29,8 +27,8 @@ describe("apphosting:backends:create", () => {
 
   beforeEach(() => {
     doSetupStub = sinon.stub(backend, "doSetup").resolves();
-    needProjectIdStub = sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
-    requireAuthStub = sinon.stub(requireAuthModule, "requireAuth").resolves();
+    sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
+    sinon.stub(requireAuthModule, "requireAuth").resolves();
 
     // Stub ensureApiEnabled calls
     nock("https://serviceusage.googleapis.com")
@@ -43,12 +41,14 @@ describe("apphosting:backends:create", () => {
       .get("/v1/accessmanagement/tos:getStatus")
       .query(true)
       .reply(200, {
-        perServiceStatus: [{
-          tosId: "APP_HOSTING_TOS",
-          serviceStatus: {
-            status: "ACCEPTED"
-          }
-        }]
+        perServiceStatus: [
+          {
+            tosId: "APP_HOSTING_TOS",
+            serviceStatus: {
+              status: "ACCEPTED",
+            },
+          },
+        ],
       });
   });
 
@@ -61,7 +61,7 @@ describe("apphosting:backends:create", () => {
     const options = { nonInteractive: true };
     await expect(command.runner()(options)).to.be.rejectedWith(
       FirebaseError,
-      "requires --backend and --primary-region"
+      "requires --backend and --primary-region",
     );
   });
 
@@ -69,7 +69,7 @@ describe("apphosting:backends:create", () => {
     const options = { nonInteractive: true, backend: BACKEND_ID };
     await expect(command.runner()(options)).to.be.rejectedWith(
       FirebaseError,
-      "requires --backend and --primary-region"
+      "requires --backend and --primary-region",
     );
   });
 
@@ -77,7 +77,7 @@ describe("apphosting:backends:create", () => {
     const options = { nonInteractive: true, primaryRegion: REGION };
     await expect(command.runner()(options)).to.be.rejectedWith(
       FirebaseError,
-      "requires --backend and --primary-region"
+      "requires --backend and --primary-region",
     );
   });
 
@@ -92,7 +92,7 @@ describe("apphosting:backends:create", () => {
       undefined, // backendId
       undefined, // serviceAccount
       undefined, // primaryRegion
-      undefined  // rootDir
+      undefined, // rootDir
     );
   });
 
@@ -114,7 +114,7 @@ describe("apphosting:backends:create", () => {
       BACKEND_ID,
       SERVICE_ACCOUNT,
       REGION,
-      ROOT_DIR
+      ROOT_DIR,
     );
   });
 });
