@@ -11,6 +11,12 @@ const PACKAGE_LINTING_TEMPLATE = readTemplateSync("init/functions/javascript/pac
 const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
   "init/functions/javascript/package.nolint.json",
 );
+const PACKAGE_GRAPH_LINTING_TEMPLATE = readTemplateSync(
+  "init/functions/javascript/package-ongraphrequest.lint.json",
+);
+const PACKAGE_GRAPH_NO_LINTING_TEMPLATE = readTemplateSync(
+  "init/functions/javascript/package-ongraphrequest.nolint.json",
+);
 const ESLINT_TEMPLATE = readTemplateSync("init/functions/javascript/_eslintrc");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/javascript/_gitignore");
 
@@ -21,23 +27,21 @@ export async function setup(setup: any, config: any): Promise<any> {
   if (setup.functions.lint) {
     const cbconfig = configForCodebase(setup.config.functions, setup.functions.codebase);
     cbconfig.predeploy = ['npm --prefix "$RESOURCE_DIR" run lint'];
-    await config.askWriteProjectFile(
-      `${setup.functions.source}/package.json`,
-      PACKAGE_LINTING_TEMPLATE.replace(
-        "{{RUNTIME}}",
-        supported.latest("nodejs").replace("nodejs", ""),
-      ),
-    );
     await config.askWriteProjectFile(`${setup.functions.source}/.eslintrc.js`, ESLINT_TEMPLATE);
-  } else {
-    await config.askWriteProjectFile(
-      `${setup.functions.source}/package.json`,
-      PACKAGE_NO_LINTING_TEMPLATE.replace(
-        "{{RUNTIME}}",
-        supported.latest("nodejs").replace("nodejs", ""),
-      ),
-    );
   }
+
+  let packageTemplate = PACKAGE_LINTING_TEMPLATE;
+  if (setup.featureInfo?.dataconnectResolver) {
+    packageTemplate = setup.functions.lint
+      ? PACKAGE_GRAPH_LINTING_TEMPLATE
+      : PACKAGE_GRAPH_NO_LINTING_TEMPLATE;
+  } else if (!setup.functions.lint) {
+    packageTemplate = PACKAGE_NO_LINTING_TEMPLATE;
+  }
+  await config.askWriteProjectFile(
+    `${setup.functions.source}/package.json`,
+    packageTemplate.replace("{{RUNTIME}}", supported.latest("nodejs").replace("nodejs", "")),
+  );
 
   if (setup.featureInfo?.dataconnectResolver) {
     await config.askWriteProjectFile(

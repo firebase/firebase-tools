@@ -88,7 +88,7 @@ describe("functions", () => {
           predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           disallowLegacyRuntimeConfig: true,
         });
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/index.js`,
@@ -119,7 +119,7 @@ describe("functions", () => {
           ],
           disallowLegacyRuntimeConfig: true,
         });
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/tsconfig.dev.json`,
@@ -176,7 +176,7 @@ describe("functions", () => {
             disallowLegacyRuntimeConfig: true,
           },
         ]);
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `testsource2/package.json`,
           `testsource2/.eslintrc.js`,
           `testsource2/index.js`,
@@ -212,7 +212,7 @@ describe("functions", () => {
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
         ]);
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/index.js`,
