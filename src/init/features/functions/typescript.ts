@@ -1,4 +1,5 @@
 import { askInstallDependencies } from "./npm-dependencies";
+import { templateWithSubbedResolverId } from "./utils";
 import { confirm } from "../../../prompt";
 import { configForCodebase } from "../../../functions/projectConfig";
 import { readTemplateSync } from "../../../templates";
@@ -56,19 +57,11 @@ export async function setup(setup: any, config: any): Promise<any> {
   if (setup.featureInfo?.dataconnectResolver) {
     await config.askWriteProjectFile(
       `${setup.functions.source}/src/index.ts`,
-      templateWithSubbedResolverId(setup.featureInfo.dataconnectResolver.id),
+      templateWithSubbedResolverId(setup.featureInfo.dataconnectResolver.id, GRAPH_INDEX_TEMPLATE),
     );
   } else {
     await config.askWriteProjectFile(`${setup.functions.source}/src/index.ts`, INDEX_TEMPLATE);
   }
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
   await askInstallDependencies(setup.functions, config);
-}
-
-function templateWithSubbedResolverId(resolverId: string): string {
-  let replaced = GRAPH_INDEX_TEMPLATE;
-  const resolverIdWithUnderscores = resolverId.replaceAll("-", "_");
-  replaced = replaced.replace("__resolverId__", resolverId);
-  replaced = replaced.replace("__resolverIdWithUnderscores__", resolverIdWithUnderscores);
-  return replaced;
 }
