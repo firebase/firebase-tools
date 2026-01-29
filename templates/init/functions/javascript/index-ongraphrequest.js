@@ -18,21 +18,19 @@ const {onGraphRequest} = require("firebase-functions/dataconnect/graphql");
 // per-function limit. You can override the limit for each function using the
 // `maxInstances` option in the function's options, e.g.
 // `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
 setGlobalOptions({maxInstances: 10});
 
 const opts = {
   schemaFilePath: "dataconnect/schema___resolverId__/schema.gql",
   resolvers: {
     query: {
+      // This resolver function populates the data for the "hello" field
+      // defined in your GraphQL schema located at schemaFilePath.
       hello(_parent, args, _contextValue, _info) {
         return `Hello ${args.name}!`;
       },
     },
   },
-}
+};
 
 exports.__resolverIdWithUnderscores__ = onGraphRequest(opts);
