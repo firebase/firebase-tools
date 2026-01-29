@@ -199,6 +199,9 @@ export class Command {
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
       if (args.length - 1 > cmd._args.length) {
+        if (!getInheritedOption(options, "json") && !options.isMCP) {
+          useConsoleLoggers();
+        }
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
