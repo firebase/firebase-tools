@@ -5,6 +5,9 @@ import { sync as globSync } from "glob";
 import { FirebaseError } from "../../../error";
 import { PackageManifest, WorkspacePackage, WorkspaceRegistry } from "./types";
 
+/**
+ *
+ */
 export function findWorkspaceRoot(startDir: string): string | null {
   let currentDir = path.resolve(startDir);
   const root = path.parse(currentDir).root;
@@ -19,6 +22,9 @@ export function findWorkspaceRoot(startDir: string): string | null {
   return null;
 }
 
+/**
+ *
+ */
 export function readWorkspaceConfig(workspaceRoot: string): string[] {
   const workspaceYamlPath = path.join(workspaceRoot, "pnpm-workspace.yaml");
   const content = fs.readFileSync(workspaceYamlPath, "utf-8");
@@ -26,6 +32,9 @@ export function readWorkspaceConfig(workspaceRoot: string): string[] {
   return config.packages || [];
 }
 
+/**
+ *
+ */
 export function buildWorkspaceRegistry(workspaceRoot: string): WorkspaceRegistry {
   const registry: WorkspaceRegistry = new Map();
   const packageGlobs = readWorkspaceConfig(workspaceRoot);
@@ -60,10 +69,13 @@ export function buildWorkspaceRegistry(workspaceRoot: string): WorkspaceRegistry
   return registry;
 }
 
+/**
+ *
+ */
 export function findInternalDependencies(
   pkgName: string,
   registry: WorkspaceRegistry,
-  includeDevDeps: boolean
+  includeDevDeps: boolean,
 ): Set<string> {
   const visited = new Set<string>();
   const queue: string[] = [pkgName];
@@ -95,9 +107,12 @@ export function findInternalDependencies(
   return visited;
 }
 
+/**
+ *
+ */
 export function getPackageFromDir(
   sourceDir: string,
-  registry: WorkspaceRegistry
+  registry: WorkspaceRegistry,
 ): WorkspacePackage {
   const resolvedSourceDir = path.resolve(sourceDir);
 
@@ -108,6 +123,6 @@ export function getPackageFromDir(
   }
 
   throw new FirebaseError(
-    `Source directory "${sourceDir}" is not a workspace package. Ensure it's listed in pnpm-workspace.yaml.`
+    `Source directory "${sourceDir}" is not a workspace package. Ensure it's listed in pnpm-workspace.yaml.`,
   );
 }

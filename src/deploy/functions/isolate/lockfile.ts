@@ -11,6 +11,9 @@ interface PnpmLockfile {
   [key: string]: unknown;
 }
 
+/**
+ *
+ */
 export function readPnpmLockfile(workspaceRoot: string): PnpmLockfile | null {
   const lockfilePath = path.join(workspaceRoot, "pnpm-lock.yaml");
   if (!fs.existsSync(lockfilePath)) {
@@ -27,11 +30,14 @@ export function readPnpmLockfile(workspaceRoot: string): PnpmLockfile | null {
   }
 }
 
+/**
+ *
+ */
 export function pruneLockfile(
   lockfile: PnpmLockfile,
   targetRelativeDir: string,
   internalDeps: Set<string>,
-  registry: WorkspaceRegistry
+  registry: WorkspaceRegistry,
 ): PnpmLockfile {
   const pruned: PnpmLockfile = {
     lockfileVersion: lockfile.lockfileVersion,
@@ -70,6 +76,9 @@ export function pruneLockfile(
   return pruned;
 }
 
+/**
+ *
+ */
 export function writePrunedLockfile(lockfile: PnpmLockfile, outputPath: string): void {
   const content = yaml.stringify(lockfile, {
     lineWidth: 0,

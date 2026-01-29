@@ -14,16 +14,21 @@ function getRelativePath(from: string, to: string): string {
   return relativePath;
 }
 
+/**
+ *
+ */
 export function rewriteWorkspaceDependencies(
   manifest: PackageManifest,
   registry: WorkspaceRegistry,
   internalDeps: Set<string>,
   manifestDir: string,
-  workspacesDir: string
+  workspacesDir: string,
 ): PackageManifest {
   const rewritten = { ...manifest };
 
-  const rewriteDeps = (deps: Record<string, string> | undefined): Record<string, string> | undefined => {
+  const rewriteDeps = (
+    deps: Record<string, string> | undefined,
+  ): Record<string, string> | undefined => {
     if (!deps) {
       return deps;
     }
@@ -58,6 +63,9 @@ export function rewriteWorkspaceDependencies(
   return rewritten;
 }
 
+/**
+ *
+ */
 export function writeAdaptedManifest(manifest: PackageManifest, outputPath: string): void {
   fs.writeJsonSync(outputPath, manifest, { spaces: 2 });
 }

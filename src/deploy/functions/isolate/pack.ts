@@ -8,7 +8,7 @@ import { logger } from "../../../logger";
 function runCommand(
   command: string,
   args: string[],
-  cwd: string
+  cwd: string,
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] });
@@ -37,9 +37,12 @@ function runCommand(
   });
 }
 
+/**
+ *
+ */
 export async function packWorkspacePackage(
   pkg: WorkspacePackage,
-  outputDir: string
+  outputDir: string,
 ): Promise<string> {
   fs.ensureDirSync(outputDir);
 
@@ -47,7 +50,7 @@ export async function packWorkspacePackage(
     const { stdout } = await runCommand(
       "pnpm",
       ["pack", "--pack-destination", outputDir],
-      pkg.absoluteDir
+      pkg.absoluteDir,
     );
 
     const tarballName = stdout.trim().split("\n").pop()!;
@@ -61,9 +64,7 @@ export async function packWorkspacePackage(
       if (tgzFile) {
         return path.join(outputDir, tgzFile);
       }
-      throw new FirebaseError(
-        `Failed to find packed tarball for ${pkg.name} in ${outputDir}`
-      );
+      throw new FirebaseError(`Failed to find packed tarball for ${pkg.name} in ${outputDir}`);
     }
 
     return tarballPath;
@@ -73,6 +74,9 @@ export async function packWorkspacePackage(
   }
 }
 
+/**
+ *
+ */
 export async function unpackTarball(tarballPath: string, destDir: string): Promise<void> {
   fs.ensureDirSync(destDir);
 
@@ -84,9 +88,12 @@ export async function unpackTarball(tarballPath: string, destDir: string): Promi
   }
 }
 
+/**
+ *
+ */
 export async function packAndExtract(
   pkg: WorkspacePackage,
-  workspacesDir: string
+  workspacesDir: string,
 ): Promise<string> {
   const tempDir = path.join(workspacesDir, ".tmp-pack");
   fs.ensureDirSync(tempDir);

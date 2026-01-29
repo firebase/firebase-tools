@@ -37,6 +37,9 @@ function writePnpmWorkspaceYaml(outputDir: string): void {
   fs.writeFileSync(path.join(outputDir, "pnpm-workspace.yaml"), content, "utf-8");
 }
 
+/**
+ *
+ */
 export async function isolateWorkspace(options: IsolateOptions): Promise<IsolateResult> {
   const { sourceDir, outputDir, includeDevDependencies } = options;
 
@@ -45,7 +48,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
   const workspaceRoot = findWorkspaceRoot(sourceDir);
   if (!workspaceRoot) {
     throw new FirebaseError(
-      "Could not find pnpm-workspace.yaml. Workspace isolation requires a pnpm monorepo."
+      "Could not find pnpm-workspace.yaml. Workspace isolation requires a pnpm monorepo.",
     );
   }
 
@@ -60,7 +63,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
   const internalDeps = findInternalDependencies(
     targetPackage.name,
     registry,
-    includeDevDependencies
+    includeDevDependencies,
   );
   logger.debug(`Found ${internalDeps.size} internal dependencies: ${[...internalDeps].join(", ")}`);
 
@@ -98,7 +101,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
           registry,
           internalDeps,
           depDir,
-          workspacesDir
+          workspacesDir,
         );
         writeAdaptedManifest(rewrittenDepManifest, depManifestPath);
       }
@@ -113,7 +116,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
       registry,
       internalDeps,
       outputDir,
-      workspacesDir
+      workspacesDir,
     );
     writeAdaptedManifest(rewrittenManifest, targetManifestPath);
   }
@@ -124,7 +127,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
       lockfile,
       targetPackage.rootRelativeDir,
       internalDeps,
-      registry
+      registry,
     );
     writePrunedLockfile(prunedLockfile, path.join(outputDir, "pnpm-lock.yaml"));
   } else {
@@ -137,7 +140,7 @@ export async function isolateWorkspace(options: IsolateOptions): Promise<Isolate
 
   logLabeledBullet(
     "functions",
-    `isolated ${packagesIncluded.length} package(s) to ${path.relative(options.projectDir, outputDir)}`
+    `isolated ${packagesIncluded.length} package(s) to ${path.relative(options.projectDir, outputDir)}`,
   );
 
   return {
