@@ -254,6 +254,7 @@ export function load(client: CLIClient): CLIClient {
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
+  client.dataconnect.compile = loadCommand("dataconnect-compile");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
   client.target = loadCommand("target");
@@ -263,6 +264,7 @@ export function load(client: CLIClient): CLIClient {
   client.use = loadCommand("use");
   if (experiments.isEnabled("apptesting")) {
     client.apptesting = {};
+    client.apptesting.execute = loadCommand("apptesting");
     client.apptesting.wata = loadCommand("apptesting-wata");
   }
 
