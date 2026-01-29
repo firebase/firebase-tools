@@ -1,6 +1,6 @@
 ---
 name: firebase-app-hosting-basics
-description: Deploy and manage web apps with Firebase App Hosting. Use this skill when deploying Next.js/Angular apps with backends..
+description: Deploy and manage web apps with Firebase App Hosting. Use this skill when deploying Next.js/Angular apps with backends.
 ---
 
 # App Hosting Basics
@@ -20,16 +20,16 @@ This skill enables the agent to deploy and manage modern, full-stack web applica
 - You need Server-Side Rendering (SSR) or ISR.
 - You want an automated "git push to deploy" workflow with zero configuration.
 
-## Deploying  to App Hosting
+## Deploying to App Hosting
 
-### Deploying via CLI
+### Deploy from Source
 
 This is the recommended flow for most users. 
 1. Configure `firebase.json` with an `apphosting` block.
     ```json
     {
       "apphosting": {
-        "backendId": my-app-id",
+        "backendId": "my-app-id",
         "rootDir": "/",
         "ignore": [
           "node_modules",
@@ -48,6 +48,7 @@ This is the recommended flow for most users.
 ### Automated deployment via GitHub (CI/CD)
 
 Alternatively, set up a backend connected to a GitHub repository for automated deployments "git push" deployments.
+This is only recommended for more advanced users, and is not required to use App Hosting.
 See [CLI Commands](references/cli_commands.md) for more information on how to set this up using CLI commands.
 
 ## Emulation

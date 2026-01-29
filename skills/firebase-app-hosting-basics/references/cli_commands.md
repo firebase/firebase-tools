@@ -5,7 +5,9 @@ The Firebase CLI provides a comprehensive suite of commands to manage App Hostin
 ## Initialization
 ### `firebase init apphosting`
 - **Purpose**: Interactive command that sets up App Hosting in your local project. 
-It is recommended to not use this command and instead manually write a 'firebase.json' file with an 'apphosting' block.
+Use this command only if you are able to handle interactive CLI inputs well. 
+Alternatively, you can manually edit `firebase.json` and `apphosting.yml`.
+
 - **Effect**:
   - Detects your web framework.
   - Creates/updates `apphosting.yaml`.
@@ -16,18 +18,16 @@ It is recommended to not use this command and instead manually write a 'firebase
 - **Purpose**: Creates a new App Hosting backend. Use this when setting up automated deployments via GitHub.
 - **Options**:
   - `--app <webAppId>`: The ID of an existing Firebase web app to associate with the backend.
-  - `--backend <backenId>`: The ID of the new backend.
+  - `--backend <backendId>`: The ID of the new backend.
   - `--primary-region <location>`: The primary region for the backend.
   - `--root-dir <rootDir>`: The root directory for the backend. If omitted, defaults to the root directory of the project.
   - `--service-account <service-account>`: The service account used to run the server. If omitted, defaults to the default service account.
 
 ### `firebase apphosting:backends:list`
 - **Purpose**: Lists all backends in the current project.
-- **Options**: `firebase apphosting:backends:list`
 
 ### `firebase apphosting:backends:get <backend-id>`
 - **Purpose**: Shows details for a specific backend.
-- **Options**: `firebase apphosting:backends:get <backend-id>`
 
 ### `firebase apphosting:backends:delete <backend-id>`
 - **Purpose**: Deletes a backend and its associated resources.
