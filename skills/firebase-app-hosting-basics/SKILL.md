@@ -1,13 +1,12 @@
 ---
 name: firebase-app-hosting-basics
-description: Deploy and manage web apps with Firebase App Hosting. Use when deploying Next.js/Angular apps, managing backends/rollouts/secrets via CLI, or configuring apphosting.yaml.
+description: Deploy and manage web apps with Firebase App Hosting. Use this skill when deploying Next.js/Angular apps with backends.
 ---
 
 # App Hosting Basics
 
 ## Description
 This skill enables the agent to deploy and manage modern, full-stack web applications (Next.js, Angular, etc.) using Firebase App Hosting. 
-
 
 ## Hosting vs App Hosting
 
@@ -21,40 +20,37 @@ This skill enables the agent to deploy and manage modern, full-stack web applica
 - You need Server-Side Rendering (SSR) or ISR.
 - You want an automated "git push to deploy" workflow with zero configuration.
 
-## Instructions
-1.  **Use CLI commands**: Execute `firebase apphosting` commands to create backends, trigger rollouts, and manage resources.
-2.  **Configure App Hosting**: Create or edit `apphosting.yaml` to configure Cloud Run settings (CPU, memory) and environment variables as requested by the user.
-3.  **Manage Secrets**: Use `firebase apphosting:secrets` commands to set and grant access to secrets.
-4.  **Setup Emulation**: Configure `apphosting.emulator.yaml` and use the local emulator (`firebase emulators:start --only apphosting`) to verify changes.
+## Deploying to App Hosting
 
-## Overview
+### Deploy from Source
 
-### What is App Hosting?
-Firebase App Hosting is a serverless hosting solution designed specifically for modern, full-stack web applications. It automates the build and deployment process directly from your GitHub repository.
+This is the recommended flow for most users. 
+1. Configure `firebase.json` with an `apphosting` block.
+    ```json
+    {
+      "apphosting": {
+        "backendId": "my-app-id",
+        "rootDir": "/",
+        "ignore": [
+          "node_modules",
+          ".git",
+          "firebase-debug.log",
+          "firebase-debug.*.log",
+          "functions"
+        ]
+      }
+    }
+    ```
+2. Create or edit `apphosting.yaml`- see [Configuration](references/configuration.md) for more information on how to do so.
+3. If the app needs safe access to sensitive keys, use `firebase apphosting:secrets` commands to set and grant access to secrets.
+4. Run `firebase deploy` when you are ready to deploy.
 
-### Key Features
-- **Zero-config builds**: Automatically detects and builds Next.js and Angular apps using Cloud buildpacks.
-- **GitHub Integration**: Deploys automatically when you push to your live branch (e.g., `main`).
-- **Backend Infrastructure**: Provisions Cloud Run services, Cloud Build triggers, and other necessary resources automatically.
-- **Global CDN**: Serves static content from a global CDN for high performance.
+### Automated deployment via GitHub (CI/CD)
 
-### Core Concepts
-#### Backend
-A **Backend** is the managed link between your Firebase project and your GitHub repository. It represents the infrastructure running your web app.
-- A one-to-one mapping to a specific GitHub repository.
-- Contains the configuration for production and rollout policies.
+Alternatively, set up a backend connected to a GitHub repository for automated deployments "git push" deployments.
+This is only recommended for more advanced users, and is not required to use App Hosting.
+See [CLI Commands](references/cli_commands.md) for more information on how to set this up using CLI commands.
 
-#### Rollout
-A **Rollout** is a specific version of your app deployed to the backend.
-- Triggered by git pushes or manually via CLI/Console.
-- Each rollout is immutable and can be rolled back to.
+## Emulation
 
-### Supported Frameworks
-- **Next.js**: Full support for SSR, ISR, and static generation.
-- **Angular**: Support for Angular Universal (SSR) and static builds.
-- **Custom Adapters**: Extensible architecture to support other frameworks.
-
-## Resources
-- [CLI Commands](references/cli_commands.md)
-- [Configuration](references/configuration.md)
-- [Emulation](references/emulation.md)
+See [Emulation](references/emulation.md) for more information on how to test your app locally using the Firebase Local Emulator Suite.
