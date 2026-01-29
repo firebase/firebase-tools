@@ -1,6 +1,5 @@
 import * as chai from "chai";
 import * as clc from "colorette";
-import * as fs from "fs-extra";
 import * as yaml from "js-yaml";
 import * as sinon from "sinon";
 
@@ -10,6 +9,7 @@ import {
   actuate,
   ResolverRequiredInfo,
 } from "./resolver";
+import * as functions from "../functions";
 import { Setup } from "../..";
 import { Config } from "../../../config";
 import * as load from "../../../dataconnect/load";
@@ -106,6 +106,7 @@ describe("askQuestions", () => {
   let loadAllStub: sinon.SinonStub;
   let selectStub: sinon.SinonStub;
   let inputStub: sinon.SinonStub;
+  let functionsAskQuestionsStub: sinon.SinonStub;
 
   beforeEach(() => {
     setup = {
@@ -129,6 +130,7 @@ describe("askQuestions", () => {
     loadAllStub = sinon.stub(load, "loadAll");
     selectStub = sinon.stub(prompt, "select");
     inputStub = sinon.stub(prompt, "input");
+    functionsAskQuestionsStub = sinon.stub(functions, "askQuestions").resolves();
   });
 
   afterEach(() => {
@@ -148,6 +150,7 @@ describe("askQuestions", () => {
         )} to set up a service and main schema.`,
       );
     }
+    expect(functionsAskQuestionsStub.called).to.be.false;
   });
 
   it("should skip service selection when exactly one service", async () => {
@@ -171,6 +174,7 @@ describe("askQuestions", () => {
     expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id",
     );
+    expect(functionsAskQuestionsStub.called).to.be.true;
   });
 
   it("should prompt for service selection when multiple services", async () => {
@@ -199,6 +203,7 @@ describe("askQuestions", () => {
     expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id2",
     );
+    expect(functionsAskQuestionsStub.called).to.be.true;
   });
 
   it("uses project number in URI if set", async () => {
@@ -223,6 +228,7 @@ describe("askQuestions", () => {
     expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
       "projects/project-id/locations/us-central1/services/service-id",
     );
+    expect(functionsAskQuestionsStub.called).to.be.true;
   });
 });
 
@@ -231,12 +237,12 @@ describe("actuate", () => {
   let config: Config;
   let experimentsStub: sinon.SinonStub;
   let writeProjectFileStub: sinon.SinonStub;
-  let ensureSyncStub: sinon.SinonStub;
+  let functionsActuateStub: sinon.SinonStub;
 
   beforeEach(() => {
     experimentsStub = sinon.stub(experiments, "isEnabled");
     writeProjectFileStub = sinon.stub();
-    ensureSyncStub = sinon.stub(fs, "ensureFileSync");
+    functionsActuateStub = sinon.stub(functions, "actuate").resolves();
 
     setup = {
       config: { projectDir: "/path/to/project" } as any,
@@ -291,7 +297,7 @@ describe("actuate", () => {
     await actuate(setup, config);
 
     expect(writeProjectFileStub.called).to.be.false;
-    expect(ensureSyncStub.called).to.be.false;
+    expect(functionsActuateStub.called).to.be.false;
   });
 
   it("should write dataconnect.yaml and set up empty secondary schema file", async () => {
@@ -299,14 +305,21 @@ describe("actuate", () => {
 
     await actuate(setup, config);
 
-    expect(writeProjectFileStub.calledOnce).to.be.true;
+    expect(writeProjectFileStub.calledTwice).to.be.true;
     const writtenYamlPath = writeProjectFileStub.getCall(0).args[0];
     const writtenYamlContents = writeProjectFileStub.getCall(0).args[1];
     const parsedYaml = yaml.load(writtenYamlContents);
     expect(writtenYamlPath).to.equal("../service/dataconnect.yaml");
     expect(parsedYaml.schemas).to.have.lengthOf(2);
-    expect(ensureSyncStub.calledOnce).to.be.true;
-    const writtenSchemaPath = ensureSyncStub.getCall(0).args[0];
-    expect(writtenSchemaPath).to.equal("/path/to/service/schema_test_resolver/schema.gql");
+    const writtenSchemaPath = writeProjectFileStub.getCall(1).args[0];
+    const writtenSchemaContents = writeProjectFileStub.getCall(1).args[1];
+    expect(writtenSchemaPath).to.equal("../service/schema_test_resolver/schema.gql");
+    expect(writtenSchemaContents).to.equal(`# Example Hello World custom resolver schema.
+
+type Query {
+  hello(name: String): String
+}
+`); // From SCHEMA_TEMPLATE
+    expect(functionsActuateStub.called).to.be.true;
   });
 });

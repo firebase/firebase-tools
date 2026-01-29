@@ -1,3 +1,5 @@
+# Example Hello World custom resolver schema.
+
 type Query {
   hello(name: String): String
 }

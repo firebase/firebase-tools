@@ -113,19 +113,17 @@ function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
   info.serviceInfo.dataConnectYaml = dataConnectYaml;
   const dataConnectYamlContents = yaml.stringify(dataConnectYaml);
   const dataConnectYamlPath = join(info.serviceInfo.sourceDirectory, "dataconnect.yaml");
+  const dataConnectSchemaPath = join(
+    info.serviceInfo.sourceDirectory,
+    `schema_${info.id}`,
+    "schema.gql",
+  );
   config.writeProjectFile(
     relative(config.projectDir, dataConnectYamlPath),
     dataConnectYamlContents,
   );
-
   // Write the schema.gql file pre-populated with a template.
-  config.writeProjectFile(
-    relative(
-      config.projectDir,
-      join(info.serviceInfo.sourceDirectory, `schema_${info.id}`, "schema.gql"),
-    ),
-    SCHEMA_TEMPLATE,
-  );
+  config.writeProjectFile(relative(config.projectDir, dataConnectSchemaPath), SCHEMA_TEMPLATE);
 }
 
 /** Add secondary schema configuration to dataconnect.yaml in place */
