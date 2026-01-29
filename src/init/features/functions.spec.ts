@@ -146,8 +146,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await askQuestions(setup, emptyConfig, options);
-        await actuate(setup, emptyConfig);
+        await askQuestions(setup, config, options);
+        await actuate(setup, config);
 
         expect(setup.config.functions).to.deep.equal([
           {
@@ -195,8 +195,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await askQuestions(setup, emptyConfig, options);
-        await actuate(setup, emptyConfig);
+        await askQuestions(setup, config, options);
+        await actuate(setup, config);
 
         expect(setup.config.functions).to.deep.equal([
           {
