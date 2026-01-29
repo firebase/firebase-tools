@@ -101,4 +101,132 @@ describe("iam", () => {
       });
     }
   });
+
+  describe("service account management", () => {
+    const PROJECT_ID = "test-project";
+    const ACCOUNT_ID = "test-account";
+    const EMAIL = `${ACCOUNT_ID}@${PROJECT_ID}.iam.gserviceaccount.com`;
+    const DISPLAY_NAME = "Test Account";
+    const DESCRIPTION = "Test Description";
+
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    describe("createServiceAccount", () => {
+      it("should create a service account", async () => {
+        nock("https://iam.googleapis.com")
+          .post(`/v1/projects/${PROJECT_ID}/serviceAccounts`, {
+            accountId: ACCOUNT_ID,
+            serviceAccount: {
+              displayName: DISPLAY_NAME,
+              description: DESCRIPTION,
+            },
+          })
+          .reply(200, {
+            name: `projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`,
+            projectId: PROJECT_ID,
+            uniqueId: "123",
+            email: EMAIL,
+            displayName: DISPLAY_NAME,
+            description: DESCRIPTION,
+          });
+
+        const account = await iam.createServiceAccount(
+          PROJECT_ID,
+          ACCOUNT_ID,
+          DESCRIPTION,
+          DISPLAY_NAME
+        );
+
+        expect(account).to.deep.include({
+          projectId: PROJECT_ID,
+          email: EMAIL,
+          displayName: DISPLAY_NAME,
+        });
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("getServiceAccount", () => {
+      it("should get a service account", async () => {
+        nock("https://iam.googleapis.com")
+          .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(200, {
+            name: `projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`,
+            email: EMAIL,
+          });
+
+        const account = await iam.getServiceAccount(PROJECT_ID, ACCOUNT_ID);
+
+        expect(account.email).to.equal(EMAIL);
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("createServiceAccountKey", () => {
+      it("should create a service account key", async () => {
+        nock("https://iam.googleapis.com")
+          .post(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}/keys`, {
+            keyAlgorithm: "KEY_ALG_UNSPECIFIED",
+            privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+          })
+          .reply(200, {
+            name: "key-name",
+            privateKeyData: "data",
+          });
+
+        const key = await iam.createServiceAccountKey(PROJECT_ID, ACCOUNT_ID);
+
+        expect(key.name).to.equal("key-name");
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("deleteServiceAccount", () => {
+      it("should delete a service account", async () => {
+        nock("https://iam.googleapis.com")
+          .delete(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(200, {});
+
+        await iam.deleteServiceAccount(PROJECT_ID, EMAIL);
+
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("listServiceAccountKeys", () => {
+      it("should list service account keys", async () => {
+        nock("https://iam.googleapis.com")
+          .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}/keys`)
+          .reply(200, {
+            keys: [{ name: "key1" }, { name: "key2" }],
+          });
+
+        const keys = await iam.listServiceAccountKeys(PROJECT_ID, ACCOUNT_ID);
+
+        expect(keys).to.have.lengthOf(2);
+        expect(keys[0].name).to.equal("key1");
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("getRole", () => {
+      it("should get a role", async () => {
+        const ROLE_NAME = "roles/viewer";
+        nock("https://iam.googleapis.com")
+          .get(`/v1/roles/${ROLE_NAME}`)
+          .reply(200, {
+            name: ROLE_NAME,
+            title: "Viewer",
+          });
+
+        const role = await iam.getRole(ROLE_NAME);
+
+        expect(role.name).to.equal(ROLE_NAME);
+        expect(role.title).to.equal("Viewer");
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+  });
 });
