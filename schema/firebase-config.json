@@ -882,6 +882,24 @@
                     },
                     "type": "array"
                 },
+                "isolate": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean"
+                        },
+                        "includeDevDependencies": {
+                            "type": "boolean"
+                        },
+                        "outputDir": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "enabled"
+                    ],
+                    "type": "object"
+                },
                 "postdeploy": {
                     "anyOf": [
                         {

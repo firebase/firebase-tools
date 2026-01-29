@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as path from "path";
 
 import * as args from "./args";
 import * as proto from "../../gcp/proto";
@@ -53,6 +54,7 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import { isolateWorkspace } from "./isolate";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -214,13 +216,28 @@ export async function prepare(
     const cfg = configForCodebase(context.config, codebase);
     const localCfg = requireLocal(cfg, "Remote sources are not supported.");
     const sourceDirName = localCfg.source;
-    const sourceDir = options.config.path(sourceDirName);
+    let sourceDir = options.config.path(sourceDirName);
     const source: args.Source = {};
     if (backend.someEndpoint(wantBackend, () => true)) {
       logLabeledBullet(
         "functions",
         `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
+    }
+
+    if (localCfg.isolate?.enabled) {
+      const isolateOutputDir = localCfg.isolate.outputDir
+        ? options.config.path(localCfg.isolate.outputDir)
+        : path.join(sourceDir, "_isolated_");
+
+      const isolateResult = await isolateWorkspace({
+        projectDir: options.config.projectDir,
+        sourceDir,
+        outputDir: isolateOutputDir,
+        includeDevDependencies: localCfg.isolate.includeDevDependencies ?? false,
+      });
+
+      sourceDir = isolateResult.isolatedDir;
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {

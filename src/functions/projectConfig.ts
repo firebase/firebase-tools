@@ -1,4 +1,4 @@
-import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
+import { FunctionsConfig, FunctionConfig, IsolateConfig } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 import type { ActiveRuntime } from "../deploy/functions/runtimes/supported/types";
 
@@ -16,6 +16,7 @@ export type ValidatedLocalSingle = FunctionConfigCommon & {
   runtime?: ActiveRuntime;
   remoteSource?: never;
   disallowLegacyRuntimeConfig?: boolean;
+  isolate?: IsolateConfig;
 };
 
 export type ValidatedRemoteSingle = FunctionConfigCommon & {

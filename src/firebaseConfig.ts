@@ -166,6 +166,12 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
+export type IsolateConfig = {
+  enabled: boolean;
+  outputDir?: string;
+  includeDevDependencies?: boolean;
+};
+
 type FunctionConfigBase = {
   // Optional: Directory containing the .env files for this codebase.
   // Defaults to the same directory as source if not specified.
@@ -194,6 +200,9 @@ export type LocalFunctionConfig = FunctionConfigBase & {
   disallowLegacyRuntimeConfig?: boolean;
   // Forbid remoteSource when local source is provided
   remoteSource?: never;
+  // Optional: Isolate workspace dependencies for pnpm monorepos.
+  // When enabled, internal workspace dependencies are packed and included in the deployment.
+  isolate?: IsolateConfig;
 };
 
 export type RemoteFunctionConfig = FunctionConfigBase & {
