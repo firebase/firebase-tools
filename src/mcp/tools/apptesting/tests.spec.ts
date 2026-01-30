@@ -143,10 +143,17 @@ describe("mcp/tools/apptesting/tests", () => {
       clientStub.getReleaseTest.resolves({ name: "test" } as any);
       testEnvironmentCatalogStub.resolves([]);
 
-      await check_status.fn(input, mockContext);
+      const result = await check_status.fn(input, mockContext);
 
       expect(clientStub.getReleaseTest.called).to.be.true;
       expect(testEnvironmentCatalogStub.called).to.be.true;
+
+      const resultText = (result.content[0] as any).text;
+      const resultObj = safeLoad(resultText);
+      expect(resultObj).to.deep.equal({
+        releaseTest: { name: "test" },
+        devices: [],
+      });
     });
   });
 });
