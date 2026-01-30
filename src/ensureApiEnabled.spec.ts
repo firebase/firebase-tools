@@ -38,7 +38,7 @@ describe("ensureApiEnabled", () => {
         configstoreSetMock.returns(undefined);
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .reply(200, { state: "ENABLED" });
 
         await check(FAKE_PROJECT_ID, prefix + FAKE_API, "", true);
@@ -52,7 +52,7 @@ describe("ensureApiEnabled", () => {
         configstoreSetMock.returns(undefined);
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "ENABLED" });
 
@@ -60,7 +60,7 @@ describe("ensureApiEnabled", () => {
 
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "DISABLED" });
 
@@ -103,7 +103,7 @@ describe("ensureApiEnabled", () => {
         configstoreSetMock.returns(undefined);
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "ENABLED" });
 
@@ -122,7 +122,7 @@ describe("ensureApiEnabled", () => {
         configstoreSetMock.returns(undefined);
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "DISABLED" });
 
@@ -133,7 +133,7 @@ describe("ensureApiEnabled", () => {
 
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "ENABLED" });
 
@@ -148,25 +148,25 @@ describe("ensureApiEnabled", () => {
         configstoreSetMock.returns(undefined);
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "DISABLED" });
 
         nock("https://serviceusage.googleapis.com")
           .post(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}:enable`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .twice()
           .reply(200);
 
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "DISABLED" });
 
         nock("https://serviceusage.googleapis.com")
           .get(`/v1/projects/${FAKE_PROJECT_ID}/services/${FAKE_API}`)
-          .matchHeader("x-goog-user-project", `projects/${FAKE_PROJECT_ID}`)
+          .matchHeader("x-goog-user-project", `${FAKE_PROJECT_ID}`)
           .once()
           .reply(200, { state: "ENABLED" });
 
