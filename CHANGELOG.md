@@ -1,1 +1,1 @@
-- Fixed an issue where 'firebase dpeloy' failed due to a malformed 'X-Goog-User-Project' header (#9844).
+- Fixed an issue where 'firebase deploy' failed due to a malformed 'X-Goog-User-Project' header (#9844).
