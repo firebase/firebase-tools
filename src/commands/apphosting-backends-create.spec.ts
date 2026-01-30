@@ -57,28 +57,26 @@ describe("apphosting:backends:create", () => {
     nock.cleanAll();
   });
 
-  it("should throw error if non-interactive but missing required options", async () => {
-    const options = { nonInteractive: true };
-    await expect(command.runner()(options)).to.be.rejectedWith(
-      FirebaseError,
-      "requires --backend and --primary-region",
-    );
-  });
-
-  it("should throw error if non-interactive and just backend provided", async () => {
-    const options = { nonInteractive: true, backend: BACKEND_ID };
-    await expect(command.runner()(options)).to.be.rejectedWith(
-      FirebaseError,
-      "requires --backend and --primary-region",
-    );
-  });
-
-  it("should throw error if non-interactive and just region provided", async () => {
-    const options = { nonInteractive: true, primaryRegion: REGION };
-    await expect(command.runner()(options)).to.be.rejectedWith(
-      FirebaseError,
-      "requires --backend and --primary-region",
-    );
+  [
+    {
+      description: "missing required options",
+      options: { nonInteractive: true },
+    },
+    {
+      description: "just backend provided",
+      options: { nonInteractive: true, backend: BACKEND_ID },
+    },
+    {
+      description: "just region provided",
+      options: { nonInteractive: true, primaryRegion: REGION },
+    },
+  ].forEach(({ description, options }) => {
+    it(`should throw error if non-interactive and ${description}`, async () => {
+      await expect(command.runner()(options)).to.be.rejectedWith(
+        FirebaseError,
+        "requires --backend and --primary-region",
+      );
+    });
   });
 
   it("should call doSetup with correct arguments in interactive mode", async () => {
