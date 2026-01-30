@@ -537,11 +537,15 @@ export class Client {
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     const headers = options.headers;
-    if (headers && headers.has(GOOG_QUOTA_USER_HEADER)) {
+    if (headers && (headers.has(GOOG_QUOTA_USER_HEADER) || headers.has(GOOG_USER_PROJECT_HEADER))) {
+      const userHeader = headers.has(GOOG_QUOTA_USER_HEADER)
+        ? `${GOOG_QUOTA_USER_HEADER}=${headers.get(GOOG_QUOTA_USER_HEADER)}`
+        : "";
+      const projectHeader = headers.has(GOOG_USER_PROJECT_HEADER)
+        ? `${GOOG_USER_PROJECT_HEADER}=${headers.get(GOOG_USER_PROJECT_HEADER)}`
+        : "";
       logger.debug(
-        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
-          headers.get(GOOG_QUOTA_USER_HEADER) || ""
-        }`,
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} ${userHeader} ${projectHeader}`,
       );
     }
     if (options.body !== undefined) {
