@@ -33,7 +33,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm install -g @google/gemini-cli
       - run: npm ci
       - run: npm install

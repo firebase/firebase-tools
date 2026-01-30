@@ -178,6 +178,7 @@ export class RuntimeWorker {
           }
         };
         _resp.on("pause", () => finishReq("pause"));
+        _resp.on("end", () => finishReq("end"));
         _resp.on("close", () => finishReq("close"));
         const piped = _resp.pipe(resp);
         piped.on("finish", () => finishReq("finish"));

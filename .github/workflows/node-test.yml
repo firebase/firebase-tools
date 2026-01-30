@@ -35,7 +35,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: npm run lint:changed-files
       - run: npm run lint
@@ -57,7 +57,7 @@ jobs:
           cache: npm
           cache-dependency-path: firebase-vscode/package-lock.json
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: npm install
         working-directory: firebase-vscode
@@ -140,7 +140,7 @@ jobs:
           cache: npm
           cache-dependency-path: scripts/agent-evals/package-lock.json
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: npm install
         working-directory: scripts/agent-evals
@@ -163,7 +163,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: npm test -- -- --forbid-only
 
@@ -228,7 +228,7 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
       - run: ${{ matrix.script }}
@@ -294,7 +294,7 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       - run: npm ci
       - run: ${{ matrix.script }}
       - name: Print debug logs
@@ -315,7 +315,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
       - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
@@ -334,7 +334,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.6.2
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: "(cd firebase-vscode && npm install --package-lock-only --ignore-scripts)"
       - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit firebase-vscode/package-lock.json.' && false)"

@@ -1,5 +1,5 @@
 {
-  "name": "firebase-tools",
+  "name": "@askelephant/firebase-tools",
   "version": "15.5.1",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
@@ -82,7 +82,8 @@
   },
   "homepage": "https://github.com/firebase/firebase-tools",
   "publishConfig": {
-    "registry": "https://wombat-dressing-room.appspot.com"
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   },
   "nyc": {
     "require": [
