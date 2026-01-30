@@ -136,7 +136,7 @@ describe("iam", () => {
           PROJECT_ID,
           ACCOUNT_ID,
           DESCRIPTION,
-          DISPLAY_NAME
+          DISPLAY_NAME,
         );
 
         expect(account).to.deep.include({
@@ -193,6 +193,16 @@ describe("iam", () => {
 
         expect(nock.isDone()).to.be.true;
       });
+
+      it("should not throw if deleting a non-existent service account", async () => {
+        nock("https://iam.googleapis.com")
+          .delete(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(404);
+
+        await iam.deleteServiceAccount(PROJECT_ID, EMAIL);
+
+        expect(nock.isDone()).to.be.true;
+      });
     });
 
     describe("listServiceAccountKeys", () => {
@@ -214,12 +224,10 @@ describe("iam", () => {
     describe("getRole", () => {
       it("should get a role", async () => {
         const ROLE_NAME = "roles/viewer";
-        nock("https://iam.googleapis.com")
-          .get(`/v1/roles/${ROLE_NAME}`)
-          .reply(200, {
-            name: ROLE_NAME,
-            title: "Viewer",
-          });
+        nock("https://iam.googleapis.com").get(`/v1/roles/${ROLE_NAME}`).reply(200, {
+          name: ROLE_NAME,
+          title: "Viewer",
+        });
 
         const role = await iam.getRole(ROLE_NAME);
 
