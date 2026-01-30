@@ -1,7 +1,7 @@
 /**
  * Import the onGraphRequest function trigger from its submodules:
  *
- * import {onGraphRequest} from "firebase-functions/v2/dataconnect/graphql";
+ * import {onGraphRequest} from "firebase-functions/dataconnect/graphql";
  *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */

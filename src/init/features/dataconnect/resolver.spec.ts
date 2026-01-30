@@ -316,7 +316,10 @@ describe("actuate", () => {
     expect(writtenSchemaPath).to.equal("../service/schema_test_resolver/schema.gql");
     expect(writtenSchemaContents).to.equal(`# Example Hello World custom resolver schema.
 
+# Custom resolver fields can be defined on root Query and Mutation types.
 type Query {
+  # This field will be backed by your Cloud Run function.
+  # Your "hello" function will take in a string argument "name" and return a string.
   hello(name: String): String
 }
 `); // From SCHEMA_TEMPLATE
