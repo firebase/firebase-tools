@@ -1,3 +1,5 @@
+import { FirebaseError } from "../error";
+
 /**
  * The v1beta1 indexes API used a 'mode' field to represent the indexing mode.
  * This information has now been split into the fields 'arrayConfig' and 'order'.
@@ -118,7 +120,7 @@ export enum DatabaseType {
   FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
 }
 
-export enum DatabaseDeleteProtectionStateOption {
+export enum EnablementOption {
   ENABLED = "ENABLED",
   DISABLED = "DISABLED",
 }
@@ -128,14 +130,20 @@ export enum DatabaseDeleteProtectionState {
   DISABLED = "DELETE_PROTECTION_DISABLED",
 }
 
-export enum PointInTimeRecoveryEnablementOption {
-  ENABLED = "ENABLED",
-  DISABLED = "DISABLED",
-}
-
 export enum PointInTimeRecoveryEnablement {
   ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
   DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
+}
+
+export enum RealtimeUpdatesMode {
+  ENABLED = "REALTIME_UPDATES_MODE_ENABLED",
+  DISABLED = "REALTIME_UPDATES_MODE_DISABLED",
+}
+
+export enum DataAccessMode {
+  UNSPECIFIED = "DATA_ACCESS_MODE_UNSPECIFIED",
+  ENABLED = "DATA_ACCESS_MODE_ENABLED",
+  DISABLED = "DATA_ACCESS_MODE_DISABLED",
 }
 
 export enum DatabaseEdition {
@@ -150,6 +158,9 @@ export interface DatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -161,6 +172,9 @@ export interface CreateDatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -179,6 +193,9 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  realtimeUpdatesMode: RealtimeUpdatesMode;
+  firestoreDataAccessMode: DataAccessMode;
+  mongodbCompatibleDataAccessMode: DataAccessMode;
   cmekConfig?: CmekConfig;
   databaseEdition?: DatabaseEdition;
 }
@@ -249,4 +266,21 @@ export type EncryptionConfig =
 export interface PITRSnapshot {
   database: string;
   snapshotTime: string;
+}
+
+/**
+ * Validates a flag value that is used with EnablementOption
+ */
+export function validateEnablementOption(
+  optionValue: string | undefined,
+  flagName: string,
+  helpCommandText: string,
+) {
+  if (
+    optionValue &&
+    optionValue !== EnablementOption.ENABLED &&
+    optionValue !== EnablementOption.DISABLED
+  ) {
+    throw new FirebaseError(`Invalid value for flag --${flagName}. ${helpCommandText}`);
+  }
 }

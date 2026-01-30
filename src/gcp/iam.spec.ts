@@ -82,13 +82,11 @@ describe("iam", () => {
       },
     ];
 
-    const TEST_RESOURCE = `projects/foo`;
-
     for (const t of tests) {
       it(t.desc, async () => {
         nock(resourceManagerOrigin())
-          .post(`/v1/${TEST_RESOURCE}:testIamPermissions`)
-          .matchHeader("x-goog-quota-user", TEST_RESOURCE)
+          .post(`/v1/projects/foo:testIamPermissions`)
+          .matchHeader("x-goog-user-project", "foo")
           .reply(200, { permissions: t.permissionsToReturn });
 
         const res = await iam.testIamPermissions("foo", t.permissionsToCheck);
