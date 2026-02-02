@@ -18,6 +18,21 @@
       "transport": {
         "type": "stdio"
       }
+    },
+    {
+      "registryType": "npm",
+      "identifier": "firebase-tools",
+      "runtimeHint": "npx",
+      "runtimeArguments": [
+        {"type": "positional", "value": "mcp"},
+        {"type": "named", "name": "transport", "value": "streamable-http"},
+        {"type": "named", "name": "port", "value": "8000"}
+      ],
+      "version": "14.27.0",
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://localhost:8000/mcp"
+      }
     }
   ]
 }
