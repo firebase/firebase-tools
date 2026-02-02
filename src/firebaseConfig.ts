@@ -221,7 +221,10 @@ export type HostingConfig = HostingSingle | HostingMultiple;
 export type StorageConfig = StorageSingle | StorageMultiple;
 
 export type RemoteConfigConfig = {
-  template: string;
+  template?: string;
+  server?: {
+    template: string;
+  };
 } & Deployable;
 
 export type EmulatorsConfig = {
