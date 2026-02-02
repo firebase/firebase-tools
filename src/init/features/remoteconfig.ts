@@ -29,5 +29,5 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   setup.config.remoteconfig = {
     template: jsonFilePath,
   };
-  config.writeProjectFile(setup.config.remoteconfig.template, "{}");
+  config.writeProjectFile(setup.config.remoteconfig.template!, "{}");
 }
