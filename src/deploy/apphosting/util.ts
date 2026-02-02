@@ -7,6 +7,18 @@ import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 
+/**
+ * Creates a temporary tarball of the project source or build artifacts.
+ *
+ * This function packages the specified directory into a `.tar.gz` file, respecting
+ * ignore patterns (like `.git`, `firebase-debug.log`, etc.). It is used to prepare
+ * the code/artifacts for upload to Google Cloud Storage.
+ *
+ * @param config - The App Hosting backend configuration.
+ * @param rootDir - The root directory of the project.
+ * @param targetSubDir - Optional subdirectory to simplify (e.g. if we only want to zip 'dist').
+ * @returns A promise that resolves to the absolute path of the created temporary tarball.
+ */
 export async function createTarArchive(
   config: AppHostingSingle,
   rootDir: string,
