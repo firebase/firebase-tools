@@ -113,6 +113,9 @@ describe("prettyPrintDatabase", () => {
     etag: "etag",
     versionRetentionPeriod: "1h",
     earliestVersionTime: "2020-01-01T00:00:00Z",
+    realtimeUpdatesMode: API.RealtimeUpdatesMode.ENABLED,
+    firestoreDataAccessMode: API.DataAccessMode.ENABLED,
+    mongodbCompatibleDataAccessMode: API.DataAccessMode.DISABLED,
   };
 
   beforeEach(() => {

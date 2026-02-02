@@ -117,6 +117,7 @@ export interface ReleaseTest {
   loginCredential?: LoginCredential;
   testCase?: string;
   aiInstructions?: AIInstruction;
+  displayName?: string;
 }
 
 export interface AIInstruction {

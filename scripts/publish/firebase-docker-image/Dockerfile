@@ -1,7 +1,7 @@
 FROM node:lts-alpine AS app-env
 
 # Install Python and Java and pre-cache emulator dependencies.
-RUN apk add --no-cache python3 py3-pip openjdk21-jre-headless bash && \
+RUN apk add --no-cache openjdk21-jre-headless bash && \
     apk update && \
     apk upgrade
 
@@ -11,7 +11,7 @@ COPY package.json /usr/local/node_packages/
 COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
-RUN npm install
+RUN npm install && npm update
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 
 WORKDIR /

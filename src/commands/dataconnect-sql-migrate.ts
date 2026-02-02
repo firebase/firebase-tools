@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { pickService } from "../dataconnect/load";
+import { pickOneService } from "../dataconnect/load";
 import { FirebaseError } from "../error";
 import { migrateSchema } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
@@ -10,8 +10,15 @@ import { ensureApis } from "../dataconnect/ensureApis";
 import { logLabeledSuccess } from "../utils";
 import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 
-export const command = new Command("dataconnect:sql:migrate [serviceId]")
+type MigrateOptions = Options & { service?: string; location?: string };
+
+export const command = new Command("dataconnect:sql:migrate")
   .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
     "firebasedataconnect.schemas.list",
@@ -20,10 +27,15 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
   ])
   .before(requireAuth)
   .withForce("execute any required database changes without prompting")
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: MigrateOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
     const instanceId = mainSchemaYaml(serviceInfo.dataConnectYaml).datasource.postgresql?.cloudSql
       .instanceId;
     if (!instanceId) {
@@ -46,5 +58,5 @@ export const command = new Command("dataconnect:sql:migrate [serviceId]")
     } else {
       logLabeledSuccess("dataconnect", "Database schema is already up to date!");
     }
-    return { projectId, serviceId, diffs };
+    return { projectId, diffs };
   });

@@ -289,7 +289,7 @@ export async function overrideChosenEnv(
     return {};
   }
 
-  const toOverwrite = await prompt.checkbox({
+  const toOverwrite = await prompt.checkbox<string>({
     message: "Which environment variables would you like to override?",
     choices: names,
   });

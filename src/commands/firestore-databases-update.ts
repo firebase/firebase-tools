@@ -34,33 +34,24 @@ export const command = new Command("firestore:databases:update <database>")
     if (!options.deleteProtection && !options.pointInTimeRecovery) {
       throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
     }
-    if (
-      options.deleteProtection &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
-    ) {
-      throw new FirebaseError(`Invalid value for flag --delete-protection. ${helpCommandText}`);
-    }
+
+    types.validateEnablementOption(options.deleteProtection, "delete-protection", helpCommandText);
     let deleteProtectionState: types.DatabaseDeleteProtectionState | undefined;
-    if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED) {
+    if (options.deleteProtection === types.EnablementOption.ENABLED) {
       deleteProtectionState = types.DatabaseDeleteProtectionState.ENABLED;
-    } else if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.DISABLED) {
+    } else if (options.deleteProtection === types.EnablementOption.DISABLED) {
       deleteProtectionState = types.DatabaseDeleteProtectionState.DISABLED;
     }
 
-    if (
-      options.pointInTimeRecovery &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
-    ) {
-      throw new FirebaseError(
-        `Invalid value for flag --point-in-time-recovery. ${helpCommandText}`,
-      );
-    }
+    types.validateEnablementOption(
+      options.pointInTimeRecovery,
+      "point-in-time-recovery",
+      helpCommandText,
+    );
     let pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement | undefined;
-    if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED) {
+    if (options.pointInTimeRecovery === types.EnablementOption.ENABLED) {
       pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.ENABLED;
-    } else if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.DISABLED) {
+    } else if (options.pointInTimeRecovery === types.EnablementOption.DISABLED) {
       pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.DISABLED;
     }
 

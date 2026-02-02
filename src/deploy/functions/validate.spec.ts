@@ -4,7 +4,6 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../../error";
 import * as fsutils from "../../fsutils";
 import * as validate from "./validate";
-import * as utils from "../../utils";
 import * as projectPath from "../../projectPath";
 import * as secretManager from "../../gcp/secretManager";
 import * as backend from "./backend";
@@ -465,21 +464,17 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
 
-    it("warns for scheduled functions with timeout > 1800s", () => {
-      const logStub = sinon.stub(utils, "logLabeledWarning");
-      try {
-        const ep: backend.Endpoint = {
-          ...ENDPOINT_BASE,
-          scheduleTrigger: {
-            schedule: "every 1 minutes",
-          },
-          timeoutSeconds: 1801,
-        };
-        validate.endpointsAreValid(backend.of(ep));
-        expect(logStub.calledOnce).to.be.true;
-      } finally {
-        logStub.restore();
-      }
+    it("errors for scheduled functions with timeout > 1800s", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+        },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
+      );
     });
   });
 
@@ -678,6 +673,166 @@ describe("validate", () => {
         await validate.secretsAreValid(project, b);
         expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
       }
+    });
+  });
+
+  describe("validateTimeoutConfig", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("should allow valid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3600,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should allow function without timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3601,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1800,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+  });
+
+  describe("checkFiltersIntegrity", () => {
+    const ENDPOINT: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "func",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+      codebase: "default",
+    };
+
+    it("should pass if no filters are provided", () => {
+      expect(() => validate.checkFiltersIntegrity({}, undefined)).to.not.throw();
+      expect(() => validate.checkFiltersIntegrity({}, [])).to.not.throw();
+    });
+
+    it("should pass if filters match endpoints", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should pass if partial id matches", () => {
+      const e = { ...ENDPOINT, id: "group-func" };
+      const b = backend.of(e);
+      const filters = [{ codebase: "default", idChunks: ["group"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should throw if filter does not match any endpoint", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["nonexistent"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
+    });
+
+    it("should throw if codebase does not match", () => {
+      const b = backend.of(ENDPOINT); // codebase: "default"
+      const filters = [{ codebase: "other", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: other:func",
+      );
+    });
+
+    it("should throw if one of multiple filters does not match", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [
+        { codebase: "default", idChunks: ["func"] },
+        { codebase: "default", idChunks: ["nonexistent"] },
+      ];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
     });
   });
 });

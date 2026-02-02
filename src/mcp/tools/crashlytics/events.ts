@@ -1,10 +1,12 @@
-import { z } from "zod";
-import { tool } from "../../tool";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types";
 import { dump, DumpOptions } from "js-yaml";
+import { z } from "zod";
 import { batchGetEvents, listEvents } from "../../../crashlytics/events";
+import { ApplicationIdSchema, EventFilterSchema } from "../../../crashlytics/filters";
 import {
   BatchGetEventsResponse,
   Breadcrumb,
+  Error,
   ErrorType,
   Event,
   Exception,
@@ -12,10 +14,9 @@ import {
   ListEventsResponse,
   Log,
   Thread,
-  Error,
 } from "../../../crashlytics/types";
-import { ApplicationIdSchema, EventFilterSchema } from "../../../crashlytics/filters";
-import { mcpError } from "../../util";
+import { RESOURCE_CONTENT as forceAppIdGuide } from "../../resources/guides/app_id";
+import { tool } from "../../tool";
 
 const DUMP_OPTIONS: DumpOptions = { lineWidth: 200 };
 
@@ -46,6 +47,9 @@ function formatFrames(origFrames: Frame[], maxFrames = 20): string[] {
 // Formats an event into more legible, token-efficient text content sections
 
 function toText(event: Event): Record<string, string> {
+  if (!event) {
+    return {};
+  }
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(event)) {
     if (key === "logs") {
@@ -61,7 +65,7 @@ function toText(event: Event): Record<string, string> {
       const breadcrumbs = (value as Breadcrumb[]) || [];
       const slicedBreadcrumbs = breadcrumbs.length > 10 ? breadcrumbs.slice(-10) : breadcrumbs;
       const breadcrumbLines = slicedBreadcrumbs.map((b) => {
-        const paramString = Object.entries(b.params)
+        const paramString = Object.entries(b?.params || {})
           .map(([k, v]) => `${k}: ${v}`)
           .join(", ");
         const params = paramString ? ` { ${paramString} }` : "";
@@ -135,10 +139,24 @@ export const list_events = tool(
     },
   },
   async ({ appId, filter, pageSize }) => {
-    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
-    if (!filter || (!filter.issueId && !filter.issueVariantId))
-      return mcpError(`Must specify 'filter.issueId' or 'filter.issueVariantId' parameters.`);
-
+    const result: CallToolResult = { content: [] };
+    if (!appId) {
+      result.isError = true;
+      result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
+      result.content.push({ type: "text", text: forceAppIdGuide });
+    }
+    if (!filter || (!filter.issueId && !filter.issueVariantId)) {
+      result.isError = true;
+      result.content.push({
+        type: "text",
+        text: `Must specify 'filter.issueId' or 'filter.issueVariantId' parameters.`,
+      });
+    }
+    if (result.content.length > 0) {
+      // There are errors or guides the agent must read
+      return result;
+    }
+    // Otherwise continue and list events
     const response: ListEventsResponse = await listEvents(appId, filter, pageSize);
     const eventsContent = response.events?.map((e) => toText(e)) || [];
     return {
@@ -171,10 +189,24 @@ export const batch_get_events = tool(
     },
   },
   async ({ appId, names }) => {
-    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
-    if (!names || names.length === 0)
-      return mcpError(`Must provide event resource names in name parameter.`);
-
+    const result: CallToolResult = { content: [] };
+    if (!appId) {
+      result.isError = true;
+      result.content.push({ type: "text", text: "Must specify 'appId' parameter." });
+      result.content.push({ type: "text", text: forceAppIdGuide });
+    }
+    if (!names || names.length === 0) {
+      result.isError = true;
+      result.content.push({
+        type: "text",
+        text: "Must provide event resource names in name parameter.",
+      });
+    }
+    if (result.content.length > 0) {
+      // There are errors or guides the agent must read
+      return result;
+    }
+    // Otherwise continue and get events
     const response: BatchGetEventsResponse = await batchGetEvents(appId, names);
     const eventsContent = response.events?.map((e) => toText(e)) || [];
     return {
