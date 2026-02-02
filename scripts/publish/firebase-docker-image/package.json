@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "firebase-tools": "latest"
+  },
+  "overrides": {
+    "tar": "^7.5.4"
   }
 }
