@@ -174,7 +174,7 @@ mutation RemoveTagFromArticle($articleId: UUID!, $tagId: UUID!) @auth(level: USE
 ## dataconnect.yaml Template
 
 ```yaml
-specVersion: "v1beta"
+specVersion: "v1"
 serviceId: "my-service"
 location: "us-central1"
 schema:

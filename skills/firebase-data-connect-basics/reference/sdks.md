@@ -108,7 +108,7 @@ const auth = getAuth(app);
 await signInWithEmailAndPassword(auth, email, password);
 
 // SDK automatically includes auth token in requests
-const myPosts = await listMyPosts(); // @auth(level: USER) query
+const myReviews = await myReviews(); // @auth(level: USER) query from examples.md
 ```
 
 ---
@@ -330,5 +330,5 @@ generate:
 
 Generate:
 ```bash
-firebase dataconnect:sdk:generate --admin
+firebase dataconnect:sdk:generate
 ```
