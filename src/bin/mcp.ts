@@ -143,14 +143,14 @@ export async function mcp(): Promise<void> {
     process.exit(1);
   }
 
-  const port = parseInt(values.port || "8000", 10);
+  const port = parseInt(values.port, 10);
   if (isNaN(port) || port < 1 || port > 65535) {
     console.error(`Invalid port: ${values.port}. Must be a number between 1 and 65535.`);
     process.exit(1);
   }
 
-  const host = values.host || "127.0.0.1";
-  const stateless = values.stateless || false;
+  const host = values.host;
+  const stateless = values.stateless;
 
   const server = new FirebaseMcpServer({
     activeFeatures,

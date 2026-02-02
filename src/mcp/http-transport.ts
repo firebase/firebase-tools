@@ -145,25 +145,6 @@ export async function createHttpTransport(
     }
   });
 
-  // Handle DELETE for session termination (if supported)
-  app.delete("/mcp", async (req: express.Request, res: express.Response) => {
-    try {
-      await transport.handleRequest(req, res);
-    } catch (error) {
-      console.error("Error handling MCP DELETE request:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
-          id: null,
-        });
-      }
-    }
-  });
-
   // 404 handler for unknown routes
   app.use((_req: express.Request, res: express.Response) => {
     res.status(404).json({
@@ -176,13 +157,13 @@ export async function createHttpTransport(
   return new Promise((resolve, reject) => {
     const server = app.listen(port, host, () => {
       const close = async () => {
-        return new Promise<void>((resolveClose, rejectClose) => {
-          // Close the transport first
-          transport.close().catch(() => {
-            // Ignore transport close errors
-          });
+        // Close the transport first
+        await transport.close().catch(() => {
+          // Ignore transport close errors
+        });
 
-          // Then close the HTTP server
+        // Then close the HTTP server
+        return new Promise<void>((resolveClose, rejectClose) => {
           server.close((err) => {
             if (err) {
               rejectClose(err);
