@@ -42,6 +42,7 @@ function initializeContext(): Context {
         buildDir: "./nextjs/standalone",
         buildConfig: {},
         annotations: {},
+        env: [],
       },
     },
   };

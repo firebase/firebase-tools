@@ -57,12 +57,18 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-	config: context.backendLocalBuilds[backendId].buildConfig,
+        config: {
+          ...context.backendLocalBuilds[backendId]?.buildConfig,
+          env: [
+            ...(context.backendLocalBuilds[backendId]?.buildConfig?.env || []),
+            ...(context.backendLocalBuilds[backendId]?.env || []),
+          ],
+        },
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-	    locallyBuiltSource: true, // generalize
+            locallyBuiltSource: true, // generalize
           },
         },
       },

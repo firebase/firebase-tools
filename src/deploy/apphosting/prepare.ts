@@ -6,6 +6,8 @@ import {
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
+import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
+import { Env, getAppHostingConfiguration, splitEnvVars } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
@@ -39,6 +41,27 @@ export default async function (context: Context, options: Options): Promise<void
 
   const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");
+
+  const buildEnv: Record<string, EnvMap> = {};
+  const runtimeEnv: Record<string, Env[]> = {};
+
+  for (const cfg of configs) {
+    const rootDir = options.projectRoot || process.cwd();
+    const appDir = path.join(rootDir, cfg.rootDir || "");
+    let yamlConfig = AppHostingYamlConfig.empty();
+    try {
+      yamlConfig = await getAppHostingConfiguration(appDir);
+    } catch (e: any) {
+      if (e.message && !e.message.includes("doesn't exist")) {
+        throw e;
+      }
+    }
+
+    const { build, runtime } = splitEnvVars(yamlConfig.env);
+
+    buildEnv[cfg.backendId] = build;
+    runtimeEnv[cfg.backendId] = runtime;
+  }
 
   const foundBackends: AppHostingSingle[] = [];
   const notFoundBackends: AppHostingSingle[] = [];
@@ -162,8 +185,9 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
-        options.projectRoot || "./",
+        path.resolve(options.projectRoot || process.cwd(), cfg.rootDir || ""),
         "nextjs",
+        buildEnv[cfg.backendId] || {},
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(
@@ -175,6 +199,7 @@ export default async function (context: Context, options: Options): Promise<void
         buildDir: outputFiles[0],
         buildConfig,
         annotations,
+        env: runtimeEnv[cfg.backendId] || [],
       };
     } catch (e) {
       throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
