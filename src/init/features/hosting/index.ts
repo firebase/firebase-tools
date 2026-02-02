@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import { join } from "path";
 import { Client } from "../../../apiv2";
 import * as github from "./github";
 import { confirm, input } from "../../../prompt";
@@ -109,7 +110,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   } else {
     // SPA doesn't need a 404 page since everything is index.html
     await config.askWriteProjectFile(
-      `${hostingInfo.public}/404.html`,
+      join(hostingInfo.public ?? "public", "404.html"),
       MISSING_TEMPLATE,
       !!options.force,
     );
@@ -118,7 +119,7 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
   const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
   const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
   await config.askWriteProjectFile(
-    `${hostingInfo.public}/index.html`,
+    join(hostingInfo.public ?? "public", "index.html"),
     INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
     !!options.force,
   );
