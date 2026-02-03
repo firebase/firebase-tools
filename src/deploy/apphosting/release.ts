@@ -38,11 +38,6 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
-  if (localBuildBackends.length > 0) {
-    console.log(localBuildBackends);
-    console.log(context.backendStorageUris);
-    console.log(context.backendLocalBuilds);
-  }
 
   if (backendIds.length === 0) {
     return;

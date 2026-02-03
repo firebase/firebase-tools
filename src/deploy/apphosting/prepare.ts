@@ -7,6 +7,7 @@ import {
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
 import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
+import { WebConfig } from "../../fetchWebSetup";
 import { Env, getAppHostingConfiguration, splitEnvVars } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
@@ -16,6 +17,8 @@ import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
+import * as managementApps from "../../management/apps";
+import { getAutoinitEnvVars } from "../../apphosting/utils";
 
 /**
  * Prepares backend targets for deployment.
@@ -89,7 +92,7 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledWarning(
       "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
@@ -143,9 +146,9 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledWarning(
         "apphosting",
         `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-          "then retry deployment.",
+        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+        "then retry deployment.",
       );
       return;
     }
@@ -183,9 +186,30 @@ export default async function (context: Context, options: Options): Promise<void
       continue;
     }
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
+    const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    if (backend?.appId) {
+      try {
+        const webappConfig = (await managementApps.getAppConfig(
+          backend.appId,
+          managementApps.AppPlatform.WEB,
+        )) as WebConfig;
+        const autoinitVars = getAutoinitEnvVars(webappConfig);
+        buildEnv[cfg.backendId] = {
+          ...buildEnv[cfg.backendId],
+          ...Object.fromEntries(
+            Object.entries(autoinitVars).map(([key, value]) => [key, { value }]),
+          ),
+        };
+      } catch (e) {
+        logLabeledWarning(
+          "apphosting",
+          `Unable to lookup details for backend ${cfg.backendId}. Firebase SDK autoinit will not be available.`,
+        );
+      }
+    }
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
-        path.resolve(options.projectRoot || process.cwd(), cfg.rootDir || ""),
+        path.resolve(path.join(options.projectRoot || process.cwd(), cfg.rootDir || "")),
         "nextjs",
         buildEnv[cfg.backendId] || {},
       );

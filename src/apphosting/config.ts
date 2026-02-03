@@ -159,6 +159,7 @@ const dynamicDispatch = exports as {
   upsertEnv: typeof upsertEnv;
   store: typeof store;
   overrideChosenEnv: typeof overrideChosenEnv;
+  listAppHostingFilesInPath: typeof listAppHostingFilesInPath;
 };
 
 /**
@@ -358,11 +359,16 @@ export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: Env[] } {
   const runtime: Env[] = [];
 
   for (const [key, val] of Object.entries(env)) {
+    const envVal = { ...val };
+    if (envVal.value !== undefined) {
+      envVal.value = String(envVal.value);
+    }
+
     if (val.availability?.includes("BUILD")) {
-      build[key] = val;
+      build[key] = envVal;
     }
     if (val.availability?.includes("RUNTIME") || !val.availability) {
-      runtime.push({ variable: key, ...val });
+      runtime.push({ variable: key, ...envVal });
     }
   }
 
@@ -385,12 +391,11 @@ export async function getAppHostingConfiguration(
   backendDir: string,
   options: GetConfigOptions = {},
 ): Promise<AppHostingYamlConfig> {
-  const appHostingConfigPaths = listAppHostingFilesInPath(backendDir);
+  const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
   const fileNameToPathMap = Object.fromEntries(
     appHostingConfigPaths.map((path) => [basename(path), path]),
   );
-
-  const output = AppHostingYamlConfig.empty();
+  let output = AppHostingYamlConfig.empty();
 
   const baseFilePath = fileNameToPathMap[APPHOSTING_BASE_YAML_FILE];
   const emulatorsFilePath = fileNameToPathMap[APPHOSTING_EMULATORS_YAML_FILE];
@@ -398,7 +403,7 @@ export async function getAppHostingConfiguration(
 
   if (baseFilePath) {
     const baseFile = await AppHostingYamlConfig.loadFromFile(baseFilePath);
-    output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
+    output = baseFile;
   }
 
   if (options.allowEmulator && emulatorsFilePath) {

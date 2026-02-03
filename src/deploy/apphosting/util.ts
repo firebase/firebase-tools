@@ -38,7 +38,6 @@ export async function createTarArchive(
     isGitIgnore: true,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
-  console.log(allFiles);
 
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.

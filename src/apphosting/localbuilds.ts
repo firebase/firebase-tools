@@ -1,3 +1,4 @@
+import * as path from "path";
 import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
@@ -29,7 +30,16 @@ export async function localBuild(
   // because the build adapter uses them to build the app.
   // We'll restore the original process.env after the build is done.
   const originalEnv = process.env;
-  process.env = { ...originalEnv, ...toProcessEnv(env) };
+  const projectNodeModules = path.join(projectRoot, "node_modules");
+  const newNodePath = originalEnv.NODE_PATH
+    ? `${originalEnv.NODE_PATH}${path.delimiter}${projectNodeModules}`
+    : projectNodeModules;
+
+  process.env = {
+    ...originalEnv,
+    ...toProcessEnv(env),
+    NODE_PATH: newNodePath,
+  };
 
   let apphostingBuildOutput;
   try {

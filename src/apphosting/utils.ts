@@ -1,4 +1,5 @@
 import { FirebaseError } from "../error";
+import { WebConfig } from "../fetchWebSetup";
 import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import * as prompt from "../prompt";
 
@@ -52,4 +53,18 @@ export async function promptForAppHostingYaml(
   });
 
   return fileToExportPath;
+}
+
+/**
+ * Returns the environment variables that are needed for the Firebase JS SDK auto-init.
+ */
+export function getAutoinitEnvVars(webappConfig: WebConfig): Record<string, string> {
+  return {
+    FIREBASE_WEBAPP_CONFIG: JSON.stringify(webappConfig),
+    FIREBASE_CONFIG: JSON.stringify({
+      databaseURL: webappConfig.databaseURL,
+      storageBucket: webappConfig.storageBucket,
+      projectId: webappConfig.projectId,
+    }),
+  };
 }
