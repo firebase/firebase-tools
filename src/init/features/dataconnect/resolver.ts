@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { join, relative } from "path";
 import * as yaml from "yaml";
 
-import { input, select } from "../../../prompt";
+import { confirm, input, select } from "../../../prompt";
 import { Setup } from "../..";
 import { logBullet, newUniqueId } from "../../../utils";
 import { Config } from "../../../config";
@@ -23,6 +23,7 @@ export interface ResolverRequiredInfo {
   id: string;
   uri: string;
   serviceInfo: ServiceInfo;
+  shouldInitFunctions: boolean;
 }
 
 export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
@@ -30,6 +31,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
     id: "",
     uri: "",
     serviceInfo: {} as ServiceInfo,
+    shouldInitFunctions: false,
   };
 
   const serviceInfos = await loadAll(setup.projectId || "", config);
@@ -70,10 +72,17 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       " later.",
   );
 
+  resolverInfo.shouldInitFunctions = await confirm({
+    message:
+      "Would you like to proceed with initializing a functions codebase with sample custom resolvers code?",
+    default: true,
+  });
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnectResolver = resolverInfo;
 
-  await functions.askQuestions(setup, config, options);
+  if (resolverInfo.shouldInitFunctions) {
+    await functions.askQuestions(setup, config, options);
+  }
 }
 
 export async function actuate(setup: Setup, config: Config) {
@@ -102,7 +111,9 @@ export async function actuate(setup: Setup, config: Config) {
       Date.now() - startTime,
     );
   }
-  await functions.actuate(setup, config);
+  if (resolverInfo.shouldInitFunctions) {
+    await functions.actuate(setup, config);
+  }
 }
 
 function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {

@@ -35,6 +35,7 @@ describe("addSchemaToDataConnectYaml", () => {
       id: "test_resolver",
       uri: "www.test.com",
       serviceInfo: {} as ServiceInfo,
+      shouldInitFunctions: false,
     };
   });
 
@@ -106,6 +107,7 @@ describe("askQuestions", () => {
   let loadAllStub: sinon.SinonStub;
   let selectStub: sinon.SinonStub;
   let inputStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
   let functionsAskQuestionsStub: sinon.SinonStub;
 
   beforeEach(() => {
@@ -130,6 +132,7 @@ describe("askQuestions", () => {
     loadAllStub = sinon.stub(load, "loadAll");
     selectStub = sinon.stub(prompt, "select");
     inputStub = sinon.stub(prompt, "input");
+    confirmStub = sinon.stub(prompt, "confirm");
     functionsAskQuestionsStub = sinon.stub(functions, "askQuestions").resolves();
   });
 
@@ -162,6 +165,7 @@ describe("askQuestions", () => {
       },
     ]);
     inputStub.onFirstCall().resolves("test_resolver");
+    confirmStub.resolves(true);
 
     await askQuestions(setup, config, options);
 
@@ -191,6 +195,7 @@ describe("askQuestions", () => {
       dataConnectYaml: { location: "us-central1", serviceId: "service-id2" },
     });
     inputStub.onFirstCall().resolves("test_resolver");
+    confirmStub.resolves(true);
 
     await askQuestions(setup, config, options);
 
@@ -216,6 +221,7 @@ describe("askQuestions", () => {
       },
     ]);
     inputStub.onFirstCall().resolves("test_resolver");
+    confirmStub.resolves(true);
 
     await askQuestions(setup, config, options);
 
@@ -229,6 +235,32 @@ describe("askQuestions", () => {
       "projects/project-id/locations/us-central1/services/service-id",
     );
     expect(functionsAskQuestionsStub.called).to.be.true;
+  });
+
+  it("skip functions init if not confirmed", async () => {
+    setup.projectNumber = "123456789";
+    experimentsStub.returns(true);
+    loadAllStub.resolves([
+      {
+        serviceName: "projects/project-id/locations/us-central1/services/service-id",
+        dataConnectYaml: { location: "us-central1", serviceId: "service-id" },
+      },
+    ]);
+    inputStub.onFirstCall().resolves("test_resolver");
+    confirmStub.resolves(false);
+
+    await askQuestions(setup, config, options);
+
+    expect(selectStub.called).to.be.false;
+    expect(inputStub.calledOnce).to.be.true;
+    expect(setup.featureInfo?.dataconnectResolver?.id).to.equal("test_resolver");
+    expect(setup.featureInfo?.dataconnectResolver?.uri).to.equal(
+      "https://test_resolver-123456789.us-central1.run.app/graphql",
+    );
+    expect(setup.featureInfo?.dataconnectResolver?.serviceInfo.serviceName).to.equal(
+      "projects/project-id/locations/us-central1/services/service-id",
+    );
+    expect(functionsAskQuestionsStub.called).to.be.false;
   });
 });
 
@@ -268,6 +300,7 @@ describe("actuate", () => {
             },
             connectorInfo: [],
           },
+          shouldInitFunctions: false,
         },
       },
       instructions: [],
@@ -302,6 +335,33 @@ describe("actuate", () => {
 
   it("should write dataconnect.yaml and set up empty secondary schema file", async () => {
     experimentsStub.returns(true);
+
+    await actuate(setup, config);
+
+    expect(writeProjectFileStub.calledTwice).to.be.true;
+    const writtenYamlPath = writeProjectFileStub.getCall(0).args[0];
+    const writtenYamlContents = writeProjectFileStub.getCall(0).args[1];
+    const parsedYaml = yaml.load(writtenYamlContents);
+    expect(writtenYamlPath).to.equal("../service/dataconnect.yaml");
+    expect(parsedYaml.schemas).to.have.lengthOf(2);
+    const writtenSchemaPath = writeProjectFileStub.getCall(1).args[0];
+    const writtenSchemaContents = writeProjectFileStub.getCall(1).args[1];
+    expect(writtenSchemaPath).to.equal("../service/schema_test_resolver/schema.gql");
+    expect(writtenSchemaContents).to.equal(`# Example Hello World custom resolver schema.
+
+# Custom resolver fields can be defined on root Query and Mutation types.
+type Query {
+  # This field will be backed by your Cloud Run function.
+  # Your "hello" function will take in a string argument "name" and return a string.
+  hello(name: String): String
+}
+`); // From SCHEMA_TEMPLATE
+    expect(functionsActuateStub.called).to.be.false;
+  });
+
+  it("should actuate functions", async () => {
+    experimentsStub.returns(true);
+    setup.featureInfo!.dataconnectResolver!.shouldInitFunctions = true;
 
     await actuate(setup, config);
 
