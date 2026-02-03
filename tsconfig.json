@@ -7,7 +7,7 @@
     "outDir": "lib",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
-    "target": "es2017",
+    "target": "es2020",
     "resolveJsonModule": true,
     "sourceMap": true,
     "skipLibCheck": true,
@@ -21,6 +21,10 @@
     "dom.iterable",
     "ES2020"
   ],
-  "include": ["src/**/*"],
-  "exclude": ["src/dynamicImport.js"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/dynamicImport.js"
+  ]
 }

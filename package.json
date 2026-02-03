@@ -127,6 +127,7 @@
     "cross-spawn": "^7.0.5",
     "csv-parse": "^5.0.4",
     "deep-equal-in-any-order": "^2.0.6",
+    "es2020": "^1.1.9",
     "exegesis": "^4.2.0",
     "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
