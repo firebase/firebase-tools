@@ -41,7 +41,7 @@ This will use the default database. To use a different database, specify the dat
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json",
-    "enterprise": true,
+    "edition": "enterprise",
     "database": "my-database-id",
     "location": "us-central1"
   }
