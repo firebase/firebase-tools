@@ -79,12 +79,6 @@ Enable other providers in the Firebase Console.
 **Web**
 See [references/client_sdk_web.md](references/client_sdk_web.md).
 
-**Android**
-See [references/client_sdk_android.md](references/client_sdk_android.md).
-
-**iOS**
-See [references/client_sdk_ios.md](references/client_sdk_ios.md).
-
 ### 3. Security Rules
 
 Secure your data using `request.auth` in Firestore/Storage rules.
