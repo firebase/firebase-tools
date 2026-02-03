@@ -12,11 +12,19 @@ import { getProjectNumber } from "../getProjectNumber";
 import { Options } from "../options";
 import { archiveFile } from "../archiveFile";
 import { execSync } from "node:child_process";
+import { Client } from "../apiv2";
 
 interface CommandOptions extends Options {
   app?: string;
   bucketLocation?: string;
   appVersion?: string;
+  telemetryServerUrl?: string;
+}
+
+interface SourceMap {
+  version: string;
+  obfuscatedFilePath: string;
+  fileUri: string;
 }
 
 export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>")
@@ -30,8 +38,10 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
     "--app-version <appVersion>",
     "the version of your Firebase app (defaults to Git commit hash, if available)",
   )
+  .option("--telemetry-server-url <telemetryServerUrl>", "the url of the telemetry API")
   .action(async (mappingFiles: string, options: CommandOptions) => {
     checkGoogleAppID(options);
+    checkTelemetryServerUrl(options);
 
     // App version
     const appVersion = getAppVersion(options);
@@ -55,19 +65,29 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
       );
     }
     let successCount = 0;
-    let failureCount = 0;
+    const failedFiles: string[] = [];
     if (fstat.isFile()) {
-      const success = await uploadMap(mappingFiles, bucketName, appVersion, options);
-      success ? successCount++ : failureCount++;
+      const success = await uploadMap(projectId, mappingFiles, bucketName, appVersion, options);
+      if (success) {
+        successCount++;
+      } else {
+        failedFiles.push(mappingFiles);
+      }
     } else if (fstat.isDirectory()) {
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
       const files = (
         await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
       ).filter((f) => f.name.endsWith(".js.map"));
       (
-        await Promise.all(files.map((f) => uploadMap(f.name, bucketName, appVersion, options)))
-      ).forEach((success) => {
-        success ? successCount++ : failureCount++;
+        await Promise.all(
+          files.map((f) => uploadMap(projectId, f.name, bucketName, appVersion, options)),
+        )
+      ).forEach((success, i) => {
+        if (success) {
+          successCount++;
+        } else {
+          failedFiles.push(files[i].name);
+        }
       });
     } else {
       throw new FirebaseError(
@@ -76,10 +96,14 @@ export const command = new Command("crashlytics:sourcemap:upload <mappingFiles>"
     }
     logLabeledBullet(
       "crashlytics",
-      `Uploaded ${successCount} (${failureCount} failed) mapping files to ${bucketName}`,
+      `Uploaded ${successCount} (${failedFiles.length} failed) mapping files to ${bucketName}`,
     );
-
-    // TODO: notify Firebase Telemetry service of the new mapping file
+    if (failedFiles.length > 0) {
+      logLabeledBullet(
+        "crashlytics",
+        `Could not upload the following files:\n${failedFiles.join("\n")}`,
+      );
+    }
   });
 
 function checkGoogleAppID(options: CommandOptions): void {
@@ -87,6 +111,12 @@ function checkGoogleAppID(options: CommandOptions): void {
     throw new FirebaseError(
       "set --app <appId> to a valid Firebase application id, e.g. 1:00000000:android:0000000",
     );
+  }
+}
+
+function checkTelemetryServerUrl(options: CommandOptions): void {
+  if (!options.telemetryServerUrl) {
+    throw new FirebaseError("set --telemetry-server-url to a valid Firebase Telemetry server URL");
   }
 }
 
@@ -148,6 +178,7 @@ async function upsertBucket(
 }
 
 async function uploadMap(
+  projectId: string,
   mappingFile: string,
   bucketName: string,
   appVersion: string,
@@ -165,7 +196,20 @@ async function uploadMap(
       },
       bucketName,
     );
-    logger.debug(`Uploaded mapping file ${mappingFile} to gs://${bucket}/${object}`);
+    const fileUri = `gs://${bucket}/${object}`;
+    logger.debug(`Uploaded mapping file ${mappingFile} to ${fileUri}`);
+
+    await registerSourceMap(
+      projectId,
+      options.app!,
+      {
+        version: appVersion,
+        obfuscatedFilePath: normalizeFileName(mappingFile),
+        fileUri,
+      },
+      options.telemetryServerUrl!,
+    );
+
     return true;
   } catch (e) {
     logLabeledWarning("crashlytics", `Failed to upload mapping file ${mappingFile}:\n${e}`);
@@ -175,6 +219,32 @@ async function uploadMap(
 
 function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
+}
+
+async function registerSourceMap(
+  projectId: string,
+  appId: string,
+  sourceMap: SourceMap,
+  telemetryServerUrl: string,
+): Promise<void> {
+  const client = new Client({
+    urlPrefix: telemetryServerUrl,
+    auth: true,
+    apiVersion: "v1",
+  });
+
+  try {
+    await client.post(`/projects/${projectId}/apps/${appId}/locations/global/sourceMaps`, {
+      sourceMap,
+    });
+    logger.debug(
+      `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
+    );
+  } catch (e) {
+    throw new FirebaseError(
+      `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e}`,
+    );
+  }
 }
 
 function getGitCommit(): string | undefined {
