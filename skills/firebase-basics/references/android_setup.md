@@ -43,11 +43,12 @@ plugins {
 
 dependencies {
   // Import the BoM for the Firebase platform
+  // Use https://firebase.google.com/support/release-notes/android to look up the latest version
   implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
 
   // Add the dependency for the Firebase products you want to use
   // When using the BoM, don't specify versions in Firebase dependencies
-  implementation("com.google.firebase:firebase-analytics")
+  implementation("com.google.firebase:firebase-firestore")
   implementation("com.google.firebase:firebase-auth")
 }
 ```

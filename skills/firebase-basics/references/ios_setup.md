@@ -29,7 +29,7 @@ Move this file to the root of your Xcode project and add it to all targets.
 Use Swift Package Manager (SPM):
 1.  Xcode > File > Add Packages.
 2.  Enter URL: `https://github.com/firebase/firebase-ios-sdk`.
-3.  Choose the libraries you need (e.g., `FirebaseAnalytics`, `FirebaseAuth`).
+3.  Choose the libraries you need (e.g., `FirebaseFirestore`, `FirebaseAuth`).
 
 ## 5. Initialize Firebase
 In your `AppDelegate` or `App` struct:

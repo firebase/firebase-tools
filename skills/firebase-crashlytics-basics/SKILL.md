@@ -18,7 +18,6 @@ To add Firebase Crashlytics to your application, follow the platform-specific gu
 
 Improve your crash reporting by adding advanced instrumentation:
 
-*   **Codebase Context**: [codebase_documentation.md](references/codebase_documentation.md)
 *   **Analytics**: [instrument_analytics.md](references/instrument_analytics.md)
 *   **Logging**: [instrument_logging.md](references/instrument_logging.md)
 
