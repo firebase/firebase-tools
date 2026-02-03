@@ -8,6 +8,7 @@ import * as getProjectNumber from "../getProjectNumber";
 import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
+import { Client } from "../apiv2";
 
 const expect = chai.expect;
 
@@ -16,6 +17,7 @@ const PROJECT_NUMBER = "12345";
 const BUCKET_NAME = "test-bucket";
 const DIR_PATH = "src/test/fixtures/mapping-files";
 const FILE_PATH = "src/test/fixtures/mapping-files/mock_mapping.js.map";
+const TELEMETRY_SERVER_URL = "https://telemetry-api.com";
 
 describe("crashlytics:sourcemap:upload", () => {
   let sandbox: sinon.SinonSandbox;
@@ -24,6 +26,9 @@ describe("crashlytics:sourcemap:upload", () => {
   let getProjectNumberMock: sinon.SinonStubbedInstance<typeof getProjectNumber>;
   let execSyncStub: sinon.SinonStub;
   let commandExistsSyncStub: sinon.SinonStub;
+  let clientPostStub: sinon.SinonStub;
+  let logLabeledWarningStub: sinon.SinonStub;
+  let logLabeledBulletStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
@@ -41,9 +46,16 @@ describe("crashlytics:sourcemap:upload", () => {
     });
     execSyncStub = sandbox.stub(childProcess, "execSync");
     commandExistsSyncStub = sandbox.stub(utils, "commandExistsSync");
+    logLabeledWarningStub = sandbox.stub(utils, "logLabeledWarning");
+    logLabeledBulletStub = sandbox.stub(utils, "logLabeledBullet");
     // Default to git working
     commandExistsSyncStub.withArgs("git").returns(true);
     execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
+    clientPostStub = sandbox.stub(Client.prototype, "post").resolves({
+      status: 200,
+      response: {} as any,
+      body: {},
+    });
   });
 
   afterEach(() => {
@@ -57,8 +69,18 @@ describe("crashlytics:sourcemap:upload", () => {
     );
   });
 
+  it("should throw an error if no telemetry server URL is provided", async () => {
+    await expect(command.runner()("filename", { app: "test-app" })).to.be.rejectedWith(
+      FirebaseError,
+      "set --telemetry-server-url to a valid Firebase Telemetry server URL",
+    );
+  });
+
   it("should create the default cloud storage bucket", async () => {
-    await command.runner()(FILE_PATH, { app: "test-app" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.upsertBucket).to.be.calledOnce;
     const args = gcsMock.upsertBucket.firstCall.args;
     expect(args[0].req.baseName).to.equal("firebasecrashlytics-sourcemaps-12345-us-central1");
@@ -69,6 +91,7 @@ describe("crashlytics:sourcemap:upload", () => {
     const options = {
       app: "test-app",
       bucketLocation: "a-different-LoCaTiOn",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
     };
     await command.runner()(FILE_PATH, options);
     expect(gcsMock.upsertBucket).to.be.calledOnce;
@@ -80,14 +103,19 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should throw an error if the mapping file path is invalid", async () => {
-    expect(command.runner()("invalid/path", { app: "test-app" })).to.be.rejectedWith(
-      FirebaseError,
-      "provide a valid file path or directory",
-    );
+    expect(
+      command.runner()("invalid/path", {
+        app: "test-app",
+        telemetryServerUrl: TELEMETRY_SERVER_URL,
+      }),
+    ).to.be.rejectedWith(FirebaseError, "provide a valid file path or directory");
   });
 
   it("should upload a single mapping file", async () => {
-    await command.runner()(FILE_PATH, { app: "test-app" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.uploadObject).to.be.calledOnce;
     expect(gcsMock.uploadObject).to.be.calledWith(sinon.match.any, BUCKET_NAME);
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
@@ -96,7 +124,7 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should find and upload mapping files in a directory", async () => {
-    await command.runner()(DIR_PATH, { app: "test-app" });
+    await command.runner()(DIR_PATH, { app: "test-app", telemetryServerUrl: TELEMETRY_SERVER_URL });
     expect(gcsMock.uploadObject).to.be.calledTwice;
     const uploadedFiles = gcsMock.uploadObject
       .getCalls()
@@ -111,14 +139,21 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should use the provided app version", async () => {
-    await command.runner()(FILE_PATH, { app: "test-app", appVersion: "1.0.0" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      appVersion: "1.0.0",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
       "test-app-1.0.0-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
   });
 
   it("should fall back to the git commit for app version", async () => {
-    await command.runner()(FILE_PATH, { app: "test-app" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
       /test-app-a{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
     );
@@ -130,7 +165,10 @@ describe("crashlytics:sourcemap:upload", () => {
     commandExistsSyncStub.withArgs("npm").returns(true);
     execSyncStub.withArgs("npm pkg get version").returns(Buffer.from("1.2.3"));
 
-    await command.runner()(FILE_PATH, { app: "test-app" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
       "test-app-1.2.3-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
@@ -140,9 +178,73 @@ describe("crashlytics:sourcemap:upload", () => {
     commandExistsSyncStub.withArgs("git").returns(false);
     commandExistsSyncStub.withArgs("npm").returns(false);
 
-    await command.runner()(FILE_PATH, { app: "test-app" });
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
     expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
       "test-app-unset-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
+    );
+  });
+
+  it("should register the source map after upload", async () => {
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
+    expect(clientPostStub).to.be.calledOnce;
+    const args = clientPostStub.firstCall.args;
+    expect(args[0]).to.match(
+      /\/projects\/test-project\/apps\/test-app\/locations\/global\/sourceMaps/,
+    );
+    expect(args[1].sourceMap).to.deep.equal({
+      version: "a".repeat(40),
+      obfuscatedFilePath: "src-test-fixtures-mapping-files-mock_mapping.js.map",
+      fileUri: `gs://${BUCKET_NAME}/test-object`,
+    });
+  });
+
+  it("should warn if registration fails", async () => {
+    clientPostStub.rejects(new Error("Registration failed"));
+    await command.runner()(FILE_PATH, {
+      app: "test-app",
+      telemetryServerUrl: TELEMETRY_SERVER_URL,
+    });
+    expect(clientPostStub).to.be.calledOnce;
+    expect(logLabeledWarningStub).to.be.calledOnceWith(
+      "crashlytics",
+      sinon.match(/Failed to upload mapping file/),
+    );
+  });
+
+  it("should use the provided telemetry server URL", async () => {
+    const customServerUrl = "https://custom-server.com";
+    clientPostStub.restore();
+    clientPostStub = sandbox.stub(Client.prototype, "post").callsFake(function (this: any) {
+      expect(this["opts"].urlPrefix).to.equal(customServerUrl);
+      return Promise.resolve({ status: 200, response: {} as any, body: {} });
+    });
+
+    await command.runner()(FILE_PATH, { app: "test-app", telemetryServerUrl: customServerUrl });
+    expect(clientPostStub).to.be.calledOnce;
+  });
+
+  it("should log failed files", async () => {
+    clientPostStub.rejects(new Error("Registration failed"));
+    await command.runner()(DIR_PATH, { app: "test-app", telemetryServerUrl: TELEMETRY_SERVER_URL });
+
+    // Should verify that logLabeledBullet is called with the specific failed files
+    expect(logLabeledBulletStub).to.be.calledWith(
+      "crashlytics",
+      sinon.match(/Could not upload the following files:/),
+    );
+    expect(logLabeledBulletStub).to.be.calledWith(
+      "crashlytics",
+      sinon.match(/subdir_mock_mapping\.js\.map/),
+    );
+    expect(logLabeledBulletStub).to.be.calledWith(
+      "crashlytics",
+      sinon.match(/mock_mapping\.js\.map/),
     );
   });
 });
