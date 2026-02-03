@@ -1,0 +1,1 @@
+- Fixes an issue where Python was missing from the firebase-tools Docker image (#9855).
