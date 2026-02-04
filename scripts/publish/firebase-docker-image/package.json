@@ -1,5 +1,10 @@
 {
   "dependencies": {
     "firebase-tools": "latest"
+  },
+  "overrides": {
+    "tar": "^7.5.4",
+    "diff": "^4.0.4",
+    "hono": "^4.11.7"
   }
 }

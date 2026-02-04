@@ -320,6 +320,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
+  validate.checkFiltersIntegrity(wantBackends, context.filters);
   applyBackendHashToBackends(wantBackends, context);
 }
 
