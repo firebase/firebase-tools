@@ -37,8 +37,6 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
-
   if (backendIds.length === 0) {
     return;
   }

@@ -30,15 +30,14 @@ export async function createTarArchive(
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   // const ignore = config.ignore || [".git"];
   const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
-  //const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  //ignore.push(...gitIgnorePatterns);
+  // const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
+  // ignore.push(...gitIgnorePatterns);
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
     ignore: ignore,
     isGitIgnore: true,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
-
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
@@ -50,9 +49,7 @@ export async function createTarArchive(
     throw err;
   }
   if (!allFiles.length) {
-    throw new FirebaseError(
-      `Cannot create a tar archive with 0 files from directory "${rootDir}"`,
-    );
+    throw new FirebaseError(`Cannot create a tar archive with 0 files from directory "${rootDir}"`);
   }
 
   await tar.create(
@@ -64,7 +61,7 @@ export async function createTarArchive(
     },
     allFiles,
   );
-  return tmpFile
+  return tmpFile;
 }
 
 /**

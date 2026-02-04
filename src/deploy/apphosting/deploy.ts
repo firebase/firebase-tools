@@ -106,7 +106,7 @@ export default async function (context: Context, options: Options): Promise<void
           stream: fs.createReadStream(zippedSourcePath),
         },
         bucketName,
-	gcs.ContentType.TAR
+        gcs.ContentType.TAR,
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =

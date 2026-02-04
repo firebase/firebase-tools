@@ -61,7 +61,9 @@ describe("apphosting", () => {
       .throws("Unexpected getProjectNumber call");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
-    createTarArchiveStub = sinon.stub(util, "createTarArchive").throws("Unexpected createTarArchive call");
+    createTarArchiveStub = sinon
+      .stub(util, "createTarArchive")
+      .throws("Unexpected createTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");

@@ -52,13 +52,14 @@ export async function localBuild(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
   );
 
-  const discoveredEnv: Env[] | undefined = apphostingBuildOutput.runConfig.environmentVariables?.map(
-    ({ variable, value, availability }) => ({
-      variable,
-      value,
-      availability,
-    }),
-  );
+  const discoveredEnv: Env[] | undefined =
+    apphostingBuildOutput.runConfig.environmentVariables?.map(
+      ({ variable, value, availability }) => ({
+        variable,
+        value,
+        availability,
+      }),
+    );
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
