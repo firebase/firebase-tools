@@ -13,10 +13,15 @@ import { getToolMocks } from "./tool-mocks.js";
 // Path to the built MCP Tools implementation in the Firebase CLI, relative to
 // the repo's root
 const MCP_TOOLS_INDEX_PATH = "lib/mcp/tools/index.js";
-const LOG_FILE_PATH = path.join(os.homedir(), "Desktop", "agent_evals_mock_logs.txt");
+// NOTE: This will be in the output directory "home", not your real home
+// directory, because the HOME environment variable is changed for the evals
+const LOG_FILE_PATH = path.join(os.homedir(), "agent_evals_mock_logs.txt");
 // Enable this to turn on file logging. This can be helpful for debugging
 // because console logs get swallowed
 const ENABLE_FILE_LOGGING = false;
+
+const MCP_KEY = "mcp";
+const META_KEY = "_meta";
 
 const mocks = getToolMocks();
 
@@ -58,7 +63,7 @@ const originalRequire = Module.prototype.require;
           }
           logToFile(`Applying mock for tool: ${toolName}`);
           return {
-            ...tool,
+            ...removeToolRequirements(tool),
             fn: async () => mocks[toolName],
           };
         });
@@ -68,6 +73,24 @@ const originalRequire = Module.prototype.require;
     },
   });
 };
+
+function removeToolRequirements(tool: any) {
+  if (!tool[MCP_KEY]?.[META_KEY]) {
+    return tool;
+  }
+  return {
+    ...tool,
+    [MCP_KEY]: {
+      ...tool[MCP_KEY],
+      [META_KEY]: {
+        ...tool[MCP_KEY][META_KEY],
+        optionalProjectDir: false,
+        requiresAuth: false,
+        requiresProject: false,
+      },
+    },
+  };
+}
 
 function logToFile(message: string) {
   if (!ENABLE_FILE_LOGGING) {
