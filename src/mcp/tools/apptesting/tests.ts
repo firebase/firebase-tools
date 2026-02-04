@@ -113,9 +113,10 @@ export const check_status = tool(
       devices = await testEnvironmentCatalog(projectId || "", "ANDROID");
     }
 
-    return toContent({
-      devices,
-      releaseTest,
-    });
+    const result: Record<string, any> = {};
+    if (devices) result.devices = devices;
+    if (releaseTest) result.releaseTest = releaseTest;
+
+    return toContent(result);
   },
 );
