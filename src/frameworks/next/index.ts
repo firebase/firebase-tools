@@ -72,6 +72,7 @@ import type {
   MiddlewareManifest,
   ActionManifest,
   CustomBuildOptions,
+  FunctionsConfigManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -82,6 +83,7 @@ import {
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -454,6 +456,7 @@ export async function ɵcodegenPublicDirectory(
     pagesManifest,
     appPathRoutesManifest,
     serverReferenceManifest,
+    functionsConfigManifest,
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
@@ -465,11 +468,17 @@ export async function ɵcodegenPublicDirectory(
     readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
       () => ({ node: {}, edge: {}, encryptionKey: "" }),
     ),
+    readJSON<FunctionsConfigManifest>(
+      join(sourceDir, distDir, "server", FUNCTIONS_CONFIG_MANIFEST),
+    ).catch(() => ({ version: 0, functions: {} })),
   ]);
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
-  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+    middlewareManifest,
+    functionsConfigManifest,
+  );
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 
