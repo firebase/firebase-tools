@@ -79,9 +79,11 @@ import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
 describe("Next.js utils", () => {
   describe("whichNextConfigFile", () => {
     let sandbox: sinon.SinonSandbox;
+    let pathExistsStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
+      pathExistsStub = sandbox.stub(fsExtra, "pathExists");
     });
 
     afterEach(() => {
@@ -89,7 +91,6 @@ describe("Next.js utils", () => {
     });
 
     it("should return next.config.js if it exists", async () => {
-      const pathExistsStub = sandbox.stub(fsExtra, "pathExists");
       pathExistsStub.withArgs("next.config.js").resolves(true);
       pathExistsStub.resolves(false);
 
@@ -97,7 +98,6 @@ describe("Next.js utils", () => {
     });
 
     it("should return next.config.mjs if it exists", async () => {
-      const pathExistsStub = sandbox.stub(fsExtra, "pathExists");
       pathExistsStub.withArgs("next.config.mjs").resolves(true);
       pathExistsStub.resolves(false);
 
@@ -105,7 +105,6 @@ describe("Next.js utils", () => {
     });
 
     it("should return next.config.ts if it exists", async () => {
-      const pathExistsStub = sandbox.stub(fsExtra, "pathExists");
       pathExistsStub.withArgs("next.config.ts").resolves(true);
       pathExistsStub.resolves(false);
 
@@ -113,7 +112,6 @@ describe("Next.js utils", () => {
     });
 
     it("should return next.config.mts if it exists", async () => {
-      const pathExistsStub = sandbox.stub(fsExtra, "pathExists");
       pathExistsStub.withArgs("next.config.mts").resolves(true);
       pathExistsStub.resolves(false);
 
@@ -121,13 +119,12 @@ describe("Next.js utils", () => {
     });
 
     it("should return null if no config file exists", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(false);
+      pathExistsStub.resolves(false);
 
       expect(await whichNextConfigFile("")).to.be.null;
     });
 
     it("should prioritize next.config.js over others", async () => {
-      const pathExistsStub = sandbox.stub(fsExtra, "pathExists");
       pathExistsStub.withArgs("next.config.js").resolves(true);
       pathExistsStub.withArgs("next.config.mjs").resolves(true);
       pathExistsStub.resolves(false);
