@@ -13,6 +13,7 @@ import {
   iamOrigin,
   secretManagerOrigin,
 } from "../api";
+import { logger } from "../logger";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
@@ -273,6 +274,32 @@ export async function createGitRepoLink(
 }
 
 /**
+ * Ensures that the App Hosting service agent has the necessary permissions to
+ * manage resources in the project.
+ */
+export async function ensureAppHostingServiceAgentRoles(
+  projectId: string,
+  projectNumber: string,
+): Promise<void> {
+  const p4saEmail = apphosting.serviceAgentEmail(projectNumber);
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      p4saEmail,
+      ["roles/storage.objectViewer"],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    logger.debug(`Failed to grant storage.objectViewer to ${p4saEmail}: ${err}`);
+    // We don't want to fail the entire prepare step if this fails, as it might
+    // be due to insufficient permissions to grant roles.
+    logWarning(
+      `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
+    );
+  }
+}
+
+/**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
  * check fails, this returns an error. Otherwise, it attempts to provision the
@@ -356,12 +383,12 @@ export async function createBackend(
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
-    runtime: {value: "nodejs22"},
+    runtime: { value: "nodejs22" },
     codebase: repository
       ? {
-          repository: `${repository.name}`,
-          rootDirectory: rootDir,
-        }
+        repository: `${repository.name}`,
+        rootDirectory: rootDir,
+      }
       : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
@@ -541,7 +568,7 @@ export async function chooseBackends(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -599,7 +626,7 @@ export async function getBackendForAmbiguousLocation(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -644,7 +671,7 @@ export async function getBackend(
     const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
       `You have multiple backends with the same ${backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
   if (backends.length === 1) {
@@ -653,7 +680,7 @@ export async function getBackend(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   throw new FirebaseError(`No backend named ${backendId} found.`);

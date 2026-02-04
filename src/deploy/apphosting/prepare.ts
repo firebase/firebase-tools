@@ -2,6 +2,7 @@ import * as path from "path";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
+  ensureAppHostingServiceAgentRoles,
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
@@ -12,6 +13,7 @@ import { Env, getAppHostingConfiguration, splitEnvVars } from "../../apphosting/
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
+import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
@@ -36,6 +38,8 @@ export default async function (context: Context, options: Options): Promise<void
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
+  const projectNumber = await getProjectNumber(options);
+  await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
 
   context.backendConfigs = {};
   context.backendLocations = {};
