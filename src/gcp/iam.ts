@@ -187,7 +187,7 @@ export async function testResourceIamPermissions(
   }
   const headers: Record<string, string> = {};
   if (quotaUser) {
-    headers["x-goog-quota-user"] = quotaUser;
+    headers["x-goog-user-project"] = quotaUser;
   }
   const response = await localClient.post<{ permissions: string[] }, { permissions: string[] }>(
     `/${resourceName}:testIamPermissions`,
@@ -222,7 +222,7 @@ export async function testIamPermissions(
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`,
+    `${projectId}`,
   );
 }
 
