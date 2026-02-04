@@ -2050,12 +2050,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       "/",
     );
 
-    // For Dart, include the function name in the path so the server can route
+    // For Dart, add a header with the function name for routing
     // Python's functions-framework uses FUNCTION_TARGET env var, but Dart loads all functions
+    // in a single shared process and routes based on the path or this header
     const isDart = record.backend.runtime?.startsWith("dart");
-    if (isDart && path === "/") {
-      // Include function name in path for Dart routing
-      path = `/${trigger.entryPoint}`;
+    if (isDart) {
+      req.headers["x-firebase-function"] = trigger.entryPoint;
     }
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
