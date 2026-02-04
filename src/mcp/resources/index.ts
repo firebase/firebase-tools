@@ -13,6 +13,7 @@ import { ServerResource, ServerResourceTemplate } from "../resource";
 import { trackGA4 } from "../../track";
 import { crashlytics_issues } from "./guides/crashlytics_issues";
 import { crashlytics_reports } from "./guides/crashlytics_reports";
+import { migrate_runtime_config } from "./guides/migrate_runtime_config";
 
 export const resources = [
   app_id,
@@ -25,6 +26,7 @@ export const resources = [
   init_firestore_rules,
   init_auth,
   init_hosting,
+  migrate_runtime_config,
 ];
 
 export const resourceTemplates = [docs];
