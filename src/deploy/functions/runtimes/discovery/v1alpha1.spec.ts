@@ -162,6 +162,33 @@ describe("buildFromV1Alpha", () => {
       });
     });
 
+    describe("dataConnectGraphqlTriggers", () => {
+      it("invalid value for Data Connect https trigger key invoker", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              dataConnectGraphqlTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+
+      it("cannot be used with 1st gen", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              platform: "gcfv1",
+              dataConnectGraphqlTrigger: {
+                invoker: "custom@",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("genkitTriggers", () => {
       it("fails with invalid fields", () => {
         assertParserError({
@@ -716,7 +743,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: 120,
           maxDoublings: 10,
         },
-        attemptDeadlineSeconds: 300,
       };
 
       const yaml: v1alpha1.WireManifest = {
@@ -745,7 +771,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: "{{ params.RETRY_DURATION }}",
           maxDoublings: "{{ params.DOUBLINGS }}",
         },
-        attemptDeadlineSeconds: "{{ params.ATTEMPT_DEADLINE }}",
       };
 
       const yaml: v1alpha1.WireManifest = {

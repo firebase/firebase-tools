@@ -20,9 +20,6 @@ import {
   OperationDefinitionNode,
   OperationTypeNode,
   print,
-  buildClientSchema,
-  validate,
-  parse,
 } from "graphql";
 import { DataConnectService } from "../service";
 import { DataConnectError, toSerializedError } from "../../../common/error";
@@ -30,7 +27,6 @@ import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt } from "../file-utils";
-import { pluginLogger } from "../../logger-wrapper";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
@@ -39,7 +35,8 @@ import {
   executionVarsJSON,
   ExecutionParamsService,
 } from "./execution-params";
-import { ExecuteGraphqlRequest } from "../../dataconnect/types";
+import { ExecuteGraphqlRequest, GraphqlResponseError } from "../../dataconnect/types";
+import { GraphqlResponse } from '../../../../src/dataconnect/types';
 
 export interface ExecutionInput {
   operationAst: OperationDefinitionNode;
@@ -86,10 +83,7 @@ export function registerExecution(
     broker.send("notifyDataConnectResults", {
       displayName: `${item.input.operationAst.operation} ${item.input.operationAst.name?.value ?? ""}`,
       query: print(item.input.operationAst),
-      results:
-        item.results instanceof Error
-          ? toSerializedError(item.results)
-          : item.results,
+      results: item.results,
       variables: item.variables || "",
       auth: item.auth,
     });
@@ -220,29 +214,53 @@ export function registerExecution(
       input: arg,
       variables: executionVarsJSON.value,
       auth: executionAuthParams.value,
-      results: new Error("missing results"),
+      results: {
+        respErr: toSerializedError(new Error("execution in progress")),
+      }
     });
 
     try {
       // Execute queries/mutations from their source code.
       // That ensures that we can execute queries in unsaved files.
-      const results = await dataConnectService.executeGraphQL(
+      const resp = await dataConnectService.executeGraphQL(
         servicePath,
         instance,
         req,
       );
-      // Executing queries may return a response which contains errors
-      item.state =
-        (results.errors?.length ?? 0) > 0
-          ? ExecutionState.ERRORED
-          : ExecutionState.FINISHED;
-      item.results = results;
+      if (resp.status >= 200 && resp.status < 300) {
+        // Executing queries may return a response which contains errors
+        const body = resp.body as GraphqlResponse;
+        item.state =
+          (body.errors?.length ?? 0) > 0
+            ? ExecutionState.ERRORED
+            : ExecutionState.FINISHED;
+        item.results = {
+          data: body.data,
+          gqlErrors: body.errors,
+          respErr: undefined,
+        };
+      } else {
+        // Executing queries may return a response which contains errors
+        const body = resp.body as GraphqlResponseError;
+        item.state = ExecutionState.ERRORED;
+        item.results = {
+          // Check both spots for GQL error details array.
+          // Backend returns `error: { code, message, details }`
+          // Emulator returns `{ code, message, details }`
+          gqlErrors: body.details || body.error?.details,
+          respErr: {
+            message: `Request failed with status ${resp.status}: ${body.message || body.error?.message}`,
+          },
+        };
+      }
     } catch (error) {
       item.state = ExecutionState.ERRORED;
-      item.results =
-        error instanceof Error
-          ? error
-          : new DataConnectError("Unknown error", error);
+      item.results = {
+        respErr: toSerializedError(
+          error instanceof Error
+            ? error
+            : new DataConnectError("Unknown error", error)),
+      };
     }
 
     batch(() => {

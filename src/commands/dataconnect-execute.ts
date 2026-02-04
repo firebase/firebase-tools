@@ -2,7 +2,7 @@ import * as clc from "colorette";
 import { Command } from "../command";
 import { Options } from "../options";
 import { getProjectId, needProjectId } from "../projectUtils";
-import { pickService, readGQLFiles, squashGraphQL } from "../dataconnect/load";
+import { pickOneService, readGQLFiles, squashGraphQL } from "../dataconnect/load";
 import { requireAuth } from "../requireAuth";
 import { Constants } from "../emulator/constants";
 import { Client } from "../apiv2";
@@ -127,13 +127,15 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
 
       // If the status code isn't OK or the top-level `error` field is set, this
       // is an HTTP / gRPC error, not a GQL-compatible error response.
-      let err = responseToError(response, response.body);
-      if (isGraphQLResponseError(response.body)) {
-        const { status, message } = response.body.error;
+      const body = response.body;
+      let err = responseToError(response, body);
+      if (isGraphQLResponseError(body)) {
+        const status = body.status || body.error?.status;
+        const message = body.message || body.error?.message || "unknown error";
         if (!err) {
           err = new FirebaseError(message, {
             context: {
-              body: response.body,
+              body: body,
               response: response,
             },
             status: response.status,
@@ -152,10 +154,10 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
 
       // If we reach here, we should have a GraphQL response with `data` and/or
       // `errors` (note the plural). First let's double check that's the case.
-      if (!isGraphQLResponse(response.body)) {
+      if (!isGraphQLResponse(body)) {
         throw new FirebaseError("Got invalid response body with neither .data or .errors", {
           context: {
-            body: response.body,
+            body: body,
             response: response,
           },
           status: response.status,
@@ -163,37 +165,37 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
       }
 
       // Log the body to stdout to allow pipe processing (even with .errors).
-      logger.info(JSON.stringify(response.body, null, 2));
+      logger.info(JSON.stringify(body, null, 2));
 
       // TODO: Pretty-print these errors by parsing the .errors array to extract
       // messages, line numbers, etc.
-      if (!response.body.data) {
+      if (!body.data) {
         // If `data` is absent, this is a request error (i.e. total failure):
         // https://spec.graphql.org/draft/#sec-Errors.Request-Errors
         throw new FirebaseError(
           "GraphQL request error(s). See response body (above) for details.",
           {
             context: {
-              body: response.body,
+              body: body,
               response: response,
             },
             status: response.status,
           },
         );
       }
-      if (response.body.errors && response.body.errors.length > 0) {
+      if (body.errors && body.errors.length > 0) {
         throw new FirebaseError(
           "Execution completed with error(s). See response body (above) for details.",
           {
             context: {
-              body: response.body,
+              body: body,
               response: response,
             },
             status: response.status,
           },
         );
       }
-      return response.body;
+      return body;
 
       async function readQueryFromDir(dir: string): Promise<string> {
         const opDisplay = operationName ? clc.bold(operationName) : "operation";
@@ -207,7 +209,12 @@ export const command = new Command("dataconnect:execute [file] [operationName]")
       }
 
       async function getServiceInfo(): Promise<ServiceInfo> {
-        return pickService(projectId, options.config, serviceId || undefined).catch((e) => {
+        return pickOneService(
+          projectId,
+          options.config,
+          serviceId || undefined,
+          locationId || undefined,
+        ).catch((e: unknown) => {
           if (!(e instanceof FirebaseError)) {
             return Promise.reject(e);
           }

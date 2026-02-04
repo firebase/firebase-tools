@@ -39,7 +39,7 @@ export async function initIndexes(setup: Setup, config: Config, info: RequiredIn
     }
   }
 
-  info.writeRules = await config.confirmWriteProjectFile(info.indexesFilename, info.indexes);
+  info.writeIndexes = await config.confirmWriteProjectFile(info.indexesFilename, info.indexes);
 }
 
 async function getIndexesFromConsole(

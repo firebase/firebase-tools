@@ -38,8 +38,8 @@ export async function downloadToTmp(remoteUrl: string, auth: boolean = false): P
     bar.tick(chunk.length);
   });
 
-  await new Promise((resolve) => {
-    writeStream.on("finish", resolve);
+  await new Promise<void>((resolve) => {
+    writeStream.on("finish", () => resolve());
     res.body.pipe(writeStream);
   });
 

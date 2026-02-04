@@ -26,7 +26,6 @@ export interface ScheduleTrigger {
   schedule?: string;
   timeZone?: string | null;
   retryConfig?: ScheduleRetryConfig | null;
-  attemptDeadlineSeconds?: number | null;
 }
 
 /** Something that has a ScheduleTrigger */
@@ -42,6 +41,17 @@ export interface HttpsTrigger {
 /** Something that has an HTTPS trigger */
 export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
+}
+
+/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+export interface DataConnectGraphqlTrigger {
+  invoker?: string[] | null;
+  schemaFilePath?: string;
+}
+
+/** Something that has a Data Connect HTTPS trigger */
+export interface DataConnectGraphqlTriggered {
+  dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }
 
 /** API agnostic version of a Firebase callable function. */
@@ -152,6 +162,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    return "dataConnectGraphql";
   } else if (isCallableTriggered(endpoint)) {
     return "callable";
   } else if (isEventTriggered(endpoint)) {
@@ -185,16 +197,6 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
 
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
-}
-
-export const MIN_ATTEMPT_DEADLINE_SECONDS = 15;
-export const MAX_ATTEMPT_DEADLINE_SECONDS = 1800; // 30 mins
-
-/**
- * Is a given number a valid attempt deadline?
- */
-export function isValidAttemptDeadline(seconds: number): boolean {
-  return seconds >= MIN_ATTEMPT_DEADLINE_SECONDS && seconds <= MAX_ATTEMPT_DEADLINE_SECONDS;
 }
 
 /** Returns a human-readable name with MB or GB suffix for a MemoryOption (MB). */
@@ -316,6 +318,7 @@ export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
@@ -325,6 +328,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */

@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "1.10.1",
+  "version": "2.1.1",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -185,13 +185,13 @@
     "jsonValidation": [
       {
         "fileMatch": "firebase.json",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/firebase-config.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/firebase-config.json"
       }
     ],
     "yamlValidation": [
       {
         "fileMatch": "extension.yaml",
-        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/master/schema/extension-yaml.json"
+        "url": "https://raw.githubusercontent.com/firebase/firebase-tools/main/schema/extension-yaml.json"
       },
       {
         "fileMatch": "dataconnect.yaml",
@@ -262,7 +262,7 @@
     "eslint-plugin-react": "^7.32.2",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "glob": "^8.0.3",
-    "graphql": "^16.7.1",
+    "graphql": "file:graphql-16.12.0.tgz",
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "node-loader": "2.0.0",
@@ -277,5 +277,8 @@
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
     "webpack-merge": "^5.8.0"
+  },
+  "overrides": {
+    "qs": "~6.14.1"
   }
 }

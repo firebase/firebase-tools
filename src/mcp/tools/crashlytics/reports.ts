@@ -1,191 +1,92 @@
-import { tool } from "../../tool";
-import { mcpError, toContent } from "../../util";
-import {
-  CrashlyticsReport,
-  getReport,
-  ReportInputSchema,
-  ReportInput,
-  simplifyReport,
-} from "../../../crashlytics/reports";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { validateEventFilters } from "../../../crashlytics/filters";
+import { dump, DumpOptions } from "js-yaml";
+import { EventFilter, validateEventFilters } from "../../../crashlytics/filters";
+import { getReport, ReportInputSchema, simplifyReport } from "../../../crashlytics/reports";
+import { Report } from "../../../crashlytics/types";
+import { tool } from "../../tool";
+
+import { RESOURCE_CONTENT as forceAppIdGuide } from "../../resources/guides/app_id";
+
+const DUMP_OPTIONS: DumpOptions = { lineWidth: 200 };
+
+const REPORT_ERROR_CONTENT = `
+Must specify the desired report:
+  * TOP_ISSUES - metrics grouped by *issue*.
+  * TOP_VARIANTS - metrics grouped by issue *variant*
+  * TOP_VERSIONS - metrics grouped by *version*
+  * TOP_OPERATING_SYSTEMS - metrics grouped by *operating system*
+  * TOP_ANDROID_DEVICES - metrics grouped by *device*
+  * TOP_APPLE_DEVICES - metrics grouped by *device*
+`.trim();
+
+function toText(response: Report, filters: EventFilter): Record<string, string> {
+  const result: Record<string, string> = {
+    name: response.name || "", // So name is first in the output
+    filters: dump(filters, DUMP_OPTIONS),
+  };
+  for (const [key, value] of Object.entries(response)) {
+    if (key === "name") {
+      continue;
+    }
+    result[key] = dump(value, DUMP_OPTIONS);
+  }
+  return result;
+}
 
 // Generates the tool call fn for requesting a Crashlytics report
 
-function getReportContent(
-  report: CrashlyticsReport,
-  additionalPrompt?: string,
-): (input: ReportInput) => Promise<CallToolResult> {
-  return async ({ appId, filter, pageSize }) => {
-    if (!appId) return mcpError(`Must specify 'appId' parameter.`);
-    filter ??= {};
-    if (!!filter.intervalStartTime && !filter.intervalEndTime) {
-      // interval.end_time is required if interval.start_time is set but the agent likes to forget it
-      filter.intervalEndTime = new Date().toISOString();
+export const get_report = tool(
+  "crashlytics",
+  {
+    name: "get_report",
+    description:
+      `Use this to request numerical reports from Crashlytics. The result aggregates the sum of events and impacted users, grouped by a dimension appropriate for that report. Agents must read the [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports) using the \`firebase_read_resources\` tool before calling to understand critical prerequisites for requesting reports and how to interpret the results.
+    `.trim(),
+    inputSchema: ReportInputSchema,
+    annotations: {
+      title: "Get Crashlytics Report",
+      readOnlyHint: true,
+    },
+    _meta: {
+      requiresAuth: true,
+    },
+  },
+  async ({ appId, report, pageSize, filter }) => {
+    const result: CallToolResult = { content: [] };
+
+    if (!report) {
+      result.isError = true;
+      result.content.push({ type: "text", text: `Error: ${REPORT_ERROR_CONTENT}` });
     }
-    if (report === CrashlyticsReport.TopIssues && !!filter.issueId) {
-      delete filter.issueId;
+    if (!appId) {
+      result.isError = true;
+      result.content.push({ type: "text", text: "Must specify 'appId' parameter" });
+      result.content.push({ type: "text", text: forceAppIdGuide });
     }
-    validateEventFilters(filter); // throws here if invalid filters
+    try {
+      filter = validateEventFilters(filter || {});
+    } catch (error: any) {
+      result.isError = true;
+      result.content.push({ type: "text", text: `Error: ${error.message}` });
+    }
+    if (result.content.length > 0) {
+      // There are errors or guides the agent needs to read first.
+      return result;
+    }
+    // Everything is OK so fetch report
     const reportResponse = simplifyReport(await getReport(report, appId, filter, pageSize));
-    if (!reportResponse.groups?.length) {
-      additionalPrompt = "This report response contains no results.";
-    }
-    if (additionalPrompt) {
-      reportResponse.usage = (reportResponse.usage || "").concat("\n", additionalPrompt);
-    }
-    return toContent(reportResponse);
-  };
-}
+    reportResponse.usage =
+      reportResponse.groups && reportResponse.groups.length
+        ? reportResponse.usage || ""
+        : "This report response contains no results."; // Helps to make empty state more obvious
 
-// Currently, it appears to work best if the five different supported reports
-// are expressed as five different tools. This allows the usage and format
-// of each report to be more clearly described. In the future, it may be possible
-// to consolidate all of these into a single `get_report` tool.
-
-export const get_top_issues = tool(
-  "crashlytics",
-  {
-    name: "get_top_issues",
-    description: `Use this to count events and distinct impacted users, grouped by *issue*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Issues Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
+    return {
+      content: [
+        {
+          type: "text",
+          text: dump(toText(reportResponse, filter), DUMP_OPTIONS),
+        },
+      ],
+    };
   },
-  getReportContent(
-    CrashlyticsReport.TopIssues,
-    `The crashlytics_batch_get_event tool can retrieve the sample events in this response.
-    Pass the sampleEvent in the names field.
-    The crashlytics_list_events tool can retrieve a list of events for an issue in this response.
-    Pass the issue.id in the filter.issueId field.`,
-  ),
-);
-
-export const get_top_variants = tool(
-  "crashlytics",
-  {
-    name: "get_top_variants",
-    description: `Counts events and distinct impacted users, grouped by issue *variant*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Variants Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
-  },
-  getReportContent(
-    CrashlyticsReport.TopVariants,
-    `The crashlytics_get_top_issues tool can report the top issues for the variants in this response.
-    Pass the variant.displayName in the filter.variantDisplayNames field. 
-    The crashlytics_list_events tool can retrieve a list of events for a variant in this response.`,
-  ),
-);
-
-export const get_top_versions = tool(
-  "crashlytics",
-  {
-    name: "get_top_versions",
-    description: `Counts events and distinct impacted users, grouped by *version*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Versions Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
-  },
-  getReportContent(
-    CrashlyticsReport.TopVersions,
-    `The crashlytics_get_top_issues tool can report the top issues for the versions in this response.
-    Pass the version.displayName in the filter.versionDisplayNames field. 
-    The crashlytics_list_events tool can retrieve a list of events for a version in this response.`,
-  ),
-);
-
-export const get_top_apple_devices = tool(
-  "crashlytics",
-  {
-    name: "get_top_apple_devices",
-    description: `Counts events and distinct impacted users, grouped by apple *device*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.
-      Only relevant for iOS, iPadOS and MacOS applications.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Apple Devices Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
-  },
-  getReportContent(
-    CrashlyticsReport.TopAppleDevices,
-    `The crashlytics_get_top_issues tool can report the top issues for the devices in this response.
-    Pass the device.displayName in the filter.deviceDisplayNames field. 
-    The crashlytics_list_events tool can retrieve a list of events for a device in this response.`,
-  ),
-);
-
-export const get_top_android_devices = tool(
-  "crashlytics",
-  {
-    name: "get_top_android_devices",
-    description: `Counts events and distinct impacted users, grouped by android *device*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.
-      Only relevant for Android applications.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Android Devices Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
-  },
-  getReportContent(
-    CrashlyticsReport.TopAndroidDevices,
-    `The crashlytics_get_top_issues tool can report the top issues for the devices in this response.
-    Pass the device.displayName in the filter.deviceDisplayNames field. 
-    The crashlytics_list_events tool can retrieve a list of events for a device in this response.`,
-  ),
-);
-
-export const get_top_operating_systems = tool(
-  "crashlytics",
-  {
-    name: "get_top_operating_systems",
-    description: `Counts events and distinct impacted users, grouped by *operating system*.
-      Groups are sorted by event count, in descending order.
-      Only counts events matching the given filters.`,
-    inputSchema: ReportInputSchema,
-    annotations: {
-      title: "Get Crashlytics Top Operating Systems Report",
-      readOnlyHint: true,
-    },
-    _meta: {
-      requiresAuth: true,
-    },
-  },
-  getReportContent(
-    CrashlyticsReport.TopOperatingSystems,
-    `The crashlytics_get_top_issues tool can report the top issues for the operating systems in this response.
-    Pass the operatingSystem.displayName in the filter.operatingSystemDisplayNames field. 
-    The crashlytics_list_events tool can retrieve a list of events for an operating system in this response.`,
-  ),
 );

@@ -1,28 +1,9 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { mcpError } from "./util";
-import { ensureGIFApiTos } from "../dataconnect/ensureApis";
-
 export const NO_PROJECT_ERROR = mcpError(
   "To proceed requires an active project. Use the `firebase_update_environment` tool to set a project ID",
   "PRECONDITION_FAILED",
 );
-
-const GEMINI_TOS_ERROR = mcpError(
-  "To proceed requires features from Gemini in Firebase. You can enable the usage of this service and accept its associated terms of service using `firebase_update_environment`.\n" +
-    "Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
-  "PRECONDITION_FAILED",
-);
-
-/** Enable the Gemini in Firebase API or return an error to accept it */
-export async function requireGeminiToS(projectId: string): Promise<CallToolResult | undefined> {
-  if (!projectId) {
-    return NO_PROJECT_ERROR;
-  }
-  if (!(await ensureGIFApiTos(projectId))) {
-    return GEMINI_TOS_ERROR;
-  }
-  return undefined;
-}
 
 export function noProjectDirectory(projectRoot: string | undefined): CallToolResult {
   return mcpError(

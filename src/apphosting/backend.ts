@@ -317,7 +317,7 @@ export async function ensureAppHostingComputeServiceAccount(
       "v1",
       name,
       ["iam.serviceAccounts.actAs"],
-      `projects/${projectId}`,
+      `${projectId}`,
     );
   } catch (err: unknown) {
     if (!(err instanceof FirebaseError)) {

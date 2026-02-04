@@ -1,1 +1,1 @@
-- Fixed issue where MCP server didn't detect if iOS app uses Crashlytics in projects that use `project.pbxproj` (#9515)
+- Fixes an issue where Python was missing from the firebase-tools Docker image (#9855).
