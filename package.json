@@ -151,6 +151,7 @@
     "mime": "^2.5.2",
     "minimatch": "^3.0.4",
     "morgan": "^1.10.0",
+    "murmurhash-es": "^0.1.1",
     "node-fetch": "^2.6.7",
     "open": "^6.3.0",
     "ora": "^5.4.1",
