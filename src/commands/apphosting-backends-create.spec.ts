@@ -80,6 +80,9 @@ describe("apphosting:backends:create", () => {
   });
 
   it("should call doSetup with correct arguments in interactive mode", async () => {
+    before(() => {
+      sinon.stub(process.stdin, "isTTY").value(true);
+    });
     const options = {};
     await command.runner()(options);
 
