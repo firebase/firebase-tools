@@ -1,6 +1,6 @@
 {
   "name": "@askelephant/firebase-tools",
-  "version": "15.5.1",
+  "version": "15.5.3",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
@@ -58,7 +58,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/firebase/firebase-tools.git"
+    "url": "https://github.com/AskElephant/firebase-tools.git"
   },
   "keywords": [
     "cdn",
@@ -78,11 +78,11 @@
   "author": "Firebase (https://firebase.google.com/)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/firebase/firebase-tools/issues"
+    "url": "https://github.com/AskElephant/firebase-tools/issues"
   },
-  "homepage": "https://github.com/firebase/firebase-tools",
+  "homepage": "https://github.com/AskElephant/firebase-tools",
   "publishConfig": {
-    "registry": "https://registry.npmjs.org",
+    "registry": "https://npm.pkg.github.com",
     "access": "public"
   },
   "nyc": {
