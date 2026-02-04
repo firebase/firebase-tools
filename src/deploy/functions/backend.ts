@@ -375,6 +375,11 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
+    // Zip Deploy Fields
+    zipSource?: string;
+    baseImage?: string;
+    command?: string;
+    args?: string[];
     runtime?: Runtime;
 
     // Output only
