@@ -79,6 +79,7 @@ export async function checkHttpIam(
     .filter((f) => backend.isHttpsTriggered(f) || backend.isDataConnectGraphqlTriggered(f))
     .filter((f) => endpointMatchesAnyFilter(f, filters))
     // Services with platform: "run" are not GCFv1 or GCFv2 functions and are handled separately.
+    // TODO: We'll need similar check for Run functions too.
     .filter((f) => f.platform !== "run");
 
   const existing = await backend.existingBackend(context);

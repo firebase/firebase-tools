@@ -4,6 +4,7 @@ import * as yaml from "js-yaml";
 import { DelegateContext, RuntimeDelegate } from "./index";
 import * as discovery from "./discovery";
 
+// TODO: Temporary file for testing no build deploy. Remove this file after Invertase prepare phase is merged
 /**
  * Create a runtime delegate for the Dart runtime, if applicable.
  * @param context runtimes.DelegateContext
@@ -19,10 +20,7 @@ export async function tryCreateDelegate(
 
   // If runtime is specified, use it. Otherwise default to "dart3".
   // "dart" is often used as a generic alias, map it to "dart3"
-  let runtime = context.runtime || "dart3";
-  if ((runtime as string) === "dart") {
-    runtime = "dart3" as any;
-  }
+  const runtime = context.runtime || "dart3";
 
   return {
     language: "dart",

@@ -1713,7 +1713,7 @@ describe("Fabricator", () => {
     });
   });
 
-  describe("createRunService", () => {
+  describe("createRunFunction", () => {
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();
@@ -1727,7 +1727,7 @@ describe("Fabricator", () => {
           args: ["arg"],
         },
       );
-      await fab.createRunService(ep);
+      await fab.createRunFunction(ep);
 
       expect(runv2.createService).to.have.been.calledWith(
         ep.project,
@@ -1756,7 +1756,7 @@ describe("Fabricator", () => {
     });
   });
 
-  describe("updateRunService", () => {
+  describe("updateRunFunction", () => {
     it("updates a Cloud Run service with correct configuration", async () => {
       runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();
@@ -1773,7 +1773,7 @@ describe("Fabricator", () => {
         endpoint: ep,
       };
 
-      await fab.updateRunService(update);
+      await fab.updateRunFunction(update);
 
       expect(runv2.updateService).to.have.been.calledWith(
         sinon.match({
@@ -1790,12 +1790,12 @@ describe("Fabricator", () => {
     });
   });
 
-  describe("deleteRunService", () => {
+  describe("deleteRunFunction", () => {
     it("deletes the Cloud Run service", async () => {
       runv2.deleteService.resolves();
       const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
 
-      await fab.deleteRunService(ep);
+      await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.calledWith(ep.project, ep.region, ep.id);
     });
@@ -1806,7 +1806,7 @@ describe("Fabricator", () => {
       runv2.deleteService.rejects(err);
       const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
 
-      await fab.deleteRunService(ep);
+      await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.called;
     });

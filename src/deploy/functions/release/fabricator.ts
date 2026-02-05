@@ -186,7 +186,7 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
     } else if (endpoint.platform === "run") {
-      await this.createRunService(endpoint);
+      await this.createRunFunction(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -211,7 +211,7 @@ export class Fabricator {
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
     } else if (update.endpoint.platform === "run") {
-      await this.updateRunService(update);
+      await this.updateRunFunction(update);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -226,7 +226,7 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       return this.deleteV2Function(endpoint);
     } else if (endpoint.platform === "run") {
-      return this.deleteRunService(endpoint);
+      return this.deleteRunFunction(endpoint);
     }
     assertExhaustive(endpoint.platform);
   }
@@ -617,7 +617,7 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
-  async createRunService(endpoint: backend.Endpoint): Promise<void> {
+  async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
       logger.debug("Precondition failed. Cannot create a Cloud Run function without storage");
@@ -625,9 +625,7 @@ export class Fabricator {
     }
     const service = runV2.serviceFromEndpoint(endpoint, "scratch");
     const container = service.template.containers![0];
-    container.command = endpoint.command;
-    container.args = endpoint.args;
-    container.baseImageUri = endpoint.baseImageUri;
+
     container.sourceCode = {
       cloudStorageSource: {
         bucket: storageSource.bucket,
@@ -652,7 +650,7 @@ export class Fabricator {
     await this.setInvoker(endpoint);
   }
 
-  async updateRunService(update: planner.EndpointUpdate): Promise<void> {
+  async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
     const endpoint = update.endpoint;
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -662,9 +660,7 @@ export class Fabricator {
 
     const service = runV2.serviceFromEndpoint(endpoint, "scratch");
     const container = service.template.containers![0];
-    container.command = endpoint.command;
-    container.args = endpoint.args;
-    container.baseImageUri = endpoint.baseImageUri;
+
     container.sourceCode = {
       cloudStorageSource: {
         bucket: storageSource.bucket,
@@ -672,13 +668,7 @@ export class Fabricator {
         generation: storageSource.generation ? String(storageSource.generation) : undefined,
       },
     };
-    // Ensure we don't accidentally overwrite the client name if it's already set to something else?
-    // Actually serviceFromEndpoint sets it to "cli-firebase" which is what we want.
-    // However, serviceFromEndpoint generates a name from the ID. We should trust it or override it?
-    // It generates `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(endpoint.id)}`
-    // which matches what we want. But let's be safe and strictly follow previous logic for name if it differs?
-    // Run v2 service name is deterministic from ID.
-    // The previous implementation constructed it manually.
+
 
     await this.executor
       .run(async () => {
@@ -691,7 +681,7 @@ export class Fabricator {
     await this.setInvoker(endpoint);
   }
 
-  async deleteRunService(endpoint: backend.Endpoint): Promise<void> {
+  async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
     await this.executor
       .run(async () => {
         try {
