@@ -56,6 +56,9 @@ export interface EmulatedTriggerDefinition extends ParsedTriggerDefinition {
   id: string; // An unique-id per-function, generated from the name and the region.
   region: string;
   secretEnvironmentVariables?: backend.SecretEnvVar[]; // Secret env vars needs to be specially loaded in the Emulator.
+  concurrency?: number;
+  maxInstances?: number;
+  minInstances?: number;
 }
 
 export interface BlockingTrigger {
@@ -178,6 +181,9 @@ export function emulatedFunctionsFromEndpoints(
       codebase: endpoint.codebase,
     };
     def.availableMemoryMb = endpoint.availableMemoryMb || 256;
+    def.concurrency = endpoint.concurrency ?? undefined;
+    def.maxInstances = endpoint.maxInstances ?? undefined;
+    def.minInstances = endpoint.minInstances ?? undefined;
     def.labels = endpoint.labels || {};
     if (endpoint.platform === "gcfv1") {
       def.labels[EVENTARC_SOURCE_ENV] =

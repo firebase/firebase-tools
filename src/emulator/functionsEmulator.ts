@@ -399,39 +399,40 @@ export class FunctionsEmulator implements EmulatorInstance {
   async sendRequest(trigger: EmulatedTriggerDefinition, body?: any) {
     const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
     const pool = this.workerPools[record.backend.codebase];
-    if (!pool.readyForWork(trigger.id)) {
-      try {
-        await this.startRuntime(record.backend, trigger);
-      } catch (e: any) {
-        this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
-        return;
-      }
+    let worker: RuntimeWorker;
+    try {
+      worker = await pool.getWorkerForRequest(trigger, () =>
+        this.startRuntime(record.backend, trigger),
+      );
+    } catch (e: any) {
+      this.logger.logLabeled("ERROR", `Failed to start runtime for ${trigger.id}: ${e}`);
+      return;
     }
-    const worker = pool.getIdleWorker(trigger.id)!;
     if (this.debugMode) {
-      await worker.sendDebugMsg({
-        functionTarget: trigger.entryPoint,
-        functionSignature: getSignatureType(trigger),
-      });
+      try {
+        await worker.sendDebugMsg({
+          functionTarget: trigger.entryPoint,
+          functionSignature: getSignatureType(trigger),
+        });
+      } catch (err) {
+        worker.releaseReservation();
+        throw err;
+      }
     }
     const reqBody = JSON.stringify(body);
     const headers = {
       "Content-Type": "application/json",
       "Content-Length": `${reqBody.length}`,
     };
-    return new Promise((resolve, reject) => {
-      const req = http.request(
-        {
-          ...worker.runtime.conn.httpReqOpts(),
-          path: `/`,
-          headers: headers,
-        },
-        resolve,
-      );
-      req.on("error", reject);
-      req.write(reqBody);
-      req.end();
-    });
+    return worker.requestWithoutResponse(
+      {
+        path: "/",
+        headers,
+      },
+      reqBody,
+      undefined,
+      true,
+    );
   }
 
   async start(): Promise<void> {
@@ -1788,17 +1789,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.logger.log("DEBUG", `[functions] Got req.url=${req.url}, mapping to path=${path}`);
 
     const pool = this.workerPools[record.backend.codebase];
-    if (!pool.readyForWork(trigger.id)) {
-      try {
-        await this.startRuntime(record.backend, trigger);
-      } catch (e: any) {
-        this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
-        this.logger.logLabeled(
-          "ERROR",
-          `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
-        );
-        return;
-      }
+    let worker: RuntimeWorker;
+    try {
+      worker = await pool.getWorkerForRequest(trigger, () =>
+        this.startRuntime(record.backend, trigger),
+      );
+    } catch (e: any) {
+      this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
+      this.logger.logLabeled(
+        "ERROR",
+        `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
+      );
+      return;
     }
     let debugBundle;
     if (this.debugMode) {
@@ -1807,8 +1809,20 @@ export class FunctionsEmulator implements EmulatorInstance {
         functionSignature: getSignatureType(trigger),
       };
     }
-    await pool.submitRequest(
-      trigger.id,
+    if (debugBundle) {
+      try {
+        await worker.sendDebugMsg(debugBundle);
+      } catch (err) {
+        worker.releaseReservation();
+        const errMsg = err instanceof Error ? err.message : String(err);
+        this.logger.logLabeled(
+          "ERROR",
+          `Failed to send debug payload for function ${trigger.id}: ${errMsg}`,
+        );
+        return;
+      }
+    }
+    await worker.request(
       {
         method,
         path,
@@ -1816,7 +1830,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
       res as http.ServerResponse,
       reqBody,
-      debugBundle,
+      !!debugBundle,
+      true,
     );
   }
 }

@@ -47,16 +47,20 @@ export class RuntimeWorker {
   private logListeners: Array<LogListener> = [];
   private logger: EmulatorLogger;
   private _state: RuntimeWorkerState = RuntimeWorkerState.CREATED;
+  private activeRequests = 0;
+  private readonly maxConcurrency: number;
 
   constructor(
     triggerId: string | undefined,
     readonly runtime: FunctionsRuntimeInstance,
     readonly extensionLogInfo: ExtensionLogInfo,
     readonly timeoutSeconds?: number,
+    maxConcurrency = 1,
   ) {
     this.id = uuid.v4();
     this.triggerKey = triggerId || FREE_WORKER_KEY;
     this.runtime = runtime;
+    this.maxConcurrency = Math.max(1, maxConcurrency);
 
     const childProc = this.runtime.process;
     let msgBuffer = "";
@@ -131,13 +135,35 @@ export class RuntimeWorker {
     resp: http.ServerResponse,
     body?: unknown,
     debug?: boolean,
+    alreadyReserved = false,
+  ): Promise<void> {
+    return this.requestInternal(req, body, debug, resp, alreadyReserved);
+  }
+
+  requestWithoutResponse(
+    req: http.RequestOptions,
+    body?: unknown,
+    debug?: boolean,
+    alreadyReserved = false,
+  ): Promise<void> {
+    return this.requestInternal(req, body, debug, undefined, alreadyReserved);
+  }
+
+  private requestInternal(
+    req: http.RequestOptions,
+    body?: unknown,
+    debug?: boolean,
+    resp?: http.ServerResponse,
+    alreadyReserved = false,
   ): Promise<void> {
     if (this.triggerKey !== FREE_WORKER_KEY) {
       this.logInfo(`Beginning execution of "${this.triggerKey}"`);
     }
     const startHrTime = process.hrtime();
 
-    this.state = RuntimeWorkerState.BUSY;
+    if (!alreadyReserved) {
+      this.markRequestStart();
+    }
     const onFinish = (): void => {
       if (this.triggerKey !== FREE_WORKER_KEY) {
         const elapsedHrTime = process.hrtime(startHrTime);
@@ -147,15 +173,18 @@ export class RuntimeWorker {
           }ms`,
         );
       }
-
-      if (this.state === RuntimeWorkerState.BUSY) {
-        this.state = RuntimeWorkerState.IDLE;
-      } else if (this.state === RuntimeWorkerState.FINISHING) {
-        this.logDebug(`IDLE --> FINISHING`);
-        this.runtime.process.kill();
-      }
+      this.markRequestFinish();
     };
     return new Promise((resolve) => {
+      let finished = false;
+      const finishReq = (event?: string): void => {
+        this.logger.log("DEBUG", `Finishing up request with event=${event}`);
+        if (!finished) {
+          finished = true;
+          onFinish();
+          resolve();
+        }
+      };
       const reqOpts = {
         ...this.runtime.conn.httpReqOpts(),
         method: req.method,
@@ -166,22 +195,19 @@ export class RuntimeWorker {
         reqOpts.timeout = this.timeoutSeconds * 1000;
       }
       const proxy = http.request(reqOpts, (_resp: http.IncomingMessage) => {
-        resp.writeHead(_resp.statusCode || 200, _resp.headers);
-
-        let finished = false;
-        const finishReq = (event?: string): void => {
-          this.logger.log("DEBUG", `Finishing up request with event=${event}`);
-          if (!finished) {
-            finished = true;
-            onFinish();
-            resolve();
-          }
-        };
-        _resp.on("pause", () => finishReq("pause"));
-        _resp.on("end", () => finishReq("end"));
-        _resp.on("close", () => finishReq("close"));
-        const piped = _resp.pipe(resp);
-        piped.on("finish", () => finishReq("finish"));
+        if (resp) {
+          resp.writeHead(_resp.statusCode || 200, _resp.headers);
+          _resp.on("pause", () => finishReq("pause"));
+          _resp.on("end", () => finishReq("end"));
+          _resp.on("close", () => finishReq("close"));
+          const piped = _resp.pipe(resp);
+          piped.on("finish", () => finishReq("finish"));
+        } else {
+          _resp.on("end", () => finishReq("end"));
+          _resp.on("close", () => finishReq("close"));
+          _resp.on("pause", () => finishReq("pause"));
+          _resp.resume();
+        }
       });
       if (debug) {
         proxy.setSocketKeepAlive(false);
@@ -197,11 +223,13 @@ export class RuntimeWorker {
       });
       proxy.on("error", (err) => {
         this.logger.log("ERROR", `Request to function failed: ${err}`);
-        resp.writeHead(500);
-        resp.write(JSON.stringify(err));
-        resp.end();
+        if (resp) {
+          resp.writeHead(500);
+          resp.write(JSON.stringify(err));
+          resp.end();
+        }
         this.runtime.process.kill();
-        resolve();
+        finishReq("error");
       });
       if (body) {
         proxy.write(body);
@@ -238,6 +266,33 @@ export class RuntimeWorker {
     }
 
     this.runtime.events.on("log", listener);
+  }
+
+  availableSlots(): number {
+    if (
+      this.state === RuntimeWorkerState.CREATED ||
+      this.state === RuntimeWorkerState.FINISHING ||
+      this.state === RuntimeWorkerState.FINISHED
+    ) {
+      return 0;
+    }
+    return Math.max(0, this.maxConcurrency - this.activeRequests);
+  }
+
+  canAcceptWork(): boolean {
+    return this.availableSlots() > 0;
+  }
+
+  tryReserve(): boolean {
+    if (!this.canAcceptWork()) {
+      return false;
+    }
+    this.markRequestStart();
+    return true;
+  }
+
+  releaseReservation(): void {
+    this.markRequestFinish();
   }
 
   isSocketReady(): Promise<void> {
@@ -290,10 +345,45 @@ export class RuntimeWorker {
   private logInfo(msg: string): void {
     this.logger.logLabeled("BULLET", "functions", msg);
   }
+
+  private markRequestStart(): void {
+    this.activeRequests += 1;
+    if (this.activeRequests === 1) {
+      this.state = RuntimeWorkerState.BUSY;
+    }
+  }
+
+  private markRequestFinish(): void {
+    this.activeRequests = Math.max(0, this.activeRequests - 1);
+    if (this.activeRequests === 0) {
+      if (this.state === RuntimeWorkerState.BUSY) {
+        this.state = RuntimeWorkerState.IDLE;
+      } else if (this.state === RuntimeWorkerState.FINISHING) {
+        this.logDebug(`IDLE --> FINISHING`);
+        this.runtime.process.kill();
+      }
+    } else {
+      this.notifyAvailability();
+    }
+  }
+
+  private notifyAvailability(): void {
+    if (this.availableSlots() > 0) {
+      this.stateEvents.emit("available");
+    }
+  }
 }
+
+type WorkerWaiter = {
+  triggerId: string;
+  notify: () => void;
+  reject: (err: Error) => void;
+};
 
 export class RuntimeWorkerPool {
   private readonly workers: Map<string, Array<RuntimeWorker>> = new Map();
+  private readonly waiters: Map<string, Array<WorkerWaiter>> = new Map();
+  private readonly pendingStarts: Map<string, number> = new Map();
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
@@ -312,6 +402,7 @@ export class RuntimeWorkerPool {
    * kill itself after it's done with its current task.
    */
   refresh(): void {
+    this.rejectWaiters("Worker pool refreshed while waiting for an available worker.");
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
@@ -330,6 +421,7 @@ export class RuntimeWorkerPool {
    * Immediately kill all workers.
    */
   exit(): void {
+    this.rejectWaiters("Worker pool exited while waiting for an available worker.");
     for (const arr of this.workers.values()) {
       arr.forEach((w) => {
         if (w.state === RuntimeWorkerState.IDLE) {
@@ -369,16 +461,21 @@ export class RuntimeWorkerPool {
     debug?: FunctionsRuntimeBundle["debug"],
   ): Promise<void> {
     this.log(`submitRequest(triggerId=${triggerId})`);
-    const worker = this.getIdleWorker(triggerId);
+    const worker = this.reserveWorker(triggerId);
     if (!worker) {
       throw new FirebaseError(
         "Internal Error: can't call submitRequest without checking for idle workers",
       );
     }
     if (debug) {
-      await worker.sendDebugMsg(debug);
+      try {
+        await worker.sendDebugMsg(debug);
+      } catch (err) {
+        worker.releaseReservation();
+        throw err;
+      }
     }
-    return worker.request(req, resp, body, !!debug);
+    return worker.request(req, resp, body, !!debug, true);
   }
 
   getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
@@ -390,7 +487,24 @@ export class RuntimeWorkerPool {
     }
 
     for (const worker of triggerWorkers) {
-      if (worker.state === RuntimeWorkerState.IDLE) {
+      if (worker.canAcceptWork()) {
+        return worker;
+      }
+    }
+
+    return;
+  }
+
+  private reserveWorker(triggerId: string | undefined): RuntimeWorker | undefined {
+    this.cleanUpWorkers();
+    const triggerWorkers = this.getTriggerWorkers(triggerId);
+    if (!triggerWorkers.length) {
+      this.setTriggerWorkers(triggerId, []);
+      return;
+    }
+
+    for (const worker of triggerWorkers) {
+      if (worker.tryReserve()) {
         return worker;
       }
     }
@@ -418,7 +532,13 @@ export class RuntimeWorkerPool {
       runtime,
       extensionLogInfo,
       disableTimeout ? undefined : trigger?.timeoutSeconds,
+      this.getConcurrency(trigger),
     );
+
+    const key = this.getKey(trigger?.id);
+    const notify = () => this.notifyAvailableByKey(key);
+    worker.stateEvents.on(RuntimeWorkerState.IDLE, notify);
+    worker.stateEvents.on("available", notify);
 
     const keyWorkers = this.getTriggerWorkers(trigger?.id);
     keyWorkers.push(worker);
@@ -436,6 +556,33 @@ export class RuntimeWorkerPool {
     this.workers.set(this.getKey(triggerId), workers);
   }
 
+  async getWorkerForRequest(
+    trigger: EmulatedTriggerDefinition,
+    startRuntime: () => Promise<RuntimeWorker>,
+  ): Promise<RuntimeWorker> {
+    const triggerId = trigger.id;
+    const worker = this.reserveWorker(triggerId);
+    if (worker) {
+      return worker;
+    }
+    if (this.reserveStartSlot(trigger)) {
+      try {
+        const newWorker = await startRuntime();
+        if (newWorker.tryReserve()) {
+          return newWorker;
+        }
+      } catch (err) {
+        const error = err instanceof Error ? err : new FirebaseError(String(err));
+        this.rejectWaitersForKey(this.getKey(triggerId), error);
+        throw error;
+      } finally {
+        this.releaseStartSlot(triggerId);
+      }
+      return this.waitForAvailableWorker(triggerId);
+    }
+    return this.waitForAvailableWorker(triggerId);
+  }
+
   private cleanUpWorkers() {
     // Drop all finished workers from the pool
     for (const [key, keyWorkers] of this.workers.entries()) {
@@ -450,6 +597,134 @@ export class RuntimeWorkerPool {
       }
       this.setTriggerWorkers(key, notDoneWorkers);
     }
+  }
+
+  private canCreateWorker(trigger: EmulatedTriggerDefinition | undefined): boolean {
+    const key = this.getKey(trigger?.id);
+    const totalCount =
+      this.getTriggerWorkers(trigger?.id).length + this.getPendingStartsForKey(key);
+    if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
+      return totalCount === 0;
+    }
+    const maxInstances = this.getMaxInstances(trigger);
+    if (!maxInstances) {
+      return true;
+    }
+    return totalCount < maxInstances;
+  }
+
+  private getMaxInstances(trigger: EmulatedTriggerDefinition | undefined): number | undefined {
+    const maxInstances = trigger?.maxInstances;
+    if (typeof maxInstances !== "number") {
+      return;
+    }
+    if (maxInstances <= 0) {
+      return;
+    }
+    return maxInstances;
+  }
+
+  private getConcurrency(trigger: EmulatedTriggerDefinition | undefined): number {
+    const concurrency = trigger?.concurrency;
+    if (typeof concurrency === "number" && concurrency > 0) {
+      return concurrency;
+    }
+    return 1;
+  }
+
+  private reserveStartSlot(trigger: EmulatedTriggerDefinition | undefined): boolean {
+    if (!this.canCreateWorker(trigger)) {
+      return false;
+    }
+    const key = this.getKey(trigger?.id);
+    this.pendingStarts.set(key, this.getPendingStartsForKey(key) + 1);
+    return true;
+  }
+
+  private releaseStartSlot(triggerId: string | undefined): void {
+    const key = this.getKey(triggerId);
+    const pending = this.getPendingStartsForKey(key);
+    if (pending <= 1) {
+      this.pendingStarts.delete(key);
+      return;
+    }
+    this.pendingStarts.set(key, pending - 1);
+  }
+
+  private getPendingStartsForKey(key: string): number {
+    return this.pendingStarts.get(key) || 0;
+  }
+
+  private availableCapacityForKey(key: string): number {
+    const workers = this.workers.get(key) || [];
+    return workers.reduce((total, worker) => total + worker.availableSlots(), 0);
+  }
+
+  private notifyAvailableByKey(key: string): void {
+    const waiters = this.waiters.get(key);
+    if (!waiters?.length) {
+      return;
+    }
+    let capacity = this.availableCapacityForKey(key);
+    while (capacity > 0 && waiters.length) {
+      capacity -= 1;
+      const waiter = waiters.shift();
+      waiter?.notify();
+    }
+    if (!waiters.length) {
+      this.waiters.delete(key);
+    }
+  }
+
+  private waitForAvailableWorker(triggerId: string): Promise<RuntimeWorker> {
+    const ready = this.reserveWorker(triggerId);
+    if (ready) {
+      return Promise.resolve(ready);
+    }
+    const key = this.getKey(triggerId);
+    return new Promise((resolve, reject) => {
+      const waiters = this.waiters.get(key) || [];
+      const waiter: WorkerWaiter = {
+        triggerId,
+        notify: () => {
+          const worker = this.reserveWorker(triggerId);
+          if (worker) {
+            resolve(worker);
+            return;
+          }
+          void this.waitForAvailableWorker(triggerId).then(resolve).catch(reject);
+        },
+        reject,
+      };
+      waiters.push(waiter);
+      this.waiters.set(key, waiters);
+    });
+  }
+
+  private rejectWaiters(reason: string): void {
+    if (!this.waiters.size) {
+      return;
+    }
+    const error = new FirebaseError(reason);
+    for (const waiters of this.waiters.values()) {
+      while (waiters.length) {
+        const waiter = waiters.shift();
+        waiter?.reject(error);
+      }
+    }
+    this.waiters.clear();
+  }
+
+  private rejectWaitersForKey(key: string, error: Error): void {
+    const waiters = this.waiters.get(key);
+    if (!waiters?.length) {
+      return;
+    }
+    while (waiters.length) {
+      const waiter = waiters.shift();
+      waiter?.reject(error);
+    }
+    this.waiters.delete(key);
   }
 
   private log(msg: string): void {

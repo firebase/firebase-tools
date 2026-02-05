@@ -227,6 +227,85 @@ describe("FunctionsRuntimeWorker", () => {
       expect(pool.getIdleWorker(triggerId)).to.eql(worker);
     });
 
+    it("reserves worker capacity before handing out work", async () => {
+      const pool = new RuntimeWorkerPool();
+      const triggerId = "region-trigger1";
+      const trigger = {
+        ...mockTrigger(triggerId),
+        maxInstances: 1,
+      };
+
+      const worker = pool.addWorker(trigger, new MockRuntimeInstance(), {});
+      worker.readyForWork();
+
+      const first = await pool.getWorkerForRequest(trigger, async () => {
+        throw new Error("Unexpected worker creation.");
+      });
+      expect(first).to.eql(worker);
+
+      let resolved = false;
+      const secondPromise = pool.getWorkerForRequest(trigger, async () => {
+        throw new Error("Unexpected worker creation.");
+      });
+      secondPromise.then(() => {
+        resolved = true;
+      });
+
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(resolved).to.be.false;
+
+      worker.releaseReservation();
+      const second = await secondPromise;
+      expect(second).to.eql(worker);
+    });
+
+    it("does not start more workers than maxInstances allows", async () => {
+      const pool = new RuntimeWorkerPool();
+      const triggerId = "region-trigger1";
+      const trigger = {
+        ...mockTrigger(triggerId),
+        maxInstances: 1,
+      };
+
+      let startCount = 0;
+      let releaseStart: (() => void) | undefined;
+      const startBarrier = new Promise<void>((resolve) => {
+        releaseStart = resolve;
+      });
+
+      const startRuntime = async () => {
+        startCount += 1;
+        await startBarrier;
+        const worker = pool.addWorker(trigger, new MockRuntimeInstance(), {});
+        worker.readyForWork();
+        return worker;
+      };
+
+      const firstPromise = pool.getWorkerForRequest(trigger, startRuntime);
+      const secondPromise = pool.getWorkerForRequest(trigger, startRuntime);
+
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(startCount).to.eq(1);
+
+      releaseStart?.();
+      const firstResult = await Promise.race([
+        firstPromise.then((worker) => ({ worker, which: "first" as const })),
+        secondPromise.then((worker) => ({ worker, which: "second" as const })),
+      ]);
+
+      const pendingPromise = firstResult.which === "first" ? secondPromise : firstPromise;
+      let pendingResolved = false;
+      pendingPromise.then(() => {
+        pendingResolved = true;
+      });
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(pendingResolved).to.be.false;
+
+      firstResult.worker.releaseReservation();
+      const second = await pendingPromise;
+      expect(second).to.eql(firstResult.worker);
+    });
+
     it("does not consider failed workers idle", async () => {
       const pool = new RuntimeWorkerPool();
       const triggerId = "trigger1";
