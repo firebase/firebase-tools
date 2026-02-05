@@ -1,6 +1,7 @@
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import { Options } from "../options";
+import { splitArgumentBySeparator } from "../utils";
 
 export interface ParsedFirestoreConfig {
   database: string;
@@ -18,7 +19,7 @@ export function getFirestoreConfig(projectId: string, options: Options): ParsedF
   let allDatabases = !options.only;
   const onlyDatabases = new Set<string>();
   if (options.only) {
-    const split = options.only.split(",");
+    const split = splitArgumentBySeparator(options.only);
     if (split.includes("firestore")) {
       allDatabases = true;
     } else {

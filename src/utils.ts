@@ -1055,3 +1055,11 @@ export function resolveWithin(base: string, subPath: string, errMsg?: string): s
   }
   return abs;
 }
+
+/**
+ * Splits comma and space separated argument into an array of strings.
+ * This is used to hanlde cases where PowerShell replaces commas with spaces.
+ */
+export function splitArgumentBySeparator(argument: string): string[] {
+  return argument.split(/[ ,]+/).filter((s) => s.length > 0);
+}

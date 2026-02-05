@@ -10,7 +10,7 @@ import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devC
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet, logLabeledWarning, splitArgumentBySeparator } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
@@ -189,7 +189,7 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
   if (!options.only) {
     return backendConfigs;
   }
-  const selectors = options.only.split(",");
+  const selectors = splitArgumentBySeparator(options.only);
   const backendIds: string[] = [];
   for (const selector of selectors) {
     // if the user passes the "apphosting" selector, we default to deploying all backends

@@ -131,7 +131,7 @@ function getReleventConfigs(target: string, options: Options) {
     return targetConfigs;
   }
 
-  let onlyTargets = options.only.split(",");
+  let onlyTargets = utils.splitArgumentBySeparator(options.only);
   if (onlyTargets.includes(target)) {
     return targetConfigs;
   }
