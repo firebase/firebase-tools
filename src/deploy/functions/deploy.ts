@@ -80,7 +80,10 @@ export async function uploadSourceV2(
     ),
   };
 
-  if (!experiments.isEnabled("functionsrunapionly") && !v2Endpoints.some((e) => e.platform === "run")) {
+  if (
+    !experiments.isEnabled("functionsrunapionly") &&
+    !v2Endpoints.some((e) => e.platform === "run")
+  ) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
       logLabeledWarning(
         "functions",
