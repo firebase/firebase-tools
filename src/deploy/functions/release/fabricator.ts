@@ -669,7 +669,6 @@ export class Fabricator {
       },
     };
 
-
     await this.executor
       .run(async () => {
         const op = await runV2.updateService(service);
