@@ -1,1 +1,2 @@
+- Added initial zip deploy support in functions deploy for HTTP functions (#9707)
 - Fixes an issue where Python was missing from the firebase-tools Docker image (#9855).
