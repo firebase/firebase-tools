@@ -1,12 +1,12 @@
 {
   "name": "@askelephant/firebase-tools",
-  "version": "15.5.3",
+  "version": "15.6.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "@askelephant/firebase-tools",
-      "version": "15.5.3",
+      "version": "15.6.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.6",
