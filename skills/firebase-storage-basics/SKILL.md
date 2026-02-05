@@ -11,6 +11,8 @@ This skill provides a complete guide for getting started with Cloud Storage for 
 
 To set up Cloud Storage in your Firebase project and local environment, see [provisioning.md](references/provisioning.md).
 
+**Important**: In order to use Cloud Storage, your Firebase project must be on the Blaze pricing plan. Direct the user to https://console.firebase.google.com/project/_/overview?purchaseBillingPlan=metered to upgrade their plan.
+
 ## Security Rules
 
 For guidance on writing and deploying Storage Security Rules to protect your files, see [security_rules.md](references/security_rules.md).

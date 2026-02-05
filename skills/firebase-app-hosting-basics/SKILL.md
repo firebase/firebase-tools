@@ -8,6 +8,8 @@ description: Deploy and manage web apps with Firebase App Hosting. Use this skil
 ## Description
 This skill enables the agent to deploy and manage modern, full-stack web applications (Next.js, Angular, etc.) using Firebase App Hosting. 
 
+**Important**: In order to use App Hosting, your Firebase project must be on the Blaze pricing plan. Direct the user to https://console.firebase.google.com/project/_/overview?purchaseBillingPlan=metered to upgrade their plan.
+
 ## Hosting vs App Hosting
 
 **Choose Firebase Hosting if:**
