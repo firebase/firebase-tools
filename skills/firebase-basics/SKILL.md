@@ -104,9 +104,6 @@ The Firebase CLI documents itself. Instruct the user to use help commands to dis
 Detailed guides for adding Firebase to your app:
 
 - **Web**: See [references/web_setup.md](references/web_setup.md)
-- **iOS**: See [references/ios_setup.md](references/ios_setup.md)
-- **Android**: See [references/android_setup.md](references/android_setup.md)
-- **Flutter**: See [references/flutter_setup.md](references/flutter_setup.md)
 
 ## Common Issues
 
