@@ -47,7 +47,7 @@ App Hosting uses Cloud Secret Manager to securely handle sensitive environment v
 - **Purpose**: Grants the App Hosting service account permission to access the secret.
 - **Note**: Often handled automatically by `secrets:set`, but useful for debugging permission issues or granting access to existing secrets.
 
-### Automated deployment via GitHub (CI/CD)
+## Automated deployment via GitHub (CI/CD)
 
 **IMPORTANT** Only use these commands if you are setting up automated deployments via GitHub. If you are managing deployments using `firebase deploy`, DO NOT use these commands.
 
