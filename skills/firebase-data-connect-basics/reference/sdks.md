@@ -42,7 +42,7 @@ firebase dataconnect:sdk:generate
 ### Installation
 
 ```bash
-npm install firebase @firebase/data-connect
+npm install firebase
 ```
 
 ### Initialization
@@ -82,7 +82,7 @@ const newMovie = await createMovie({
 console.log(newMovie.data.movie_insert); // Returns key
 ```
 
-### Subscriptions (Real-time)
+### Subscriptions
 
 ```typescript
 import { listMoviesRef, subscribe } from '@movie-app/dataconnect';

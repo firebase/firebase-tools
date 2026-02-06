@@ -47,7 +47,7 @@ connectorDirs: ["./connector"]
 
 | Field | Description |
 |-------|-------------|
-| `specVersion` | Always `"v1beta"` |
+| `specVersion` | Always `"v1"` |
 | `serviceId` | Unique identifier for the service |
 | `location` | GCP region (us-central1, us-east4, europe-west1, etc.) |
 | `schema.source` | Path to schema directory |
