@@ -126,6 +126,7 @@
     "commander": "^5.1.0",
     "configstore": "^5.0.1",
     "cors": "^2.8.5",
+    "cron-parser": "^5.5.0",
     "cross-env": "^7.0.3",
     "cross-spawn": "^7.0.5",
     "csv-parse": "^5.0.4",

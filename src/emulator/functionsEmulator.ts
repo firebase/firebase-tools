@@ -7,6 +7,7 @@ import * as cors from "cors";
 import * as semver from "semver";
 import { URL } from "url";
 import { EventEmitter } from "events";
+import * as uuid from "uuid";
 
 import { Account } from "../types/auth";
 import { logger } from "../logger";
@@ -62,6 +63,7 @@ import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import { ExtensionsEmulator } from "./extensionsEmulator";
+import { getNextRun } from "./scheduleExpression";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -76,6 +78,8 @@ const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
  *   2 - path
  */
 const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs(/.*)$");
+const DEFAULT_SCHEDULE_TIME_ZONE_V1 = "America/Los_Angeles";
+const DEFAULT_SCHEDULE_TIME_ZONE_V2 = "UTC";
 
 /**
  * EmulatableBackend represents a group of functions to be emulated.
@@ -187,6 +191,13 @@ interface EmulatedTriggerRecord {
   url?: string;
 }
 
+interface ScheduledTriggerRecord {
+  def: EmulatedTriggerDefinition;
+  backend: EmulatableBackend;
+  nextRun: Date;
+  timer: NodeJS.Timeout;
+}
+
 export class FunctionsEmulator implements EmulatorInstance {
   static getHttpFunctionUrl(
     projectId: string,
@@ -214,6 +225,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private workQueue: WorkQueue;
   private logger = EmulatorLogger.forEmulator(Emulators.FUNCTIONS);
   private multicastTriggers: { [s: string]: string[] } = {};
+  private scheduledTriggers: Record<string, ScheduledTriggerRecord> = {};
 
   private adminSdkConfig: AdminSdkConfig;
 
@@ -396,8 +408,175 @@ export class FunctionsEmulator implements EmulatorInstance {
     return hub;
   }
 
-  async sendRequest(trigger: EmulatedTriggerDefinition, body?: any) {
-    const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
+  private getScheduledTopicName(def: EmulatedTriggerDefinition): string {
+    if (def.platform === "gcfv1") {
+      return `firebase-schedule-${def.name}`;
+    }
+    return `firebase-schedule-${def.name}-${def.region}`;
+  }
+
+  private getScheduledJobName(def: EmulatedTriggerDefinition): string {
+    return `projects/${this.args.projectId}/locations/${def.region}/jobs/firebase-schedule-${def.name}-${def.region}`;
+  }
+
+  private createV1ScheduledEventPayload(def: EmulatedTriggerDefinition, runTime: Date) {
+    const topic = this.getScheduledTopicName(def);
+    return {
+      context: {
+        eventId: uuid.v4(),
+        resource: {
+          service: "pubsub.googleapis.com",
+          name: `projects/${this.args.projectId}/topics/${topic}`,
+        },
+        eventType: "google.pubsub.topic.publish",
+        timestamp: runTime.toISOString(),
+      },
+      data: {
+        data: "",
+        attributes: {
+          scheduled: "true",
+        },
+      },
+    };
+  }
+
+  private getScheduledTimeZone(def: EmulatedTriggerDefinition): string {
+    if (def.schedule?.timeZone) {
+      return def.schedule.timeZone;
+    }
+    return def.platform === "gcfv1"
+      ? DEFAULT_SCHEDULE_TIME_ZONE_V1
+      : DEFAULT_SCHEDULE_TIME_ZONE_V2;
+  }
+
+  private clearScheduledTrigger(triggerKey: string): void {
+    const scheduledTrigger = this.scheduledTriggers[triggerKey];
+    if (!scheduledTrigger) {
+      return;
+    }
+    clearTimeout(scheduledTrigger.timer);
+    delete this.scheduledTriggers[triggerKey];
+  }
+
+  private clearAllScheduledTriggers(): void {
+    for (const triggerKey of Object.keys(this.scheduledTriggers)) {
+      this.clearScheduledTrigger(triggerKey);
+    }
+  }
+
+  private scheduleNextRun(
+    triggerKey: string,
+    definition: EmulatedTriggerDefinition,
+    emulatableBackend: EmulatableBackend,
+    from: Date,
+  ): boolean {
+    if (!definition.schedule) {
+      return false;
+    }
+    const nextRun = getNextRun(
+      definition.schedule.schedule,
+      from,
+      this.getScheduledTimeZone(definition),
+    );
+    if (!nextRun) {
+      this.logger.logLabeled(
+        "WARN",
+        `functions[${definition.id}]`,
+        `Skipping automatic schedule execution. Unsupported schedule expression "${definition.schedule.schedule}".`,
+      );
+      return false;
+    }
+
+    const delay = Math.max(0, nextRun.getTime() - Date.now());
+    const timer = setTimeout(() => {
+      void this.runScheduledTrigger(triggerKey);
+    }, delay);
+    timer.unref?.();
+
+    this.scheduledTriggers[triggerKey] = {
+      def: definition,
+      backend: emulatableBackend,
+      nextRun,
+      timer,
+    };
+    return true;
+  }
+
+  private addScheduledTrigger(
+    triggerKey: string,
+    definition: EmulatedTriggerDefinition,
+    emulatableBackend: EmulatableBackend,
+  ): boolean {
+    this.clearScheduledTrigger(triggerKey);
+    const scheduled = this.scheduleNextRun(triggerKey, definition, emulatableBackend, new Date());
+    if (scheduled) {
+      this.logger.logLabeled(
+        "BULLET",
+        `functions[${definition.id}]`,
+        `scheduled trigger initialized (${definition.schedule?.schedule}), next run at ${this.scheduledTriggers[
+          triggerKey
+        ].nextRun.toISOString()}.`,
+      );
+    }
+    return scheduled;
+  }
+
+  private async runScheduledTrigger(triggerKey: string): Promise<void> {
+    const scheduled = this.scheduledTriggers[triggerKey];
+    if (!scheduled) {
+      return;
+    }
+    delete this.scheduledTriggers[triggerKey];
+
+    await this.invokeScheduledTrigger(triggerKey, scheduled.nextRun);
+
+    const record = this.triggers[triggerKey];
+    if (!record || !record.enabled || !record.def.schedule) {
+      return;
+    }
+
+    this.scheduleNextRun(triggerKey, record.def, record.backend, scheduled.nextRun);
+  }
+
+  private async invokeScheduledTrigger(triggerKey: string, runTime: Date): Promise<void> {
+    const record = this.getTriggerRecordByKey(triggerKey);
+    if (!record.enabled) {
+      return;
+    }
+    const def = record.def;
+
+    try {
+      if (def.platform === "gcfv2") {
+        await this.sendRequestByKey(triggerKey, {
+          method: "POST",
+          headers: {
+            "X-CloudScheduler-JobName": this.getScheduledJobName(def),
+            "X-CloudScheduler-ScheduleTime": runTime.toISOString(),
+          },
+          body: "",
+        });
+        return;
+      }
+
+      await this.sendRequestByKey(triggerKey, {
+        method: "POST",
+        body: this.createV1ScheduledEventPayload(def, runTime),
+      });
+    } catch (e: unknown) {
+      this.logger.logLabeled(
+        "WARN",
+        `functions[${def.id}]`,
+        `Error executing scheduled function: ${e}`,
+      );
+    }
+  }
+
+  private async sendRequestByKey(
+    triggerKey: string,
+    opts: { method?: string; headers?: Record<string, string>; body?: unknown } = {},
+  ) {
+    const record = this.getTriggerRecordByKey(triggerKey);
+    const trigger = record.def;
     const pool = this.workerPools[record.backend.codebase];
     let worker: RuntimeWorker;
     try {
@@ -419,13 +598,23 @@ export class FunctionsEmulator implements EmulatorInstance {
         throw err;
       }
     }
-    const reqBody = JSON.stringify(body);
-    const headers = {
-      "Content-Type": "application/json",
-      "Content-Length": `${reqBody.length}`,
-    };
+
+    let reqBody: string | undefined;
+    if (opts.body !== undefined) {
+      reqBody = typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body);
+    }
+
+    const headers: Record<string, string> = { ...(opts.headers || {}) };
+    if (!headers["Content-Length"] && !headers["content-length"]) {
+      headers["Content-Length"] = `${reqBody ? Buffer.byteLength(reqBody) : 0}`;
+    }
+    if (reqBody !== undefined && !headers["Content-Type"] && !headers["content-type"]) {
+      headers["Content-Type"] = "application/json";
+    }
+
     return worker.requestWithoutResponse(
       {
+        method: opts.method || "POST",
         path: "/",
         headers,
       },
@@ -433,6 +622,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       undefined,
       true,
     );
+  }
+
+  async sendRequest(trigger: EmulatedTriggerDefinition, body?: any) {
+    return this.sendRequestByKey(this.getTriggerKey(trigger), { body });
   }
 
   async start(): Promise<void> {
@@ -500,6 +693,8 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async stop(): Promise<void> {
+    this.clearAllScheduledTriggers();
+
     try {
       await this.workQueue.flush();
     } catch (e: any) {
@@ -640,9 +835,12 @@ export class FunctionsEmulator implements EmulatorInstance {
         return true; // We are going to load all of the triggers anyway, so we can remove everything
       }
       return !triggerDefinitions.some(
-        (def) =>
-          record.def.entryPoint === def.entryPoint &&
-          JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger),
+        (def) => {
+          const sameEventTrigger =
+            JSON.stringify(record.def.eventTrigger) === JSON.stringify(def.eventTrigger);
+          const sameSchedule = JSON.stringify(record.def.schedule) === JSON.stringify(def.schedule);
+          return record.def.entryPoint === def.entryPoint && sameEventTrigger && sameSchedule;
+        },
       );
     });
     await this.removeTriggers(toRemove);
@@ -661,17 +859,21 @@ export class FunctionsEmulator implements EmulatorInstance {
         // If they both have event triggers, make sure they match
         const sameEventTrigger =
           JSON.stringify(record.def.eventTrigger) === JSON.stringify(definition.eventTrigger);
+        const sameSchedule =
+          JSON.stringify(record.def.schedule) === JSON.stringify(definition.schedule);
 
-        if (sameEntryPoint && !sameEventTrigger) {
+        if (sameEntryPoint && (!sameEventTrigger || !sameSchedule)) {
           this.logger.log(
             "DEBUG",
             `Definition for trigger ${definition.entryPoint} changed from ${JSON.stringify(
               record.def.eventTrigger,
-            )} to ${JSON.stringify(definition.eventTrigger)}`,
+            )} / schedule=${JSON.stringify(record.def.schedule)} to ${JSON.stringify(
+              definition.eventTrigger,
+            )} / schedule=${JSON.stringify(definition.schedule)}`,
           );
         }
 
-        return record.enabled && sameEntryPoint && sameEventTrigger;
+        return record.enabled && sameEntryPoint && sameEventTrigger && sameSchedule;
       });
       return !anyEnabledMatch;
     });
@@ -688,6 +890,8 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       let added = false;
       let url: string | undefined = undefined;
+      let ignoredReason: string | undefined;
+      const key = this.getTriggerKey(definition);
 
       if (definition.httpsTrigger) {
         added = true;
@@ -705,9 +909,30 @@ export class FunctionsEmulator implements EmulatorInstance {
             definition.taskQueueTrigger,
           );
         }
+      } else if (definition.schedule && definition.eventTrigger) {
+        const signature = getSignatureType(definition);
+        const scheduledAdded = this.addScheduledTrigger(key, definition, emulatableBackend);
+        if (definition.platform === "gcfv1") {
+          // Keep v1 manual triggering compatibility via Pub/Sub while adding automatic scheduling.
+          const pubsubAdded = await this.addPubsubTrigger(
+            definition.name,
+            key,
+            definition.eventTrigger,
+            signature,
+            definition.schedule,
+          );
+          added = scheduledAdded || pubsubAdded;
+          if (!scheduledAdded) {
+            ignoredReason = `automatic schedule disabled because schedule "${definition.schedule.schedule}" is unsupported by the emulator parser.`;
+          }
+        } else {
+          added = scheduledAdded;
+          if (!scheduledAdded) {
+            ignoredReason = `function ignored because schedule "${definition.schedule.schedule}" is unsupported by the emulator parser.`;
+          }
+        }
       } else if (definition.eventTrigger) {
         const service: string = getFunctionService(definition);
-        const key = this.getTriggerKey(definition);
         const signature = getSignatureType(definition);
 
         switch (service) {
@@ -784,7 +1009,9 @@ export class FunctionsEmulator implements EmulatorInstance {
         : Constants.getServiceName(getFunctionService(definition));
 
       if (ignored) {
-        const msg = `function ignored because the ${triggerType} emulator does not exist or is not running.`;
+        const msg =
+          ignoredReason ||
+          `function ignored because the ${triggerType} emulator does not exist or is not running.`;
         this.logger.logLabeled("BULLET", `functions[${definition.id}]`, msg);
       } else {
         const msg = url
@@ -824,10 +1051,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  // Currently only cleans up eventarc and firealerts triggers
+  // Currently only cleans up eventarc, firealerts, and scheduled trigger timers.
   async removeTriggers(toRemove: string[]) {
     for (const triggerKey of toRemove) {
       const definition = this.triggers[triggerKey].def;
+      if (definition.schedule) {
+        this.clearScheduledTrigger(triggerKey);
+        delete this.triggers[triggerKey];
+        continue;
+      }
+
       const service = getFunctionService(definition);
       const key = this.getTriggerKey(definition);
 
@@ -1371,6 +1604,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   setTriggersForTesting(triggers: EmulatedTriggerDefinition[], backend: EmulatableBackend) {
+    this.clearAllScheduledTriggers();
     this.triggers = {};
     triggers.forEach((def) => this.addTriggerRecord(def, { backend, ignored: false }));
   }
