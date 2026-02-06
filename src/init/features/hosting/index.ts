@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { Client } from "../../../apiv2";
+import { discover, WebFrameworks } from "../../../frameworks";
 import * as github from "./github";
 import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
@@ -30,6 +31,9 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.hosting = {};
 
+  // Fire off framework detection concurrently so it runs while the site check happens
+  const discoverPromise = discover(config.projectDir, false);
+
   // There's a path where we can set up Hosting without a project, so if
   // if setup.projectId is empty, we don't do any checking for a Hosting site.
   if (setup.projectId) {
@@ -56,6 +60,26 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       };
       setup.featureInfo.hosting.newSiteId = await pickHostingSiteName("", createOptions);
     }
+  }
+
+  const discoveredFramework = await discoverPromise;
+  if (discoveredFramework && discoveredFramework.framework !== "flutter") {
+    const frameworkName =
+      WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
+    logger.info();
+    logger.info(
+      `Detected an existing ${clc.bold(frameworkName)} codebase in the current directory.`,
+    );
+    logger.info(
+      `Firebase Hosting supports static web apps only. If your app uses server-side rendering,`,
+    );
+    logger.info(
+      `set up ${clc.bold("Firebase App Hosting")} instead by running ${clc.bold("firebase init apphosting")}`,
+    );
+    logger.info();
+    throw new FirebaseError(
+      `Detected a ${frameworkName} codebase. Use ${clc.bold("firebase init apphosting")} instead.`,
+    );
   }
 
   logger.info();

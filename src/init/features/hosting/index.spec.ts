@@ -5,6 +5,7 @@ import * as config from "../../../config";
 import * as getDefaultHostingSiteMod from "../../../getDefaultHostingSite";
 import * as hostingInteractive from "../../../hosting/interactive";
 import * as hostingApi from "../../../hosting/api";
+import * as frameworks from "../../../frameworks";
 import { Client } from "../../../apiv2";
 import { askQuestions, actuate } from "./index";
 import { Setup } from "../..";
@@ -31,6 +32,7 @@ describe("hosting feature init", () => {
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
+      sandbox.stub(frameworks, "discover").resolves(undefined);
       // Mock existing site check
       sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
 
@@ -72,6 +74,7 @@ describe("hosting feature init", () => {
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
+      sandbox.stub(frameworks, "discover").resolves(undefined);
       sandbox
         .stub(getDefaultHostingSiteMod, "getDefaultHostingSite")
         .rejects(getDefaultHostingSiteMod.errNoDefaultSite);
@@ -92,6 +95,64 @@ describe("hosting feature init", () => {
 
       expect(pickSiteStub.called).to.be.true;
       expect(setup.featureInfo?.hosting?.newSiteId).to.equal("new-site-id");
+    });
+
+    it("should recommend App Hosting and throw when a Node.js framework is detected", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      sandbox.stub(frameworks, "discover").resolves({ framework: "next", mayWantBackend: true });
+      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+
+      sandbox.stub(prompt, "confirm").resolves(false);
+      sandbox.stub(prompt, "input").resolves("public");
+      sandbox.stub(github, "initGitHub").resolves();
+
+      await expect(
+        askQuestions(setup, cfg, {
+          cwd: "/",
+          configPath: "",
+          only: "",
+          except: "",
+          nonInteractive: false,
+        } as any),
+      ).to.be.rejectedWith(/firebase init apphosting/);
+    });
+
+    it("should not terminate when no framework is detected", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      sandbox.stub(frameworks, "discover").resolves(undefined);
+      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+
+      sandbox.stub(prompt, "confirm").resolves(false);
+      const inputStub = sandbox.stub(prompt, "input").resolves("public");
+      sandbox.stub(github, "initGitHub").resolves();
+
+      await askQuestions(setup, cfg, {
+        cwd: "/",
+        configPath: "",
+        only: "",
+        except: "",
+        nonInteractive: false,
+      } as any);
+
+      expect(
+        inputStub.calledWith(
+          sinon.match({ message: "What do you want to use as your public directory?" }),
+        ),
+      ).to.be.true;
     });
   });
 
