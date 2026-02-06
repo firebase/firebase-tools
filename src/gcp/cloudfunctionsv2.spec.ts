@@ -244,6 +244,10 @@ describe("cloudfunctionsv2", () => {
 
       const fullGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: "projects/project/serviceAccounts/inlined@google.com",
+        },
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
           foo: "bar",
@@ -332,6 +336,10 @@ describe("cloudfunctionsv2", () => {
 
       const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: "projects/project/serviceAccounts/sa@google.com",
+        },
         eventTrigger: {
           eventType: events.v2.DATABASE_EVENTS[0],
           eventFilters: [
@@ -405,6 +413,10 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: `projects/${ENDPOINT.project}/serviceAccounts/sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
+        },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           serviceAccountEmail: `sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
@@ -421,6 +433,10 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: null,
+        },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           serviceAccountEmail: null,
