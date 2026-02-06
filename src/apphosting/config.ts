@@ -1,11 +1,31 @@
-import { resolve, join, dirname } from "path";
+import { join, dirname } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
+import * as clc from "colorette";
 
 import * as fs from "../fsutils";
 import { NodeType } from "yaml/dist/nodes/Node";
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
+import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
+import { logger } from "../logger";
+import * as csm from "../gcp/secretManager";
+import { FirebaseError, getError } from "../error";
+
+// Common config across all environments
+export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
+
+// Modern version of local configuration that is intended to be safe to commit.
+// In order to ensure safety, values that are secret environment variables in
+// apphosting.yaml cannot be made plaintext in apphosting.emulators.yaml
+export const APPHOSTING_EMULATORS_YAML_FILE = "apphosting.emulator.yaml";
+
+// Legacy/undocumented version of local configuration that is allowed to store
+// values that are secrets in preceeding files as plaintext. It is not safe
+// to commit to SCM
+export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
+
+export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-z0-9_]+)?\.yaml$/;
 
 export interface RunConfig {
   concurrency?: number;
@@ -33,17 +53,22 @@ export interface Config {
 }
 
 /**
- * Finds the path of apphosting.yaml.
- * Starts with cwd and walks up the tree until apphosting.yaml is found or
- * we find the project root (where firebase.json is) or the filesystem root;
- * in these cases, returns null.
+ * Returns the absolute path for an app hosting backend root.
+ *
+ * Backend root is determined by looking for an apphosting.yaml
+ * file.
  */
-export function yamlPath(cwd: string): string | null {
+export function discoverBackendRoot(cwd: string): string | null {
   let dir = cwd;
 
-  while (!fs.fileExistsSync(resolve(dir, "apphosting.yaml"))) {
+  while (true) {
+    const files = fs.listFiles(dir);
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+      return dir;
+    }
+
     // We've hit project root
-    if (fs.fileExistsSync(resolve(dir, "firebase.json"))) {
+    if (files.includes("firebase.json")) {
       return null;
     }
 
@@ -54,12 +79,35 @@ export function yamlPath(cwd: string): string | null {
     }
     dir = parent;
   }
-  return resolve(dir, "apphosting.yaml");
 }
 
-/** Load apphosting.yaml */
+/**
+ * Returns paths of apphosting config files in the given path
+ */
+export function listAppHostingFilesInPath(path: string): string[] {
+  return fs
+    .listFiles(path)
+    .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file))
+    .map((file) => join(path, file));
+}
+
+/**
+ * Load an apphosting yaml file if it exists.
+ * Throws if the file exists but is malformed.
+ * Returns an empty document if the file does not exist.
+ */
 export function load(yamlPath: string): yaml.Document {
-  const raw = fs.readFile(yamlPath);
+  let raw: string;
+  try {
+    raw = fs.readFile(yamlPath);
+  } catch (err: any) {
+    if (err.code !== "ENOENT") {
+      throw new FirebaseError(`Unexpected error trying to load ${yamlPath}`, {
+        original: getError(err),
+      });
+    }
+    return new yaml.Document();
+  }
   return yaml.parseDocument(raw);
 }
 
@@ -103,26 +151,33 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
   envs.add(envYaml);
 }
 
+// We must go through the exports object for stubbing to work in tests.
+const dynamicDispatch = exports as {
+  discoverBackendRoot: typeof discoverBackendRoot;
+  load: typeof load;
+  findEnv: typeof findEnv;
+  upsertEnv: typeof upsertEnv;
+  store: typeof store;
+  overrideChosenEnv: typeof overrideChosenEnv;
+};
+
 /**
- * Given a secret name, guides the user whether they want to add that secret to apphosting.yaml.
- * If an apphosting.yaml exists and includes the secret already is used as a variable name, exist early.
- * If apphosting.yaml does not exist, offers to create it.
+ * Given a secret name, guides the user whether they want to add that secret to the specified apphosting yaml file.
+ * If an the file exists and includes the secret already is used as a variable name, exist early.
+ * If the file does not exist, offers to create it.
  * If env does not exist, offers to add it.
  * If secretName is not a valid env var name, prompts for an env var name.
  */
-export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
-  // We must go through the exports object for stubbing to work in tests.
-  const dynamicDispatch = exports as {
-    yamlPath: typeof yamlPath;
-    load: typeof load;
-    findEnv: typeof findEnv;
-    upsertEnv: typeof upsertEnv;
-    store: typeof store;
-  };
+export async function maybeAddSecretToYaml(
+  secretName: string,
+  fileName: string = APPHOSTING_BASE_YAML_FILE,
+): Promise<void> {
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  let path = dynamicDispatch.yamlPath(process.cwd());
+  const backendRoot = dynamicDispatch.discoverBackendRoot(process.cwd());
+  let path: string | undefined;
   let projectYaml: yaml.Document;
-  if (path) {
+  if (backendRoot) {
+    path = join(backendRoot, fileName);
     projectYaml = dynamicDispatch.load(path);
   } else {
     projectYaml = new yaml.Document();
@@ -132,24 +187,165 @@ export async function maybeAddSecretToYaml(secretName: string): Promise<void> {
     return;
   }
   const addToYaml = await prompt.confirm({
-    message: "Would you like to add this secret to apphosting.yaml?",
+    message: `Would you like to add this secret to ${fileName}?`,
     default: true,
   });
   if (!addToYaml) {
     return;
   }
   if (!path) {
-    path = await prompt.promptOnce({
-      message:
-        "It looks like you don't have an apphosting.yaml yet. Where would you like to store it?",
+    path = await prompt.input({
+      message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
       default: process.cwd(),
     });
-    path = join(path, "apphosting.yaml");
+    path = join(path, fileName);
   }
-  const envName = await dialogs.envVarForSecret(secretName);
+  const envName = await dialogs.envVarForSecret(
+    secretName,
+    /* trimTestPrefix= */ fileName === APPHOSTING_EMULATORS_YAML_FILE,
+  );
   dynamicDispatch.upsertEnv(projectYaml, {
     variable: envName,
     secret: secretName,
   });
   dynamicDispatch.store(path, projectYaml);
+}
+
+/**
+ * Generates an apphosting.emulator.yaml if the user chooses to do so.
+ * Returns the resolved env that an emulator would see so that future code can
+ * grant access.
+ */
+export async function maybeGenerateEmulatorYaml(
+  projectId: string | undefined,
+  backendRoot: string,
+): Promise<Env[] | null> {
+  // Even if the app is in /project/app, the user might have their apphosting.yaml file in /project/apphosting.yaml.
+  // Walk up the tree to see if we find other local files so that we can put apphosting.emulator.yaml in the right place.
+  const basePath = dynamicDispatch.discoverBackendRoot(backendRoot) || backendRoot;
+  if (fs.fileExistsSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE))) {
+    logger.debug(
+      "apphosting.emulator.yaml already exists, skipping generation and secrets access prompt",
+    );
+    return null;
+  }
+
+  let baseConfig: AppHostingYamlConfig;
+  try {
+    baseConfig = await AppHostingYamlConfig.loadFromFile(join(basePath, APPHOSTING_BASE_YAML_FILE));
+  } catch {
+    baseConfig = AppHostingYamlConfig.empty();
+  }
+  const createFile = await prompt.confirm({
+    message:
+      "The App Hosting emulator uses a file called apphosting.emulator.yaml to override " +
+      "values in apphosting.yaml for local testing. This codebase does not have one, would you like " +
+      "to create it?",
+    default: true,
+  });
+  if (!createFile) {
+    return toEnvList(baseConfig.env);
+  }
+
+  const newEnv = await dynamicDispatch.overrideChosenEnv(projectId, baseConfig.env || {});
+  // Ensures we don't write 'null' if there are no overwritten env.
+  const envList = Object.entries(newEnv);
+  if (envList.length) {
+    const newYaml = new yaml.Document();
+    for (const [variable, env] of envList) {
+      // N.B. This is a bit weird. We're not defensively assuring that the key of the variable name is used,
+      // but this ensures that the generated YAML shows "variable" before "value" or "secret", which is what
+      // docs canonically show.
+      dynamicDispatch.upsertEnv(newYaml, { variable, ...env });
+    }
+    dynamicDispatch.store(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), newYaml);
+  } else {
+    // The yaml library _always_ stringifies empty objects and arrays as {} and [] and there is
+    // no setting on toString to change this, so we'll craft the YAML file manually.
+    const sample =
+      "env:\n" +
+      "#- variable: ENV_VAR_NAME\n" +
+      "#  value: plaintext value\n" +
+      "#- variable: SECRET_ENV_VAR_NAME\n" +
+      "#  secret: cloud-secret-manager-id\n";
+    writeFileSync(join(basePath, APPHOSTING_EMULATORS_YAML_FILE), sample);
+  }
+  return toEnvList({ ...baseConfig.env, ...newEnv });
+}
+
+/**
+ * Prompts a user which env they'd like to override and then asks them for the new values.
+ * Values cannot change between plaintext and secret while overriding them. Users are warned/asked to confirm
+ * if they choose to reuse an existing secret value. Secret reference IDs are suggested with a test- prefix to suggest
+ * a design pattern.
+ * Returns a map of modified environment variables.
+ */
+export async function overrideChosenEnv(
+  projectId: string | undefined,
+  env: EnvMap,
+): Promise<EnvMap> {
+  const names = Object.keys(env);
+  if (!names.length) {
+    return {};
+  }
+
+  const toOverwrite = await prompt.checkbox<string>({
+    message: "Which environment variables would you like to override?",
+    choices: names,
+  });
+
+  if (!projectId && toOverwrite.some((name) => "secret" in env[name])) {
+    throw new FirebaseError(
+      `Need a project ID to overwrite a secret. Either use ${clc.bold("firebase use")} or pass the ${clc.bold("--project")} flag`,
+    );
+  }
+
+  const newEnv: Record<string, Env> = {};
+  for (const name of toOverwrite) {
+    if ("value" in env[name]) {
+      const newValue = await prompt.input(`What new value would you like for plaintext ${name}?`);
+      newEnv[name] = { variable: name, value: newValue };
+      continue;
+    }
+
+    let secretRef: string;
+    let action: "reuse" | "create" | "pick-new" = "pick-new";
+    while (action === "pick-new") {
+      secretRef = await prompt.input({
+        message: `What would you like to name the secret reference for ${name}?`,
+        default: suggestedTestKeyName(name),
+      });
+
+      if (await csm.secretExists(projectId!, secretRef)) {
+        action = await prompt.select<"reuse" | "pick-new">({
+          message:
+            "This secret reference already exists, would you like to reuse it or create a new one?",
+          choices: [
+            { name: "Reuse it", value: "reuse" },
+            { name: "Create a new one", value: "pick-new" },
+          ],
+        });
+      } else {
+        action = "create";
+      }
+    }
+
+    newEnv[name] = { variable: name, secret: secretRef! };
+    if (action === "reuse") {
+      continue;
+    }
+
+    const secretValue = await prompt.password(
+      `What new value would you like for secret ${name} [input is hidden]?`,
+    );
+    // TODO: Do we need to support overriding locations? Inferring them from the original?
+    await csm.createSecret(projectId!, secretRef!, { [csm.FIREBASE_MANAGED]: "apphosting" });
+    await csm.addVersion(projectId!, secretRef!, secretValue);
+  }
+
+  return newEnv;
+}
+
+export function suggestedTestKeyName(variable: string): string {
+  return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }

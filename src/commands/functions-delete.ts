@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { reduceFlat } from "../functional";
 import { requirePermissions } from "../requirePermissions";
 import * as args from "../deploy/functions/args";
@@ -16,7 +16,6 @@ import * as planner from "../deploy/functions/release/planner";
 import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
 import * as reporter from "../deploy/functions/release/reporter";
-import * as containerCleaner from "../deploy/functions/containerCleaner";
 import { getProjectNumber } from "../getProjectNumber";
 
 export const command = new Command("functions:delete [filters...]")
@@ -68,18 +67,15 @@ export const command = new Command("functions:delete [filters...]")
     }
 
     const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
-    const confirmDeletion = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message:
-          "You are about to delete the following Cloud Functions:\n" +
-          deleteList +
-          "\n  Are you sure?",
-      },
-      options,
-    );
+    const confirmDeletion = await confirm({
+      message:
+        "You are about to delete the following Cloud Functions:\n" +
+        deleteList +
+        "\n  Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
     if (!confirmDeletion) {
       throw new FirebaseError("Command aborted.");
     }
@@ -109,7 +105,4 @@ export const command = new Command("functions:delete [filters...]")
         exit: 1,
       });
     }
-
-    // Clean up image caches too
-    await containerCleaner.cleanupBuildImages([], allEpToDelete);
   });

@@ -40,6 +40,7 @@ type WireEventTrigger = build.EventTrigger & {
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
+  Partial<build.DataConnectGraphqlTriggered> &
   Partial<build.CallableTriggered> &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
@@ -59,16 +60,19 @@ export type WireEndpoint = build.Triggered &
       egressSettings?: build.VpcEgressSetting | null;
     } | null;
     ingressSettings?: build.IngressSetting | null;
-    serviceAccount?: string | null;
+    serviceAccount?: build.Field<string>;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
     // We now use "serviceAccount" but maintain backwards compatibility in the
     // wire format for the time being.
-    serviceAccountEmail?: string | null;
+    serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export type WireExtension = {
@@ -149,8 +153,8 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
     concurrency: "Field<number>?",
-    serviceAccount: "string?",
-    serviceAccountEmail: "string?",
+    serviceAccount: "Field<string>?",
+    serviceAccountEmail: "Field<string>?",
     timeoutSeconds: "Field<number>?",
     vpc: "object?",
     labels: "object?",
@@ -158,12 +162,16 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
+    dataConnectGraphqlTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
+    baseImageUri: "string?",
+    command: "array?",
+    args: "array?",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
@@ -174,6 +182,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.dataConnectGraphqlTrigger) {
     triggerCount++;
   }
   if (ep.callableTrigger) {
@@ -205,16 +216,23 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       eventType: "string",
       retry: "Field<boolean>",
       region: "Field<string>",
-      serviceAccount: "string?",
-      serviceAccountEmail: "string?",
+      serviceAccount: "Field<string>?",
+      serviceAccountEmail: "Field<string>?",
       channel: "string",
     });
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
       invoker: "array?",
     });
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    assertKeyTypes(prefix + ".dataConnectGraphqlTrigger", ep.dataConnectGraphqlTrigger, {
+      invoker: "array?",
+      schemaFilePath: "string?",
+    });
   } else if (build.isCallableTriggered(ep)) {
-    // no-op
+    assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
+      genkitAction: "string?",
+    });
   } else if (build.isScheduleTriggered(ep)) {
     assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
       schedule: "Field<string>",
@@ -263,6 +281,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       options: "object",
     });
   } else {
+    // TODO: Replace with assertExhaustive, which needs some type magic here because we have an any
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
         "firebase-tools with npm install -g firebase-tools@latest",
@@ -308,8 +327,17 @@ function parseEndpointForBuild(
   } else if (build.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    triggered = { dataConnectGraphqlTrigger: {} };
+    copyIfPresent(triggered.dataConnectGraphqlTrigger, ep.dataConnectGraphqlTrigger, "invoker");
+    copyIfPresent(
+      triggered.dataConnectGraphqlTrigger,
+      ep.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
+    copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
   } else if (build.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       // TODO: consider adding validation for fields like this that reject
@@ -428,6 +456,9 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables",
     "serviceAccount",
+    "baseImageUri",
+    "command",
+    "args",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

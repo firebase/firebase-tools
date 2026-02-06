@@ -1,59 +1,71 @@
-import type { Options } from "@wdio/types";
 import * as path from "path";
-import * as child_process from "child_process";
+import * as fs from "fs";
 
+import * as child_process from "child_process";
+import { Notifications } from "./utils/page_objects/editor";
+
+process.env.VSCODE_TEST_MODE = "true";
+// used to preload extension dependencies
+const prebuiltExtensionsDir = path.resolve(__dirname, "../../prebuilt-extensions");
 export const vscodeConfigs = {
   browserName: "vscode",
-  // Workaround for https://github.com/webdriverio-community/wdio-vscode-service/issues/101#issuecomment-1928159399
-  browserVersion: "1.85.0", // also possible: "insiders" or a specific version e.g. "1.80.0"
+  browserVersion: "1.96.4", // also possible: "insiders" or a specific version e.g. "1.80.0"
   "wdio:vscodeOptions": {
+    vscodeArgs: {
+      disableExtensions: false,
+      extensionsDir: prebuiltExtensionsDir,
+    },
     // points to directory where extension package.json is located
     extensionPath: path.join(__dirname, "..", ".."),
     // optional VS Code settings
     userSettings: {
       "editor.fontSize": 14,
     },
+    vscodeProxyOptions: {
+      commandTimeout: 60000,
+    },
   },
 };
 
-export const config: Options.Testrunner = {
+export const config: WebdriverIO.Config = {
   runner: "local",
   autoCompileOpts: {
-    autoCompile: true,
     tsNodeOpts: {
       project: "./tsconfig.test.json",
-      transpileOnly: true,
     },
   },
-
-  capabilities: [
-    {
-      browserName: "vscode",
-      // Workaround for https://github.com/webdriverio-community/wdio-vscode-service/issues/101#issuecomment-1928159399
-      browserVersion: "1.85.0", // also possible: "insiders" or a specific version e.g. "1.80.0"
-      "wdio:vscodeOptions": {
-        // points to directory where extension package.json is located
-        extensionPath: path.join(__dirname, "..", ".."),
-        // optional VS Code settings
-        userSettings: {
-          "editor.fontSize": 14,
-        },
-      },
-    },
-  ],
+  capabilities: [vscodeConfigs],
 
   // Redirect noisy chromedriver and browser logs to ./logs
   outputDir: "./logs",
 
-  afterTest: async function () {
+  logLevel: "debug",
+
+  beforeTest: async function () {    
+    await browser.pause(1000); // give some time for extension dependency to load
+  },
+
+  afterTest: async function (test) {
     // Reset the test_projects directory to its original state after each test.
     // This ensures tests do not modify the test_projects directory.
     child_process.execSync(
-      `git restore --source=HEAD -- ./src/test/test_projects`
+      `git restore --source=HEAD -- ./src/test/test_projects`,
     );
+    // Only take a screenshot if the test failed
+    if (test.error !== undefined) {
+      const screenshotDir = path.join(__dirname, "screenshots");
+      fs.mkdirSync(screenshotDir, { recursive: true });
+      await browser.saveScreenshot(
+        path.join(screenshotDir, `${test.parent} - ${test.title}.png`),
+      );
+    }
   },
 
   services: ["vscode"],
   framework: "mocha",
   reporters: ["spec"],
+  mochaOpts: {
+    ui: "tdd",
+    timeout: 120000,
+  },
 };

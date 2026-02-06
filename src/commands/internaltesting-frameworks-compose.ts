@@ -8,7 +8,7 @@ import { LocalFileSystem } from "../frameworks/compose/discover/filesystem";
 import { frameworkSpecs } from "../frameworks/compose/discover/frameworkSpec";
 
 export const command = new Command("internaltesting:frameworks:compose")
-  .option("-m, --mode <mode>", "Composer mode (local or docker)", "local")
+  .option("-m, --mode <mode>", "composer mode (local or docker)", "local")
   .description("compose framework in current directory")
   .action(async (options: Options) => {
     const mode = options.mode as string;

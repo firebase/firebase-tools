@@ -26,6 +26,7 @@ export const command = new Command("ext")
       "ext:configure",
       "ext:update",
       "ext:uninstall",
+      "ext:sdk:install",
     ];
 
     for (const commandName of commandNames) {
@@ -40,7 +41,7 @@ export const command = new Command("ext")
       await requirePermissions(options, ["firebaseextensions.instances.list"]);
       const projectId = needProjectId(options);
       return listExtensions(projectId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       return;
     }
   });

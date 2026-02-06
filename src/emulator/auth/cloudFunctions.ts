@@ -5,7 +5,7 @@ import { EventContext } from "firebase-functions";
 import { Emulators } from "../types";
 import { EmulatorLogger } from "../emulatorLogger";
 import { EmulatorRegistry } from "../registry";
-import { UserInfo } from "./state";
+import { UserInfo, ProviderUserInfo } from "./state";
 
 type AuthCloudFunctionAction = "create" | "delete";
 
@@ -83,9 +83,22 @@ export class AuthCloudFunction {
           : undefined,
       },
       customClaims: JSON.parse(user.customAttributes || "{}"),
-      providerData: user.providerUserInfo,
+      providerData: user.providerUserInfo?.map((info) => this.createProviderUserInfoPayload(info)),
       tenantId: user.tenantId,
       mfaInfo: user.mfaInfo,
+    };
+  }
+
+  private createProviderUserInfoPayload(info: ProviderUserInfo): ProviderUserInfoPayload {
+    return {
+      rawId: info.rawId,
+      providerId: info.providerId,
+      displayName: info.displayName,
+      email: info.email,
+      federatedId: info.federatedId,
+      phoneNumber: info.phoneNumber,
+      photoURL: info.photoUrl,
+      screenName: info.screenName,
     };
   }
 }
@@ -104,9 +117,20 @@ type UserInfoPayload = {
     creationTime?: string;
     lastSignInTime?: string;
   };
-  providerData?: object[];
+  providerData?: ProviderUserInfoPayload[];
   phoneNumber?: string;
   customClaims?: object;
   tenantId?: string;
   mfaInfo?: object;
+};
+
+type ProviderUserInfoPayload = {
+  displayName?: string;
+  email?: string;
+  federatedId?: string;
+  phoneNumber?: string;
+  photoURL?: string;
+  providerId: string;
+  rawId: string;
+  screenName?: string;
 };

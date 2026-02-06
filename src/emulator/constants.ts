@@ -32,7 +32,7 @@ export const FIND_AVAILBLE_PORT_BY_DEFAULT: Record<Emulators, boolean> = {
   storage: false,
   extensions: false,
   eventarc: true,
-  dataconnect: true,
+  dataconnect: false,
   tasks: true,
 };
 
@@ -75,6 +75,12 @@ export class Constants {
 
   // Environment variable to override SDK/CLI to point at the Realtime Database emulator.
   static FIREBASE_DATABASE_EMULATOR_HOST = "FIREBASE_DATABASE_EMULATOR_HOST";
+
+  // Environment variable to discover the Data Connect emulator.
+  static FIREBASE_DATACONNECT_EMULATOR_HOST = "FIREBASE_DATA_CONNECT_EMULATOR_HOST";
+
+  // Alternative (deprecated) env var for Data Connect Emulator.
+  static FIREBASE_DATACONNECT_ENV_ALT = "DATA_CONNECT_EMULATOR_HOST";
 
   // Environment variable to override SDK/CLI to point at the Firebase Auth emulator.
   static FIREBASE_AUTH_EMULATOR_HOST = "FIREBASE_AUTH_EMULATOR_HOST";

@@ -6,11 +6,10 @@ import * as poller from "../operation-poller";
 import * as utils from "../utils";
 import { cloudbuildOrigin } from "../api";
 import { FirebaseError } from "../error";
-import { promptOnce } from "../prompt";
+import { Choice, input, search, Separator, confirm } from "../prompt";
 import { getProjectNumber } from "../getProjectNumber";
 
 import * as fuzzy from "fuzzy";
-import * as inquirer from "inquirer";
 
 export interface ConnectionNameParts {
   projectId: string;
@@ -35,7 +34,7 @@ const CONNECTION_NAME_REGEX =
 export function parseConnectionName(name: string): ConnectionNameParts | undefined {
   const match = CONNECTION_NAME_REGEX.exec(name);
 
-  if (!match || typeof match.groups === undefined) {
+  if (!match || typeof match.groups === "undefined") {
     return;
   }
   const { projectId, location, id } = match.groups as unknown as ConnectionNameParts;
@@ -154,11 +153,9 @@ async function createFullyInstalledConnection(
     const targetUri = conn.installationState.actionUri;
     utils.logBullet(targetUri);
     await utils.openInBrowser(targetUri);
-    await promptOnce({
-      type: "input",
-      message:
-        "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
-    });
+    await input(
+      "Press Enter once you have installed or configured the Cloud Build GitHub app to access your GitHub repo.",
+    );
     conn = await gcb.getConnection(projectId, location, connectionId);
   }
 
@@ -195,10 +192,7 @@ export async function getOrCreateOauthConnection(
       "Authorize the GitHub app",
     );
     utils.logBullet(`\t${url}`);
-    await promptOnce({
-      type: "input",
-      message: "Press Enter once you have authorized the app",
-    });
+    await input("Press Enter once you have authorized the app");
     cleanup();
     const { projectId, location, id } = parseConnectionName(conn.name)!;
     conn = await gcb.getConnection(projectId, location, id);
@@ -211,32 +205,26 @@ async function promptRepositoryUri(
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const { repos, remoteUriToConnection } = await fetchAllRepositories(projectId, connections);
-  const remoteUri = await promptOnce({
-    type: "autocomplete",
-    name: "remoteUri",
+  const remoteUri = await search<string>({
     message: "Which GitHub repo do you want to deploy?",
-    source: (_: any, input = ""): Promise<(inquirer.DistinctChoice | inquirer.Separator)[]> => {
-      return new Promise((resolve) =>
-        resolve([
-          new inquirer.Separator(),
-          {
-            name: "Missing a repo? Select this option to configure your GitHub connection settings",
-            value: ADD_CONN_CHOICE,
-          },
-          new inquirer.Separator(),
-          ...fuzzy
-            .filter(input, repos, {
-              extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
-            })
-            .map((result) => {
-              return {
-                name: extractRepoSlugFromUri(result.original.remoteUri) || "",
-                value: result.original.remoteUri,
-              };
-            }),
-        ]),
-      );
-    },
+    source: (input: string | undefined): Array<Separator | Choice<string>> => [
+      new Separator(),
+      {
+        name: "Missing a repo? Select this option to configure your GitHub connection settings",
+        value: ADD_CONN_CHOICE,
+      },
+      new Separator(),
+      ...fuzzy
+        .filter(input ?? "", repos, {
+          extract: (repo) => extractRepoSlugFromUri(repo.remoteUri) || "",
+        })
+        .map((result) => {
+          return {
+            name: extractRepoSlugFromUri(result.original.remoteUri) || "",
+            value: result.original.remoteUri,
+          };
+        }),
+    ],
   });
   return { remoteUri, connection: remoteUriToConnection[remoteUri] };
 }
@@ -258,10 +246,7 @@ async function ensureSecretManagerAdminGrant(projectId: string): Promise<void> {
   utils.logBullet(
     "To create a new GitHub connection, Secret Manager Admin role (roles/secretmanager.admin) is required on the Cloud Build Service Agent.",
   );
-  const grant = await promptOnce({
-    type: "confirm",
-    message: "Grant the required role to the Cloud Build Service Agent?",
-  });
+  const grant = await confirm("Grant the required role to the Cloud Build Service Agent?");
   if (!grant) {
     utils.logBullet(
       "You, or your project administrator, should run the following command to grant the required role:\n\n" +

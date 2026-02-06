@@ -1,8 +1,12 @@
 import * as winston from "winston";
 import * as Transport from "winston-transport";
-
-import { isVSCodeExtension } from "./utils";
 import { EventEmitter } from "events";
+import * as path from "path";
+import * as fs from "fs";
+import { SPLAT } from "triple-beam";
+import { stripVTControlCharacters } from "util";
+
+import { isVSCodeExtension } from "./vsCodeUtils";
 
 /**
  * vsceLogEmitter passes CLI logs along to VSCode.
@@ -119,9 +123,50 @@ function maybeUseVSCodeLogger(logger: winston.Logger): winston.Logger {
   return logger;
 }
 
+export function findAvailableLogFile(): string {
+  const candidates = ["firebase-debug.log"];
+  for (let i = 1; i < 10; i++) {
+    candidates.push(`firebase-debug.${i}.log`);
+  }
+
+  for (const c of candidates) {
+    const logFilename = path.join(process.cwd(), c);
+    try {
+      const fd = fs.openSync(logFilename, "r+");
+      fs.closeSync(fd);
+      return logFilename;
+    } catch (e: any) {
+      if (e.code === "ENOENT") {
+        // File does not exist, which is fine
+        return logFilename;
+      }
+      // Any other error (EPERM, etc) means we won't be able to log to
+      // this file so we skip it.
+    }
+  }
+  throw new Error("Unable to obtain permissions for firebase-debug.log");
+}
+
+export function tryStringify(value: any) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return value;
+  }
+}
+
 const rawLogger = winston.createLogger();
 // Set a default silent logger to suppress logs during tests
-rawLogger.add(new winston.transports.Console({ silent: true }));
+rawLogger.add(
+  new winston.transports.Console({
+    silent: true,
+    consoleWarnLevels: ["debug", "warn"],
+  }),
+);
 rawLogger.exitOnError = false;
 
 // The type system for TypeScript is a bit wonky. The type of winston.LeveledLogMessage
@@ -130,6 +175,52 @@ rawLogger.exitOnError = false;
 // allow error parameters.
 // Casting looks super dodgy, but it should be safe because we know the underlying code
 // handles all parameter types we care about.
-export const logger = maybeUseVSCodeLogger(
+export const logger: Logger = maybeUseVSCodeLogger(
   annotateDebugLines(expandErrors(rawLogger)),
 ) as unknown as Logger;
+
+/**
+ * Sets up logging to the firebase-debug.log file.
+ */
+export function useFileLogger(logFile?: string): string {
+  const logFileName = logFile ?? findAvailableLogFile();
+  logger.add(
+    new winston.transports.File({
+      level: "debug",
+      filename: logFileName,
+      format: winston.format.printf((info) => {
+        const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+        return `[${info.level}] ${stripVTControlCharacters(segments.join(" "))}`;
+      }),
+    }),
+  );
+  return logFileName;
+}
+
+/**
+ * Sets up logging to the command line.
+ */
+export function useConsoleLoggers(): void {
+  if (process.env.DEBUG) {
+    logger.add(
+      new winston.transports.Console({
+        level: "debug",
+        format: winston.format.printf((info) => {
+          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
+          return `${stripVTControlCharacters(segments.join(" "))}`;
+        }),
+      }),
+    );
+  } else if (process.env.IS_FIREBASE_CLI) {
+    logger.add(
+      new winston.transports.Console({
+        level: "info",
+        format: winston.format.printf((info) =>
+          [info.message, ...(info[SPLAT] || [])]
+            .filter((chunk) => typeof chunk === "string")
+            .join(" "),
+        ),
+      }),
+    );
+  }
+}

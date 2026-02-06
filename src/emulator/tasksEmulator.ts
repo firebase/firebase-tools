@@ -203,7 +203,11 @@ export class TasksEmulator implements EmulatorInstance {
       const locationId = req.params.location_id;
       const queueName = req.params.queue_name;
       if (!this.validateQueueId(queueName)) {
-        res.status(400).send("Invalid Queue ID");
+        res.status(400).json({
+          error:
+            "Queue ID must start with a letter followed by up to 62 letters, numbers, " +
+            "hyphens, or underscores and must end with a letter or a number",
+        });
         return;
       }
 
@@ -233,7 +237,7 @@ export class TasksEmulator implements EmulatorInstance {
         defaultUri: body.defaultUri,
       };
       if (taskQueueConfig.rateLimits.maxConcurrentDispatches > 5000) {
-        res.status(400).send("cannot set maxConcurrentDispatches to a value over 5000");
+        res.status(400).json({ error: "cannot set maxConcurrentDispatches to a value over 5000" });
         return;
       }
 
@@ -264,7 +268,9 @@ export class TasksEmulator implements EmulatorInstance {
       req.body.task.name =
         req.body.task.name ??
         `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)}`;
-      req.body.task.httpRequest.body = JSON.parse(atob(req.body.task.httpRequest.body));
+      req.body.task.httpRequest.body = JSON.parse(
+        Buffer.from(req.body.task.httpRequest.body, "base64").toString("utf-8"),
+      );
 
       const task = req.body.task as Task;
 

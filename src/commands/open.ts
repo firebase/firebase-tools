@@ -5,7 +5,7 @@ import { FirebaseError } from "../error";
 import * as api from "../api";
 import { Command } from "../command";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
@@ -20,13 +20,16 @@ interface Link {
 
 const LINKS: Link[] = [
   { name: "Analytics", arg: "analytics", consolePath: "/analytics" },
+  { name: "App Hosting", arg: "apphosting", consolePath: "/apphosting" },
   { name: "Authentication: Providers", arg: "auth", consolePath: "/authentication/providers" },
   { name: "Authentication: Users", arg: "auth:users", consolePath: "/authentication/users" },
   { name: "Crash Reporting", arg: "crash", consolePath: "/crashlytics" },
   { name: "Database: Data", arg: "database", consolePath: "/database/data" },
   { name: "Database: Rules", arg: "database:rules", consolePath: "/database/rules" },
+  { name: "Data Connect", arg: "dataconnect", consolePath: "/dataconnect" },
   { name: "Docs", arg: "docs", url: "https://firebase.google.com/docs" },
   { name: "Dynamic Links", arg: "links", consolePath: "/durablelinks" },
+  { name: "Extensions", arg: "extensions", consolePath: "/extensions" },
   { name: "Firestore: Data", arg: "firestore", consolePath: "/firestore/data" },
   { name: "Firestore: Rules", arg: "firestore:rules", consolePath: "/firestore/rules" },
   { name: "Firestore: Indexes", arg: "firestore:indexes", consolePath: "/firestore/indexes" },
@@ -75,8 +78,7 @@ export const command = new Command("open [link]")
     }
 
     if (!link) {
-      const name = await promptOnce({
-        type: "list",
+      const name = await select({
         message: "What link would you like to open?",
         choices: CHOICES,
       });

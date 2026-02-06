@@ -7,7 +7,7 @@
 
 import type { HttpsOptions } from "firebase-functions/v2/https";
 import { IngressSetting, MemoryOption, VpcEgressSetting } from "firebase-functions/v2/options";
-import { Runtime, DecommissionedRuntime } from "./deploy/functions/runtimes/supported/types";
+import { ActiveRuntime } from "./deploy/functions/runtimes/supported/types";
 
 /**
  * Creates a type that requires at least one key to be present in an interface
@@ -38,6 +38,8 @@ type DatabaseMultiple = ({
 
 type FirestoreSingle = {
   database?: string;
+  location?: string;
+  edition?: string;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -164,12 +166,53 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
-export type FunctionConfig = {
-  source?: string;
+type FunctionConfigBase = {
+  // Optional: Directory containing the .env files for this codebase.
+  // Defaults to the same directory as source if not specified.
+  configDir?: string;
+  // Optional: List of glob patterns for files and directories to ignore during deployment.
+  // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];
-  runtime?: Exclude<Runtime, DecommissionedRuntime>;
+  // Optional: The Node.js/Python runtime version to use for Cloud Functions.
+  // Example: "nodejs20", "python312". Must be a supported runtime version.
+  runtime?: ActiveRuntime;
+  // Optional: A unique identifier for this functions codebase when using multiple codebases.
+  // Must be unique across all codebases in firebase.json.
   codebase?: string;
+  // Optional: Applies a prefix to all function IDs (and secret names) discovered for this codebase.
+  // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
+  // cannot start or end with a dash; maximum length 30 characters.
+  prefix?: string;
 } & Deployable;
+
+export type LocalFunctionConfig = FunctionConfigBase & {
+  // Directory containing the Cloud Functions source code.
+  source: string;
+  // Optional: When true, prevents the Firebase CLI from fetching and including legacy
+  // Runtime Config values for this codebase during deployment. This has no effect on
+  // remote sources, which never use runtime config. Defaults to false for backward compatibility.
+  disallowLegacyRuntimeConfig?: boolean;
+  // Forbid remoteSource when local source is provided
+  remoteSource?: never;
+};
+
+export type RemoteFunctionConfig = FunctionConfigBase & {
+  // Deploy functions from a remote Git repository.
+  remoteSource: {
+    // The URL of the Git repository.
+    repository: string;
+    // The git ref (tag, branch, or commit hash) to deploy.
+    ref: string;
+    // The directory within the repository containing the functions source.
+    dir?: string;
+  };
+  // Required for remote sources
+  runtime: ActiveRuntime;
+  // Forbid local source when remoteSource is provided
+  source?: never;
+};
+
+export type FunctionConfig = LocalFunctionConfig | RemoteFunctionConfig;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];
 
@@ -206,6 +249,12 @@ export type EmulatorsConfig = {
   apphosting?: {
     host?: string;
     port?: number;
+    startCommand?: string;
+    /**
+     * @deprecated
+     */
+    startCommandOverride?: string;
+    rootDirectory?: string;
   };
   pubsub?: {
     host?: string;
@@ -226,7 +275,7 @@ export type EmulatorsConfig = {
   ui?: {
     enabled?: boolean;
     host?: string;
-    port?: number | string;
+    port?: number;
   };
   extensions?: {};
   eventarc?: {
@@ -237,6 +286,9 @@ export type EmulatorsConfig = {
   dataconnect?: {
     host?: string;
     port?: number;
+    postgresHost?: string;
+    postgresPort?: number;
+    dataDir?: string;
   };
   tasks?: {
     host?: string;
@@ -255,10 +307,19 @@ export type DataConnectMultiple = DataConnectSingle[];
 
 export type DataConnectConfig = DataConnectSingle | DataConnectMultiple;
 
+export type AppHostingSingle = {
+  backendId: string;
+  rootDir: string;
+  ignore: string[];
+  alwaysDeployFromSource?: boolean;
+  localBuild?: boolean;
+};
+
+export type AppHostingMultiple = AppHostingSingle[];
+
+export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
+
 export type FirebaseConfig = {
-  /**
-   * @TJS-format uri
-   */
   $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
@@ -269,4 +330,5 @@ export type FirebaseConfig = {
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
+  apphosting?: AppHostingConfig;
 };

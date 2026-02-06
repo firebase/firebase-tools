@@ -2,7 +2,7 @@ import { bold } from "colorette";
 import { getProjectId } from "./projectUtils";
 import { requireAuth } from "./requireAuth";
 import { logger } from "./logger";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import { testIamPermissions } from "./gcp/iam";
 
 // Permissions required for all commands.
@@ -37,8 +37,8 @@ export async function requirePermissions(options: any, permissions: string[] = [
         )}:\n\n  ${iamResult.missing.join("\n  ")}`,
       );
     }
-  } catch (err: any) {
-    logger.debug(`[iam] error while checking permissions, command may fail: ${err}`);
+  } catch (err: unknown) {
+    logger.debug(`[iam] error while checking permissions, command may fail: ${getErrMsg(err)}`);
     return;
   }
 }

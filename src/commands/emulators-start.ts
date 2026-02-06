@@ -8,9 +8,9 @@ import * as clc from "colorette";
 import { Constants } from "../emulator/constants";
 import { logLabeledWarning } from "../utils";
 import { ExtensionsEmulator } from "../emulator/extensionsEmulator";
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Table = require("cli-table");
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
+import { Options } from "../options";
+import * as Table from "cli-table3";
 
 function stylizeLink(url: string): string {
   return clc.underline(clc.bold(url));
@@ -26,7 +26,7 @@ export const command = new Command("emulators:start")
   .option(commandUtils.FLAG_EXPORT_ON_EXIT, commandUtils.DESC_EXPORT_ON_EXIT)
   .option(commandUtils.FLAG_VERBOSITY, commandUtils.DESC_VERBOSITY)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  .action((options: any) => {
+  .action((options: Options) => {
     const killSignalPromise = commandUtils.shutdownWhenKilled(options);
     return Promise.race([
       killSignalPromise,
@@ -34,7 +34,9 @@ export const command = new Command("emulators:start")
         let deprecationNotices;
         try {
           ({ deprecationNotices } = await controller.startAll(options));
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
         } catch (e: any) {
+          await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
           await controller.cleanShutdown();
           throw e;
         }
@@ -121,14 +123,15 @@ function printEmulatorOverview(options: any): void {
     const extensionsEmulatorInstance = EmulatorRegistry.get(
       Emulators.EXTENSIONS,
     ) as ExtensionsEmulator;
-    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable(options);
+    extensionsTable = extensionsEmulatorInstance.extensionsInfoTable();
   }
+  const hubInfo = EmulatorRegistry.getInfo(Emulators.HUB);
   logger.info(`\n${successMessageTable}
 
 ${emulatorsTable}
 ${
-  EmulatorRegistry.isRunning(Emulators.HUB)
-    ? clc.blackBright("  Emulator Hub running at ") + EmulatorRegistry.url(Emulators.HUB).host
+  hubInfo
+    ? clc.blackBright(`  Emulator Hub host: ${hubInfo.host} port: ${hubInfo.port}`)
     : clc.blackBright("  Emulator Hub not running.")
 }
 ${clc.blackBright("  Other reserved ports:")} ${reservedPortsString}

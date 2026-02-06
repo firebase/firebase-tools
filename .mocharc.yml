@@ -6,3 +6,5 @@ file:
   - src/test/helpers/global-mock-auth.ts
 timeout: 1000
 recursive: true
+node-options:
+  - no-experimental-strip-types

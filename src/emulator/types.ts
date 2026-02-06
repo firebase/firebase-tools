@@ -1,6 +1,5 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
-import * as experiments from "../experiments";
 
 export enum Emulators {
   AUTH = "auth",
@@ -27,6 +26,7 @@ export type DownloadableEmulators =
   | Emulators.UI
   | Emulators.STORAGE
   | Emulators.DATACONNECT;
+
 export const DOWNLOADABLE_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
@@ -36,21 +36,27 @@ export const DOWNLOADABLE_EMULATORS = [
   Emulators.DATACONNECT,
 ];
 
-export type ImportExportEmulators = Emulators.FIRESTORE | Emulators.DATABASE | Emulators.AUTH;
+export type ImportExportEmulators =
+  | Emulators.FIRESTORE
+  | Emulators.DATABASE
+  | Emulators.AUTH
+  | Emulators.STORAGE
+  | Emulators.DATACONNECT;
 export const IMPORT_EXPORT_EMULATORS = [
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.AUTH,
   Emulators.STORAGE,
+  Emulators.DATACONNECT,
 ];
 
 export const ALL_SERVICE_EMULATORS = [
+  Emulators.APPHOSTING,
   Emulators.AUTH,
   Emulators.FUNCTIONS,
   Emulators.FIRESTORE,
   Emulators.DATABASE,
   Emulators.HOSTING,
-  ...(experiments.isEnabled("emulatorapphosting") ? [Emulators.APPHOSTING] : []),
   Emulators.PUBSUB,
   Emulators.STORAGE,
   Emulators.EVENTARC,
@@ -144,14 +150,14 @@ export interface EmulatorInfo {
   pid?: number;
   reservedPorts?: number[];
 
-  // All addresses that an emulator listens on.
+  /** All addresses that an emulator listens on. */
   listen?: ListenSpec[];
 
-  // The primary IP address that the emulator listens on.
+  /** The primary IP address that the emulator listens on. */
   host: string;
   port: number;
 
-  // How long to wait for the emulator to start before erroring out.
+  /** How long to wait for the emulator to start before erroring out. */
   timeout?: number;
 }
 
@@ -161,6 +167,7 @@ export interface DownloadableEmulatorCommand {
   optionalArgs: string[];
   joinArgs: boolean;
   shell: boolean;
+  port?: number;
 }
 
 export interface EmulatorDownloadOptions {
@@ -178,26 +185,34 @@ export interface EmulatorUpdateDetails {
   version: string;
   expectedSize: number;
   expectedChecksum: string;
+  expectedChecksumSHA256: string; // TODO: Use this for validation within the CLI as well.
+  remoteUrl: string;
+  downloadPathRelativeToCacheDir: string;
+  binaryPathRelativeToCacheDir?: string;
 }
 
 export interface EmulatorDownloadDetails {
   opts: EmulatorDownloadOptions;
 
-  // Semver version string
+  /** Semver version string */
   version: string;
 
-  // The path to download the binary or archive from the remote source
+  /** The path to download the binary or archive from the remote source */
   downloadPath: string;
 
-  // If specified, the artifact at 'downloadPath' is assumed to be a .zip and
-  // will be unzipped into 'unzipDir'
+  /**
+   * If specified, the artifact at 'downloadPath' is assumed to be a .zip and
+   * will be unzipped into 'unzipDir'
+   */
   unzipDir?: string;
 
-  // If specified, a path where the runnable binary can be found after downloading and
-  // unzipping. Otherwise downloadPath will be used.
+  /**
+   * If specified, a path where the runnable binary can be found after downloading and
+   * unzipping. Otherwise downloadPath will be used.
+   */
   binaryPath?: string;
 
-  // If true, never try to download this emualtor. Set when developing with local versions of an emulator.
+  /** If true, never try to download this emualtor. Set when developing with local versions of an emulator. */
   localOnly?: boolean;
 }
 

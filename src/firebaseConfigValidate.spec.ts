@@ -42,7 +42,7 @@ describe("firebaseConfigValidate", () => {
 
     const firstError = validator.errors![0];
     expect(firstError.keyword).to.eq("additionalProperties");
-    expect(firstError.dataPath).to.eq("");
+    expect(firstError.instancePath).to.eq("");
     expect(firstError.params).to.deep.equal({ additionalProperty: "bananas" });
   });
 
@@ -63,18 +63,18 @@ describe("firebaseConfigValidate", () => {
 
     // Missing required param
     expect(firstError.keyword).to.eq("required");
-    expect(firstError.dataPath).to.eq(".storage");
+    expect(firstError.instancePath).to.eq("/storage");
     expect(firstError.params).to.deep.equal({ missingProperty: "rules" });
 
     // Because it doesn't match the object type, we also get an "is not an array"
     // error since JSON Schema can't tell which type it is closest to.
     expect(secondError.keyword).to.eq("type");
-    expect(secondError.dataPath).to.eq(".storage");
+    expect(secondError.instancePath).to.eq("/storage");
     expect(secondError.params).to.deep.equal({ type: "array" });
 
     // Finally we get an error saying that 'storage' is not any of the known types
     expect(thirdError.keyword).to.eq("anyOf");
-    expect(thirdError.dataPath).to.eq(".storage");
+    expect(thirdError.instancePath).to.eq("/storage");
     expect(thirdError.params).to.deep.equal({});
   });
 
@@ -97,18 +97,18 @@ describe("firebaseConfigValidate", () => {
 
     // Wrong type
     expect(firstError.keyword).to.eq("type");
-    expect(firstError.dataPath).to.eq(".storage.rules");
+    expect(firstError.instancePath).to.eq("/storage/rules");
     expect(firstError.params).to.deep.equal({ type: "string" });
 
     // Because it doesn't match the object type, we also get an "is not an array"
     // error since JSON Schema can't tell which type it is closest to.
     expect(secondError.keyword).to.eq("type");
-    expect(secondError.dataPath).to.eq(".storage");
+    expect(secondError.instancePath).to.eq("/storage");
     expect(secondError.params).to.deep.equal({ type: "array" });
 
     // Finally we get an error saying that 'storage' is not any of the known types
     expect(thirdError.keyword).to.eq("anyOf");
-    expect(thirdError.dataPath).to.eq(".storage");
+    expect(thirdError.instancePath).to.eq("/storage");
     expect(thirdError.params).to.deep.equal({});
   });
 });

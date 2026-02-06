@@ -9,9 +9,16 @@ export class ExecutionPanel {
   readonly history: HistoryView;
 
   async open(): Promise<void> {
+    await browser.keys("F1");
     await this.workbench.executeCommand(
-      "data-connect-execution-configuration.focus"
+      "data-connect-execution-parameters.focus",
     );
+  }
+
+  async getVariables(): Promise<string> {
+    return this.runInConfigurationContext(async (configs) => {
+      return configs.variablesTextarea.getValue();
+    });
   }
 
   async setVariables(variables: string): Promise<void> {
@@ -22,13 +29,21 @@ export class ExecutionPanel {
     });
   }
 
+  async clickRerun(): Promise<void> {
+    return this.runInConfigurationContext(async (configs) => {
+      const rerunButton = await configs.rerunButton;
+      await rerunButton.waitForClickable();
+      await rerunButton.doubleClick(); // double click first transitions focus to window instead of notifs
+    });
+  }
+
   async runInConfigurationContext<R>(
-    cb: (configs: ConfigurationView) => Promise<R>
+    cb: (configs: ConfigurationView) => Promise<R>,
   ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Configuration");
+    const [a, b] = await findWebviewWithTitle("Parameters");
 
     return runInFrame(a, () =>
-      runInFrame(b, () => cb(new ConfigurationView(this.workbench)))
+      runInFrame(b, () => cb(new ConfigurationView(this.workbench))),
     );
   }
 }
@@ -42,6 +57,10 @@ export class ConfigurationView {
 
   get variablesTextarea() {
     return this.variablesView.$("textarea");
+  }
+
+  get rerunButton() {
+    return this.variablesView.$("vscode-button");
   }
 }
 

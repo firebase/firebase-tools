@@ -36,6 +36,7 @@ describe("planner", () => {
       runtime: "nodejs16",
       entryPoint: "function",
       environmentVariables: {},
+      state: "ACTIVE",
     } as backend.Endpoint;
   }
 
@@ -44,6 +45,16 @@ describe("planner", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
       const scheduleFunc = func("a", "b", { scheduleTrigger: {} });
       expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw();
+    });
+
+    it("allows upgrades of genkit functions from the genkit plugin to firebase-functions SDK", () => {
+      const httpsFunc = func("a", "b", { httpsTrigger: {} });
+      const genkitFunc = func("a", "b", { callableTrigger: { genkitAction: "flows/flow" } });
+      expect(planner.calculateUpdate(genkitFunc, httpsFunc)).to.deep.equal({
+        // Missing: deleteAndRecreate
+        endpoint: genkitFunc,
+        unsafe: false,
+      });
     });
 
     it("knows to delete & recreate for v2 topic changes", () => {
@@ -127,7 +138,98 @@ describe("planner", () => {
     });
   });
 
-  describe("calculateRegionalChanges", () => {
+  describe("toSkipPredicate", () => {
+    it("should skip functions with matching hashes", () => {
+      const wantFn = func("skip", "region");
+      const haveFn = func("skip", "region");
+      wantFn.hash = "same-hash";
+      haveFn.hash = "same-hash";
+
+      const want = { skip: wantFn };
+      const have = { skip: haveFn };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+      expect(result.region.endpointsToSkip[0].id).to.equal("skip");
+    });
+
+    it("should not skip functions with different hashes", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "local-hash";
+      funcHave.hash = "server-hash";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should not skip functions with missing hash values", () => {
+      const func1Want = func("func1", "region");
+      const func1Have = func("func1", "region");
+      func1Want.hash = "hash";
+      // func1Have has no hash
+
+      const func2Want = func("func2", "region");
+      const func2Have = func("func2", "region");
+      // func2Want has no hash
+      func2Have.hash = "hash";
+
+      // Neither has hash
+      const func3Want = func("func3", "region");
+      const func3Have = func("func3", "region");
+
+      const want = { func1: func1Want, func2: func2Want, func3: func3Want };
+      const have = { func1: func1Have, func2: func2Have, func3: func3Have };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(3);
+    });
+
+    it("should not skip functions targeted by --only flag", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.targetedByOnly = true;
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should not skip functions in broken state", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcHave.state = "FAILED";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+  });
+
+  describe("calculateChangesets", () => {
     it("passes a smoke test", () => {
       const created = func("created", "region");
       const updated = func("updated", "region");
@@ -280,6 +382,24 @@ describe("planner", () => {
           endpointsToSkip: [],
         },
       });
+    });
+
+    it("logs a message when skipping functions", () => {
+      // Create functions with matching hashes that will be skipped
+      const skipWant = func("skip", "region");
+      const skipHave = func("skip", "region");
+      skipWant.hash = "hash";
+      skipHave.hash = "hash";
+
+      const want = { skip: skipWant };
+      const have = { skip: skipHave };
+
+      planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(logLabeledBullet).to.have.been.calledWith(
+        "functions",
+        "Skipping the deploy of unchanged functions.",
+      );
     });
   });
 

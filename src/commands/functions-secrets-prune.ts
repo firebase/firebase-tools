@@ -9,13 +9,13 @@ import { needProjectId, needProjectNumber } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import { isFirebaseManaged } from "../deploymentTool";
 import { logBullet, logSuccess } from "../utils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { destroySecretVersion } from "../gcp/secretManager";
 import { requireAuth } from "../requireAuth";
 
 export const command = new Command("functions:secrets:prune")
-  .withForce("Destroys unused secrets without prompt")
-  .description("Destroys unused secrets")
+  .withForce("destroy unused secrets without prompt")
+  .description("destroy unused secrets")
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(requirePermissions, [
@@ -48,25 +48,22 @@ export const command = new Command("functions:secrets:prune")
         pruned.map((sv) => `${sv.secret}@${sv.version}`).join("\n\t"),
     );
 
-    if (!options.force) {
-      const confirm = await promptOnce(
-        {
-          name: "destroy",
-          type: "confirm",
-          default: true,
-          message: `Do you want to destroy unused secret versions?`,
-        },
-        options,
+    const confirmed =
+      options.destroy ||
+      (await confirm({
+        message: `Do you want to destroy unused secret versions?`,
+        default: true,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      }));
+    if (!confirmed) {
+      logBullet(
+        "Run the following commands to destroy each unused secret version:\n\t" +
+          pruned
+            .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
+            .join("\n\t"),
       );
-      if (!confirm) {
-        logBullet(
-          "Run the following commands to destroy each unused secret version:\n\t" +
-            pruned
-              .map((sv) => `firebase functions:secrets:destroy ${sv.secret}@${sv.version}`)
-              .join("\n\t"),
-        );
-        return;
-      }
+      return;
     }
     await Promise.all(pruned.map((sv) => destroySecretVersion(projectId, sv.secret, sv.version)));
     logSuccess("Destroyed all unused secrets!");

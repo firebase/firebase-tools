@@ -20,7 +20,16 @@ module.exports = {
     "require-atomic-updates": "off", // This rule is so noisy and isn't useful: https://github.com/eslint/eslint/issues/11899
     "require-jsdoc": "off", // This rule is deprecated and superseded by jsdoc/require-jsdoc.
     "valid-jsdoc": "off", // This is deprecated but included in recommended configs.
-
+    "brikke/no-undeclared-imports": [
+      "error",
+      {
+        excludedFilePatterns: ["**/scripts/**/*", `update-notifier-cjs.d.ts`],
+        excludedModules: [
+          /node:/,
+          "express-serve-static-core", // We rely on just the types, and the package breaks our build.
+        ],
+      },
+    ],
     "no-prototype-builtins": "warn", // TODO(bkendall): remove, allow to error.
     "no-useless-escape": "warn", // TODO(bkendall): remove, allow to error.
     "prefer-promise-reject-errors": "warn", // TODO(bkendall): remove, allow to error.
@@ -38,6 +47,7 @@ module.exports = {
 
         "@typescript-eslint/no-invalid-this": "error",
         "@typescript-eslint/no-unused-vars": "error", // Unused vars should not exist.
+        "@typescript-eslint/require-await": "off", // sometimes async functions don't do await stuff for valid reasons.
         "no-invalid-this": "off", // Turned off in favor of @typescript-eslint/no-invalid-this.
         "no-unused-vars": "off", // Off in favor of @typescript-eslint/no-unused-vars.
         eqeqeq: ["error", "always", { null: "ignore" }],
@@ -99,6 +109,10 @@ module.exports = {
       },
       rules: {},
     },
+    {
+      files: ["src/mcp/tools/**/*.ts", "src/mcp/prompts/**/*.ts", "src/mcp/resources/**/*.ts"],
+      rules: { camelcase: "off" },
+    },
   ],
   globals: {},
   parserOptions: {
@@ -107,7 +121,7 @@ module.exports = {
     sourceType: "module",
     warnOnUnsupportedTypeScriptVersion: false,
   },
-  plugins: ["prettier", "@typescript-eslint", "jsdoc"],
+  plugins: ["prettier", "@typescript-eslint", "jsdoc", "brikke"],
   settings: {
     jsdoc: {
       tagNamePreference: {

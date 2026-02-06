@@ -5,6 +5,8 @@ import { logger } from "../../logger";
 import * as utils from "../../utils";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { IndexContext } from "./prepare";
+import { sleep } from "../../utils";
+import { Options } from "../../options";
 
 /**
  * Deploys Firestore Rules.
@@ -45,22 +47,32 @@ async function deployIndexes(context: any, options: any): Promise<void> {
       }
       const fieldOverrides = indexesRawSpec.fieldOverrides || [];
 
-      await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId).then(() => {
-        utils.logSuccess(
-          `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
-            indexesFileName,
-          )} successfully for ${databaseId} database`,
-        );
-      });
+      try {
+        await firestoreIndexes.deploy(options, indexes, fieldOverrides, databaseId);
+      } catch (err: any) {
+        if (err.status !== 404) {
+          throw err;
+        }
+        // It might take a while for the database to be created.
+        await sleep(1000);
+        await firestoreIndexes.deploy(options!, indexes, fieldOverrides, databaseId);
+      }
+
+      utils.logSuccess(
+        `${clc.bold(clc.green("firestore:"))} deployed indexes in ${clc.bold(
+          indexesFileName,
+        )} successfully for ${databaseId} database`,
+      );
     }),
   );
 }
 
 /**
- * Deploy indexes.
+ * Create the Firestore database, deploy its rules & indexes.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: any): Promise<void> {
-  await Promise.all([deployRules(context), deployIndexes(context, options)]);
+export default async function (context: any, options: Options): Promise<void> {
+  await deployRules(context);
+  await deployIndexes(context, options);
 }

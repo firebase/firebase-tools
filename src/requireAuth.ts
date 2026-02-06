@@ -7,16 +7,18 @@ import { FirebaseError } from "./error";
 import { logger } from "./logger";
 import * as utils from "./utils";
 import * as scopes from "./scopes";
-import { Tokens, User } from "./types/auth";
-import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount } from "./auth";
+import { Tokens, TokensWithExpiration, User } from "./types/auth";
+import { setRefreshToken, setActiveAccount, setGlobalDefaultAccount, isExpired } from "./auth";
 import type { Options } from "./options";
+import { isFirebaseMcp, isFirebaseStudio } from "./env";
+import { timeoutError } from "./timeout";
 
 const AUTH_ERROR_MESSAGE = `Command requires authentication, please run ${clc.bold(
   "firebase login",
 )}`;
 
 let authClient: GoogleAuth | undefined;
-
+let lastOptions: Options;
 /**
  * Returns the auth client.
  * @param config options for the auth client.
@@ -36,39 +38,69 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
  * @param options CLI options.
  * @param authScopes scopes to be obtained.
  */
-async function autoAuth(options: Options, authScopes: string[]): Promise<void | string> {
+async function autoAuth(options: Options, authScopes: string[]): Promise<null | string> {
   const client = getAuthClient({ scopes: authScopes, projectId: options.project });
   const token = await client.getAccessToken();
   token !== null ? apiv2.setAccessToken(token) : false;
+  logger.debug(`Running auto auth`);
 
   let clientEmail;
   try {
-    const credentials = await client.getCredentials();
+    const timeoutMillis = isFirebaseMcp() ? 5000 : 15000;
+    const credentials = await timeoutError(
+      client.getCredentials(),
+      new FirebaseError(
+        `Authenticating with default credentials timed out after ${timeoutMillis / 1000} seconds. Please try running \`firebase login\` instead.`,
+      ),
+      timeoutMillis,
+    );
     clientEmail = credentials.client_email;
   } catch (e) {
     // Make sure any error here doesn't block the CLI, but log it.
     logger.debug(`Error getting account credentials.`);
   }
-  if (process.env.MONOSPACE_ENV && token && clientEmail) {
+  if (isFirebaseStudio() && token && clientEmail) {
     // Within monospace, this a OAuth token for the user, so we make it the active user.
-    setActiveAccount(options, {
+    const activeAccount = {
       user: { email: clientEmail },
-      tokens: { access_token: token },
-    });
-    setGlobalDefaultAccount({ user: { email: clientEmail }, tokens: { access_token: token } });
+      tokens: {
+        access_token: token,
+        expires_at: client.cachedCredential?.credentials.expiry_date,
+      } as TokensWithExpiration,
+    };
+    setActiveAccount(options, activeAccount);
+    setGlobalDefaultAccount(activeAccount);
 
     // project is also selected in monospace auth flow
     options.projectId = await client.getProjectId();
   }
-  return clientEmail;
+  return clientEmail || null;
+}
+
+export async function refreshAuth(): Promise<Tokens> {
+  if (!lastOptions) {
+    throw new FirebaseError("Unable to refresh auth: not yet authenticated.");
+  }
+  await requireAuth(lastOptions);
+  return lastOptions.tokens as Tokens;
 }
 
 /**
- * Ensures that there is an authenticated user.
+ * Ensures that the user can make authenticated calls. Returns the email if the user is logged in,
+ * returns null if the user has Applciation Default Credentials set up, and errors out
+ * if the user is not authenticated
  * @param options CLI options.
  */
-export async function requireAuth(options: any): Promise<string | void> {
-  api.setScopes([scopes.CLOUD_PLATFORM, scopes.FIREBASE_PLATFORM]);
+export async function requireAuth(
+  options: any,
+  skipAutoAuth: boolean = false,
+): Promise<string | null> {
+  lastOptions = options;
+  const requiredScopes = [scopes.CLOUD_PLATFORM];
+  if (isFirebaseStudio()) {
+    requiredScopes.push(scopes.USERINFO_EMAIL);
+  }
+  api.setScopes(requiredScopes);
   options.authScopes = api.getScopes();
 
   const tokens = options.tokens as Tokens | undefined;
@@ -86,8 +118,10 @@ export async function requireAuth(options: any): Promise<string | void> {
       "Authenticating with `FIREBASE_TOKEN` is deprecated and will be removed in a future major version of `firebase-tools`. " +
         "Instead, use a service account key with `GOOGLE_APPLICATION_CREDENTIALS`: https://cloud.google.com/docs/authentication/getting-started",
     );
-  } else if (user) {
+  } else if (user && (!isExpired(tokens) || tokens?.refresh_token)) {
     logger.debug(`> authorizing via signed-in user (${user.email})`);
+  } else if (skipAutoAuth) {
+    return null;
   } else {
     try {
       return await autoAuth(options, options.authScopes);
@@ -103,7 +137,7 @@ export async function requireAuth(options: any): Promise<string | void> {
 
   if (tokenOpt) {
     setRefreshToken(tokenOpt);
-    return;
+    return null;
   }
 
   if (!user || !tokens) {

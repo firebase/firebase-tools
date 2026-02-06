@@ -4,10 +4,10 @@ import * as fs from "fs";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
 import { URL } from "url";
@@ -39,16 +39,13 @@ export const command = new Command("database:set <path> [infile]")
       dbJsonURL.searchParams.set("disableTriggers", "true");
     }
 
-    const confirm = await promptOnce(
-      {
-        type: "confirm",
-        name: "force",
-        default: false,
-        message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
-      },
-      options,
-    );
-    if (!confirm) {
+    const confirmed = await confirm({
+      message: "You are about to overwrite all data at " + clc.cyan(dbPath) + ". Are you sure?",
+      default: false,
+      force: options.force,
+      nonInteractive: options.nonInteractive,
+    });
+    if (!confirmed) {
       throw new FirebaseError("Command aborted.");
     }
 
@@ -67,9 +64,11 @@ export const command = new Command("database:set <path> [infile]")
         body: inStream,
         queryParams: dbJsonURL.searchParams,
       });
-    } catch (err: any) {
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while setting data: ${err}`, { exit: 2 });
+    } catch (err: unknown) {
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while setting data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     utils.logSuccess("Data persisted successfully");

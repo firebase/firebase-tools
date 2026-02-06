@@ -5,7 +5,13 @@ import * as sinon from "sinon";
 import { FirebaseError } from "../error";
 import { firebaseExtensionsRegistryOrigin } from "../api";
 import * as extensionsApi from "./extensionsApi";
-import { ExtensionSpec, Resource } from "./types";
+import {
+  ExtensionInstance,
+  ExtensionInstanceState,
+  ExtensionSource,
+  ExtensionSpec,
+  Resource,
+} from "./types";
 import * as extensionsHelper from "./extensionsHelper";
 import * as updateHelper from "./updateHelper";
 import * as iam from "../gcp/iam";
@@ -36,59 +42,66 @@ const SPEC: ExtensionSpec = {
   systemParams: [],
 };
 
-const SOURCE = {
+const SOURCE: ExtensionSource = {
+  state: "ACTIVE",
   name: "projects/firebasemods/sources/new-test-source",
   packageUri: "https://firebase-fake-bucket.com",
   hash: "1234567",
   spec: SPEC,
 };
 
-const INSTANCE = {
+const INSTANCE: ExtensionInstance = {
   name: "projects/invader-zim/instances/instance-of-official-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
-  state: "ACTIVE",
+  state: "ACTIVE" as ExtensionInstanceState,
   config: {
     name: "projects/invader-zim/instances/instance-of-official-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
-    sourceId: "fake-official-source",
-    sourceName: "projects/firebasemods/sources/fake-official-source",
     source: {
+      ...SOURCE,
       name: "projects/firebasemods/sources/fake-official-source",
     },
+    params: {},
+    systemParams: {},
   },
+  serviceAccountEmail: "name@org.com",
 };
 
-const REGISTRY_INSTANCE = {
+const REGISTRY_INSTANCE: ExtensionInstance = {
   name: "projects/invader-zim/instances/instance-of-registry-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
-  state: "ACTIVE",
+  state: "ACTIVE" as ExtensionInstanceState,
+  serviceAccountEmail: "name@org.com",
   config: {
     name: "projects/invader-zim/instances/instance-of-registry-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
-    sourceId: "fake-registry-source",
-    sourceName: "projects/firebasemods/sources/fake-registry-source",
     extensionRef: "test-publisher/test",
     source: {
+      ...SOURCE,
       name: "projects/firebasemods/sources/fake-registry-source",
     },
+    params: {},
+    systemParams: {},
   },
 };
 
-const LOCAL_INSTANCE = {
+const LOCAL_INSTANCE: ExtensionInstance = {
   name: "projects/invader-zim/instances/instance-of-local-ext",
   createTime: "2019-05-19T00:20:10.416947Z",
   updateTime: "2019-05-19T00:20:10.416947Z",
-  state: "ACTIVE",
+  state: "ACTIVE" as ExtensionInstanceState,
+  serviceAccountEmail: "name@org.com",
   config: {
     name: "projects/invader-zim/instances/instance-of-local-ext/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
     createTime: "2019-05-19T00:20:10.416947Z",
-    sourceId: "fake-registry-source",
-    sourceName: "projects/firebasemods/sources/fake-local-source",
     source: {
+      ...SOURCE,
       name: "projects/firebasemods/sources/fake-local-source",
     },
+    params: {},
+    systemParams: {},
   },
 };
 

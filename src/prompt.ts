@@ -1,165 +1,301 @@
-import * as inquirer from "inquirer";
-import AutocompletePrompt from "inquirer-autocomplete-prompt";
-
-import { fileExistsSync, dirExistsSync } from "./fsutils";
+import * as inquirer from "@inquirer/prompts";
 import { FirebaseError } from "./error";
-import { Config } from "./config";
-import { logger } from "./logger";
 
-declare module "inquirer" {
-  interface QuestionMap<T> {
-    autocomplete: AutocompletePrompt.AutocompleteQuestionOptions<T>;
-  }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-argument
-inquirer.registerPrompt("autocomplete", require("inquirer-autocomplete-prompt"));
+export { Separator } from "@inquirer/prompts";
 
 /**
- * Question type for inquirer. See
- * https://www.npmjs.com/package/inquirer#question
+ * Common options for all prompts.
  */
-export type Question = inquirer.DistinctQuestion;
-
-type QuestionsThatReturnAString<T extends inquirer.Answers> =
-  | inquirer.RawListQuestion<T>
-  | inquirer.ExpandQuestion<T>
-  | inquirer.InputQuestion<T>
-  | inquirer.PasswordQuestion<T>
-  | inquirer.EditorQuestion<T>
-  | AutocompletePrompt.AutocompleteQuestionOptions<T>;
-
-type Options = Record<string, any> & { nonInteractive?: boolean };
-
-/**
- * prompt is used to prompt the user for values. Specifically, any `name` of a
- * provided question will be checked against the `options` object. If `name`
- * exists as a key in `options`, it will *not* be prompted for. If `options`
- * contains `nonInteractive = true`, then any `question.name` that does not
- * have a value in `options` will cause an error to be returned. Once the values
- * are queried, the values for them are put onto the `options` object, and the
- * answers are returned.
- * @param options The options object passed through by Command.
- * @param questions `Question`s to ask the user.
- * @return The answers, keyed by the `name` of the `Question`.
- */
-export async function prompt(
-  options: Options,
-  // NB: If Observables are to be added here, the for loop below will need to
-  // be adjusted as well.
-  questions: ReadonlyArray<inquirer.DistinctQuestion>,
-): Promise<any> {
-  const prompts = [];
-  // For each of our questions, if Options already has an answer,
-  // we go ahead and _skip_ that question.
-  for (const question of questions) {
-    if (question.name && options[question.name] === undefined) {
-      prompts.push(question);
-    }
-  }
-
-  if (prompts.length && options.nonInteractive) {
-    const missingOptions = Array.from(new Set(prompts.map((p) => p.name))).join(", ");
-    throw new FirebaseError(
-      `Missing required options (${missingOptions}) while running in non-interactive mode`,
-      {
-        children: prompts,
-      },
-    );
-  }
-
-  const answers = await inquirer.prompt(prompts);
-  Object.keys(answers).forEach((k) => {
-    options[k] = answers[k];
-  });
-  return answers;
-}
-
-export async function promptOnce<A extends inquirer.Answers>(
-  question: QuestionsThatReturnAString<A>,
-  options?: Options,
-): Promise<string>;
-export async function promptOnce<A extends inquirer.Answers>(
-  question: inquirer.CheckboxQuestion<A>,
-  options?: Options,
-): Promise<string[]>;
-export async function promptOnce<A extends inquirer.Answers>(
-  question: inquirer.ConfirmQuestion<A>,
-  options?: Options,
-): Promise<boolean>;
-export async function promptOnce<A extends inquirer.Answers>(
-  question: inquirer.NumberQuestion<A>,
-  options?: Options,
-): Promise<number>;
-
-// This one is a bit hard to type out. Choices can be many things, including a generator function. Even if we decided to limit
-// the ListQuestion to have a choices of ReadonlyArray<ChoiceOption<A>>, a ChoiceOption<A> still has a `.value` of `any`
-export async function promptOnce<A extends inquirer.Answers>(
-  question: inquirer.ListQuestion<A>,
-  options?: Options,
-): Promise<any>;
-
-/**
- * Quick and strongly-typed version of `prompt` to ask a single question.
- * @param question The question (of life, the universe, and everything).
- * @return The value as returned by `inquirer` for that quesiton.
- */
-export async function promptOnce<A>(question: Question, options: Options = {}): Promise<A> {
-  // Need to replace any .'s in the question name - otherwise, Inquirer puts the answer
-  // in a nested object like so: `"a.b.c" => {a: {b: {c: "my-answer"}}}`
-  question.name = question.name?.replace(/\./g, "/") || "question";
-  await prompt(options, [question]);
-  return options[question.name];
-}
-
-/**
- * Confirm if the user wants to continue
- */
-export async function confirm(args: {
-  nonInteractive?: boolean;
-  force?: boolean;
-  default?: boolean;
-  message?: string;
-}): Promise<boolean> {
-  if (!args.nonInteractive && !args.force) {
-    const message = args.message ?? `Do you wish to continue?`;
-    return await promptOnce({
-      type: "confirm",
-      message,
-      default: args.default,
-    });
-  } else if (args.nonInteractive && !args.force) {
-    throw new FirebaseError("Pass the --force flag to use this command in non-interactive mode");
-  } else {
-    return true;
-  }
-}
-
-/**
- * Prompts for a directory name, and reprompts if that path does not exist
- */
-export async function promptForDirectory(args: {
+export interface BasicOptions<T> {
   message: string;
-  config: Config;
-  default?: boolean;
-  relativeTo?: string;
-}): Promise<string> {
-  let dir: string = "";
-  while (!dir) {
-    const target = args.config.path(
-      await promptOnce({
-        message: "Where is your app directory?",
-      }),
-    );
-    if (fileExistsSync(target)) {
-      logger.error(
-        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
-      );
-    } else if (!dirExistsSync(target)) {
-      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
-    } else {
-      dir = target;
+  default?: T;
+  force?: boolean;
+  nonInteractive?: boolean;
+}
+
+/**
+ * Guard function to check if the prompt should return a default value or throw an error.
+ * This is used to prevent prompts from being shown in non-interactive mode.
+ *
+ * @param opts - The options for the prompt.
+ * @returns An object indicating whether to return a value or not.
+ */
+export function guard<T>(
+  opts: BasicOptions<T>,
+): { shouldReturn: true; value: T } | { shouldReturn: false; value: undefined } {
+  if (!opts.nonInteractive) {
+    return { shouldReturn: false, value: undefined };
+  }
+  if (typeof opts.default !== "undefined") {
+    return { shouldReturn: true, value: opts.default };
+  }
+  throw new FirebaseError(
+    `Question "${opts.message}" does not have a default and cannot be answered in non-interactive mode`,
+  );
+}
+
+/**
+ * Options for the Input function.
+ *
+ * Exported because Inqurier does not export its own input configs anymore. Some
+ * unused options are missing, such as theme.
+ */
+export type InputConfig = BasicOptions<string> & {
+  transformer?: (
+    value: string,
+    {
+      isFinal,
+    }: {
+      isFinal: boolean;
+    },
+  ) => string;
+  validate?: (value: string) => boolean | string | Promise<string | boolean>;
+};
+
+/**
+ * Prompt for a string input.
+ */
+export async function input(message: string): Promise<string>;
+/**
+ * Prompt for a string input.
+ */
+export async function input(opts: InputConfig): Promise<string>;
+
+export async function input(opts: InputConfig | string): Promise<string> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
     }
   }
-  return dir;
+  return inquirer.input(opts);
+}
+
+/**
+ * Options for the confirm function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme.
+ */
+export type ConfirmConfig = BasicOptions<boolean> & {
+  transformer?: (value: boolean) => string;
+};
+
+/**
+ * Prompt a user to confirm a selection
+ */
+export async function confirm(message: string): Promise<boolean>;
+/**
+ * Prompt a user to confirm a selection
+ * Will abort if nonInteractive and not force
+ */
+export async function confirm(opts: ConfirmConfig): Promise<boolean>;
+
+export async function confirm(opts: string | ConfirmConfig) {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    if (opts.force) {
+      // TODO: Should we print what we've forced?
+      return true;
+    }
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
+    }
+  }
+
+  return inquirer.confirm(opts);
+}
+
+/**
+ * A choice in a checkbox prompt.
+ * Strongly typed to allow enum propagation
+ */
+export type Choice<Value> = {
+  value: Value;
+  name?: string;
+  description?: string;
+  short?: string;
+  disabled?: boolean | string;
+  checked?: boolean;
+  type?: never;
+};
+
+// Personal hack deviating from inquirer to allow string values to propagate
+// as strings or enum arrays without needing an explicit type at the call stie.
+type MaybeLiteral<Value> = Value extends string ? Value : never;
+
+/**
+ * Options for the checkbox function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
+export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
+  message: string;
+  choices:
+    | readonly (MaybeLiteral<Value> | inquirer.Separator)[]
+    | readonly (inquirer.Separator | Choice<Value>)[];
+  validate?:
+    | ((choices: readonly Choice<Value>[]) => boolean | string | Promise<string | boolean>)
+    | undefined;
+  pageSize?: number;
+};
+
+/**
+ * Prompt a user for one or more of many options.
+ * Can accept a generic type for enum values.
+ */
+export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Value[]> {
+  const { shouldReturn, value } = guard(opts);
+  if (shouldReturn) {
+    return value;
+  }
+  return inquirer.checkbox({
+    ...opts,
+    loop: true,
+  });
+}
+
+/**
+ * Options for the checkbox function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ * TODO: Had difficulty coalescing literals using Choice<Value>[]. Look into it.
+ */
+export type SelectOptions<Value> = BasicOptions<Value> & {
+  choices:
+    | readonly (MaybeLiteral<Value> | inquirer.Separator)[]
+    | readonly (inquirer.Separator | Choice<Value>)[];
+  pageSize?: number;
+};
+
+/**
+ * Prompt a user to make a choice amongst a list.
+ */
+export async function select<Value>(opts: SelectOptions<Value>): Promise<Value> {
+  const { shouldReturn, value } = guard(opts);
+  if (shouldReturn) {
+    return value;
+  }
+  return inquirer.select({
+    ...opts,
+    loop: false,
+  });
+}
+
+/**
+ * Options for the number function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
+export type NumberOptions = BasicOptions<number> & {
+  min?: number;
+  max?: number;
+  step?: number | "any";
+  validate?: (value: number | undefined) => boolean | string | Promise<string | boolean>;
+};
+
+/**
+ * Prompt a user for a number.
+ */
+export async function number(message: string): Promise<number>;
+
+/**
+ * Prompt a user for a number.
+ */
+export async function number(opts: NumberOptions): Promise<number>;
+
+/**
+ * Prompt a user for an optional number.
+ */
+export async function number(
+  opts: NumberOptions & { required: false },
+): Promise<number | undefined>;
+
+export async function number(opts: string | NumberOptions): Promise<number | undefined> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    const { shouldReturn, value } = guard(opts);
+    if (shouldReturn) {
+      return value;
+    }
+  }
+
+  return await inquirer.number({ required: true, ...opts });
+}
+
+/**
+ * Options for the checkbox function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
+type PasswordOptions = Omit<BasicOptions<string>, "default"> & {
+  validate?: (value: string) => boolean | string | Promise<string | boolean>;
+};
+
+/**
+ * Prompt for a password; input is hidden.
+ */
+export async function password(message: string): Promise<string>;
+
+/**
+ * Prompt for a password; input is hidden.
+ */
+export async function password(opts: PasswordOptions): Promise<string>;
+
+export async function password(opts: string | PasswordOptions): Promise<string> {
+  if (typeof opts === "string") {
+    opts = { message: opts };
+  } else {
+    // Note, without default can basically only throw
+    guard(opts);
+  }
+
+  return inquirer.password({
+    ...opts,
+    mask: "",
+  });
+}
+
+/**
+ * Options for the search function.
+ *
+ * Exported because Inquirer does not export its own input configs anymore. Some unused
+ * options are missing, such as theme. Some options are missing to promote consistency
+ * within the CLI.
+ */
+export type SearchOptions<Value> = BasicOptions<Value> & {
+  source: (
+    term: string | undefined,
+    opt: {
+      signal: AbortSignal;
+    },
+  ) =>
+    | readonly (string | inquirer.Separator)[]
+    | readonly (inquirer.Separator | Choice<Value>)[]
+    | Promise<readonly (string | inquirer.Separator)[]>
+    | Promise<readonly (inquirer.Separator | Choice<Value>)[]>;
+  validate?: ((value: Value) => boolean | string | Promise<string | boolean>) | undefined;
+  pageSize?: number | undefined;
+};
+
+/** Search for a value given a sorce callback. */
+export async function search<Value>(opts: SearchOptions<Value>): Promise<Value> {
+  const { shouldReturn, value } = guard(opts);
+  if (shouldReturn) {
+    return value;
+  }
+  return inquirer.search(opts);
 }

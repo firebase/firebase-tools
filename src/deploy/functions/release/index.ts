@@ -3,22 +3,22 @@ import * as clc from "colorette";
 import { Options } from "../../../options";
 import { logger } from "../../../logger";
 import { reduceFlat } from "../../../functional";
+import * as utils from "../../../utils";
 import * as args from "../args";
 import * as backend from "../backend";
-import * as containerCleaner from "../containerCleaner";
 import * as planner from "./planner";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as experiments from "../../../experiments";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
+import * as artifacts from "../../../functions/artifacts";
 
-/** Releases new versions of functions to prod. */
+/** Releases new versions of functions and extensions to prod. */
 export async function release(
   context: args.Context,
   options: Options,
@@ -84,12 +84,13 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
-    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
+    projectNumber: projectNumber,
   });
 
   const summary = await fab.applyPlan(plan);
@@ -102,15 +103,13 @@ export async function release(
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
-  printTriggerUrls(wantBackend);
+  printTriggerUrls(wantBackend, projectNumber);
 
-  const haveEndpoints = backend.allEndpoints(wantBackend);
-  const deletedEndpoints = Object.values(plan)
-    .map((r) => r.endpointsToDelete)
-    .reduce(reduceFlat, []);
-  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
-    await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
-  }
+  await setupArtifactCleanupPolicies(
+    options,
+    options.projectId!,
+    Object.keys(wantBackend.endpoints),
+  );
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
@@ -128,8 +127,10 @@ export async function release(
  * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
-export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+export function printTriggerUrls(results: backend.Backend, projectNumber: string): void {
+  const httpsFunctions = backend
+    .allEndpoints(results)
+    .filter((b) => backend.isHttpsTriggered(b) || backend.isDataConnectGraphqlTriggered(b));
   if (httpsFunctions.length === 0) {
     return;
   }
@@ -141,6 +142,81 @@ export function printTriggerUrls(results: backend.Backend): void {
       );
       continue;
     }
+    if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
+      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for Data Connect
+      // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
+      // TODO: The deterministic URL is only available for DNS segments of 63 characters or less;
+      // we should add validation to prevent service names that would exceed this.
+      logger.info(
+        clc.bold("Function URL"),
+        `(${getFunctionLabel(httpsFunc)}):`,
+        `https://${httpsFunc.id.toLowerCase()}-${projectNumber}.${httpsFunc.region}.run.app`,
+      );
+      continue;
+    }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
+  }
+}
+
+/**
+ * Sets up artifact cleanup policies for the regions where functions are deployed
+ * and automatically sets up policies where needed.
+ *
+ * The policy is only set up when:
+ *   1. No cleanup policy exists yet
+ *   2. No other cleanup policies exist (beyond our own if we previously set one)
+ *   3. User has not explicitly opted out
+ *
+ * In non-interactive mode:
+ *   - With force flag: applies the default cleanup policy
+ *   - Without force flag: warns and aborts deployment
+ */
+async function setupArtifactCleanupPolicies(
+  options: Options,
+  projectId: string,
+  locations: string[],
+): Promise<void> {
+  if (locations.length === 0) {
+    return;
+  }
+
+  const { locationsToSetup, locationsWithErrors: locationsWithCheckErrors } =
+    await artifacts.checkCleanupPolicy(projectId, locations);
+
+  if (locationsToSetup.length === 0) {
+    return;
+  }
+
+  const daysToKeep = await prompts.promptForCleanupPolicyDays(options, locationsToSetup);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
+      `Images older than ${daysToKeep} days will be automatically deleted.`,
+  );
+
+  const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
+    await artifacts.setCleanupPolicies(projectId, locationsToSetup, daysToKeep);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configured cleanup policy for ${locationsWithPolicy.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}.`,
+  );
+
+  const locationsWithErrors = [...locationsWithCheckErrors, ...locationsWithSetupErrors];
+  if (locationsWithErrors.length > 0) {
+    utils.logLabeledWarning(
+      "functions",
+      `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
+        `${locationsWithErrors.join(", ")}.` +
+        "This could result in a small monthly bill as container images accumulate over time.",
+    );
+    utils.logLabeledWarning(
+      "functions",
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+    );
   }
 }

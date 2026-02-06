@@ -10,7 +10,7 @@ import * as path from "node:path";
 import { ResolvedDataConnectConfigs } from "./config";
 
 export function setupLanguageClient(
-  context,
+  context: vscode.ExtensionContext,
   configs: ResolvedDataConnectConfigs,
   outputChannel: vscode.OutputChannel,
 ) {
@@ -95,13 +95,24 @@ export function setupLanguageClient(
     // TODO: Expand to multiple services
     const config = configs.values[0];
     const generatedPath = ".dataconnect";
-    const schemaPaths = [
-      `../${config.relativeSchemaPath}/**/*.gql`,
-      `../${config.relativePath}/${generatedPath}/**/*.gql`,
+    let schemaPaths = [
+      path.join(config.relativePath, generatedPath, "**", "*.gql"),
+      ...config.relativeSchemaPaths.map((p) => path.join(p, "**", "*.gql")),
     ];
-    const documentPaths = config.relativeConnectorPaths.map(
-      (connectorPath) => `../${connectorPath}/**/*.gql`,
+    let documentPaths = config.relativeConnectorPaths.map((connectorPath) =>
+      path.join(connectorPath, "**", "*.gql"),
     );
+
+    // make non windows paths relative
+    // TODO: figure out why relative paths are absolute on windows
+    if (process.platform !== "win32") {
+      schemaPaths = schemaPaths.map((schemaPath) =>
+        path.join("..", schemaPath),
+      );
+      documentPaths = documentPaths.map((documentPath) =>
+        path.join("..", documentPath),
+      );
+    }
 
     const yamlJson = JSON.stringify({
       schema: schemaPaths,
@@ -128,16 +139,6 @@ export function setupLanguageClient(
     await client.start();
     outputChannel.appendLine("Firebase GraphQL Language Server restarted");
   });
-
-  // ** DISABLED FOR NOW WHILE WE TEST GENERATED YAML **
-  // restart server whenever config file changes
-  // const watcher = vscode.workspace.createFileSystemWatcher(
-  //   "**/.graphqlrc.*", // TODO: extend to schema files, and other config types
-  //   false,
-  //   false,
-  //   false,
-  // );
-  // watcher.onDidChange(() => restartGraphqlLSP());
 
   return client;
 }

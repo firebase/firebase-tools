@@ -3,7 +3,7 @@ import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import { sync as rimraf } from "rimraf";
+import { rmSync } from "node:fs";
 
 import * as fsAsync from "./fsAsync";
 
@@ -13,10 +13,11 @@ import * as fsAsync from "./fsAsync";
 //   visible
 //   subdir/
 //     subfile
-//       nesteddir/
-//         nestedfile
-//       node_modules/
-//         nestednodemodules
+//     nesteddir/
+//       nestedfile
+//       nestedfile2
+//     node_modules/
+//       nestednodemodules
 //   node_modules
 //     subfile
 describe("fsAsync", () => {
@@ -26,6 +27,7 @@ describe("fsAsync", () => {
     "visible",
     "subdir/subfile",
     "subdir/nesteddir/nestedfile",
+    "subdir/nesteddir/nestedfile2",
     "subdir/node_modules/nestednodemodules",
     "node_modules/subfile",
   ];
@@ -43,7 +45,7 @@ describe("fsAsync", () => {
   });
 
   after(() => {
-    rimraf(baseDir);
+    rmSync(baseDir, { recursive: true });
     expect(() => {
       fs.statSync(baseDir);
     }).to.throw();
@@ -92,6 +94,65 @@ describe("fsAsync", () => {
         .map((file) => path.join(baseDir, file))
         .sort();
       return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
+    it("should support .gitignore rules via options", async () => {
+      const results = await fsAsync.readdirRecursive({
+        path: baseDir,
+        ignore: ["subdir/nesteddir/*", "!subdir/nesteddir/nestedfile"],
+        isGitIgnore: true,
+      });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = files
+        .map((file) => path.join(baseDir, file))
+        .filter((file) => file !== path.join(baseDir, "subdir/nesteddir/nestedfile2"))
+        .sort();
+      return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
+    it("should support maximum recursion depth", async () => {
+      const results = await fsAsync.readdirRecursive({ path: baseDir, maxDepth: 2 });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = [".hidden", "visible", "subdir/subfile", "node_modules/subfile"];
+      const expectPaths = expectFiles.map((file) => path.join(baseDir, file)).sort();
+      return expect(gotFileNames).to.deep.equal(expectPaths);
+    });
+
+    it("should ignore invalid maximum recursion depth", async () => {
+      const results = await fsAsync.readdirRecursive({ path: baseDir, maxDepth: 0 });
+
+      const gotFileNames = results.map((r) => r.name).sort();
+      const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+      return expect(gotFileNames).to.deep.equal(expectFiles);
+    });
+
+    it("should ignore symlinks when option is set", async () => {
+      const symlinkPath = path.join(baseDir, "symlink");
+      fs.symlinkSync(path.join(baseDir, "visible"), symlinkPath);
+
+      try {
+        const resultsWithSymlinks = await fsAsync.readdirRecursive({
+          path: baseDir,
+          ignoreSymlinks: true,
+        });
+        const gotFileNamesWithSymlinks = resultsWithSymlinks.map((r) => r.name).sort();
+        const expectFiles = files.map((file) => path.join(baseDir, file)).sort();
+        expect(gotFileNamesWithSymlinks).to.deep.equal(expectFiles);
+
+        const resultsWithoutSymlinks = await fsAsync.readdirRecursive({
+          path: baseDir,
+          ignoreSymlinks: false,
+        });
+        const gotFileNamesWithoutSymlinks = resultsWithoutSymlinks.map((r) => r.name).sort();
+        const expectFilesWithSymlinks = [...files, "symlink"]
+          .map((file) => path.join(baseDir, file))
+          .sort();
+        expect(gotFileNamesWithoutSymlinks).to.deep.equal(expectFilesWithSymlinks);
+      } finally {
+        fs.unlinkSync(symlinkPath);
+      }
     });
   });
 });

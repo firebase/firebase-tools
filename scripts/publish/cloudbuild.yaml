@@ -98,24 +98,62 @@ steps:
   # Publish the package.
   - name: "gcr.io/$PROJECT_ID/package-builder"
     dir: "${_REPOSITORY_NAME}"
-    args: ["bash", "./scripts/publish.sh", "${_VERSION}", "${_VSCODE_VERSION}"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "${_VERSION}" == "preview" ]; then
+          ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
+        else
+          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
+        fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
       - "REPOSITORY_NAME=${_REPOSITORY_NAME}"
 
   # Wait a bit of time for npm to catch up.
   - name: "gcr.io/$PROJECT_ID/package-builder"
-    args: ["sleep", "60"]
+    args: ["sleep", "240"]
 
   # Set up the hub credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
-    args: ["-c", "mkdir -vp ~/.config && cp -v hub ~/.config/hub"]
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          mkdir -vp ~/.config && cp -v hub ~/.config/hub
+        else
+          echo "Skipping hub credentials for firepit-builder for preview."
+        fi
 
   # Publish the firepit builds.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
-    entrypoint: "node"
-    args: ["/usr/src/app/pipeline.js", "--package=firebase-tools@latest", "--publish"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
+        else
+          echo "Skipping firepit build for preview version."
+        fi
+
+  # Publish the Firebase docker image
+  - name: "gcr.io/cloud-builders/docker"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+        else
+          echo "Skipping docker build for preview version."
+        fi
+
+images:
+  - "us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
 
 timeout: 1200s # 20 minutes
 
@@ -126,8 +164,9 @@ options:
 
 substitutions:
   _VERSION: ""
-  _VSCODE_VERSION: ""
+  _BRANCH: ""
   _KEY_RING: "cloud-build-ring"
   _KEY_NAME: "publish"
   _REPOSITORY_ORG: "firebase"
   _REPOSITORY_NAME: "firebase-tools"
+  _ARTIFACT_REGISTRY_PROJECT: "firebase-cli"

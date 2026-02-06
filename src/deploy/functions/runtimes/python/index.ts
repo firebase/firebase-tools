@@ -60,6 +60,8 @@ export function getPythonBinary(
     return "python3.11";
   } else if (runtime === "python312") {
     return "python3.12";
+  } else if (runtime === "python313") {
+    return "python3.13";
   }
   assertExhaustive(runtime, `Unhandled python runtime ${runtime as string}`);
 }
@@ -195,7 +197,12 @@ export class Delegate implements runtimes.RuntimeDelegate {
       });
       const killProcess = await this.serveAdmin(adminPort, envs);
       try {
-        discovered = await discovery.detectFromPort(adminPort, this.projectId, this.runtime);
+        discovered = await discovery.detectFromPort(
+          adminPort,
+          this.projectId,
+          this.runtime,
+          500 /* initialDelay, python startup is slow */,
+        );
       } finally {
         await killProcess();
       }

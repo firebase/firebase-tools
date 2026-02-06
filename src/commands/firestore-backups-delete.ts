@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { Backup, deleteBackup, getBackup } from "../gcp/firestore";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import * as clc from "colorette";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
@@ -10,8 +10,8 @@ import { FirestoreOptions } from "../firestore/options";
 import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:delete <backup>")
-  .description("Delete a backup under your Cloud Firestore database.")
-  .option("--force", "Attempt to delete backup without prompting for confirmation.")
+  .description("delete a backup under your Cloud Firestore database")
+  .option("--force", "attempt to delete backup without prompting for confirmation")
   .before(requirePermissions, ["datastore.backups.delete"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
   .action(async (backupName: string, options: FirestoreOptions) => {
@@ -19,8 +19,7 @@ export const command = new Command("firestore:backups:delete <backup>")
 
     if (!options.force) {
       const confirmMessage = `You are about to delete ${backupName}. Do you wish to continue?`;
-      const consent = await promptOnce({
-        type: "confirm",
+      const consent = await confirm({
         message: confirmMessage,
         default: false,
       });
@@ -35,11 +34,7 @@ export const command = new Command("firestore:backups:delete <backup>")
       throw new FirebaseError(`Failed to delete the backup ${backupName}`, { original: err });
     }
 
-    if (options.json) {
-      logger.info(JSON.stringify(backup, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupName)}`));
-    }
+    logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupName)}`));
 
     return backup;
   });

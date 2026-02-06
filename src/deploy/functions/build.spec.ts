@@ -75,7 +75,7 @@ describe("toBackend", () => {
     expect(Object.keys(backend.endpoints).length).to.equal(0);
   });
 
-  it("populates multiple specified invokers correctly", () => {
+  it("populates multiple specified https invokers correctly", () => {
     const desiredBuild: build.Build = build.of({
       func: {
         platform: "gcfv1",
@@ -109,6 +109,46 @@ describe("toBackend", () => {
       expect(endpointDef.func.region).to.equal("us-central1");
       expect(
         "httpsTrigger" in endpointDef.func ? endpointDef.func.httpsTrigger.invoker : [],
+      ).to.have.members(["service-account-1@", "service-account-2@"]);
+    }
+  });
+
+  it("populates multiple specified data connect https invokers correctly", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        maxInstances: 42,
+        minInstances: 1,
+        serviceAccount: "service-account-1@",
+        vpc: {
+          connector: "projects/project/locations/region/connectors/connector",
+          egressSettings: "PRIVATE_RANGES_ONLY",
+        },
+        ingressSettings: "ALLOW_ALL",
+        labels: {
+          test: "testing",
+        },
+        dataConnectGraphqlTrigger: {
+          invoker: ["service-account-1@", "service-account-2@"],
+        },
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    expect(endpointDef).to.not.equal(undefined);
+    if (endpointDef) {
+      expect(endpointDef.func.id).to.equal("func");
+      expect(endpointDef.func.project).to.equal("project");
+      expect(endpointDef.func.region).to.equal("us-central1");
+      expect(
+        "dataConnectGraphqlTrigger" in endpointDef.func
+          ? endpointDef.func.dataConnectGraphqlTrigger.invoker
+          : [],
       ).to.have.members(["service-account-1@", "service-account-2@"]);
     }
   });
@@ -185,6 +225,45 @@ describe("toBackend", () => {
       });
     }).to.throw(FirebaseError, /Value "INVALID" is an invalid egress setting./);
   });
+
+  it("can resolve a service account param", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        maxInstances: 42,
+        minInstances: 1,
+        serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
+        vpc: {
+          connector: "projects/project/locations/region/connectors/connector",
+          egressSettings: "PRIVATE_RANGES_ONLY",
+        },
+        ingressSettings: "ALLOW_ALL",
+        labels: {
+          test: "testing",
+        },
+        httpsTrigger: {
+          invoker: ["public"],
+        },
+      },
+    });
+    const env = {
+      SERVICE_ACCOUNT: new ParamValue("service-account-1@", false, {
+        string: true,
+        number: false,
+        boolean: false,
+      }),
+    };
+
+    const backend = build.toBackend(desiredBuild, env);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    if (endpointDef) {
+      expect(endpointDef.func.serviceAccount).to.equal("service-account-1@");
+    }
+  });
 });
 
 describe("envWithType", () => {
@@ -252,5 +331,122 @@ describe("envWithType", () => {
     expect(out.WHOOPS_SECRET.legalNumber).to.be.false;
     expect(out.WHOOPS_SECRET.legalList).to.be.false;
     expect(out.WHOOPS_SECRET.asString()).to.equal("super-secret");
+  });
+});
+
+describe("applyPrefix", () => {
+  const createTestBuild = (): build.Build => ({
+    endpoints: {
+      func1: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: "func1",
+        httpsTrigger: {},
+      },
+      func2: {
+        region: "us-west1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs16",
+        entryPoint: "func2",
+        httpsTrigger: {},
+      },
+    },
+    params: [],
+    requiredAPIs: [],
+  });
+
+  it("should update endpoint keys with prefix", () => {
+    const testBuild = createTestBuild();
+    build.applyPrefix(testBuild, "test");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["test-func1", "test-func2"]);
+    expect(testBuild.endpoints["test-func1"].entryPoint).to.equal("func1");
+    expect(testBuild.endpoints["test-func2"].entryPoint).to.equal("func2");
+  });
+
+  it("should do nothing for an empty prefix", () => {
+    const testBuild = createTestBuild();
+    build.applyPrefix(testBuild, "");
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal(["func1", "func2"]);
+  });
+
+  it("should prefix secret names in secretEnvironmentVariables", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "API_KEY", secret: "api-secret", projectId: "test-project" },
+            { key: "DB_PASSWORD", secret: "db-secret", projectId: "test-project" },
+          ],
+        },
+        func2: {
+          region: "us-west1",
+          project: "test-project",
+          platform: "gcfv1",
+          runtime: "nodejs16",
+          entryPoint: "func2",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            { key: "SERVICE_TOKEN", secret: "service-secret", projectId: "test-project" },
+          ],
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+
+    build.applyPrefix(testBuild, "staging");
+
+    expect(Object.keys(testBuild.endpoints).sort()).to.deep.equal([
+      "staging-func1",
+      "staging-func2",
+    ]);
+    expect(testBuild.endpoints["staging-func1"].secretEnvironmentVariables).to.deep.equal([
+      { key: "API_KEY", secret: "staging-api-secret", projectId: "test-project" },
+      { key: "DB_PASSWORD", secret: "staging-db-secret", projectId: "test-project" },
+    ]);
+    expect(testBuild.endpoints["staging-func2"].secretEnvironmentVariables).to.deep.equal([
+      { key: "SERVICE_TOKEN", secret: "staging-service-secret", projectId: "test-project" },
+    ]);
+  });
+
+  it("throws if combined function id exceeds 63 characters", () => {
+    const longId = "a".repeat(34); // with 30-char prefix + dash = 65 total
+    const testBuild: build.Build = build.of({
+      [longId]: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: longId,
+        httpsTrigger: {},
+      },
+    });
+    const longPrefix = "p".repeat(30);
+    expect(() => build.applyPrefix(testBuild, longPrefix)).to.throw(/exceeds 63 characters/);
+  });
+
+  it("throws if prefix makes function id invalid (must start with a letter)", () => {
+    const testBuild: build.Build = build.of({
+      func: {
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        runtime: "nodejs18",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
+      /Function names must start with a letter/,
+    );
   });
 });

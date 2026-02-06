@@ -37,4 +37,4 @@ describe("cloudFunctions", () => {
       expect(nock.isDone()).to.be.true;
     });
   });
-});
+}).timeout(2000);

@@ -29,6 +29,12 @@ type EmulatorIssueResponse = { result?: { issues?: EmulatorIssue[] } };
 export const emulatorOutputChannel =
   vscode.window.createOutputChannel("Firebase Emulators");
 
+// on schema reload, restart language server and run introspection again
+function schemaReload() {
+  vscode.commands.executeCommand("fdc-graphql.restart");
+  vscode.commands.executeCommand("firebase.dataConnect.executeIntrospection");
+}
+
 /**
  * TODO: convert to class
  * @param fdcEndpoint FDC Emulator endpoint
@@ -37,14 +43,13 @@ export async function runEmulatorIssuesStream(
   configs: ResolvedDataConnectConfigs,
   fdcEndpoint: string,
   isPostgresEnabled: Signal<boolean>,
-  schemaReloadFunc: () => void,
 ) {
   const obsErrors = await getEmulatorIssuesStream(configs, fdcEndpoint);
   const obsConverter = {
     next(nextResponse: EmulatorIssueResponse) {
       if (nextResponse.result?.issues?.length) {
         for (const issue of nextResponse.result.issues) {
-          displayAndHandleIssue(issue, isPostgresEnabled, schemaReloadFunc);
+          displayAndHandleIssue(issue, isPostgresEnabled);
         }
       }
     },
@@ -64,7 +69,6 @@ export async function runEmulatorIssuesStream(
 export function displayAndHandleIssue(
   issue: EmulatorIssue,
   isPostgresEnabled: Signal<boolean>,
-  schemaReloadFunc: () => void,
 ) {
   const issueMessage = `Data Connect Emulator: ${issue.kind.toString()} - ${issue.message}`;
   if (issue.severity === Severity.ALERT) {
@@ -77,7 +81,7 @@ export function displayAndHandleIssue(
     isPostgresEnabled.value = false;
   }
   if (issue.kind === Kind.FILE_RELOAD) {
-    schemaReloadFunc();
+    schemaReload();
   }
 }
 

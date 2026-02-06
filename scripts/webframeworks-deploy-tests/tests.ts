@@ -69,10 +69,6 @@ describe("webframeworks", function (this) {
             },
             rewrites: [
               {
-                destination: "/base",
-                source: "/base/about",
-              },
-              {
                 source: "/base/**",
                 function: {
                   functionId: "ssrdemonextjs",
@@ -135,6 +131,14 @@ describe("webframeworks", function (this) {
               {
                 headers: [
                   {
+                    key: "x-nextjs-stale-time",
+                    value: "300",
+                  },
+                  {
+                    key: "x-nextjs-prerender",
+                    value: "1",
+                  },
+                  {
                     key: "x-next-cache-tags",
                     value:
                       "_N_T_/layout,_N_T_/app/layout,_N_T_/app/image/layout,_N_T_/app/image/page,_N_T_/app/image",
@@ -143,7 +147,33 @@ describe("webframeworks", function (this) {
                 source: "/base/app/image",
               },
               {
+                source: "/base/_not-found",
                 headers: [
+                  {
+                    key: "x-nextjs-stale-time",
+                    value: "300",
+                  },
+                  {
+                    key: "x-nextjs-prerender",
+                    value: "1",
+                  },
+                  {
+                    key: "x-next-cache-tags",
+                    value:
+                      "_N_T_/layout,_N_T_/_not-found/layout,_N_T_/_not-found/page,_N_T_/_not-found",
+                  },
+                ],
+              },
+              {
+                headers: [
+                  {
+                    key: "x-nextjs-stale-time",
+                    value: "300",
+                  },
+                  {
+                    key: "x-nextjs-prerender",
+                    value: "1",
+                  },
                   {
                     key: "x-next-cache-tags",
                     value:
@@ -154,6 +184,14 @@ describe("webframeworks", function (this) {
               },
               {
                 headers: [
+                  {
+                    key: "x-nextjs-stale-time",
+                    value: "300",
+                  },
+                  {
+                    key: "x-nextjs-prerender",
+                    value: "1",
+                  },
                   {
                     key: "x-next-cache-tags",
                     value:
@@ -261,16 +299,18 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql(
-          "private, no-cache, no-store, max-age=0, must-revalidate",
-        );
-        expect(await response.text()).to.include("<body>ISR");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=60");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("ISR");
       });
 
       it("should have working SSR", async () => {
         const bazResponse = await fetch(`${NEXTJS_HOST}/app/ssr`);
         expect(bazResponse.ok).to.be.true;
-        expect(await bazResponse.text()).to.include("<body>SSR");
+        const text = await bazResponse.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("SSR");
       });
 
       it("should have working dynamic routes", async () => {
@@ -283,7 +323,9 @@ describe("webframeworks", function (this) {
       it("should have working image", async () => {
         const response = await fetch(`${NEXTJS_HOST}/app/image`);
         expect(response.ok).to.be.true;
-        expect(await response.text()).to.include("<body><img");
+        const text = await response.text();
+        expect(text).to.include("<body>");
+        expect(text).to.include("<img");
       });
     });
 
@@ -315,7 +357,7 @@ describe("webframeworks", function (this) {
       it("should have working ISR", async () => {
         const response = await fetch(`${NEXTJS_HOST}/pages/isr`);
         expect(response.ok).to.be.true;
-        expect(response.headers.get("cache-control")).to.eql("private");
+        expect(response.headers.get("cache-control")).to.include("s-maxage=10");
         expect(await response.text()).to.include(`ISR <!-- -->${DEFAULT_LANG}`);
       });
     });
@@ -342,26 +384,30 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr"]
         .flatMap((locale) => [
           ...(locale
-            ? [1, 2].map((num) =>
-                join(
-                  NEXT_BASE_PATH,
-                  "_next",
-                  "data",
-                  buildId,
-                  locale,
-                  "pages",
-                  "fallback",
-                  `${num}.json`,
+            ? [
+                ...[1, 2].map((num) =>
+                  join(
+                    NEXT_BASE_PATH,
+                    "_next",
+                    "data",
+                    buildId,
+                    locale,
+                    "pages",
+                    "fallback",
+                    `${num}.json`,
+                  ),
                 ),
-              )
+                join(NEXT_BASE_PATH, "_next", "data", buildId, locale, "pages", "ssg.json"),
+              ]
             : [
-                join(NEXT_BASE_PATH, "_next", "data", buildId, "pages", "ssg.json"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_clientMiddlewareManifest.json"),
                 join(NEXT_BASE_PATH, "app", "api", "static"),
                 join(NEXT_BASE_PATH, "app", "image.html"),
                 join(NEXT_BASE_PATH, "app", "ssg.html"),
                 join(NEXT_BASE_PATH, "404.html"),
+                join(NEXT_BASE_PATH, "_not-found.html"),
               ]),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "1.html"),
           join(I18N_BASE, locale, NEXT_BASE_PATH, "pages", "fallback", "2.html"),
@@ -375,16 +421,9 @@ describe("webframeworks", function (this) {
         .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = [
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[^-]+-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "app", `layout-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `main-app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_app-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `_error-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", "pages", `index-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `polyfills-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `webpack-[^.]+.js`],
-        [NEXT_BASE_PATH, "_next", "static", "css", `[^.]+.css`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `turbopack-[^.]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.css`],
       ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);

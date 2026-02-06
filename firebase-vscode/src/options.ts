@@ -1,6 +1,5 @@
 import { RC } from "../../src/rc";
 import { Options } from "../../src/options";
-import { Command } from "../../src/command";
 import { ExtensionContext } from "vscode";
 import { setInquirerOptions } from "./stubs/inquirer-stub";
 import { Config } from "../../src/config";
@@ -27,11 +26,9 @@ const defaultOptions: Readonly<VsCodeOptions> = {
   projectNumber: "",
   projectRoot: "",
   account: "",
-  json: true,
   nonInteractive: true,
-  interactive: false,
   debug: false,
-  rc: null,
+  rc: new RC(),
   exportOnExit: false,
   import: "",
 
@@ -46,11 +43,11 @@ const defaultOptions: Readonly<VsCodeOptions> = {
 export const currentOptions = globalSignal({ ...defaultOptions });
 
 export function registerOptions(context: ExtensionContext): vscode.Disposable {
-  currentOptions.value.cwd = getConfigPath();
+  currentOptions.value.cwd = getConfigPath()!;
   const cwdSync = vscode.workspace.onDidChangeWorkspaceFolders(() => {
     currentOptions.value = {
       ...currentOptions.peek(),
-      cwd: getConfigPath(),
+      cwd: getConfigPath()!,
     };
   });
 
@@ -87,7 +84,7 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     } else {
       currentOptions.value = {
         ...previous,
-        rc: null,
+        rc: null as any,
         project: "",
       };
     }
@@ -105,21 +102,6 @@ export function registerOptions(context: ExtensionContext): vscode.Disposable {
     cwdSync,
     { dispose: firebaseConfigSync },
     { dispose: rcSync },
-    { dispose: notifySync }
+    { dispose: notifySync },
   );
-}
-
-/**
- * Temporary options to pass to a command, don't write.
- * Mostly runs it through the CLI's command.prepare() options formatter.
- */
-export async function getCommandOptions(
-  firebaseJSON: Config,
-  options: Options = currentOptions.value
-): Promise<Options> {
-  // Use any string, it doesn't affect `prepare()`.
-  const command = new Command("deploy");
-  let newOptions = Object.assign(options, { config: options.configPath });
-  await command.prepare(newOptions);
-  return newOptions as Options;
 }

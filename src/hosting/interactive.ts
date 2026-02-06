@@ -1,8 +1,8 @@
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
 import { needProjectId, needProjectNumber } from "../projectUtils";
-import { promptOnce } from "../prompt";
-import { Site, createSite } from "./api";
+import { createSite } from "./api";
+import { input } from "../prompt";
 
 const nameSuggestion = new RegExp("try something like `(.+)`");
 // const prompt = "Please provide an unique, URL-friendly id for the site (<id>.web.app):";
@@ -11,17 +11,16 @@ const prompt =
   'We recommend using letters, numbers, and hyphens (e.g. "{project-id}-{random-hash}"):';
 
 /**
- * Interactively prompt to create a Hosting site.
+ * Interactively prompt to name a Hosting site.
  */
-export async function interactiveCreateHostingSite(
+export async function pickHostingSiteName(
   siteId: string,
-  appId: string,
   options: { projectId?: string; nonInteractive?: boolean },
-): Promise<Site> {
+): Promise<string> {
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
   let id = siteId;
-  let newSite: Site | undefined;
+  let nameConfirmed: boolean = false;
   let suggestion: string | undefined;
 
   // If we were given an ID, we're going to start with that, so don't check the project ID.
@@ -35,41 +34,35 @@ export async function interactiveCreateHostingSite(
     }
   }
 
-  while (!newSite) {
+  while (!nameConfirmed) {
     if (!id || suggestion) {
-      id = await promptOnce({
-        type: "input",
+      id = await input({
         message: prompt,
         validate: (s: string) => s.length > 0, // Prevents an empty string from being submitted!
         default: suggestion,
       });
     }
-    try {
-      newSite = await createSite(projectNumber, id, appId);
-    } catch (err: unknown) {
-      if (!(err instanceof FirebaseError)) {
-        throw err;
-      }
-      if (options.nonInteractive) {
-        throw err;
-      }
-
-      id = ""; // Clear so the prompt comes back.
-      suggestion = getSuggestionFromError(err);
-    }
+    const attempt = await trySiteID(projectNumber, id, options.nonInteractive);
+    nameConfirmed = attempt.available;
+    suggestion = attempt.suggestion;
+    if (!nameConfirmed) id = ""; // Clear so the prompt comes back.
   }
-  return newSite;
+  return id;
 }
 
 async function trySiteID(
   projectNumber: string,
   id: string,
+  nonInteractive = false,
 ): Promise<{ available: boolean; suggestion?: string }> {
   try {
     await createSite(projectNumber, id, "", true);
     return { available: true };
   } catch (err: unknown) {
     if (!(err instanceof FirebaseError)) {
+      throw err;
+    }
+    if (nonInteractive) {
       throw err;
     }
     const suggestion = getSuggestionFromError(err);

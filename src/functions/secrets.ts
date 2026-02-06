@@ -20,15 +20,14 @@ import {
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logWarning } from "../utils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { validateKey } from "./env";
 import { logger } from "../logger";
 import { assertExhaustive } from "../functional";
 import { isFunctionsManaged, FIREBASE_MANAGED } from "../gcp/secretManager";
 import { labels } from "../gcp/secretManager";
 import { needProjectId } from "../projectUtils";
-
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 // For mysterious reasons, importing the poller option in fabricator.ts leads to some
 // value of the poller option to be undefined at runtime. I can't figure out what's going on,
@@ -70,16 +69,13 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
     logWarning(`By convention, secret key must be in UPPER_SNAKE_CASE.`);
-    const confirm = await promptOnce(
-      {
-        name: "updateKey",
-        type: "confirm",
-        default: true,
-        message: `Would you like to use ${transformedKey} as key instead?`,
-      },
-      options,
-    );
-    if (!confirm) {
+    const useTransformed = await confirm({
+      default: true,
+      message: `Would you like to use ${transformedKey} as key instead?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+    if (!useTransformed) {
       throw new FirebaseError("Secret key must be in UPPER_SNAKE_CASE.");
     }
   }
@@ -89,6 +85,26 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
     throw new FirebaseError(`Invalid secret key ${transformedKey}`, { children: [err] });
   }
   return transformedKey;
+}
+
+/**
+ * Validates that a secret value is valid JSON and throws a helpful error if not.
+ * @param secretName The name of the secret being validated
+ * @param secretValue The value to validate
+ * @throws FirebaseError if the value is not valid JSON
+ */
+export function validateJsonSecret(secretName: string, secretValue: string): void {
+  try {
+    JSON.parse(secretValue);
+  } catch (e: any) {
+    throw new FirebaseError(
+      `Provided value for ${secretName} is not valid JSON: ${e.message}\n\n` +
+        `For complex JSON values, use:\n` +
+        `  firebase functions:secrets:set ${secretName} --data-file <file.json>\n` +
+        `Or pipe from stdin:\n` +
+        `  cat <file.json> | firebase functions:secrets:set ${secretName} --format=json`,
+    );
+  }
 }
 
 /**
@@ -105,15 +121,11 @@ export async function ensureSecret(
       logWarning(
         "Your secret is managed by Firebase App Hosting. Continuing will disable automatic deletion of old versions.",
       );
-      const stopTracking = await promptOnce(
-        {
-          name: "doNotTrack",
-          type: "confirm",
-          default: false,
-          message: "Do you wish to continue?",
-        },
-        options,
-      );
+      const stopTracking = await confirm({
+        message: "Do you wish to continue?",
+        nonInteractive: options.nonInteractive,
+        force: options.force,
+      });
       if (stopTracking) {
         delete secret.labels[FIREBASE_MANAGED];
         await patchSecret(secret.projectId, secret.name, secret.labels);
@@ -128,16 +140,13 @@ export async function ensureSecret(
           "Your secret is not managed by Cloud Functions for Firebase. " +
             "Firebase managed secrets are automatically pruned to reduce your monthly cost for using Secret Manager. ",
         );
-        const confirm = await promptOnce(
-          {
-            name: "updateLabels",
-            type: "confirm",
-            default: true,
-            message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
-          },
-          options,
-        );
-        if (confirm) {
+        const updateLabels = await confirm({
+          default: true,
+          message: `Would you like to have your secret ${secret.name} managed by Cloud Functions for Firebase?`,
+          nonInteractive: options.nonInteractive,
+          force: options.force,
+        });
+        if (updateLabels) {
           return patchSecret(projectId, secret.name, {
             ...secret.labels,
             ...labels(),
@@ -370,6 +379,10 @@ export async function updateEndpointSecret(
       operationResourceName: op.name,
     });
     return gcfV2.endpointFromFunction(cfn);
+  } else if (endpoint.platform === "run") {
+    // This may be tricky because the image has been deleted. How does this work
+    // with GCF?
+    throw new FirebaseError("Updating Cloud Run functions is not yet implemented.");
   } else {
     assertExhaustive(endpoint.platform);
   }

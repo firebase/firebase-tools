@@ -11,6 +11,7 @@ import { EmulatorRegistry } from "./registry";
 import { FunctionsEmulator } from "./functionsEmulator";
 import { ExpressBasedEmulator } from "./ExpressBasedEmulator";
 import { PortName } from "./portUtils";
+import { DataConnectEmulator } from "./dataconnectEmulator";
 
 // We use the CLI version from package.json
 const pkg = require("../../package.json");
@@ -19,6 +20,7 @@ export interface Locator {
   version: string;
   // Ways of reaching the hub as URL prefix, such as http://127.0.0.1:4000
   origins: string[];
+  pid: number;
 }
 
 export interface EmulatorHubArgs {
@@ -27,21 +29,23 @@ export interface EmulatorHubArgs {
   listenForEmulator: Record<PortName, ListenSpec[]>;
 }
 
-export type GetEmulatorsResponse = Record<string, EmulatorInfo>;
+export type GetEmulatorsResponse = Partial<Record<Emulators, EmulatorInfo>>;
 
 export class EmulatorHub extends ExpressBasedEmulator {
+  static MISSING_PROJECT_PLACEHOLDER = "demo-no-project";
   static CLI_VERSION = pkg.version;
   static PATH_EXPORT = "/_admin/export";
   static PATH_DISABLE_FUNCTIONS = "/functions/disableBackgroundTriggers";
   static PATH_ENABLE_FUNCTIONS = "/functions/enableBackgroundTriggers";
   static PATH_EMULATORS = "/emulators";
+  static PATH_CLEAR_DATA_CONNECT = "/dataconnect/clearData";
 
   /**
    * Given a project ID, find and read the Locator file for the emulator hub.
    * This is useful so that multiple copies of the Firebase CLI can discover
    * each other.
    */
-  static readLocatorFile(projectId: string): Locator | undefined {
+  static readLocatorFile(projectId: string | undefined): Locator | undefined {
     const locatorPath = this.getLocatorFilePath(projectId);
     if (!fs.existsSync(locatorPath)) {
       return undefined;
@@ -49,19 +53,18 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
-
-    if (locator.version !== this.CLI_VERSION) {
-      logger.debug(`Found locator with mismatched version, ignoring: ${JSON.stringify(locator)}`);
-      return undefined;
-    }
-
+    logger.debug(`Found emulator hub locator: ${JSON.stringify(locator)}`);
     return locator;
   }
 
-  static getLocatorFilePath(projectId: string): string {
+  static getLocatorFilePath(projectId: string | undefined): string {
     const dir = os.tmpdir();
+    if (!projectId) {
+      projectId = EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    }
     const filename = `hub-${projectId}.json`;
-    return path.join(dir, filename);
+    const locatorPath = path.join(dir, filename);
+    return locatorPath;
   }
 
   constructor(private args: EmulatorHubArgs) {
@@ -75,11 +78,22 @@ export class EmulatorHub extends ExpressBasedEmulator {
     await this.writeLocatorFile();
   }
 
+  getRunningEmulatorsMapping(): GetEmulatorsResponse {
+    const emulators: GetEmulatorsResponse = {};
+    for (const info of EmulatorRegistry.listRunningWithInfo()) {
+      emulators[info.name] = {
+        listen: this.args.listenForEmulator[info.name],
+        ...info,
+      };
+    }
+    return emulators;
+  }
+
   protected override async createExpressApp(): Promise<express.Express> {
     const app = await super.createExpressApp();
     app.get("/", (req, res) => {
       res.json({
-        ...this.getLocator(),
+        ...this.buildLocator(),
         // For backward compatibility:
         host: utils.connectableHostname(this.args.listen[0].address),
         port: this.args.listen[0].port,
@@ -87,14 +101,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     });
 
     app.get(EmulatorHub.PATH_EMULATORS, (req, res) => {
-      const body: GetEmulatorsResponse = {};
-      for (const info of EmulatorRegistry.listRunningWithInfo()) {
-        body[info.name] = {
-          listen: this.args.listenForEmulator[info.name],
-          ...info,
-        };
-      }
-      res.json(body);
+      res.json(this.getRunningEmulatorsMapping());
     });
 
     app.post(EmulatorHub.PATH_EXPORT, async (req, res) => {
@@ -158,19 +165,36 @@ export class EmulatorHub extends ExpressBasedEmulator {
       res.status(200).json({ enabled: true });
     });
 
+    app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
+      if (req.headers.origin) {
+        res.status(403).json({
+          message: `Clear Data Connect cannot be triggered by external callers.`,
+        });
+      }
+      utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
+
+      const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+      if (!instance) {
+        res.status(400).json({ error: "The Data Connect emulator is not running." });
+        return;
+      }
+
+      await instance.clearData();
+      res.status(200).json({ success: true });
+    });
+
     return app;
   }
 
   async stop(): Promise<void> {
     await super.stop();
-    await this.deleteLocatorFile();
   }
 
   getName(): Emulators {
     return Emulators.HUB;
   }
 
-  private getLocator(): Locator {
+  private buildLocator(): Locator {
     const version = pkg.version;
     const origins: string[] = [];
     for (const spec of this.args.listen) {
@@ -183,44 +207,51 @@ export class EmulatorHub extends ExpressBasedEmulator {
     return {
       version,
       origins,
+      pid: process.pid,
     };
   }
 
   private async writeLocatorFile(): Promise<void> {
     const projectId = this.args.projectId;
-    const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
-    const locator = this.getLocator();
-
-    if (fs.existsSync(locatorPath)) {
+    const prevLocator = EmulatorHub.readLocatorFile(projectId);
+    if (prevLocator && prevLocator.pid && isProcessLive(prevLocator.pid)) {
       utils.logLabeledWarning(
         "emulators",
         `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
+      return;
     }
 
-    logger.debug(`[hub] writing locator at ${locatorPath}`);
-    return new Promise((resolve, reject) => {
-      fs.writeFile(locatorPath, JSON.stringify(locator), (e) => {
-        if (e) {
-          reject(e);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
+    const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
+    logger.debug(`Write emulator hub locator at ${locatorPath}`);
+    fs.writeFileSync(locatorPath, JSON.stringify(this.buildLocator()));
 
-  private async deleteLocatorFile(): Promise<void> {
-    const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
-    return new Promise((resolve, reject) => {
-      fs.unlink(locatorPath, (e) => {
-        // If the file is already deleted, no need to throw.
-        if (e && e.code !== "ENOENT") {
-          reject(e);
-        } else {
-          resolve();
+    // Delete the emulator hub locator file on exit
+    const cleanup = () => {
+      try {
+        const curLocator = EmulatorHub.readLocatorFile(projectId);
+        if (curLocator && curLocator.pid === process.pid) {
+          fs.unlinkSync(locatorPath);
+          logger.debug(`Delete emulator hub locator file: ${locatorPath}`);
         }
-      });
-    });
+      } catch (e: any) {
+        logger.debug(`Cannot delete emulator hub locator file`, e);
+      }
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+    process.on("exit", cleanup);
+  }
+}
+
+function isProcessLive(pid: number): boolean {
+  try {
+    // Send signal 0 to check if process is alive.
+    process.kill(pid, 0);
+    return true;
+  } catch (error: any) {
+    // ESRCH: The process does not exist (it's dead)
+    // EPERM: The process exists, but you don't have permission to signal it (it's live)
+    return error.code === "EPERM";
   }
 }

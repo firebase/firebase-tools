@@ -2,50 +2,52 @@ import * as planner from "./planner";
 import * as deploymentSummary from "./deploymentSummary";
 import * as prompt from "../../prompt";
 import * as refs from "../../extensions/refs";
-import { Options } from "../../options";
 import { getAliases, needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { Context, Payload } from "./args";
 import { FirebaseError } from "../../error";
 import { requirePermissions } from "../../requirePermissions";
-import {
-  checkExtensionsApiEnabled,
-  ensureExtensionsApiEnabled,
-} from "../../extensions/extensionsHelper";
+import { ensureExtensionsApiEnabled } from "../../extensions/extensionsHelper";
 import { ensureSecretManagerApiEnabled } from "../../extensions/secretsUtils";
 import { checkSpecForSecrets } from "./secrets";
 import { displayWarningsForDeploy, outOfBandChangesWarning } from "../../extensions/warnings";
 import { detectEtagChanges } from "../../extensions/etags";
 import { checkSpecForV2Functions, ensureNecessaryV2ApisAndRoles } from "./v2FunctionHelper";
-import { acceptLatestAppDeveloperTOS } from "../../extensions/tos";
+import { acceptLatestAppDeveloperTOS, getAppDeveloperTOSStatus } from "../../extensions/tos";
 import {
-  extractAllDynamicExtensions,
   extractExtensionsFromBuilds,
+  extensionMatchesAnyFilter,
 } from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
+import { getEndpointFilters } from "../functions/functionsDeployHelper";
 import { normalizeAndValidate } from "../../functions/projectConfig";
-import { getEndpointFilters, targetCodebases } from "../functions/functionsDeployHelper";
+import { DeployOptions } from "..";
 
-// This is called by prepare and also prepareDynamicExtensions. The only difference
-// is which set of extensions is in the want list and which is in the noDelete list.
-// isPrimaryCall is true exactly once per deploy. So if you have just 'firebase deploy'
-// it will be true when called from extensions/prepare but false when called from
-// functions/prepare. If you have 'firebase deploy --only functions' then it will
-// be true when called from functions/prepare (since extensions/prepare would
-// not be called). It is necessary otherwise you can get the same questions
-// and notifications twice (e.g. delete these extensions?)
+const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
+  return dep.instanceId === test.instanceId;
+};
+
+const isUpdate = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
+  return dep.instanceId === test.instanceId && !refs.equal(dep.ref, test.ref);
+};
+
+const isConfigure = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
+  return dep.instanceId === test.instanceId && refs.equal(dep.ref, test.ref);
+};
+
+// This is called by prepare and also prepareDynamicExtensions
 async function prepareHelper(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   wantExtensions: planner.DeploymentInstanceSpec[],
-  noDeleteExtensions: planner.DeploymentInstanceSpec[],
-  isPrimaryCall: boolean,
-) {
+  haveExtensions: planner.DeploymentInstanceSpec[],
+  isDynamic: boolean,
+): Promise<void> {
   const projectId = needProjectId(options);
 
-  context.have = await planner.have(projectId);
   context.want = wantExtensions;
+  context.have = haveExtensions;
 
   const etagsChanged = detectEtagChanges(options.rc, projectId, context.have);
   if (etagsChanged.length) {
@@ -54,7 +56,7 @@ async function prepareHelper(
       .map((e) => e.instanceId)
       .filter((id) => etagsChanged.includes(id));
     if (wantChangedIds.length) {
-      outOfBandChangesWarning(wantChangedIds);
+      outOfBandChangesWarning(wantChangedIds, isDynamic);
       if (
         !(await prompt.confirm({
           message: `Do you wish to continue deploying these extension instances?`,
@@ -83,10 +85,7 @@ async function prepareHelper(
   payload.instancesToCreate = context.want.filter((i) => !context.have?.some(matchesInstanceId(i)));
   payload.instancesToConfigure = context.want.filter((i) => context.have?.some(isConfigure(i)));
   payload.instancesToUpdate = context.want.filter((i) => context.have?.some(isUpdate(i)));
-  payload.instancesToDelete = context.have.filter(
-    (i) =>
-      !context.want?.some(matchesInstanceId(i)) && !noDeleteExtensions?.some(matchesInstanceId(i)),
-  );
+  payload.instancesToDelete = context.have.filter((i) => !context.want?.some(matchesInstanceId(i)));
 
   if (await displayWarningsForDeploy(payload.instancesToCreate)) {
     if (
@@ -102,10 +101,6 @@ async function prepareHelper(
   }
 
   const permissionsNeeded: string[] = [];
-  if (!isPrimaryCall) {
-    // Don't ask to delete the same extensions again
-    payload.instancesToDelete = [];
-  }
 
   if (payload.instancesToCreate.length) {
     permissionsNeeded.push("firebaseextensions.instances.create");
@@ -120,8 +115,13 @@ async function prepareHelper(
     logger.info(deploymentSummary.configuresSummary(payload.instancesToConfigure));
   }
   if (payload.instancesToDelete.length) {
-    logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete));
+    logger.info(deploymentSummary.deletesSummary(payload.instancesToDelete, isDynamic));
+    if (options.dryRun) {
+      logger.info("On your next deploy, you will be asked if you want to delete these instances.");
+      logger.info("If you deploy --force, they will be deleted.");
+    }
     if (
+      !options.dryRun &&
       !(await prompt.confirm({
         message: `Would you like to delete ${payload.instancesToDelete
           .map((i) => i.instanceId)
@@ -138,38 +138,53 @@ async function prepareHelper(
   }
 
   await requirePermissions(options, permissionsNeeded);
-  await acceptLatestAppDeveloperTOS(
-    options,
-    projectId,
-    context.want.map((i) => i.instanceId),
-  );
+  if (options.dryRun) {
+    const appDevTos = await getAppDeveloperTOSStatus(projectId);
+    if (!appDevTos.lastAcceptedVersion) {
+      logger.info(
+        "On your next deploy, you will be asked to accept the Firebase Extensions App Developer Terms of Service",
+      );
+    }
+  } else {
+    await acceptLatestAppDeveloperTOS(
+      options,
+      projectId,
+      context.want.map((i) => i.instanceId),
+    );
+  }
 }
 
-// This is called by functions/prepare so we can deploy the extensions defined by SDKs
+/**
+ * This is called by functions/prepare so we can deploy the extensions defined by SDKs
+ * @param context The prepare context
+ * @param options The prepare options
+ * @param payload The prepare payload
+ * @param builds firebase functions builds
+ */
 export async function prepareDynamicExtensions(
   context: Context,
-  options: Options,
+  options: DeployOptions,
   payload: Payload,
   builds: Record<string, Build>,
-) {
-  const filters = getEndpointFilters(options);
+): Promise<void> {
+  const functionsConfig = normalizeAndValidate(options.config.src.functions);
+  const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
-  const isApiEnabled = await checkExtensionsApiEnabled(options);
-  if (Object.keys(extensions).length === 0 && !isApiEnabled) {
-    // Assume if we have no extensions defined and the API is not enabled
-    // there is nothing to delete.
-    return;
-  }
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
-  const aliases = getAliases(options, projectId);
-  const projectDir = options.config.projectDir;
-
-  // This is only a primary call if we are not including extensions
-  const isPrimaryCall = !!options.only && !options.only.split(",").includes("extensions");
 
   await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
+
+  let haveExtensions = await planner.haveDynamic(projectId);
+  haveExtensions = haveExtensions.filter((e) =>
+    extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
+  );
+
+  if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
+    // Nothing defined, and nothing to delete
+    return;
+  }
 
   const dynamicWant = await planner.wantDynamic({
     projectId,
@@ -177,57 +192,27 @@ export async function prepareDynamicExtensions(
     extensions,
   });
 
-  // Secondary calls do not need to calculate which extensions
-  // should not be deleted since we skip deletes for secondary
-  // calls. (We have already asked about them in the primary call).
-  let noDeleteExtensions: planner.DeploymentInstanceSpec[] = [];
-  if (isPrimaryCall) {
-    // Don't delete these extensions defined in firebase.json
-    const firebaseJsonWant = await planner.want({
-      projectId,
-      projectNumber,
-      aliases,
-      projectDir,
-      extensions: options.config.get("extensions", {}),
-    });
-    noDeleteExtensions = noDeleteExtensions.concat(firebaseJsonWant);
-    if (hasNonDeployingCodebases(options)) {
-      // Don't delete these (e.g. if we are only deploying codebase A and there are
-      // extensions in codebase B too, we don't want to delete them).
-      const dynamicAll = await planner.wantDynamic({
-        projectId,
-        projectNumber,
-        extensions: await extractAllDynamicExtensions(options),
-      });
-      noDeleteExtensions = noDeleteExtensions.concat(dynamicAll);
-    }
-  }
-
-  // We are in prepareDynamicExtensions because it is called from functions prepare
-  // Check if we are also deploying extensions (either no `--only` or including
-  // `--only extensions`) if so, it's not a primary call
-  return prepareHelper(context, options, payload, dynamicWant, noDeleteExtensions, isPrimaryCall);
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    dynamicWant,
+    haveExtensions,
+    true /* isDynamic */,
+  );
 }
 
-// Are there codebases that are not included in the current deploy?
-function hasNonDeployingCodebases(options: Options) {
-  const functionFilters = getEndpointFilters(options);
-  if (functionFilters?.length) {
-    // If we are filtering for just one extension or function or codebase,
-    // Then we have non-deploying code.
-    return true;
-  }
-
-  const functionsConfig = normalizeAndValidate(options.config.src.functions);
-  const allCodebases = targetCodebases(functionsConfig);
-  const deployingCodebases = targetCodebases(functionsConfig, functionFilters);
-
-  if (allCodebases.length > deployingCodebases.length) {
-    return true;
-  }
-}
-
-export async function prepare(context: Context, options: Options, payload: Payload) {
+/**
+ * static Extensions prepare (not to be confused with dynamic extensions)
+ * @param context The prepare context
+ * @param options The prepare options
+ * @param payload The prepare payload
+ */
+export async function prepare(
+  context: Context,
+  options: DeployOptions,
+  payload: Payload,
+): Promise<void> {
   context.extensionsStartTime = Date.now();
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
@@ -237,30 +222,22 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   await ensureExtensionsApiEnabled(options);
   await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
-  const firebaseJsonWant = await planner.want({
+  const wantExtensions = await planner.want({
     projectId,
     projectNumber,
     aliases,
     projectDir,
-    extensions: options.config.get("extensions", {}),
-  });
-  const dynamicWant = await planner.wantDynamic({
-    projectId,
-    projectNumber,
-    extensions: await extractAllDynamicExtensions(options),
+    extensions: options.config.get("extensions", {}) as Record<string, string>,
   });
 
-  return prepareHelper(context, options, payload, firebaseJsonWant, dynamicWant, true);
+  const haveExtensions = await planner.have(projectId);
+
+  return prepareHelper(
+    context,
+    options,
+    payload,
+    wantExtensions,
+    haveExtensions,
+    false /* isDynamic */,
+  );
 }
-
-const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
-  return dep.instanceId === test.instanceId;
-};
-
-const isUpdate = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
-  return dep.instanceId === test.instanceId && !refs.equal(dep.ref, test.ref);
-};
-
-const isConfigure = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
-  return dep.instanceId === test.instanceId && refs.equal(dep.ref, test.ref);
-};

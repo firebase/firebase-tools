@@ -20,7 +20,7 @@ export function PanelSection({
   let [isExpanded, setExpanded] = useState(true);
 
   return (
-    <>
+    <div className={styles.panel}>
       {title && (
         <button
           aria-label={(isExpanded ? "Hide" : "Toggle") + " " + title}
@@ -34,12 +34,12 @@ export function PanelSection({
       )}
       {isExpanded && (
         <>
-          {title && <Spacer size="medium" />}
+          {title ? <Spacer size="medium" /> : <Spacer size="large" />}
           {children}
           <Spacer size="xlarge" />
           {!isLast && <VSCodeDivider />}
         </>
       )}
-    </>
+    </div>
   );
 }

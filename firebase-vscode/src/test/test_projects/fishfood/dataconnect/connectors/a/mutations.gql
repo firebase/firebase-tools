@@ -1,4 +1,4 @@
-mutation createPost($id: String, $content: String) @auth(level: PUBLIC) {
+mutation createPost($id: String, $content: String!) @auth(level: PUBLIC) {
   post_insert(data: { id: $id, content: $content })
 }
 mutation deletePost($id: String!) @auth(level: PUBLIC) {
@@ -7,4 +7,8 @@ mutation deletePost($id: String!) @auth(level: PUBLIC) {
 
 mutation createComment($id: String, $content: String) @auth(level: PUBLIC) {
   comment_insert(data: { id: $id, content: $content })
+}
+
+fragment CommentContent on Comment {
+  content
 }

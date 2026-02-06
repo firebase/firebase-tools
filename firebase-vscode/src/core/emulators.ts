@@ -1,221 +1,99 @@
 import vscode, { Disposable, ThemeColor } from "vscode";
-import {
-  emulatorsStart,
-  listRunningEmulators,
-  stopEmulators,
-  Emulators,
-} from "../cli";
+import { Emulators, getEmulatorUiUrl } from "../cli";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { computed, effect, signal } from "@preact/signals-core";
-import {
-  DEFAULT_EMULATOR_UI_SELECTIONS,
-  ExtensionToWebviewParamsMap,
-} from "../../common/messaging/protocol";
 import { firebaseRC } from "./config";
-import { EmulatorUiSelections } from "../messaging/types";
-
+import { EmulatorsStatus, RunningEmulatorInfo } from "../messaging/types";
+import { EmulatorHubClient } from "../../../src/emulator/hubClient";
+import { GetEmulatorsResponse } from "../../../src/emulator/hub";
+import { EmulatorInfo } from "../emulator/types";
+import { signal } from "@preact/signals-core";
+import { dataConnectConfigs } from "../data-connect/config";
+import { runEmulatorIssuesStream } from "../data-connect/emulator-stream";
+import { getSettings } from "../utils/settings";
 export class EmulatorsController implements Disposable {
   constructor(private broker: ExtensionBrokerImpl) {
     this.emulatorStatusItem.command = "firebase.openFirebaseRc";
 
+    // called by emulator UI
     this.subscriptions.push(
-      broker.on("getEmulatorUiSelections", () =>
-        this.notifyUISelectionChangedListeners(),
-      ),
-    );
-    // Notify the UI of the emulator selections changes
-    this.subscriptions.push(
-      effect(() => {
-        // Listen for changes.
-        this.uiSelections.value;
-
-        // TODO(christhompson): Save UI selections in the current workspace.
-        // Requires context object.
-        this.notifyUISelectionChangedListeners();
-      }),
+      broker.on("getEmulatorInfos", () => this.findRunningCliEmulators()),
     );
 
+    // called by emulator UI
     this.subscriptions.push(
-      broker.on("getEmulatorInfos", () => this.notifyEmulatorStateChanged()),
-    );
-    this.subscriptions.push(
-      effect(() => {
-        // Listen for changes.
-        this.emulators.value;
-
-        this.notifyEmulatorStateChanged();
-      }),
-    );
-
-    this.subscriptions.push(
-      broker.on("updateEmulatorUiSelections", (uiSelections) => {
-        this.uiSelections.value = {
-          ...this.uiSelections.peek(),
-          ...uiSelections,
-        };
-      }),
-    );
-
-    this.subscriptions.push(
-      broker.on("selectEmulatorImportFolder", async () => {
-        const options: vscode.OpenDialogOptions = {
-          canSelectMany: false,
-          openLabel: `Pick an import folder`,
-          title: `Pick an import folder`,
-          canSelectFiles: false,
-          canSelectFolders: true,
-        };
-        const fileUri = await vscode.window.showOpenDialog(options);
-        // Update the UI of the selection
-        if (!fileUri || fileUri.length < 1) {
-          vscode.window.showErrorMessage("Invalid import folder selected.");
+      broker.on("runStartEmulators", async () => {
+        if (await this.areEmulatorsRunning()) {
           return;
         }
-        broker.send("notifyEmulatorImportFolder", {
-          folder: fileUri[0].fsPath,
-        });
+        this.startEmulators();
       }),
     );
 
+    // Subscription to open up settings window
     this.subscriptions.push(
-      effect(() => {
-        const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-        this.uiSelections.value = {
-          ...this.uiSelections.peek(),
-          projectId: this.getProjectIdForMode(
-            projectId,
-            this.uiSelections.peek().mode,
-          ),
-        };
+      broker.on("fdc.open-emulator-settings", () => {
+        vscode.commands.executeCommand( 'workbench.action.openSettings', 'firebase.emulators' );
+      })
+    );
+
+    // Subscription to trigger clear emulator data when button is clicked.
+    this.subscriptions.push(
+      broker.on("fdc.clear-emulator-data", () => {
+        vscode.commands.executeCommand("firebase.emulators.clearData");
       }),
     );
+
+    // Subscription to trigger emulator exports when button is clicked.
+    this.subscriptions.push(broker.on("runEmulatorsExport", () => {
+      vscode.commands.executeCommand("firebase.emulators.exportData")
+    }));
   }
 
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
+  private currExecId = 0;
 
-  private pendingEmulatorStart: Promise<void> | undefined;
+  public async startEmulators() {
+    this.setEmulatorsStarting();
+    vscode.commands.executeCommand("firebase.emulators.start");
+  }
+  // called by webhook
+  private readonly findRunningEmulatorsCommand =
+    vscode.commands.registerCommand(
+      "firebase.emulators.findRunning",
+      this.findRunningCliEmulators.bind(this),
+    );
 
-  private readonly waitCommand = vscode.commands.registerCommand(
-    "firebase.emulators.wait",
-    this.waitEmulators.bind(this),
+  // called by webhook
+  private readonly emulatorsStoppped = vscode.commands.registerCommand(
+    "firebase.emulators.stopped",
+    this.setEmulatorsStopped.bind(this),
   );
 
-  // TODO(christhompson): Load UI selections from the current workspace.
-  // Requires context object.
-  readonly uiSelections = signal(DEFAULT_EMULATOR_UI_SELECTIONS);
+  private readonly clearEmulatorDataCommand = vscode.commands.registerCommand(
+    "firebase.emulators.clearData",
+    this.clearDataConnectData.bind(this),
+  );
 
-  readonly emulatorStates = computed(() => {
-    if (!this.areEmulatorsRunning.value) {
-      return undefined;
-    }
 
-    // TODO(rrousselGit) handle cases where one emulator is running,
-    // and a new one is started.
-    return listRunningEmulators();
-  });
+  private readonly exportEmulatorDataCommand = vscode.commands.registerCommand(
+    "firebase.emulators.exportData",
+    this.exportEmulatorData.bind(this),
+  );
 
-  readonly emulators = signal<
-    ExtensionToWebviewParamsMap["notifyEmulatorStateChanged"]
-  >({
-    status: "stopped",
-    infos: undefined,
-  });
-
-  readonly areEmulatorsRunning = computed(() => {
-    return this.emulators.value.status === "running";
-  });
+  readonly emulators: { status: EmulatorsStatus; infos?: RunningEmulatorInfo } =
+    {
+      status: "stopped",
+    };
 
   private readonly subscriptions: (() => void)[] = [];
 
-  /**
-   * Formats a project ID with a demo prefix if we're in offline mode, or uses the
-   * regular ID if we're in dataconnect only mode.
-   */
-  private getProjectIdForMode(
-    projectId: string | undefined,
-    mode: EmulatorUiSelections["mode"],
-  ): string {
-    if (!projectId) {
-      return "demo-something";
-    }
-    if (mode === "dataconnect") {
-      return projectId;
-    }
-    return "demo-" + projectId;
-  }
-
-  notifyUISelectionChangedListeners() {
-    this.broker.send(
-      "notifyEmulatorUiSelectionsChanged",
-      this.uiSelections.value,
-    );
-  }
-
   notifyEmulatorStateChanged() {
-    this.broker.send("notifyEmulatorStateChanged", this.emulators.value);
-  }
-
-  async waitEmulators() {
-    await this.pendingEmulatorStart;
-  }
-
-  async startEmulators() {
-    this.emulators.value = {
-      status: "starting",
-      infos: this.emulators.value.infos,
-    };
-
-    const currentOp = (this.pendingEmulatorStart = new Promise(async () => {
-      try {
-        await emulatorsStart(this.uiSelections.value);
-        this.emulators.value = {
-          status: "running",
-          infos: {
-            displayInfo: listRunningEmulators(),
-          },
-        };
-        // TODO: Add other emulator icons
-        this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
-
-        // Updating the status bar label as "running", but don't "show" it.
-        // We only show the status bar item when explicitly by interacting with the sidebar.
-        this.emulatorStatusItem.text = "$(data-connect) Emulators: Running";
-        this.emulatorStatusItem.backgroundColor = undefined;
-      } catch (e) {
-        this.emulatorStatusItem.text = "$(data-connect) Emulators: errored";
-        this.emulatorStatusItem.backgroundColor = new ThemeColor(
-          "statusBarItem.errorBackground",
-        );
-        this.emulatorStatusItem.show();
-        this.emulators.value = {
-          status: "stopped",
-          infos: undefined,
-        };
-      }
-
-      if (currentOp === this.pendingEmulatorStart) {
-        this.pendingEmulatorStart = undefined;
-      }
-    }));
-
-    return currentOp;
-  }
-
-  async stopEmulators() {
-    this.emulators.value = {
-      status: "stopping",
-      infos: this.emulators.value.infos,
-    };
-    await stopEmulators();
-    this.emulators.value = {
-      status: "stopped",
-      infos: undefined,
-    };
+    this.broker.send("notifyEmulatorStateChanged", this.emulators);
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
-  public getLocalEndpoint = () => computed<string | undefined>(() => {
-    const emulatorInfos = this.emulators.value.infos?.displayInfo;
+  public getLocalEndpoint = () => {
+    const emulatorInfos = this.emulators.infos?.displayInfo;
     const dataConnectEmulator = emulatorInfos?.find(
       (emulatorInfo) => emulatorInfo.name === Emulators.DATACONNECT,
     );
@@ -229,12 +107,117 @@ export class EmulatorsController implements Disposable {
       return `http://[${dataConnectEmulator.host}]:${dataConnectEmulator.port}`;
     }
     return `http://${dataConnectEmulator.host}:${dataConnectEmulator.port}`;
-  });
+  };
+
+  public setEmulatorsRunningInfo(info: EmulatorInfo[]) {
+    this.emulators.infos = {
+      uiUrl: getEmulatorUiUrl()!,
+      displayInfo: info,
+    };
+    this.emulators.status = "running";
+    this.notifyEmulatorStateChanged();
+
+    this.connectToEmulatorStream();
+  }
+
+  public setEmulatorsStarting() {
+    this.emulators.status = "starting";
+    this.notifyEmulatorStateChanged();
+
+    this.currExecId += 1;
+    const execId = this.currExecId;
+
+    // fallback in case we're stuck in a loading state
+    setTimeout(async () => {
+      if (this.emulators.status === "starting" && this.currExecId === execId) {
+        // notify UI to show reset
+        this.broker.send("notifyEmulatorsHanging", true);
+      }
+    }, 10000); // default 10 seconds spin up time
+  }
+
+  public setEmulatorsStopping() {
+    this.emulators.status = "stopping";
+    this.notifyEmulatorStateChanged();
+  }
+
+  public setEmulatorsStopped() {
+    this.emulators.status = "stopped";
+    this.notifyEmulatorStateChanged();
+  }
+
+  public async areEmulatorsRunning(): Promise<boolean> {
+    // Check if any emulators are running
+    // It may have been terminated without VS Code knowing.
+    return (await this.findRunningCliEmulators())?.status === "running";
+  }
+
+  async findRunningCliEmulators(): Promise<
+    { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
+  > {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      const response: GetEmulatorsResponse = await hubClient.getEmulators();
+
+      if (Object.values(response)) {
+        this.setEmulatorsRunningInfo(Object.values(response));
+      } else {
+        this.setEmulatorsStopped();
+      }
+    }
+    return this.emulators;
+  }
+
+  async clearDataConnectData(): Promise<void> {
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      await hubClient.clearDataConnectData();
+      vscode.window.showInformationMessage(`Data Connect emulator data has been cleared.`);
+    }
+  }
+
+  async exportEmulatorData(): Promise<void> {
+    const settings = getSettings();
+    const exportDir = settings.exportPath;
+    const hubClient = this.getHubClient();
+    if (hubClient) {
+      // TODO: Make exportDir configurable
+      await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
+      vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);
+    }
+  }
+
+  private getHubClient(): EmulatorHubClient | undefined {
+    const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
+    const hubClient = new EmulatorHubClient(projectId);
+    if (hubClient.foundHub()) {
+      return hubClient;
+    } else {
+      this.setEmulatorsStopped();
+    }
+  }
+
+  /** FDC specific functions */
+  readonly isPostgresEnabled = signal(false);
+  private connectToEmulatorStream() {
+    const configs = dataConnectConfigs.value?.tryReadValue!;
+
+    if (this.getLocalEndpoint()) {
+      // only if FDC emulator endpoint is found
+      runEmulatorIssuesStream(
+        configs,
+        this.getLocalEndpoint()!,
+        this.isPostgresEnabled,
+      );
+    }
+  }
 
   dispose(): void {
-    this.stopEmulators();
     this.subscriptions.forEach((subscription) => subscription());
-    this.waitCommand.dispose();
+    this.findRunningEmulatorsCommand.dispose();
     this.emulatorStatusItem.dispose();
+    this.emulatorsStoppped.dispose();
+    this.clearEmulatorDataCommand.dispose();
+    this.exportEmulatorDataCommand.dispose();
   }
 }

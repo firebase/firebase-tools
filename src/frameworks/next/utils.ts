@@ -4,7 +4,7 @@ import { basename, extname, join, posix, sep, resolve, dirname } from "path";
 import { readFile } from "fs/promises";
 import { glob, sync as globSync } from "glob";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
-import { coerce, satisfies } from "semver";
+import { coerce, satisfies, lt, gte, prerelease, parse } from "semver";
 
 import { findDependency, isUrl, readJSON } from "../utils";
 import type {
@@ -365,15 +365,16 @@ export function getNonStaticServerComponents(
 }
 
 /**
- * Get headers from .meta files
+ * Get metadata from .meta files
  */
-export async function getHeadersFromMetaFiles(
+export async function getAppMetadataFromMetaFiles(
   sourceDir: string,
   distDir: string,
   basePath: string,
   appPathRoutesManifest: AppPathRoutesManifest,
-): Promise<HostingHeadersWithSource[]> {
+): Promise<{ headers: HostingHeadersWithSource[]; pprRoutes: string[] }> {
   const headers: HostingHeadersWithSource[] = [];
+  const pprRoutes: string[] = [];
 
   await Promise.all(
     Object.entries(appPathRoutesManifest).map(async ([key, source]) => {
@@ -385,17 +386,20 @@ export async function getHeadersFromMetaFiles(
       const metadataPath = `${routePath}.meta`;
 
       if (dirExistsSync(routePath) && fileExistsSync(metadataPath)) {
-        const meta = await readJSON<{ headers?: Record<string, string> }>(metadataPath);
+        const meta = await readJSON<{ headers?: Record<string, string>; postponed?: string }>(
+          metadataPath,
+        );
         if (meta.headers)
           headers.push({
             source: posix.join(basePath, source),
             headers: Object.entries(meta.headers).map(([key, value]) => ({ key, value })),
           });
+        if (meta.postponed) pprRoutes.push(source);
       }
     }),
   );
 
-  return headers;
+  return { headers, pprRoutes };
 }
 
 /**
@@ -420,6 +424,14 @@ export function getNextVersion(cwd: string): string | undefined {
   if (!nextVersionSemver) return dependency.version;
 
   return nextVersionSemver.toString();
+}
+
+/**
+ * Get the raw Next.js version from the project.
+ */
+export function getNextVersionRaw(cwd: string): string | undefined {
+  const dependency = findDependency("next", { cwd, depth: 0, omitDev: false });
+  return dependency?.version;
 }
 
 /**
@@ -521,7 +533,7 @@ export function findEsbuildPath(): string | null {
  */
 export function getGlobalEsbuildVersion(binPath: string): string | null {
   try {
-    const versionOutput = execSync(`${binPath} --version`, { encoding: "utf8" })?.trim();
+    const versionOutput = execSync(`"${binPath}" --version`, { encoding: "utf8" })?.trim();
     if (!versionOutput) {
       return null;
     }
@@ -548,4 +560,53 @@ export function installEsbuild(version: string): void {
       throw new FirebaseError(`Failed to install esbuild: ${error}`, { original: error });
     }
   }
+}
+
+/**
+ * Check if the Next.js version is vulnerable to CVE-2025-66478.
+ *
+ * Vulnerable versions:
+ * - 15.0.x < 15.0.5
+ * - 15.1.x < 15.1.9
+ * - 15.2.x < 15.2.6
+ * - 15.3.x < 15.3.6
+ * - 15.4.x < 15.4.8
+ * - 15.5.x < 15.5.7
+ * - 16.0.x < 16.0.7
+ * - 14.x canary >= 14.3.0-canary.77
+ *
+ * @see https://nextjs.org/blog/CVE-2025-66478
+ * @see https://www.cve.org/CVERecord?id=CVE-2025-55182
+ * @see https://github.com/vercel/next.js/security/advisories/GHSA-9qr9-h5gf-34mp
+ */
+export function isNextJsVersionVulnerable(versionStr: string): boolean {
+  const v = parse(versionStr);
+  if (!v) return false;
+
+  if (v.major === 15) {
+    if (v.minor === 0) return lt(versionStr, "15.0.5");
+    if (v.minor === 1) return lt(versionStr, "15.1.9");
+    if (v.minor === 2) return lt(versionStr, "15.2.6");
+    if (v.minor === 3) return lt(versionStr, "15.3.6");
+    if (v.minor === 4) return lt(versionStr, "15.4.8");
+    if (v.minor === 5) return lt(versionStr, "15.5.7");
+    // Assume newer minor versions (e.g. 15.6.x) are safe as they should include the fix.
+    return false;
+  }
+
+  if (v.major === 16) {
+    if (v.minor === 0) return lt(versionStr, "16.0.7");
+    return false;
+  }
+
+  if (v.major === 14) {
+    const pre = prerelease(versionStr);
+    if (pre && pre.includes("canary")) {
+      if (gte(versionStr, "14.3.0-canary.77")) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 }

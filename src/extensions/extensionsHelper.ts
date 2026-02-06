@@ -13,10 +13,8 @@ marked.use(markedTerminal() as any);
 
 import { extensionsOrigin, extensionsPublisherOrigin, storageOrigin } from "../api";
 import { archiveDirectory } from "../archiveDirectory";
-import { convertOfficialExtensionsToList } from "./utils";
 import { getFirebaseConfig } from "../functionsConfig";
 import { getProjectAdminSdkConfigOrCached } from "../emulator/adminSdkConfig";
-import { getExtensionRegistry } from "./resolveSource";
 import { FirebaseError } from "../error";
 import { diagnose } from "./diagnose";
 import { checkResponse } from "./askUserForParam";
@@ -31,12 +29,12 @@ import {
   getExtensionVersion,
   listExtensionVersions,
 } from "./publisherApi";
+import { Choice, confirm, input, select } from "../prompt";
 import { Extension, ExtensionSource, ExtensionSpec, ExtensionVersion, Param } from "./types";
 import * as refs from "./refs";
 import { EXTENSIONS_SPEC_FILE, readFile, getLocalExtensionSpec } from "./localHelper";
-import { confirm, promptOnce } from "../prompt";
 import { logger } from "../logger";
-import { envOverride } from "../utils";
+import { envOverride, logLabeledError } from "../utils";
 import { getLocalChangelog } from "./change-log";
 import { getProjectNumber } from "../getProjectNumber";
 import { Constants } from "../emulator/constants";
@@ -81,7 +79,7 @@ const AUTOPOPULATED_PARAM_NAMES = [
   "DATABASE_URL",
 ];
 // Placeholders that can be used whever param substitution is needed, but are not available.
-export const AUTOPOULATED_PARAM_PLACEHOLDERS = {
+export const AUTOPOPULATED_PARAM_PLACEHOLDERS = {
   PROJECT_ID: "project-id",
   STORAGE_BUCKET: "project-id.appspot.com",
   EXT_INSTANCE_ID: "extension-id",
@@ -122,10 +120,21 @@ export async function getFirebaseProjectParams(
   const body = emulatorMode
     ? await getProjectAdminSdkConfigOrCached(projectId)
     : await getFirebaseConfig({ project: projectId });
-  const projectNumber =
-    emulatorMode && Constants.isDemoProject(projectId)
-      ? Constants.FAKE_PROJECT_NUMBER
-      : await getProjectNumber({ projectId });
+
+  let projectNumber = Constants.FAKE_PROJECT_NUMBER;
+  if (!Constants.isDemoProject(projectId)) {
+    try {
+      projectNumber = await getProjectNumber({ projectId });
+    } catch (err: any) {
+      logLabeledError(
+        "extensions",
+        `Unable to look up project number for ${projectId}.\n` +
+          " If this is a real project, ensure that you are logged in and have access to it.\n" +
+          " If this is a fake project, please use a project ID starting with 'demo-' to skip production calls.\n" +
+          " Continuing with a fake project number - secrets and other features that require production access may behave unexpectedly.",
+      );
+    }
+  }
   const databaseURL = body?.databaseURL ?? `https://${projectId}.firebaseio.com`;
   const storageBucket = body?.storageBucket ?? `${projectId}.appspot.com`;
   // This env variable is needed for parameter-less initialization of firebase-admin
@@ -390,8 +399,7 @@ export async function promptForValidInstanceId(instanceId: string): Promise<stri
   let newInstanceId = "";
   const instanceIdRegex = /^[a-z][a-z\d\-]*[a-z\d]$/;
   while (!instanceIdIsValid) {
-    newInstanceId = await promptOnce({
-      type: "input",
+    newInstanceId = await input({
       default: instanceId,
       message: `Please enter a new name for this instance:`,
     });
@@ -416,10 +424,9 @@ export async function promptForValidRepoURI(): Promise<string> {
   let repoIsValid = false;
   let extensionRoot = "";
   while (!repoIsValid) {
-    extensionRoot = await promptOnce({
-      type: "input",
-      message: "Enter the GitHub repo URI where this extension's source code is located:",
-    });
+    extensionRoot = await input(
+      "Enter the GitHub repo URI where this extension's source code is located:",
+    );
     if (!repoRegex.test(extensionRoot)) {
       logger.info("Repo URI must follow this format: https://github.com/<user>/<repo>");
     } else {
@@ -435,8 +442,7 @@ export async function promptForValidRepoURI(): Promise<string> {
  * @param defaultRoot the default extension root
  */
 export async function promptForExtensionRoot(defaultRoot: string): Promise<string> {
-  return await promptOnce({
-    type: "input",
+  return await input({
     message:
       "Enter this extension's root directory in the repo (defaults to previous root if set):",
     default: defaultRoot,
@@ -463,7 +469,7 @@ async function promptForReleaseStage(args: {
 }): Promise<ReleaseStage> {
   let stage: ReleaseStage = "rc";
   if (!args.nonInteractive) {
-    const choices = [
+    const choices: Choice<ReleaseStage>[] = [
       { name: `Release candidate (${args.versionByStage.get("rc")})`, value: "rc" },
       { name: `Alpha (${args.versionByStage.get("alpha")})`, value: "alpha" },
       { name: `Beta (${args.versionByStage.get("beta")})`, value: "beta" },
@@ -473,30 +479,26 @@ async function promptForReleaseStage(args: {
         name: `Stable (${args.versionByStage.get("stable")}${
           args.autoReview ? ", automatically sent for review" : ""
         })`,
-        value: "stable",
+        value: "stable" as ReleaseStage,
       };
       choices.push(stableChoice);
     }
-    stage = await promptOnce({
-      type: "list",
+    stage = await select<ReleaseStage>({
       message: "Choose the release stage:",
       choices: choices,
       default: stage,
     });
     if (stage === "stable" && !args.hasVersions) {
-      logger.info(
-        `${clc.bold(
+      const confirmed = await confirm({
+        message: `${clc.bold(
           clc.yellow("Warning:"),
         )} It's highly recommended to first upload a pre-release version before choosing stable.`,
-      );
-      const confirmed = await confirm({
         nonInteractive: args.nonInteractive,
         force: args.force,
         default: false,
       });
       if (!confirmed) {
-        stage = await promptOnce({
-          type: "list",
+        stage = await select<ReleaseStage>({
           message: "Choose the release stage:",
           choices: choices,
           default: stage,
@@ -539,7 +541,6 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
-    type: "zip",
     ignore: ["node_modules", ".git"],
   });
   const res = await uploadObject(zippedSource, bucketName);
@@ -608,7 +609,7 @@ async function validateExtensionSpec(
   const subbedSpec = JSON.parse(JSON.stringify(extensionSpec));
   subbedSpec.params = substituteParams<Param[]>(
     extensionSpec.params || [],
-    AUTOPOULATED_PARAM_PLACEHOLDERS,
+    AUTOPOPULATED_PARAM_PLACEHOLDERS,
   );
   validateSpec(subbedSpec);
   return extensionSpec;
@@ -846,8 +847,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
   const defaultSourceRef = "HEAD";
   if (!sourceRef) {
     if (!args.nonInteractive) {
-      sourceRef = await promptOnce({
-        type: "input",
+      sourceRef = await input({
         message: "Enter the commit hash, branch, or tag name to build from in the repo:",
         default: defaultSourceRef,
       });
@@ -893,6 +893,7 @@ export async function uploadExtensionVersionFromGitHubSource(args: {
     autoReview: stage === "stable" && autoReview,
   });
   const confirmed = await confirm({
+    message: "Continue?",
     nonInteractive: args.nonInteractive,
     force: args.force,
     default: false,
@@ -986,6 +987,7 @@ export async function uploadExtensionVersionFromLocalSource(args: {
   const releaseNotes = validateReleaseNotes(args.rootDirectory, extensionSpec.version, extension);
   displayReleaseNotes({ extensionRef, newVersion, releaseNotes, autoReview: false });
   const confirmed = await confirm({
+    message: "Continue?",
     nonInteractive: args.nonInteractive,
     force: args.force,
     default: false,
@@ -1133,21 +1135,9 @@ export function displayReleaseNotes(args: {
   logger.info(message);
 }
 
-/**
- * Display list of all official extensions and prompt user to select one.
- * @param message The prompt message to display
- * @return Promise that resolves to the extension name (e.g. storage-resize-images)
- */
-export async function promptForOfficialExtension(message: string): Promise<string> {
-  const officialExts = await getExtensionRegistry(true);
-  return await promptOnce({
-    name: "input",
-    type: "list",
-    message,
-    choices: convertOfficialExtensionsToList(officialExts),
-    pageSize: Object.keys(officialExts).length,
-  });
-}
+// TODO(inlined): Fix prompt library so that a choices array doesn't assume all values
+// must be the same type as the literal of the first
+type repeateInstanceResponse = "updateExisting" | "installNew" | "cancel";
 
 /**
  * Confirm if the user wants to install another instance of an extension when they already have one.
@@ -1157,19 +1147,17 @@ export async function promptForOfficialExtension(message: string): Promise<strin
 export async function promptForRepeatInstance(
   projectName: string,
   extensionName: string,
-): Promise<"updateExisting" | "installNew" | "cancel"> {
+): Promise<repeateInstanceResponse> {
   const message = `An extension with the ID '${clc.bold(
     extensionName,
   )}' already exists in the project '${clc.bold(projectName)}'. What would you like to do?`;
-  const choices = [
-    { name: "Update or reconfigure the existing instance", value: "updateExisting" },
-    { name: "Install a new instance with a different ID", value: "installNew" },
-    { name: "Cancel extension installation", value: "cancel" },
-  ];
-  return await promptOnce({
-    type: "list",
+  return await select<repeateInstanceResponse>({
     message,
-    choices,
+    choices: [
+      { name: "Update or reconfigure the existing instance", value: "updateExisting" },
+      { name: "Install a new instance with a different ID", value: "installNew" },
+      { name: "Cancel extension installation", value: "cancel" },
+    ],
   });
 }
 
@@ -1204,10 +1192,16 @@ export function isUrlPath(extInstallPath: string): boolean {
 export function isLocalPath(extInstallPath: string): boolean {
   const trimmedPath = extInstallPath.trim();
   return (
-    trimmedPath.startsWith("~/") ||
-    trimmedPath.startsWith("./") ||
-    trimmedPath.startsWith("../") ||
-    trimmedPath.startsWith("/") ||
+    trimmedPath.startsWith(`~${path.sep}`) ||
+    trimmedPath.startsWith(`.${path.sep}`) ||
+    trimmedPath.startsWith(`..${path.sep}`) ||
+    trimmedPath.startsWith(`${path.sep}`) ||
+    // Windows generally supports both forward and back slashes (even though the path.sep is \, so always check)
+    // https://learn.microsoft.com/en-us/dotnet/standard/io/file-path-formats#canonicalize-separators
+    trimmedPath.startsWith(`~/`) ||
+    trimmedPath.startsWith(`./`) ||
+    trimmedPath.startsWith(`../`) ||
+    trimmedPath.startsWith(`/`) ||
     [".", ".."].includes(trimmedPath)
   );
 }

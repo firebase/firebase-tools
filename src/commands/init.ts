@@ -7,13 +7,14 @@ import { Config } from "../config";
 import { getAllAccounts } from "../auth";
 import { init, Setup } from "../init";
 import { logger } from "../logger";
-import { prompt, promptOnce } from "../prompt";
-import { requireAuth } from "../requireAuth";
+import { checkbox, confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
+import { FirebaseError } from "../error";
+import { logBullet } from "../utils";
 
 const homeDir = os.homedir();
 
@@ -24,15 +25,15 @@ function isOutside(from: string, to: string): boolean {
   return !!/^\.\./.exec(path.relative(from, to));
 }
 
-const choices: {
+let choices: {
   value: string;
   name: string;
   checked: boolean;
   hidden?: boolean;
 }[] = [
   {
-    value: "database",
-    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
+    value: "dataconnect",
+    name: "Data Connect: Set up a Firebase Data Connect service",
     checked: false,
   },
   {
@@ -46,15 +47,15 @@ const choices: {
     checked: false,
   },
   {
-    value: "hosting",
-    name: "Hosting: Configure files for Firebase Hosting and (optionally) set up GitHub Action deploys",
+    value: "apphosting",
+    name: "App Hosting: Set up deployments for full-stack web apps (supports server-side rendering)",
     checked: false,
+    hidden: false,
   },
   {
-    value: "hosting:github",
-    name: "Hosting: Set up GitHub Action deploys",
+    value: "hosting",
+    name: "Hosting: Set up deployments for static web apps",
     checked: false,
-    hidden: true,
   },
   {
     value: "storage",
@@ -77,9 +78,15 @@ const choices: {
     checked: false,
   },
   {
-    value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service",
+    value: "database",
+    name: "Realtime Database: Configure a security rules file for Realtime Database and (optionally) provision default instance",
     checked: false,
+  },
+  {
+    value: "hosting:github",
+    name: "Hosting: Set up GitHub Action deploys",
+    checked: false,
+    hidden: true,
   },
   {
     value: "dataconnect:sdk",
@@ -89,17 +96,51 @@ const choices: {
   },
 ];
 
-if (isEnabled("genkit")) {
+if (isEnabled("fdcwebhooks")) {
   choices.push({
-    value: "genkit",
-    name: "Genkit: Setup a new Genkit project with Firebase",
+    value: "dataconnect:resolver",
+    name: "Data Connect: Set up a custom resolver for your Firebase Data Connect service",
+    checked: false,
+    hidden: true,
+  });
+}
+
+if (isEnabled("genkit")) {
+  choices = [
+    ...choices.slice(0, 2),
+    {
+      value: "genkit",
+      name: "Genkit: Setup a new Genkit project with Firebase",
+      checked: false,
+    },
+    ...choices.slice(2),
+  ];
+}
+
+if (isEnabled("apptesting")) {
+  choices.push({
+    value: "apptesting",
+    name: "App Testing: create a smoke test, enable Cloud APIs (storage, run, & artifactregistry), and add a service account.",
     checked: false,
   });
 }
 
+choices.push({
+  value: "ailogic",
+  name: "AI Logic: Set up Firebase AI Logic with app provisioning",
+  checked: false,
+});
+
+choices.push({
+  value: "aitools",
+  name: "AI Tools: Configure AI coding assistants to work with your Firebase project",
+  checked: false,
+  hidden: true,
+});
+
 const featureNames = choices.map((choice) => choice.value);
 
-const DESCRIPTION = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
+const HELP = `Interactively configure the current directory as a Firebase project or initialize new features in an already configured Firebase project directory.
 
 This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
@@ -110,8 +151,8 @@ ${[...featureNames]
   .join("")}`;
 
 export const command = new Command("init [feature]")
-  .description(DESCRIPTION)
-  .before(requireAuth)
+  .description("interactively configure the current directory as a Firebase project directory")
+  .help(HELP)
   .action(initAction);
 
 /**
@@ -119,7 +160,7 @@ export const command = new Command("init [feature]")
  * @param feature Feature to init (e.g., hosting, functions)
  * @param options Command options
  */
-export function initAction(feature: string, options: Options): Promise<void> {
+export async function initAction(feature: string, options: Options): Promise<void> {
   if (feature && !featureNames.includes(feature)) {
     return utils.reject(
       clc.bold(feature) +
@@ -170,79 +211,85 @@ export function initAction(feature: string, options: Options): Promise<void> {
       json: true,
       fallback: {},
     }),
+    instructions: [],
   };
 
-  let next;
   // HACK: Windows Node has issues with selectables as the first prompt, so we
   // add an extra confirmation prompt that fixes the problem
+  // TODO: see if this issue still persists in the new prompt library.
   if (process.platform === "win32") {
-    next = promptOnce({
-      type: "confirm",
-      message: "Are you ready to proceed?",
-    });
-  } else {
-    next = Promise.resolve(true);
+    if (!(await confirm("Are you ready to proceed?"))) {
+      throw new FirebaseError("Aborted by user.", { exit: 1 });
+    }
   }
 
-  return next
-    .then((proceed) => {
-      if (!proceed) {
-        return utils.reject("Aborted by user.", { exit: 1 });
-      }
-
-      if (feature) {
-        setup.featureArg = true;
-        setup.features = [feature];
-        return undefined;
-      }
-      return prompt(setup, [
-        {
-          type: "checkbox",
-          name: "features",
-          message:
-            "Which Firebase features do you want to set up for this directory? " +
-            "Press Space to select features, then Enter to confirm your choices.",
-          choices: choices.filter((c) => !c.hidden),
-        },
-      ]);
-    })
-    .then(() => {
-      if (!setup.features || setup.features?.length === 0) {
-        return utils.reject(
-          "Must select at least one feature. Use " +
+  if (feature) {
+    setup.featureArg = true;
+    setup.features = [feature];
+  } else {
+    setup.features = await checkbox<string>({
+      message:
+        "Which Firebase features do you want to set up for this directory? " +
+        "Press Space to select features, then Enter to confirm your choices.",
+      choices: choices.filter((c) => !c.hidden),
+      validate: (choices) => {
+        if (choices.length === 0) {
+          return (
+            "Must select at least one feature. Use " +
             clc.bold(clc.underline("SPACEBAR")) +
             " to select features, or specify a feature by running " +
-            clc.bold("firebase init [feature_name]"),
-        );
-      }
-
-      // Always set up project
-      setup.features.unshift("project");
-
-      // If there is more than one account, add an account choice phase
-      const allAccounts = getAllAccounts();
-      if (allAccounts.length > 1) {
-        setup.features.unshift("account");
-      }
-
-      // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
-      if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
-        setup.features = setup.features.filter((f) => f !== "hosting:github");
-      }
-
-      return init(setup, config, options);
-    })
-    .then(() => {
-      logger.info();
-      utils.logBullet("Writing configuration info to " + clc.bold("firebase.json") + "...");
-      config.writeProjectFile("firebase.json", setup.config);
-      utils.logBullet("Writing project information to " + clc.bold(".firebaserc") + "...");
-      config.writeProjectFile(".firebaserc", setup.rcfile);
-      if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
-        utils.logBullet("Writing gitignore file to " + clc.bold(".gitignore") + "...");
-        config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
-      }
-      logger.info();
-      utils.logSuccess("Firebase initialization complete!");
+            clc.bold("firebase init [feature_name]")
+          );
+        }
+        return true;
+      },
     });
+  }
+  if (!setup.features || setup.features?.length === 0) {
+    throw new FirebaseError(
+      "Must select at least one feature. Use " +
+        clc.bold(clc.underline("SPACEBAR")) +
+        " to select features, or specify a feature by running " +
+        clc.bold("firebase init [feature_name]"),
+    );
+  }
+
+  // Always set up project
+  setup.features.unshift("project");
+
+  // If there is more than one account, add an account choice phase
+  const allAccounts = getAllAccounts();
+  if (allAccounts.length > 1) {
+    setup.features.unshift("account");
+  }
+
+  // "hosting:github" is a part of "hosting", so if both are selected, "hosting:github" is ignored.
+  if (setup.features.includes("hosting") && setup.features.includes("hosting:github")) {
+    setup.features = setup.features.filter((f) => f !== "hosting:github");
+  }
+  // "dataconnect:sdk" is a part of "dataconnect", so if both are selected, "dataconnect:sdk" is ignored.
+  if (setup.features.includes("dataconnect") && setup.features.includes("dataconnect:sdk")) {
+    setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
+  }
+
+  await init(setup, config, options);
+  await postInitSaves(setup, config);
+
+  if (setup.instructions.length) {
+    logger.info(`\n${clc.bold("To get started:")}\n`);
+    for (const i of setup.instructions) {
+      logBullet(i + "\n");
+    }
+  }
+}
+
+export async function postInitSaves(setup: Setup, config: Config): Promise<void> {
+  logger.info();
+  config.writeProjectFile("firebase.json", setup.config);
+  config.writeProjectFile(".firebaserc", setup.rcfile);
+  if (!fsutils.fileExistsSync(config.path(".gitignore"))) {
+    config.writeProjectFile(".gitignore", GITIGNORE_TEMPLATE);
+  }
+  logger.info();
+  utils.logSuccess("Firebase initialization complete!");
 }

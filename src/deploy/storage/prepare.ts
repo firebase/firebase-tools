@@ -2,15 +2,15 @@ import * as _ from "lodash";
 
 import * as gcp from "../../gcp";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
-import { Options } from "../../options";
 import { FirebaseError } from "../../error";
+import { DeployOptions } from "..";
 
 /**
  * Prepares for a Firebase Storage deployment.
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (context: any, options: Options): Promise<void> {
+export default async function (context: any, options: DeployOptions): Promise<void> {
   let rulesConfig = options.config.get("storage");
   if (!rulesConfig) {
     return;

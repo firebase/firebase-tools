@@ -62,7 +62,10 @@ describe("Storage persistence conformance tests", () => {
       devtools: true,
     });
     page = await browser.newPage();
-    await page.goto("https://example.com", { waitUntil: "networkidle2" });
+    await page.goto("https://example.com", {
+      waitUntil: "networkidle2",
+      timeout: TEST_SETUP_TIMEOUT - 5000,
+    });
     await page.addScriptTag({
       url: "https://www.gstatic.com/firebasejs/9.9.1/firebase-app-compat.js",
     });

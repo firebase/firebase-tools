@@ -10,7 +10,6 @@ import { Emulators, ListenSpec } from "./types";
 import { Constants } from "./constants";
 import { EmulatorLogger } from "./emulatorLogger";
 import { execSync } from "node:child_process";
-import { checkIfDataConnectEmulatorRunningOnAddress } from "./dataconnectEmulator";
 
 // See:
 // - https://stackoverflow.com/questions/4313403/why-do-browsers-block-some-ports
@@ -176,7 +175,7 @@ export async function waitForPortUsed(
   }
 }
 
-export type PortName = Emulators | "firestore.websocket";
+export type PortName = Emulators | "firestore.websocket" | "dataconnect.postgres";
 
 const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   // External processes that accept only one hostname and one port, and will
@@ -185,6 +184,7 @@ const EMULATOR_CAN_LISTEN_ON_PRIMARY_ONLY: Record<PortName, boolean> = {
   firestore: true,
   "firestore.websocket": true,
   pubsub: true,
+  "dataconnect.postgres": true,
 
   // External processes that accepts multiple listen specs.
   dataconnect: false,
@@ -254,7 +254,11 @@ export async function resolveHostAndAssignPorts(
     }
     const findAddrs = lookup.then(async (addrs) => {
       const emuLogger = EmulatorLogger.forEmulator(
-        name === "firestore.websocket" ? Emulators.FIRESTORE : name,
+        name === "firestore.websocket"
+          ? Emulators.FIRESTORE
+          : name === "dataconnect.postgres"
+            ? Emulators.DATACONNECT
+            : name,
       );
       if (addrs.some((addr) => addr.address === IPV6_UNSPECIFIED.address)) {
         if (!addrs.some((addr) => addr.address === IPV4_UNSPECIFIED.address)) {
@@ -306,20 +310,6 @@ export async function resolveHostAndAssignPorts(
           if (listenable) {
             available.push(listen);
           } else {
-            if (/^dataconnect/i.exec(name)) {
-              const alreadyRunning = await checkIfDataConnectEmulatorRunningOnAddress(listen);
-              // If there is already a running Data Connect emulator on this address, we're gonna try to use it.
-              // If it's for a different service, we'll error out later from DataconnectEmulator.start().
-              if (alreadyRunning) {
-                emuLogger.logLabeled(
-                  "DEBUG",
-                  "dataconnect",
-                  `Detected already running emulator on ${listen.address}:${listen.port}. Will attempt to reuse it.`,
-                );
-              }
-              available.push(listen);
-              continue;
-            }
             if (!portFixed) {
               // Try to find another port to avoid any potential conflict.
               if (i > 0) {
@@ -401,7 +391,9 @@ export async function resolveHostAndAssignPorts(
 function portDescription(name: PortName): string {
   return name === "firestore.websocket"
     ? `websocket server for ${Emulators.FIRESTORE}`
-    : Constants.description(name);
+    : name === "dataconnect.postgres"
+      ? `postgres server for ${Emulators.DATACONNECT}`
+      : Constants.description(name);
 }
 
 function warnPartiallyAvailablePort(

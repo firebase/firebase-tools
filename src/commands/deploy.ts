@@ -10,8 +10,10 @@ import { requireHostingSite } from "../requireHostingSite";
 import { errNoDefaultSite } from "../getDefaultHostingSite";
 import { FirebaseError } from "../error";
 import { bold } from "colorette";
-import { interactiveCreateHostingSite } from "../hosting/interactive";
+import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
+import { createSite } from "../hosting/api";
+import { Options } from "../options";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -23,6 +25,7 @@ export const VALID_DEPLOY_TARGETS = [
   "remoteconfig",
   "extensions",
   "dataconnect",
+  "apphosting",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],
@@ -88,30 +91,35 @@ export const command = new Command("deploy")
       "When filtering based on codebases, use colons to specify codebase names " +
       '(e.g. "--only functions:codebase1:func1,functions:codebase2:group1.subgroup1"). ' +
       "For data connect, can specify filters with colons to deploy only a service, connector, or schema" +
-      '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema"). ',
+      '(e.g. "--only dataconnect:serviceId,dataconnect:serviceId:connectorId,dataconnect:serviceId:schema")',
   )
   .option("--except <targets>", 'deploy to all targets except specified (e.g. "database")')
+  .option(
+    "--dry-run",
+    "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
+      "In order to provide better validation, this may still enable APIs on the target project",
+  )
   .before(requireConfig)
-  .before((options) => {
+  .before((options: Options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
       return perms.concat(TARGET_PERMISSIONS[target]);
     }, []);
     return requirePermissions(options, permissions);
   })
-  .before((options) => {
+  .before((options: Options) => {
     if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project);
+      return checkServiceAccountIam(options.project!);
     }
   })
-  .before(async (options) => {
+  .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys
     if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      let createSite = false;
+      let shouldCreateSite = false;
       try {
         await requireHostingSite(options);
       } catch (err: unknown) {
@@ -122,10 +130,10 @@ export const command = new Command("deploy")
         if (isPermissionError) {
           throw err;
         } else if (err === errNoDefaultSite) {
-          createSite = true;
+          shouldCreateSite = true;
         }
       }
-      if (!createSite) {
+      if (!shouldCreateSite) {
         return;
       }
       if (options.nonInteractive) {
@@ -136,7 +144,8 @@ export const command = new Command("deploy")
         );
       }
       logBullet("No Hosting site detected.");
-      await interactiveCreateHostingSite("", "", options);
+      const siteId = await pickHostingSiteName("", options);
+      await createSite(options.project!, siteId);
     }
   })
   .before(checkValidTargetFilters)

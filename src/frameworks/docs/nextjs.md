@@ -18,6 +18,14 @@ logic to {{cloud_functions_full}}.
 
 <<_includes/_preview-disclaimer.md>>
 
+Caution: For developers creating a full-stack Next.js app, we strongly
+recommend [Firebase App Hosting](/docs/app-hosting/).
+If you're already using the frameworks experiment in the Firebase CLI, we
+recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
+
 <<_includes/_before-you-begin.md>>
 
 - Optional: use the experimental ReactFire library to benefit from its
@@ -26,7 +34,7 @@ logic to {{cloud_functions_full}}.
 <<_includes/_initialize-firebase.md>>
 
 1.  Answer yes to "Do you want to use a web framework? (experimental)"
-1.  Choose your hosting source directory. If this an existing Next.js app,
+1.  Choose your hosting source directory. If this is an existing Next.js app,
     the {{cli}} process completes, and you can proceed to the next section.
 1.  If prompted, choose Next.js.
 
@@ -45,14 +53,14 @@ on its live site.
 ## Pre-render dynamic content
 
 The {{firebase_cli}} will detect usage of
-[getStaticProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-props) 
+[getStaticProps](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-props)
 and [getStaticPaths](https://nextjs.org/docs/pages/building-your-application/data-fetching/get-static-paths).
 
 ### Optional: integrate with the Firebase JS SDK
 
 When including Firebase JS SDK methods in both server and client bundles, guard
 against runtime errors by checking `isSupported()` before using the product.
-Not all products are 
+Not all products are
 [supported in all environments](/docs/web/environments-js-sdk#other_environments).
 
 Tip: consider using
@@ -69,7 +77,7 @@ and [getStaticPaths](https://nextjs.org/docs/basic-features/data-fetching/get-st
 
 The {{firebase_cli}} will detect usage of
 [getServerSideProps](https://nextjs.org/docs/basic-features/data-fetching/get-server-side-props).
-In such cases, the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic 
+In such cases, the {{cli}} will deploy functions to {{cloud_functions_full}} to run dynamic
 server code. You can view information about these functions, such as their domain and runtime
 configuration, in the [Firebase console](https://console.firebase.google.com/project/_/functions).
 
@@ -87,7 +95,7 @@ interoperate well together.
 
 ### Redirects, Rewrites, and Headers
 
-The {{firebase_cli}} respects 
+The {{firebase_cli}} respects
 [redirects](https://nextjs.org/docs/api-reference/next.config.js/redirects),
 [rewrites](https://nextjs.org/docs/api-reference/next.config.js/rewrites), and
 [headers](https://nextjs.org/docs/api-reference/next.config.js/headers) in

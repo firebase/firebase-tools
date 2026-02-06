@@ -3,7 +3,6 @@ import * as path from "path";
 import * as express from "express";
 import * as clc from "colorette";
 import * as http from "http";
-import * as jwt from "jsonwebtoken";
 import * as cors from "cors";
 import * as semver from "semver";
 import { URL } from "url";
@@ -28,7 +27,6 @@ import {
   FunctionsRuntimeFeatures,
   getFunctionService,
   getSignatureType,
-  HttpConstants,
   ParsedTriggerDefinition,
   emulatedFunctionsFromEndpoints,
   emulatedFunctionsByRegion,
@@ -45,7 +43,6 @@ import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
 import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
-import { getCredentialPathAsync } from "../defaultCredentials";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
@@ -54,15 +51,17 @@ import {
 import { functionIdsAreValid } from "../deploy/functions/validate";
 import { Extension, ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { accessSecretVersion } from "../gcp/secretManager";
-import * as runtimes from "../deploy/functions/runtimes";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
+import * as runtimes from "../deploy/functions/runtimes";
 import * as functionsEnv from "../functions/env";
 import { AUTH_BLOCKING_EVENTS, BEFORE_CREATE_EVENT } from "../functions/events/v1";
 import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
-import { setEnvVarsForEmulators } from "./env";
+import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { Runtime } from "../deploy/functions/runtimes/supported";
+import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
 
@@ -84,9 +83,11 @@ const DATABASE_PATH_PATTERN = new RegExp("^projects/[^/]+/instances/([^/]+)/refs
  */
 export interface EmulatableBackend {
   functionsDir: string;
+  configDir?: string;
   env: Record<string, string>;
   secretEnv: backend.SecretEnvVar[];
   codebase: string;
+  prefix?: string;
   predefinedTriggers?: ParsedTriggerDefinition[];
   runtime?: Runtime;
   bin?: string;
@@ -108,6 +109,7 @@ export interface BackendInfo {
   extension?: Extension; // Only present for published extensions
   extensionVersion?: ExtensionVersion; // Only present for published extensions
   extensionSpec?: ExtensionSpec; // Only present for local extensions
+  labels?: Record<string, string>;
 }
 
 export interface FunctionsEmulatorArgs {
@@ -123,6 +125,7 @@ export interface FunctionsEmulatorArgs {
   remoteEmulators?: Record<string, EmulatorInfo>;
   adminSdkConfig?: AdminSdkConfig;
   projectAlias?: string;
+  extensionsEmulator?: ExtensionsEmulator;
 }
 
 /**
@@ -202,7 +205,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   private destroyServer?: () => Promise<void>;
-  private triggers: { [triggerName: string]: EmulatedTriggerRecord } = {};
+  private triggers: Record<string, EmulatedTriggerRecord> = {};
 
   // Keep a "generation number" for triggers so that we can disable functions
   // and reload them with a new name.
@@ -216,9 +219,15 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   private blockingFunctionsConfig: BlockingFunctionsConfig = {};
 
+  private staticBackends: EmulatableBackend[] = [];
+  private dynamicBackends: EmulatableBackend[] = [];
+  private watchers: chokidar.FSWatcher[] = [];
+
   debugMode = false;
 
   constructor(private args: FunctionsEmulatorArgs) {
+    this.staticBackends = args.emulatableBackends;
+
     // TODO: Would prefer not to have static state but here we are!
     EmulatorLogger.setVerbosity(
       this.args.verbosity ? Verbosity[this.args.verbosity] : Verbosity["DEBUG"],
@@ -231,7 +240,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // because that may not be present until discovery (e.g. node codebases
       // return their runtime based on package.json if not specified in
       // firebase.json)
-      const maybeNodeCodebases = this.args.emulatableBackends.filter(
+      const maybeNodeCodebases = this.staticBackends.filter(
         (b) => !b.runtime || b.runtime.startsWith("node"),
       );
       if (maybeNodeCodebases.length > 1 && typeof this.args.debugPort === "number") {
@@ -249,39 +258,44 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     const mode = this.debugMode ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
     this.workerPools = {};
-    for (const backend of this.args.emulatableBackends) {
+    for (const backend of this.staticBackends) {
       const pool = new RuntimeWorkerPool(mode);
       this.workerPools[backend.codebase] = pool;
     }
     this.workQueue = new WorkQueue(mode);
   }
 
-  private async getCredentialsEnvironment(): Promise<Record<string, string>> {
-    // Provide default application credentials when appropriate
-    const credentialEnv: Record<string, string> = {};
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      this.logger.logLabeled(
-        "WARN",
+  private async loadDynamicExtensionBackends(): Promise<void> {
+    // New extensions defined in functions codebase create new backends
+    if (this.args.extensionsEmulator) {
+      const unfilteredBackends = this.args.extensionsEmulator.getDynamicExtensionBackends();
+      this.dynamicBackends =
+        this.args.extensionsEmulator.filterUnemulatedTriggers(unfilteredBackends);
+      const mode = this.debugMode ? FunctionsExecutionMode.SEQUENTIAL : FunctionsExecutionMode.AUTO;
+      const credentialEnv = await getCredentialsEnvironment(
+        this.args.account,
+        this.logger,
         "functions",
-        `Your GOOGLE_APPLICATION_CREDENTIALS environment variable points to ${process.env.GOOGLE_APPLICATION_CREDENTIALS}. Non-emulated services will access production using these credentials. Be careful!`,
       );
-    } else if (this.args.account) {
-      const defaultCredPath = await getCredentialPathAsync(this.args.account);
-      if (defaultCredPath) {
-        this.logger.log("DEBUG", `Setting GAC to ${defaultCredPath}`);
-        credentialEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      for (const backend of this.dynamicBackends) {
+        backend.env = { ...credentialEnv, ...backend.env };
+        if (this.workerPools[backend.codebase]) {
+          // Make sure we don't have stale workers.
+          if (this.debugMode) {
+            this.workerPools[backend.codebase].exit();
+          } else {
+            this.workerPools[backend.codebase].refresh();
+          }
+        } else {
+          const pool = new RuntimeWorkerPool(mode);
+          this.workerPools[backend.codebase] = pool;
+        }
+        // They need to be force loaded because otherwise
+        // changes in parameters that don't otherwise affect the
+        // trigger might be missed.
+        await this.loadTriggers(backend, /* force */ true);
       }
-    } else {
-      // TODO: It would be safer to set GOOGLE_APPLICATION_CREDENTIALS to /dev/null here but we can't because some SDKs don't work
-      //       without credentials even when talking to the emulator: https://github.com/firebase/firebase-js-sdk/issues/3144
-      this.logger.logLabeled(
-        "WARN",
-        "functions",
-        "You are not signed in to the Firebase CLI. If you have authorized this machine using gcloud application-default credentials those may be discovered and used to access production services.",
-      );
     }
-
-    return credentialEnv;
   }
 
   createHubServer(): express.Application {
@@ -421,8 +435,12 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    const credentialEnv = await this.getCredentialsEnvironment();
-    for (const e of this.args.emulatableBackends) {
+    const credentialEnv = await getCredentialsEnvironment(
+      this.args.account,
+      this.logger,
+      "functions",
+    );
+    for (const e of this.staticBackends) {
       e.env = { ...credentialEnv, ...e.env };
     }
 
@@ -448,7 +466,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async connect(): Promise<void> {
-    for (const backend of this.args.emulatableBackends) {
+    for (const backend of this.staticBackends) {
       this.logger.logLabeled(
         "BULLET",
         "functions",
@@ -465,6 +483,8 @@ export class FunctionsEmulator implements EmulatorInstance {
         ],
         persistent: true,
       });
+
+      this.watchers.push(watcher);
 
       const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
       watcher.on("change", (filePath) => {
@@ -493,6 +513,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     for (const pool of Object.values(this.workerPools)) {
       pool.exit();
     }
+
+    for (const watcher of this.watchers) {
+      await watcher.close();
+    }
+    this.watchers = [];
+
     if (this.destroyServer) {
       await this.destroyServer();
     }
@@ -537,17 +563,27 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectId: this.args.projectId,
         projectAlias: this.args.projectAlias,
         isEmulator: true,
+        configDir: emulatableBackend.configDir,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);
+      if (discoveredBuild.extensions && this.args.extensionsEmulator) {
+        await this.args.extensionsEmulator.addDynamicExtensions(
+          emulatableBackend.codebase,
+          discoveredBuild,
+        );
+        await this.loadDynamicExtensionBackends();
+      }
+      build.applyPrefix(discoveredBuild, emulatableBackend.prefix || "");
       const resolution = await resolveBackend({
         build: discoveredBuild,
         firebaseConfig: JSON.parse(firebaseConfig),
-        userEnvOpt,
         userEnvs,
         nonInteractive: false,
         isEmulator: true,
       });
+
+      functionsEnv.writeResolvedParams(resolution.envs, userEnvs, userEnvOpt);
       const discoveredBackend = resolution.backend;
       const endpoints = backend.allEndpoints(discoveredBackend);
       prepareEndpoints(endpoints);
@@ -594,6 +630,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Remove any old trigger definitions
     const toRemove = Object.keys(this.triggers).filter((recordKey) => {
       const record = this.getTriggerRecordByKey(recordKey);
+      if (record.backend.codebase !== emulatableBackend.codebase) {
+        // Order is important here. This needs to go before any other checks.
+        // We are only loading one codebase, don't delete triggers from another.
+        return false;
+      }
       if (force) {
         return true; // We are going to load all of the triggers anyway, so we can remove everything
       }
@@ -737,17 +778,17 @@ export class FunctionsEmulator implements EmulatorInstance {
       const ignored = !added;
       this.addTriggerRecord(definition, { backend: emulatableBackend, ignored, url });
 
-      const type = definition.httpsTrigger
+      const triggerType = definition.httpsTrigger
         ? "http"
         : Constants.getServiceName(getFunctionService(definition));
 
       if (ignored) {
-        const msg = `function ignored because the ${type} emulator does not exist or is not running.`;
+        const msg = `function ignored because the ${triggerType} emulator does not exist or is not running.`;
         this.logger.logLabeled("BULLET", `functions[${definition.id}]`, msg);
       } else {
         const msg = url
-          ? `${clc.bold(type)} function initialized (${url}).`
-          : `${clc.bold(type)} function initialized.`;
+          ? `${clc.bold(triggerType)} function initialized (${url}).`
+          : `${clc.bold(triggerType)} function initialized.`;
         this.logger.logLabeled("SUCCESS", `functions[${definition.id}]`, msg);
       }
     }
@@ -812,9 +853,13 @@ export class FunctionsEmulator implements EmulatorInstance {
     }
   }
 
-  addEventarcTrigger(projectId: string, key: string, eventTrigger: EventTrigger): Promise<boolean> {
+  async addEventarcTrigger(
+    projectId: string,
+    key: string,
+    eventTrigger: EventTrigger,
+  ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -823,16 +868,20 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addEventarcTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding Eventarc function: " + err);
-        return false;
-      });
+
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding Eventarc function: " + err);
+    }
+    return false;
   }
 
-  removeEventarcTrigger(
+  async removeEventarcTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
@@ -847,22 +896,25 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`removeEventarcTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error removing Eventarc function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/remove/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error removing Eventarc function: " + err);
+    }
+    return false;
   }
 
-  addFirealertsTrigger(
+  async addFirealertsTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -871,22 +923,25 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`addFirealertsTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error adding FireAlerts function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding FireAlerts function: " + err);
+    }
+    return false;
   }
 
-  removeFirealertsTrigger(
+  async removeFirealertsTrigger(
     projectId: string,
     key: string,
     eventTrigger: EventTrigger,
   ): Promise<boolean> {
     if (!EmulatorRegistry.isRunning(Emulators.EVENTARC)) {
-      return Promise.resolve(false);
+      return false;
     }
     const bundle = {
       eventTrigger: {
@@ -895,13 +950,16 @@ export class FunctionsEmulator implements EmulatorInstance {
       },
     };
     logger.debug(`removeFirealertsTrigger`, JSON.stringify(bundle));
-    return EmulatorRegistry.client(Emulators.EVENTARC)
-      .post(`/emulator/v1/remove/projects/${projectId}/triggers/${key}`, bundle)
-      .then(() => true)
-      .catch((err) => {
-        this.logger.log("WARN", "Error removing FireAlerts function: " + err);
-        return false;
-      });
+    try {
+      await EmulatorRegistry.client(Emulators.EVENTARC).post(
+        `/emulator/v1/remove/projects/${projectId}/triggers/${key}`,
+        bundle,
+      );
+      return true;
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error removing FireAlerts function: " + err);
+    }
+    return false;
   }
 
   async performPostLoadOperations(): Promise<void> {
@@ -1053,11 +1111,11 @@ export class FunctionsEmulator implements EmulatorInstance {
     logger.debug("Found a v2 firestore trigger.");
     const database = eventTrigger.eventFilters?.database;
     if (!database) {
-      throw new FirebaseError("A database must be supplied.");
+      throw new FirebaseError(`A database must be supplied for event trigger ${key}`);
     }
     const namespace = eventTrigger.eventFilters?.namespace;
     if (!namespace) {
-      throw new FirebaseError("A namespace must be supplied.");
+      throw new FirebaseError(`A namespace must be supplied for event trigger ${key}`);
     }
     let doc;
     let match;
@@ -1095,7 +1153,6 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
     }
-
     const { bundle, path } =
       signature === "cloudevent"
         ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
@@ -1278,9 +1335,14 @@ export class FunctionsEmulator implements EmulatorInstance {
 
   getBackendInfo(): BackendInfo[] {
     const cf3Triggers = this.getCF3Triggers();
-    return this.args.emulatableBackends.map((e: EmulatableBackend) => {
+    const backendInfo = this.staticBackends.map((e: EmulatableBackend) => {
       return toBackendInfo(e, cf3Triggers);
     });
+    const dynamicInfo = this.dynamicBackends.map((e: EmulatableBackend) => {
+      return toBackendInfo(e, cf3Triggers, { createdBy: "SDK" });
+    });
+    backendInfo.push(...dynamicInfo);
+    return backendInfo;
   }
 
   getCF3Triggers(): ParsedTriggerDefinition[] {
@@ -1324,8 +1386,9 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   getUserEnvs(backend: EmulatableBackend): Record<string, string> {
-    const projectInfo = {
+    const projectInfo: functionsEnv.UserEnvsOpts = {
       functionsSource: backend.functionsDir,
+      configDir: backend.configDir,
       projectId: this.args.projectId,
       projectAlias: this.args.projectAlias,
       isEmulator: true,
@@ -1390,7 +1453,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   getFirebaseConfig(): string {
     const databaseEmulator = this.getEmulatorInfo(Emulators.DATABASE);
 
-    let emulatedDatabaseURL = undefined;
+    let emulatedDatabaseURL: string | undefined = undefined;
     if (databaseEmulator) {
       // Database URL will look like one of:
       //  - https://${namespace}.firebaseio.com
@@ -1648,7 +1711,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.triggerGeneration++;
     // reset blocking functions config for reloads
     this.blockingFunctionsConfig = {};
-    for (const backend of this.args.emulatableBackends) {
+    for (const backend of this.staticBackends.concat(this.dynamicBackends)) {
       await this.loadTriggers(backend);
     }
     await this.performPostLoadOperations();
@@ -1661,48 +1724,10 @@ export class FunctionsEmulator implements EmulatorInstance {
    * @param emulator
    */
   private getEmulatorInfo(emulator: Emulators): EmulatorInfo | undefined {
-    if (this.args.remoteEmulators) {
-      if (this.args.remoteEmulators[emulator]) {
-        return this.args.remoteEmulators[emulator];
-      }
+    if (this.args.remoteEmulators?.[emulator]) {
+      return this.args.remoteEmulators[emulator];
     }
-
     return EmulatorRegistry.getInfo(emulator);
-  }
-
-  private tokenFromAuthHeader(authHeader: string) {
-    const match = /^Bearer (.*)$/.exec(authHeader);
-    if (!match) {
-      return;
-    }
-
-    let idToken = match[1];
-    logger.debug(`ID Token: ${idToken}`);
-
-    // The @firebase/testing library sometimes produces JWTs with invalid padding, so we
-    // remove that via regex. This is the spec that says trailing = should be removed:
-    // https://tools.ietf.org/html/rfc7515#section-2
-    if (idToken && idToken.includes("=")) {
-      idToken = idToken.replace(/[=]+?\./g, ".");
-      logger.debug(`ID Token contained invalid padding, new value: ${idToken}`);
-    }
-
-    try {
-      const decoded = jwt.decode(idToken, { complete: true }) as any;
-      if (!decoded || typeof decoded !== "object") {
-        logger.debug(`Failed to decode ID Token: ${decoded}`);
-        return;
-      }
-
-      // In firebase-functions we manually copy 'sub' to 'uid'
-      // https://github.com/firebase/firebase-admin-node/blob/0b2082f1576f651e75069e38ce87e639c25289af/src/auth/token-verifier.ts#L249
-      const claims = decoded.payload as jwt.JwtPayload;
-      claims.uid = claims.sub;
-
-      return claims;
-    } catch (e: any) {
-      return;
-    }
   }
 
   private async handleHttpsTrigger(req: express.Request, res: express.Response) {
@@ -1742,27 +1767,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       }
     }
 
-    // For callable functions we want to accept tokens without actually calling verifyIdToken
-    const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
-    const authHeader = req.header("Authorization");
-    if (authHeader && isCallable && trigger.platform !== "gcfv2") {
-      const token = this.tokenFromAuthHeader(authHeader);
-      if (token) {
-        const contextAuth = {
-          uid: token.uid,
-          token: token,
-        };
-
-        // Stash the "Authorization" header in a temporary place, we will replace it
-        // when invoking the callable handler
-        req.headers[HttpConstants.ORIGINAL_AUTH_HEADER] = req.headers["authorization"];
-        delete req.headers["authorization"];
-
-        req.headers[HttpConstants.CALLABLE_AUTH_HEADER] = encodeURIComponent(
-          JSON.stringify(contextAuth),
-        );
-      }
-    }
     // For analytics, track the invoked service
     void trackEmulator(EVENT_INVOKE_GA4, {
       function_service: getFunctionService(trigger),

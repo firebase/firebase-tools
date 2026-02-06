@@ -22,9 +22,11 @@ import * as poller from "../../../operation-poller";
 import * as pubsub from "../../../gcp/pubsub";
 import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
+import * as runV2 from "../../../gcp/runv2";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
+import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -183,6 +185,8 @@ export class Fabricator {
       await this.createV1Function(endpoint, scraperV1);
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
+    } else if (endpoint.platform === "run") {
+      await this.createRunFunction(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -206,6 +210,8 @@ export class Fabricator {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
+    } else if (update.endpoint.platform === "run") {
+      await this.updateRunFunction(update);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -216,10 +222,13 @@ export class Fabricator {
   async deleteEndpoint(endpoint: backend.Endpoint): Promise<void> {
     await this.deleteTrigger(endpoint);
     if (endpoint.platform === "gcfv1") {
-      await this.deleteV1Function(endpoint);
-    } else {
-      await this.deleteV2Function(endpoint);
+      return this.deleteV1Function(endpoint);
+    } else if (endpoint.platform === "gcfv2") {
+      return this.deleteV2Function(endpoint);
+    } else if (endpoint.platform === "run") {
+      return this.deleteRunFunction(endpoint);
     }
+    assertExhaustive(endpoint.platform);
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -394,7 +403,7 @@ export class Fabricator {
         });
     }
 
-    endpoint.uri = resultFunction.serviceConfig?.uri;
+    endpoint.uri = resultFunction.url;
     const serviceName = resultFunction.serviceConfig?.service;
     endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
@@ -407,6 +416,15 @@ export class Fabricator {
     }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase Data Connect P4SA must always be an invoker.
+      const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
+      invoker.push(getDataConnectP4SA(this.projectNumber));
       if (!invoker.includes("private")) {
         await this.executor
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
@@ -439,7 +457,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -538,6 +556,14 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      invoker =
+        endpoint.dataConnectGraphqlTrigger.invoker === null
+          ? []
+          : endpoint.dataConnectGraphqlTrigger.invoker;
+      if (invoker) {
+        invoker.push(getDataConnectP4SA(this.projectNumber));
+      }
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -548,7 +574,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {
@@ -591,6 +617,101 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot create a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.executor
+      .run(async () => {
+        const op = await runV2.createService(
+          endpoint.project,
+          endpoint.region,
+          endpoint.id,
+          service,
+        );
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "create"));
+
+    await this.setInvoker(endpoint);
+  }
+
+  async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
+    const endpoint = update.endpoint;
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot update a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.executor
+      .run(async () => {
+        const op = await runV2.updateService(service);
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "update"));
+
+    await this.setInvoker(endpoint);
+  }
+
+  async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    await this.executor
+      .run(async () => {
+        try {
+          await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
+        } catch (err: any) {
+          if (err.status === 404) {
+            return;
+          }
+          throw err;
+        }
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
+  async setInvoker(endpoint: backend.Endpoint): Promise<void> {
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() =>
+            run.setInvokerUpdate(
+              endpoint.project,
+              `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
+              invoker,
+            ),
+          )
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    }
+  }
+
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
@@ -630,11 +751,21 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.upsertScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.registerBlockingTrigger(endpoint);
     }
   }
@@ -647,11 +778,21 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.deleteScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.disableTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
@@ -662,14 +803,18 @@ export class Fabricator {
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     // The Pub/Sub topic is already created
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(
+      endpoint,
+      this.appEngineLocation,
+      this.projectNumber,
+    );
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
   async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
@@ -736,7 +881,7 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = RUNTIMES[endpoint.runtime].friendly;
+    const runtime = endpoint.runtime ? RUNTIMES[endpoint.runtime].friendly : "unknown";
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(

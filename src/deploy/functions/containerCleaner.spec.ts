@@ -9,15 +9,24 @@ import * as docker from "../../gcp/docker";
 import * as poller from "../../operation-poller";
 import * as utils from "../../utils";
 
+function createTestEndpoint(overrides: Partial<backend.Endpoint> = {}): backend.Endpoint {
+  return {
+    id: "id",
+    region: "us-central1",
+    project: "project",
+    platform: "gcfv2",
+    entryPoint: "function",
+    runtime: "nodejs16",
+    httpsTrigger: {},
+    ...overrides,
+  };
+}
+
 describe("CleanupBuildImages", () => {
   let gcr: sinon.SinonStubbedInstance<containerCleaner.ContainerRegistryCleaner>;
   let ar: sinon.SinonStubbedInstance<containerCleaner.ArtifactRegistryCleaner>;
   let logLabeledWarning: sinon.SinonStub;
-  const TARGET: backend.TargetIds = {
-    project: "project",
-    region: "us-central1",
-    id: "id",
-  };
+  const TARGET: backend.Endpoint = createTestEndpoint();
 
   beforeEach(() => {
     gcr = sinon.createStubInstance(containerCleaner.ContainerRegistryCleaner);
@@ -190,53 +199,118 @@ describe("ArtifactRegistryCleaner", () => {
     sinon.verifyAndRestore();
   });
 
+  describe("packagePath", () => {
+    it("uses V1 encoding for gcfv1 functions", () => {
+      const func = createTestEndpoint({
+        id: "helloWorldV1",
+        region: "us-central1",
+        project: "my-project",
+        platform: "gcfv1",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-project/locations/us-central1/repositories/gcf-artifacts/packages/hello_world_v1",
+      );
+    });
+
+    it("uses V2 encoding for gcfv2 functions", () => {
+      const func = createTestEndpoint({
+        id: "helloWorldV2",
+        region: "us-central1",
+        project: "my-project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-project/locations/us-central1/repositories/gcf-artifacts/packages/my--project__us--central1__hello_world_v2",
+      );
+    });
+
+    it("encodes V2 project IDs with dashes", () => {
+      const func = createTestEndpoint({
+        id: "function",
+        region: "region",
+        project: "my-cool-project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my-cool-project/locations/region/repositories/gcf-artifacts/packages/my--cool--project__region__function",
+      );
+    });
+
+    it("encodes V2 project IDs with underscores", () => {
+      const func = createTestEndpoint({
+        id: "function",
+        region: "region",
+        project: "my_cool_project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/my_cool_project/locations/region/repositories/gcf-artifacts/packages/my__cool__project__region__function",
+      );
+    });
+
+    it("encodes V2 regions with dashes", () => {
+      const func = createTestEndpoint({
+        id: "function",
+        region: "us-central1",
+        project: "project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/project/locations/us-central1/repositories/gcf-artifacts/packages/project__us--central1__function",
+      );
+    });
+
+    it("encodes V2 function IDs with capital letters", () => {
+      const func = createTestEndpoint({
+        id: "Strange-Casing_cases",
+        region: "region",
+        project: "project",
+        platform: "gcfv2",
+      });
+
+      expect(containerCleaner.ArtifactRegistryCleaner.packagePath(func)).to.equal(
+        "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__s-strange--_casing__cases",
+      );
+    });
+  });
+
   it("deletes artifacts", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func = createTestEndpoint({
       id: "function",
       region: "region",
       project: "project",
-    };
+      platform: "gcfv2",
+    });
 
     ar.deletePackage.returns(Promise.resolve({ name: "op" } as any));
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__function",
     );
     expect(poll.pollOperation).to.have.been.called;
   });
 
   it("bypasses poller if the operation is completed", async () => {
     const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
+    const func = createTestEndpoint({
       id: "function",
       region: "region",
       project: "project",
-    };
+      platform: "gcfv2",
+    });
 
     ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
 
     await cleaner.cleanupFunction(func);
     expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/function",
-    );
-    expect(poll.pollOperation).to.not.have.been.called;
-  });
-
-  it("encodeds to avoid upper-case letters", async () => {
-    const cleaner = new containerCleaner.ArtifactRegistryCleaner();
-    const func = {
-      id: "Strange-Casing_cases",
-      region: "region",
-      project: "project",
-    };
-
-    ar.deletePackage.returns(Promise.resolve({ name: "op", done: true }));
-
-    await cleaner.cleanupFunction(func);
-    expect(ar.deletePackage).to.have.been.calledWith(
-      "projects/project/locations/region/repositories/gcf-artifacts/packages/s-strange--_casing__cases",
+      "projects/project/locations/region/repositories/gcf-artifacts/packages/project__region__function",
     );
     expect(poll.pollOperation).to.not.have.been.called;
   });

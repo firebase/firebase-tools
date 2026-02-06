@@ -1,5 +1,9 @@
 import vscode, { Uri } from "vscode";
 import path from "path";
+import * as fs from "fs";
+
+import { dataConnectConfigs } from "./config";
+import { pluginLogger } from "../logger-wrapper";
 
 export async function checkIfFileExists(file: Uri) {
   try {
@@ -24,19 +28,108 @@ export async function upsertFile(
 ): Promise<void> {
   const doesFileExist = await checkIfFileExists(uri);
 
+  // Have to write to file system first before opening
+  // otherwise we can't save it without closing it
   if (!doesFileExist) {
-    const doc = await vscode.workspace.openTextDocument(
-      uri.with({ scheme: "untitled" }),
-    );
-    const editor = await vscode.window.showTextDocument(doc);
-
-    await editor.edit((edit) =>
-      edit.insert(new vscode.Position(0, 0), content()),
-    );
-    return;
+    vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(content()));
   }
 
   // Opens existing text document
   const doc = await vscode.workspace.openTextDocument(uri);
   await vscode.window.showTextDocument(doc);
+}
+
+export function getHighlightedText(): string {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    return "";
+  }
+  const selection = editor.selection;
+
+  const selectionRange = new vscode.Range(
+    selection.start.line,
+    selection.start.character,
+    selection.end.line,
+    selection.end.character,
+  );
+  return editor.document.getText(selectionRange);
+}
+
+export async function insertQueryAt(uri: vscode.Uri, at: number, existing: string, replace: string): Promise<void> {
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const text = doc.getText();
+  if (!existing) {
+    if (text[at-1] !== "\n") {
+      replace = "\n" + replace;
+    }
+    const newText = text.slice(0, at) + replace + text.slice(at);
+    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(newText));
+    return;
+  }
+  if (text.slice(at, at + existing.length) !== existing) {
+    throw new Error("The existing query was updated.");
+  }
+  const newText = text.slice(0, at) + replace + text.slice(at + existing.length);
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(newText));
+}
+
+// given a file path, compile all gql files for the associated connector
+export async function getConnectorGqlFiles(
+  filePath: string,
+): Promise<string[]> {
+  const service =
+    dataConnectConfigs?.value?.tryReadValue?.findEnclosingServiceForPath(
+      filePath || "",
+    );
+
+  if (!service) {
+    // The entrypoint is not a codelens file, so we can't determine the service.
+    return [];
+  }
+
+  const gqlFiles: string[] = [];
+  const activeDocumentConnector = service.findEnclosingConnectorForPath(
+    vscode.window.activeTextEditor?.document.uri.fsPath || "",
+  );
+
+  return await findGqlFiles(activeDocumentConnector?.path || "");
+}
+
+export async function getConnectorGQLText(filePath: string): Promise<string> {
+  const files = await getConnectorGqlFiles(filePath);
+  return getTextFromFiles(files);
+}
+
+export function getTextFromFiles(files: string[]): string {
+  return files.reduce((acc, filePath) => {
+    try {
+      return acc.concat(fs.readFileSync(filePath, "utf-8"), "\n");
+    } catch (error) {
+      console.error(`${filePath} not found. Skipping file.`);
+      return acc;
+    }
+  }, "");
+}
+
+export async function findGqlFiles(dir: string): Promise<string[]> {
+  try {
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    const files = entries
+      .filter(
+        (file) =>
+          !file.isDirectory() &&
+          (file.name.endsWith(".gql") || file.name.endsWith(".graphql")),
+      )
+      .map((file) => path.join(dir, file.name));
+
+    const folders = entries.filter((folder) => folder.isDirectory());
+
+    for (const folder of folders) {
+      files.push(...(await findGqlFiles(path.join(dir, folder.name))));
+    }
+    return files;
+  } catch (error) {
+    pluginLogger.error(`Failed to find GQL files: ${error}`);
+    return [];
+  }
 }

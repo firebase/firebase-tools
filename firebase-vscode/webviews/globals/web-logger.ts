@@ -5,7 +5,7 @@ const levels: Level[] = ["debug", "info", "error"];
 
 type WebLogger = Record<Level, (...args: string[]) => void>;
 
-const tempObject = {};
+const tempObject: Partial<WebLogger> = {};
 
 for (const level of levels) {
   tempObject[level] = (...args: string[]) =>

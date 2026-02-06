@@ -736,5 +736,7 @@ describe("import/export end to end", () => {
     // const [f] = await aApp.storage().bucket().file("a/b.txt").get();
     // const [buf] = await f.download();
     // expect(buf.toString()).to.eql("a/b hello, world!");
+
+    await importCLI.stop();
   });
 });

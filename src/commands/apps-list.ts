@@ -1,6 +1,6 @@
 import * as clc from "colorette";
 import * as ora from "ora";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import { Command } from "../command";
 import { needProjectId } from "../projectUtils";
@@ -49,7 +49,7 @@ export const command = new Command("apps:list [platform]")
     ).start();
     try {
       apps = await listFirebaseApps(projectId, appPlatform);
-    } catch (err: any) {
+    } catch (err: unknown) {
       spinner.fail();
       throw err;
     }

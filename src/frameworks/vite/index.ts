@@ -3,9 +3,9 @@ import { spawn } from "cross-spawn";
 import { existsSync } from "fs";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
-const stripAnsi = require("strip-ansi");
+import { stripVTControlCharacters } from "node:util";
 import { FrameworkType, SupportLevel } from "../interfaces";
-import { promptOnce } from "../../prompt";
+import { select } from "../../prompt";
 import {
   simpleProxy,
   warnIfCustomBuildScript,
@@ -17,7 +17,7 @@ import {
 export const name = "Vite";
 export const support = SupportLevel.Experimental;
 export const type = FrameworkType.Toolchain;
-export const supportedRange = "3 - 5";
+export const supportedRange = "3 - 6";
 
 export const DEFAULT_BUILD_SCRIPT = ["vite build", "tsc && vite build"];
 
@@ -25,8 +25,7 @@ export const initViteTemplate = (template: string) => async (setup: any, config:
   await init(setup, config, template);
 
 export async function init(setup: any, config: any, baseTemplate: string = "vanilla") {
-  const template = await promptOnce({
-    type: "list",
+  const template = await select({
     default: "JavaScript",
     message: "What language would you like to use?",
     choices: [
@@ -35,13 +34,16 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
     ],
   });
   execSync(
-    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    `npm create vite@"${supportedRange}" ${setup.featureInfo.hosting.source} --yes -- --template ${template}`,
     {
       stdio: "inherit",
       cwd: config.projectDir,
     },
   );
-  execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
+  execSync(`npm install`, {
+    stdio: "inherit",
+    cwd: join(config.projectDir, setup.featureInfo.hosting.source),
+  });
 }
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>
@@ -120,7 +122,7 @@ export async function getDevModeHandle(dir: string) {
     const serve = spawn(cli, [], { cwd: dir });
     serve.stdout.on("data", (data: any) => {
       process.stdout.write(data);
-      const dataWithoutAnsiCodes = stripAnsi(data.toString());
+      const dataWithoutAnsiCodes = stripVTControlCharacters(data.toString());
       const match = dataWithoutAnsiCodes.match(/(http:\/\/.+:\d+)/);
       if (match) resolve(match[1]);
     });

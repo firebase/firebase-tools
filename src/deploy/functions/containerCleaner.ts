@@ -39,8 +39,8 @@ async function retry<Return>(func: () => Promise<Return>): Promise<Return> {
 }
 
 export async function cleanupBuildImages(
-  haveFunctions: backend.TargetIds[],
-  deletedFunctions: backend.TargetIds[],
+  haveFunctions: backend.Endpoint[],
+  deletedFunctions: backend.Endpoint[],
   cleaners: { gcr?: ContainerRegistryCleaner; ar?: ArtifactRegistryCleaner } = {},
 ): Promise<void> {
   utils.logBullet(clc.bold(clc.cyan("functions: ")) + "cleaning up build files...");
@@ -100,18 +100,12 @@ export async function cleanupBuildImages(
 // than the raw Docker API. If there are reports of any quota issues we may have to run these
 // requests through a ThrottlerQueue.
 export class ArtifactRegistryCleaner {
-  static packagePath(func: backend.TargetIds): string {
-    // GCFv1 names can include upper-case letters, but docker images cannot.
-    // to fix this, the artifact registry path for these images uses a custom encoding scheme.
-    // * Underscores are doubled
-    // * Dashes are doubled
-    // * A leading capital letter is replaced with <lower><dash><lower>
-    // * Other capital letters are replaced with <underscore><lower>
-    const encodedId = func.id
-      .replace(/_/g, "__")
-      .replace(/-/g, "--")
-      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
-      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+  static packagePath(func: backend.Endpoint): string {
+    const encodedId =
+      func.platform === "gcfv2"
+        ? ArtifactRegistryCleaner.encodePackageNameV2(func)
+        : ArtifactRegistryCleaner.encodePackageNameV1(func);
+
     return `projects/${func.project}/locations/${func.region}/repositories/gcf-artifacts/packages/${encodedId}`;
   }
 
@@ -120,6 +114,42 @@ export class ArtifactRegistryCleaner {
     apiVersion: artifactregistry.API_VERSION,
     masterTimeout: 5 * 60 * 1_000,
   };
+
+  private static encodePart(part: string): string {
+    return part
+      .replace(/_/g, "__")
+      .replace(/-/g, "--")
+      .replace(/^[A-Z]/, (first) => `${first.toLowerCase()}-${first.toLowerCase()}`)
+      .replace(/[A-Z]/g, (upper) => `_${upper.toLowerCase()}`);
+  }
+
+  // GCF V1: Simple underscore concatenation
+  // Example: "helloWorldV1" -> "hello_world_v1"
+  private static encodePackageNameV1(func: backend.TargetIds): string {
+    return ArtifactRegistryCleaner.encodePart(func.id);
+  }
+
+  // GCF V2 artifact names follow this schema:
+  // {encoded_project}__{encoded_region}__{encoded_function}
+  //
+  // Each part is encoded separately with these rules:
+  // * Underscores are doubled ("_" -> "__")
+  // * Dashes are doubled ("-" -> "--")
+  // * A leading capital letter is replaced with <lower><dash><lower>
+  // * Other capital letters are replaced with <underscore><lower>
+  // Then the parts are joined with double underscores
+  // Example:
+  // - project "my-cool-project" -> "my--cool--project"
+  // - region "us-central1" -> "us--central1"
+  // - functionId "myFunction" -> "my_function"
+  // Final result: "my--cool--project__us--central1__my_function"
+  private static encodePackageNameV2(func: backend.TargetIds): string {
+    return [
+      ArtifactRegistryCleaner.encodePart(func.project),
+      ArtifactRegistryCleaner.encodePart(func.region),
+      ArtifactRegistryCleaner.encodePart(func.id),
+    ].join("__");
+  }
 
   // GCFv1 for AR has the following directory structure
   // Hostname: <region>-docker.pkg.dev
@@ -130,7 +160,7 @@ export class ArtifactRegistryCleaner {
   // We leave the cache directory alone because it only costs
   // a few MB and improves performance. We only delete the cache if
   // the function was deleted in its entirety.
-  async cleanupFunction(func: backend.TargetIds): Promise<void> {
+  async cleanupFunction(func: backend.Endpoint): Promise<void> {
     let op: artifactregistry.Operation;
     try {
       op = await artifactregistry.deletePackage(ArtifactRegistryCleaner.packagePath(func));

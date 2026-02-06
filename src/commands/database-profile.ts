@@ -7,10 +7,8 @@ import { profiler } from "../profiler";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
 
-const description = "profile the Realtime Database and generate a usage report";
-
 export const command = new Command("database:profile")
-  .description(description)
+  .description("profile the Realtime Database and generate a usage report")
   .option("-o, --output <filename>", "save the output to the specified file")
   .option(
     "-d, --duration <seconds>",

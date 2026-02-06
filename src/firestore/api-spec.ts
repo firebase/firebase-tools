@@ -13,6 +13,10 @@ export interface Index {
   collectionGroup: string;
   queryScope: API.QueryScope;
   fields: API.IndexField[];
+  apiScope?: API.ApiScope;
+  density?: API.Density;
+  multikey?: boolean;
+  unique?: boolean;
 }
 
 /**
@@ -32,6 +36,10 @@ export interface FieldIndex {
   queryScope: API.QueryScope;
   order?: API.Order;
   arrayConfig?: API.ArrayConfig;
+  apiScope?: API.ApiScope;
+  density?: API.Density;
+  multikey?: boolean;
+  unique?: boolean;
 }
 
 /**

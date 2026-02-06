@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { getLoginCredential, getTestDevices } from "./options-parser-util";
+import { getLoginCredential, parseTestDevices } from "./options-parser-util";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
-import * as rimraf from "rimraf";
+import { rmSync } from "node:fs";
 import * as tmp from "tmp";
 import { join } from "path";
 
@@ -14,14 +14,14 @@ describe("options-parser-util", () => {
   fs.outputFileSync(passwordFile, "password-from-file\n");
 
   after(() => {
-    rimraf.sync(tempdir.name);
+    rmSync(tempdir.name, { recursive: true });
   });
 
   describe("getTestDevices", () => {
     it("parses a test device", () => {
       const optionValue = "model=modelname,version=123,orientation=landscape,locale=en_US";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -37,7 +37,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US;model=modelname2,version=456,orientation=portrait,locale=es";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -59,7 +59,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US\nmodel=modelname2,version=456,orientation=portrait,locale=es";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -80,7 +80,7 @@ describe("options-parser-util", () => {
     it("throws an error with correct format when missing a field", () => {
       const optionValue = "model=modelname,version=123,locale=en_US";
 
-      expect(() => getTestDevices(optionValue, "")).to.throw(
+      expect(() => parseTestDevices(optionValue, "")).to.throw(
         FirebaseError,
         "model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>",
       );
@@ -90,7 +90,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US,notafield=blah";
 
-      expect(() => getTestDevices(optionValue, "")).to.throw(
+      expect(() => parseTestDevices(optionValue, "")).to.throw(
         FirebaseError,
         "model, version, orientation, locale",
       );

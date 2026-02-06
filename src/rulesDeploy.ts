@@ -4,10 +4,10 @@ import * as fs from "fs-extra";
 
 import * as gcp from "./gcp";
 import { logger } from "./logger";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrStatus } from "./error";
 import * as utils from "./utils";
 
-import { promptOnce } from "./prompt";
+import { confirm } from "./prompt";
 import { ListRulesetsEntry, Release, RulesetFile } from "./gcp/rules";
 import { getProjectNumber } from "./getProjectNumber";
 import { addServiceAccountToRoles, serviceAccountHasRoles } from "./gcp/resourceManager";
@@ -131,17 +131,11 @@ export class RulesDeploy {
       }
 
       // Prompt user to ask if they want to add the service account
-      const addRole =
-        this.options.force ||
-        (await promptOnce(
-          {
-            type: "confirm",
-            name: "rulesRole",
-            message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
-            default: true,
-          },
-          this.options,
-        ));
+      const addRole = await confirm({
+        message: `Cloud Storage for Firebase needs an IAM Role to use cross-service rules. Grant the new role?`,
+        default: true,
+        force: this.options.force,
+      });
 
       // Try to add the role to the service account
       if (addRole) {
@@ -202,8 +196,8 @@ export class RulesDeploy {
         this.rulesetNames[filename] = await rulesetName;
         createdRulesetNames.push(await rulesetName);
       }
-    } catch (err: any) {
-      if (err.status !== QUOTA_EXCEEDED_STATUS_CODE) {
+    } catch (err: unknown) {
+      if (getErrStatus(err) !== QUOTA_EXCEEDED_STATUS_CODE) {
         throw err;
       }
       utils.logLabeledBullet(RulesetType[this.type], "quota exceeded error while uploading rules");
@@ -211,18 +205,11 @@ export class RulesDeploy {
       const history: ListRulesetsEntry[] = await gcp.rules.listAllRulesets(this.options.project);
 
       if (history.length > RULESET_COUNT_LIMIT) {
-        const confirm =
-          this.options.force ||
-          (await promptOnce(
-            {
-              type: "confirm",
-              name: "force",
-              message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
-              default: false,
-            },
-            this.options,
-          ));
-        if (confirm) {
+        const confirmed = await confirm({
+          message: `You have ${history.length} rules, do you want to delete the oldest ${RULESETS_TO_GC} to free up space?`,
+          force: this.options.force,
+        });
+        if (confirmed) {
           // Find the oldest unreleased rulesets. The rulesets are sorted reverse-chronlogically.
           const releases: Release[] = await gcp.rules.listAllReleases(this.options.project);
           const unreleased: ListRulesetsEntry[] = history.filter((ruleset) => {

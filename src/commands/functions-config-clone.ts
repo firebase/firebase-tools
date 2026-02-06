@@ -14,6 +14,7 @@ export const command = new Command("functions:config:clone")
   .option("--from <projectId>", "the project from which to clone configuration")
   .option("--only <keys>", "a comma-separated list of keys to clone")
   .option("--except <keys>", "a comma-separated list of keys to not clone")
+  .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.create",
@@ -56,4 +57,5 @@ export const command = new Command("functions:config:clone")
         "firebase deploy --only functions",
       )}\n`,
     );
+    functionsConfig.logFunctionsConfigDeprecationWarning();
   });

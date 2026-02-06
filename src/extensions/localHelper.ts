@@ -3,9 +3,10 @@ import * as path from "path";
 import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
-import { FirebaseError } from "../error";
-import { ExtensionSpec } from "./types";
+import { FirebaseError, isObject } from "../error";
+import { ExtensionSpec, isExtensionSpec, LifecycleEvent, LifecycleStage } from "./types";
 import { logger } from "../logger";
+import { validateSpec } from "./extensionsHelper";
 
 export const EXTENSIONS_SPEC_FILE = "extension.yaml";
 const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
@@ -16,13 +17,50 @@ const EXTENSIONS_PREINSTALL_FILE = "PREINSTALL.md";
  */
 export async function getLocalExtensionSpec(directory: string): Promise<ExtensionSpec> {
   const spec = await parseYAML(readFile(path.resolve(directory, EXTENSIONS_SPEC_FILE)));
+
+  // lifecycleEvents are formatted differently once they have been uploaded
+  if (spec.lifecycleEvents as Object) {
+    spec.lifecycleEvents = fixLifecycleEvents(spec.lifecycleEvents);
+  }
+
+  if (!isExtensionSpec(spec)) {
+    validateSpec(spec); // Maybe throw with more details
+    throw new FirebaseError(
+      "Error: extension.yaml does not contain a valid extension specification.",
+    );
+  }
   try {
     const preinstall = readFile(path.resolve(directory, EXTENSIONS_PREINSTALL_FILE));
     spec.preinstallContent = preinstall;
-  } catch (err: any) {
+  } catch (err) {
     logger.debug(`No PREINSTALL.md found in directory ${directory}.`);
   }
   return spec;
+}
+
+function fixLifecycleEvents(lifecycleEvents: unknown): LifecycleEvent[] {
+  const stages: Record<string, LifecycleStage> = {
+    onInstall: "ON_INSTALL",
+    onUpdate: "ON_UPDATE",
+    onConfigure: "ON_CONFIGURE",
+    stageUnspecified: "STAGE_UNSPECIFIED",
+  };
+  const arrayLifecycle = [] as LifecycleEvent[];
+  if (isObject(lifecycleEvents)) {
+    for (const [key, val] of Object.entries(lifecycleEvents)) {
+      if (
+        isObject(val) &&
+        typeof val.function === "string" &&
+        typeof val.processingMessage === "string"
+      ) {
+        arrayLifecycle.push({
+          stage: stages[key] || stages["stageUnspecified"],
+          taskQueueTriggerFunction: val.function,
+        });
+      }
+    }
+  }
+  return arrayLifecycle;
 }
 
 /**

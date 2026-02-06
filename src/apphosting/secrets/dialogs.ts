@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import { MultiServiceAccounts, ServiceAccounts, serviceAccountsForBackend, toMulti } from ".";
 import * as apphosting from "../../gcp/apphosting";
@@ -20,15 +20,15 @@ interface BackendMetadata {
 /**
  * Creates sorted BackendMetadata for a list of Backends.
  */
-export function toMetadata(
+export async function toMetadata(
   projectNumber: string,
   backends: apphosting.Backend[],
-): BackendMetadata[] {
+): Promise<BackendMetadata[]> {
   const metadata: BackendMetadata[] = [];
   for (const backend of backends) {
     // Splits format projects/<unused>/locations/<location>/backends/<id>
     const [, , , location, , id] = backend.name.split("/");
-    metadata.push({ location, id, ...serviceAccountsForBackend(projectNumber, backend) });
+    metadata.push({ location, id, ...(await serviceAccountsForBackend(projectNumber, backend)) });
   }
   return metadata.sort((left, right) => {
     const cmplocation = left.location.localeCompare(right.location);
@@ -140,13 +140,13 @@ export async function selectBackendServiceAccounts(
         "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
     });
     if (grant) {
-      return toMulti(serviceAccountsForBackend(projectNumber, listBackends.backends[0]));
+      return toMulti(await serviceAccountsForBackend(projectNumber, listBackends.backends[0]));
     }
     utils.logBullet(GRANT_ACCESS_IN_FUTURE);
     return { buildServiceAccounts: [], runServiceAccounts: [] };
   }
 
-  const metadata: BackendMetadata[] = toMetadata(projectNumber, listBackends.backends);
+  const metadata: BackendMetadata[] = await toMetadata(projectNumber, listBackends.backends);
 
   if (metadata.every(matchesServiceAccounts(metadata[0]))) {
     utils.logBullet("To use this secret, your backend's service account must be granted access.");
@@ -178,8 +178,8 @@ export async function selectBackendServiceAccounts(
   const table = new Table({
     head: tableData[0],
     style: { head: ["green"] },
-    rows: tableData[1],
   });
+  table.push(...tableData[1]);
   logger.info(table.toString());
 
   const allAccounts = metadata.reduce((accum: Set<string>, row) => {
@@ -187,8 +187,7 @@ export async function selectBackendServiceAccounts(
     accum.add(row.runServiceAccount);
     return accum;
   }, new Set<string>());
-  const chosen = await prompt.promptOnce({
-    type: "checkbox",
+  const chosen = await prompt.checkbox<string>({
     message:
       "Which service accounts would you like to grant access? " +
       "Press Space to select accounts, then Enter to confirm your choices.",
@@ -207,8 +206,14 @@ function toUpperSnakeCase(key: string): string {
     .toUpperCase();
 }
 
-export async function envVarForSecret(secret: string): Promise<string> {
-  const upper = toUpperSnakeCase(secret);
+export async function envVarForSecret(
+  secret: string,
+  trimTestPrefix: boolean = false,
+): Promise<string> {
+  let upper = toUpperSnakeCase(secret);
+  if (trimTestPrefix && upper.startsWith("TEST_")) {
+    upper = upper.substring("TEST_".length);
+  }
   if (upper === secret) {
     try {
       env.validateKey(secret);
@@ -219,7 +224,7 @@ export async function envVarForSecret(secret: string): Promise<string> {
   }
 
   do {
-    const test = await prompt.promptOnce({
+    const test = await prompt.input({
       message: "What environment variable name would you like to use?",
       default: upper,
     });

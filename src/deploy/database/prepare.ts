@@ -2,13 +2,12 @@ import * as clc from "colorette";
 import * as path from "path";
 
 import { FirebaseError } from "../../error";
-import { parseBoltRules } from "../../parseBoltRules";
 import * as rtdb from "../../rtdb";
 import * as utils from "../../utils";
-import { Options } from "../../options";
 import * as dbRulesConfig from "../../database/rulesConfig";
+import { DeployOptions } from "..";
 
-export function prepare(context: any, options: Options): Promise<any> {
+export function prepare(context: any, options: DeployOptions): Promise<any> {
   const rulesConfig = dbRulesConfig.getRulesConfig(context.projectId, options);
   const next = Promise.resolve();
 
@@ -34,8 +33,9 @@ export function prepare(context: any, options: Options): Promise<any> {
         ruleFiles[file] = options.config.readProjectFile(file);
         break;
       case ".bolt":
-        ruleFiles[file] = parseBoltRules(file);
-        break;
+        throw new FirebaseError(
+          "As of firebase-tools@15.0.0, .bolt rules are no longer supported.",
+        );
       default:
         throw new FirebaseError("Unexpected rules format " + path.extname(file));
     }

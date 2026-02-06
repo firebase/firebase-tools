@@ -5,7 +5,7 @@ import { Emulators } from "../emulator/types";
 const NAME = Emulators.DATABASE;
 
 export const command = new Command(`setup:emulators:${NAME}`)
-  .description(`downloads the ${NAME} emulator`)
+  .description(`download the ${NAME} emulator`)
   .action(() => {
     return downloadEmulator(NAME);
   });

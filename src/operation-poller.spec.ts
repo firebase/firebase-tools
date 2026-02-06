@@ -93,7 +93,7 @@ describe("OperationPoller", () => {
       let error;
       try {
         await pollOperation<string>(pollerOptions);
-      } catch (err: any) {
+      } catch (err: unknown) {
         error = err;
       }
       expect(error).to.be.instanceOf(TimeoutError);

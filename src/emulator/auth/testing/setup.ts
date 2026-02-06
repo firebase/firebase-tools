@@ -19,9 +19,9 @@ export function describeAuthEmulator(
   singleProjectMode = SingleProjectMode.NO_WARNING,
 ): Suite {
   return describe(`Auth Emulator: ${title}`, function (this) {
+    this.timeout(20000);
     let authApp: Express.Application;
-    beforeEach("setup or reuse auth server", async function (this) {
-      this.timeout(20000);
+    beforeEach("setup or reuse auth server", async () => {
       authApp = await createOrReuseApp(singleProjectMode);
     });
 

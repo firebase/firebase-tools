@@ -1,10 +1,9 @@
 import { bold, italic } from "colorette";
 import * as leven from "leven";
 import { basename } from "path";
-
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -36,9 +35,8 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
     default: true,
   },
@@ -58,20 +56,22 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-
-  // permanent experiment
-  automaticallydeletegcfartifacts: {
-    shortDescription: "Control whether functions cleans up images after deploys",
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
-      "To control costs, Firebase defaults to automatically deleting containers " +
-      "created during the build process. This has the side-effect of preventing " +
-      "users from rolling back to previous revisions using the Run API. To change " +
-      `this behavior, call ${bold("experiments:disable deletegcfartifactsondeploy")} ` +
-      `consider also calling ${bold("experiments:enable deletegcfartifacts")} ` +
-      `to enable the new command ${bold("functions:deletegcfartifacts")} which` +
-      "lets you clean up images manually",
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: false,
     public: true,
-    default: true,
+  },
+  runfunctions: {
+    shortDescription:
+      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
+    public: false,
   },
 
   // Emulator experiments
@@ -138,10 +138,35 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-
-  fdccompatiblemode: {
-    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
+  appsinit: {
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
+    default: false,
+    public: true,
+  },
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
+    default: true,
+    public: false,
+  },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: true,
+  },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for Data Connect",
+    public: false,
+    default: false,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
+  },
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    default: false,
     public: false,
   },
 });

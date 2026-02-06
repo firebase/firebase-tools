@@ -8,10 +8,10 @@ import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg } from "./error";
 import * as utils from "./utils";
 import { logger } from "./logger";
-import { promptOnce } from "./prompt";
+import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
 import { v4 as uuidv4 } from "uuid";
@@ -38,6 +38,7 @@ import {
   UserCredentials,
 } from "./types/auth";
 import { readTemplate } from "./templates";
+import { refreshAuth } from "./requireAuth";
 
 portfinder.setBasePort(9005);
 
@@ -102,6 +103,23 @@ export function getAllAccounts(): Account[] {
   res.push(...getAdditionalAccounts());
 
   return res;
+}
+
+/**
+ * Throw an error if the provided email is not a signed-in user.
+ */
+export function assertAccount(email: string, options?: { mcp?: boolean }) {
+  const allAccounts = getAllAccounts();
+  const accountExists = allAccounts.some((a) => a.user.email === email);
+  if (!accountExists) {
+    throw new FirebaseError(
+      `Account ${email} does not exist, ${
+        options?.mcp
+          ? `use the 'firebase_get_environment' tool to see available accounts or instruct the user to use the 'firebase login:add' terminal command to add a new account.`
+          : `run "${clc.bold("firebase login:list")} to see valid accounts`
+      }`,
+    );
+  }
 }
 
 /**
@@ -209,7 +227,19 @@ export function setProjectAccount(projectDir: string, email: string) {
 /**
  * Set the global default account.
  */
-export function setGlobalDefaultAccount(account: Account) {
+export function setGlobalDefaultAccount(accountOrEmail: string | Account) {
+  let account: Account;
+  if (typeof accountOrEmail === "string") {
+    const accountFromEmail = getAllAccounts().find((acc) => acc.user.email === accountOrEmail)!;
+    if (!accountFromEmail)
+      throw new FirebaseError(
+        `Account '${accountOrEmail}' is not a signed-in user on this device.`,
+      );
+    account = accountFromEmail;
+  } else {
+    account = accountOrEmail;
+  }
+
   configstore.set("user", account.user);
   configstore.set("tokens", account.tokens);
 
@@ -229,14 +259,14 @@ function open(url: string): void {
 
 // Always create a new error so that the stack is useful
 function invalidCredentialError(): FirebaseError {
-  return new FirebaseError(
+  const message =
     "Authentication Error: Your credentials are no longer valid. Please run " +
-      clc.bold("firebase login --reauth") +
-      "\n\n" +
-      "For CI servers and headless environments, generate a new token with " +
-      clc.bold("firebase login:ci"),
-    { exit: 1 },
-  );
+    clc.bold("firebase login --reauth") +
+    "\n\n" +
+    "For CI servers and headless environments, generate a new token with " +
+    clc.bold("firebase login:ci");
+  logger.error(message);
+  return new FirebaseError(message, { exit: 1 });
 }
 
 const FIFTEEN_MINUTES_IN_MS = 15 * 60 * 1000;
@@ -317,7 +347,7 @@ async function getTokensFromAuthorizationCode(
       headers: form.getHeaders(),
       skipLog: { body: true, queryParams: true, resBody: true },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof Error) {
       logger.debug("Token Fetch Error:", err.stack || "");
     } else {
@@ -395,7 +425,13 @@ function urlsafeBase64(base64string: string) {
   return base64string.replace(/\+/g, "-").replace(/=+$/, "").replace(/\//g, "_");
 }
 
-async function loginRemotely(): Promise<UserCredentials> {
+interface PrototyperRes {
+  uri: string;
+  sessionId: string;
+  authorize: (authorizationCode: string) => Promise<UserCredentials>;
+}
+
+export async function loginPrototyper(): Promise<PrototyperRes> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin(),
     auth: false,
@@ -411,6 +447,55 @@ async function loginRemotely(): Promise<UserCredentials> {
       session_id: sessionId,
     })
   ).body?.token;
+
+  const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}&studio_prototyper=true}`;
+  return {
+    uri: loginUrl,
+    sessionId: sessionId.substring(0, 5).toUpperCase(),
+    authorize: async (code: string) => {
+      const tokens = await getTokensFromAuthorizationCode(
+        code,
+        `${authProxyOrigin()}/complete`,
+        codeVerifier,
+      );
+
+      const creds = {
+        user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+        tokens: tokens,
+        scopes: SCOPES,
+      };
+      recordCredentials(creds);
+      return creds;
+    },
+  };
+}
+
+// recordCredentials saves credentials to configstore to be used in future command runs.
+export function recordCredentials(creds: UserCredentials) {
+  configstore.set("user", creds.user);
+  configstore.set("tokens", creds.tokens);
+  // store login scopes in case mandatory scopes grow over time
+  configstore.set("loginScopes", creds.scopes);
+  // remove old session token, if it exists
+  configstore.delete("session");
+}
+
+async function loginRemotely(): Promise<UserCredentials> {
+  const authProxyClient = new apiv2.Client({
+    urlPrefix: authProxyOrigin(),
+    auth: false,
+  });
+
+  const sessionId = uuidv4();
+  const codeVerifier = randomBytes(32).toString("hex");
+  // urlsafe base64 is required for code_challenge in OAuth PKCE
+  const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
+
+  const attestToken = (
+    await authProxyClient.post<{ session_id: string }, { token: string }>("/attest", {
+      session_id: sessionId,
+    })
+  ).body.token;
 
   const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
@@ -428,10 +513,7 @@ async function loginRemotely(): Promise<UserCredentials> {
   logger.info("3. Paste or enter the authorization code below once you have it:");
   logger.info();
 
-  const code = await promptOnce({
-    type: "input",
-    message: "Enter authorization code:",
-  });
+  const code = await input({ message: "Enter authorization code:" });
 
   try {
     const tokens = await getTokensFromAuthorizationCode(
@@ -514,7 +596,7 @@ async function loginWithLocalhost<ResultType>(
         const tokens = await getTokens(queryCode, callbackUrl);
         respondHtml(req, res, 200, successHtml);
         resolve(tokens);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const html = await readTemplate("loginFailure.html");
         respondHtml(req, res, 400, html);
         reject(err);
@@ -560,7 +642,20 @@ export function findAccountByEmail(email: string): Account | undefined {
   return getAllAccounts().find((a) => a.user.email === email);
 }
 
-function haveValidTokens(refreshToken: string, authScopes: string[]) {
+export function loggedIn() {
+  return !!lastAccessToken;
+}
+
+export function isExpired(tokens: Tokens | undefined): boolean {
+  const hasExpiration = (p: any): p is TokensWithExpiration => !!p.expires_at;
+  if (hasExpiration(tokens)) {
+    return !(tokens && tokens.expires_at && tokens.expires_at > Date.now());
+  } else {
+    return !tokens;
+  }
+}
+
+export function haveValidTokens(refreshToken: string, authScopes: string[]) {
   if (!lastAccessToken?.access_token) {
     const tokens = configstore.get("tokens");
     if (refreshToken === tokens?.refresh_token) {
@@ -574,9 +669,16 @@ function haveValidTokens(refreshToken: string, authScopes: string[]) {
   const hasSameScopes = oldScopesJSON === newScopesJSON;
   // To avoid token expiration in the middle of a long process we only hand out
   // tokens if they have a _long_ time before the server rejects them.
-  const isExpired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
-
-  return hasTokens && hasSameScopes && !isExpired;
+  const expired = (lastAccessToken?.expires_at || 0) < Date.now() + FIFTEEN_MINUTES_IN_MS;
+  const valid = hasTokens && hasSameScopes && !expired;
+  if (hasTokens) {
+    logger.debug(
+      `Checked if tokens are valid: ${valid}, expires at: ${lastAccessToken?.expires_at}`,
+    );
+  } else {
+    logger.debug("No OAuth tokens found");
+  }
+  return valid;
 }
 
 function deleteAccount(account: Account) {
@@ -713,7 +815,16 @@ export async function getAccessToken(refreshToken: string, authScopes: string[])
   if (haveValidTokens(refreshToken, authScopes) && lastAccessToken) {
     return lastAccessToken;
   }
-  return refreshTokens(refreshToken, authScopes);
+  if (refreshToken) {
+    return refreshTokens(refreshToken, authScopes);
+  } else {
+    try {
+      return refreshAuth();
+    } catch (err: unknown) {
+      logger.debug(`Unable to refresh token: ${getErrMsg(err)}`);
+    }
+    throw new FirebaseError("Unable to getAccessToken");
+  }
 }
 
 export async function logout(refreshToken: string) {

@@ -34,9 +34,9 @@ describe("dialogs", () => {
   };
 
   describe("toMetadata", () => {
-    it("handles explicit account", () => {
+    it("handles explicit account", async () => {
       // Note: passing in out of order to verify the results are sorted.
-      const metadata = dialogs.toMetadata("number", [modernA2, modernA]);
+      const metadata = await dialogs.toMetadata("number", [modernA2, modernA]);
 
       expect(metadata).to.deep.equal([
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
@@ -44,26 +44,26 @@ describe("dialogs", () => {
       ]);
     });
 
-    it("handles fallback for legacy SAs", () => {
-      const metadata = dialogs.toMetadata("number", [modernA, legacy]);
+    it("handles fallback for legacy SAs", async () => {
+      const metadata = await dialogs.toMetadata("number", [modernA, legacy]);
 
       expect(metadata).to.deep.equal([
         {
           location: "l",
           id: "legacy",
-          ...secrets.serviceAccountsForBackend("number", legacy),
+          ...(await secrets.serviceAccountsForBackend("number", legacy)),
         },
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
       ]);
     });
 
-    it("sorts by location first and id second", () => {
-      const metadata = dialogs.toMetadata("number", [legacy, modernA, modernA2]);
+    it("sorts by location first and id second", async () => {
+      const metadata = await dialogs.toMetadata("number", [legacy, modernA, modernA2]);
       expect(metadata).to.deep.equal([
         {
           location: "l",
           id: "legacy",
-          ...secrets.serviceAccountsForBackend("number", legacy),
+          ...(await secrets.serviceAccountsForBackend("number", legacy)),
         },
         { location: "l", id: "modernA", buildServiceAccount: "a", runServiceAccount: "a" },
         { location: "l2", id: "modernA2", buildServiceAccount: "a", runServiceAccount: "a" },
@@ -81,8 +81,10 @@ describe("dialogs", () => {
   });
 
   describe("tableForBackends", () => {
-    it("uses 'service account' header if all backends use one service account", () => {
-      const table = dialogs.tableForBackends(dialogs.toMetadata("number", [modernA, modernB]));
+    it("uses 'service account' header if all backends use one service account", async () => {
+      const table = dialogs.tableForBackends(
+        await dialogs.toMetadata("number", [modernA, modernB]),
+      );
       expect(table[0]).to.deep.equal(["location", "backend", "service account"]);
       expect(table[1]).to.deep.equal([
         ["l", "modernA", "a"],
@@ -90,9 +92,9 @@ describe("dialogs", () => {
       ]);
     });
 
-    it("uses 'service accounts' header if any backend uses more than one service accont", () => {
-      const table = dialogs.tableForBackends(dialogs.toMetadata("number", [legacy, modernA]));
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+    it("uses 'service accounts' header if any backend uses more than one service account", async () => {
+      const table = dialogs.tableForBackends(await dialogs.toMetadata("number", [legacy, modernA]));
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
       expect(table[0]).to.deep.equal(["location", "backend", "service accounts"]);
       expect(table[1]).to.deep.equal([
         [
@@ -219,7 +221,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(true);
-      const accounts = secrets.serviceAccountsForBackend("number", legacy);
+      const accounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
@@ -248,7 +250,7 @@ describe("dialogs", () => {
         unreachable: [],
       });
       prompt.confirm.resolves(false);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
@@ -336,15 +338,14 @@ describe("dialogs", () => {
         backends: [modernA, modernA2, modernB, legacy, legacy2],
         unreachable: [],
       });
-      prompt.promptOnce.resolves(["a", "b"]);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      prompt.checkbox.resolves(["a", "b"]);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal({ buildServiceAccounts: ["a", "b"], runServiceAccounts: [] });
 
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        type: "checkbox",
+      expect(prompt.checkbox).to.have.been.calledWith({
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
         choices: [
@@ -365,15 +366,14 @@ describe("dialogs", () => {
         backends: [modernA, modernA2, modernB, legacy, legacy2],
         unreachable: [],
       });
-      prompt.promptOnce.resolves([]);
-      const legacyAccounts = secrets.serviceAccountsForBackend("number", legacy);
+      prompt.checkbox.resolves([]);
+      const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
         dialogs.selectBackendServiceAccounts("number", "id", {}),
       ).to.eventually.deep.equal(emptyMulti);
 
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        type: "checkbox",
+      expect(prompt.checkbox).to.have.been.calledWith({
         message:
           "Which service accounts would you like to grant access? Press Space to select accounts, then Enter to confirm your choices.",
         choices: [
@@ -405,29 +405,29 @@ describe("dialogs", () => {
 
     it("accepts a valid env var", async () => {
       await expect(dialogs.envVarForSecret("VALID_KEY")).to.eventually.equal("VALID_KEY");
-      expect(prompt.promptOnce).to.not.have.been.called;
+      expect(prompt.input).to.not.have.been.called;
     });
 
     it("suggests a valid upper case name", async () => {
-      prompt.promptOnce.resolves("SECRET_VALUE");
+      prompt.input.resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
     });
 
     it("prevents invalid keys", async () => {
-      prompt.promptOnce.onFirstCall().resolves("secret-value");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("secret-value");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
         "Key secret-value must start with an uppercase ASCII letter or underscore, and then consist of uppercase ASCII letters, digits, and underscores.",
@@ -435,15 +435,15 @@ describe("dialogs", () => {
     });
 
     it("prevents reserved keys", async () => {
-      prompt.promptOnce.onFirstCall().resolves("PORT");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("PORT");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWith(
         "apphosting",
         "Key PORT is reserved for internal use.",
@@ -451,19 +451,31 @@ describe("dialogs", () => {
     });
 
     it("prevents reserved prefixes", async () => {
-      prompt.promptOnce.onFirstCall().resolves("X_GOOGLE_SECRET");
-      prompt.promptOnce.onSecondCall().resolves("SECRET_VALUE");
+      prompt.input.onFirstCall().resolves("X_GOOGLE_SECRET");
+      prompt.input.onSecondCall().resolves("SECRET_VALUE");
 
       await expect(dialogs.envVarForSecret("secret-value")).to.eventually.equal("SECRET_VALUE");
-      expect(prompt.promptOnce).to.have.been.calledWithMatch({
+      expect(prompt.input).to.have.been.calledWithMatch({
         message: "What environment variable name would you like to use?",
         default: "SECRET_VALUE",
       });
-      expect(prompt.promptOnce).to.have.been.calledTwice;
+      expect(prompt.input).to.have.been.calledTwice;
       expect(utils.logLabeledError).to.have.been.calledWithMatch(
         "apphosting",
         /Key X_GOOGLE_SECRET starts with a reserved prefix/,
       );
+    });
+
+    it("can trim test prefixes", async () => {
+      prompt.input.resolves("SECRET");
+
+      await expect(
+        dialogs.envVarForSecret("test-secret", /* trimTestPrefix=*/ true),
+      ).to.eventually.equal("SECRET");
+      expect(prompt.input).to.have.been.calledWithMatch({
+        message: "What environment variable name would you like to use?",
+        default: "SECRET",
+      });
     });
   });
 });

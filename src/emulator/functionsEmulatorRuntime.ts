@@ -1,6 +1,4 @@
-import * as fs from "fs";
-
-import { CloudFunction, DeploymentOptions, https } from "firebase-functions";
+import { CloudFunction, DeploymentOptions } from "firebase-functions";
 import * as express from "express";
 import * as path from "path";
 import * as admin from "firebase-admin";
@@ -10,12 +8,7 @@ import * as _ from "lodash";
 
 import { EmulatorLog } from "./types";
 import { Constants } from "./constants";
-import {
-  findModuleRoot,
-  FunctionsRuntimeBundle,
-  HttpConstants,
-  SignatureType,
-} from "./functionsEmulatorShared";
+import { findModuleRoot, FunctionsRuntimeBundle, SignatureType } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
 import { EventUtils } from "./events/types";
 
@@ -252,7 +245,7 @@ async function assertResolveDeveloperNodeModule(name: string): Promise<Successfu
 async function verifyDeveloperNodeModules(): Promise<boolean> {
   const modBundles = [
     { name: "firebase-admin", isDev: false, minVersion: "8.9.0" },
-    { name: "firebase-functions", isDev: false, minVersion: "3.13.1" },
+    { name: "firebase-functions", isDev: false, minVersion: "3.16.0" },
   ];
 
   for (const modBundle of modBundles) {
@@ -383,7 +376,6 @@ function initializeNetworkFiltering(): void {
   logDebug("Outgoing network have been stubbed.", results);
 }
 
-type CallableHandler = (data: any, context: https.CallableContext) => any | Promise<any>;
 type HttpsHandler = (req: Request, resp: Response) => void;
 
 /*
@@ -400,6 +392,11 @@ https://github.com/firebase/firebase-functions/blob/9e3bda13565454543b4c7b2fd10f
    */
 async function initializeFirebaseFunctionsStubs(): Promise<void> {
   const firebaseFunctionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
+  if (compareVersionStrings(firebaseFunctionsResolution.version, "7.0.0") >= 0) {
+    logDebug("Detected firebase-functions v7+, skipping legacy stubs.");
+    return;
+  }
+
   const firebaseFunctionsRoot = findModuleRoot(
     "firebase-functions",
     firebaseFunctionsResolution.resolution,
@@ -431,114 +428,10 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
   httpsProvider.onRequest = (handler: HttpsHandler) => {
     return httpsProvider[onRequestInnerMethodName](handler, {});
   };
-
-  // Mocking https.onCall is very similar to onRequest
-  const onCallInnerMethodName = "_onCallWithOptions";
-  const onCallMethodOriginal = httpsProvider[onCallInnerMethodName];
-
-  // Newer versions of the firebase-functions package's _onCallWithOptions method expects 3 arguments.
-  if (onCallMethodOriginal.length === 3) {
-    httpsProvider[onCallInnerMethodName] = (
-      opts: any,
-      handler: any,
-      deployOpts: DeploymentOptions,
-    ) => {
-      const wrapped = wrapCallableHandler(handler);
-      const cf = onCallMethodOriginal(opts, wrapped, deployOpts);
-      return cf;
-    };
-  } else {
-    httpsProvider[onCallInnerMethodName] = (handler: any, opts: DeploymentOptions) => {
-      const wrapped = wrapCallableHandler(handler);
-      const cf = onCallMethodOriginal(wrapped, opts);
-      return cf;
-    };
-  }
-
-  // Newer versions of the firebase-functions package's onCall method can accept upto 2 arguments.
-  httpsProvider.onCall = function (optsOrHandler: any, handler: CallableHandler) {
-    if (onCallMethodOriginal.length === 3) {
-      let opts;
-      if (arguments.length === 1) {
-        opts = {};
-        handler = optsOrHandler as CallableHandler;
-      } else {
-        opts = optsOrHandler;
-      }
-      return httpsProvider[onCallInnerMethodName](opts, handler, {});
-    } else {
-      return httpsProvider[onCallInnerMethodName](optsOrHandler, {});
-    }
-  };
-}
-
-/**
- * Wrap a callable functions handler with an outer method that extracts a special authorization
- * header used to mock auth in the emulator.
- */
-function wrapCallableHandler(handler: CallableHandler): CallableHandler {
-  const newHandler = (data: any, context: https.CallableContext) => {
-    if (context.rawRequest) {
-      const authContext = context.rawRequest.header(HttpConstants.CALLABLE_AUTH_HEADER);
-      if (authContext) {
-        logDebug("Callable functions auth override", {
-          key: HttpConstants.CALLABLE_AUTH_HEADER,
-          value: authContext,
-        });
-        context.auth = JSON.parse(decodeURIComponent(authContext));
-        delete context.rawRequest.headers[HttpConstants.CALLABLE_AUTH_HEADER];
-      } else {
-        logDebug("No callable functions auth found");
-      }
-
-      // Restore the original auth header in case the code relies on parsing it (for
-      // example, the code could forward it to another function or server).
-      const originalAuth = context.rawRequest.header(HttpConstants.ORIGINAL_AUTH_HEADER);
-      if (originalAuth) {
-        context.rawRequest.headers["authorization"] = originalAuth;
-        delete context.rawRequest.headers[HttpConstants.ORIGINAL_AUTH_HEADER];
-      }
-    }
-    return handler(data, context);
-  };
-
-  return newHandler;
 }
 
 function getDefaultConfig(): any {
   return JSON.parse(process.env.FIREBASE_CONFIG || "{}");
-}
-
-function initializeRuntimeConfig() {
-  // Most recent version of Firebase Functions SDK automatically picks up locally
-  // stored .runtimeconfig.json to populate the config entries.
-  // However, due to a bug in some older version of the Function SDK, this process may fail.
-  //
-  // See the following issues for more detail:
-  //   https://github.com/firebase/firebase-tools/issues/3793
-  //   https://github.com/firebase/firebase-functions/issues/877
-  //
-  // As a workaround, the emulator runtime will load the contents of the .runtimeconfig.json
-  // to the CLOUD_RUNTIME_CONFIG environment variable IF the env var is unused.
-  // In the future, we will bump up the minimum version of the Firebase Functions SDK
-  // required to run the functions emulator to v3.15.1 and get rid of this workaround.
-  if (!process.env.CLOUD_RUNTIME_CONFIG) {
-    const configPath = `${process.cwd()}/.runtimeconfig.json`;
-    try {
-      const configContent = fs.readFileSync(configPath, "utf8");
-      if (configContent) {
-        try {
-          JSON.parse(configContent.toString());
-          logDebug(`Found local functions config: ${configPath}`);
-          process.env.CLOUD_RUNTIME_CONFIG = configContent.toString();
-        } catch (e) {
-          new EmulatorLog("SYSTEM", "function-runtimeconfig-json-invalid", "").log();
-        }
-      }
-    } catch (e) {
-      // Ignore, config is optional
-    }
-  }
 }
 
 /**
@@ -709,48 +602,6 @@ function warnAboutStorageProd(): void {
   ).log();
 }
 
-async function initializeFunctionsConfigHelper(): Promise<void> {
-  const functionsResolution = await assertResolveDeveloperNodeModule("firebase-functions");
-  const localFunctionsModule = require(functionsResolution.resolution);
-
-  logDebug("Checked functions.config()", {
-    config: localFunctionsModule.config(),
-  });
-
-  const originalConfig = localFunctionsModule.config();
-  const proxiedConfig = new Proxied(originalConfig)
-    .any((parentConfig, parentKey) => {
-      const isInternal = parentKey.startsWith("Symbol(") || parentKey.startsWith("inspect");
-      if (!parentConfig[parentKey] && !isInternal) {
-        new EmulatorLog("SYSTEM", "functions-config-missing-value", "", {
-          key: parentKey,
-        }).log();
-      }
-
-      return parentConfig[parentKey];
-    })
-    .finalize();
-
-  const functionsModuleProxy = new Proxied<typeof localFunctionsModule>(localFunctionsModule);
-  const proxiedFunctionsModule = functionsModuleProxy
-    .when("config", () => () => {
-      return proxiedConfig;
-    })
-    .finalize();
-
-  // Stub the functions module in the require cache
-  const v = require.cache[functionsResolution.resolution];
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- this is not precedent.
-  require.cache[functionsResolution.resolution] = Object.assign(v!, {
-    exports: proxiedFunctionsModule,
-    path: path.dirname(functionsResolution.resolution),
-  });
-
-  logDebug("firebase-functions has been stubbed.", {
-    functionsResolution,
-  });
-}
-
 /*
  Retains a reference to the raw body buffer to allow access to the raw body for things like request
  signature validation. This is used as the "verify" function in body-parser options.
@@ -897,9 +748,7 @@ async function initializeRuntime(): Promise<void> {
     return;
   }
 
-  initializeRuntimeConfig();
   initializeNetworkFiltering();
-  await initializeFunctionsConfigHelper();
   await initializeFirebaseFunctionsStubs();
   await initializeFirebaseAdminStubs();
 }

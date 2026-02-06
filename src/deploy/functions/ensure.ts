@@ -1,19 +1,18 @@
 import * as clc from "colorette";
 
-import type { FirebaseProjectMetadata } from "../../types/project";
-
 import { ensure } from "../../ensureApiEnabled";
 import { FirebaseError, isBillingError } from "../../error";
 import { logLabeledBullet, logLabeledSuccess } from "../../utils";
-import { ensureServiceAgentRole } from "../../gcp/secretManager";
-import { getFirebaseProject } from "../../management/projects";
+import { checkServiceAgentRole, ensureServiceAgentRole } from "../../gcp/secretManager";
+import { getProject, ProjectInfo } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 
-const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map();
+const metadataCallCache: Map<string, Promise<ProjectInfo>> = new Map();
 
 /**
  *  By default:
@@ -23,14 +22,14 @@ const metadataCallCache: Map<string, Promise<FirebaseProjectMetadata>> = new Map
 export async function defaultServiceAccount(e: backend.Endpoint): Promise<string> {
   let metadataCall = metadataCallCache.get(e.project);
   if (!metadataCall) {
-    metadataCall = getFirebaseProject(e.project);
+    metadataCall = getProject(e.project);
     metadataCallCache.set(e.project, metadataCall);
   }
   const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
-  } else if (e.platform === "gcfv2") {
-    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2" || e.platform === "run") {
+    return await getDefaultServiceAccount(metadata.projectNumber);
   }
   assertExhaustive(e.platform);
 }
@@ -114,17 +113,32 @@ export async function secretAccess(
   projectId: string,
   wantBackend: backend.Backend,
   haveBackend: backend.Backend,
+  dryRun?: boolean,
 ) {
   const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
     logLabeledBullet(
       "functions",
       `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
     );
-    await ensureServiceAgentRole(
-      { name: secret, projectId },
-      serviceAccounts,
-      "roles/secretmanager.secretAccessor",
-    );
+    if (dryRun) {
+      const check = await checkServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+      if (check.length) {
+        logLabeledBullet(
+          "functions",
+          `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
+        );
+      }
+    } else {
+      await ensureServiceAgentRole(
+        { name: secret, projectId },
+        serviceAccounts,
+        "roles/secretmanager.secretAccessor",
+      );
+    }
     logLabeledSuccess(
       "functions",
       `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,

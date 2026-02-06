@@ -1,13 +1,15 @@
 import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
-import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
+import { Service, ServiceInfo, mainSchema, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
-import { provisionCloudSql } from "../../dataconnect/provisionCloudSql";
+import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
 import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import { confirm } from "../../prompt";
+import { Context } from "./context";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -15,19 +17,15 @@ import * as ensureApiEnabled from "../../ensureApiEnabled";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-    };
-  },
-  options: Options,
-): Promise<void> {
+export default async function (context: Context, options: Options): Promise<void> {
+  const dataconnect = context.dataconnect;
+  if (!dataconnect) {
+    throw new Error("dataconnect.prepare must be run before dataconnect.deploy");
+  }
   const projectId = needProjectId(options);
-  const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
+  const serviceInfos = dataconnect.serviceInfos as ServiceInfo[];
   const services = await client.listAllServices(projectId);
-  const filters = context.dataconnect.filters;
+  const filters = dataconnect.filters;
 
   if (
     serviceInfos.some((si) => {
@@ -40,12 +38,17 @@ export default async function (
   const servicesToCreate = serviceInfos
     .filter((si) => !services.some((s) => matches(si, s)))
     .filter((si) => {
-      return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
+      return (
+        !filters ||
+        filters?.some((f: ResourceFilter) => si.dataConnectYaml.serviceId === f.serviceId)
+      );
     });
-  // When --only filters are passed, don't delete anything.
+  dataconnect.deployStats.numServiceCreated = servicesToCreate.length;
+
   const servicesToDelete = filters
     ? []
     : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
+  dataconnect.deployStats.numServiceDeleted = servicesToDelete.length;
   await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);
@@ -55,28 +58,22 @@ export default async function (
   );
 
   if (servicesToDelete.length) {
-    const warning = `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
-      .map((s) => s.name)
-      .join("\n")}\nConsider deleting these via the Firebase console if they are no longer needed.`;
-    utils.logLabeledWarning("dataconnect", warning);
-    // TODO: Switch this back to prompting for deletion.
-    // if (
-    //   await confirm({
-    //     force: options.force,
-    //     nonInteractive: options.nonInteractive,
-    //     message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${servicesToDelete
-    //       .map((s) => s.name)
-    //       .join("\n")}\nWould you like to delete these services?`,
-    //   })
-    // ) {
-    //   await Promise.all(
-    //     servicesToDelete.map(async (s) => {
-    //       const { projectId, locationId, serviceId } = splitName(s.name);
-    //       await client.deleteService(projectId, locationId, serviceId);
-    //       utils.logLabeledSuccess("dataconnect", `Deleted service ${s.name}`);
-    //     }),
-    //   );
-    // }
+    const serviceToDeleteList = servicesToDelete.map((s) => " - " + s.name).join("\n");
+    if (
+      await confirm({
+        force: false, // Don't delete anything in --force.
+        nonInteractive: options.nonInteractive,
+        message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${serviceToDeleteList}\nWould you like to delete these services?`,
+        default: false,
+      })
+    ) {
+      await Promise.all(
+        servicesToDelete.map(async (s) => {
+          await client.deleteService(s.name);
+          utils.logLabeledSuccess("dataconnect", `Deleted service ${s.name}`);
+        }),
+      );
+    }
   }
 
   // Provision CloudSQL resources
@@ -85,25 +82,28 @@ export default async function (
   await Promise.all(
     serviceInfos
       .filter((si) => {
-        return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
+        return (
+          !filters ||
+          filters?.some((f: ResourceFilter) => si.dataConnectYaml.serviceId === f.serviceId)
+        );
       })
       .map(async (s) => {
-        const instanceId = s.schema.primaryDatasource.postgresql?.cloudSql.instance
-          .split("/")
-          .pop();
-        const databaseId = s.schema.primaryDatasource.postgresql?.database;
-        if (!instanceId || !databaseId) {
-          return Promise.resolve();
+        const postgresDatasource = mainSchema(s.schemas).datasources.find((d) => d.postgresql);
+        if (postgresDatasource) {
+          const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
+          const databaseId = postgresDatasource.postgresql?.database;
+          if (!instanceId || !databaseId) {
+            return Promise.resolve();
+          }
+          return setupCloudSql({
+            projectId,
+            location: parseServiceName(s.serviceName).location,
+            instanceId,
+            databaseId,
+            requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+            source: "deploy",
+          });
         }
-        const enableGoogleMlIntegration = requiresVector(s.deploymentMetadata);
-        return provisionCloudSql({
-          projectId,
-          locationId: parseServiceName(s.serviceName).location,
-          instanceId,
-          databaseId,
-          enableGoogleMlIntegration,
-          waitForCreation: true,
-        });
       }),
   );
   return;

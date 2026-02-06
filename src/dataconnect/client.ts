@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import * as operationPoller from "../operation-poller";
 import * as types from "./types";
 
-const DATACONNECT_API_VERSION = "v1alpha";
+const DATACONNECT_API_VERSION = "v1";
 const PAGE_SIZE_MAX = 100;
 
 const dataconnectClient = () =>
@@ -41,57 +41,54 @@ export async function createService(
   projectId: string,
   locationId: string,
   serviceId: string,
-): Promise<types.Service> {
-  const op = await dataconnectClient().post<types.Service, types.Service>(
-    `/projects/${projectId}/locations/${locationId}/services`,
-    {
-      name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
-    },
-    {
-      queryParams: {
-        service_id: serviceId,
-      },
-    },
-  );
-  const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin(),
-    apiVersion: DATACONNECT_API_VERSION,
-    operationResourceName: op.body.name,
-  });
-  return pollRes;
-}
-
-async function deleteService(serviceName: string): Promise<types.Service> {
-  // NOTE(fredzqm): Don't force delete yet. Backend would leave orphaned resources.
-  const op = await dataconnectClient().delete<types.Service>(serviceName);
-  const pollRes = await operationPoller.pollOperation<types.Service>({
-    apiOrigin: dataconnectOrigin(),
-    apiVersion: DATACONNECT_API_VERSION,
-    operationResourceName: op.body.name,
-  });
-  return pollRes;
-}
-
-export async function deleteServiceAndChildResources(serviceName: string): Promise<void> {
-  const connectors = await listConnectors(serviceName);
-  await Promise.all(connectors.map(async (c) => deleteConnector(c.name)));
+): Promise<types.Service | undefined> {
   try {
-    await deleteSchema(serviceName);
+    const op = await dataconnectClient().post<types.Service, types.Service>(
+      `/projects/${projectId}/locations/${locationId}/services`,
+      {
+        name: `projects/${projectId}/locations/${locationId}/services/${serviceId}`,
+      },
+      {
+        queryParams: {
+          service_id: serviceId,
+        },
+      },
+    );
+    const pollRes = await operationPoller.pollOperation<types.Service>({
+      apiOrigin: dataconnectOrigin(),
+      apiVersion: DATACONNECT_API_VERSION,
+      operationResourceName: op.body.name,
+    });
+    return pollRes;
   } catch (err: any) {
-    if (err.status !== 404) {
+    if (err.status !== 409) {
       throw err;
     }
+    return undefined; // Service already exists
   }
-  await deleteService(serviceName);
+}
+
+export async function deleteService(serviceName: string): Promise<types.Service> {
+  // Note that we need to force delete in order to delete child resources too.
+  const op = await dataconnectClient().delete<types.Service>(serviceName, {
+    queryParams: { force: "true" },
+  });
+  const pollRes = await operationPoller.pollOperation<types.Service>({
+    apiOrigin: dataconnectOrigin(),
+    apiVersion: DATACONNECT_API_VERSION,
+    operationResourceName: op.body.name,
+  });
+  return pollRes;
 }
 
 /** Schema methods */
 
-export async function getSchema(serviceName: string): Promise<types.Schema | undefined> {
+export async function getSchema(
+  serviceName: string,
+  schemaId: string = types.MAIN_SCHEMA_ID,
+): Promise<types.Schema | undefined> {
   try {
-    const res = await dataconnectClient().get<types.Schema>(
-      `${serviceName}/schemas/${types.SCHEMA_ID}`,
-    );
+    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`);
     return res.body;
   } catch (err: any) {
     if (err.status !== 404) {
@@ -101,9 +98,35 @@ export async function getSchema(serviceName: string): Promise<types.Schema | und
   }
 }
 
+export async function listSchemas(
+  serviceName: string,
+  fields: string[] = [],
+): Promise<types.Schema[]> {
+  const schemas: types.Schema[] = [];
+  const getNextPage = async (pageToken = "") => {
+    const res = await dataconnectClient().get<{
+      schemas?: types.Schema[];
+      nextPageToken?: string;
+    }>(`${serviceName}/schemas`, {
+      queryParams: {
+        pageSize: PAGE_SIZE_MAX,
+        pageToken,
+        fields: fields.join(","),
+      },
+    });
+    schemas.push(...(res.body.schemas || []));
+    if (res.body.nextPageToken) {
+      await getNextPage(res.body.nextPageToken);
+    }
+  };
+  await getNextPage();
+  return schemas;
+}
+
 export async function upsertSchema(
   schema: types.Schema,
   validateOnly: boolean = false,
+  async: boolean = false,
 ): Promise<types.Schema | undefined> {
   const op = await dataconnectClient().patch<types.Schema, types.Schema>(`${schema.name}`, schema, {
     queryParams: {
@@ -111,19 +134,20 @@ export async function upsertSchema(
       validateOnly: validateOnly ? "true" : "false",
     },
   });
-  if (validateOnly) {
+  if (validateOnly || async) {
     return;
   }
   return operationPoller.pollOperation<types.Schema>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
+    masterTimeout: 60000,
   });
 }
 
 export async function deleteSchema(serviceName: string): Promise<void> {
   const op = await dataconnectClient().delete<types.Schema>(
-    `${serviceName}/schemas/${types.SCHEMA_ID}`,
+    `${serviceName}/schemas/${types.MAIN_SCHEMA_ID}`,
   );
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),
@@ -181,6 +205,7 @@ export async function upsertConnector(connector: types.Connector) {
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
+    masterTimeout: 60000,
   });
   return pollRes;
 }

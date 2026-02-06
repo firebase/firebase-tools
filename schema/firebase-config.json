@@ -2,8 +2,145 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
     "definitions": {
+        "ActiveRuntime": {
+            "enum": [
+                "dart3",
+                "nodejs18",
+                "nodejs20",
+                "nodejs22",
+                "nodejs24",
+                "python310",
+                "python311",
+                "python312",
+                "python313"
+            ],
+            "type": "string"
+        },
+        "DataConnectSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "source"
+            ],
+            "type": "object"
+        },
+        "DatabaseSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "rules": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rules"
+            ],
+            "type": "object"
+        },
         "ExtensionsConfig": {
             "additionalProperties": false,
+            "type": "object"
+        },
+        "FirestoreSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "database": {
+                    "type": "string"
+                },
+                "edition": {
+                    "type": "string"
+                },
+                "indexes": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "rules": {
+                    "type": "string"
+                }
+            },
             "type": "object"
         },
         "FrameworksBackendOptions": {
@@ -23,9 +160,7 @@
                 "cpu": {
                     "anyOf": [
                         {
-                            "enum": [
-                                "gcf_gen1"
-                            ],
+                            "const": "gcf_gen1",
                             "type": "string"
                         },
                         {
@@ -48,10 +183,8 @@
                     "type": "string"
                 },
                 "invoker": {
+                    "const": "public",
                     "description": "Invoker to set access control on https functions.",
-                    "enum": [
-                        "public"
-                    ],
                     "type": "string"
                 },
                 "labels": {
@@ -122,55 +255,916 @@
             },
             "type": "object"
         },
+        "FunctionConfig": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/LocalFunctionConfig"
+                },
+                {
+                    "$ref": "#/definitions/RemoteFunctionConfig"
+                }
+            ]
+        },
+        "HostingHeaders": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "glob": {
+                            "type": "string"
+                        },
+                        "headers": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "key",
+                                    "value"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "glob",
+                        "headers"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "headers": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "key",
+                                    "value"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "headers",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "headers": {
+                            "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                    "key": {
+                                        "type": "string"
+                                    },
+                                    "value": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "key",
+                                    "value"
+                                ],
+                                "type": "object"
+                            },
+                            "type": "array"
+                        },
+                        "regex": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "headers",
+                        "regex"
+                    ],
+                    "type": "object"
+                }
+            ]
+        },
+        "HostingRedirects": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "glob": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "glob"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "regex": {
+                            "type": "string"
+                        },
+                        "type": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "regex"
+                    ],
+                    "type": "object"
+                }
+            ]
+        },
+        "HostingRewrites": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "glob": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "glob"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "type": "string"
+                        },
+                        "glob": {
+                            "type": "string"
+                        },
+                        "region": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "glob"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "functionId": {
+                                    "type": "string"
+                                },
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "functionId"
+                            ],
+                            "type": "object"
+                        },
+                        "glob": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "glob"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "glob": {
+                            "type": "string"
+                        },
+                        "run": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                },
+                                "serviceId": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "serviceId"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "glob",
+                        "run"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "dynamicLinks": {
+                            "type": "boolean"
+                        },
+                        "glob": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "dynamicLinks",
+                        "glob"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "type": "string"
+                        },
+                        "region": {
+                            "type": "string"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "functionId": {
+                                    "type": "string"
+                                },
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "functionId"
+                            ],
+                            "type": "object"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "run": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                },
+                                "serviceId": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "serviceId"
+                            ],
+                            "type": "object"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "run",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "dynamicLinks": {
+                            "type": "boolean"
+                        },
+                        "source": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "dynamicLinks",
+                        "source"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "destination": {
+                            "type": "string"
+                        },
+                        "regex": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "destination",
+                        "regex"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "type": "string"
+                        },
+                        "regex": {
+                            "type": "string"
+                        },
+                        "region": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "regex"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "function": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "functionId": {
+                                    "type": "string"
+                                },
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "functionId"
+                            ],
+                            "type": "object"
+                        },
+                        "regex": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "function",
+                        "regex"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "regex": {
+                            "type": "string"
+                        },
+                        "run": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "pinTag": {
+                                    "type": "boolean"
+                                },
+                                "region": {
+                                    "type": "string"
+                                },
+                                "serviceId": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "serviceId"
+                            ],
+                            "type": "object"
+                        }
+                    },
+                    "required": [
+                        "regex",
+                        "run"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "dynamicLinks": {
+                            "type": "boolean"
+                        },
+                        "regex": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "dynamicLinks",
+                        "regex"
+                    ],
+                    "type": "object"
+                }
+            ]
+        },
+        "HostingSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "appAssociation": {
+                    "enum": [
+                        "AUTO",
+                        "NONE"
+                    ],
+                    "type": "string"
+                },
+                "cleanUrls": {
+                    "type": "boolean"
+                },
+                "frameworksBackend": {
+                    "$ref": "#/definitions/FrameworksBackendOptions"
+                },
+                "headers": {
+                    "items": {
+                        "$ref": "#/definitions/HostingHeaders"
+                    },
+                    "type": "array"
+                },
+                "i18n": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "root": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "root"
+                    ],
+                    "type": "object"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "public": {
+                    "type": "string"
+                },
+                "redirects": {
+                    "items": {
+                        "$ref": "#/definitions/HostingRedirects"
+                    },
+                    "type": "array"
+                },
+                "rewrites": {
+                    "items": {
+                        "$ref": "#/definitions/HostingRewrites"
+                    },
+                    "type": "array"
+                },
+                "site": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "trailingSlash": {
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "LocalFunctionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "codebase": {
+                    "type": "string"
+                },
+                "configDir": {
+                    "type": "string"
+                },
+                "disallowLegacyRuntimeConfig": {
+                    "type": "boolean"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "enum": [
+                        "dart3",
+                        "nodejs18",
+                        "nodejs20",
+                        "nodejs22",
+                        "nodejs24",
+                        "python310",
+                        "python311",
+                        "python312",
+                        "python313"
+                    ],
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "source"
+            ],
+            "type": "object"
+        },
         "Record<string,string>": {
             "additionalProperties": false,
+            "type": "object"
+        },
+        "RemoteConfigConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "template": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "template"
+            ],
+            "type": "object"
+        },
+        "RemoteFunctionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "codebase": {
+                    "type": "string"
+                },
+                "configDir": {
+                    "type": "string"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "remoteSource": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "dir": {
+                            "type": "string"
+                        },
+                        "ref": {
+                            "type": "string"
+                        },
+                        "repository": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "ref",
+                        "repository"
+                    ],
+                    "type": "object"
+                },
+                "runtime": {
+                    "$ref": "#/definitions/ActiveRuntime"
+                }
+            },
+            "required": [
+                "remoteSource",
+                "runtime"
+            ],
+            "type": "object"
+        },
+        "StorageSingle": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "rules": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "rules"
+            ],
             "type": "object"
         }
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
-        "database": {
+        "apphosting": {
             "anyOf": [
                 {
                     "additionalProperties": false,
                     "properties": {
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
+                        "alwaysDeployFromSource": {
+                            "type": "boolean"
                         },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
+                        "backendId": {
+                            "type": "string"
                         },
-                        "rules": {
+                        "ignore": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "localBuild": {
+                            "type": "boolean"
+                        },
+                        "rootDir": {
                             "type": "string"
                         }
                     },
                     "required": [
-                        "rules"
+                        "backendId",
+                        "ignore",
+                        "rootDir"
                     ],
                     "type": "object"
+                },
+                {
+                    "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "alwaysDeployFromSource": {
+                                "type": "boolean"
+                            },
+                            "backendId": {
+                                "type": "string"
+                            },
+                            "ignore": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "localBuild": {
+                                "type": "boolean"
+                            },
+                            "rootDir": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "backendId",
+                            "ignore",
+                            "rootDir"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        },
+        "database": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/DatabaseSingle"
                 },
                 {
                     "items": {
@@ -274,81 +1268,11 @@
         "dataconnect": {
             "anyOf": [
                 {
-                    "additionalProperties": false,
-                    "properties": {
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "source"
-                    ],
-                    "type": "object"
+                    "$ref": "#/definitions/DataConnectSingle"
                 },
                 {
                     "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "postdeploy": {
-                                "anyOf": [
-                                    {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "predeploy": {
-                                "anyOf": [
-                                    {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "source": {
-                                "type": "string"
-                            }
-                        },
-                        "required": [
-                            "source"
-                        ],
-                        "type": "object"
+                        "$ref": "#/definitions/DataConnectSingle"
                     },
                     "type": "array"
                 }
@@ -365,6 +1289,15 @@
                         },
                         "port": {
                             "type": "number"
+                        },
+                        "rootDirectory": {
+                            "type": "string"
+                        },
+                        "startCommand": {
+                            "type": "string"
+                        },
+                        "startCommandOverride": {
+                            "type": "string"
                         }
                     },
                     "type": "object"
@@ -396,10 +1329,19 @@
                 "dataconnect": {
                     "additionalProperties": false,
                     "properties": {
+                        "dataDir": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },
                         "port": {
+                            "type": "number"
+                        },
+                        "postgresHost": {
+                            "type": "string"
+                        },
+                        "postgresPort": {
                             "type": "number"
                         }
                     },
@@ -418,8 +1360,7 @@
                     "type": "object"
                 },
                 "extensions": {
-                    "properties": {
-                    },
+                    "properties": {},
                     "type": "object"
                 },
                 "firestore": {
@@ -534,10 +1475,7 @@
                             "type": "string"
                         },
                         "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
+                            "type": "number"
                         }
                     },
                     "type": "object"
@@ -551,45 +1489,7 @@
         "firestore": {
             "anyOf": [
                 {
-                    "additionalProperties": false,
-                    "properties": {
-                        "database": {
-                            "type": "string"
-                        },
-                        "indexes": {
-                            "type": "string"
-                        },
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "rules": {
-                            "type": "string"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/FirestoreSingle"
                 },
                 {
                     "items": {
@@ -697,127 +1597,14 @@
         "functions": {
             "anyOf": [
                 {
-                    "additionalProperties": false,
-                    "properties": {
-                        "codebase": {
-                            "type": "string"
-                        },
-                        "ignore": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "runtime": {
-                            "enum": [
-                                "nodejs10",
-                                "nodejs12",
-                                "nodejs14",
-                                "nodejs16",
-                                "nodejs18",
-                                "nodejs20",
-                                "nodejs22",
-                                "nodejs6",
-                                "nodejs8",
-                                "python310",
-                                "python311",
-                                "python312"
-                            ],
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/LocalFunctionConfig"
+                },
+                {
+                    "$ref": "#/definitions/RemoteFunctionConfig"
                 },
                 {
                     "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "codebase": {
-                                "type": "string"
-                            },
-                            "ignore": {
-                                "items": {
-                                    "type": "string"
-                                },
-                                "type": "array"
-                            },
-                            "postdeploy": {
-                                "anyOf": [
-                                    {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "predeploy": {
-                                "anyOf": [
-                                    {
-                                        "items": {
-                                            "type": "string"
-                                        },
-                                        "type": "array"
-                                    },
-                                    {
-                                        "type": "string"
-                                    }
-                                ]
-                            },
-                            "runtime": {
-                                "enum": [
-                                    "nodejs10",
-                                    "nodejs12",
-                                    "nodejs14",
-                                    "nodejs16",
-                                    "nodejs18",
-                                    "nodejs20",
-                                    "nodejs22",
-                                    "nodejs6",
-                                    "nodejs8",
-                                    "python310",
-                                    "python311",
-                                    "python312"
-                                ],
-                                "type": "string"
-                            },
-                            "source": {
-                                "type": "string"
-                            }
-                        },
-                        "type": "object"
+                        "$ref": "#/definitions/FunctionConfig"
                     },
                     "type": "array"
                 }
@@ -826,595 +1613,7 @@
         "hosting": {
             "anyOf": [
                 {
-                    "additionalProperties": false,
-                    "properties": {
-                        "appAssociation": {
-                            "enum": [
-                                "AUTO",
-                                "NONE"
-                            ],
-                            "type": "string"
-                        },
-                        "cleanUrls": {
-                            "type": "boolean"
-                        },
-                        "frameworksBackend": {
-                            "$ref": "#/definitions/FrameworksBackendOptions"
-                        },
-                        "headers": {
-                            "items": {
-                                "anyOf": [
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "glob": {
-                                                "type": "string"
-                                            },
-                                            "headers": {
-                                                "items": {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "key": {
-                                                            "type": "string"
-                                                        },
-                                                        "value": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "key",
-                                                        "value"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                "type": "array"
-                                            }
-                                        },
-                                        "required": [
-                                            "glob",
-                                            "headers"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "headers": {
-                                                "items": {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "key": {
-                                                            "type": "string"
-                                                        },
-                                                        "value": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "key",
-                                                        "value"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                "type": "array"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "headers",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "headers": {
-                                                "items": {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "key": {
-                                                            "type": "string"
-                                                        },
-                                                        "value": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "key",
-                                                        "value"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                "type": "array"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "headers",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    }
-                                ]
-                            },
-                            "type": "array"
-                        },
-                        "i18n": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "root": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "root"
-                            ],
-                            "type": "object"
-                        },
-                        "ignore": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "public": {
-                            "type": "string"
-                        },
-                        "redirects": {
-                            "items": {
-                                "anyOf": [
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "glob": {
-                                                "type": "string"
-                                            },
-                                            "type": {
-                                                "type": "number"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "glob"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            },
-                                            "type": {
-                                                "type": "number"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            },
-                                            "type": {
-                                                "type": "number"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    }
-                                ]
-                            },
-                            "type": "array"
-                        },
-                        "rewrites": {
-                            "items": {
-                                "anyOf": [
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "glob": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "glob"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "type": "string"
-                                            },
-                                            "glob": {
-                                                "type": "string"
-                                            },
-                                            "region": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "glob"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "functionId": {
-                                                        "type": "string"
-                                                    },
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "functionId"
-                                                ],
-                                                "type": "object"
-                                            },
-                                            "glob": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "glob"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "glob": {
-                                                "type": "string"
-                                            },
-                                            "run": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    },
-                                                    "serviceId": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "serviceId"
-                                                ],
-                                                "type": "object"
-                                            }
-                                        },
-                                        "required": [
-                                            "glob",
-                                            "run"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "dynamicLinks": {
-                                                "type": "boolean"
-                                            },
-                                            "glob": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "dynamicLinks",
-                                            "glob"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "type": "string"
-                                            },
-                                            "region": {
-                                                "type": "string"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "functionId": {
-                                                        "type": "string"
-                                                    },
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "functionId"
-                                                ],
-                                                "type": "object"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "run": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    },
-                                                    "serviceId": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "serviceId"
-                                                ],
-                                                "type": "object"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "run",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "dynamicLinks": {
-                                                "type": "boolean"
-                                            },
-                                            "source": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "dynamicLinks",
-                                            "source"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "destination": {
-                                                "type": "string"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "destination",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "type": "string"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            },
-                                            "region": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "function": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "functionId": {
-                                                        "type": "string"
-                                                    },
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "functionId"
-                                                ],
-                                                "type": "object"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "function",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "regex": {
-                                                "type": "string"
-                                            },
-                                            "run": {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "pinTag": {
-                                                        "type": "boolean"
-                                                    },
-                                                    "region": {
-                                                        "type": "string"
-                                                    },
-                                                    "serviceId": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": [
-                                                    "serviceId"
-                                                ],
-                                                "type": "object"
-                                            }
-                                        },
-                                        "required": [
-                                            "regex",
-                                            "run"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "dynamicLinks": {
-                                                "type": "boolean"
-                                            },
-                                            "regex": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": [
-                                            "dynamicLinks",
-                                            "regex"
-                                        ],
-                                        "type": "object"
-                                    }
-                                ]
-                            },
-                            "type": "array"
-                        },
-                        "site": {
-                            "type": "string"
-                        },
-                        "source": {
-                            "type": "string"
-                        },
-                        "target": {
-                            "type": "string"
-                        },
-                        "trailingSlash": {
-                            "type": "boolean"
-                        }
-                    },
-                    "type": "object"
+                    "$ref": "#/definitions/HostingSingle"
                 },
                 {
                     "items": {
@@ -1437,104 +1636,7 @@
                                     },
                                     "headers": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "glob",
-                                                        "headers"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "headers",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "headers",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingHeaders"
                                         },
                                         "type": "array"
                                     },
@@ -1587,411 +1689,13 @@
                                     },
                                     "redirects": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "glob",
-                                                        "run"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "run",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "regex",
-                                                        "run"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
@@ -2031,104 +1735,7 @@
                                     },
                                     "headers": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "glob",
-                                                        "headers"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "headers",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "headers": {
-                                                            "items": {
-                                                                "additionalProperties": false,
-                                                                "properties": {
-                                                                    "key": {
-                                                                        "type": "string"
-                                                                    },
-                                                                    "value": {
-                                                                        "type": "string"
-                                                                    }
-                                                                },
-                                                                "required": [
-                                                                    "key",
-                                                                    "value"
-                                                                ],
-                                                                "type": "object"
-                                                            },
-                                                            "type": "array"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "headers",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingHeaders"
                                         },
                                         "type": "array"
                                     },
@@ -2181,411 +1788,13 @@
                                     },
                                     "redirects": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "type": {
-                                                            "type": "number"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingRedirects"
                                         },
                                         "type": "array"
                                     },
                                     "rewrites": {
                                         "items": {
-                                            "anyOf": [
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "glob": {
-                                                            "type": "string"
-                                                        },
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "glob",
-                                                        "run"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "glob": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "glob"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "run",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "source": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "source"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "destination": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "destination",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "type": "string"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "region": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "function": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "functionId": {
-                                                                    "type": "string"
-                                                                },
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "functionId"
-                                                            ],
-                                                            "type": "object"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "function",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "regex": {
-                                                            "type": "string"
-                                                        },
-                                                        "run": {
-                                                            "additionalProperties": false,
-                                                            "properties": {
-                                                                "pinTag": {
-                                                                    "type": "boolean"
-                                                                },
-                                                                "region": {
-                                                                    "type": "string"
-                                                                },
-                                                                "serviceId": {
-                                                                    "type": "string"
-                                                                }
-                                                            },
-                                                            "required": [
-                                                                "serviceId"
-                                                            ],
-                                                            "type": "object"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "regex",
-                                                        "run"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                {
-                                                    "additionalProperties": false,
-                                                    "properties": {
-                                                        "dynamicLinks": {
-                                                            "type": "boolean"
-                                                        },
-                                                        "regex": {
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "dynamicLinks",
-                                                        "regex"
-                                                    ],
-                                                    "type": "object"
-                                                }
-                                            ]
+                                            "$ref": "#/definitions/HostingRewrites"
                                         },
                                         "type": "array"
                                     },
@@ -2614,85 +1823,12 @@
             ]
         },
         "remoteconfig": {
-            "additionalProperties": false,
-            "properties": {
-                "postdeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "predeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "template": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "template"
-            ],
-            "type": "object"
+            "$ref": "#/definitions/RemoteConfigConfig"
         },
         "storage": {
             "anyOf": [
                 {
-                    "additionalProperties": false,
-                    "properties": {
-                        "postdeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "predeploy": {
-                            "anyOf": [
-                                {
-                                    "items": {
-                                        "type": "string"
-                                    },
-                                    "type": "array"
-                                },
-                                {
-                                    "type": "string"
-                                }
-                            ]
-                        },
-                        "rules": {
-                            "type": "string"
-                        },
-                        "target": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "rules"
-                    ],
-                    "type": "object"
+                    "$ref": "#/definitions/StorageSingle"
                 },
                 {
                     "items": {

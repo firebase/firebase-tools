@@ -31,10 +31,10 @@ export function createTestBroker(): TestBroker {
     onListeners: listeners,
     on(message, listener) {
       const listenersForMessage = (listeners[message] ??= []);
-      listenersForMessage.push(listener);
+      listenersForMessage.push(listener as any);
 
       return () => {
-        const index = listenersForMessage.indexOf(listener);
+        const index = listenersForMessage.indexOf(listener as any);
         if (index !== -1) {
           listenersForMessage.splice(index, 1);
         }

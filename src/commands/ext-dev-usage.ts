@@ -1,4 +1,4 @@
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { Command } from "../command";
@@ -8,17 +8,17 @@ import { checkMinRequiredVersion } from "../checkMinRequiredVersion";
 import { buildMetricsTableRow, parseTimeseriesResponse } from "../extensions/metricsUtils";
 import { getPublisherProfile, listExtensions } from "../extensions/publisherApi";
 import { getPublisherProjectFromName, logPrefix } from "../extensions/extensionsHelper";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
-import { promptOnce } from "../prompt";
+import { select } from "../prompt";
 import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")
-  .description("get usage for an extension")
+  .description("get usage statistics for an extension")
   .help(
     "use this command to get the usage of extensions you published. " +
       "Specify the publisher ID you used to publish your extensions, " +
-      "or the extension ref of your published extension.",
+      "or the extension ref of your published extension",
   )
   .before(requireAuth)
   .before(checkMinRequiredVersion, "extDevMinVersion")
@@ -37,8 +37,8 @@ export const command = new Command("ext:dev:usage <publisherId>")
       let extensions;
       try {
         extensions = await listExtensions(publisherId);
-      } catch (err: any) {
-        throw new FirebaseError(err);
+      } catch (err: unknown) {
+        throw new FirebaseError(getErrMsg(err));
       }
 
       if (extensions.length < 1) {
@@ -52,9 +52,7 @@ export const command = new Command("ext:dev:usage <publisherId>")
         );
       }
 
-      extensionName = await promptOnce({
-        type: "list",
-        name: "extension",
+      extensionName = await select<string>({
         message: "Which published extension do you want to view the stats for?",
         choices: extensions.map((e) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -89,11 +87,11 @@ export const command = new Command("ext:dev:usage <publisherId>")
     let response;
     try {
       response = await queryTimeSeries(query, projectNumber);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError(
         `Error occurred when fetching usage data for extension ${extensionName}`,
         {
-          original: err,
+          original: getError(err),
         },
       );
     }

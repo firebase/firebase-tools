@@ -1,5 +1,231 @@
 ## NEXT
 
+## 2.1.1
+
+- Update internal `firebase-tools` dependency to 15.5.1
+- Surface Compiler error / warnings at the right diagnosis level (#9805)
+
+## 2.1.0
+
+- Update internal `firebase-tools` dependency to 15.4.0
+- Render GraphQL error debug details and error code in the execution panel nicely. (#9769, #9785)
+- Language server now recognizes multiple schemas. (#9768)
+
+## 2.0.1
+
+- Update internal `firebase-tools` dependency to 15.3.1
+- Fix the data connect emulator discovery bugs.
+
+## 2.0.0
+
+- Update internal `firebase-tools` dependency to 15.0.0
+- [Fixed] common code lens rendering issue.
+  - Don't show "Generate query" in schema file.
+  - Don't show "Generate query" for comments within an operation.
+  - Show "Add Data" for @table type only.
+  - Show "View Data" for @table and @view type.
+- [Fixed] Integration test for recent variables panel changes
+
+## 1.10.2
+
+- Update internal `firebase-tools` dependency to 14.27.0
+
+## 1.10.1
+
+- Update internal `firebase-tools` dependency to 14.24.2
+
+## 1.10.0
+
+- [Fixed] Populate correct default values of missing required variables.
+- [Added] Display the execution variables and auth params used.
+- [Added] Allow rerun any executions in the history.
+- Update internal `firebase-tools` dependency to 14.20.0
+
+## 1.9.0
+
+- [Added] Refine / Generate Operation Code Lens.
+- [Added] Support run "firebase init" without login and project.
+- Update internal `firebase-tools` dependency to 14.19.1
+
+## 1.8.0
+
+- [Changed] Gemini Code Assist is now optionally installed when using the "Build with AI" feature
+
+## 1.7.0
+
+- Update internal `firebase-tools` dependency to 14.15.2
+- Fixed the projectless developer experience. There are "error linter", "run (local)" buttons.
+
+## 1.6.1
+
+- Update internal `firebase-tools` dependency to 14.13.0
+
+## 1.6.0
+
+- Update internal `firebase-tools` dependency to 14.11.1
+- [Changed] Now integrates with GCA in its agentic mode, powered by the Gemini CLI. This brings the Firebase MCP Server directly into the VS Code environment, enabling developers to use natural language to generate application schemas and queries without manually invoking explicit tools.
+
+## 1.5.1
+
+- Update internal `firebase-tools` dependency to 14.11.0
+- [Fixed] Language server now properly recognizes nested Dataconnect folders
+- [Fixed] Add Data and Read Data now properly support enum and list types
+
+## 1.5.0
+
+- Update internal `firebase-tools` dependency to 14.9.0
+- Update internal `graphql-language-server` dependency
+- Update internal `graphql-language-service-server` dependency
+- [Changed] Graphql Syntax Highlighter is now an extension dependency
+- [Fixed] Language server now recognizes fragments in other files
+
+## 1.4.1
+
+- Update internal `firebase-tools` dependency to 14.6.0
+- [Changed] Updated Gemini Tool name to @FirebaseDataConnect
+
+## 1.4.0
+
+- Update internal `firebase-tools` dependency to 14.4.0
+- [Added] @data-connect tool callable from the Gemini Code Assist extension.
+
+## 1.3.1
+
+- Updated internal `firebase-tools` dependency to 14.2.1
+
+## 1.3.0
+
+- [Fixed] Fixed an issue where adhoc operations would fail to execute
+
+## 1.2.0
+
+- Updated internal `firebase-tools` dependency to 14.2.0
+- [Fixed] Fragments now properly validate for execution
+
+## 1.1.0
+
+- Updated internal `firebase-tools` dependency to 14.1.0
+- [Fixed] User auth will now load without requiring extension sidebar to open
+
+## 1.0.0
+
+- [Breaking] Updated minimum VSCode version requirement to 1.69.0 to ensure node 20 is used
+- Updated internal `firebase-tools` dependency to 14.0.0
+- [Added] Added rerun execution button in variables context
+- [Added] Provide default required variables during execution
+- [Fixed] Fixed an issue where environment variables provided in `extraEnv` were not respected in some cases
+
+## 0.14.2
+
+- Updated internal `firebase-tools` dependency to 13.34.0
+
+## 0.14.1
+
+- Updated internal `firebase-tools` dependency to 13.33.0
+- Updated introspection endpoint to V1
+- Allow unused variables in GraphQL queries and mutations.
+
+## 0.14.0
+
+- Updated internal `firebase-tools` dependency to 13.32.0
+- [Fixed] Graphql Language Server support for Windows
+
+## 0.13.1
+
+- Updated internal `firebase-tools` dependency to 13.31.2
+
+## 0.13.0
+
+- Updated internal `firebase-tools` dependency to 13.30.0
+- [Added] Added `extraEnv` setting to help extension development.
+- [Added] Make Run Local button always present
+
+## 0.12.2
+
+- Updated internal `firebase-tools` dependency to 13.29.3
+- [Fixed] Fixed a bug where results panel would break on API error
+
+## 0.12.1
+
+- Updated internal `firebase-tools` dependency to 13.29.2
+- [Added] Added support for emulator import/export.
+- [Added] Added `debug` setting to run commands with `--debug`
+- [Fixed] Fixed a bug where emulator issues weren't being surfaced
+
+## 0.12.0
+
+- Updated internal firebase-tools dependency to 13.29.1
+- [Fixed] Fixed firebase binary detection for analytics
+
+## 0.11.1
+
+- [Fixed] Fixed IDX analytics issue
+
+## 0.11.0
+
+- Updated internal firebase-tools dependency to 13.28.0
+- [Fixed] Fixed an issue where generating an ad-hoc file would break codelenses
+
+## 0.10.8
+
+- Updated internal firebase-tools dependency to 13.25.0
+- [Fixed] Fixed an issue where the toolkit wouldn't start with misconfigured configs
+- [Fixed] Fixed a visual bug when selecting a Firebase project in an empty folder
+
+## 0.10.7
+
+- Updated internal firebase-tools dependency to 13.24.2
+- [Fixed] Fixed an issue where Add data and Read data would generate operations in the wrong folder
+- [Fixed] Fixed an issue where firebase version check produced false positives on Windows (#7910)
+
+## 0.10.6
+
+- Updated internal firebase-tools dependency to 13.23.1
+- [Added] Persist FIREBASE_BINARY env variable to settings.
+- [Fixed] Fixed an issue where .firebaserc was being overwritten by the extension (#7861)
+
+## 0.10.5
+
+- [Fixed] Fixed an issue where multiple instances of the extension would break the toolkit.
+
+## 0.10.4
+
+- [Fixed] Fixed an issue where log files would be written to non-Firebase directories.
+
+## 0.10.3
+
+- Updated internal firebase-tools dependency to 13.21.0
+- Updated default debug-log output to .firebase/logs directory
+- [Fixed] Fixed an issue where emulator startup would hang
+- Updated text for SDK configuration button
+
+## 0.10.2
+
+- Updated internal firebase-tools dependency to 13.20.2
+
+## 0.10.1
+
+- [Fixed] Fixed an issue where commands would be executed against directory default project instead of the currently selected project.
+- [Fixed] Fixed an issue where expired auth tokens would be used.
+- [Fixed] Fixed an issue where Add Data wouldn't generate UUID types
+- Updated README with feature descriptions
+
+## 0.10.0
+
+- [Added] UI overhaul.
+- [Added] Added View Docs button to see generated documentation for your schema and connectors.
+- [Fixed] Improved detection for emulator start up and shut down.
+- [Fixed] Improved error handling for variables pane.
+- [Added] Added Firebase path setting, to control which Firebase dbinary is used when executing commands.
+
+## 0.9.1
+
+- Updated internal firebase-tools dependency to 13.19.0
+
+## 0.9.0
+
+- Updated internal firebase-tools dependency to 13.18.0
+
 ## 0.8.0
 
 - Updated internal firebase-tools dependency to 13.17.0

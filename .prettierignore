@@ -5,7 +5,9 @@
 /scripts/frameworks-tests/vite-project/**
 /scripts/webframeworks-deploy-tests/angular/**
 /scripts/webframeworks-deploy-tests/nextjs/**
+/scripts/agent-evals/output/**
 /src/frameworks/docs/**
+/prompts
 
 # Intentionally invalid YAML file:
 /src/test/fixtures/extension-yamls/invalid/extension.yaml

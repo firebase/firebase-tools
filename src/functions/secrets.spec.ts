@@ -27,16 +27,16 @@ describe("functions/secret", () => {
 
   describe("ensureValidKey", () => {
     let warnStub: sinon.SinonStub;
-    let promptStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
 
     beforeEach(() => {
       warnStub = sinon.stub(utils, "logWarning").resolves(undefined);
-      promptStub = sinon.stub(prompt, "promptOnce").resolves(true);
+      confirmStub = sinon.stub(prompt, "confirm").resolves(true);
     });
 
     afterEach(() => {
       warnStub.restore();
-      promptStub.restore();
+      confirmStub.restore();
     });
 
     it("returns the original key if it follows convention", async () => {
@@ -89,7 +89,7 @@ describe("functions/secret", () => {
     let getStub: sinon.SinonStub;
     let createStub: sinon.SinonStub;
     let patchStub: sinon.SinonStub;
-    let promptStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
     let warnStub: sinon.SinonStub;
 
     beforeEach(() => {
@@ -99,7 +99,7 @@ describe("functions/secret", () => {
       createStub = sandbox.stub(secretManager, "createSecret").rejects("Unexpected call");
       patchStub = sandbox.stub(secretManager, "patchSecret").rejects("Unexpected call");
 
-      promptStub = sandbox.stub(prompt, "promptOnce").resolves(true);
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
       warnStub = sandbox.stub(utils, "logWarning").resolves(undefined);
     });
 
@@ -119,12 +119,13 @@ describe("functions/secret", () => {
     it("prompt user to have Firebase manage the secret if not managed by Firebase", async () => {
       getStub.resolves({ ...secret, labels: [] });
       patchStub.resolves(secret);
+      confirmStub.resolves(true);
 
       await expect(
         secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
       expect(warnStub).to.have.been.calledOnce;
-      expect(promptStub).to.have.been.calledOnce;
+      expect(confirmStub).to.have.been.calledOnce;
     });
 
     it("does not prompt user to have Firebase manage the secret if already managed by Firebase", async () => {
@@ -135,7 +136,7 @@ describe("functions/secret", () => {
         secrets.ensureSecret("project-id", "MY_SECRET", options),
       ).to.eventually.deep.equal(secret);
       expect(warnStub).not.to.have.been.calledOnce;
-      expect(promptStub).not.to.have.been.calledOnce;
+      expect(confirmStub).not.to.have.been.calledOnce;
     });
 
     it("creates a new secret if it doesn't exists", async () => {
@@ -555,7 +556,7 @@ describe("functions/secret", () => {
       };
       const fn: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
         name: `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`,
-        runtime: endpoint.runtime,
+        runtime: endpoint.runtime!,
         entryPoint: endpoint.entryPoint,
         secretEnvironmentVariables: [{ ...sev, version: "2" }],
       };

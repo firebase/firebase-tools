@@ -37,7 +37,7 @@ describe("needProjectNumber", () => {
   let getProjectStub: sinon.SinonStub;
 
   beforeEach(() => {
-    getProjectStub = sinon.stub(projects, "getFirebaseProject").throws(new Error("stubbed"));
+    getProjectStub = sinon.stub(projects, "getProject").throws(new Error("stubbed"));
   });
 
   afterEach(() => {

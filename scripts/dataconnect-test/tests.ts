@@ -32,9 +32,7 @@ function expected(
 }
 
 async function cleanUpService(projectId: string, serviceId: string, databaseId: string) {
-  await client.deleteServiceAndChildResources(
-    `projects/${projectId}/locations/us-central1/services/${serviceId}`,
-  );
+  await client.deleteService(`projects/${projectId}/locations/us-central1/services/${serviceId}`);
   await deleteDatabase(projectId, "dataconnect-test", databaseId);
 }
 
@@ -173,7 +171,7 @@ describe("firebase deploy", () => {
             serviceId,
             databaseId,
             service["schemaUpdateTime"],
-            service["connectors"][0]["connectorLastUpdated"],
+            service["connectors"]?.[0]?.["connectorLastUpdated"],
           ),
         );
       }

@@ -13,13 +13,14 @@ import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import * as fsutils from "../fsutils";
 import Signals = NodeJS.Signals;
 import SignalsListener = NodeJS.SignalsListener;
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 import { emulatorSession } from "../track";
 import { setEnvVarsForEmulators } from "./env";
+import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
 
 export const FLAG_ONLY = "--only <emulators>";
 export const DESC_ONLY =
@@ -108,10 +109,10 @@ export function printNoticeIfEmulated(
  * that always talks to production. This warns customers if they've specified
  * an emulator port that the command actually talks to production.
  */
-export function warnEmulatorNotSupported(
+export async function warnEmulatorNotSupported(
   options: any,
   emulator: Emulators.DATABASE | Emulators.FIRESTORE,
-): void | Promise<void> {
+): Promise<void> {
   if (emulator !== Emulators.DATABASE && emulator !== Emulators.FIRESTORE) {
     return;
   }
@@ -130,18 +131,17 @@ export function warnEmulatorNotSupported(
       )}, however this command does not support running against the ${emuName} so this action will affect production.`,
     );
 
-    const opts = {
-      confirm: undefined,
-    };
-    return promptOnce({
-      type: "confirm",
-      default: false,
-      message: "Do you want to continue?",
-    }).then(() => {
-      if (!opts.confirm) {
-        return utils.reject("Command aborted.", { exit: 1 });
-      }
-    });
+    if (!(await confirm("Do you want to continue?"))) {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
+    }
+  }
+}
+
+export async function errorMissingProject(options: any): Promise<void> {
+  if (!options.project) {
+    throw new FirebaseError(
+      "Project is not defined. Either use `--project` or use `firebase use` to set your active project.",
+    );
   }
 }
 
@@ -164,16 +164,23 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
     !controller.shouldStart(optionsWithConfig, Emulators.FUNCTIONS) &&
     !controller.shouldStart(optionsWithConfig, Emulators.HOSTING);
 
-  try {
-    await requireAuth(options);
-  } catch (e: any) {
-    logger.debug(e);
-    utils.logLabeledWarning(
-      "emulators",
-      `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
-        "firebase login",
-      )} to authenticate the CLI.`,
-    );
+  // We generally should not check for auth if you are using a demo project since prod calls to a fake project will fail.
+  // However, extensions makes 'publishers/*' calls that require auth, so we'll requireAuth if you are using extensions.
+  if (
+    !Constants.isDemoProject(options.project) ||
+    controller.shouldStart(optionsWithConfig, Emulators.EXTENSIONS)
+  ) {
+    try {
+      await requireAuth(options);
+    } catch (e: any) {
+      logger.debug(e);
+      utils.logLabeledWarning(
+        "emulators",
+        `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
+          "firebase login",
+        )} to authenticate the CLI.`,
+      );
+    }
   }
 
   if (canStartWithoutConfig && !options.config) {
@@ -460,12 +467,16 @@ export async function emulatorExec(script: string, options: any): Promise<void> 
     extraEnv[Constants.FIREBASE_GA_SESSION] = JSON.stringify(session);
   }
   let exitCode = 0;
-  let deprecationNotices;
+  let deprecationNotices: string[] = [];
   try {
     const showUI = !!options.ui;
     ({ deprecationNotices } = await controller.startAll(options, showUI, true));
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_STARTED });
     exitCode = await runScript(script, extraEnv);
     await controller.onExit(options);
+  } catch (err: unknown) {
+    await sendVSCodeMessage({ message: VSCODE_MESSAGE.EMULATORS_START_ERRORED });
+    throw err;
   } finally {
     await controller.cleanShutdown();
   }
@@ -576,7 +587,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
   });
 }
 
-export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 11;
+export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 21;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools no longer supports Java version before 11. " +
-  "Please upgrade to Java version 11 or above to continue using the emulators.";
+  "firebase-tools no longer supports Java version before 21. " +
+  "Please install a JDK at version 21 or above to get a compatible runtime.";

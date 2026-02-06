@@ -2,17 +2,25 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "es2020",
-    "lib": ["es2020"],
-    "outDir": "../../dist/test",
-    "allowSyntheticDefaultImports": true,
+    "lib": ["es2020", "dom"],
+    "strict": true /* enable all strict type-checking options */,
+    "allowJs": true,
+    "checkJs": false,
     "sourceMap": true,
-    "rootDirs": ["../", "../../../src", "../../common"],
-    "jsx": "react",
-    /* Cannot be enabled until we enable it in the root tsconfig.json */
-    "strict": false,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "types": ["node", "expect-webdriverio", "wdio-vscode-service", "mocha"]
+    "resolveJsonModule": true,
+    "outDir": "../../dist/test",
+    "rootDirs": ["../", "../../common/", "../../../src/"],
+    "jsx": "react",
+    "types": [
+      "node",
+      "@wdio/mocha-framework",
+      "@wdio/globals/types",
+      "@types/mocha",
+      "wdio-vscode-service"
+    ]
   },
   "exclude": ["**/*.test.ts"],
-  "include": ["../**/*", "../../common/**/*"]
+  "include": ["../**/*", "../../common/**/*", "../../../src/types/**/*"]
 }

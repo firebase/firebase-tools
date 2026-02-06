@@ -1,4 +1,6 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+import * as rc from "./rc";
 import * as nock from "nock";
 
 import { Command, validateProjectId } from "./command";
@@ -22,6 +24,7 @@ describe("Command", () => {
         },
         ["foo", "bar"],
       );
+      command.alias("example2");
       command.help("here's how!");
       command.action(() => {
         // do nothing
@@ -30,6 +33,18 @@ describe("Command", () => {
   });
 
   describe("runner", () => {
+    let rcStub: sinon.SinonStub;
+    beforeEach(() => {
+      rcStub = sinon
+        .stub(rc, "loadRC")
+        .returns(new rc.RC(undefined, { projects: { default: "default-project" } }));
+    });
+
+    afterEach(() => {
+      rcStub.restore();
+      nock.cleanAll();
+    });
+
     it("should work when no arguments are passed and options", async () => {
       const run = command
         .action((options) => {
@@ -85,11 +100,15 @@ describe("Command", () => {
     });
 
     it("should resolve a numeric --project flag into a project id", async () => {
-      nock("https://firebase.googleapis.com").get("/v1beta1/projects/12345678").reply(200, {
+      nock("https://cloudresourcemanager.googleapis.com").get("/v1/projects/12345678").reply(200, {
         projectNumber: "12345678",
         projectId: "resolved-project",
       });
-
+      nock("https://serviceusage.googleapis.com")
+        .get("/v1/projects/12345678/services/cloudresourcemanager.googleapis.com")
+        .reply(200, {
+          state: "ENABLED",
+        });
       const run = command
         .action((options) => {
           return {
@@ -124,6 +143,25 @@ describe("Command", () => {
         projectId: "resolved-project",
         projectNumber: undefined,
         project: "resolved-project",
+      });
+    });
+
+    it("should use the 'default' alias if no project is passed", async () => {
+      const run = command
+        .action((options) => {
+          return {
+            project: options.project,
+            projectNumber: options.projectNumber,
+            projectId: options.projectId,
+          };
+        })
+        .runner();
+
+      const result = await run({});
+      expect(result).to.deep.eq({
+        projectId: "default-project",
+        projectNumber: undefined,
+        project: "default-project",
       });
     });
   });

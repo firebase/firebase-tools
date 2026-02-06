@@ -678,4 +678,4 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         });
     });
   });
-});
+}).timeout(5000);

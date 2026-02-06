@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { auth } from "google-auth-library";
 
 import { clientId, clientSecret } from "./api";
 import { Tokens, User, Account } from "./types/auth";
@@ -105,4 +106,13 @@ function userEmailSlug(user: User): string {
   const slug = email.replace("@", "_").replace(".", "_");
 
   return slug;
+}
+
+export async function hasDefaultCredentials(): Promise<boolean> {
+  try {
+    await auth.getApplicationDefault();
+    return true;
+  } catch (err: any) {
+    return false;
+  }
 }
