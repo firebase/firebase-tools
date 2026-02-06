@@ -154,6 +154,70 @@ describe("hosting feature init", () => {
         ),
       ).to.be.true;
     });
+
+    it("should not terminate for static frameworks like Flutter", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      sandbox
+        .stub(frameworks, "discover")
+        .resolves({ framework: "flutter", mayWantBackend: false });
+      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+
+      sandbox.stub(prompt, "confirm").resolves(false);
+      const inputStub = sandbox.stub(prompt, "input").resolves("public");
+      sandbox.stub(github, "initGitHub").resolves();
+
+      await askQuestions(setup, cfg, {
+        cwd: "/",
+        configPath: "",
+        only: "",
+        except: "",
+        nonInteractive: false,
+      } as any);
+
+      expect(
+        inputStub.calledWith(
+          sinon.match({ message: "What do you want to use as your public directory?" }),
+        ),
+      ).to.be.true;
+    });
+
+    it("should not terminate when a framework without backend is detected", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      sandbox.stub(frameworks, "discover").resolves({ framework: "react", mayWantBackend: false });
+      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+
+      sandbox.stub(prompt, "confirm").resolves(false);
+      const inputStub = sandbox.stub(prompt, "input").resolves("public");
+      sandbox.stub(github, "initGitHub").resolves();
+
+      await askQuestions(setup, cfg, {
+        cwd: "/",
+        configPath: "",
+        only: "",
+        except: "",
+        nonInteractive: false,
+      } as any);
+
+      expect(
+        inputStub.calledWith(
+          sinon.match({ message: "What do you want to use as your public directory?" }),
+        ),
+      ).to.be.true;
+    });
   });
 
   describe("actuate", () => {
