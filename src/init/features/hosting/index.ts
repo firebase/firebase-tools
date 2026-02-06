@@ -63,20 +63,9 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   }
 
   const discoveredFramework = await discoverPromise;
-  if (discoveredFramework && discoveredFramework.framework !== "flutter") {
+  if (discoveredFramework && discoveredFramework.mayWantBackend) {
     const frameworkName =
       WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
-    logger.info();
-    logger.info(
-      `Detected an existing ${clc.bold(frameworkName)} codebase in the current directory.`,
-    );
-    logger.info(
-      `Firebase Hosting supports static web apps only. If your app uses server-side rendering,`,
-    );
-    logger.info(
-      `set up ${clc.bold("Firebase App Hosting")} instead by running ${clc.bold("firebase init apphosting")}`,
-    );
-    logger.info();
     throw new FirebaseError(
       `Detected a ${frameworkName} codebase. Use ${clc.bold("firebase init apphosting")} instead.`,
     );
