@@ -197,7 +197,7 @@ describe("hosting feature init", () => {
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox.stub(frameworks, "discover").resolves({ framework: "react", mayWantBackend: false });
+      sandbox.stub(frameworks, "discover").resolves({ framework: "nextjs", mayWantBackend: false });
       sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
 
       sandbox.stub(prompt, "confirm").resolves(false);
