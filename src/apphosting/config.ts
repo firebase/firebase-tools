@@ -1,4 +1,4 @@
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as clc from "colorette";
@@ -159,6 +159,7 @@ const dynamicDispatch = exports as {
   upsertEnv: typeof upsertEnv;
   store: typeof store;
   overrideChosenEnv: typeof overrideChosenEnv;
+  listAppHostingFilesInPath: typeof listAppHostingFilesInPath;
 };
 
 /**
@@ -348,4 +349,72 @@ export async function overrideChosenEnv(
 
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
+}
+
+/**
+ * Split a set of environment variables into build and runtime variables.
+ */
+export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: Env[] } {
+  const build: EnvMap = {};
+  const runtime: Env[] = [];
+
+  for (const [key, val] of Object.entries(env)) {
+    const envVal = { ...val };
+    if (envVal.value !== undefined) {
+      envVal.value = String(envVal.value);
+    }
+
+    if (val.availability?.includes("BUILD")) {
+      build[key] = envVal;
+    }
+    if (val.availability?.includes("RUNTIME") || !val.availability) {
+      runtime.push({ variable: key, ...envVal });
+    }
+  }
+
+  return { build, runtime };
+}
+
+interface GetConfigOptions {
+  allowEmulator?: boolean;
+  allowLocal?: boolean;
+}
+
+/**
+ * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
+ * overriding union.
+ *
+ * @param backendDir The directory containing the apphosting.yaml.
+ * @param options Options to control which files to load.
+ */
+export async function getAppHostingConfiguration(
+  backendDir: string,
+  options: GetConfigOptions = {},
+): Promise<AppHostingYamlConfig> {
+  const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
+  const fileNameToPathMap = Object.fromEntries(
+    appHostingConfigPaths.map((path) => [basename(path), path]),
+  );
+  let output = AppHostingYamlConfig.empty();
+
+  const baseFilePath = fileNameToPathMap[APPHOSTING_BASE_YAML_FILE];
+  const emulatorsFilePath = fileNameToPathMap[APPHOSTING_EMULATORS_YAML_FILE];
+  const localFilePath = fileNameToPathMap[APPHOSTING_LOCAL_YAML_FILE];
+
+  if (baseFilePath) {
+    const baseFile = await AppHostingYamlConfig.loadFromFile(baseFilePath);
+    output = baseFile;
+  }
+
+  if (options.allowEmulator && emulatorsFilePath) {
+    const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
+    output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
+  }
+
+  if (options.allowLocal && localFilePath) {
+    const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+    output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+  }
+
+  return output;
 }

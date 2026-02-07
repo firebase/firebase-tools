@@ -472,4 +472,25 @@ env:
       );
     });
   });
+
+  describe("splitEnvVars", () => {
+    it("should stringify numeric values", () => {
+      const env: AppHostingYamlConfig["env"] = {
+        STR: { value: "string" },
+        NUM: { value: 12345 as any },
+        BUILD_AND_RUNTIME_NUM: { value: 67890 as any, availability: ["BUILD", "RUNTIME"] },
+      };
+
+      const { build, runtime } = config.splitEnvVars(env);
+
+      expect(build["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
+      expect(runtime).to.deep.include({ variable: "STR", value: "string" });
+      expect(runtime).to.deep.include({ variable: "NUM", value: "12345" });
+      expect(runtime).to.deep.include({
+        variable: "BUILD_AND_RUNTIME_NUM",
+        value: "67890",
+        availability: ["BUILD", "RUNTIME"],
+      });
+    });
+  });
 });

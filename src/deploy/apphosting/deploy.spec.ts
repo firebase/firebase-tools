@@ -42,6 +42,7 @@ function initializeContext(): Context {
         buildDir: "./nextjs/standalone",
         buildConfig: {},
         annotations: {},
+        env: [],
       },
     },
   };
@@ -50,7 +51,7 @@ function initializeContext(): Context {
 describe("apphosting", () => {
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
-  let createArchiveStub: sinon.SinonStub;
+  let createTarArchiveStub: sinon.SinonStub;
   let createReadStreamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
 
@@ -60,7 +61,9 @@ describe("apphosting", () => {
       .throws("Unexpected getProjectNumber call");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
-    createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
+    createTarArchiveStub = sinon
+      .stub(util, "createTarArchive")
+      .throws("Unexpected createTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
@@ -99,8 +102,8 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-1234.tar.gz");
+      createTarArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -156,7 +159,7 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createArchiveStub).to.be.calledWithExactly(
+      expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
         process.cwd(),
         "./nextjs/standalone",
@@ -174,8 +177,8 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-1234.tar.gz");
+      createTarArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -190,9 +193,9 @@ describe("apphosting", () => {
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.tar.gz`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
-        `gs://${bucketName}/foo-local-build-1234.zip`,
+        `gs://${bucketName}/foo-local-build-1234.tar.gz`,
       );
     });
   });

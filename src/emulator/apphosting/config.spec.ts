@@ -29,19 +29,25 @@ describe("environments", () => {
     randomSecretFour: { value: "RANDOM_SECRET_FOUR_PLAINTEXT" },
   };
 
-  // Configs used for stubs
-  const apphostingYamlConfigOne = AppHostingYamlConfig.empty();
-  apphostingYamlConfigOne.env = { ...apphostingYamlEnvOne };
-
-  const apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
-  apphostingYamlConfigTwo.env = { ...apphostingYamlEnvTwo };
-
-  const apphostingYamlConfigSecretsToPlaintext = AppHostingYamlConfig.empty();
-  apphostingYamlConfigSecretsToPlaintext.env = { ...apphostingYamlSecretToPlaintext };
+  let apphostingYamlConfigOne: AppHostingYamlConfig;
+  let apphostingYamlConfigTwo: AppHostingYamlConfig;
+  let apphostingYamlConfigSecretsToPlaintext: AppHostingYamlConfig;
 
   beforeEach(() => {
     loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
     listAppHostingFilesInPathStub = sinon.stub(configImport, "listAppHostingFilesInPath");
+
+    apphostingYamlConfigOne = AppHostingYamlConfig.empty();
+    apphostingYamlConfigOne.filename = "apphosting.yaml";
+    apphostingYamlConfigOne.env = { ...apphostingYamlEnvOne };
+
+    apphostingYamlConfigTwo = AppHostingYamlConfig.empty();
+    apphostingYamlConfigTwo.filename = "apphosting.emulator.yaml";
+    apphostingYamlConfigTwo.env = { ...apphostingYamlEnvTwo };
+
+    apphostingYamlConfigSecretsToPlaintext = AppHostingYamlConfig.empty();
+    apphostingYamlConfigSecretsToPlaintext.filename = "apphosting.local.yaml";
+    apphostingYamlConfigSecretsToPlaintext.env = { ...apphostingYamlSecretToPlaintext };
   });
 
   afterEach(() => {

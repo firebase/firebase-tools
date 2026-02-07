@@ -24,6 +24,7 @@ import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
 import { AppPlatform, getAppConfig } from "../../management/apps";
 import { spawnSync } from "child_process";
 import { gte as semverGte } from "semver";
+import { getAutoinitEnvVars } from "../../apphosting/utils";
 
 interface StartOptions {
   projectId?: string;
@@ -157,12 +158,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   } else {
     const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
     if (webappConfig) {
-      environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
-      environmentVariablesToInject["FIREBASE_CONFIG"] ||= JSON.stringify({
-        databaseURL: webappConfig.databaseURL,
-        storageBucket: webappConfig.storageBucket,
-        projectId: webappConfig.projectId,
-      });
+      Object.assign(environmentVariablesToInject, getAutoinitEnvVars(webappConfig));
     }
     await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }

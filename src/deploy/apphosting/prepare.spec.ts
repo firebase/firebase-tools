@@ -10,6 +10,7 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
+import * as managementApps from "../../management/apps";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -122,7 +123,67 @@ describe("apphosting", () => {
         buildDir: "./next/standalone",
         buildConfig,
         annotations,
+        env: [],
       });
+    });
+
+    it("injects Firebase configuration when appId is present", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const webAppConfig = {
+        projectId: "my-project",
+        appId: "my-app-id",
+        apiKey: "my-api-key",
+        authDomain: "my-project.firebaseapp.com",
+        databaseURL: "https://my-project.firebaseio.com",
+        storageBucket: "my-project.appspot.com",
+        messagingSenderId: "123456",
+        measurementId: "G-123456",
+      };
+
+      sinon.stub(managementApps, "getAppConfig").resolves(webAppConfig);
+      const localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig: { runCommand: "npm run build", env: [] },
+        annotations: {},
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+            appId: "my-app-id",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(localBuildStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "nextjs",
+        sinon.match({
+          FIREBASE_WEBAPP_CONFIG: { value: JSON.stringify(webAppConfig) },
+          FIREBASE_CONFIG: {
+            value: JSON.stringify({
+              databaseURL: webAppConfig.databaseURL,
+              storageBucket: webAppConfig.storageBucket,
+              projectId: webAppConfig.projectId,
+            }),
+          },
+        }),
+      );
     });
 
     it("links to existing backend if it already exists", async () => {

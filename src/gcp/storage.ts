@@ -149,8 +149,13 @@ export interface UpsertBucketRequest {
   baseName: string;
   location: string;
   purposeLabel: string;
-  lifecycle: {
+  lifecycle?: {
     rule: LifecycleRule[];
+  };
+  iamConfiguration?: {
+    uniformBucketLevelAccess: {
+      enabled: boolean;
+    };
   };
 }
 
@@ -158,8 +163,13 @@ export interface CreateBucketRequest {
   name: string;
   location: string;
   labels?: Record<string, string>;
-  lifecycle: {
+  lifecycle?: {
     rule: LifecycleRule[];
+  };
+  iamConfiguration?: {
+    uniformBucketLevelAccess: {
+      enabled: boolean;
+    };
   };
 }
 
@@ -456,6 +466,14 @@ export async function upsertBucket(opts: {
   const existingBuckets = await dynamicDispatch.listBuckets(opts.projectId);
   const managedBucket = existingBuckets.find((b) => opts.req.purposeLabel in (b.labels || {}));
   if (managedBucket) {
+    if (
+      opts.req.iamConfiguration &&
+      !managedBucket.iamConfiguration?.uniformBucketLevelAccess?.enabled
+    ) {
+      await dynamicDispatch.patchBucket(managedBucket.name, {
+        iamConfiguration: opts.req.iamConfiguration as any,
+      });
+    }
     return managedBucket.name;
   }
 
@@ -468,7 +486,11 @@ export async function upsertBucket(opts: {
       `Found existing bucket ${existingUnmanaged.name} without purpose label. Because it is known not to be squatted, we can use it.`,
     );
     const labels = { ...existingUnmanaged.labels, [opts.req.purposeLabel]: "true" };
-    await dynamicDispatch.patchBucket(existingUnmanaged.name, { labels });
+    const patch: Partial<BucketResponse> = { labels };
+    if (opts.req.iamConfiguration) {
+      patch.iamConfiguration = opts.req.iamConfiguration as any;
+    }
+    await dynamicDispatch.patchBucket(existingUnmanaged.name, patch);
     return existingUnmanaged.name;
   }
 
@@ -485,6 +507,7 @@ export async function upsertBucket(opts: {
           name,
           location: opts.req.location,
           lifecycle: opts.req.lifecycle,
+          iamConfiguration: opts.req.iamConfiguration,
           labels: {
             [opts.req.purposeLabel]: "true",
           },
