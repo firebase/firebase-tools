@@ -8,6 +8,7 @@ import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
+import { Tenant } from "./auth/state";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
 import { DataConnectEmulator } from "./dataconnectEmulator";
@@ -253,10 +254,36 @@ export class HubExport {
       fs.mkdirSync(authExportPath);
     }
 
+    const tenantsRes = await EmulatorRegistry.client(Emulators.AUTH).get<{
+      tenants: Array<Tenant>;
+    }>(`/identitytoolkit.googleapis.com/v2/projects/${this.projectId}/tenants`, {
+      headers: { Authorization: "Bearer owner" },
+    });
+    const tenants = tenantsRes.body.tenants.map((instance: Tenant) => instance.tenantId);
+
+    // Export accounts from other tenants.
+    for (const tenantId of tenants) {
+      const accountsFile = path.join(authExportPath, `accounts-${tenantId}.json`);
+      logger.debug(
+        `Exporting auth users in Project ${this.projectId} ${tenantId} tenant to ${accountsFile}`,
+      );
+      await fetchToFile(
+        {
+          host,
+          port,
+          path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1&tenantId=${tenantId}`,
+          headers: { Authorization: "Bearer owner" },
+        },
+        accountsFile,
+      );
+    }
+
     // TODO: Shall we support exporting other projects too?
 
     const accountsFile = path.join(authExportPath, "accounts.json");
-    logger.debug(`Exporting auth users in Project ${this.projectId} to ${accountsFile}`);
+    logger.debug(
+      `Exporting auth users in Project ${this.projectId} default tenant to ${accountsFile}`,
+    );
     await fetchToFile(
       {
         host,
