@@ -15,6 +15,7 @@ describe("cloudbilling", () => {
     it("should resolve with true if billing is enabled", async () => {
       nock(cloudbillingOrigin())
         .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(200, { billingEnabled: true });
 
       const result = await cloudbilling.checkBillingEnabled(PROJECT_ID);
@@ -26,6 +27,7 @@ describe("cloudbilling", () => {
     it("should resolve with false if billing is not enabled", async () => {
       nock(cloudbillingOrigin())
         .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(200, { billingEnabled: false });
 
       const result = await cloudbilling.checkBillingEnabled(PROJECT_ID);
@@ -37,6 +39,7 @@ describe("cloudbilling", () => {
     it("should reject if the API call fails", async () => {
       nock(cloudbillingOrigin())
         .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(404, { error: { message: "Not Found" } });
 
       await expect(cloudbilling.checkBillingEnabled(PROJECT_ID)).to.be.rejectedWith("Not Found");
@@ -75,6 +78,7 @@ describe("cloudbilling", () => {
       };
       nock(cloudbillingOrigin())
         .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(200, { billingEnabled: true });
 
       const result = await cloudbilling.isBillingEnabled(setup);
@@ -92,6 +96,7 @@ describe("cloudbilling", () => {
         .put(`/v1/projects/${PROJECT_ID}/billingInfo`, {
           billingAccountName: billingAccountName,
         })
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(200, { billingEnabled: true });
 
       const result = await cloudbilling.setBillingAccount(PROJECT_ID, billingAccountName);
@@ -105,6 +110,7 @@ describe("cloudbilling", () => {
         .put(`/v1/projects/${PROJECT_ID}/billingInfo`, {
           billingAccountName: billingAccountName,
         })
+        .matchHeader("x-goog-user-project", PROJECT_ID)
         .reply(403, { error: { message: "Permission Denied" } });
 
       await expect(
