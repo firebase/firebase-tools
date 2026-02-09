@@ -29,6 +29,7 @@ export const STANDARD_HEADERS: Record<string, string> = {
   "User-Agent": clientVersion,
   "X-Client-Version": clientVersion,
 };
+
 // Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
