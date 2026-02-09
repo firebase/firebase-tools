@@ -1,5 +1,5 @@
 import { cloudbillingOrigin } from "../api";
-import { Client, GOOG_USER_PROJECT_HEADER } from "../apiv2";
+import { Client } from "../apiv2";
 import { Setup } from "../init";
 import * as utils from "../utils";
 
@@ -36,10 +36,7 @@ export async function isBillingEnabled(setup: Setup): Promise<boolean> {
 export async function checkBillingEnabled(projectId: string): Promise<boolean> {
   const res = await client.get<{ billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
-    {
-      headers: { [GOOG_USER_PROJECT_HEADER]: projectId },
-      retryCodes: [500, 503],
-    },
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
@@ -58,10 +55,7 @@ export async function setBillingAccount(
     {
       billingAccountName: billingAccountName,
     },
-    {
-      headers: { [GOOG_USER_PROJECT_HEADER]: projectId },
-      retryCodes: [500, 503],
-    },
+    { retryCodes: [500, 503] },
   );
   return res.body.billingEnabled;
 }
