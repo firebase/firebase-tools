@@ -766,7 +766,7 @@ export function compareFunctions(
 
 /**
  * Returns the deterministic Cloud Run URI for a given HTTPS function and project number if available based on the DNS segment length.
- * If the function name is too long to guarantee a deterministic URI, this method returns the non-deterministic URI from the backend instead.
+ * If the function name is too long to have a deterministic URI, this method returns the non-deterministic URI from the backend instead.
  * See https://docs.cloud.google.com/run/docs/triggering/https-request#deterministic for more details.
  */
 export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber: string): string {
@@ -774,8 +774,8 @@ export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber
   const dnsSegment = `${serviceName}-${projectNumber}`;
   // TODO: Add deploy-time validation to prevent service names that would exceed this.
   if (dnsSegment.length > 63) {
-    logger.debug(
-      `Function name ${httpsFunc.id} is too long to guarantee a deterministic Cloud Run URI. Printing the non-deterministic URI instead.`,
+    logger.info(
+      `Function name ${httpsFunc.id} is too long to have a deterministic Cloud Run URI. Printing the non-deterministic URI instead.`,
     );
     return httpsFunc.uri!;
   }
