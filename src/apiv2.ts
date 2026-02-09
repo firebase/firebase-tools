@@ -29,10 +29,11 @@ export const STANDARD_HEADERS: Record<string, string> = {
   "User-Agent": clientVersion,
   "X-Client-Version": clientVersion,
 };
-
+// Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
-const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
+// Header for specifying a quota project. See https://cloud.google.com/apis/docs/system-parameters#project-header
+export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
 export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
