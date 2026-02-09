@@ -15,6 +15,7 @@ import * as experiments from "../../experiments";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
 import { getProjectNumber } from "../../getProjectNumber";
+import * as path from "path";
 
 setGracefulCleanup();
 
@@ -79,8 +80,10 @@ export async function uploadSourceV2(
     ),
   };
 
-  // Legacy behavior: use the GCF API
-  if (!experiments.isEnabled("runfunctions")) {
+  if (
+    !experiments.isEnabled("functionsrunapionly") &&
+    !v2Endpoints.some((e) => e.platform === "run")
+  ) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
       logLabeledWarning(
         "functions",
@@ -93,7 +96,7 @@ export async function uploadSourceV2(
   }
 
   // Future behavior: BYO bucket if we're using the Cloud Run API directly because it does not provide a source upload API.
-  // We use this behavior whenever the "runfunctions" experiment is enabled for now just to help vet the codepath incrementally.
+  // We use this behavior whenever the "functionsrunapionly" experiment is enabled for now just to help vet the codepath incrementally.
   // Using project number to ensure we don't exceed the bucket name length limit (in addition to PII controversy).
   const baseName = `firebase-functions-src-${projectNumber}`;
   const bucketName = await gcs.upsertBucket({
@@ -116,7 +119,7 @@ export async function uploadSourceV2(
       },
     },
   });
-  const objectPath = `${source.functionsSourceV2Hash}.zip`;
+  const objectPath = `${source.functionsSourceV2Hash}${path.extname(source.functionsSourceV2!)}`;
   await gcs.upload(
     uploadOpts,
     `${bucketName}/${objectPath}`,
