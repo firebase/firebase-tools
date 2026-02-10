@@ -87,7 +87,11 @@ const featuresList: Feature[] = [
     askQuestions: features.dataconnectResolverAskQuestions,
     actuate: features.dataconnectResolverActuate,
   },
-  { name: "functions", doSetup: features.functions },
+  {
+    name: "functions",
+    askQuestions: features.functionsAskQuestions,
+    actuate: features.functionsActuate,
+  },
   {
     name: "hosting",
     askQuestions: features.hostingAskQuestions,
