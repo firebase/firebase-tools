@@ -55,7 +55,7 @@ describe("invokeTests", () => {
           testCase: {
             startUri: "https://www.example.com",
             displayName: "testName2",
-            steps: [{ goal: "retest it", successCriteria: "a dialog appears" }],
+            steps: [{ goal: "retest it", finalScreenAssertion: "a dialog appears" }],
           },
           testExecution: [{ config: { browser: Browser.CHROME } }],
         },
@@ -89,7 +89,7 @@ describe("invokeTests", () => {
                 steps: [
                   {
                     goal: "retest it",
-                    successCriteria: "a dialog appears",
+                    finalScreenAssertion: "a dialog appears",
                   },
                 ],
                 startUri: "https://www.example.com",
