@@ -4,10 +4,11 @@ import {
   isMainSchema,
   mainSchema,
   mainSchemaYaml,
+  Schema,
   ServiceInfo,
 } from "../../dataconnect/types";
-import { listConnectors, upsertConnector } from "../../dataconnect/client";
-import { promptDeleteConnector } from "../../dataconnect/prompts";
+import { listConnectors, listSchemas, upsertConnector } from "../../dataconnect/client";
+import { promptDeleteConnector, promptDeleteSchema } from "../../dataconnect/prompts";
 import { Options } from "../../options";
 import { migrateSchema, upsertSecondarySchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
@@ -17,7 +18,6 @@ import { Context } from "./context";
 
 /**
  * Release deploys schemas and connectors.
- * TODO: Also prompt user to delete unused schemas/connectors
  * @param context The deploy context.
  * @param options The CLI options object.
  */
@@ -128,6 +128,17 @@ export default async function (context: Context, options: Options): Promise<void
     await promptDeleteConnector(options, c.name);
   }
 
+  // Check for schemas not tracked in local repositories.
+  const allSchemas = await deployedSchemas(serviceInfos);
+  const schemasToDelete = filters
+    ? []
+    : allSchemas.filter(
+        (s) => !wantSecondarySchemas.some((w) => w.name === s.name) && !isMainSchema(s),
+      );
+  for (const s of schemasToDelete) {
+    await promptDeleteSchema(options, s.name);
+  }
+
   // Print the Console link.
   let consolePath = "/dataconnect";
   if (serviceInfos.length === 1) {
@@ -152,4 +163,14 @@ async function deployedConnectors(serviceInfos: ServiceInfo[]): Promise<Connecto
     connectors = connectors.concat(await listConnectors(si.serviceName));
   }
   return connectors;
+}
+
+// deployedSchemas lists out all of the schemas currently deployed to the services we are deploying.
+// We don't need to worry about schemas on other services because we will delete/ignore the service during deploy
+async function deployedSchemas(serviceInfos: ServiceInfo[]): Promise<Schema[]> {
+  let schemas: Schema[] = [];
+  for (const si of serviceInfos) {
+    schemas = schemas.concat(await listSchemas(si.serviceName));
+  }
+  return schemas;
 }
