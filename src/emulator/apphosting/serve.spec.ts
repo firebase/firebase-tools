@@ -94,17 +94,51 @@ describe("serve", () => {
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
     });
 
-    it("should reject the custom command if a port is specified", async () => {
+    it("should use the port from the start command if one is provided", async () => {
+      const startCommand = "ng serve --port 5555";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      const res = await serve.start({ startCommand });
+
+      expect(res.port).to.equal(5555);
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+    });
+
+    it("should accept -p for port in start command", async () => {
+      const startCommand = "ng serve -p 5555";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      const res = await serve.start({ startCommand });
+
+      expect(res.port).to.equal(5555);
+    });
+
+    it("should reject the custom command if it conflicts with a fixed port", async () => {
       const startCommand = "ng serve --port 5004";
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
-      await expect(serve.start({ startCommand })).to.be.rejectedWith(
+      // Simulate a fixed port passed from the emulator controller (e.g. from firebase.json)
+      await expect(serve.start({ startCommand, port: 5000, portFixed: true })).to.be.rejectedWith(
         FirebaseError,
-        /Specifying a port in the start command is not supported by the apphosting emulator/,
+        /Port 5004 specified in start command conflicts with port 5000 specified in firebase.json/,
       );
 
       expect(spawnWithCommandStringStub).to.not.be.called;
+    });
+
+    it("should allow custom command port if it matches the fixed port", async () => {
+      const startCommand = "ng serve --port 5000";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      const res = await serve.start({ startCommand, port: 5000, portFixed: true });
+
+      expect(res.port).to.equal(5000);
+      expect(spawnWithCommandStringStub).to.be.called;
     });
 
     it("Should pass plaintext environment variables", async () => {

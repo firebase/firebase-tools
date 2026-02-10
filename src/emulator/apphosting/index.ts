@@ -10,6 +10,7 @@ interface AppHostingEmulatorArgs {
   host?: string;
   startCommand?: string;
   rootDirectory?: string;
+  portFixed?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export class AppHostingEmulator implements EmulatorInstance {
       port: this.args.port,
       startCommand: this.args.startCommand,
       rootDirectory: this.args.rootDirectory,
+      portFixed: this.args.portFixed,
     });
     this.args.options.host = hostname;
     this.args.options.port = port;
