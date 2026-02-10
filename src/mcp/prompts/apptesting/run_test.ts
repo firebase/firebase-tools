@@ -66,7 +66,7 @@ Here are a list of prerequisite steps that must be completed before running a te
 
 	* Goal (required): In one sentence or less, describe what you want the agent to do in this step.
 	* Hint (optional): Provide additional information to help Gemini understand and navigate your app.
-	* Success Criteria (optional): Your success criteria should be phrased as an observation, such as 'The screen shows a
+	* Final Screen Assertion (optional): Your final screen assertion should be phrased as an observation, such as 'The screen shows a
     success message' or 'The checkout page is visible'.
 
   The developer has optionally specified the following description for their test:

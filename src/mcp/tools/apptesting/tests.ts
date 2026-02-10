@@ -26,7 +26,7 @@ const AiStepSchema = z
       .string()
       .optional()
       .describe("Hint text containing suggestions to help the agent accomplish the goal."),
-    successCriteria: z
+    finalScreenAssertion: z
       .string()
       .optional()
       .describe(
