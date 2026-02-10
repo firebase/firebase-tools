@@ -56,21 +56,3 @@ export interface GenerateSchemaResponse {
     };
   };
 }
-
-export interface ChatExperienceResponse {
-  output: { messages: CloudAICompanionMessage[] };
-  outputDataContext: {
-    additionalContext: { "@type": string };
-    attributionContext: {
-      citationMetadata: {
-        citations: {
-          startIndex: number;
-          endIndex: number;
-          url: string;
-          title: string;
-          license: string;
-        }[];
-      };
-    };
-  };
-}
