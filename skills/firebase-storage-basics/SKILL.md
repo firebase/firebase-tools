@@ -1,6 +1,6 @@
 ---
 name: firebase-storage-basics
-description: Comprehensive guide for Firebase Storage basics including provisioning, security rules, and SDK usage. Use this skill when the user needs help setting up Cloud Storage for Firebase, writing security rules, or using the Storage SDK in their application.
+description: Comprehensive guide for Firebase Storage basics including provisioning, security rules, and SDK usage. Use this skill when the user needs help setting up Cloud Storage for Firebase, writing security rules, or using the Cloud Storage for Firebase SDK in their application.
 ---
 
 # Firebase Storage Basics

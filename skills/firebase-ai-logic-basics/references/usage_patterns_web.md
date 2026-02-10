@@ -7,6 +7,9 @@ import { initializeApp } from "firebase/app";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
 
 
+// If running in Firebase App Hosting, you can skip Firebase Config and instead use:
+// const app = initializeApp();
+
 const firebaseConfig = {
   // ... your firebase config
 };
