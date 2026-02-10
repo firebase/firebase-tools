@@ -21,7 +21,7 @@ const MAX_ATTEMPTS = 5;
 /**
  * Set up a new firebase project for functions.
  */
-export async function doSetup(setup: any, config: Config, options: Options): Promise<any> {
+export async function askQuestions(setup: any, config: Config, options: Options): Promise<void> {
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
@@ -34,7 +34,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   // check if functions have been initialized yet
   if (!config.src.functions) {
     setup.config.functions = [];
-    return initNewCodebase(setup, config);
+    return initNewCodebase(setup);
   }
   setup.config.functions = normalizeAndValidate(setup.config.functions);
   const codebases = setup.config.functions.map((cfg: any) => clc.bold(cfg.codebase));
@@ -54,13 +54,13 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
     default: "new",
     choices,
   });
-  return initOpt === "new" ? initNewCodebase(setup, config) : overwriteCodebase(setup, config);
+  return initOpt === "new" ? initNewCodebase(setup) : overwriteCodebase(setup);
 }
 
 /**
  *  User dialogue to set up configuration for functions codebase.
  */
-async function initNewCodebase(setup: any, config: Config): Promise<any> {
+async function initNewCodebase(setup: any): Promise<void> {
   logger.info("Let's create a new codebase for your functions.");
   logger.info("A directory corresponding to the codebase will be created in your project");
   logger.info("with sample code pre-configured.\n");
@@ -125,10 +125,10 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   });
   setup.functions.source = source;
   setup.functions.codebase = codebase;
-  return languageSetup(setup, config);
+  return languageSetup(setup);
 }
 
-async function overwriteCodebase(setup: any, config: Config): Promise<any> {
+async function overwriteCodebase(setup: any): Promise<void> {
   let codebase;
   if (setup.config.functions.length > 1) {
     const choices = setup.config.functions.map((cfg: any) => ({
@@ -148,16 +148,16 @@ async function overwriteCodebase(setup: any, config: Config): Promise<any> {
   setup.functions.codebase = cbconfig.codebase;
 
   logger.info(`\nOverwriting ${clc.bold(`codebase ${codebase}...\n`)}`);
-  return languageSetup(setup, config);
+  return languageSetup(setup);
 }
 
 /**
  * User dialogue to set up configuration for functions codebase language choice.
  */
-async function languageSetup(setup: any, config: Config): Promise<any> {
-  // During genkit setup, always select TypeScript here.
+async function languageSetup(setup: any): Promise<void> {
+  // During genkit setup, Typescript is always selected.
   if (setup.languageOverride) {
-    return require("./" + setup.languageOverride).setup(setup, config);
+    return;
   }
 
   const choices = [
@@ -169,11 +169,14 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       name: "TypeScript",
       value: "typescript",
     },
-    {
+  ];
+  if (!setup.featureInfo?.dataconnectResolver) {
+    // Data Connect resolvers do not yet support Python.
+    choices.push({
       name: "Python",
       value: "python",
-    },
-  ];
+    });
+  }
   const language = await select({
     message: "What language would you like to use to write Cloud Functions?",
     default: "javascript",
@@ -207,5 +210,12 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       break;
   }
   setup.functions.languageChoice = language;
-  return require("./" + language).setup(setup, config);
+}
+
+export async function actuate(setup: any, config: Config): Promise<void> {
+  // During genkit setup, always select TypeScript here.
+  if (setup.languageOverride) {
+    return require("./" + setup.languageOverride).setup(setup, config);
+  }
+  return require("./" + setup.functions.languageChoice).setup(setup, config);
 }

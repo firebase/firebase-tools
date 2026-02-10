@@ -1,9 +1,8 @@
 import * as clc from "colorette";
-import * as fs from "fs-extra";
 import { join, relative } from "path";
 import * as yaml from "yaml";
 
-import { input, select } from "../../../prompt";
+import { confirm, input, select } from "../../../prompt";
 import { Setup } from "../..";
 import { logBullet, newUniqueId } from "../../../utils";
 import { Config } from "../../../config";
@@ -14,18 +13,25 @@ import * as experiments from "../../../experiments";
 import { isBillingEnabled } from "../../../gcp/cloudbilling";
 import { trackGA4 } from "../../../track";
 import { Source } from ".";
+import * as functions from "../functions";
+import { Options } from "../../../options";
+import { readTemplateSync } from "../../../templates";
+
+const SCHEMA_TEMPLATE = readTemplateSync("init/dataconnect/secondary_schema.gql");
 
 export interface ResolverRequiredInfo {
   id: string;
   uri: string;
   serviceInfo: ServiceInfo;
+  shouldInitFunctions: boolean;
 }
 
-export async function askQuestions(setup: Setup, config: Config): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   const resolverInfo: ResolverRequiredInfo = {
     id: "",
     uri: "",
     serviceInfo: {} as ServiceInfo,
+    shouldInitFunctions: false,
   };
 
   const serviceInfos = await loadAll(setup.projectId || "", config);
@@ -66,8 +72,17 @@ export async function askQuestions(setup: Setup, config: Config): Promise<void> 
       " later.",
   );
 
+  resolverInfo.shouldInitFunctions = await confirm({
+    message:
+      "Would you like to proceed with initializing a functions codebase with sample custom resolvers code?",
+    default: true,
+  });
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnectResolver = resolverInfo;
+
+  if (resolverInfo.shouldInitFunctions) {
+    await functions.askQuestions(setup, config, options);
+  }
 }
 
 export async function actuate(setup: Setup, config: Config) {
@@ -96,6 +111,9 @@ export async function actuate(setup: Setup, config: Config) {
       Date.now() - startTime,
     );
   }
+  if (resolverInfo.shouldInitFunctions) {
+    await functions.actuate(setup, config);
+  }
 }
 
 function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
@@ -106,13 +124,17 @@ function actuateWithInfo(config: Config, info: ResolverRequiredInfo) {
   info.serviceInfo.dataConnectYaml = dataConnectYaml;
   const dataConnectYamlContents = yaml.stringify(dataConnectYaml);
   const dataConnectYamlPath = join(info.serviceInfo.sourceDirectory, "dataconnect.yaml");
+  const dataConnectSchemaPath = join(
+    info.serviceInfo.sourceDirectory,
+    `schema_${info.id}`,
+    "schema.gql",
+  );
   config.writeProjectFile(
     relative(config.projectDir, dataConnectYamlPath),
     dataConnectYamlContents,
   );
-
-  // Write an empty schema.gql file.
-  fs.ensureFileSync(join(info.serviceInfo.sourceDirectory, `schema_${info.id}`, "schema.gql"));
+  // Write the schema.gql file pre-populated with a template.
+  config.writeProjectFile(relative(config.projectDir, dataConnectSchemaPath), SCHEMA_TEMPLATE);
 }
 
 /** Add secondary schema configuration to dataconnect.yaml in place */
