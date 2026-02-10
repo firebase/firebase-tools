@@ -95,8 +95,16 @@ export const query_collection = tool(
     if (!collection_path || !collection_path.length)
       return mcpError("Must supply at least one collection path.");
 
+    let parent: string | undefined;
+    let collectionId = collection_path;
+    if (collection_path.includes("/")) {
+      const parts = collection_path.split("/");
+      collectionId = parts.pop()!;
+      parent = parts.join("/");
+    }
+
     const structuredQuery: StructuredQuery = {
-      from: [{ collectionId: collection_path, allDescendants: false }],
+      from: [{ collectionId, allDescendants: false }],
     };
     if (filters) {
       structuredQuery.where = {
@@ -141,7 +149,13 @@ export const query_collection = tool(
       emulatorUrl = await host.getEmulatorUrl(Emulators.FIRESTORE);
     }
 
-    const { documents } = await queryCollection(projectId, structuredQuery, database, emulatorUrl);
+    const { documents } = await queryCollection(
+      projectId,
+      structuredQuery,
+      database,
+      emulatorUrl,
+      parent,
+    );
 
     const docs = documents.map(firestoreDocumentToJson);
 
