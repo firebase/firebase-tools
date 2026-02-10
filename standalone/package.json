@@ -12,7 +12,7 @@
   "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.2",
-    "npm": "^8.19.0",
+    "npm": "^11.9.0",
     "shelljs": "^0.8.3",
     "shx": "^0.3.2",
     "user-home": "^2.0.0"
