@@ -36,10 +36,10 @@ description: How to update the Pub/Sub emulator
     # Size
     ls -l pubsub-emulator-<version>.zip
     
-    # MD5 (macOS)
+    # MD5 (macOS: `md5`, Linux: `md5sum`)
     md5 pubsub-emulator-<version>.zip
     
-    # SHA256 (macOS)
+    # SHA256 (macOS: `shasum -a 256`, Linux: `sha256sum`)
     shasum -a 256 pubsub-emulator-<version>.zip
     ```
 
