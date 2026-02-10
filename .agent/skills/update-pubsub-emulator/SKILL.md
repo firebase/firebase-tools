@@ -56,3 +56,7 @@ description: How to update the Pub/Sub emulator
     ```bash
     firebase emulators:start --only pubsub
     ```
+
+8. **Add a Changelog Entry**
+    Add a changelog entry to `CHANGELOG.md` like '- Updated Pub/Sub emulator to version <version>'
+    
