@@ -195,13 +195,15 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(clientPostStub).to.be.calledOnce;
     const args = clientPostStub.firstCall.args;
     expect(args[0]).to.match(
-      /\/projects\/test-project\/apps\/test-app\/locations\/global\/sourceMaps/,
+      /projects\/test-project\/apps\/test-app\/locations\/global\/sourceMaps/,
     );
     expect(args[1].sourceMap).to.deep.equal({
+      name: "projects/test-project/apps/test-app/locations/global/sourceMaps/759213742",
       version: "a".repeat(40),
-      obfuscatedFilePath: "src-test-fixtures-mapping-files-mock_mapping.js.map",
+      obfuscatedFilePath: "src/test/fixtures/mapping-files/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
     });
+    expect(args[2].queryParams).to.deep.equal({ allowMissing: "true" });
   });
 
   it("should warn if registration fails", async () => {
