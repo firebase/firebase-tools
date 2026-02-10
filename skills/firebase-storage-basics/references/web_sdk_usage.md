@@ -10,6 +10,9 @@ Ensure you have initialized your Firebase app first.
 import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
 
+// If running in Firebase App Hosting, you can skip Firebase Config and instead use:
+// const app = initializeApp();
+
 const firebaseConfig = {
   // Your Firebase app config object. Get this by running 'firebase apps:sdkconfig [options] web [appId]
 };

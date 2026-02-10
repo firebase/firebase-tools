@@ -8,6 +8,9 @@ This guide focuses on the **Modular Web SDK** (v9+), which is tree-shakeable and
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
+// If running in Firebase App Hosting, you can skip Firebase Config and instead use:
+// const app = initializeApp();
+
 const firebaseConfig = {
   // Your config options. Get the values by running 'firebase apps:sdkconfig <platform> <app-id>'
 };
