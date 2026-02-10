@@ -168,9 +168,8 @@ async function deployedConnectors(serviceInfos: ServiceInfo[]): Promise<Connecto
 // deployedSchemas lists out all of the schemas currently deployed to the services we are deploying.
 // We don't need to worry about schemas on other services because we will delete/ignore the service during deploy
 async function deployedSchemas(serviceInfos: ServiceInfo[]): Promise<Schema[]> {
-  let schemas: Schema[] = [];
-  for (const si of serviceInfos) {
-    schemas = schemas.concat(await listSchemas(si.serviceName));
-  }
-  return schemas;
+  const schemasPerService = await Promise.all(
+    serviceInfos.map((si) => listSchemas(si.serviceName)),
+  );
+  return schemasPerService.flat();
 }
