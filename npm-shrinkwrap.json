@@ -56,6 +56,7 @@
         "mime": "^2.5.2",
         "minimatch": "^3.0.4",
         "morgan": "^1.10.0",
+        "murmurhash-es": "^0.1.1",
         "node-fetch": "^2.6.7",
         "open": "^6.3.0",
         "ora": "^5.4.1",
@@ -15655,6 +15656,13 @@
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
       "integrity": "sha1-VgiurfwAvmwpAd9fmGF4jeDVl8g="
+    },
+    "node_modules/murmurhash-es": {
+      "version": "0.1.1",
+      "resolved": "https://registry.npmjs.org/murmurhash-es/-/murmurhash-es-0.1.1.tgz",
+      "integrity": "sha512-IfA8KVe9dxv28F9KSJ8EpJP2jgO1br6xInnFaPDjQKosEfpTMAx8v1eGCUzOvcZDstadm3mdP95JILrYs0mNsg==",
+      "deprecated": "Please switch to https://github.com/unjs/ohash",
+      "license": "MIT"
     },
     "node_modules/mute-stream": {
       "version": "2.0.0",
@@ -33635,6 +33643,11 @@
       "version": "2.0.0",
       "resolved": "https://registry.npmjs.org/ms/-/ms-2.0.0.tgz",
       "integrity": "sha1-VgiurfwAvmwpAd9fmGF4jeDVl8g="
+    },
+    "murmurhash-es": {
+      "version": "0.1.1",
+      "resolved": "https://registry.npmjs.org/murmurhash-es/-/murmurhash-es-0.1.1.tgz",
+      "integrity": "sha512-IfA8KVe9dxv28F9KSJ8EpJP2jgO1br6xInnFaPDjQKosEfpTMAx8v1eGCUzOvcZDstadm3mdP95JILrYs0mNsg=="
     },
     "mute-stream": {
       "version": "2.0.0",
