@@ -22,3 +22,4 @@
   - Improved insecure operation warning messages and reduced the severity of existing insecure operation warnings to LOG_ONLY.
   - Updated the Golang dependency version from 1.24.4 to 1.24.12.
 - Fixes issue where auth emulator multi-tenant mode exports/imports only users tied to the default tenant (#5623)
+- Updated Pub/Sub emulator to version 0.8.27.
