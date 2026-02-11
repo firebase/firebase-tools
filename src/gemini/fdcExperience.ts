@@ -1,7 +1,6 @@
 import { Client } from "../apiv2";
 import { cloudAiCompanionOrigin } from "../api";
 import {
-  ChatExperienceResponse,
   CloudAICompanionMessage,
   CloudAICompanionRequest,
   GenerateOperationResponse,
@@ -11,7 +10,6 @@ import { FirebaseError } from "../error";
 
 const apiClient = new Client({ urlPrefix: cloudAiCompanionOrigin(), auth: true });
 const SCHEMA_GENERATOR_EXPERIENCE = "/appeco/firebase/fdc-schema-generator";
-const GEMINI_IN_FIREBASE_EXPERIENCE = "/appeco/firebase/firebase-chat/free";
 const OPERATION_GENERATION_EXPERIENCE = "/appeco/firebase/fdc-query-generator";
 const FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME =
   "type.googleapis.com/google.cloud.cloudaicompanion.v1main.FirebaseChatRequestContext";
@@ -43,29 +41,6 @@ export async function generateSchema(
     },
   );
   return extractCodeBlock(res.body.output.messages[0].content);
-}
-
-/**
- * chatWithFirebase interacts with the Gemini in Firebase integration providing deeper knowledge on Firebase.
- * @param prompt the interaction that the user would like to have with the service.
- * @param project project identifier.
- * @return ChatExperienceResponse includes not only the message from the service but also links to the resources used by the service.
- */
-export async function chatWithFirebase(
-  prompt: string,
-  project: string,
-  chatHistory: CloudAICompanionMessage[] = [],
-): Promise<ChatExperienceResponse> {
-  const res = await apiClient.post<CloudAICompanionRequest, ChatExperienceResponse>(
-    `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
-    {
-      input: { messages: [...chatHistory, { content: prompt, author: "USER" }] },
-      experienceContext: {
-        experience: GEMINI_IN_FIREBASE_EXPERIENCE,
-      },
-    },
-  );
-  return res.body;
 }
 
 /**
