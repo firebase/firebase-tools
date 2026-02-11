@@ -1,0 +1,14 @@
+{
+  "apphosting": {
+    "backendId": "local-build",
+    "rootDir": "/",
+    "localBuild": true,
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "functions"
+    ]
+  }
+}
