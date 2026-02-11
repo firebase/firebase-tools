@@ -92,13 +92,29 @@ export const query_collection = tool(
   ) => {
     // database ??= "(default)";
 
-    if (!collection_path || !collection_path.length)
+    if (!collection_path || !collection_path.length) {
       return mcpError("Must supply at least one collection path.");
+    }
+
+    // Remove leading and trailing slashes
+    let cleanPath = collection_path.trim();
+    if (cleanPath.startsWith("/")) {
+      cleanPath = cleanPath.slice(1);
+    }
+    if (cleanPath.endsWith("/")) {
+      cleanPath = cleanPath.slice(0, -1);
+    }
+
+    const parts = cleanPath.split("/");
+    if (parts.length % 2 === 0) {
+      return mcpError(
+        `Invalid collection path: "${collection_path}". Path must point to a collection, not a document.`,
+      );
+    }
 
     let parent: string | undefined;
-    let collectionId = collection_path;
-    if (collection_path.includes("/")) {
-      const parts = collection_path.split("/");
+    let collectionId = cleanPath;
+    if (parts.length > 1) {
       collectionId = parts.pop()!;
       parent = parts.join("/");
     }
