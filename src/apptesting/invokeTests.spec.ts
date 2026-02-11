@@ -47,7 +47,7 @@ describe("invokeTests", () => {
           testCase: {
             startUri: "https://www.example.com",
             displayName: "testName1",
-            instructions: { steps: [{ goal: "test this app", hint: "try clicking the button" }] },
+            steps: [{ goal: "test this app", hint: "try clicking the button" }],
           },
           testExecution: [{ config: { browser: Browser.CHROME } }],
         },
@@ -55,7 +55,7 @@ describe("invokeTests", () => {
           testCase: {
             startUri: "https://www.example.com",
             displayName: "testName2",
-            instructions: { steps: [{ goal: "retest it", successCriteria: "a dialog appears" }] },
+            steps: [{ goal: "retest it", finalScreenAssertion: "a dialog appears" }],
           },
           testExecution: [{ config: { browser: Browser.CHROME } }],
         },
@@ -67,14 +67,12 @@ describe("invokeTests", () => {
             {
               testCase: {
                 displayName: "testName1",
-                instructions: {
-                  steps: [
-                    {
-                      goal: "test this app",
-                      hint: "try clicking the button",
-                    },
-                  ],
-                },
+                steps: [
+                  {
+                    goal: "test this app",
+                    hint: "try clicking the button",
+                  },
+                ],
                 startUri: "https://www.example.com",
               },
               testExecution: [
@@ -88,14 +86,12 @@ describe("invokeTests", () => {
             {
               testCase: {
                 displayName: "testName2",
-                instructions: {
-                  steps: [
-                    {
-                      goal: "retest it",
-                      successCriteria: "a dialog appears",
-                    },
-                  ],
-                },
+                steps: [
+                  {
+                    goal: "retest it",
+                    finalScreenAssertion: "a dialog appears",
+                  },
+                ],
                 startUri: "https://www.example.com",
               },
               testExecution: [
