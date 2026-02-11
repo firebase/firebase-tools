@@ -985,6 +985,7 @@ export async function startAll(
       backendId: apphostingConfig?.backendId,
       host: apphostingAddr.host,
       port: apphostingAddr.port,
+      portFixed: listenConfig[Emulators.APPHOSTING]?.portFixed,
       startCommand:
         apphostingEmulatorConfig?.startCommand || apphostingEmulatorConfig?.startCommandOverride,
       rootDirectory,

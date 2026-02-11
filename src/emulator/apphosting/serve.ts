@@ -31,6 +31,7 @@ interface StartOptions {
   port?: number;
   startCommand?: string;
   rootDirectory?: string;
+  portFixed?: boolean;
 }
 
 // Matches a fully qualified secret or version name, e.g.
@@ -84,6 +85,15 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
   }
 }
 
+function parsePortFromCommand(command: string): number | undefined {
+  const portRegex = /--port\s+(\d+)|-p\s+(\d+)/;
+  const match = portRegex.exec(command);
+  if (match) {
+    return parseInt(match[1] || match[2], 10);
+  }
+  return undefined;
+}
+
 /**
  * Spins up a project locally by running the project's dev command.
  *
@@ -97,8 +107,13 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
 export async function start(options?: StartOptions): Promise<{ hostname: string; port: number }> {
   const hostname = DEFAULT_HOST;
   let port = options?.port ?? DEFAULT_PORTS.apphosting;
-  while (!(await availablePort(hostname, port))) {
-    port += 1;
+
+  // App Hosting emulator not yet support multiple backends, so we don't need to check for port conflicts
+  // with other App Hosting emulators on the same machine.
+  if (!options?.portFixed) {
+    while (!(await availablePort(hostname, port))) {
+      port += 1;
+    }
   }
 
   const backendRoot = resolveProjectPath({}, options?.rootDirectory ?? "./");
@@ -106,21 +121,29 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   let startCommand;
   if (options?.startCommand) {
     startCommand = options?.startCommand;
-    // Angular and nextjs CLIs allow for specifying port options but the emulator is setting and
-    // specifying specific ports rather than use framework defaults or w/e the user has set, so we
-    // need to reject such custom commands.
-    // NOTE: this is not robust, a command could be a wrapper around another command and we cannot
-    // detect --port there.
-    if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
-      throw new FirebaseError(
-        "Specifying a port in the start command is not supported by the apphosting emulator",
+    const parsedPort = parsePortFromCommand(startCommand);
+
+    if (parsedPort) {
+      if (options?.portFixed && options?.port && options.port !== parsedPort) {
+        throw new FirebaseError(
+          `Port ${parsedPort} specified in start command conflicts with port ${options.port} specified in firebase.json or via CLI flags.`,
+        );
+      }
+      // If we found a port in the command, use it.
+      port = parsedPort;
+      logger.logLabeled(
+        "BULLET",
+        Emulators.APPHOSTING,
+        `Using port ${port} from start command: '${startCommand}'`,
       );
+    } else {
+      // Angular does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
+      // set directly in the CLI.
+      if (startCommand.includes("ng serve")) {
+        startCommand += ` --port ${port}`;
+      }
     }
-    // Angular does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
-    // set directly in the CLI.
-    if (startCommand.includes("ng serve")) {
-      startCommand += ` --port ${port}`;
-    }
+
     logger.logLabeled(
       "BULLET",
       Emulators.APPHOSTING,
@@ -223,7 +246,7 @@ async function tripFirebasePostinstall(
     if (
       dependency.name === "@firebase/util" &&
       semverGte(dependency.version, "1.11.0") &&
-      firebaseUtilPaths.indexOf(dependency.path) === -1
+      !firebaseUtilPaths.includes(dependency.path)
     ) {
       firebaseUtilPaths.push(dependency.path);
     }
