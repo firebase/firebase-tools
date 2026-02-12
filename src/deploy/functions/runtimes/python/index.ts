@@ -151,6 +151,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
   async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
+      ...process.env,
       ...envs,
       ADMIN_PORT: port.toString(),
     };
