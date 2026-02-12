@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { Client } from "../../../apiv2";
+import { discover } from "../../../frameworks";
 import * as github from "./github";
 import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
@@ -19,6 +20,7 @@ const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 export interface RequiredInfo {
+  redirectToAppHosting?: boolean;
   newSiteId?: string;
   public?: string;
   spa?: boolean;
@@ -27,6 +29,19 @@ export interface RequiredInfo {
 // TODO: come up with a better way to type this
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
+  const discoveredFramework = await discover(config.projectDir, false);
+  if (discoveredFramework && discoveredFramework.mayWantBackend) {
+    const frameworkName = discoveredFramework.framework;
+    logger.info();
+    logger.info(
+      `Detected a ${frameworkName} codebase. Setting up ${clc.bold("App Hosting")} instead.`,
+    );
+    setup.featureInfo ||= {};
+    setup.featureInfo.hosting = { redirectToAppHosting: true };
+    setup.features?.unshift("apphosting");
+    return;
+  }
+
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.hosting = {};
 
@@ -91,6 +106,10 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       "Could not find hosting info in setup.featureInfo.hosting. This should not happen.",
       { exit: 2 },
     );
+  }
+
+  if (hostingInfo.redirectToAppHosting) {
+    return;
   }
 
   if (hostingInfo.newSiteId && setup.projectId) {
