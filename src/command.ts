@@ -113,6 +113,18 @@ export class Command {
   }
 
   /**
+   * Adds the --ephemeral flag to the command.
+   * @return The command, for chaining.
+   */
+  withEphemeral(): Command {
+    this.option(
+      "--ephemeral",
+      "ignore emulators.dataDir and start with a clean state",
+      false, // Default value if the flag is not present
+    );
+    return this;
+  }
+  /**
    * Attaches a function to run before the command's action function.
    * @param fn the function to run.
    * @param args arguments, as an array, for the function.
