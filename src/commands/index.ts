@@ -85,6 +85,7 @@ export function load(client: CLIClient): CLIClient {
   client.database.settings.set = loadCommand("database-settings-set");
   client.database.update = loadCommand("database-update");
   client.deploy = loadCommand("deploy");
+  client.doctor = loadCommand("doctor");
   client.emulators = {};
   client.emulators.exec = loadCommand("emulators-exec");
   client.emulators.export = loadCommand("emulators-export");
