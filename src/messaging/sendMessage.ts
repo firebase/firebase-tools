@@ -28,15 +28,15 @@ export async function sendFcmMessage(
     image?: string;
   },
 ): Promise<string> {
+  if (!options.token && !options.topic) {
+    throw new FirebaseError("Must supply either token or topic to send FCM message.");
+  }
   try {
     const notification: Notification = {
       title: options.title,
       body: options.body,
       image: options.image,
     };
-    if (!options.token && !options.topic) {
-      throw new FirebaseError("Must supply either token or topic to send FCM message.");
-    }
     const message: Message = options.token
       ? {
           token: options.token!,
@@ -49,13 +49,13 @@ export async function sendFcmMessage(
     const messageData = {
       message: message,
     };
-    const res = await apiClient.request<null, string>({
+    const res = await apiClient.request<null, { name: string }>({
       method: "POST",
       path: `/projects/${projectId}/messages:send`,
       body: JSON.stringify(messageData),
       timeout: TIMEOUT,
     });
-    return res.body;
+    return res.body.name;
   } catch (err: any) {
     logger.debug(err.message);
     throw new FirebaseError(
