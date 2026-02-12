@@ -29,7 +29,6 @@ export interface RequiredInfo {
 // TODO: come up with a better way to type this
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
-  // Detect frameworks first, before asking any hosting questions
   const discoveredFramework = await discover(config.projectDir, false);
   if (discoveredFramework && discoveredFramework.mayWantBackend) {
     const frameworkName = discoveredFramework.framework;
@@ -109,7 +108,6 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
     );
   }
 
-  // if the user was redirected to App Hosting, we don't need to do anything here
   if (hostingInfo.redirectToAppHosting) {
     return;
   }
