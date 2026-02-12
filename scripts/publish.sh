@@ -98,6 +98,7 @@ if [[ $VERSION == "preview" ]]; then
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
+  git status
   npm version $VERSION
   NEW_VERSION=$(jq -r ".version" package.json)
   echo "Made a $VERSION version."
