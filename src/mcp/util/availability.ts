@@ -6,6 +6,7 @@ import { isAppTestingAvailable } from "./apptesting/availability";
 const DEFAULT_AVAILABILITY_CHECKS: Record<ServerFeature, (ctx: McpContext) => Promise<boolean>> = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   core: async (ctx: McpContext): Promise<boolean> => true,
+  developerknowledge: async (ctx: McpContext): Promise<boolean> => true,
   firestore: (ctx: McpContext): Promise<boolean> =>
     checkFeatureActive("firestore", ctx.projectId, { config: ctx.config }),
   storage: (ctx: McpContext): Promise<boolean> =>
