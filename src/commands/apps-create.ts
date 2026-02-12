@@ -42,7 +42,7 @@ function logPostAppCreationInformation(
 
   logger.info("");
   logger.info("You can run this command to print out your new app's Google Services config:");
-  logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId}`);
+  logger.info(`  firebase apps:sdkconfig ${appPlatform} ${appMetadata.appId} -o`);
 }
 
 interface AppsCreateOptions extends Options {
