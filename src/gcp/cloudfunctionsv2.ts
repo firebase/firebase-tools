@@ -51,6 +51,7 @@ export interface BuildConfig {
   source: Source;
   sourceToken?: string;
   environmentVariables: Record<string, string>;
+  serviceAccount?: string;
 
   // Output only
   build?: string;
@@ -457,6 +458,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     },
     serviceConfig: {},
   };
+  if (endpoint.serviceAccount) {
+    gcfFunction.buildConfig.serviceAccount = `projects/${endpoint.project}/serviceAccounts/${endpoint.serviceAccount}`;
+  }
 
   proto.copyIfPresent(gcfFunction, endpoint, "labels");
   proto.copyIfPresent(
@@ -477,6 +481,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
         ? null
         : proto.formatServiceAccount(from, endpoint.project, true /* removeTypePrefix */),
   );
+
   // Memory must be set because the default value of GCF gen 2 is Megabytes and
   // we use mebibytes
   const mem = endpoint.availableMemoryMb || backend.DEFAULT_MEMORY;
