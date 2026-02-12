@@ -75,7 +75,7 @@ function createRunDirectory(testName: string): RunDirectories {
   const runDir = path.join(testDir, "repo");
   mkdirSync(runDir, { recursive: true });
 
-  const userDir = path.join(testDir, "user");
+  const userDir = path.join(testDir, "home");
   mkdirSync(userDir, { recursive: true });
 
   return { testDir, runDir, userDir };
