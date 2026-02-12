@@ -32,6 +32,7 @@ export class Config {
     "remoteconfig",
     "dataconnect",
     "apphosting",
+    "auth",
   ];
 
   public options: any;

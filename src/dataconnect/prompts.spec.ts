@@ -2,15 +2,17 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as prompt from "../prompt";
 import * as client from "./client";
-import { promptDeleteConnector } from "./prompts";
+import { promptDeleteConnector, promptDeleteSchema } from "./prompts";
 
 describe("prompts", () => {
   let confirmStub: sinon.SinonStub;
   let deleteConnectorStub: sinon.SinonStub;
+  let deleteSchemaStub: sinon.SinonStub;
 
   beforeEach(() => {
     confirmStub = sinon.stub(prompt, "confirm");
     deleteConnectorStub = sinon.stub(client, "deleteConnector");
+    deleteSchemaStub = sinon.stub(client, "deleteSchema");
   });
 
   afterEach(() => {
@@ -35,6 +37,27 @@ describe("prompts", () => {
 
       expect(confirmStub.calledOnce).to.be.true;
       expect(deleteConnectorStub.notCalled).to.be.true;
+    });
+  });
+
+  describe("promptDeleteSchema", () => {
+    it("should delete schema if user confirms", async () => {
+      confirmStub.resolves(true);
+      deleteSchemaStub.resolves();
+
+      await promptDeleteSchema({ force: false, nonInteractive: false }, "my-schema");
+
+      expect(confirmStub.calledOnce).to.be.true;
+      expect(deleteSchemaStub.calledOnceWith("my-schema")).to.be.true;
+    });
+
+    it("should not delete schema if user denies", async () => {
+      confirmStub.resolves(false);
+
+      await promptDeleteSchema({ force: false, nonInteractive: false }, "my-schema");
+
+      expect(confirmStub.calledOnce).to.be.true;
+      expect(deleteSchemaStub.notCalled).to.be.true;
     });
   });
 });
