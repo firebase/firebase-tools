@@ -1,0 +1,1 @@
+- Add error message if user tries to deploy to a named Firestore db with single db firebase.json config format. (#6164)
