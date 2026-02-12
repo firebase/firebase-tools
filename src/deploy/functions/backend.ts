@@ -185,14 +185,34 @@ export const AllIngressSettings: IngressSettings[] = [
   "ALLOW_INTERNAL_ONLY",
   "ALLOW_INTERNAL_AND_GCLB",
 ];
-export type MemoryOptions = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
-const allMemoryOptions: MemoryOptions[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+export type MemoryOptions =
+  | 128
+  | 256
+  | 512
+  | 1024
+  | 1536
+  | 2048
+  | 3072
+  | 4096
+  | 8192
+  | 16384
+  | 32768;
+const allMemoryOptions: MemoryOptions[] = [
+  128, 256, 512, 1024, 1536, 2048, 3072, 4096, 8192, 16384, 32768,
+];
+export const GCFV1_MEMORY_OPTIONS: MemoryOptions[] = [
+  128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768,
+];
 
 /**
  * Is a given number a valid MemoryOption?
  */
 export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
+}
+
+export function isValidGcfv1MemoryOption(mem: unknown): mem is MemoryOptions {
+  return GCFV1_MEMORY_OPTIONS.includes(mem as MemoryOptions);
 }
 
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
@@ -206,7 +226,9 @@ export function memoryOptionDisplayName(option: MemoryOptions): string {
     256: "256MB",
     512: "512MB",
     1024: "1GB",
+    1536: "1.5GB",
     2048: "2GB",
+    3072: "3GB",
     4096: "4GB",
     8192: "8GB",
     16384: "16GB",
@@ -227,7 +249,9 @@ export function memoryToGen1Cpu(memory: MemoryOptions): number {
     256: 0.1666, // ~1/6
     512: 0.3333, // ~1/3
     1024: 0.5833, // ~5/7
+    1536: 0.8,
     2048: 1,
+    3072: 1.5,
     4096: 2,
     8192: 2,
     16384: 4,
@@ -246,7 +270,9 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
     256: 1,
     512: 1,
     1024: 1,
+    1536: 1,
     2048: 1,
+    3072: 2,
     4096: 2,
     8192: 2,
     16384: 4,

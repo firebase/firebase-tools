@@ -93,6 +93,21 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
+  const gcfV1WithUnsupportedMemory = matchingIds(
+    endpoints,
+    (endpoint) =>
+      endpoint.platform === "gcfv1" &&
+      endpoint.availableMemoryMb !== undefined &&
+      endpoint.availableMemoryMb !== null &&
+      !backend.isValidGcfv1MemoryOption(endpoint.availableMemoryMb),
+  );
+  if (gcfV1WithUnsupportedMemory.length) {
+    const msg = `Cannot set availableMemoryMb on the functions ${gcfV1WithUnsupportedMemory} because GCF gen 1 only supports ${backend.GCFV1_MEMORY_OPTIONS.join(
+      ", ",
+    )} MB`;
+    throw new FirebaseError(msg);
+  }
+
   const gcfV1WithConcurrency = matchingIds(
     endpoints,
     (endpoint) => (endpoint.concurrency || 1) !== 1 && endpoint.platform === "gcfv1",
