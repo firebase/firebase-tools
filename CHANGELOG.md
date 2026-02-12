@@ -23,4 +23,4 @@
   - Updated the Golang dependency version from 1.24.4 to 1.24.12.
 - Fixes issue where auth emulator multi-tenant mode exports/imports only users tied to the default tenant (#5623)
 - Updated Pub/Sub emulator to version 0.8.27.
-- Update emulator version to v 3.1.3 to enable native SQL feature for dataconnect.
+- Update emulator version to v 3.1.3 to enable native SQL feature for dataconnect(#9911).
