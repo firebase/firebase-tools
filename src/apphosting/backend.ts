@@ -170,7 +170,7 @@ export async function doSetup(
 
   const url = `https://${backend.uri}`;
   logBullet(
-    `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
+    `You may also track this rollout at:\n\t${consoleOrigin()}/project/${projectId}/apphosting/backends/${backendId}/locations/${location}`,
   );
   // TODO: Previous versions of this command printed the URL before the rollout started so that
   // if a user does exit they will know where to go later. Should this be re-added?
