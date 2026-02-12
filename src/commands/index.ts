@@ -207,6 +207,8 @@ export function load(client: CLIClient): CLIClient {
       client.apphosting.repos.create = loadCommand("apphosting-repos-create");
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
+    client.apphosting.env = {};
+    client.apphosting.env.import = loadCommand("apphosting-env-import");
   }
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

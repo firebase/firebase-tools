@@ -63,7 +63,7 @@ export function discoverBackendRoot(cwd: string): string | null {
 
   while (true) {
     const files = fs.listFiles(dir);
-    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file))) {
+    if (files.some((file) => APPHOSTING_YAML_FILE_REGEX.test(file) || file === ".env")) {
       return dir;
     }
 
