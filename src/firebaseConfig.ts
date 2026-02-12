@@ -96,7 +96,7 @@ export type HostingHeaders = HostingSource & {
 // Allow only serializable options, since this is in firebase.json
 // TODO(jamesdaniels) look into allowing serialized CEL expressions, params, and regexp
 //                    and if we can build this interface automatically via Typescript silliness
-interface FrameworksBackendOptions extends HttpsOptions {
+export interface FrameworksBackendOptions extends HttpsOptions {
   omit?: boolean;
   cors?: string | boolean;
   memory?: MemoryOption;
