@@ -84,6 +84,10 @@ export const command = new Command("deploy")
     "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
   )
   .option("-p, --public <path>", "override the Hosting public directory specified in firebase.json")
+  .option(
+    "-s, --source <path>",
+    "override the Functions source directory specified in firebase.json",
+  )
   .option("-m, --message <message>", "an optional message describing this deploy")
   .option(
     "--only <targets>",
