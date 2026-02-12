@@ -97,31 +97,33 @@ describe("hosting feature init", () => {
       expect(setup.featureInfo?.hosting?.newSiteId).to.equal("new-site-id");
     });
 
-    it("should recommend App Hosting and throw when a Node.js framework is detected", async () => {
+    it("should redirect to apphosting init when a Node.js framework is detected", async () => {
       const setup: Setup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "test-project",
+        features: [],
         instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
       sandbox.stub(frameworks, "discover").resolves({ framework: "next", mayWantBackend: true });
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
-
-      sandbox.stub(prompt, "confirm").resolves(false);
-      sandbox.stub(prompt, "input").resolves("public");
+      const confirmStub = sandbox.stub(prompt, "confirm");
+      const inputStub = sandbox.stub(prompt, "input");
       sandbox.stub(github, "initGitHub").resolves();
 
-      await expect(
-        askQuestions(setup, cfg, {
-          cwd: "/",
-          configPath: "",
-          only: "",
-          except: "",
-          nonInteractive: false,
-        } as any),
-      ).to.be.rejectedWith(/firebase init apphosting/);
+      await askQuestions(setup, cfg, {
+        cwd: "/",
+        configPath: "",
+        only: "",
+        except: "",
+        nonInteractive: false,
+      } as any);
+
+      expect(setup.features).to.deep.equal(["apphosting"]);
+      expect(setup.featureInfo?.hosting).to.deep.equal({ redirectToAppHosting: true });
+      expect(confirmStub.called).to.be.false;
+      expect(inputStub.called).to.be.false;
     });
 
     it("should not terminate when no framework is detected", async () => {
@@ -221,6 +223,48 @@ describe("hosting feature init", () => {
   });
 
   describe("actuate", () => {
+    it("should throw when hosting info is missing", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+      await expect(
+        actuate(setup, cfg, {
+          cwd: "/",
+          configPath: "",
+          only: "",
+          except: "",
+          nonInteractive: false,
+        } as any),
+      ).to.be.rejectedWith(/Could not find hosting info/);
+    });
+
+    it("should be a no-op when hosting was redirected to apphosting", async () => {
+      const setup: Setup = {
+        config: {},
+        rcfile: { projects: {}, targets: {}, etags: {} },
+        projectId: "test-project",
+        featureInfo: { hosting: { redirectToAppHosting: true } },
+        instructions: [],
+      };
+      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      const askWriteStub = sandbox.stub(cfg, "askWriteProjectFile").resolves();
+
+      await actuate(setup, cfg, {
+        cwd: "/",
+        configPath: "",
+        only: "",
+        except: "",
+        nonInteractive: false,
+      } as any);
+
+      expect(askWriteStub.called).to.be.false;
+    });
+
     it("should write 404.html and index.html for non-SPA", async () => {
       const setup: Setup = {
         config: {},
