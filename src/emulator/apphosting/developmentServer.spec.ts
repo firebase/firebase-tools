@@ -51,4 +51,16 @@ describe("utils", () => {
 
     expect(await detectPackageManager("./")).to.equal("yarn");
   });
+
+  it("returns bun if bun.lock file fond", async () => {
+    pathExistsStub.callsFake((...args) => {
+      if (args[0] === "bun.lock") {
+        return true;
+      }
+
+      return false;
+    });
+
+    expect(await detectPackageManager("./")).to.equal("bun");
+  });
 });
