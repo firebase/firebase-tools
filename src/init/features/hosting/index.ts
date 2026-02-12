@@ -10,10 +10,10 @@ import { Options } from "../../../options";
 import { logSuccess } from "../../../utils";
 import { pickHostingSiteName } from "../../../hosting/interactive";
 import { readTemplateSync } from "../../../templates";
+import { FirebaseError } from "../../../error";
 import { Setup } from "../..";
 import { Config } from "../../../config";
 import { createSite } from "../../../hosting/api";
-import { FirebaseError } from "../../../error";
 
 const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
 const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
