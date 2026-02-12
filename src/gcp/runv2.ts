@@ -196,7 +196,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   );
   // Always update revision name to ensure null generates a new unique revision name.
   fieldMask.push("template.revision");
-  const res = await client.post<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
+  const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
     {
@@ -619,7 +619,8 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
         ? "ALLOW_INTERNAL_AND_GCLB"
         : "ALLOW_ALL") as backend.IngressSettings,
     // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
-    ...(service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+    ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+    service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
       ? { httpsTrigger: {} }
       : {
           eventTrigger: {

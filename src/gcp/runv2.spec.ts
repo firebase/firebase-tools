@@ -451,7 +451,7 @@ describe("runv2", () => {
         entryPoint: SERVICE_ID, // No FUNCTION_TARGET_ANNOTATION
         availableMemoryMb: 128,
         cpu: 0.5,
-        eventTrigger: { eventType: "unknown", retry: false },
+        httpsTrigger: {},
         labels: {},
         environmentVariables: {},
         secretEnvironmentVariables: [],
