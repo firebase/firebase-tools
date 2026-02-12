@@ -1,3 +1,4 @@
+- Fixed `firestore_query_collection` tool to support subcollections (#9698)
 - Added support for enabling Firebase Authentication providers via `firebase deploy`. You can configure providers in `firebase.json` like so:
 
 ```json
