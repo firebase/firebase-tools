@@ -158,6 +158,27 @@ export const init = tool(
           .describe(
             "Provide this object to initialize Firebase Hosting in this project directory.",
           ),
+        auth: z
+          .object({
+            providers: z.object({
+              emailPassword: z
+                .boolean()
+                .optional()
+                .describe("Enable Email/Password authentication."),
+              anonymous: z.boolean().optional().describe("Enable Anonymous authentication."),
+              googleSignIn: z
+                .object({
+                  oAuthBrandDisplayName: z
+                    .string()
+                    .describe("The display name for the OAuth brand."),
+                  supportEmail: z.string().describe("The support email for the OAuth brand."),
+                })
+                .optional()
+                .describe("Configure Google Sign-In."),
+            }),
+          })
+          .optional()
+          .describe("Provide this object to initialize Firebase Authentication."),
       }),
     }),
     annotations: {
@@ -238,6 +259,16 @@ export const init = tool(
         newSiteId: features.hosting.site_id,
         public: features.hosting.public_directory,
         spa: features.hosting.single_page_app,
+      };
+    }
+    if (features.auth) {
+      featuresList.push("auth");
+      featureInfo.auth = {
+        providers: {
+          anonymous: features.auth.providers.anonymous,
+          emailPassword: features.auth.providers.emailPassword,
+          googleSignIn: features.auth.providers.googleSignIn,
+        },
       };
     }
     const setup: Setup = {
