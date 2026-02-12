@@ -55,3 +55,7 @@ npm run format                   # Auto-fix formatting issues
       - `### Sample Commands`
       - Reference issues with "Fixes #123" in the description.
 3.  **Update Changelog:** For any user-facing change (new features, bug fixes, deprecations), add a corresponding entry to `CHANGELOG.md`.
+
+## Agent Directives
+
+- **Escaping Backticks:** When providing a string to a tool parameter (e.g., `new_string` in the `replace` tool) that will be part of a larger script or configuration file, single backticks (\`) used for markdown-style code formatting **must** be escaped with a backslash. For example, to render `my_code`, the string provided to the tool must be written as `\`my_code\``.
