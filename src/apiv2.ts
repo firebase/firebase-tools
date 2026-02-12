@@ -237,9 +237,8 @@ export class Client {
   /**
    * Makes a request as specified by the options.
    * By default, this will:
-   *   - use content-type: application/json
-   *   - assume the HTTP GET method
-   *
+   * - use content-type: application/json
+   * - assume the HTTP GET method
    * @example
    * const res = apiv2.request<ResourceType>({
    *   method: "POST",
@@ -341,6 +340,7 @@ export class Client {
     } else {
       token = await getAccessToken();
     }
+
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }

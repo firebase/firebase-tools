@@ -13,6 +13,7 @@ import {
   crashlyticsApiOrigin,
   appDistributionOrigin,
   realtimeOrigin,
+  developerKnowledgeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -77,6 +78,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   apptesting: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
+  developerknowledge: developerKnowledgeOrigin(),
 };
 
 const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
@@ -92,6 +94,7 @@ const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
   apptesting: undefined,
   apphosting: undefined,
   database: undefined,
+  developerknowledge: undefined,
 };
 
 /**
@@ -131,7 +134,7 @@ export async function checkFeatureActive(
 // Helper function to process a single schema node (could be a property schema, items schema, etc.)
 // Returns the cleaned schema, or null if the schema becomes invalid and should be removed according to the rules.
 // The isRoot parameter is true only for the top-level schema object.
-function deepClean(obj: any, isRootLevel: boolean = false): any {
+function deepClean(obj: any, isRootLevel = false): any {
   if (typeof obj !== "object" || obj === null) {
     return obj; // Not a schema object or null, return as is
   }
