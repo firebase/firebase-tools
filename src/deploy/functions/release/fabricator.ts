@@ -54,6 +54,9 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 };
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
+// Bail out quickly when waiting for source tokens so we don't serialize builds
+// if the backend never returns a token (observed with some GCFv2 responses).
+const SOURCE_TOKEN_FETCH_TIMEOUT_MS = 2_000;
 
 export interface FabricatorArgs {
   executor: Executor;
@@ -375,7 +378,9 @@ export class Fabricator {
       resultFunction = await this.functionExecutor
         .run(async () => {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
-            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            apiFunction.buildConfig.sourceToken = await scraper.getToken({
+              timeoutMs: SOURCE_TOKEN_FETCH_TIMEOUT_MS,
+            });
           }
           const op: { name: string } = await gcfV2.createFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
@@ -524,7 +529,9 @@ export class Fabricator {
       .run(
         async () => {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
-            apiFunction.buildConfig.sourceToken = await scraper.getToken();
+            apiFunction.buildConfig.sourceToken = await scraper.getToken({
+              timeoutMs: SOURCE_TOKEN_FETCH_TIMEOUT_MS,
+            });
           }
           const op: { name: string } = await gcfV2.updateFunction(apiFunction);
           return await poller.pollOperation<gcfV2.OutputCloudFunction>({
