@@ -6,7 +6,7 @@ import { AppAndroidShaData, createAppAndroidSha, ShaCertificateType } from "../m
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner } from "../utils";
 
-function getCertHashType(shaHash: string): string {
+export function getCertHashType(shaHash: string): string {
   shaHash = shaHash.replace(/:/g, "");
   const shaHashCount = shaHash.length;
   if (shaHashCount === 40) return ShaCertificateType.SHA_1.toString();

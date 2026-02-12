@@ -6,7 +6,7 @@ import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
 
-function logCertificatesList(certificates: AppAndroidShaData[]): void {
+export function logCertificatesList(certificates: AppAndroidShaData[]): void {
   if (certificates.length === 0) {
     logger.info("No SHA certificate hashes found.");
     return;
@@ -27,7 +27,7 @@ function logCertificatesList(certificates: AppAndroidShaData[]): void {
   logger.info(table.toString());
 }
 
-function logCertificatesCount(count: number = 0): void {
+export function logCertificatesCount(count: number = 0): void {
   if (count === 0) {
     return;
   }
