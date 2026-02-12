@@ -801,7 +801,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         httpsTrigger: {},
-        uri: GCF_URL,
+        uri: RUN_URI,
         entryPoint: "",
         runtime: undefined,
         source: undefined,
