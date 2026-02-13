@@ -40,7 +40,6 @@ function preTest() {
   api.setRefreshToken(configstore.get("tokens").refresh_token);
   api.setScopes(scopes.CLOUD_PLATFORM);
   fs.copySync(source, functionsSource + "/index.js");
-  execSync(`${localFirebase} --open-sesame dotenv`, { cwd: tmpDir });
   console.log("Done pretest prep.");
 }
 

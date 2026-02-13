@@ -22,9 +22,11 @@ import * as poller from "../../../operation-poller";
 import * as pubsub from "../../../gcp/pubsub";
 import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
+import * as runV2 from "../../../gcp/runv2";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
+import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -184,9 +186,7 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
     } else if (endpoint.platform === "run") {
-      throw new FirebaseError("Creating new Cloud Run functions is not supported yet.", {
-        exit: 1,
-      });
+      await this.createRunFunction(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -211,7 +211,7 @@ export class Fabricator {
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
     } else if (update.endpoint.platform === "run") {
-      throw new FirebaseError("Updating Cloud Run functions is not supported yet.", { exit: 1 });
+      await this.updateRunFunction(update);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -226,7 +226,7 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       return this.deleteV2Function(endpoint);
     } else if (endpoint.platform === "run") {
-      throw new FirebaseError("Deleting Cloud Run functions is not supported yet.", { exit: 1 });
+      return this.deleteRunFunction(endpoint);
     }
     assertExhaustive(endpoint.platform);
   }
@@ -421,6 +421,15 @@ export class Fabricator {
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase Data Connect P4SA must always be an invoker.
+      const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
+      invoker.push(getDataConnectP4SA(this.projectNumber));
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
       await this.executor
@@ -547,6 +556,14 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      invoker =
+        endpoint.dataConnectGraphqlTrigger.invoker === null
+          ? []
+          : endpoint.dataConnectGraphqlTrigger.invoker;
+      if (invoker) {
+        invoker.push(getDataConnectP4SA(this.projectNumber));
+      }
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -600,6 +617,101 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot create a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.executor
+      .run(async () => {
+        const op = await runV2.createService(
+          endpoint.project,
+          endpoint.region,
+          endpoint.id,
+          service,
+        );
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "create"));
+
+    await this.setInvoker(endpoint);
+  }
+
+  async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
+    const endpoint = update.endpoint;
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot update a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.executor
+      .run(async () => {
+        const op = await runV2.updateService(service);
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "update"));
+
+    await this.setInvoker(endpoint);
+  }
+
+  async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    await this.executor
+      .run(async () => {
+        try {
+          await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
+        } catch (err: any) {
+          if (err.status === 404) {
+            return;
+          }
+          throw err;
+        }
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
+  async setInvoker(endpoint: backend.Endpoint): Promise<void> {
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() =>
+            run.setInvokerUpdate(
+              endpoint.project,
+              `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
+              invoker,
+            ),
+          )
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    }
+  }
+
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
@@ -632,11 +744,6 @@ export class Fabricator {
   // Set/Delete trigger is responsible for wiring up a function with any trigger not owned
   // by the GCF API. This includes schedules, task queues, and blocking function triggers.
   async setTrigger(endpoint: backend.Endpoint): Promise<void> {
-    if (endpoint.platform === "run") {
-      throw new FirebaseError("Setting triggers for Cloud Run functions is not supported yet.", {
-        exit: 1,
-      });
-    }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
@@ -644,21 +751,26 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.upsertScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.registerBlockingTrigger(endpoint);
     }
   }
 
   async deleteTrigger(endpoint: backend.Endpoint): Promise<void> {
-    if (endpoint.platform === "run") {
-      throw new FirebaseError("Deleting triggers for Cloud Run functions is not supported yet.", {
-        exit: 1,
-      });
-    }
     if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.deleteScheduleV1(endpoint);
@@ -666,11 +778,21 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.deleteScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.disableTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we

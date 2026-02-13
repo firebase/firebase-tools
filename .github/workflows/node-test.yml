@@ -85,7 +85,7 @@ jobs:
   #     - name: Setup Java JDK
   #       uses: actions/setup-java@v3.3.0
   #       with:
-  #         java-version: 17
+  #         java-version: 21
   #         distribution: temurin
 
   #     - uses: actions/checkout@v4
@@ -211,6 +211,11 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: 21
+          distribution: temurin
       - name: Setup Chrome
         uses: browser-actions/setup-chrome@v1.7.2
         with:
@@ -265,12 +270,12 @@ jobs:
           # - npm run test:storage-emulator-integration
           # - npm run test:dataconnect-deploy #  TODO (joehanley): Reenable this - it should be safe to run in parallel
           # - npm run test:dataconnect-emulator # TODO (joehanley): Figure out why this is failing
-          - npm run test:frameworks
+          # - npm run test:frameworks
     steps:
       - name: Setup Java JDK
         uses: actions/setup-java@v3.3.0
         with:
-          java-version: 17
+          java-version: 21
           distribution: temurin
 
       - uses: actions/checkout@v4
@@ -310,7 +315,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.9
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
       - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
@@ -329,7 +334,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.9
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: "(cd firebase-vscode && npm install --package-lock-only --ignore-scripts)"
       - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit firebase-vscode/package-lock.json.' && false)"

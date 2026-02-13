@@ -105,7 +105,7 @@ steps:
         if [ "${_VERSION}" == "preview" ]; then
           ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
         else
-          ./scripts/publish.sh "${_VERSION}"
+          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
         fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
@@ -134,7 +134,8 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
         fi

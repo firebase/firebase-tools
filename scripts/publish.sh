@@ -98,6 +98,8 @@ if [[ $VERSION == "preview" ]]; then
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
+  git diff
+  npm -v
   npm version $VERSION
   NEW_VERSION=$(jq -r ".version" package.json)
   echo "Made a $VERSION version."
@@ -127,6 +129,11 @@ if [[ $VERSION != "preview" ]]; then
   npm --prefix ./scripts/publish/firebase-docker-image install
   echo "Updated package-lock.json for Docker image."
 
+
+  echo "Updating server.json for MCP registry..."
+  . ./scripts/update-server-json-version.sh $NEW_VERSION
+  echo "Updated server.json for MCP registry."
+
   echo "Cleaning up release notes..."
   rm CHANGELOG.md
   touch CHANGELOG.md
@@ -134,12 +141,12 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."
-  git push origin master --tags
+  git push origin main --tags
   echo "Pushed to GitHub."
 
-  echo "Publishing release notes..."
-  hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
-  echo "Published release notes."
+  echo "Publishing draft release notes..."
+  hub release create --draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+  echo "Published draft release notes."
 else
   echo "Publishing preview version to npm..."
   npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview

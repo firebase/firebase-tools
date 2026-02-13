@@ -35,9 +35,11 @@ import {
   getAppMetadataFromMetaFiles,
   isUsingNextImageInAppDirectory,
   getNextVersion,
+  getNextVersionRaw,
   getRoutesWithServerAction,
   findEsbuildPath,
   installEsbuild,
+  isNextJsVersionVulnerable,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -556,6 +558,30 @@ describe("Next.js utils", () => {
     });
   });
 
+  describe("getNextVersionRaw", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should get version", () => {
+      sandbox.stub(frameworksUtils, "findDependency").returns({ version: "13.4.10" });
+
+      expect(getNextVersionRaw("")).to.equal("13.4.10");
+    });
+
+    it("should return exact version including canary", () => {
+      sandbox.stub(frameworksUtils, "findDependency").returns({ version: "13.4.10-canary.0" });
+
+      expect(getNextVersionRaw("")).to.equal("13.4.10-canary.0");
+    });
+
+    it("should return undefined if unable to get version", () => {
+      sandbox.stub(frameworksUtils, "findDependency").returns(undefined);
+
+      expect(getNextVersionRaw("")).to.be.undefined;
+    });
+  });
+
   describe("getRoutesWithServerAction", () => {
     it("should get routes with server action", () => {
       expect(
@@ -649,6 +675,130 @@ describe("Next.js utils", () => {
         expect(typedError).to.be.instanceOf(FirebaseError);
         expect(typedError.message).to.include("Failed to install esbuild");
       }
+    });
+  });
+
+  describe("isNextJsVersionVulnerable", () => {
+    describe("vulnerable versions", () => {
+      it("should block vulnerable 15.0.x versions (< 15.0.5)", () => {
+        expect(isNextJsVersionVulnerable("15.0.4")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.0.0")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.0.0-rc.1")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.0.0-canary.205")).to.be.true;
+      });
+
+      it("should block vulnerable 15.1.x versions (< 15.1.9)", () => {
+        expect(isNextJsVersionVulnerable("15.1.8")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.1.0")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.1.1-canary.27")).to.be.true;
+      });
+
+      it("should block vulnerable 15.2.x versions (< 15.2.6)", () => {
+        expect(isNextJsVersionVulnerable("15.2.5")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.2.0-canary.77")).to.be.true;
+      });
+
+      it("should block vulnerable 15.3.x versions (< 15.3.6)", () => {
+        expect(isNextJsVersionVulnerable("15.3.5")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.3.0-canary.46")).to.be.true;
+      });
+
+      it("should block vulnerable 15.4.x versions (< 15.4.8)", () => {
+        expect(isNextJsVersionVulnerable("15.4.7")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.4.2-canary.56")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.4.0-canary.130")).to.be.true;
+      });
+
+      it("should block vulnerable 15.5.x versions (< 15.5.7)", () => {
+        expect(isNextJsVersionVulnerable("15.5.6")).to.be.true;
+        expect(isNextJsVersionVulnerable("15.5.1-canary.39")).to.be.true;
+      });
+
+      it("should block vulnerable 16.0.x versions (< 16.0.7)", () => {
+        expect(isNextJsVersionVulnerable("16.0.6")).to.be.true;
+        expect(isNextJsVersionVulnerable("16.0.0-beta.0")).to.be.true;
+        expect(isNextJsVersionVulnerable("16.0.0-canary.18")).to.be.true;
+        expect(isNextJsVersionVulnerable("16.0.2-canary.34")).to.be.true;
+      });
+
+      it("should block vulnerable 14.x canary versions (>= 14.3.0-canary.77)", () => {
+        expect(isNextJsVersionVulnerable("14.3.0-canary.77")).to.be.true;
+        expect(isNextJsVersionVulnerable("14.3.0-canary.87")).to.be.true;
+      });
+
+      it("should treat pre-releases of patched versions as vulnerable (conservative)", () => {
+        expect(isNextJsVersionVulnerable("15.0.5-canary.1")).to.be.true;
+      });
+
+      it("should block versions with build metadata if base is vulnerable", () => {
+        expect(isNextJsVersionVulnerable("15.0.4+build123")).to.be.true;
+      });
+    });
+
+    describe("safe versions", () => {
+      it("should allow patched 15.0.x versions (>= 15.0.5)", () => {
+        expect(isNextJsVersionVulnerable("15.0.5")).to.be.false;
+        expect(isNextJsVersionVulnerable("15.0.6")).to.be.false;
+      });
+
+      it("should allow patched 15.1.x versions (>= 15.1.9)", () => {
+        expect(isNextJsVersionVulnerable("15.1.9")).to.be.false;
+      });
+
+      it("should allow patched 15.2.x versions (>= 15.2.6)", () => {
+        expect(isNextJsVersionVulnerable("15.2.6")).to.be.false;
+      });
+
+      it("should allow patched 15.3.x versions (>= 15.3.6)", () => {
+        expect(isNextJsVersionVulnerable("15.3.6")).to.be.false;
+      });
+
+      it("should allow patched 15.4.x versions (>= 15.4.8)", () => {
+        expect(isNextJsVersionVulnerable("15.4.8")).to.be.false;
+      });
+
+      it("should allow patched 15.5.x versions (>= 15.5.7)", () => {
+        expect(isNextJsVersionVulnerable("15.5.7")).to.be.false;
+      });
+
+      it("should allow newer minor versions (e.g. 15.6.x)", () => {
+        expect(isNextJsVersionVulnerable("15.6.0-canary.57")).to.be.false;
+      });
+
+      it("should allow patched 16.0.x versions (>= 16.0.7)", () => {
+        expect(isNextJsVersionVulnerable("16.0.7")).to.be.false;
+      });
+
+      it("should allow newer 16.x minor versions (e.g. 16.1.x)", () => {
+        expect(isNextJsVersionVulnerable("16.1.0-canary.12")).to.be.false;
+      });
+
+      it("should allow safe 14.x canary versions (< 14.3.0-canary.77)", () => {
+        expect(isNextJsVersionVulnerable("14.3.0-canary.76")).to.be.false;
+        expect(isNextJsVersionVulnerable("14.3.0-canary.43")).to.be.false;
+        expect(isNextJsVersionVulnerable("14.2.0-canary.67")).to.be.false;
+      });
+
+      it("should allow stable 14.x versions (not vulnerable)", () => {
+        expect(isNextJsVersionVulnerable("14.3.0")).to.be.false;
+        expect(isNextJsVersionVulnerable("14.2.33")).to.be.false;
+        expect(isNextJsVersionVulnerable("14.1.4")).to.be.false;
+      });
+
+      it("should allow unaffected older versions", () => {
+        expect(isNextJsVersionVulnerable("13.5.11")).to.be.false;
+        expect(isNextJsVersionVulnerable("12.3.7")).to.be.false;
+      });
+
+      it("should allow versions with build metadata if base is safe", () => {
+        expect(isNextJsVersionVulnerable("15.0.5+build123")).to.be.false;
+      });
+
+      it("should return false for invalid versions (fail open)", () => {
+        expect(isNextJsVersionVulnerable("invalid-version")).to.be.false;
+        expect(isNextJsVersionVulnerable("")).to.be.false;
+        expect(isNextJsVersionVulnerable(undefined as any)).to.be.false;
+      });
     });
   });
 });

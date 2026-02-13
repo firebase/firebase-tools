@@ -162,6 +162,33 @@ describe("buildFromV1Alpha", () => {
       });
     });
 
+    describe("dataConnectGraphqlTriggers", () => {
+      it("invalid value for Data Connect https trigger key invoker", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              dataConnectGraphqlTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+
+      it("cannot be used with 1st gen", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              platform: "gcfv1",
+              dataConnectGraphqlTrigger: {
+                invoker: "custom@",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("genkitTriggers", () => {
       it("fails with invalid fields", () => {
         assertParserError({
@@ -608,6 +635,32 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies no-build fields (baseImageUri, command, args)", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            baseImageUri: "gcr.io/base",
+            command: ["cmd"],
+            args: ["arg1", "arg2"],
+            httpsTrigger: {},
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg1", "arg2"],
+          httpsTrigger: {},
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("allows some fields of the endpoint to have a Field<> type", () => {
       const yaml: v1alpha1.WireManifest = {
         specVersion: "v1alpha1",
@@ -716,7 +769,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: 120,
           maxDoublings: 10,
         },
-        attemptDeadlineSeconds: 300,
       };
 
       const yaml: v1alpha1.WireManifest = {
@@ -745,7 +797,6 @@ describe("buildFromV1Alpha", () => {
           maxRetrySeconds: "{{ params.RETRY_DURATION }}",
           maxDoublings: "{{ params.DOUBLINGS }}",
         },
-        attemptDeadlineSeconds: "{{ params.ATTEMPT_DEADLINE }}",
       };
 
       const yaml: v1alpha1.WireManifest = {

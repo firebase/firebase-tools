@@ -25,6 +25,7 @@ export interface Setup {
   /** Basic Project information */
   project?: Record<string, any>;
   projectId?: string;
+  projectNumber?: string;
   projectLocation?: string;
   isBillingEnabled?: boolean;
 
@@ -36,11 +37,13 @@ export interface SetupInfo {
   firestore?: features.FirestoreInfo;
   dataconnect?: features.DataconnectInfo;
   dataconnectSdk?: features.DataconnectSdkInfo;
+  dataconnectResolver?: features.DataconnectResolverInfo;
   dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
   apptesting?: features.ApptestingInfo;
   ailogic?: features.AiLogicInfo;
   hosting?: features.HostingInfo;
+  auth?: features.AuthInfo;
 }
 
 interface Feature {
@@ -80,7 +83,16 @@ const featuresList: Feature[] = [
     askQuestions: features.dataconnectSdkAskQuestions,
     actuate: features.dataconnectSdkActuate,
   },
-  { name: "functions", doSetup: features.functions },
+  {
+    name: "dataconnect:resolver",
+    askQuestions: features.dataconnectResolverAskQuestions,
+    actuate: features.dataconnectResolverActuate,
+  },
+  {
+    name: "functions",
+    askQuestions: features.functionsAskQuestions,
+    actuate: features.functionsActuate,
+  },
   {
     name: "hosting",
     askQuestions: features.hostingAskQuestions,
@@ -109,6 +121,12 @@ const featuresList: Feature[] = [
     actuate: features.aiLogicActuate,
   },
   { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
+  {
+    name: "auth",
+    displayName: "Authentication",
+    askQuestions: features.authAskQuestions,
+    actuate: features.authActuate,
+  },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
