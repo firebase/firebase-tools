@@ -1,0 +1,20 @@
+runConfig:
+  cpu: 2
+  concurrency: 90
+env:
+  - variable: ENV_VAR_1
+    value: api.service.com
+  - variable: ENV_VAR_2
+    value: 12345
+  - variable: NEXT_PUBLIC_ENV_VAR_3
+    value: myPublicValue
+  - variable: ENV_VAR_MULTIPLE_ENV
+    value: api.staging.service.com
+  - variable: API_KEY
+    secret: myApiKeySecret
+  - variable: PINNED_API_KEY
+    secret: myApiKeySecret@2
+  - variable: TEST_BUILD_VAR
+    value: "I am available at build time"
+    availability:
+      - BUILD

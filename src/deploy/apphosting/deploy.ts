@@ -7,11 +7,18 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
-import { createArchive, createTarArchive } from "./util";
+import * as util from "./util";
 
 /**
- * Zips and uploads App Hosting source code to Google Cloud Storage in preparation for
- * build and deployment. Creates storage buckets if necessary.
+ * Zips and uploads App Hosting source code to Google Cloud Storage.
+ *
+ * This step ensures that a GCS bucket exists for the target region and then
+ * archives the project source (or local build output) into a tarball. The tarball
+ * is uploaded to the bucket, and the resulting URI is stored in the context for
+ * the subsequent release phase.
+ *
+ * @param context - The deployment context containing backend configs and locations.
+ * @param options - CLI options providing project ID and root directory.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   if (Object.entries(context.backendConfigs).length === 0) {
@@ -54,6 +61,11 @@ export default async function (context: Context, options: Options): Promise<void
               },
             ],
           },
+          iamConfiguration: {
+            uniformBucketLevelAccess: {
+              enabled: true,
+            },
+          },
         },
       });
       bucketsPerLocation[loc] = resolvedName;
@@ -71,7 +83,7 @@ export default async function (context: Context, options: Options): Promise<void
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
         }
       }
-      const zippedSourcePath = await createTarArchive(cfg, rootDir, builtAppDir);
+      const zippedSourcePath = await util.createTarArchive(cfg, rootDir, builtAppDir);
       logLabeledBullet(
         "apphosting....",
         `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
@@ -94,7 +106,7 @@ export default async function (context: Context, options: Options): Promise<void
           stream: fs.createReadStream(zippedSourcePath),
         },
         bucketName,
-	gcs.ContentType.TAR
+        gcs.ContentType.TAR,
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =

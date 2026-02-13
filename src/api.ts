@@ -38,8 +38,7 @@ export const appDistributionOrigin = () =>
     "https://firebaseappdistribution.googleapis.com",
   );
 export const apphostingOrigin = () =>
-  utils.envOverride("FIREBASE_APPHOSTING_URL", "https://staging-firebaseapphosting.sandbox.googleapis.com");
-//    firebaseapphosting.googleapis.com");
+  utils.envOverride("FIREBASE_APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
 export const apphostingP4SADomain = () =>
   utils.envOverride(
     "FIREBASE_APPHOSTING_P4SA_DOMAIN",

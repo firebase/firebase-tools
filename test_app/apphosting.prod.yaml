@@ -1,0 +1,8 @@
+runConfig:
+  cpu: 2
+  concurrency: 95
+env:
+  - variable: ENV_VAR_MULTIPLE_ENV
+    value: api.prod.service.com
+
+#TODO: Test NEXT_PUBLIC
