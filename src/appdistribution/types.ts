@@ -127,13 +127,13 @@ export interface AIInstruction {
 export interface AIStep {
   goal: string;
   hint?: string;
-  successCriteria?: string;
+  finalScreenAssertion?: string;
 }
 
 export interface AiStep {
   goal: string;
   hint?: string;
-  successCriteria?: string;
+  finalScreenAssertion?: string;
 }
 
 export interface AiInstructions {
