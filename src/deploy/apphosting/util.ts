@@ -7,6 +7,8 @@ import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 
+import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
+
 /**
  * Creates a temporary tarball of the project source or build artifacts.
  *
@@ -38,6 +40,17 @@ export async function createTarArchive(
     isGitIgnore: true,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+
+  if (targetSubDir) {
+    const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
+      return APPHOSTING_YAML_FILE_REGEX.test(file);
+    });
+    for (const file of defaultFiles) {
+      if (!allFiles.includes(file)) {
+        allFiles.push(file);
+      }
+    }
+  }
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
