@@ -1,4 +1,4 @@
-import { CallToolResultSchema, ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult, CallToolResultSchema, ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
@@ -51,7 +51,7 @@ export class OneMcpServer {
   /**
    * Proxies a tool call to the remote MCP server.
    */
-  private async proxyRemoteToolCall(toolName: string, args: any, ctx: McpContext): Promise<any> {
+  private async proxyRemoteToolCall(toolName: string, args: any, ctx: McpContext): Promise<CallToolResult> {
     const res = await this.callClient.post<any, any>(
       "/mcp",
       {
