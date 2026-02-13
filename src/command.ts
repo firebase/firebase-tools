@@ -373,7 +373,12 @@ export class Command {
   private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
+
+    let activeProject: string | undefined;  
+    if (this.name !== "init") {  
+      activeProject = this.configstoreProject(options.projectRoot || process.cwd()) ?? undefined;  
+    }  
+
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
