@@ -30,6 +30,10 @@ interface Codebase {
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 
+export interface Runtime {
+  value: string;
+}
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
@@ -43,6 +47,7 @@ export interface Backend {
   serviceAccount?: string;
   appId?: string;
   managedResources?: ManagedResource[];
+  runtime?: Runtime;
 }
 
 export interface ManagedResource {
