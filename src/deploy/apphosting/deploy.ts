@@ -7,7 +7,7 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
-import { createArchive } from "./util";
+import { createArchive, createTarArchive } from "./util";
 
 /**
  * Zips and uploads App Hosting source code to Google Cloud Storage in preparation for
@@ -71,9 +71,9 @@ export default async function (context: Context, options: Options): Promise<void
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
         }
       }
-      const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
+      const zippedSourcePath = await createTarArchive(cfg, rootDir, builtAppDir);
       logLabeledBullet(
-        "apphosting",
+        "apphosting....",
         `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
       );
 
@@ -94,6 +94,7 @@ export default async function (context: Context, options: Options): Promise<void
           stream: fs.createReadStream(zippedSourcePath),
         },
         bucketName,
+	gcs.ContentType.TAR
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =
