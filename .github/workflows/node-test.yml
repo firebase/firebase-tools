@@ -163,6 +163,14 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
+      - name: Cache ESLint
+        uses: actions/cache@v3
+        with:
+          path: .eslintcache
+          key: eslint-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/*.ts', '**/*.js') }}
+          restore-keys: |
+            eslint-${{ runner.os }}-node${{ matrix.node-version }}-
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
