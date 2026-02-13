@@ -94,6 +94,11 @@ let choices: {
     checked: false,
     hidden: true,
   },
+  {
+    value: "auth",
+    name: "Authentication: Set up Firebase Authentication",
+    checked: false,
+  },
 ];
 
 if (isEnabled("fdcwebhooks")) {

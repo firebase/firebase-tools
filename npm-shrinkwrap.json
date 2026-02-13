@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "15.5.1",
+  "version": "15.6.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "15.5.1",
+      "version": "15.6.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.7",
@@ -27156,7 +27156,7 @@
       "resolved": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
       "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
       "requires": {
-        "ajv": "^8.0.0"
+        "ajv": "^8.17.1"
       }
     },
     "ansi-align": {

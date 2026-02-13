@@ -9,7 +9,7 @@ export {
   RequiredInfo as FirestoreInfo,
   actuate as firestoreActuate,
 } from "./firestore";
-export { doSetup as functions } from "./functions";
+export { askQuestions as functionsAskQuestions, actuate as functionsActuate } from "./functions";
 export {
   askQuestions as hostingAskQuestions,
   actuate as hostingActuate,
@@ -55,3 +55,4 @@ export {
   AiLogicInfo,
   actuate as aiLogicActuate,
 } from "./ailogic";
+export { askQuestions as authAskQuestions, actuate as authActuate, AuthInfo } from "./auth";
