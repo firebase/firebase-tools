@@ -212,7 +212,7 @@ interface MultiSelectInput {
   };
 }
 
-interface SecretParam {
+export interface SecretParam {
   type: "secret";
 
   // name of the param. Will be exposed as an environment variable with this name
