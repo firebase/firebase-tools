@@ -134,7 +134,7 @@ export async function checkFeatureActive(
 // Helper function to process a single schema node (could be a property schema, items schema, etc.)
 // Returns the cleaned schema, or null if the schema becomes invalid and should be removed according to the rules.
 // The isRoot parameter is true only for the top-level schema object.
-function deepClean(obj: any, isRootLevel = false): any {
+function deepClean(obj: any, isRootLevel: boolean = false): any {
   if (typeof obj !== "object" || obj === null) {
     return obj; // Not a schema object or null, return as is
   }
