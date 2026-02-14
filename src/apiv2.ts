@@ -237,9 +237,10 @@ export class Client {
   /**
    * Makes a request as specified by the options.
    * By default, this will:
-   * - use content-type: application/json
-   * - assume the HTTP GET method
-   * @example
+   *   - use content-type: application/json
+   *   - assume the HTTP GET method
+   *
+  * @example
    * const res = apiv2.request<ResourceType>({
    *   method: "POST",
    *   path: "/some/resource",
