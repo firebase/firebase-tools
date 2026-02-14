@@ -1004,13 +1004,22 @@
                         }
                     ]
                 },
+                "server": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "template": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "template"
+                    ],
+                    "type": "object"
+                },
                 "template": {
                     "type": "string"
                 }
             },
-            "required": [
-                "template"
-            ],
             "type": "object"
         },
         "RemoteFunctionConfig": {
