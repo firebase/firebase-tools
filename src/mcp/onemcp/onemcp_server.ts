@@ -1,4 +1,8 @@
-import { CallToolResult, CallToolResultSchema, ListToolsResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+  CallToolResult,
+  CallToolResultSchema,
+  ListToolsResultSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
@@ -36,7 +40,7 @@ export class OneMcpServer {
       });
 
       const parsed = ListToolsResultSchema.parse(res.body.result);
-      return (parsed.tools as any[]).map((mcpTool) => ({
+      return parsed.tools.map((mcpTool) => ({
         mcp: {
           ...mcpTool,
           name: `${this.feature}_${mcpTool.name}`,
@@ -49,14 +53,20 @@ export class OneMcpServer {
         isAvailable: () => Promise.resolve(true),
       }));
     } catch (error) {
-      throw new FirebaseError("Failed to fetch remote tools for " + this.serverUrl + ": " + JSON.stringify(error));
+      throw new FirebaseError(
+        "Failed to fetch remote tools for " + this.serverUrl + ": " + JSON.stringify(error),
+      );
     }
   }
 
   /**
    * Proxies a tool call to the remote MCP server.
    */
-  private async proxyRemoteToolCall(toolName: string, args: any, ctx: McpContext): Promise<CallToolResult> {
+  private async proxyRemoteToolCall(
+    toolName: string,
+    args: any,
+    ctx: McpContext,
+  ): Promise<CallToolResult> {
     try {
       const res = await this.callClient.post<any, any>(
         "/mcp",
@@ -71,16 +81,16 @@ export class OneMcpServer {
         },
         ctx.projectId
           ? {
-            headers: {
-              "x-goog-user-project": ctx.projectId,
-            },
-          }
+              headers: {
+                "x-goog-user-project": ctx.projectId,
+              },
+            }
           : {},
       );
       return CallToolResultSchema.parse(res.body.result);
     } catch (error) {
       if (error instanceof FirebaseError) {
-        const firebaseError = error as FirebaseError;
+        const firebaseError = error;
         const body = (firebaseError.context as any)?.body;
         if (body?.result?.isError) {
           return CallToolResultSchema.parse(body.result);
