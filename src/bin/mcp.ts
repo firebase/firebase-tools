@@ -69,7 +69,7 @@ export async function mcp(): Promise<void> {
     earlyExit = true;
   }
   if (values["generate-tool-list"]) {
-    console.log(markdownDocsOfTools());
+    console.log(await markdownDocsOfTools());
     earlyExit = true;
   }
   if (values["generate-prompt-list"]) {

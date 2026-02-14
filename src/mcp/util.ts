@@ -13,6 +13,7 @@ import {
   crashlyticsApiOrigin,
   appDistributionOrigin,
   realtimeOrigin,
+  developerKnowledgeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -77,6 +78,7 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   apptesting: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
+  developerknowledge: developerKnowledgeOrigin(),
 };
 
 const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
@@ -92,6 +94,7 @@ const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
   apptesting: undefined,
   apphosting: undefined,
   database: undefined,
+  developerknowledge: undefined,
 };
 
 /**

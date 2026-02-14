@@ -1,3 +1,4 @@
+import { ONEMCP_SERVERS } from "../onemcp/index";
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { appHostingTools } from "./apphosting/index";
@@ -40,6 +41,8 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   messaging: addFeaturePrefix("messaging", messagingTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   storage: addFeaturePrefix("storage", storageTools),
+  // No local tools for developer knowledge
+  developerknowledge: [],
 };
 
 const allToolsMap = new Map(
@@ -49,11 +52,13 @@ const allToolsMap = new Map(
     .map((t) => [t.mcp.name, t]),
 );
 
-function getToolsByName(names: string[]): ServerTool[] {
+async function getToolsByName(names: string[]): Promise<ServerTool[]> {
   const selectedTools = new Set<ServerTool>();
 
+  const remoteTools = new Map((await getRemoteToolsByFeature()).map((t) => [t.mcp.name, t]));
+
   for (const toolName of names) {
-    const tool = allToolsMap.get(toolName);
+    const tool = allToolsMap.get(toolName) || remoteTools.get(toolName);
     if (tool) {
       selectedTools.add(tool);
     }
@@ -62,13 +67,35 @@ function getToolsByName(names: string[]): ServerTool[] {
   return Array.from(selectedTools);
 }
 
-export function getToolsByFeature(serverFeatures?: ServerFeature[]): ServerTool[] {
+export async function getToolsByFeature(serverFeatures?: ServerFeature[]): Promise<ServerTool[]> {
   const features = new Set(
-    serverFeatures?.length ? serverFeatures : (Object.keys(tools) as ServerFeature[]),
+    serverFeatures?.length
+      ? serverFeatures
+      : (Object.keys({ ...tools, ...ONEMCP_SERVERS }) as ServerFeature[]),
   );
   features.add("core");
 
-  return Array.from(features).flatMap((feature) => tools[feature] || []);
+  const featureList = Array.from(features);
+  const localTools = featureList.flatMap((feature) => tools[feature] || []);
+  const remoteTools = await getRemoteToolsByFeature(featureList);
+  return [...localTools, ...remoteTools];
+}
+
+/**
+ * Fetches tools from remote MCP servers.
+ */
+export async function getRemoteToolsByFeature(features?: ServerFeature[]): Promise<ServerTool[]> {
+  const remoteToolsPromises: Promise<ServerTool[]>[] = [];
+  const featureSet = new Set(
+    features?.length ? features : (Object.keys(ONEMCP_SERVERS) as ServerFeature[]),
+  );
+  for (const feature of featureSet) {
+    const server = ONEMCP_SERVERS[feature];
+    if (server) {
+      remoteToolsPromises.push(server.fetchRemoteTools());
+    }
+  }
+  return Promise.all(remoteToolsPromises).then((tools) => tools.flat());
 }
 
 /**
@@ -90,7 +117,7 @@ export async function availableTools(
     return getToolsByFeature(activeFeatures);
   }
 
-  const allTools = getToolsByFeature(detectedFeatures);
+  const allTools = await getToolsByFeature(detectedFeatures);
   const availabilities = await Promise.all(
     allTools.map((t) => {
       if (t.isAvailable) {
@@ -106,8 +133,8 @@ export async function availableTools(
  * Generates a markdown table of all available tools and their descriptions.
  * This is used for generating documentation.
  */
-export function markdownDocsOfTools(): string {
-  const allTools = getToolsByFeature([]);
+export async function markdownDocsOfTools(): Promise<string> {
+  const allTools = await getToolsByFeature([]);
   let doc = `
 | Tool Name | Feature Group | Description |
 | --------- | ------------- | ----------- |`;
