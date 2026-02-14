@@ -7,6 +7,7 @@ import { Client } from "../../apiv2";
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
+import { ensure } from "../../ensureApiEnabled";
 
 /**
  * OneMcpServer encapsulates the logic for interacting with a remote MCP server.
@@ -67,6 +68,7 @@ export class OneMcpServer {
     args: any,
     ctx: McpContext,
   ): Promise<CallToolResult> {
+    await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
     try {
       const res = await this.callClient.post<any, any>(
         "/mcp",
