@@ -67,9 +67,6 @@ async function getToolsByName(names: string[]): Promise<ServerTool[]> {
   return Array.from(selectedTools);
 }
 
-/**
- *
- */
 export async function getToolsByFeature(serverFeatures?: ServerFeature[]): Promise<ServerTool[]> {
   const features = new Set(
     serverFeatures?.length
