@@ -11,7 +11,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.5",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "tsx": "^4.19.4"
   },
   "devDependencies": {
