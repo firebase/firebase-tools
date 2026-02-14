@@ -86,7 +86,10 @@ export async function getToolsByFeature(serverFeatures?: ServerFeature[]): Promi
  */
 export async function getRemoteToolsByFeature(features?: ServerFeature[]): Promise<ServerTool[]> {
   const remoteToolsPromises: Promise<ServerTool[]>[] = [];
-  for (const feature of features || (Object.keys(ONEMCP_SERVERS) as ServerFeature[])) {
+  const featureSet = new Set(
+    features?.length ? features : (Object.keys(ONEMCP_SERVERS) as ServerFeature[]),
+  );
+  for (const feature of featureSet) {
     const server = ONEMCP_SERVERS[feature];
     if (server) {
       remoteToolsPromises.push(server.fetchRemoteTools());
