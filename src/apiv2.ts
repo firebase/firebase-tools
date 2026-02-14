@@ -240,7 +240,7 @@ export class Client {
    *   - use content-type: application/json
    *   - assume the HTTP GET method
    *
-  * @example
+   * @example
    * const res = apiv2.request<ResourceType>({
    *   method: "POST",
    *   path: "/some/resource",
