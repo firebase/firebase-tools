@@ -341,7 +341,6 @@ export class Client {
     } else {
       token = await getAccessToken();
     }
-
     reqOptions.headers.set("Authorization", `Bearer ${token}`);
     return reqOptions;
   }
