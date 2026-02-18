@@ -64,9 +64,7 @@ describe("OneMcpServer", () => {
     it("should throw error if fetch returns invalid schema", async () => {
       clientRequestStub.resolves({
         body: {
-          result: {
-            invalid: "schema",
-          },
+          invalid: "schema",
         },
       });
 
@@ -187,7 +185,7 @@ describe("OneMcpServer", () => {
       const tool = tools[0];
 
       clientRequestStub.onSecondCall().resolves({
-        body: { result: { invalid: "schema" } },
+        body: { invalid: "schema" },
       });
 
       await expect(tool.fn({}, mockContext)).to.be.rejected;
