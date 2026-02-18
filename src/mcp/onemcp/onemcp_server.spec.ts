@@ -60,6 +60,18 @@ describe("OneMcpServer", () => {
         /Failed to fetch remote tools/,
       );
     });
+
+    it("should throw error if fetch returns invalid schema", async () => {
+      clientRequestStub.resolves({
+        body: {
+          result: {
+            invalid: "schema",
+          },
+        },
+      });
+
+      await expect(server.fetchRemoteTools()).to.be.rejected;
+    });
   });
 
   describe("proxyRemoteToolCall", () => {
@@ -107,6 +119,24 @@ describe("OneMcpServer", () => {
       });
     });
 
+    it("should proxy tool call without x-goog-user-project header if projectId is missing", async () => {
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.fetchRemoteTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ arg: "val" }, { ...mockContext, projectId: undefined });
+
+      expect(clientRequestStub.secondCall.args[0].headers?.["x-goog-user-project"]).to.be.undefined;
+    });
+
     it("should handle remote tool error results", async () => {
       const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
       clientRequestStub.onFirstCall().resolves({
@@ -145,6 +175,22 @@ describe("OneMcpServer", () => {
       clientRequestStub.onSecondCall().rejects(genericError);
 
       await expect(tool.fn({}, mockContext)).to.be.rejectedWith("Generic Error");
+    });
+
+    it("should throw error if proxy call returns invalid schema", async () => {
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.fetchRemoteTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { invalid: "schema" } },
+      });
+
+      await expect(tool.fn({}, mockContext)).to.be.rejected;
     });
   });
 });

@@ -2,6 +2,7 @@ import {
   CallToolResult,
   CallToolResultSchema,
   ListToolsResultSchema,
+  JSONRPCResponse,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool } from "../tool";
@@ -34,7 +35,7 @@ export class OneMcpServer {
    */
   async fetchRemoteTools(): Promise<ServerTool[]> {
     try {
-      const res = await this.listClient.post<any, any>("/mcp", {
+      const res = await this.listClient.post<any, JSONRPCResponse>("/mcp", {
         method: "tools/list",
         jsonrpc: "2.0",
         id: 1,
@@ -68,9 +69,10 @@ export class OneMcpServer {
     args: any,
     ctx: McpContext,
   ): Promise<CallToolResult> {
+    // TODO: Optimize this to not call ensure on every tool call.
     await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
     try {
-      const res = await this.callClient.post<any, any>(
+      const res = await this.callClient.post<any, JSONRPCResponse>(
         "/mcp",
         {
           method: "tools/call",

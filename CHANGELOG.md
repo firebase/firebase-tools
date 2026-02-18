@@ -1,2 +1,1 @@
-- Added OneMCP proxy support.
 - Added new Developer Knowledge MCP tools
