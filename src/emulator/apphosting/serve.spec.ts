@@ -12,6 +12,7 @@ import * as emulatorRegistry from "../registry";
 import * as emulatorEnvs from "../env";
 import * as secrets from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
+import * as utilsModule from "../../utils";
 
 describe("serve", () => {
   let checkListenableStub: sinon.SinonStub;
@@ -23,6 +24,7 @@ describe("serve", () => {
   let listRunningWithInfoStub: sinon.SinonStub;
   let setEnvVarsForEmulatorsStub: sinon.SinonStub;
   let accessSecretVersionStub: sinon.SinonStub;
+  let logLabeledWarningStub: sinon.SinonStub;
 
   beforeEach(() => {
     checkListenableStub = sinon.stub(portUtils, "checkListenable");
@@ -39,6 +41,7 @@ describe("serve", () => {
     detectPackageManagerStartCommandStub.returns("npm run dev");
 
     accessSecretVersionStub = sinon.stub(secrets, "accessSecretVersion");
+    logLabeledWarningStub = sinon.stub(utilsModule, "logLabeledWarning");
   });
 
   afterEach(() => {
@@ -94,17 +97,59 @@ describe("serve", () => {
       expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand + " --port 5002");
     });
 
-    it("should reject the custom command if a port is specified", async () => {
-      const startCommand = "ng serve --port 5004";
+    it("should allow custom command with port specified and show warning", async () => {
+      const startCommand = "npm run dev -- --port 5004";
       checkListenableStub.onFirstCall().returns(true);
       configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
 
-      await expect(serve.start({ startCommand })).to.be.rejectedWith(
-        FirebaseError,
-        /Specifying a port in the start command is not supported by the apphosting emulator/,
-      );
+      await serve.start({ startCommand });
 
-      expect(spawnWithCommandStringStub).to.not.be.called;
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      // Assert warning is logged for port mismatch (5004 vs 5002)
+      expect(logLabeledWarningStub).to.be.calledOnce;
+      expect(logLabeledWarningStub.getCall(0).args[1]).to.include("5004");
+      expect(logLabeledWarningStub.getCall(0).args[1]).to.include("5002");
+    });
+
+    it("should not add port to ng serve if already specified", async () => {
+      const startCommand = "ng serve --port 5002";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await serve.start({ startCommand });
+
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      // No warning since ports match (5002 === 5002)
+      expect(logLabeledWarningStub).to.not.be.called;
+    });
+
+    it("should handle -p=5002 format correctly", async () => {
+      const startCommand = "ng serve -p=5002";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await serve.start({ startCommand });
+
+      // Should not append port since -p is already present
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      expect(logLabeledWarningStub).to.not.be.called;
+    });
+
+    it("should handle --port=5003 format and warn on mismatch", async () => {
+      const startCommand = "npm start --port=5003";
+      checkListenableStub.onFirstCall().returns(true);
+      configsStub.getLocalAppHostingConfiguration.resolves(AppHostingYamlConfig.empty());
+
+      await serve.start({ startCommand });
+
+      expect(spawnWithCommandStringStub).to.be.called;
+      expect(spawnWithCommandStringStub.getCall(0).args[0]).to.eq(startCommand);
+      // Should warn about port mismatch
+      expect(logLabeledWarningStub).to.be.calledOnce;
+      expect(logLabeledWarningStub.getCall(0).args[1]).to.include("5003");
     });
 
     it("Should pass plaintext environment variables", async () => {

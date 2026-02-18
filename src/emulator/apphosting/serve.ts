@@ -106,26 +106,35 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   let startCommand;
   if (options?.startCommand) {
     startCommand = options?.startCommand;
-    // Angular and nextjs CLIs allow for specifying port options but the emulator is setting and
-    // specifying specific ports rather than use framework defaults or w/e the user has set, so we
-    // need to reject such custom commands.
-    // NOTE: this is not robust, a command could be a wrapper around another command and we cannot
-    // detect --port there.
-    if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
-      throw new FirebaseError(
-        "Specifying a port in the start command is not supported by the apphosting emulator",
-      );
-    }
+
+    // Extract port early using robust regex that handles all formats:
+    // --port 5002, --port=5002, -p 5002, -p=5002
+    const portMatch = startCommand.match(/--port[= ]?(\d+)|-p[= ]?(\d+)/);
+    const hasPortFlag = !!portMatch;
+
     // Angular does not respect the NodeJS.ProcessEnv.PORT set below. Port needs to be
     // set directly in the CLI.
-    if (startCommand.includes("ng serve")) {
+    if (startCommand.includes("ng serve") && !hasPortFlag) {
       startCommand += ` --port ${port}`;
     }
+
     logger.logLabeled(
       "BULLET",
       Emulators.APPHOSTING,
       `running custom start command: '${startCommand}'`,
     );
+
+    // Warn if user specified a port that differs from the emulator port
+    if (hasPortFlag) {
+      const userPort = parseInt(portMatch[1] || portMatch[2], 10);
+      if (userPort !== port) {
+        logLabeledWarning(
+          Emulators.APPHOSTING,
+          `Custom start command specifies port ${userPort}, but emulator is using port ${port}. ` +
+            `Make sure your command uses the PORT environment variable or matches the emulator port.`,
+        );
+      }
+    }
   } else {
     // TODO: port may be specified in an underlying command. But we will need to parse the package.json
     // file to be sure.
