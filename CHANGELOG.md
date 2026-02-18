@@ -1,0 +1,1 @@
+- Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
