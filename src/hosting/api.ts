@@ -341,6 +341,47 @@ export async function createChannel(
   );
   return res.body;
 }
+/**
+ * Creates a channel with force option to handle ghost channels.
+ * If the channel already exists (409 error) and force is true, attempts to delete and recreate it.
+ * This is useful for recovering from corrupted channel states after project restoration.
+ * @param project the project ID or number (can be provided `-`),
+ * @param site the site for the channel.
+ * @param channelId the specific channel ID.
+ * @param ttlMillis the duration from now to set the expireTime.
+ * @param force if true, attempts to delete and recreate the channel if it already exists.
+ */
+export async function forceCreateChannel(
+  project: string | number = "-",
+  site: string,
+  channelId: string,
+  ttlMillis: number = DEFAULT_DURATION,
+  force: boolean = false,
+): Promise<Channel> {
+  try {
+    return await createChannel(project, site, channelId, ttlMillis);
+  } catch (e: any) {
+    if (e.status === 409 && force) {
+      // Channel already exists, try to delete and recreate
+      try {
+        await deleteChannel(project, site, channelId);
+        // Wait a bit for the deletion to propagate
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return await createChannel(project, site, channelId, ttlMillis);
+      } catch (deleteError: any) {
+        // If deletion fails, throw the original error with additional context
+        throw new FirebaseError(
+          `Channel ${channelId} already exists and could not be deleted. ` +
+            `This may be a ghost channel from a previous project deletion. ` +
+            `Please contact Firebase support or try deleting the site and recreating it.`,
+          { original: e },
+        );
+      }
+    }
+    throw e;
+  }
+}
+
 
 /**
  * Updates a channel's TTL.

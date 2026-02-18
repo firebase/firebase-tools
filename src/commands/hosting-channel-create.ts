@@ -1,6 +1,12 @@
 import { bold, yellow } from "colorette";
 
-import { Channel, createChannel, addAuthDomains, normalizeName } from "../hosting/api";
+import {
+  Channel,
+  createChannel,
+  forceCreateChannel,
+  addAuthDomains,
+  normalizeName,
+} from "../hosting/api";
 import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
@@ -23,6 +29,10 @@ export const command = new Command("hosting:channel:create [channelId]")
     "duration string (e.g. 12h or 30d) for channel expiration, max 30d",
   )
   .option("--site <siteId>", "site for which to create the channel")
+  .option(
+    "--force",
+    "force channel creation by deleting and recreating if it already exists (useful for ghost channels)",
+  )
   .before(requireConfig)
   .before(requirePermissions, ["firebasehosting.sites.update"])
   .before(async (options) => {
@@ -66,13 +76,20 @@ export const command = new Command("hosting:channel:create [channelId]")
 
       let channel: Channel;
       try {
-        channel = await createChannel(projectId, site, channelId, expireTTL);
+        if (options.force) {
+          channel = await forceCreateChannel(projectId, site, channelId, expireTTL, true);
+        } else {
+          channel = await createChannel(projectId, site, channelId, expireTTL);
+        }
       } catch (e: any) {
         if (e.status === 409) {
           throw new FirebaseError(
             `Channel ${bold(channelId)} already exists on site ${bold(site)}. Deploy to ${bold(
               channelId,
-            )} with: ${yellow(`firebase hosting:channel:deploy ${channelId}`)}`,
+            )} with: ${yellow(`firebase hosting:channel:deploy ${channelId}`)}` +
+              `\n\nIf this is a ghost channel from a previous project deletion, try using the ${bold(
+                "--force",
+              )} flag to recreate it.`,
             { original: e },
           );
         }
