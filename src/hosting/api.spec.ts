@@ -208,6 +208,87 @@ describe("hosting", () => {
     });
   });
 
+  describe("forceCreateChannel", () => {
+    afterEach(nock.cleanAll);
+
+    it("should create a channel normally when it doesn't exist", async () => {
+      const CHANNEL_ID = "my-channel";
+      const CHANNEL = { name: "my-channel" };
+      nock(hostingApiOrigin())
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
+        .query({ channelId: CHANNEL_ID })
+        .reply(201, CHANNEL);
+
+      const res = await hostingApi.forceCreateChannel(PROJECT_ID, SITE, CHANNEL_ID, 604800000, true);
+
+      expect(res).to.deep.equal(CHANNEL);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should delete and recreate channel when it exists and force is true", async () => {
+      const CHANNEL_ID = "my-channel";
+      const CHANNEL = { name: "my-channel" };
+      
+      // First attempt fails with 409
+      nock(hostingApiOrigin())
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
+        .query({ channelId: CHANNEL_ID })
+        .reply(409, { error: "Channel already exists" });
+      
+      // Delete the existing channel
+      nock(hostingApiOrigin())
+        .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
+        .reply(204);
+      
+      // Recreate the channel
+      nock(hostingApiOrigin())
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
+        .query({ channelId: CHANNEL_ID })
+        .reply(201, CHANNEL);
+
+      const res = await hostingApi.forceCreateChannel(PROJECT_ID, SITE, CHANNEL_ID, 604800000, true);
+
+      expect(res).to.deep.equal(CHANNEL);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw helpful error when channel exists and cannot be deleted", async () => {
+      const CHANNEL_ID = "my-channel";
+      
+      // First attempt fails with 409
+      nock(hostingApiOrigin())
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
+        .query({ channelId: CHANNEL_ID })
+        .reply(409, { error: "Channel already exists" });
+      
+      // Delete fails
+      nock(hostingApiOrigin())
+        .delete(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels/${CHANNEL_ID}`)
+        .reply(404, { error: "Channel not found" });
+
+      await expect(
+        hostingApi.forceCreateChannel(PROJECT_ID, SITE, CHANNEL_ID, 604800000, true),
+      ).to.eventually.be.rejectedWith(FirebaseError, /ghost channel/);
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw original error when force is false", async () => {
+      const CHANNEL_ID = "my-channel";
+      
+      nock(hostingApiOrigin())
+        .post(`/v1beta1/projects/${PROJECT_ID}/sites/${SITE}/channels`, { ttl: "604800s" })
+        .query({ channelId: CHANNEL_ID })
+        .reply(409, { error: "Channel already exists" });
+
+      await expect(
+        hostingApi.forceCreateChannel(PROJECT_ID, SITE, CHANNEL_ID, 604800000, false),
+      ).to.eventually.be.rejectedWith(FirebaseError);
+
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
   describe("updateChannelTtl", () => {
     afterEach(nock.cleanAll);
 
