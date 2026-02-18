@@ -1,7 +1,7 @@
 import * as chai from "chai";
 import * as chaiAsPromised from "chai-as-promised";
 
-import { validateEventFilters, EventFilter } from "./filters";
+import { validateEventFilters, EventFilter, filterToUrlSearchParams } from "./filters";
 import { FirebaseError } from "../error";
 
 chai.use(chaiAsPromised);
@@ -172,6 +172,148 @@ describe("filters", () => {
           "intervalStartTime must be less than 90 days in the past",
         );
       });
+    });
+
+    describe("customKeys validation", () => {
+      it("should not throw for valid custom keys", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            user_tier: "premium",
+            feature_flag_x: "enabled",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.not.throw();
+      });
+
+      it("should not throw when customKeys is undefined", () => {
+        const filter: EventFilter = {
+          issueId: "abc123",
+        };
+        expect(() => validateEventFilters(filter)).to.not.throw();
+      });
+
+      it("should throw for empty string key", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            "": "value",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.throw(
+          FirebaseError,
+          "customKeys cannot contain empty string keys",
+        );
+      });
+
+      it("should throw for whitespace-only key", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            "   ": "value",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.throw(
+          FirebaseError,
+          "customKeys cannot contain empty string keys",
+        );
+      });
+
+      it("should throw for empty string value", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            user_tier: "",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.throw(
+          FirebaseError,
+          "customKeys['user_tier'] cannot be an empty string",
+        );
+      });
+
+      it("should throw for whitespace-only value", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            user_tier: "   ",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.throw(
+          FirebaseError,
+          "customKeys['user_tier'] cannot be an empty string",
+        );
+      });
+
+      it("should throw when any custom key is invalid in a set of multiple keys", () => {
+        const filter: EventFilter = {
+          customKeys: {
+            user_tier: "premium",
+            feature_flag_x: "",
+            screen_name: "checkout",
+          },
+        };
+        expect(() => validateEventFilters(filter)).to.throw(
+          FirebaseError,
+          "customKeys['feature_flag_x'] cannot be an empty string",
+        );
+      });
+    });
+  });
+});
+
+describe("filterToUrlSearchParams", () => {
+  describe("customKeys handling", () => {
+    it("should convert single custom key to URL parameter", () => {
+      const filter: EventFilter = {
+        customKeys: {
+          user_tier: "premium",
+        },
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.get("filter.custom_keys.user_tier")).to.equal("premium");
+    });
+
+    it("should convert multiple custom keys to URL parameters", () => {
+      const filter: EventFilter = {
+        customKeys: {
+          user_tier: "premium",
+          feature_flag_x: "enabled",
+          screen_name: "checkout",
+        },
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.get("filter.custom_keys.user_tier")).to.equal("premium");
+      expect(params.get("filter.custom_keys.feature_flag_x")).to.equal("enabled");
+      expect(params.get("filter.custom_keys.screen_name")).to.equal("checkout");
+    });
+
+    it("should handle customKeys with other filter fields", () => {
+      const filter: EventFilter = {
+        issueId: "abc123",
+        intervalStartTime: "2025-01-01T00:00:00Z",
+        customKeys: {
+          user_tier: "premium",
+        },
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.get("filter.issue.id")).to.equal("abc123");
+      expect(params.get("filter.interval.start_time")).to.equal("2025-01-01T00:00:00Z");
+      expect(params.get("filter.custom_keys.user_tier")).to.equal("premium");
+    });
+
+    it("should not add custom key parameters when customKeys is undefined", () => {
+      const filter: EventFilter = {
+        issueId: "abc123",
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.get("filter.issue.id")).to.equal("abc123");
+      expect(params.toString()).to.not.include("filter.custom_keys");
+    });
+
+    it("should not add custom key parameters when customKeys is empty", () => {
+      const filter: EventFilter = {
+        issueId: "abc123",
+        customKeys: {},
+      };
+      const params = filterToUrlSearchParams(filter);
+      expect(params.get("filter.issue.id")).to.equal("abc123");
+      expect(params.toString()).to.not.include("filter.custom_keys");
     });
   });
 });

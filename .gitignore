@@ -33,3 +33,5 @@ dev/
 clean/
 .gemini/
 .env
+.agent
+.kiro

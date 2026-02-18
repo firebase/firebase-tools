@@ -53,6 +53,12 @@ export const EventFilterSchema = z
       .array(z.enum(["PHONE", "TABLET", "DESKTOP", "TV", "WATCH"]))
       .optional()
       .describe(`Counts events originating from the given device form factors`),
+    customKeys: z
+      .record(z.string(), z.string())
+      .optional()
+      .describe(
+        `Filter events by custom key-value pairs set by developers during the session. All specified key-value pairs must match (AND logic).`,
+      ),
   })
   .optional()
   .describe(`Only events matching the given filters will be counted. All filters are optional. 
@@ -88,13 +94,22 @@ export function filterToUrlSearchParams(filter: EventFilter): URLSearchParams {
     if (value === undefined) {
       continue;
     }
+
+    // Special handling for customKeys
+    if (key === "customKeys") {
+      for (const [customKey, customValue] of Object.entries(value as Record<string, string>)) {
+        params.set(`filter.custom_keys.${customKey}`, customValue);
+      }
+      continue;
+    }
+
     const paramKey: string = toolToParamMap[key];
     if (Array.isArray(value)) {
       for (const v of value) {
         params.append(paramKey, v);
       }
     } else if (value) {
-      params.set(paramKey, value);
+      params.set(paramKey, value as string);
     }
   }
   return params;
@@ -137,5 +152,18 @@ export function validateEventFilters(filter: EventFilter = {}): EventFilter {
       }
     });
   }
+
+  // Validate custom keys
+  if (filter.customKeys) {
+    for (const [key, value] of Object.entries(filter.customKeys)) {
+      if (key.trim() === "") {
+        throw new FirebaseError("customKeys cannot contain empty string keys");
+      }
+      if (value.trim() === "") {
+        throw new FirebaseError(`customKeys['${key}'] cannot be an empty string`);
+      }
+    }
+  }
+
   return filter;
 }
