@@ -1,0 +1,1 @@
+- Updated Python Functions template to use `firebase_functions` v0.5.x
