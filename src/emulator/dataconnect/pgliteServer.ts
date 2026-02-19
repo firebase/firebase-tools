@@ -107,6 +107,12 @@ export class PostgresServer {
     return { vector, uuidOssp };
   }
 
+  private async initExtensions(db: PGlite): Promise<void> {
+    // PGlite only makes extensions available through the `extensions` option.
+    // We have to create the extensions explicitly here.
+    await db.exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
+  }
+
   public async clearDb(): Promise<void> {
     const db = await this.getDb();
     await db.query(TRUNCATE_TABLES_SQL);
@@ -174,6 +180,7 @@ export class PostgresServer {
     const dumpText = await dumpResult.text();
     await newDb.exec(dumpText);
     await newDb.exec("SET SEARCH_PATH = public;");
+    await this.initExtensions(newDb);
 
     logger.info("Postgres database migration successful.");
     return newDb;
@@ -227,6 +234,7 @@ export class PostgresServer {
     try {
       const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
       await db.waitReady;
+      await this.initExtensions(db);
       return db;
     } catch (err: unknown) {
       if (pg17Dir && hasMessage(err) && /Database already exists/.test(err.message)) {
@@ -234,6 +242,7 @@ export class PostgresServer {
         fs.rmSync(pg17Dir, { force: true, recursive: true });
         const db = new PGlite({ ...baseArgs, dataDir: pg17Dir });
         await db.waitReady;
+        await this.initExtensions(db);
         return db;
       }
       logger.warn(`Error from pglite: ${err}`);
