@@ -71,10 +71,10 @@ describe("getRemoteToolsByFeature", () => {
     sandbox.restore();
   });
 
-  it("should call fetchRemoteTools on servers in ONEMCP_SERVERS", async () => {
+  it("should call listTools on servers in ONEMCP_SERVERS", async () => {
     const mockTool = { mcp: { name: "remote_tool" } };
     const fetchStub = sandbox
-      .stub(OneMcpServer.prototype, "fetchRemoteTools")
+      .stub(OneMcpServer.prototype, "listTools")
       .resolves([mockTool as any]);
 
     const tools = await getRemoteToolsByFeature(["developerknowledge"]);
@@ -85,7 +85,7 @@ describe("getRemoteToolsByFeature", () => {
   });
 
   it("should filter by provided features", async () => {
-    const fetchStub = sandbox.stub(OneMcpServer.prototype, "fetchRemoteTools").resolves([]);
+    const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools").resolves([]);
 
     await getRemoteToolsByFeature(["developerknowledge"]);
     // Since only 'developerknowledge' is in ONEMCP_SERVERS currently,
@@ -108,7 +108,7 @@ describe("getRemoteToolsByFeature", () => {
     (ONEMCP_SERVERS as any).developerknowledge = new OneMcpServer("developerknowledge", "url1");
     (ONEMCP_SERVERS as any).firestore = new OneMcpServer("firestore", "url2");
 
-    const fetchStub = sandbox.stub(OneMcpServer.prototype, "fetchRemoteTools");
+    const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools");
     fetchStub.onFirstCall().resolves([mockTool1 as any]);
     fetchStub.onSecondCall().resolves([mockTool2 as any, mockTool3 as any]);
 
