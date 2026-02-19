@@ -36,7 +36,7 @@ export class OneMcpServer {
   /**
    * Fetches tools from the remote MCP server.
    */
-  async fetchRemoteTools(): Promise<ServerTool[]> {
+  async listTools(): Promise<ServerTool[]> {
     try {
       const res = await this.listClient.post<
         JSONRPCRequest & ListToolsRequest,
@@ -56,7 +56,7 @@ export class OneMcpServer {
             requiresAuth: true,
           },
         },
-        fn: (args: any, ctx: McpContext) => this.proxyRemoteToolCall(mcpTool.name, args, ctx),
+        fn: (args: any, ctx: McpContext) => this.callTool(mcpTool.name, args, ctx),
         isAvailable: () => Promise.resolve(true),
       }));
     } catch (error) {
@@ -69,11 +69,7 @@ export class OneMcpServer {
   /**
    * Proxies a tool call to the remote MCP server.
    */
-  private async proxyRemoteToolCall(
-    toolName: string,
-    args: any,
-    ctx: McpContext,
-  ): Promise<CallToolResult> {
+  private async callTool(toolName: string, args: any, ctx: McpContext): Promise<CallToolResult> {
     // TODO: Optimize this to not call ensure on every tool call.
     await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
     try {

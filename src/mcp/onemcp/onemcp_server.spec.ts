@@ -25,7 +25,7 @@ describe("OneMcpServer", () => {
     sandbox.restore();
   });
 
-  describe("fetchRemoteTools", () => {
+  describe("listTools", () => {
     it("should fetch and parse remote tools successfully", async () => {
       const mockMcpTool = {
         name: "test_tool",
@@ -40,7 +40,7 @@ describe("OneMcpServer", () => {
         },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
 
       expect(tools).to.have.length(1);
       expect(tools[0].mcp.name).to.equal("test_feature_test_tool");
@@ -54,7 +54,7 @@ describe("OneMcpServer", () => {
     it("should throw FirebaseError if fetch fails", async () => {
       clientRequestStub.rejects(new Error("Network Error"));
 
-      await expect(server.fetchRemoteTools()).to.be.rejectedWith(
+      await expect(server.listTools()).to.be.rejectedWith(
         FirebaseError,
         /Failed to fetch remote tools/,
       );
@@ -67,11 +67,11 @@ describe("OneMcpServer", () => {
         },
       });
 
-      await expect(server.fetchRemoteTools()).to.be.rejected;
+      await expect(server.listTools()).to.be.rejected;
     });
   });
 
-  describe("proxyRemoteToolCall", () => {
+  describe("callTool", () => {
     const mockContext: any = {
       projectId: "test-project",
     };
@@ -82,7 +82,7 @@ describe("OneMcpServer", () => {
         body: { result: { tools: [mockMcpTool] } },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
       const tool = tools[0];
 
       const mockCallResult = { content: [{ type: "text", text: "success" }] };
@@ -122,7 +122,7 @@ describe("OneMcpServer", () => {
         body: { result: { tools: [mockMcpTool] } },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
       const tool = tools[0];
 
       clientRequestStub.onSecondCall().resolves({
@@ -140,7 +140,7 @@ describe("OneMcpServer", () => {
         body: { result: { tools: [mockMcpTool] } },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
       const tool = tools[0];
 
       const mockErrorResult = { isError: true, content: [{ type: "text", text: "remote error" }] };
@@ -165,7 +165,7 @@ describe("OneMcpServer", () => {
         body: { result: { tools: [mockMcpTool] } },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
       const tool = tools[0];
 
       const genericError = new Error("Generic Error");
@@ -180,7 +180,7 @@ describe("OneMcpServer", () => {
         body: { result: { tools: [mockMcpTool] } },
       });
 
-      const tools = await server.fetchRemoteTools();
+      const tools = await server.listTools();
       const tool = tools[0];
 
       clientRequestStub.onSecondCall().resolves({
