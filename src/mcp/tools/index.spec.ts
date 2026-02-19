@@ -73,9 +73,7 @@ describe("getRemoteToolsByFeature", () => {
 
   it("should call listTools on servers in ONEMCP_SERVERS", async () => {
     const mockTool = { mcp: { name: "remote_tool" } };
-    const fetchStub = sandbox
-      .stub(OneMcpServer.prototype, "listTools")
-      .resolves([mockTool as any]);
+    const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools").resolves([mockTool as any]);
 
     const tools = await getRemoteToolsByFeature(["developerknowledge"]);
 
