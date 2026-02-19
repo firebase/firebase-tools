@@ -1,0 +1,5 @@
+- Update the Firebase Data Connect local toolkit to v3.1.4, which includes the following changes: (#9944)
+  - Add support for `@searchable` on varchar fields.
+  - Fix a runtime error when using aggregations with nested reference fields.
+  - Add support for custom PostgreSQL schema names.
+  - Update the Golang dependency version from v1.24.12 to v1.24.13.
