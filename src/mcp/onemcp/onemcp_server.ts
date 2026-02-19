@@ -54,7 +54,6 @@ export class OneMcpServer {
           name: `${this.feature}_${mcpTool.name}`,
           _meta: {
             requiresAuth: true,
-            requiresProject: true,
           },
         },
         fn: (args: any, ctx: McpContext) => this.proxyRemoteToolCall(mcpTool.name, args, ctx),
