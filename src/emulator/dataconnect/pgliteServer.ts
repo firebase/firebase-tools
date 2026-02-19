@@ -111,6 +111,7 @@ export class PostgresServer {
     // PGlite only makes extensions available through the `extensions` option.
     // We have to create the extensions explicitly here.
     await db.exec(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
+    await db.exec(`CREATE EXTENSION IF NOT EXISTS "vector";`);
   }
 
   public async clearDb(): Promise<void> {
