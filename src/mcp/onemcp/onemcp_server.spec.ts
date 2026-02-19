@@ -47,7 +47,6 @@ describe("OneMcpServer", () => {
       expect(tools[0].mcp.description).to.equal(mockMcpTool.description);
       expect(tools[0].mcp._meta).to.deep.equal({
         requiresAuth: true,
-        requiresProject: true,
       });
       expect(clientRequestStub).to.have.been.calledOnce;
     });
