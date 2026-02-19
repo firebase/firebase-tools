@@ -427,7 +427,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // For Dart, include the function name in the path so the server can route
     // For other runtimes, use / as they use FUNCTION_TARGET env var
     const isDart = runtime?.startsWith("dart");
-    const path = isDart ? `/${trigger.entryPoint}` : `/`;
+    const path = isDart ? `/${trigger.name}` : `/`;
 
     return new Promise((resolve, reject) => {
       const req = http.request(
@@ -2017,7 +2017,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // For callable functions we want to accept tokens without actually calling verifyIdToken
     const isCallable = trigger.labels && trigger.labels["deployment-callable"] === "true";
     const authHeader = req.header("Authorization");
-    if (authHeader && isCallable && trigger.platform !== "gcfv2") {
+    if (authHeader && isCallable && trigger.platform !== "gcfv2" && trigger.platform !== "run") {
       const token = this.tokenFromAuthHeader(authHeader);
       if (token) {
         const contextAuth = {
@@ -2050,12 +2050,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       "/",
     );
 
-    // For Dart, add a header with the function name for routing
-    // Python's functions-framework uses FUNCTION_TARGET env var, but Dart loads all functions
-    // in a single shared process and routes based on the path or this header
+    // For Dart, route via path since all functions share a single process.
+    // The Dart server routes based on the first path segment (function name).
+    // Use trigger_name (e.g. "helloWorld") not trigger.id (e.g. "us-central1-helloWorld").
     const isDart = record.backend.runtime?.startsWith("dart");
     if (isDart) {
-      req.headers["x-firebase-function"] = trigger.entryPoint;
+      path = `/${req.params.trigger_name}${path === "/" ? "" : path}`;
     }
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may

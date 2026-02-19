@@ -207,9 +207,8 @@ export interface SecretEnvVar {
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
-// Run is an automatic migration from gcfv2 and is not used on the wire.
-export type FunctionsPlatform = Exclude<backend.FunctionsPlatform, "run">;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
@@ -223,12 +222,17 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
-  // Defaults to "gcfv2". "Run" will be an additional option defined later
-  platform?: "gcfv1" | "gcfv2";
+  // Defaults to "gcfv2". "run" targets Cloud Run directly.
+  platform?: FunctionsPlatform;
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
-  // Will become optional once "run" is supported as a platform
   entryPoint: string;
+
+  // Cloud Run container image URI (used when platform is "run").
+  baseImageUri?: string;
+
+  // Container entrypoint command (used when platform is "run").
+  command?: string[];
 
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
