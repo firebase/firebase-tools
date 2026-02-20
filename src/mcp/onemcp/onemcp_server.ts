@@ -60,7 +60,12 @@ export class OneMcpServer {
           name: `${this.feature}_${mcpTool.name}`,
           _meta: { ...this.meta, feature: this.feature },
         },
-        fn: (args: any, ctx: McpContext) => this.callTool(mcpTool.name, args, ctx),
+        fn: (
+          args: {
+            [x: string]: unknown;
+          },
+          ctx: McpContext,
+        ) => this.callTool(mcpTool.name, args, ctx),
         isAvailable: () => Promise.resolve(true),
       }));
     } catch (error) {
@@ -73,7 +78,13 @@ export class OneMcpServer {
   /**
    * Proxies a tool call to the remote MCP server.
    */
-  private async callTool(toolName: string, args: any, ctx: McpContext): Promise<CallToolResult> {
+  private async callTool(
+    toolName: string,
+    args: {
+      [x: string]: unknown;
+    },
+    ctx: McpContext,
+  ): Promise<CallToolResult> {
     // TODO: Optimize this to not call ensure on every tool call.
     await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
     try {
