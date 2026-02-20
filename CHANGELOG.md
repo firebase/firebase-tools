@@ -1,0 +1,1 @@
+- Change Firestore MCP tools to proxy to Firestore OneMCP server. Firestore tools no longer support emulator mode.
