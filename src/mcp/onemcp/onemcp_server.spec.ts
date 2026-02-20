@@ -18,7 +18,7 @@ describe("OneMcpServer", () => {
     sandbox = sinon.createSandbox();
     clientRequestStub = sandbox.stub(Client.prototype, "request");
     ensureStub = sandbox.stub(ensureModule, "ensure").resolves();
-    server = new OneMcpServer(feature, serverUrl);
+    server = new OneMcpServer(feature, serverUrl, { requiresAuth: false, requiresProject: true });
   });
 
   afterEach(() => {
@@ -46,7 +46,9 @@ describe("OneMcpServer", () => {
       expect(tools[0].mcp.name).to.equal("test_feature_test_tool");
       expect(tools[0].mcp.description).to.equal(mockMcpTool.description);
       expect(tools[0].mcp._meta).to.deep.equal({
-        requiresAuth: true,
+        requiresAuth: false,
+        requiresProject: true,
+        feature: "test_feature",
       });
       expect(clientRequestStub).to.have.been.calledOnce;
     });

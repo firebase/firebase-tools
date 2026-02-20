@@ -8,7 +8,7 @@ import {
   CallToolRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
-import { ServerTool } from "../tool";
+import { ServerTool, ServerToolMeta } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
@@ -19,9 +19,15 @@ import { ensure } from "../../ensureApiEnabled";
 export class OneMcpServer {
   private listClient: Client;
   private callClient: Client;
+  /**
+   * @param feature The Firebase feature this server belongs to.
+   * @param serverUrl The base URL of the remote MCP server.
+   * @param meta Metadata to be attached to every tool from this server.
+   */
   constructor(
     private readonly feature: ServerFeature,
     private readonly serverUrl: string,
+    private readonly meta: ServerToolMeta,
   ) {
     this.listClient = new Client({
       urlPrefix: this.serverUrl,
@@ -52,9 +58,7 @@ export class OneMcpServer {
         mcp: {
           ...mcpTool,
           name: `${this.feature}_${mcpTool.name}`,
-          _meta: {
-            requiresAuth: true,
-          },
+          _meta: { ...this.meta, feature: this.feature },
         },
         fn: (args: any, ctx: McpContext) => this.callTool(mcpTool.name, args, ctx),
         isAvailable: () => Promise.resolve(true),
