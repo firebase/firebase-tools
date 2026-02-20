@@ -82,8 +82,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
     _configValues: backend.RuntimeConfigValues,
     _envs: backend.EnvironmentVariables,
   ): Promise<Build> {
-    // Use file-based discovery from .dart_tool/firebase/functions.yaml
-    const yamlDir = path.join(this.sourceDir, ".dart_tool", "firebase");
+    // Use file-based discovery from functions.yaml in the project root
+    const yamlDir = this.sourceDir;
     const yamlPath = path.join(yamlDir, "functions.yaml");
     let discovered = await discovery.detectFromYaml(yamlDir, this.projectId, this.runtime);
 

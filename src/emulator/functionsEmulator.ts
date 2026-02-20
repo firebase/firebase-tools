@@ -621,7 +621,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
         // Also watch functions.yaml specifically - when build_runner regenerates it,
         // we need to reload to discover new/changed function signatures
-        const functionsYamlPath = path.join(backend.functionsDir, ".dart_tool", "firebase", "functions.yaml");
+        const functionsYamlPath = path.join(backend.functionsDir, "functions.yaml");
         const yamlWatcher = chokidar.watch(functionsYamlPath, { persistent: true });
         this.watchers.push(yamlWatcher);
 
