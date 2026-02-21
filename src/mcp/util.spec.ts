@@ -425,6 +425,7 @@ const testCases: TestCase[] = [
       anyOf: [
         { type: "string" },
         { type: "array", items: { type: "object" } },
+        { $ref: "#/$defs/reusableInvalid" },
         { anyOf: [{ type: "boolean" }, { type: "integer" }] },
       ],
     },

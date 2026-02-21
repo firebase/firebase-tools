@@ -4,6 +4,7 @@
     "definitions": {
         "ActiveRuntime": {
             "enum": [
+                "dart3",
                 "nodejs18",
                 "nodejs20",
                 "nodejs22",
@@ -14,6 +15,42 @@
                 "python313"
             ],
             "type": "string"
+        },
+        "AuthConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "providers": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "anonymous": {
+                            "type": "boolean"
+                        },
+                        "emailPassword": {
+                            "type": "boolean"
+                        },
+                        "googleSignIn": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "authorizedRedirectUris": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "oAuthBrandDisplayName": {
+                                    "type": "string"
+                                },
+                                "supportEmail": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
         },
         "DataConnectSingle": {
             "additionalProperties": false,
@@ -913,6 +950,7 @@
                 },
                 "runtime": {
                     "enum": [
+                        "dart3",
                         "nodejs18",
                         "nodejs20",
                         "nodejs22",
@@ -1158,6 +1196,9 @@
                     "type": "array"
                 }
             ]
+        },
+        "auth": {
+            "$ref": "#/definitions/AuthConfig"
         },
         "database": {
             "anyOf": [
