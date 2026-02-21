@@ -1,5 +1,5 @@
 import { bold } from "colorette";
-import { cloneDeep, logLabeledWarning } from "../utils";
+import { cloneDeep, logLabeledWarning, splitArgumentBySeparator } from "../utils";
 
 import { FirebaseError } from "../error";
 import {
@@ -60,7 +60,7 @@ export function filterOnly(configs: HostingMultiple, onlyString?: string): Hosti
     return configs;
   }
 
-  let onlyTargets = onlyString.split(",");
+  let onlyTargets = splitArgumentBySeparator(onlyString);
   // If an unqualified "hosting" is in the --only,
   // all hosting sites should be deployed.
   if (onlyTargets.includes("hosting")) {
