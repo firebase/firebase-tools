@@ -26,6 +26,14 @@ import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
+const EMULATOR_VERSION_OVERRIDE_ENV_MAP: { [key: string]: string } = {
+  database: "FIREBASE_TOOLS_DATABASE_EMULATOR_VERSION",
+  firestore: "FIREBASE_TOOLS_FIRESTORE_EMULATOR_VERSION",
+  storage: "FIREBASE_TOOLS_STORAGE_EMULATOR_VERSION",
+  pubsub: "FIREBASE_TOOLS_PUBSUB_EMULATOR_VERSION",
+  dataconnect: "FIREBASE_TOOLS_DATACONNECT_EMULATOR_VERSION",
+};
+
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
@@ -66,9 +74,11 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
         ? EMULATOR_UPDATE_DETAILS.dataconnect.win32
         : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
 
+  let details: EmulatorDownloadDetails;
+  let overrideVersion = process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[emulator]];
   switch (emulator) {
     case "database":
-      return {
+      details = {
         downloadPath: path.join(
           CACHE_DIR,
           EMULATOR_UPDATE_DETAILS.database.downloadPathRelativeToCacheDir,
@@ -80,8 +90,9 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           namePrefix: "firebase-database-emulator",
         },
       };
+      break;
     case "firestore":
-      return {
+      details = {
         downloadPath: path.join(
           CACHE_DIR,
           EMULATOR_UPDATE_DETAILS.firestore.downloadPathRelativeToCacheDir,
@@ -93,8 +104,9 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           namePrefix: "cloud-firestore-emulator",
         },
       };
+      break;
     case "storage":
-      return {
+      details = {
         downloadPath: path.join(
           CACHE_DIR,
           EMULATOR_UPDATE_DETAILS.storage.downloadPathRelativeToCacheDir,
@@ -106,8 +118,9 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           namePrefix: "cloud-storage-rules-emulator",
         },
       };
+      break;
     case "ui":
-      return {
+      details = {
         version: emulatorUiDetails.version,
         downloadPath: path.join(CACHE_DIR, emulatorUiDetails.downloadPathRelativeToCacheDir),
         unzipDir: path.join(CACHE_DIR, `ui-v${emulatorUiDetails.version}`),
@@ -120,8 +133,9 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           namePrefix: "ui",
         },
       };
+      break;
     case "pubsub":
-      return {
+      details = {
         downloadPath: path.join(
           CACHE_DIR,
           EMULATOR_UPDATE_DETAILS.pubsub.downloadPathRelativeToCacheDir,
@@ -138,8 +152,9 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           namePrefix: "pubsub-emulator",
         },
       };
+      break;
     case "dataconnect":
-      return {
+      details = {
         downloadPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
         version: dataconnectDetails.version,
         binaryPath: path.join(CACHE_DIR, dataconnectDetails.downloadPathRelativeToCacheDir),
@@ -151,9 +166,29 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
           auth: false,
         },
       };
+      break;
     default:
       throw new Error(`Invalid downloadable emulator: ${emulator}`);
   }
+
+  if (overrideVersion && overrideVersion !== details.version) {
+    const oldVersion = details.version;
+    const replaceVersion = (s: string) => s.split(oldVersion).join(overrideVersion);
+
+    details.version = overrideVersion;
+    details.downloadPath = replaceVersion(details.downloadPath);
+    if (details.unzipDir) {
+      details.unzipDir = replaceVersion(details.unzipDir);
+    }
+    if (details.binaryPath) {
+      details.binaryPath = replaceVersion(details.binaryPath);
+    }
+
+    details.opts.remoteUrl = replaceVersion(details.opts.remoteUrl);
+    details.opts.skipChecksumAndSize = true;
+  }
+
+  return details;
 }
 
 const EmulatorDetails: { [s in DownloadableEmulators]: DownloadableEmulatorDetails } = {
@@ -630,4 +665,8 @@ export function isIncomaptibleArchError(err: unknown): boolean {
     /Unknown system error/.test(err.message ?? "") &&
     process.platform === "darwin"
   );
+}
+
+export function isVersionOverride(name: DownloadableEmulators) {
+  return !!process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[name]];
 }

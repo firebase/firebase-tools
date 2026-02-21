@@ -22,6 +22,13 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
     );
     return;
   }
+  if (downloadableEmulators.isVersionOverride(name)) {
+    EmulatorLogger.forEmulator(name).logLabeled(
+      "WARN",
+      name,
+      `Env variable override detected. Using custom ${name} emulator version ${emulator.version}.`,
+    );
+  }
   EmulatorLogger.forEmulator(name).logLabeled(
     "BULLET",
     name,

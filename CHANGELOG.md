@@ -1,0 +1,1 @@
+- Added `FIREBASE_TOOLS_*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
