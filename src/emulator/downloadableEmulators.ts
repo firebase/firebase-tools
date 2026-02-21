@@ -75,7 +75,7 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
         : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
 
   let details: EmulatorDownloadDetails;
-  let overrideVersion = process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[emulator]];
+  const overrideVersion = process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[emulator]];
   switch (emulator) {
     case "database":
       details = {
