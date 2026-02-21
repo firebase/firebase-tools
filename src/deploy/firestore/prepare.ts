@@ -133,7 +133,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   await ensure(context.projectId, firestoreOrigin(), "firestore");
   await ensure(context.projectId, firestoreOrigin(), "firestore");
   if (options.only) {
-    const targets = options.only.split(",");
+    const targets = utils.splitArgumentBySeparator(options.only);
 
     // Used for edge case when deploying to a named database
     // https://github.com/firebase/firebase-tools/pull/6129

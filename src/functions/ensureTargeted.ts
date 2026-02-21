@@ -1,3 +1,5 @@
+import { splitArgumentBySeparator } from "../utils";
+
 /**
  * Ensures than an only string is modified so that it will enclude a function
  * in its target. This is useful for making sure that an SSR function is included
@@ -29,7 +31,7 @@ export function ensureTargeted(
   codebaseOrFunction: string,
   functionId?: string,
 ): string {
-  const parts = only.split(",");
+  const parts = splitArgumentBySeparator(only);
   if (parts.includes("functions")) {
     return only;
   }

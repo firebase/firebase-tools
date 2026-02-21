@@ -4,7 +4,13 @@ import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import {
+  logBullet,
+  logSuccess,
+  consoleUrl,
+  addSubdomain,
+  splitArgumentBySeparator,
+} from "../utils";
 import { FirebaseError } from "../error";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
@@ -70,7 +76,7 @@ export const isDeployingWebFramework = (options: DeployOptions): boolean => {
   if (!options.only) return true;
 
   // If we're deploying a specific site/target when a web framework is present in config, check if the target is a web framework
-  return options.only.split(",").some((it) => {
+  return splitArgumentBySeparator(options.only).some((it) => {
     const [target, site] = it.split(":");
 
     // If not deploying to Firebase Hosting, skip

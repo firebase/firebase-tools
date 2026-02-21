@@ -1,6 +1,7 @@
 import { VALID_DEPLOY_TARGETS } from "./commands/deploy";
 import { FirebaseError } from "./error";
 import { Options } from "./options";
+import { splitArgumentBySeparator } from "./utils";
 
 /** Returns targets from `only` only for the specified deploy types. */
 function targetsForTypes(only: string[], ...types: string[]): string[] {
@@ -38,7 +39,7 @@ const FILTERABLE_TARGETS = new Set([
  * Throws an error (rejects) if it is invalid.
  */
 export async function checkValidTargetFilters(options: Options): Promise<void> {
-  const only = !options.only ? [] : options.only.split(",");
+  const only = !options.only ? [] : splitArgumentBySeparator(options.only);
 
   return new Promise<void>((resolve, reject) => {
     if (!only.length) {

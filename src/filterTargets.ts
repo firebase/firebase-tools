@@ -1,6 +1,7 @@
 import { intersection, difference } from "lodash";
 import { FirebaseError } from "./error";
 import { Options } from "./options";
+import { splitArgumentBySeparator } from "./utils";
 
 /**
  * Filters targets from options with valid targets as specified.
@@ -15,12 +16,12 @@ export function filterTargets(options: Options, validTargets: string[]): string[
   if (options.only) {
     targets = intersection(
       targets,
-      options.only.split(",").map((opt: string) => {
+      splitArgumentBySeparator(options.only).map((opt: string) => {
         return opt.split(":")[0];
       }),
     );
   } else if (options.except) {
-    targets = difference(targets, options.except.split(","));
+    targets = difference(targets, splitArgumentBySeparator(options.except));
   }
   if (targets.length === 0) {
     let msg = "Cannot understand what targets to deploy/serve.";

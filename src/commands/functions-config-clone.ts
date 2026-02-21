@@ -43,9 +43,9 @@ export const command = new Command("functions:config:clone")
     let only: string[] | undefined;
     let except: string[] = [];
     if (options.only) {
-      only = options.only.split(",");
+      only = utils.splitArgumentBySeparator(options.only);
     } else if (options.except) {
-      except = options.except.split(",");
+      except = utils.splitArgumentBySeparator(options.except);
     }
 
     await functionsConfigClone(options.from, projectId, only, except);

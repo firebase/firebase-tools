@@ -620,4 +620,39 @@ describe("utils", () => {
       expect(p).to.equal(inside);
     });
   });
+
+  describe("splitArgumentBySeparator", () => {
+    it("should split by spaces", () => {
+      expect(utils.splitArgumentBySeparator("foo bar baz")).to.deep.equal(["foo", "bar", "baz"]);
+    });
+
+    it("should handle multiple spaces", () => {
+      expect(utils.splitArgumentBySeparator("foo   bar")).to.deep.equal(["foo", "bar"]);
+    });
+
+    it("should handle leading and trailing spaces", () => {
+      expect(utils.splitArgumentBySeparator("  foo bar  ")).to.deep.equal(["foo", "bar"]);
+    });
+
+    it("should return an empty array for an empty string", () => {
+      expect(utils.splitArgumentBySeparator("")).to.deep.equal([]);
+    });
+
+    it("should return an empty array for a string with only spaces", () => {
+      expect(utils.splitArgumentBySeparator("   ")).to.deep.equal([]);
+    });
+
+    it("should split by commas", () => {
+      expect(utils.splitArgumentBySeparator("foo,bar,baz")).to.deep.equal(["foo", "bar", "baz"]);
+    });
+
+    it("should split by mixed spaces and commas", () => {
+      expect(utils.splitArgumentBySeparator("foo, bar  baz,qux")).to.deep.equal([
+        "foo",
+        "bar",
+        "baz",
+        "qux",
+      ]);
+    });
+  });
 });

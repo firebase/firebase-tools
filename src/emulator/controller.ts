@@ -132,7 +132,7 @@ export function filterEmulatorTargets(options: { only: string; config: any }): E
 
   const onlyOptions: string = options.only;
   if (onlyOptions) {
-    const only = onlyOptions.split(",").map((o) => {
+    const only = utils.splitArgumentBySeparator(onlyOptions).map((o) => {
       return o.split(":")[0];
     });
     targets = targets.filter((t) => only.includes(t));
@@ -320,7 +320,7 @@ export async function startAll(
 
   const onlyOptions: string = options.only;
   if (onlyOptions) {
-    const requested: string[] = onlyOptions.split(",").map((o) => {
+    const requested: string[] = utils.splitArgumentBySeparator(onlyOptions).map((o) => {
       return o.split(":")[0];
     });
     const ignored = requested.filter((k) => !targets.includes(k as Emulators));

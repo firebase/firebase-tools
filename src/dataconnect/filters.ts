@@ -1,4 +1,5 @@
 import { FirebaseError } from "../error";
+import { splitArgumentBySeparator } from "../utils";
 
 export interface ResourceFilter {
   serviceId: string;
@@ -12,7 +13,7 @@ export function getResourceFilters(options: { only?: string }): ResourceFilter[]
     return undefined;
   }
 
-  const selectors = options.only.split(",");
+  const selectors = splitArgumentBySeparator(options.only);
   const filters: ResourceFilter[] = [];
   for (let selector of selectors) {
     if (selector.startsWith("dataconnect:")) {

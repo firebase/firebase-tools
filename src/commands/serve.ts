@@ -18,7 +18,7 @@ function filterOnly(list: string[], only = ""): string[] {
   if (!only) {
     return [];
   }
-  const targets = only.split(",").map((o) => o.split(":")[0]);
+  const targets = utils.splitArgumentBySeparator(only).map((o) => o.split(":")[0]);
   return targets.filter((t) => list.includes(t));
 }
 

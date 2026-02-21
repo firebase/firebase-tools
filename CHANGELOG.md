@@ -1,1 +1,3 @@
+- Fixed issue where the CLI isn't able to correctly parse command arguments on PowerShell. (#7506)
+- Fixes an issue where Python was missing from the firebase-tools Docker image (#9855).
 - Updated suite of MCP tools for Firestore to include many new tools. Firestore tools no longer support emulator mode.

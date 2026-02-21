@@ -17,7 +17,13 @@ import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
 import { requireConfig } from "../requireConfig";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
-import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
+import {
+  logLabeledSuccess,
+  datetimeString,
+  logLabeledWarning,
+  consoleUrl,
+  splitArgumentBySeparator,
+} from "../utils";
 import { hostingConfig } from "../hosting/config";
 import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
@@ -89,8 +95,7 @@ export async function hostingChannelDeployAction(
 
   if (options.only) {
     // HACK: Re-use deploy in a rather ham-fisted way.
-    options.only = options.only
-      .split(",")
+    options.only = splitArgumentBySeparator(options.only)
       .map((o: string) => `hosting:${o}`)
       .join(",");
   } else {

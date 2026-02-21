@@ -34,7 +34,7 @@ export function getRulesConfig(projectId: string, options: Options): RulesInstan
   let allDatabases = !options.only;
   const onlyDatabases = new Set<string>();
   if (options.only) {
-    const split = options.only.split(",");
+    const split = utils.splitArgumentBySeparator(options.only);
     if (split.includes("database")) {
       allDatabases = true;
     } else {

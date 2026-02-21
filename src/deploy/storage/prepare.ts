@@ -4,6 +4,7 @@ import * as gcp from "../../gcp";
 import { RulesDeploy, RulesetServiceType } from "../../rulesDeploy";
 import { FirebaseError } from "../../error";
 import { DeployOptions } from "..";
+import { splitArgumentBySeparator } from "../../utils";
 
 /**
  * Prepares for a Firebase Storage deployment.
@@ -19,7 +20,7 @@ export default async function (context: any, options: DeployOptions): Promise<vo
   const onlyTargets = new Set<string>();
   let allStorage = !options.only;
   if (options.only) {
-    const split = options.only.split(",");
+    const split = splitArgumentBySeparator(options.only);
     if (split.includes("storage")) {
       allStorage = true;
     } else {
