@@ -1,1 +1,2 @@
 - Updated suite of MCP tools for Firestore to include many new tools. Firestore tools no longer support emulator mode.
+- Implemented `--open` for `hosting:channel:deploy`
