@@ -93,7 +93,7 @@ describe("getRemoteToolsByFeature", () => {
     fetchStub.resetHistory();
     await getRemoteToolsByFeature([]);
     // If features is empty, it should use all keys in ONEMCP_SERVERS.
-    expect(fetchStub).to.have.been.calledOnce;
+    expect(fetchStub).to.have.been.calledTwice;
   });
 
   it("should return flattened results from all remote servers", async () => {
@@ -103,8 +103,8 @@ describe("getRemoteToolsByFeature", () => {
 
     // Fake ONEMCP_SERVERS with multiple entries to test flattening
     const originalServers = { ...ONEMCP_SERVERS };
-    (ONEMCP_SERVERS as any).developerknowledge = new OneMcpServer("developerknowledge", "url1");
-    (ONEMCP_SERVERS as any).firestore = new OneMcpServer("firestore", "url2");
+    (ONEMCP_SERVERS as any).developerknowledge = new OneMcpServer("developerknowledge", "url1", {});
+    (ONEMCP_SERVERS as any).firestore = new OneMcpServer("firestore", "url2", {});
 
     const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools");
     fetchStub.onFirstCall().resolves([mockTool1 as any]);

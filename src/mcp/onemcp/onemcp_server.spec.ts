@@ -4,13 +4,14 @@ import { OneMcpServer } from "./onemcp_server";
 import { Client } from "../../apiv2";
 import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
+import { ServerFeature } from "../types";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
   let clientRequestStub: sinon.SinonStub;
   let ensureStub: sinon.SinonStub;
 
-  const feature = "test_feature" as any;
+  const feature = "auth" as ServerFeature;
   const serverUrl = "https://example.com";
   let server: OneMcpServer;
 
@@ -18,7 +19,7 @@ describe("OneMcpServer", () => {
     sandbox = sinon.createSandbox();
     clientRequestStub = sandbox.stub(Client.prototype, "request");
     ensureStub = sandbox.stub(ensureModule, "ensure").resolves();
-    server = new OneMcpServer(feature, serverUrl);
+    server = new OneMcpServer(feature, serverUrl, { requiresAuth: false, requiresProject: true });
   });
 
   afterEach(() => {
@@ -43,10 +44,12 @@ describe("OneMcpServer", () => {
       const tools = await server.listTools();
 
       expect(tools).to.have.length(1);
-      expect(tools[0].mcp.name).to.equal("test_feature_test_tool");
+      expect(tools[0].mcp.name).to.equal("auth_test_tool");
       expect(tools[0].mcp.description).to.equal(mockMcpTool.description);
       expect(tools[0].mcp._meta).to.deep.equal({
-        requiresAuth: true,
+        requiresAuth: false,
+        requiresProject: true,
+        feature: "auth",
       });
       expect(clientRequestStub).to.have.been.calledOnce;
     });

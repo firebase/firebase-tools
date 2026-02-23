@@ -7,7 +7,6 @@ import { authTools } from "./auth/index";
 import { coreTools } from "./core/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { dataconnectTools } from "./dataconnect/index";
-import { firestoreTools } from "./firestore/index";
 import { functionsTools } from "./functions/index";
 import { messagingTools } from "./messaging/index";
 import { realtimeDatabaseTools } from "./realtime_database/index";
@@ -36,13 +35,13 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),
   database: addFeaturePrefix("realtimedatabase", realtimeDatabaseTools),
   dataconnect: addFeaturePrefix("dataconnect", dataconnectTools),
-  firestore: addFeaturePrefix("firestore", firestoreTools),
   functions: addFeaturePrefix("functions", functionsTools),
   messaging: addFeaturePrefix("messaging", messagingTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   storage: addFeaturePrefix("storage", storageTools),
-  // No local tools for developer knowledge
+  // No local tools.
   developerknowledge: [],
+  firestore: [],
 };
 
 const allToolsMap = new Map(
