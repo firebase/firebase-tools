@@ -149,7 +149,7 @@
     "marked": "^13.0.2",
     "marked-terminal": "^7.0.0",
     "mime": "^2.5.2",
-    "minimatch": "^3.0.4",
+    "minimatch": "^10.2.1",
     "morgan": "^1.10.0",
     "node-fetch": "^2.6.7",
     "open": "^6.3.0",
