@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { Client } from "../../../apiv2";
-import { discover } from "../../../frameworks";
+import { discover, WebFrameworks } from "../../../frameworks";
 import * as github from "./github";
 import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
@@ -31,15 +31,24 @@ export interface RequiredInfo {
 export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   const discoveredFramework = await discover(config.projectDir, false);
   if (discoveredFramework && discoveredFramework.mayWantBackend) {
-    const frameworkName = discoveredFramework.framework;
+    const frameworkName =
+      WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
     logger.info();
-    logger.info(
-      `Detected a ${frameworkName} codebase. Setting up ${clc.bold("App Hosting")} instead.`,
-    );
-    setup.featureInfo ||= {};
-    setup.featureInfo.hosting = { redirectToAppHosting: true };
-    setup.features?.unshift("apphosting");
-    return;
+    const useAppHosting = await confirm({
+      message:
+        `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+        `this site will work on Firebase Hosting, which is only for static sites. Another ` +
+        `product, Firebase ${clc.bold("App")} Hosting, was designed for SSR web apps. Would ` +
+        `you like to use App Hosting instead? Learn more here: ` +
+        `https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+      default: true,
+    });
+    if (useAppHosting) {
+      setup.featureInfo ||= {};
+      setup.featureInfo.hosting = { redirectToAppHosting: true };
+      setup.features?.unshift("apphosting");
+      return;
+    }
   }
 
   setup.featureInfo = setup.featureInfo || {};
