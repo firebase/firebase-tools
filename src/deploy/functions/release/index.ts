@@ -145,13 +145,8 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
     if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
       // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for Data Connect
       // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
-      // TODO: The deterministic URL is only available for DNS segments of 63 characters or less;
-      // we should add validation to prevent service names that would exceed this.
-      logger.info(
-        clc.bold("Function URL"),
-        `(${getFunctionLabel(httpsFunc)}):`,
-        `https://${httpsFunc.id.toLowerCase()}-${projectNumber}.${httpsFunc.region}.run.app`,
-      );
+      const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
+      logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
