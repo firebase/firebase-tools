@@ -4,6 +4,7 @@
     "definitions": {
         "ActiveRuntime": {
             "enum": [
+                "dart3",
                 "nodejs18",
                 "nodejs20",
                 "nodejs22",
@@ -912,6 +913,7 @@
                 },
                 "runtime": {
                     "enum": [
+                        "dart3",
                         "nodejs18",
                         "nodejs20",
                         "nodejs22",

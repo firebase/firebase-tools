@@ -491,10 +491,14 @@ export class FunctionsEmulator implements EmulatorInstance {
       `Starting build_runner watch for Dart functions...`,
     );
 
-    const buildRunnerProcess = spawn(bin, ["run", "build_runner", "watch", "--delete-conflicting-outputs"], {
-      cwd: backend.functionsDir,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const buildRunnerProcess = spawn(
+      bin,
+      ["run", "build_runner", "watch", "--delete-conflicting-outputs"],
+      {
+        cwd: backend.functionsDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
 
     // Track whether initial build has completed
     let initialBuildComplete = false;
@@ -514,11 +518,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         // Check if initial build completed (look for "Succeeded after" message)
         if (!initialBuildComplete && output.includes("Succeeded after")) {
           initialBuildComplete = true;
-          this.logger.logLabeled(
-            "SUCCESS",
-            "functions",
-            `build_runner initial build completed`,
-          );
+          this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
           resolveInitialBuild();
         }
       }
@@ -546,11 +546,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     });
 
     buildRunnerProcess.on("error", (err) => {
-      this.logger.logLabeled(
-        "WARN",
-        "functions",
-        `Failed to start build_runner: ${err.message}`,
-      );
+      this.logger.logLabeled("WARN", "functions", `Failed to start build_runner: ${err.message}`);
       if (!initialBuildComplete) {
         rejectInitialBuild(err);
       }
@@ -626,7 +622,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         this.watchers.push(yamlWatcher);
 
         const debouncedYamlReload = debounce(async () => {
-          this.logger.logLabeled("BULLET", "functions", "Function definitions changed, reloading...");
+          this.logger.logLabeled(
+            "BULLET",
+            "functions",
+            "Function definitions changed, reloading...",
+          );
           await this.loadTriggers(backend);
         }, 500);
         yamlWatcher.on("change", () => {
@@ -1847,9 +1847,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     delete dartEnvs.FUNCTION_SIGNATURE_TYPE;
 
     const bin = backend.bin || "dart";
-    logger.debug(
-      `Starting Dart runtime with args: ${args.join(" ")} on port ${port}`,
-    );
+    logger.debug(`Starting Dart runtime with args: ${args.join(" ")} on port ${port}`);
     const childProcess = spawn(bin, args, {
       cwd: backend.functionsDir,
       env: {

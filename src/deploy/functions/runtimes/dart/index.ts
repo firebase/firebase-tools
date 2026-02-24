@@ -62,9 +62,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       await fs.promises.access(pubspecYamlPath, fs.constants.R_OK);
       // TODO: could add more validation like checking for firebase_functions dependency
     } catch (err: any) {
-      throw new FirebaseError(
-        `Failed to read pubspec.yaml at ${pubspecYamlPath}: ${err.message}`,
-      );
+      throw new FirebaseError(`Failed to read pubspec.yaml at ${pubspecYamlPath}: ${err.message}`);
     }
   }
 
@@ -79,8 +77,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   async discoverBuild(
-    _configValues: backend.RuntimeConfigValues,
-    _envs: backend.EnvironmentVariables,
+    _configValues: backend.RuntimeConfigValues, // eslint-disable-line @typescript-eslint/no-unused-vars
+    _envs: backend.EnvironmentVariables, // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<Build> {
     // Use file-based discovery from functions.yaml in the project root
     const yamlDir = this.sourceDir;

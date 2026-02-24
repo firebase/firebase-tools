@@ -438,7 +438,11 @@ export class RuntimeWorkerPool {
     return this.workers.get(this.getKey(triggerId, runtime)) || [];
   }
 
-  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>, runtime?: string) {
+  private setTriggerWorkers(
+    triggerId: string | undefined,
+    workers: Array<RuntimeWorker>,
+    runtime?: string,
+  ) {
     this.workers.set(this.getKey(triggerId, runtime), workers);
   }
 
