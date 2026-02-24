@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
 import * as spawn from "cross-spawn";
+import { ChildProcess } from "child_process";
 
 import * as runtimes from "..";
 import * as backend from "../../backend";
@@ -40,27 +41,20 @@ export async function tryCreateDelegate(
 
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
+  public readonly bin = "dart";
+
+  private buildRunnerProcess: ChildProcess | null = null;
+
   constructor(
     private readonly projectId: string,
     private readonly sourceDir: string,
     public readonly runtime: supported.Runtime & supported.RuntimeOf<"dart">,
   ) {}
 
-  private _bin = "";
-
-  get bin(): string {
-    if (this._bin === "") {
-      this._bin = "dart";
-    }
-    return this._bin;
-  }
-
   async validate(): Promise<void> {
-    // Basic validation: check that pubspec.yaml exists and is readable
     const pubspecYamlPath = path.join(this.sourceDir, "pubspec.yaml");
     try {
       await fs.promises.access(pubspecYamlPath, fs.constants.R_OK);
-      // TODO: could add more validation like checking for firebase_functions dependency
     } catch (err: any) {
       throw new FirebaseError(`Failed to read pubspec.yaml at ${pubspecYamlPath}: ${err.message}`);
     }
@@ -71,29 +65,95 @@ export class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  watch(): Promise<() => Promise<void>> {
-    // No-op: The FunctionsEmulator handles build_runner watch for hot reload
-    return Promise.resolve(() => Promise.resolve());
+  /**
+   * Start build_runner in watch mode for hot reload.
+   * Returns a cleanup function that stops the build_runner process.
+   * The returned promise resolves once the initial build completes.
+   */
+  async watch(): Promise<() => Promise<void>> {
+    logger.debug("Starting build_runner watch for Dart functions...");
+
+    const buildRunnerProcess = spawn(
+      this.bin,
+      ["run", "build_runner", "watch", "--delete-conflicting-outputs"],
+      {
+        cwd: this.sourceDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    this.buildRunnerProcess = buildRunnerProcess;
+
+    let initialBuildComplete = false;
+    let resolveInitialBuild: () => void;
+    let rejectInitialBuild: (err: Error) => void;
+
+    const initialBuildPromise = new Promise<void>((resolve, reject) => {
+      resolveInitialBuild = resolve;
+      rejectInitialBuild = reject;
+    });
+
+    buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {
+      const output = chunk.toString("utf8").trim();
+      if (output) {
+        logger.debug(`[build_runner] ${output}`);
+        if (!initialBuildComplete && output.includes("Succeeded after")) {
+          initialBuildComplete = true;
+          logger.debug("build_runner initial build completed");
+          resolveInitialBuild();
+        }
+      }
+    });
+
+    buildRunnerProcess.stderr?.on("data", (chunk: Buffer) => {
+      const output = chunk.toString("utf8").trim();
+      if (output) {
+        logger.debug(`[build_runner] ${output}`);
+      }
+    });
+
+    buildRunnerProcess.on("exit", (code) => {
+      if (code !== 0 && code !== null) {
+        logger.debug(`build_runner exited with code ${code}. Hot reload may not work.`);
+        if (!initialBuildComplete) {
+          rejectInitialBuild(new Error(`build_runner exited with code ${code}`));
+        }
+      }
+      this.buildRunnerProcess = null;
+    });
+
+    buildRunnerProcess.on("error", (err) => {
+      logger.debug(`Failed to start build_runner: ${err.message}`);
+      if (!initialBuildComplete) {
+        rejectInitialBuild(err);
+      }
+    });
+
+    await initialBuildPromise;
+
+    // Return cleanup function
+    return async () => {
+      if (this.buildRunnerProcess && !this.buildRunnerProcess.killed) {
+        this.buildRunnerProcess.kill("SIGTERM");
+        this.buildRunnerProcess = null;
+      }
+    };
   }
 
   async discoverBuild(
     _configValues: backend.RuntimeConfigValues, // eslint-disable-line @typescript-eslint/no-unused-vars
     _envs: backend.EnvironmentVariables, // eslint-disable-line @typescript-eslint/no-unused-vars
   ): Promise<Build> {
-    // Use file-based discovery from functions.yaml in the project root
     const yamlDir = this.sourceDir;
     const yamlPath = path.join(yamlDir, "functions.yaml");
     let discovered = await discovery.detectFromYaml(yamlDir, this.projectId, this.runtime);
 
     if (!discovered) {
-      // If the file doesn't exist yet, run build_runner to generate it
       logger.debug("functions.yaml not found, running build_runner to generate it...");
       const buildRunnerProcess = spawn(this.bin, ["run", "build_runner", "build"], {
         cwd: this.sourceDir,
         stdio: ["ignore", "pipe", "pipe"],
       });
 
-      // Log build_runner output
       buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {
         logger.debug(`[build_runner] ${chunk.toString("utf8")}`);
       });
@@ -116,7 +176,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
         buildRunnerProcess.on("error", reject);
       });
 
-      // Try to discover again after build_runner completes
       discovered = await discovery.detectFromYaml(yamlDir, this.projectId, this.runtime);
       if (!discovered) {
         throw new FirebaseError(
@@ -127,8 +186,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
     }
 
     // Normalize "run" → "gcfv2" for emulator compatibility.
-    // The manifest emits "run" for Cloud Run deployment, but the emulator treats
-    // Dart functions identically to gcfv2 — routing is handled via runtime detection.
     for (const ep of Object.values(discovered.endpoints)) {
       if (ep.platform === "run") {
         ep.platform = "gcfv2";
