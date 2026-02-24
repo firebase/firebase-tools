@@ -69,8 +69,6 @@ export type WireEndpoint = build.Triggered &
     region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
-    baseImageUri?: string;
-    command?: string[];
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
     baseImageUri?: string;
     command?: string[];
@@ -150,8 +148,6 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     region: "List",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
     entryPoint: "string",
-    baseImageUri: "string",
-    command: "array",
     omit: "Field<boolean>?",
     availableMemoryMb: (mem) => mem === null || isCEL(mem) || backend.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
@@ -441,7 +437,6 @@ function parseEndpointForBuild(
     entryPoint: ep.entryPoint,
     ...triggered,
   };
-  copyIfPresent(parsed, ep, "baseImageUri", "command");
   // Allow "serviceAccountEmail" but prefer "serviceAccount"
   if ("serviceAccountEmail" in (ep as any)) {
     parsed.serviceAccount = (ep as any).serviceAccountEmail;
