@@ -477,13 +477,13 @@ export function getSignatureType(def: EmulatedTriggerDefinition): SignatureType 
   if (def.httpsTrigger || def.blockingTrigger) {
     return "http";
   }
-  if ((def.platform === "gcfv2" || def.platform === "run") && def.schedule) {
+  if (def.platform === "gcfv2" && def.schedule) {
     return "http";
   }
   // TODO: As implemented, emulated CF3v1 functions cannot receive events in CloudEvent format, and emulated CF3v2
   // functions cannot receive events in legacy format. This conflicts with our goal of introducing a 'compat' layer
   // that allows CF3v1 functions to target GCFv2 and vice versa.
-  return def.platform === "gcfv2" || def.platform === "run" ? "cloudevent" : "event";
+  return def.platform === "gcfv2" ? "cloudevent" : "event";
 }
 
 const LOCAL_SECRETS_FILE = ".secret.local";

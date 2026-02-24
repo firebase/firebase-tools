@@ -128,6 +128,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
       }
     }
 
+    // Normalize "run" → "gcfv2" for emulator compatibility.
+    // The manifest emits "run" for Cloud Run deployment, but the emulator treats
+    // Dart functions identically to gcfv2 — routing is handled via runtime detection.
+    for (const ep of Object.values(discovered.endpoints)) {
+      if (ep.platform === "run") {
+        ep.platform = "gcfv2";
+      }
+    }
+
     return discovered;
   }
 }
