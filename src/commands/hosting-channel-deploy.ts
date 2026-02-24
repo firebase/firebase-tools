@@ -23,6 +23,7 @@ import { marked } from "marked";
 import { requireHostingSite } from "../requireHostingSite";
 import { HostingOptions } from "../hosting/options";
 import { Options } from "../options";
+import * as opn from "open";
 
 const LOG_TAG = "hosting:channel";
 
@@ -59,11 +60,6 @@ export async function hostingChannelDeployAction(
   options: Options & HostingOptions,
 ): Promise<{ [targetOrSite: string]: ChannelInfo }> {
   const projectId = needProjectId(options);
-
-  // TODO: implement --open.
-  if (options.open) {
-    throw new FirebaseError("open is not yet implemented");
-  }
 
   let expireTTL = DEFAULT_DURATION;
   if (options.expires) {
@@ -190,6 +186,13 @@ export async function hostingChannelDeployAction(
       `Channel URL (${bold(d.site || d.target || "")}): ${d.url} ${expires}${version}`,
     );
   });
+
+  if (options.open && !options.nonInteractive) {
+    for (const site of sites) {
+      opn(site.url);
+    }
+  }
+
   return deploys;
 }
 /**
