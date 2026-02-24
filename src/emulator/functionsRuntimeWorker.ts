@@ -9,6 +9,7 @@ import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
 import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
+import { isLanguageRuntime } from "../deploy/functions/runtimes/supported";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -302,7 +303,7 @@ export class RuntimeWorkerPool {
     }
     // For Dart, use a shared key so all functions in a codebase share the same process
     // Dart loads all functions and routes based on request path
-    if (runtime?.startsWith("dart")) {
+    if (isLanguageRuntime(runtime, "dart")) {
       return "~dart-shared~";
     }
     return triggerId || "~diagnostic~";
