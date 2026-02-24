@@ -257,6 +257,10 @@ export function load(client: CLIClient): CLIClient {
   client.dataconnect.compile = loadCommand("dataconnect-compile");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
+  if (experiments.isEnabled("studioexport")) {
+    client.studio = {};
+    client.studio.export = loadCommand("studio-export");
+  }
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
