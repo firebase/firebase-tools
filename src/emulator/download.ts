@@ -37,7 +37,18 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   );
   fs.ensureDirSync(emulator.opts.cacheDir);
 
-  const tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl, !!emulator.opts.auth);
+  let tmpfile: string;
+  try {
+    tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl, !!emulator.opts.auth);
+  } catch (err: any) {
+    if (overrideVersion && err instanceof FirebaseError && err.status === 404) {
+      throw new FirebaseError(
+        `env variable ${name.toUpperCase()}_EMULATOR_VERSION set to ${overrideVersion}, 
+        but no such version of ${name} was found. Please double check the version number, or unset this environment variable to use the latest default.`,
+      );
+    }
+    throw err;
+  }
 
   if (!emulator.opts.skipChecksumAndSize) {
     await validateSize(tmpfile, emulator.opts.expectedSize);
