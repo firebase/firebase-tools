@@ -1,2 +1,3 @@
 - Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
+- Corrects issue with updateService in runv2.ts (#9918)
 - Updated suite of MCP tools for Firestore to include many new tools. Firestore tools no longer support emulator mode.
