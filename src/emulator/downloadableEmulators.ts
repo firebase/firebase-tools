@@ -26,14 +26,6 @@ import * as emulatorUpdateDetails from "./downloadableEmulatorInfo.json";
 
 const EMULATOR_INSTANCE_KILL_TIMEOUT = 4000; /* ms */
 
-const EMULATOR_VERSION_OVERRIDE_ENV_MAP: { [key: string]: string } = {
-  database: "FIREBASE_TOOLS_DATABASE_EMULATOR_VERSION",
-  firestore: "FIREBASE_TOOLS_FIRESTORE_EMULATOR_VERSION",
-  storage: "FIREBASE_TOOLS_STORAGE_EMULATOR_VERSION",
-  pubsub: "FIREBASE_TOOLS_PUBSUB_EMULATOR_VERSION",
-  dataconnect: "FIREBASE_TOOLS_DATACONNECT_EMULATOR_VERSION",
-};
-
 const CACHE_DIR =
   process.env.FIREBASE_EMULATORS_PATH || path.join(os.homedir(), ".cache", "firebase", "emulators");
 
@@ -75,7 +67,7 @@ function generateDownloadDetails(emulator: DownloadableEmulators): EmulatorDownl
         : EMULATOR_UPDATE_DETAILS.dataconnect.linux;
 
   let details: EmulatorDownloadDetails;
-  const overrideVersion = process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[emulator]];
+  const overrideVersion = emulatorVersionOverride(emulator);
   switch (emulator) {
     case "database":
       details = {
@@ -667,6 +659,6 @@ export function isIncomaptibleArchError(err: unknown): boolean {
   );
 }
 
-export function isVersionOverride(name: DownloadableEmulators) {
-  return !!process.env[EMULATOR_VERSION_OVERRIDE_ENV_MAP[name]];
+export function emulatorVersionOverride(emulator: DownloadableEmulators) {
+  return process.env[`${emulator.toUpperCase()}_EMULATOR_VERSION`];
 }

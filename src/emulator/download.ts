@@ -22,11 +22,12 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
     );
     return;
   }
-  if (downloadableEmulators.isVersionOverride(name)) {
+  const overrideVersion = downloadableEmulators.emulatorVersionOverride(name);
+  if (overrideVersion) {
     EmulatorLogger.forEmulator(name).logLabeled(
       "WARN",
       name,
-      `Env variable override detected. Using custom ${name} emulator version ${emulator.version}.`,
+      `Env variable override detected. Using custom ${name} emulator version ${overrideVersion}.`,
     );
   }
   EmulatorLogger.forEmulator(name).logLabeled(

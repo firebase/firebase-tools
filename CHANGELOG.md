@@ -1,2 +1,2 @@
-- Added `FIREBASE_TOOLS_*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
+- Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
 - Updated suite of MCP tools for Firestore to include many new tools. Firestore tools no longer support emulator mode.

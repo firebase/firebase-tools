@@ -84,11 +84,11 @@ describe("downloadDetails", () => {
     );
   });
 
-  it("should override emulator version when FIREBASE_TOOLS_PUBSUB_EMULATOR_VERSION is set", () => {
+  it("should override emulator version when PUBSUB_EMULATOR_VERSION is set", () => {
     const fakeVersion = "1.2.3";
     sandbox.stub(process, "env").value({
       ...process.env,
-      FIREBASE_TOOLS_PUBSUB_EMULATOR_VERSION: fakeVersion,
+      PUBSUB_EMULATOR_VERSION: fakeVersion,
     });
 
     const pubsubEmulatorDetails = downloadableEmulators.getDownloadDetails(Emulators.PUBSUB);
@@ -97,8 +97,8 @@ describe("downloadDetails", () => {
     expect(pubsubEmulatorDetails.opts.remoteUrl).to.contain(fakeVersion);
     expect(pubsubEmulatorDetails.opts.skipChecksumAndSize).to.be.true;
 
-    expect(downloadableEmulators.isVersionOverride(Emulators.FIRESTORE)).to.be.false;
-    expect(downloadableEmulators.isVersionOverride(Emulators.DATABASE)).to.be.false;
-    expect(downloadableEmulators.isVersionOverride(Emulators.PUBSUB)).to.be.true;
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.FIRESTORE)).to.be.undefined;
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.DATABASE)).to.be.undefined;
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.PUBSUB)).to.equal(fakeVersion);
   });
 });
