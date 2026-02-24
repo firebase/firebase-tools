@@ -3,7 +3,7 @@ import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -35,9 +35,8 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
     default: true,
   },
@@ -57,9 +56,21 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
+    fullDescription:
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: false,
+    public: true,
+  },
   runfunctions: {
     shortDescription:
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
   },
 
@@ -144,9 +155,24 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for Data Connect",
+    public: false,
+    default: false,
+  },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
     public: true,
+  },
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    default: false,
+    public: false,
+  },
+  studioexport: {
+    shortDescription: "Enable the experimental studio:export command.",
+    default: false,
+    public: false,
   },
 });
 

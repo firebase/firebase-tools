@@ -26,12 +26,14 @@ export function prompt(
   fn: ServerPrompt["fn"],
   isAvailable?: (ctx: McpContext) => Promise<boolean>,
 ): ServerPrompt {
-  // default to the feature level availability check, but allow override
-  const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
-
   return {
     mcp: options,
     fn,
-    isAvailable: isAvailableFunc,
+    isAvailable: (ctx) => {
+      // default to the feature level availability check, but allow override
+      // We resolve this at runtime to allow for easier testing/mocking
+      const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
+      return isAvailableFunc(ctx);
+    },
   };
 }

@@ -89,6 +89,12 @@ export const RUNTIMES = runtimes({
     deprecationDate: "2027-04-30",
     decommissionDate: "2028-10-31",
   },
+  nodejs24: {
+    friendly: "Node.js 24",
+    status: "GA",
+    deprecationDate: "2028-04-30",
+    decommissionDate: "2028-10-31",
+  },
   python310: {
     friendly: "Python 3.10",
     status: "GA",
@@ -115,10 +121,9 @@ export const RUNTIMES = runtimes({
   },
   dart3: {
     friendly: "Dart 3",
-    status: "GA",
-    // TODO: Check these
-    deprecationDate: "2027-10-01",
-    decommissionDate: "2028-04-01",
+    status: "experimental",
+    deprecationDate: "2030-01-01",
+    decommissionDate: "2030-01-01",
   },
 });
 

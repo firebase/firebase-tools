@@ -9,6 +9,7 @@ import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
+import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
@@ -18,16 +19,24 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
+const agent = detectAIAgent();
+const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
+const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
+const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
+
 export const STANDARD_HEADERS: Record<string, string> = {
   Connection: "keep-alive",
-  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
-  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+  "User-Agent": clientVersion,
+  "X-Client-Version": clientVersion,
 };
 
+// Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
-const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
+// Header for specifying a quota project. See https://cloud.google.com/apis/docs/system-parameters#project-header
+export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
+export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
 export type HttpMethod =
   | "GET"
@@ -269,6 +278,17 @@ export class Client {
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
     } catch (thrown: any) {
+      const originalErrorMessage = thrown.original?.message || thrown.message || "";
+      if (originalErrorMessage.includes(CLI_OAUTH_PROJECT_NUMBER)) {
+        // Error messages mentioning the CLI's OAuth project number should not be shared with end users,
+        // since they will never be actionable for them. If we do display them, support gets a bunch of tickets asking for quota
+        // increases on the wrong project.
+        throw new FirebaseError(
+          "An Internal error has occurred. Please try again in a few minutes. If this error persists, please open an issue at https://github.com/firebase/firebase-tools",
+          { original: thrown },
+        );
+      }
+
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }
@@ -519,11 +539,15 @@ export class Client {
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     const headers = options.headers;
-    if (headers && headers.has(GOOG_QUOTA_USER_HEADER)) {
+    if (headers && (headers.has(GOOG_QUOTA_USER_HEADER) || headers.has(GOOG_USER_PROJECT_HEADER))) {
+      const userHeader = headers.has(GOOG_QUOTA_USER_HEADER)
+        ? `${GOOG_QUOTA_USER_HEADER}=${headers.get(GOOG_QUOTA_USER_HEADER)}`
+        : "";
+      const projectHeader = headers.has(GOOG_USER_PROJECT_HEADER)
+        ? `${GOOG_USER_PROJECT_HEADER}=${headers.get(GOOG_USER_PROJECT_HEADER)}`
+        : "";
       logger.debug(
-        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
-          headers.get(GOOG_QUOTA_USER_HEADER) || ""
-        }`,
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} ${userHeader} ${projectHeader}`,
       );
     }
     if (options.body !== undefined) {

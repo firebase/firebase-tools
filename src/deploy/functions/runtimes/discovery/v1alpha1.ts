@@ -40,6 +40,7 @@ type WireEventTrigger = build.EventTrigger & {
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
+  Partial<build.DataConnectGraphqlTriggered> &
   Partial<build.CallableTriggered> &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
@@ -71,6 +72,9 @@ export type WireEndpoint = build.Triggered &
     baseImageUri?: string;
     command?: string[];
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export type WireExtension = {
@@ -162,12 +166,16 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
+    dataConnectGraphqlTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
+    baseImageUri: "string?",
+    command: "array?",
+    args: "array?",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
@@ -178,6 +186,9 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.dataConnectGraphqlTrigger) {
     triggerCount++;
   }
   if (ep.callableTrigger) {
@@ -216,6 +227,11 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
       invoker: "array?",
+    });
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    assertKeyTypes(prefix + ".dataConnectGraphqlTrigger", ep.dataConnectGraphqlTrigger, {
+      invoker: "array?",
+      schemaFilePath: "string?",
     });
   } else if (build.isCallableTriggered(ep)) {
     assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
@@ -315,6 +331,14 @@ function parseEndpointForBuild(
   } else if (build.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    triggered = { dataConnectGraphqlTrigger: {} };
+    copyIfPresent(triggered.dataConnectGraphqlTrigger, ep.dataConnectGraphqlTrigger, "invoker");
+    copyIfPresent(
+      triggered.dataConnectGraphqlTrigger,
+      ep.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
     copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
@@ -437,6 +461,9 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables",
     "serviceAccount",
+    "baseImageUri",
+    "command",
+    "args",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

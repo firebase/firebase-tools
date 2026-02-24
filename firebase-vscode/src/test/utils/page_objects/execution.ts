@@ -40,7 +40,7 @@ export class ExecutionPanel {
   async runInConfigurationContext<R>(
     cb: (configs: ConfigurationView) => Promise<R>,
   ): Promise<R> {
-    const [a, b] = await findWebviewWithTitle("Configuration");
+    const [a, b] = await findWebviewWithTitle("Parameters");
 
     return runInFrame(a, () =>
       runInFrame(b, () => cb(new ConfigurationView(this.workbench))),

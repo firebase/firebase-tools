@@ -49,7 +49,7 @@ export function latest<T extends Language>(
       { exit: 1 },
     );
   }
-  return latest as RuntimeOf<T> & Runtime;
+  return latest as unknown as RuntimeOf<T> & Runtime;
 }
 
 /**

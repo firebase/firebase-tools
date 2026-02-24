@@ -1,9 +1,16 @@
 import * as utils from "../../utils";
-import { Connector, ServiceInfo } from "../../dataconnect/types";
-import { listConnectors, upsertConnector } from "../../dataconnect/client";
-import { promptDeleteConnector } from "../../dataconnect/prompts";
+import {
+  Connector,
+  isMainSchema,
+  mainSchema,
+  mainSchemaYaml,
+  Schema,
+  ServiceInfo,
+} from "../../dataconnect/types";
+import { listConnectors, listSchemas, upsertConnector } from "../../dataconnect/client";
+import { promptDeleteConnector, promptDeleteSchema } from "../../dataconnect/prompts";
 import { Options } from "../../options";
-import { migrateSchema } from "../../dataconnect/schemaMigration";
+import { migrateSchema, upsertSecondarySchema } from "../../dataconnect/schemaMigration";
 import { needProjectId } from "../../projectUtils";
 import { parseServiceName } from "../../dataconnect/names";
 import { logger } from "../../logger";
@@ -11,7 +18,6 @@ import { Context } from "./context";
 
 /**
  * Release deploys schemas and connectors.
- * TODO: Also prompt user to delete unused schemas/connectors
  * @param context The deploy context.
  * @param options The CLI options object.
  */
@@ -25,7 +31,7 @@ export default async function (context: Context, options: Options): Promise<void
   const filters = dataconnect.filters;
 
   // First, figure out the schemas and connectors to deploy.
-  const wantSchemas = serviceInfos
+  const wantMainSchemas = serviceInfos
     .filter((si) => {
       return (
         !filters ||
@@ -35,8 +41,8 @@ export default async function (context: Context, options: Options): Promise<void
       );
     })
     .map((s) => ({
-      schema: s.schema,
-      validationMode: s.dataConnectYaml?.schema?.datasource?.postgresql?.schemaValidation,
+      schema: mainSchema(s.schemas),
+      validationMode: mainSchemaYaml(s.dataConnectYaml).datasource?.postgresql?.schemaValidation,
     }));
   const wantConnectors = serviceInfos.flatMap((si) =>
     si.connectorInfo
@@ -71,8 +77,8 @@ export default async function (context: Context, options: Options): Promise<void
     }),
   );
 
-  // Migrate schemas.
-  for (const s of wantSchemas) {
+  // Migrate main schemas.
+  for (const s of wantMainSchemas) {
     await migrateSchema({
       options,
       schema: s.schema,
@@ -81,6 +87,24 @@ export default async function (context: Context, options: Options): Promise<void
       stats: dataconnect.deployStats,
     });
     utils.logLabeledSuccess("dataconnect", `Migrated schema ${s.schema.name}`);
+    dataconnect.deployStats.numSchemaMigrated++;
+  }
+
+  // Upsert secondary schemas.
+  const wantSecondarySchemas = serviceInfos
+    .filter((si) => {
+      return (
+        !filters ||
+        filters.some((f) => {
+          return f.serviceId === si.dataConnectYaml.serviceId && (f.schemaOnly || f.fullService);
+        })
+      );
+    })
+    .map((s) => s.schemas.filter((s) => !isMainSchema(s)))
+    .flatMap((s) => s);
+  for (const schema of wantSecondarySchemas) {
+    await upsertSecondarySchema({ options, schema, stats: dataconnect.deployStats });
+    utils.logLabeledSuccess("dataconnect", `Deployed schema ${schema.name}`);
     dataconnect.deployStats.numSchemaMigrated++;
   }
 
@@ -102,6 +126,17 @@ export default async function (context: Context, options: Options): Promise<void
     : allConnectors.filter((h) => !wantConnectors.some((w) => w.name === h.name));
   for (const c of connectorsToDelete) {
     await promptDeleteConnector(options, c.name);
+  }
+
+  // Check for schemas not tracked in local repositories.
+  const allSchemas = await deployedSchemas(serviceInfos);
+  const schemasToDelete = filters
+    ? []
+    : allSchemas.filter(
+        (s) => !wantSecondarySchemas.some((w) => w.name === s.name) && !isMainSchema(s),
+      );
+  for (const s of schemasToDelete) {
+    await promptDeleteSchema(options, s.name);
   }
 
   // Print the Console link.
@@ -128,4 +163,13 @@ async function deployedConnectors(serviceInfos: ServiceInfo[]): Promise<Connecto
     connectors = connectors.concat(await listConnectors(si.serviceName));
   }
   return connectors;
+}
+
+// deployedSchemas lists out all of the schemas currently deployed to the services we are deploying.
+// We don't need to worry about schemas on other services because we will delete/ignore the service during deploy
+async function deployedSchemas(serviceInfos: ServiceInfo[]): Promise<Schema[]> {
+  const schemasPerService = await Promise.all(
+    serviceInfos.map((si) => listSchemas(si.serviceName)),
+  );
+  return schemasPerService.flat();
 }

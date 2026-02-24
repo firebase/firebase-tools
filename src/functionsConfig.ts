@@ -8,10 +8,51 @@ import { FirebaseError } from "./error";
 import { needProjectId } from "./projectUtils";
 import * as runtimeconfig from "./gcp/runtimeconfig";
 import * as args from "./deploy/functions/args";
+import * as experiments from "./experiments";
+import { logWarningToStderr } from "./utils";
 
 export const RESERVED_NAMESPACES = ["firebase"];
 
 const apiClient = new Client({ urlPrefix: firebaseApiOrigin() });
+
+const LEGACY_RUNTIME_CONFIG_EXPERIMENT = "legacyRuntimeConfigCommands";
+
+const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE = `DEPRECATION NOTICE: Action required before March 2026
+
+The functions.config() API and the Cloud Runtime Config service are deprecated. Deploys that rely on functions.config() will fail once Runtime Config shuts down in March 2026.
+
+The legacy functions:config:* CLI commands are deprecated and will be removed before March 2026.
+
+Learn how to migrate from functions.config() to the params package:
+
+https://firebase.google.com/docs/functions/config-env#migrate-config
+
+To convert existing functions.config() values to params, try the interactive migration command:
+
+  firebase functions:config:export
+`;
+
+const LEGACY_GUIDANCE_MESSAGE = `${FUNCTIONS_CONFIG_DEPRECATION_MESSAGE}
+
+To run this legacy command temporarily, run the following command and try again:
+
+  firebase experiments:enable ${LEGACY_RUNTIME_CONFIG_EXPERIMENT}
+`;
+
+export function getFunctionsConfigDeprecationMessage(): string {
+  return FUNCTIONS_CONFIG_DEPRECATION_MESSAGE;
+}
+
+export function logFunctionsConfigDeprecationWarning(): void {
+  logWarningToStderr(FUNCTIONS_CONFIG_DEPRECATION_MESSAGE);
+}
+
+export function ensureLegacyRuntimeConfigCommandsEnabled(): void {
+  if (experiments.isEnabled(LEGACY_RUNTIME_CONFIG_EXPERIMENT)) {
+    return;
+  }
+  throw new FirebaseError(LEGACY_GUIDANCE_MESSAGE, { exit: 1 });
+}
 
 interface Id {
   config: string;

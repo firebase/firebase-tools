@@ -6,6 +6,7 @@ import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 import * as supported from "./supported";
+import * as experiments from "../../../experiments";
 
 /**
  * RuntimeDelegate is a language-agnostic strategy for managing
@@ -74,7 +75,10 @@ type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined
 const factories: Factory[] = [
   node.tryCreateDelegate,
   python.tryCreateDelegate,
-  dart.tryCreateDelegate,
+  (ctx) =>
+    experiments.isEnabled("functionsrunapionly")
+      ? dart.tryCreateDelegate(ctx)
+      : Promise.resolve(undefined),
 ];
 
 /**

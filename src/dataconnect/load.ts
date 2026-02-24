@@ -7,7 +7,7 @@ import { Config } from "../config";
 import { FirebaseError } from "../error";
 import {
   toDatasource,
-  SCHEMA_ID,
+  MAIN_SCHEMA_ID,
   ConnectorYaml,
   DataConnectYaml,
   File,
@@ -16,45 +16,58 @@ import {
 } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
+import * as experiments from "../experiments";
 
-// pickService reads firebase.json and returns all services with a given serviceId.
-// If serviceID is not provided and there is a single service, return that.
-export async function pickService(
+/** Picks exactly one Data Connect service based on flags. */
+export async function pickOneService(
+  projectId: string,
+  config: Config,
+  service?: string,
+  location?: string,
+): Promise<ServiceInfo> {
+  const services = await pickServices(projectId, config, service, location);
+  if (services.length > 1) {
+    const serviceIds = services.map(
+      (i) => `${i.dataConnectYaml.location}:${i.dataConnectYaml.serviceId}`,
+    );
+    throw new FirebaseError(
+      `Multiple services matched. Please specify a service and location. Matched services: ${serviceIds.join(
+        ", ",
+      )}`,
+    );
+  }
+  return services[0];
+}
+
+/** Picks Data Connect services based on flags. */
+export async function pickServices(
   projectId: string,
   config: Config,
   serviceId?: string,
-): Promise<ServiceInfo> {
+  location?: string,
+): Promise<ServiceInfo[]> {
   const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json." +
         `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
-  } else if (serviceInfos.length === 1) {
-    if (serviceId && serviceId !== serviceInfos[0].dataConnectYaml.serviceId) {
-      throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${serviceInfos[0].dataConnectYaml.serviceId}.` +
-          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
-      );
-    }
-    return serviceInfos[0];
-  } else {
-    if (!serviceId) {
-      throw new FirebaseError(
-        "Multiple Data Connect services found in firebase.json. Please specify a service ID to use.",
-      );
-    }
-    // TODO: handle cases where there are services with the same ID in 2 locations.
-    const maybe = serviceInfos.find((i) => i.dataConnectYaml.serviceId === serviceId);
-    if (!maybe) {
-      const serviceIds = serviceInfos.map((i) => i.dataConnectYaml.serviceId);
-      throw new FirebaseError(
-        `No service named ${serviceId} declared in firebase.json. Found ${serviceIds.join(", ")}.` +
-          `\nYou can run ${clc.bold("firebase init dataconnect")} to add this Data Connect service.`,
-      );
-    }
-    return maybe;
   }
+
+  const matchingServices = serviceInfos.filter(
+    (i) =>
+      (!serviceId || i.dataConnectYaml.serviceId === serviceId) &&
+      (!location || i.dataConnectYaml.location === location),
+  );
+  if (matchingServices.length === 0) {
+    const serviceIds = serviceInfos.map(
+      (i) => `${i.dataConnectYaml.location}:${i.dataConnectYaml.serviceId}`,
+    );
+    throw new FirebaseError(
+      `No service matched service in firebase.json. Available services: ${serviceIds.join(", ")}`,
+    );
+  }
+  return matchingServices;
 }
 
 /**
@@ -77,8 +90,20 @@ export async function load(
   const resolvedDir = config.path(sourceDirectory);
   const dataConnectYaml = await readDataConnectYaml(resolvedDir);
   const serviceName = `projects/${projectId}/locations/${dataConnectYaml.location}/services/${dataConnectYaml.serviceId}`;
-  const schemaDir = path.join(resolvedDir, dataConnectYaml.schema.source);
-  const schemaGQLs = await readGQLFiles(schemaDir);
+  const schemaYamls = dataConnectYaml.schema ? [dataConnectYaml.schema] : dataConnectYaml.schemas;
+  const schemas = await Promise.all(
+    schemaYamls!.map(async (yaml) => {
+      const schemaDir = path.join(resolvedDir, yaml.source);
+      const schemaGQLs = await readGQLFiles(schemaDir);
+      return {
+        name: `${serviceName}/schemas/${yaml.id || MAIN_SCHEMA_ID}`,
+        datasources: [toDatasource(projectId, dataConnectYaml.location, yaml.datasource)],
+        source: {
+          files: schemaGQLs,
+        },
+      };
+    }),
+  );
   const connectorInfo = await Promise.all(
     dataConnectYaml.connectorDirs.map(async (dir) => {
       const connectorDir = path.join(resolvedDir, dir);
@@ -100,15 +125,7 @@ export async function load(
   return {
     serviceName,
     sourceDirectory: resolvedDir,
-    schema: {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
-      datasources: [
-        toDatasource(projectId, dataConnectYaml.location, dataConnectYaml.schema.datasource),
-      ],
-      source: {
-        files: schemaGQLs,
-      },
-    },
+    schemas: schemas,
     dataConnectYaml,
     connectorInfo,
   };
@@ -148,6 +165,12 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
   // TODO: Use json schema for validation here!
   if (!unvalidated["location"]) {
     throw new FirebaseError("Missing required field 'location' in dataconnect.yaml");
+  }
+  if (!experiments.isEnabled("fdcwebhooks") && unvalidated["schemas"]) {
+    throw new FirebaseError("Unsupported field 'schemas' in dataconnect.yaml");
+  }
+  if (!unvalidated["schema"] && !unvalidated["schemas"]) {
+    throw new FirebaseError("Either 'schema' or 'schemas' is required in dataconnect.yaml");
   }
   return unvalidated as DataConnectYaml;
 }

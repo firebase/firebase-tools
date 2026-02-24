@@ -40,24 +40,26 @@ describe("prompt", () => {
     expect(testPrompt.fn).to.equal(testFn);
   });
 
-  it("should use the default availability check for the feature if none is provided", () => {
+  it("should use the default availability check for the feature if none is provided", async () => {
     // Arrange: Prepare a fake default check function to be returned by our stub.
-    const fakeDefaultCheck = async () => true;
+    const fakeDefaultCheck = sandbox.stub().returns(true);
     getDefaultFeatureAvailabilityCheckStub.withArgs("core").returns(fakeDefaultCheck);
 
     // Act: Create a prompt WITHOUT providing an isAvailable function.
     const testPrompt = prompt("core", { name: "test_prompt" }, async () => []);
+    const isAvailable = await testPrompt.isAvailable(mockContext);
+    expect(isAvailable).to.be.true;
 
     // Assert: The prompt's isAvailable function should be the one our stub provided.
-    expect(testPrompt.isAvailable).to.equal(fakeDefaultCheck);
+    expect(fakeDefaultCheck.called).to.be.true;
 
     // Assert: The factory function should have called the stub to get the default.
     expect(getDefaultFeatureAvailabilityCheckStub.calledOnceWith("core")).to.be.true;
   });
 
   it("should override the default and use the provided availability check", async () => {
-    const fakeDefaultCheck = async () => true;
-    const overrideCheck = async () => false;
+    const fakeDefaultCheck = sandbox.stub().returns(true);
+    const overrideCheck = sandbox.stub().returns(false);
     getDefaultFeatureAvailabilityCheckStub.withArgs("core").returns(fakeDefaultCheck);
 
     const testPrompt = prompt(
@@ -69,10 +71,11 @@ describe("prompt", () => {
       overrideCheck,
     );
 
-    expect(testPrompt.isAvailable).to.equal(overrideCheck);
-
     const isAvailable = await testPrompt.isAvailable(mockContext);
     expect(isAvailable).to.be.false;
+
+    expect(fakeDefaultCheck.notCalled).to.be.true;
+    expect(overrideCheck.called).to.be.true;
 
     expect(getDefaultFeatureAvailabilityCheckStub.notCalled).to.be.true;
   });

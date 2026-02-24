@@ -20,6 +20,7 @@ export interface Locator {
   version: string;
   // Ways of reaching the hub as URL prefix, such as http://127.0.0.1:4000
   origins: string[];
+  pid: number;
 }
 
 export interface EmulatorHubArgs {
@@ -52,13 +53,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
     const data = fs.readFileSync(locatorPath, "utf8").toString();
     const locator = JSON.parse(data) as Locator;
-
-    if (locator.version !== this.CLI_VERSION) {
-      logger.debug(
-        `Found emulator locator with different version: ${JSON.stringify(locator)}, CLI_VERSION: ${this.CLI_VERSION}`,
-      );
-    }
-
+    logger.debug(`Found emulator hub locator: ${JSON.stringify(locator)}`);
     return locator;
   }
 
@@ -69,7 +64,6 @@ export class EmulatorHub extends ExpressBasedEmulator {
     }
     const filename = `hub-${projectId}.json`;
     const locatorPath = path.join(dir, filename);
-    logger.debug(`Emulator locator file path: ${locatorPath}`);
     return locatorPath;
   }
 
@@ -99,7 +93,7 @@ export class EmulatorHub extends ExpressBasedEmulator {
     const app = await super.createExpressApp();
     app.get("/", (req, res) => {
       res.json({
-        ...this.getLocator(),
+        ...this.buildLocator(),
         // For backward compatibility:
         host: utils.connectableHostname(this.args.listen[0].address),
         port: this.args.listen[0].port,
@@ -194,14 +188,13 @@ export class EmulatorHub extends ExpressBasedEmulator {
 
   async stop(): Promise<void> {
     await super.stop();
-    await this.deleteLocatorFile();
   }
 
   getName(): Emulators {
     return Emulators.HUB;
   }
 
-  private getLocator(): Locator {
+  private buildLocator(): Locator {
     const version = pkg.version;
     const origins: string[] = [];
     for (const spec of this.args.listen) {
@@ -214,44 +207,51 @@ export class EmulatorHub extends ExpressBasedEmulator {
     return {
       version,
       origins,
+      pid: process.pid,
     };
   }
 
   private async writeLocatorFile(): Promise<void> {
     const projectId = this.args.projectId;
-    const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
-    const locator = this.getLocator();
-
-    if (fs.existsSync(locatorPath)) {
+    const prevLocator = EmulatorHub.readLocatorFile(projectId);
+    if (prevLocator && prevLocator.pid && isProcessLive(prevLocator.pid)) {
       utils.logLabeledWarning(
         "emulators",
         `It seems that you are running multiple instances of the emulator suite for project ${projectId}. This may result in unexpected behavior.`,
       );
+      return;
     }
 
-    logger.debug(`[hub] writing locator at ${locatorPath}`);
-    return new Promise((resolve, reject) => {
-      fs.writeFile(locatorPath, JSON.stringify(locator), (e) => {
-        if (e) {
-          reject(e);
-        } else {
-          resolve();
-        }
-      });
-    });
-  }
+    const locatorPath = EmulatorHub.getLocatorFilePath(projectId);
+    logger.debug(`Write emulator hub locator at ${locatorPath}`);
+    fs.writeFileSync(locatorPath, JSON.stringify(this.buildLocator()));
 
-  private async deleteLocatorFile(): Promise<void> {
-    const locatorPath = EmulatorHub.getLocatorFilePath(this.args.projectId);
-    return new Promise((resolve, reject) => {
-      fs.unlink(locatorPath, (e) => {
-        // If the file is already deleted, no need to throw.
-        if (e && e.code !== "ENOENT") {
-          reject(e);
-        } else {
-          resolve();
+    // Delete the emulator hub locator file on exit
+    const cleanup = () => {
+      try {
+        const curLocator = EmulatorHub.readLocatorFile(projectId);
+        if (curLocator && curLocator.pid === process.pid) {
+          fs.unlinkSync(locatorPath);
+          logger.debug(`Delete emulator hub locator file: ${locatorPath}`);
         }
-      });
-    });
+      } catch (e: any) {
+        logger.debug(`Cannot delete emulator hub locator file`, e);
+      }
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+    process.on("exit", cleanup);
+  }
+}
+
+function isProcessLive(pid: number): boolean {
+  try {
+    // Send signal 0 to check if process is alive.
+    process.kill(pid, 0);
+    return true;
+  } catch (error: any) {
+    // ESRCH: The process does not exist (it's dead)
+    // EPERM: The process exists, but you don't have permission to signal it (it's live)
+    return error.code === "EPERM";
   }
 }

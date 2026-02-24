@@ -149,7 +149,15 @@ describe("cloudsqladmin", () => {
   });
 
   describe("createInstance", () => {
-    it("should create an instance", async () => {
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      nock.cleanAll();
+    });
+    it("should create an paid instance", async () => {
       nock(cloudSQLAdminOrigin())
         .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
         .reply(200, {});
@@ -160,6 +168,22 @@ describe("cloudsqladmin", () => {
         instanceId: INSTANCE_ID,
         enableGoogleMlIntegration: false,
         freeTrialLabel: "nt",
+      });
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should create a free instance.", async () => {
+      nock(cloudSQLAdminOrigin())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
+        .reply(200, {});
+
+      await sqladmin.createInstance({
+        projectId: PROJECT_ID,
+        location: "us-central",
+        instanceId: INSTANCE_ID,
+        enableGoogleMlIntegration: false,
+        freeTrialLabel: "ft",
       });
 
       expect(nock.isDone()).to.be.true;

@@ -94,6 +94,9 @@ export function buildProvisionRequest(
     ...(options.features?.firebaseAiLogicInput && {
       firebaseAiLogicInput: options.features.firebaseAiLogicInput,
     }),
+    ...(options.features?.firebaseAuthInput && {
+      firebaseAuthInput: options.features.firebaseAuthInput,
+    }),
     ...platformInput,
   };
 }

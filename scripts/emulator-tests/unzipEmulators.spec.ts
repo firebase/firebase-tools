@@ -15,7 +15,7 @@ describe("unzipEmulators", () => {
   });
 
   after(async () => {
-    await fs.promises.rmdir(tempDir, { recursive: true });
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   });
 
   it("should unzip a ui emulator zip file", async () => {
@@ -40,7 +40,7 @@ describe("unzipEmulators", () => {
 
     const serverFiles = await fs.promises.readdir(path.join(tempDir, "ui", "server"));
     expect(serverFiles).to.include("server.mjs");
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should unzip a pubsub emulator zip file", async () => {
     const downloadDetails = getDownloadDetails(Emulators.PUBSUB);
@@ -73,7 +73,7 @@ describe("unzipEmulators", () => {
       path.join(tempDir, "pubsub", "pubsub-emulator", "bin"),
     );
     expect(binFiles).to.include("cloud-pubsub-emulator");
-  }).timeout(10000);
+  }).timeout(60000);
 });
 
 async function downloadFile(url: string, targetPath: string): Promise<string> {

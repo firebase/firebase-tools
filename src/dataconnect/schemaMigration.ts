@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
+import { IncompatibleSqlSchemaError, Diff, MAIN_SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   getIAMUser,
@@ -178,7 +178,7 @@ export async function migrateSchema(args: {
     const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
     if (!postgresql) {
       throw new FirebaseError(
-        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
+        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${MAIN_SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
       );
     }
     postgresql.schemaValidation = "NONE";
@@ -304,6 +304,46 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
+/** Upsert a secondary schema, handling invalid connector errors. */
+export async function upsertSecondarySchema(args: {
+  options: Options;
+  schema: Schema;
+  stats?: DeployStats;
+}): Promise<void> {
+  const { options, schema, stats } = args;
+  const serviceName = serviceNameFromSchema(schema);
+  try {
+    await upsertSchema(schema, false);
+  } catch (err: any) {
+    if (err?.status !== 400) {
+      throw err;
+    }
+    const invalidConnectors = errors.getInvalidConnectors(err);
+    if (!invalidConnectors.length) {
+      // If we got a different type of error, throw it
+      const gqlErrs = errors.getGQLErrors(err);
+      if (gqlErrs) {
+        throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
+      }
+      throw err;
+    }
+    if (stats) {
+      stats.numSchemaInvalidConnectors += invalidConnectors.length;
+    }
+    const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
+      options,
+      serviceName,
+      invalidConnectors,
+      false,
+    );
+    if (shouldDeleteInvalidConnectors) {
+      await deleteInvalidConnectors(invalidConnectors);
+    }
+    // Then, try to upsert schema again. If there still is an error, just throw it now
+    await upsertSchema(schema, false);
+  }
+}
+
 export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
   const role = options.role as string;
   const email = options.email as string;
@@ -374,13 +414,19 @@ export function getIdentifiers(schema: Schema): {
     );
   }
   const instanceId = instanceName.split("/").pop()!;
-  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  const serviceName = serviceNameFromSchema(schema);
   return {
     databaseId,
     instanceId,
     instanceName,
     serviceName,
   };
+}
+
+/** Extracts the service name from the schema name. */
+export function serviceNameFromSchema(schema: Schema): string {
+  const regex = /\/schemas\/[^/]*$/;
+  return schema.name.replace(regex, "");
 }
 
 function suggestedCommand(serviceName: string, invalidConnectorNames: string[]): string {
@@ -626,7 +672,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       source: {
         files: [],
       },

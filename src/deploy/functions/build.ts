@@ -71,6 +71,15 @@ export interface HttpsTrigger {
   invoker?: Array<ServiceAccount | Expression<string>> | null;
 }
 
+export interface DataConnectGraphqlTrigger {
+  // Which service account should be able to trigger this function in addition to the Firebase Data Connect P4SA.
+  // No value means that only the Firebase Data Connect P4SA can trigger this function.
+  // For more context, see go/cf3-http-access-control
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  // The file path relative to the Firebase project directory where the GraphQL schema is stored.
+  schemaFilePath?: string;
+}
+
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
 interface CallableTrigger {
@@ -150,6 +159,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type DataConnectGraphqlTriggered = { dataConnectGraphqlTrigger: DataConnectGraphqlTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -157,6 +167,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -166,6 +177,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -222,17 +240,11 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
-  // Defaults to "gcfv2". "run" targets Cloud Run directly.
-  platform?: FunctionsPlatform;
+  // Defaults to "gcfv2".
+  platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
   entryPoint: string;
-
-  // Cloud Run container image URI (used when platform is "run").
-  baseImageUri?: string;
-
-  // Container entrypoint command (used when platform is "run").
-  command?: string[];
 
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
@@ -273,6 +285,11 @@ export type Endpoint = Triggered & {
   environmentVariables?: Record<string, string | Expression<string>> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   labels?: Record<string, string | Expression<string>> | null;
+
+  // Fields for Cloud Run platform (for no-build path)
+  baseImageUri?: string;
+  command?: string[];
+  args?: string[];
 };
 
 type SecretParam = ReturnType<typeof defineSecret>;
@@ -489,6 +506,9 @@ export function toBackend(
         "environmentVariables",
         "labels",
         "secretEnvironmentVariables",
+        "baseImageUri",
+        "command",
+        "args",
       );
       r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
@@ -563,6 +583,21 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    const dataConnectGraphqlTrigger: backend.DataConnectGraphqlTrigger = {};
+    if (endpoint.dataConnectGraphqlTrigger.invoker === null) {
+      dataConnectGraphqlTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectGraphqlTrigger.invoker !== "undefined") {
+      dataConnectGraphqlTrigger.invoker = endpoint.dataConnectGraphqlTrigger.invoker.map(
+        r.resolveString,
+      );
+    }
+    proto.copyIfPresent(
+      dataConnectGraphqlTrigger,
+      endpoint.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
+    return { dataConnectGraphqlTrigger };
   } else if (isCallableTriggered(endpoint)) {
     const trigger: CallableTriggered = { callableTrigger: {} };
     proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");

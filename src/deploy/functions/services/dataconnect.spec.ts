@@ -46,3 +46,44 @@ describe("ensureDatabaseTriggerRegion", () => {
     );
   });
 });
+
+describe("getDataConnectP4SA", () => {
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("should return the correct service account for autopush", async () => {
+    process.env.FIREBASE_DATACONNECT_URL =
+      "https://autopush-firebasedataconnect.sandbox.googleapis.com";
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
+
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-autopush-dataconnect.iam.gserviceaccount.com`,
+    );
+  });
+
+  it("should return the correct service account for staging", async () => {
+    process.env.FIREBASE_DATACONNECT_URL =
+      "https://staging-firebasedataconnect.sandbox.googleapis.com";
+
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
+
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-staging-dataconnect.iam.gserviceaccount.com`,
+    );
+  });
+
+  it("should return the correct service account for prod", async () => {
+    const p4sa = dataconnect.getDataConnectP4SA(projectNumber);
+
+    expect(p4sa).to.equal(
+      `service-${projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+    );
+  });
+});

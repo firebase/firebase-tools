@@ -223,14 +223,39 @@ export async function prepare(
       );
     }
 
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {
+      const schPathSet = new Set<string>();
+      for (const e of backend.allEndpoints(wantBackend)) {
+        if (
+          backend.isDataConnectGraphqlTriggered(e) &&
+          e.dataConnectGraphqlTrigger.schemaFilePath
+        ) {
+          schPathSet.add(e.dataConnectGraphqlTrigger.schemaFilePath);
+        }
+      }
+      const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
+        ? "tar.gz"
+        : "zip";
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [...schPathSet],
+        undefined,
+        { exportType },
+      );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
       const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, configForUpload);
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [],
+        configForUpload,
+      );
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }
@@ -295,6 +320,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
+  validate.checkFiltersIntegrity(wantBackends, context.filters);
   applyBackendHashToBackends(wantBackends, context);
 }
 

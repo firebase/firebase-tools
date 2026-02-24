@@ -4,19 +4,8 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent } from "./env";
 const pkg = require("../package.json");
-
-// Detect if the CLI was invoked by a coding agent, based on well-known env vars.
-function detectAIAgent(): string {
-  if (process.env.CLAUDECODE) return "claude_code";
-  if (process.env.CLINE_ACTIVE) return "cline";
-  if (process.env.CODEX_SANDBOX) return "codex_cli";
-  if (process.env.CURSOR_AGENT) return "cursor";
-  if (process.env.GEMINI_CLI) return "gemini_cli";
-  if (process.env.OPENCODE) return "open_code";
-  return "unknown";
-}
 
 type cliEventNames =
   | "command_execution"

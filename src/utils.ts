@@ -583,6 +583,13 @@ export function isRunningInWSL(): boolean {
 }
 
 /**
+ * Indicates whether the end-user is running the CLI from a GitHub Action.
+ */
+export function isRunningInGithubAction(): boolean {
+  return process.env.GITHUB_ACTION_REPOSITORY === "FirebaseExtended/action-hosting-deploy";
+}
+
+/**
  * Generates a date that is 30 days from Date.now()
  */
 export function thirtyDaysFromNow(): Date {
@@ -1034,4 +1041,17 @@ export function commandExistsSync(command: string): boolean {
     // If the command is not found, execSync will throw an error (non-zero exit code)
     return false;
   }
+}
+
+/**
+ * Resolves `subPath` against `base` and ensures the result is contained within `base`.
+ * Throws a FirebaseError with an optional message if the resolved path escapes `base`.
+ */
+export function resolveWithin(base: string, subPath: string, errMsg?: string): string {
+  const abs = path.resolve(base, subPath);
+  const rel = path.relative(base, abs);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new FirebaseError(errMsg || `Path "${subPath}" must be within "${base}".`);
+  }
+  return abs;
 }

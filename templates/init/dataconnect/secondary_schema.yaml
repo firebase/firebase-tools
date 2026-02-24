@@ -1,0 +1,5 @@
+  - id: __secondarySchemaId__
+    source: __secondarySchemaSource__
+    datasource:
+      httpGraphql:
+        uri: __secondarySchemaUri__

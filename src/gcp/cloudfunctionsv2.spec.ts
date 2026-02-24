@@ -798,6 +798,24 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal(expectedEndpoint);
     });
+
+    it("should convert function without buildConfig", () => {
+      const expectedEndpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        uri: GCF_URL,
+        entryPoint: "",
+        runtime: undefined,
+        source: undefined,
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          buildConfig: undefined,
+        }),
+      ).to.deep.equal(expectedEndpoint);
+    });
   });
 
   describe("createFunction", () => {
