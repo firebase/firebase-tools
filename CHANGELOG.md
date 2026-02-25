@@ -1,2 +1,5 @@
 - Corrects issue with updateService in runv2.ts (#9918)
 - Updated suite of MCP tools for Firestore to include many new tools. Firestore tools no longer support emulator mode.
+- Updated the Firebase Data Connect local toolkit to v3.2.0, which includes the following changes:
+  - Support for uuidV7()
+  - Support for custom PostgreSQL schema names.
