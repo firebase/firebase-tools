@@ -424,7 +424,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // For Dart, include the function name in the path so the server can route
     // For other runtimes, use / as they use FUNCTION_TARGET env var
     const isDart = isLanguageRuntime(record.backend.runtime, "dart");
-    const path = isDart ? `/${trigger.name}` : `/`;
+    const path = isDart ? `/${trigger.entryPoint}` : `/`;
 
     return new Promise((resolve, reject) => {
       const req = http.request(
@@ -1874,10 +1874,12 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // For Dart, route via path since all functions share a single process.
     // The Dart server routes based on the first path segment (function name).
-    // Use trigger_name (e.g. "helloWorld") not trigger.id (e.g. "us-central1-helloWorld").
+    // Use trigger.entryPoint (e.g. "helloworld") which is the actual function name
+    // registered in the Dart server, not trigger_name which may include region prefix
+    // (e.g. "us-central1-helloworld-0" from background function routes).
     const isDart = isLanguageRuntime(record.backend.runtime, "dart");
     if (isDart) {
-      path = `/${req.params.trigger_name}${path === "/" ? "" : path}`;
+      path = `/${trigger.entryPoint}${path === "/" ? "" : path}`;
     }
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
