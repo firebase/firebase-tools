@@ -97,159 +97,202 @@ describe("hosting feature init", () => {
       expect(setup.featureInfo?.hosting?.newSiteId).to.equal("new-site-id");
     });
 
-    it("should redirect to apphosting init when user accepts the prompt", async () => {
-      const setup: Setup = {
-        config: {},
-        rcfile: { projects: {}, targets: {}, etags: {} },
-        projectId: "test-project",
-        features: [],
-        instructions: [],
-      };
-      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+    describe("App Hosting supported frameworks", () => {
+      for (const framework of ["next", "angular", "nuxt", "nuxt2", "express", "svelekit"]) {
+        it(`${framework}: should redirect to App Hosting when user accepts`, async () => {
+          const setup: Setup = {
+            config: {},
+            rcfile: { projects: {}, targets: {}, etags: {} },
+            projectId: "demo-project",
+            instructions: [],
+            features: [],
+          };
+          const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox.stub(frameworks, "discover").resolves({ framework: "next", mayWantBackend: true });
-      sandbox.stub(prompt, "confirm").resolves(true);
-      const inputStub = sandbox.stub(prompt, "input");
-      sandbox.stub(github, "initGitHub").resolves();
+          sandbox.stub(frameworks, "discover").resolves({ framework, mayWantBackend: true });
+          sandbox.stub(prompt, "confirm").resolves(true);
+          const inputStub = sandbox.stub(prompt, "input");
+          sandbox.stub(github, "initGitHub").resolves();
 
-      await askQuestions(setup, cfg, {
-        cwd: "/",
-        configPath: "",
-        only: "",
-        except: "",
-        nonInteractive: false,
-      } as any);
+          await askQuestions(setup, cfg, {
+            cwd: "/",
+            configPath: "",
+            only: "",
+            except: "",
+            nonInteractive: false,
+          } as any);
 
-      expect(setup.features).to.deep.equal(["apphosting"]);
-      expect(setup.featureInfo?.hosting).to.deep.equal({ redirectToAppHosting: true });
-      expect(inputStub.called).to.be.false;
+          expect(setup.features).to.deep.equal(["apphosting"]);
+          expect(setup.featureInfo?.hosting).to.deep.equal({ redirectToAppHosting: true });
+          expect(inputStub.called).to.be.false;
+        });
+
+        it(`${framework}: should continue hosting init when user declines`, async () => {
+          const setup: Setup = {
+            config: {},
+            rcfile: { projects: {}, targets: {}, etags: {} },
+            projectId: "demo-project",
+            instructions: [],
+            features: [],
+          };
+          const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+          sandbox.stub(frameworks, "discover").resolves({ framework, mayWantBackend: true });
+          sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+          sandbox.stub(prompt, "confirm").resolves(false);
+          const inputStub = sandbox.stub(prompt, "input").resolves("public");
+          sandbox.stub(github, "initGitHub").resolves();
+
+          await askQuestions(setup, cfg, {
+            cwd: "/",
+            configPath: "",
+            only: "",
+            except: "",
+            nonInteractive: false,
+          } as any);
+
+          expect(setup.features).to.deep.equal([]);
+          expect(
+            inputStub.calledWith(
+              sinon.match({ message: "What do you want to use as your public directory?" }),
+            ),
+          ).to.be.true;
+        });
+      }
     });
 
-    it("should continue hosting init when user declines App Hosting redirect", async () => {
-      const setup: Setup = {
-        config: {},
-        rcfile: { projects: {}, targets: {}, etags: {} },
-        projectId: "test-project",
-        features: [],
-        instructions: [],
-      };
-      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+    describe("App Hosting unsupported frameworks", () => {
+      for (const framework of ["vite", "astro"]) {
+        it(`${framework}: should throw when SSR features are detected`, async () => {
+          const setup: Setup = {
+            config: {},
+            rcfile: { projects: {}, targets: {}, etags: {} },
+            projectId: "demo-project",
+            instructions: [],
+            features: [],
+          };
+          const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox.stub(frameworks, "discover").resolves({ framework: "next", mayWantBackend: true });
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
-      sandbox.stub(prompt, "confirm").resolves(false);
-      const inputStub = sandbox.stub(prompt, "input").resolves("public");
-      sandbox.stub(github, "initGitHub").resolves();
+          sandbox.stub(frameworks, "discover").resolves({ framework, mayWantBackend: true });
+          const confirmStub = sandbox.stub(prompt, "confirm");
+          const inputStub = sandbox.stub(prompt, "input");
 
-      await askQuestions(setup, cfg, {
-        cwd: "/",
-        configPath: "",
-        only: "",
-        except: "",
-        nonInteractive: false,
-      } as any);
+          await expect(
+            askQuestions(setup, cfg, {
+              cwd: "/",
+              configPath: "",
+              only: "",
+              except: "",
+              nonInteractive: false,
+            } as any),
+          ).to.be.rejectedWith(/Firebase App Hosting, was designed for SSR web apps/);
 
-      expect(setup.features).to.deep.equal([]);
-      expect(
-        inputStub.calledWith(
-          sinon.match({ message: "What do you want to use as your public directory?" }),
-        ),
-      ).to.be.true;
+          expect(confirmStub.called).to.be.false;
+          expect(inputStub.called).to.be.false;
+        });
+      }
     });
 
-    it("should not terminate when no framework is detected", async () => {
-      const setup: Setup = {
-        config: {},
-        rcfile: { projects: {}, targets: {}, etags: {} },
-        projectId: "test-project",
-        instructions: [],
-      };
-      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+    describe("static or undetected frameworks", () => {
+      it("should proceed normally when no framework is detected", async () => {
+        const setup: Setup = {
+          config: {},
+          rcfile: { projects: {}, targets: {}, etags: {} },
+          projectId: "demo-project",
+          instructions: [],
+          features: [],
+        };
+        const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox.stub(frameworks, "discover").resolves(undefined);
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+        sandbox.stub(frameworks, "discover").resolves(undefined);
+        sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
 
-      sandbox.stub(prompt, "confirm").resolves(false);
-      const inputStub = sandbox.stub(prompt, "input").resolves("public");
-      sandbox.stub(github, "initGitHub").resolves();
+        sandbox.stub(prompt, "confirm").resolves(false);
+        const inputStub = sandbox.stub(prompt, "input").resolves("public");
+        sandbox.stub(github, "initGitHub").resolves();
 
-      await askQuestions(setup, cfg, {
-        cwd: "/",
-        configPath: "",
-        only: "",
-        except: "",
-        nonInteractive: false,
-      } as any);
+        await askQuestions(setup, cfg, {
+          cwd: "/",
+          configPath: "",
+          only: "",
+          except: "",
+          nonInteractive: false,
+        } as any);
 
-      expect(
-        inputStub.calledWith(
-          sinon.match({ message: "What do you want to use as your public directory?" }),
-        ),
-      ).to.be.true;
-    });
+        expect(
+          inputStub.calledWith(
+            sinon.match({ message: "What do you want to use as your public directory?" }),
+          ),
+        ).to.be.true;
+      });
 
-    it("should not terminate for static frameworks like Flutter", async () => {
-      const setup: Setup = {
-        config: {},
-        rcfile: { projects: {}, targets: {}, etags: {} },
-        projectId: "test-project",
-        instructions: [],
-      };
-      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      it("should proceed normally for static frameworks like Flutter", async () => {
+        const setup: Setup = {
+          config: {},
+          rcfile: { projects: {}, targets: {}, etags: {} },
+          projectId: "demo-project",
+          instructions: [],
+          features: [],
+        };
+        const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox
-        .stub(frameworks, "discover")
-        .resolves({ framework: "flutter", mayWantBackend: false });
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+        sandbox
+          .stub(frameworks, "discover")
+          .resolves({ framework: "flutter", mayWantBackend: false });
+        sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
 
-      sandbox.stub(prompt, "confirm").resolves(false);
-      const inputStub = sandbox.stub(prompt, "input").resolves("public");
-      sandbox.stub(github, "initGitHub").resolves();
+        sandbox.stub(prompt, "confirm").resolves(false);
+        const inputStub = sandbox.stub(prompt, "input").resolves("public");
+        sandbox.stub(github, "initGitHub").resolves();
 
-      await askQuestions(setup, cfg, {
-        cwd: "/",
-        configPath: "",
-        only: "",
-        except: "",
-        nonInteractive: false,
-      } as any);
+        await askQuestions(setup, cfg, {
+          cwd: "/",
+          configPath: "",
+          only: "",
+          except: "",
+          nonInteractive: false,
+        } as any);
 
-      expect(
-        inputStub.calledWith(
-          sinon.match({ message: "What do you want to use as your public directory?" }),
-        ),
-      ).to.be.true;
-    });
+        expect(
+          inputStub.calledWith(
+            sinon.match({ message: "What do you want to use as your public directory?" }),
+          ),
+        ).to.be.true;
+      });
 
-    it("should not terminate when a framework without backend is detected", async () => {
-      const setup: Setup = {
-        config: {},
-        rcfile: { projects: {}, targets: {}, etags: {} },
-        projectId: "test-project",
-        instructions: [],
-      };
-      const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      it("should proceed normally when framework has no backend", async () => {
+        const setup: Setup = {
+          config: {},
+          rcfile: { projects: {}, targets: {}, etags: {} },
+          projectId: "demo-project",
+          instructions: [],
+          features: [],
+        };
+        const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
-      sandbox.stub(frameworks, "discover").resolves({ framework: "nextjs", mayWantBackend: false });
-      sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+        sandbox
+          .stub(frameworks, "discover")
+          .resolves({ framework: "nextjs", mayWantBackend: false });
+        sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
 
-      sandbox.stub(prompt, "confirm").resolves(false);
-      const inputStub = sandbox.stub(prompt, "input").resolves("public");
-      sandbox.stub(github, "initGitHub").resolves();
+        sandbox.stub(prompt, "confirm").resolves(false);
+        const inputStub = sandbox.stub(prompt, "input").resolves("public");
+        sandbox.stub(github, "initGitHub").resolves();
 
-      await askQuestions(setup, cfg, {
-        cwd: "/",
-        configPath: "",
-        only: "",
-        except: "",
-        nonInteractive: false,
-      } as any);
+        await askQuestions(setup, cfg, {
+          cwd: "/",
+          configPath: "",
+          only: "",
+          except: "",
+          nonInteractive: false,
+        } as any);
 
-      expect(
-        inputStub.calledWith(
-          sinon.match({ message: "What do you want to use as your public directory?" }),
-        ),
-      ).to.be.true;
+        expect(
+          inputStub.calledWith(
+            sinon.match({ message: "What do you want to use as your public directory?" }),
+          ),
+        ).to.be.true;
+      });
     });
   });
 

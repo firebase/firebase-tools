@@ -33,21 +33,39 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   if (discoveredFramework && discoveredFramework.mayWantBackend) {
     const frameworkName =
       WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
-    logger.info();
-    const useAppHosting = await confirm({
-      message:
-        `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
-        `this site will work on Firebase Hosting, which is only for static sites. Another ` +
-        `product, Firebase ${clc.bold("App")} Hosting, was designed for SSR web apps. Would ` +
-        `you like to use App Hosting instead? Learn more here: ` +
-        `https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
-      default: true,
-    });
-    if (useAppHosting) {
-      setup.featureInfo ||= {};
-      setup.featureInfo.hosting = { redirectToAppHosting: true };
-      setup.features?.unshift("apphosting");
-      return;
+
+    switch (discoveredFramework.framework) {
+      case "next":
+      case "angular":
+      case "nuxt":
+      case "nuxt2":
+      case "express":
+      case "svelekit":
+      case "sveltekit":
+        logger.info();
+        const useAppHosting = await confirm({
+          message:
+            `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps. Would ` +
+            `you like to use App Hosting instead? Learn more here: ` +
+            `https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+          default: true,
+        });
+        if (useAppHosting) {
+          setup.featureInfo ||= {};
+          setup.featureInfo.hosting = { redirectToAppHosting: true };
+          setup.features?.unshift("apphosting");
+          return;
+        }
+        break;
+
+      default:
+        throw new FirebaseError(
+          `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that this site will work on Firebase Hosting, which is optimized for static sites. Another product, Firebase App Hosting, was designed for SSR web apps. Learn about App Hosting here: https://firebase.google.com/docs/app-hosting/product-comparison#hostings\n` +
+            `Learn how to deploy frameworks with App Hosting here: https://firebase.blog/posts/2025/06/app-hosting-frameworks/`,
+          { exit: 1 },
+        );
     }
   }
 
