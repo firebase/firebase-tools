@@ -49,7 +49,6 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-
 async function extractMetadata(rootPath: string): Promise<{
   projectId: string | undefined;
   appName: string;
@@ -104,7 +103,6 @@ async function extractMetadata(rootPath: string): Promise<{
 
   return { projectId, appName, blueprintContent };
 }
-
 
 async function updateReadme(
   rootPath: string,
@@ -416,7 +414,10 @@ async function askToOpenAntigravity(
   }
 }
 
-export async function migrate(rootPath: string, options: MigrateOptions = { noStartAgy: false }): Promise<void> {
+export async function migrate(
+  rootPath: string,
+  options: MigrateOptions = { noStartAgy: false },
+): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
