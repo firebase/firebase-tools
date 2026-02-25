@@ -1,6 +1,5 @@
 import { Command } from "../command";
 import { logger } from "../logger";
-<<<<<<< exportLogic
 import { Options } from "../options";
 import { migrate } from "../firebase_studio/migrate";
 import * as path from "path";
@@ -20,14 +19,4 @@ export const command = new Command("studio:export <path>")
     const rootPath = path.resolve(exportPath);
     logger.info(`Exporting Studio apps from ${rootPath} to Antigravity...`);
     await migrate(rootPath, { noStartAgy: !options.startAgy });
-=======
-import * as experiments from "../experiments";
-
-export const command = new Command("studio:export")
-  .description("export Firebase Studio apps to continue development locally")
-  .action(() => {
-    experiments.assertEnabled("studioexport", "export Studio apps");
-    logger.info("Exporting Studio apps to Antigravity...");
-    // TODO: implement export logic
->>>>>>> main
   });
