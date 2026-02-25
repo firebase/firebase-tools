@@ -15,6 +15,7 @@ interface GitHubItem {
   download_url: string;
 }
 
+// TODO revisit quota limits
 async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
   const response = await fetch(apiUrl);
   if (!response.ok) {
@@ -44,11 +45,11 @@ interface Metadata {
 }
 
 async function extractMetadata(rootPath: string): Promise<{
-  projectId: string;
+  projectId: string | undefined;
   appName: string;
   blueprintContent: string;
 }> {
-  // 1. Verify export & Extract Metadata
+  // Verify export & Extract Metadata
   const metadataPath = path.join(rootPath, "metadata.json");
   let metadata: Metadata = {};
   try {
@@ -60,7 +61,7 @@ async function extractMetadata(rootPath: string): Promise<{
 
   let projectId = metadata.projectId;
   if (!projectId) {
-    // try to get from .firebaserc
+    // try to get project ID from .firebaserc
     try {
       const firebasercContent = await fs.readFile(path.join(rootPath, ".firebaserc"), "utf8");
       const firebaserc = JSON.parse(firebasercContent) as { projects?: { default?: string } };
@@ -73,10 +74,11 @@ async function extractMetadata(rootPath: string): Promise<{
   if (projectId) {
     logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
-    projectId = "studio-8559296606-bdfe5"; // FIXME
+    // TODO need a mitigation here
+    logger.info(`✅ Failed to determine the Firebase Project ID`);
   }
 
-  // 2. Extract App Name and Blueprint Content
+  // Extract App Name and Blueprint Content
   let appName = "firebase-studio-export";
   let blueprintContent = "";
   const blueprintPath = path.join(rootPath, "docs", "blueprint.md");
@@ -112,29 +114,9 @@ async function updateReadme(
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
-
-  // Remove docs/blueprint.md and empty docs directory
-  const docsDir = path.join(rootPath, "docs");
-  const blueprintPath = path.join(docsDir, "blueprint.md");
-  try {
-    await fs.unlink(blueprintPath);
-    logger.info("✅ Cleaned up docs/blueprint.md");
-  } catch (err: unknown) {
-    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
-  }
-
-  try {
-    const files = await fs.readdir(docsDir);
-    if (files.length === 0) {
-      await fs.rmdir(docsDir);
-      logger.info("✅ Removed empty docs directory");
-    }
-  } catch (err: unknown) {
-    logger.debug(`Could not remove ${docsDir}: ${err}`);
-  }
 }
 
-async function injectAgyContext(rootPath: string, projectId: string, appName: string): Promise<void> {
+async function injectAgyContext(rootPath: string, projectId: string | undefined, appName: string): Promise<void> {
   const agentDir = path.join(rootPath, ".agent");
   const rulesDir = path.join(agentDir, "rules");
   const workflowsDir = path.join(agentDir, "workflows");
@@ -191,7 +173,7 @@ async function injectAgyContext(rootPath: string, projectId: string, appName: st
     "utf8",
   );
   const systemInstructions = systemInstructionsTemplate
-    .replace("${projectId}", projectId || "")
+    .replace("${projectId}", projectId || "None")
     .replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
@@ -224,14 +206,10 @@ async function assertSystemState(): Promise<void> {
   }
 }
 
-interface Backend {
-  name: string;
-  displayName?: string;
-}
-
-async function createFirebaseConfigs(rootPath: string, projectId: string): Promise<void> {
-  // 3. Create Firebase Configs
-  // .firebaserc
+async function createFirebaseConfigs(rootPath: string, projectId: string | undefined): Promise<void> {
+  if (!projectId) {
+    return;
+  }
   const firebaserc = {
     projects: {
       default: projectId,
@@ -350,6 +328,44 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   logger.info("✅ Created .vscode/launch.json");
 }
 
+async function cleanupUnusedFiles(rootPath: string): Promise<void> {
+
+  // Remove docs/blueprint.md and empty docs directory
+  const docsDir = path.join(rootPath, "docs");
+  const blueprintPath = path.join(docsDir, "blueprint.md");
+  try {
+    await fs.unlink(blueprintPath);
+    logger.info("✅ Cleaned up docs/blueprint.md");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
+  }
+
+  try {
+    const files = await fs.readdir(docsDir);
+    if (files.length === 0) {
+      await fs.rmdir(docsDir);
+      logger.info("✅ Removed empty docs directory");
+    }
+  } catch (err: unknown) {
+    logger.debug(`Could not remove ${docsDir}: ${err}`);
+  }
+
+  const metadataPath = path.join(rootPath, "metadata.json");
+  try {
+    await fs.unlink(metadataPath);
+    logger.info("✅ Cleaned up metadata.json");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${metadataPath}: ${err}`);
+  }
+
+  const modifiedPath = path.join(rootPath, ".modified");
+  try {
+    await fs.unlink(modifiedPath);
+    logger.info("✅ Cleaned up .modified");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
+  }
+}
 async function askToOpenAgy(
   rootPath: string,
   appName: string,
@@ -398,28 +414,10 @@ export async function migrate(rootPath: string): Promise<void> {
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
 
   await updateReadme(rootPath, blueprintContent, appName);
-
   await createFirebaseConfigs(rootPath, projectId);
-
-  // 4. Inject AGY Context
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath);
-  // 6. Cleanup
-  const metadataPath = path.join(rootPath, "metadata.json");
-  try {
-    await fs.unlink(metadataPath);
-    logger.info("✅ Cleaned up metadata.json");
-  } catch (err: unknown) {
-    logger.debug(`Could not delete ${metadataPath}: ${err}`);
-  }
-
-  const modifiedPath = path.join(rootPath, ".modified");
-  try {
-    await fs.unlink(modifiedPath);
-    logger.info("✅ Cleaned up .modified");
-  } catch (err: unknown) {
-    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
-  }
+  await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
   const currentFolderName = path.basename(rootPath);
@@ -428,5 +426,6 @@ export async function migrate(rootPath: string): Promise<void> {
       `\n💡 Tip: You might want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
     );
   }
+
   await askToOpenAgy(rootPath, appName, noStartAgyFlag);
 }
