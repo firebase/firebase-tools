@@ -1,7 +1,12 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { execSync, spawn } from "child_process";
-import * as readline from "node:readline/promises";
+
+import { logger } from "../logger";
+import { FirebaseError } from "../error";
+import * as prompt from "../prompt";
+import * as apphosting from "../gcp/apphosting";
+import * as utils from "../utils";
 
 interface GitHubItem {
   name: string;
@@ -49,7 +54,9 @@ async function extractMetadata(rootPath: string): Promise<{
   try {
     const metadataContent = await fs.readFile(metadataPath, "utf8");
     metadata = JSON.parse(metadataContent) as Metadata;
-  } catch (err) {}
+  } catch (err: unknown) {
+    logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
+  }
 
   let projectId = metadata.projectId;
   if (!projectId) {
@@ -58,11 +65,13 @@ async function extractMetadata(rootPath: string): Promise<{
       const firebasercContent = await fs.readFile(path.join(rootPath, ".firebaserc"), "utf8");
       const firebaserc = JSON.parse(firebasercContent) as { projects?: { default?: string } };
       projectId = firebaserc.projects?.default;
-    } catch (err) {}
+    } catch (err: unknown) {
+      logger.debug(`Could not read .firebaserc at ${rootPath}: ${err}`);
+    }
   }
 
   if (projectId) {
-    console.log(`✅ Detected Firebase Project: ${projectId}`);
+    logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
     projectId = "studio-8559296606-bdfe5"; // FIXME
   }
@@ -77,10 +86,12 @@ async function extractMetadata(rootPath: string): Promise<{
     if (nameMatch && nameMatch[1]) {
       appName = nameMatch[1].trim();
     }
-  } catch (err) {}
+  } catch (err: unknown) {
+    logger.debug(`Could not read blueprint.md at ${blueprintPath}: ${err}`);
+  }
 
   if (appName !== "firebase-studio-export") {
-    console.log(`✅ Detected App Name: ${appName}`);
+    logger.info(`✅ Detected App Name: ${appName}`);
   }
 
   return { projectId, appName, blueprintContent };
@@ -95,29 +106,32 @@ async function updateReadme(
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await fs.readFile(path.join(__dirname, "readme_template.md"), "utf8");
   const newReadme = readmeTemplate
-    .replace("${appName}", appName)
-    .replace("${appName}", appName) // Replace twice for name and previous name
+    .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toLocaleDateString())
     .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim());
 
   await fs.writeFile(readmePath, newReadme);
-  console.log("✅ Updated README.md with project details and origin info");
+  logger.info("✅ Updated README.md with project details and origin info");
 
   // Remove docs/blueprint.md and empty docs directory
   const docsDir = path.join(rootPath, "docs");
   const blueprintPath = path.join(docsDir, "blueprint.md");
   try {
     await fs.unlink(blueprintPath);
-    console.log("✅ Cleaned up docs/blueprint.md");
-  } catch (err) {}
+    logger.info("✅ Cleaned up docs/blueprint.md");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
+  }
 
   try {
     const files = await fs.readdir(docsDir);
     if (files.length === 0) {
       await fs.rmdir(docsDir);
-      console.log("✅ Removed empty docs directory");
+      logger.info("✅ Removed empty docs directory");
     }
-  } catch (err) {}
+  } catch (err: unknown) {
+    logger.debug(`Could not remove ${docsDir}: ${err}`);
+  }
 }
 
 async function injectAgyContext(rootPath: string, projectId: string, appName: string): Promise<void> {
@@ -131,7 +145,7 @@ async function injectAgyContext(rootPath: string, projectId: string, appName: st
   await fs.mkdir(skillsDir, { recursive: true });
 
   // Download Skills from GitHub
-  console.log("⏳ Fetching AGY skills from firebase/agent-skills...");
+  logger.info("⏳ Fetching AGY skills from firebase/agent-skills...");
   try {
     const skillsResponse = await fetch(
       "https://api.github.com/repos/firebase/agent-skills/contents/skills",
@@ -151,27 +165,26 @@ async function injectAgyContext(rootPath: string, projectId: string, appName: st
         }
       }
     } else {
-      console.warn("⚠️ GitHub API response for skills is not an array.");
+      utils.logWarning("GitHub API response for skills is not an array.");
     }
-    console.log(`✅ Downloaded Firebase skills`);
-  } catch (err: any) {
-    console.warn("⚠️ Could not download AGY skills, skipping.", err.message);
+    logger.info(`✅ Downloaded Firebase skills`);
+  } catch (err: unknown) {
+    utils.logWarning(`Could not download AGY skills, skipping. ${err}`);
   }
 
-
   // Download Genkit skill
-  console.log("⏳ Fetching Genkit skill...");
+  logger.info("⏳ Fetching Genkit skill...");
   try {
     const genkitSkillDir = path.join(skillsDir, "developing-genkit-js");
     await downloadGitHubDir(
       "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
       genkitSkillDir,
     );
-    console.log(`✅ Downloaded Genkit skill`);
-  } catch (err: any) {
-    console.warn("⚠️ Could not download Genkit skill, skipping.", err.message);
+    logger.info(`✅ Downloaded Genkit skill`);
+  } catch (err: unknown) {
+    utils.logWarning(`Could not download Genkit skill, skipping. ${err}`);
   }
-  
+
   // System Instructions
   const systemInstructionsTemplate = await fs.readFile(
     path.join(__dirname, "system_instructions.md"),
@@ -182,40 +195,32 @@ async function injectAgyContext(rootPath: string, projectId: string, appName: st
     .replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
-  console.log("✅ Injected AGY rules");
+  logger.info("✅ Injected AGY rules");
 
   // Startup Workflow
-  const startupWorkflow = await fs.readFile(
-    path.join(__dirname, "workflows", "startup_workflow.md"),
-    "utf8",
-  );
-  await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
-  console.log("✅ Created AGY startup workflow");
+  try {
+    const startupWorkflow = await fs.readFile(
+      path.join(__dirname, "workflows", "startup_workflow.md"),
+      "utf8",
+    );
+    await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
+    logger.info("✅ Created AGY startup workflow");
+  } catch (err: unknown) {
+    logger.debug(`Could not read or write startup workflow: ${err}`);
+  }
 }
 
 async function assertSystemState(): Promise<void> {
-  // Assertion: Check for firebase-tools
-  try {
-    execSync("firebase --version", { stdio: "ignore" });
-    console.log("✅ Firebase CLI detected");
-  } catch (err) {
-    console.error("❌ Error: Firebase CLI (firebase-tools) is not installed or not in your PATH.");
-    console.error("👉 Please install it using: npm install -g firebase-tools");
-    process.exit(1);
-  }
-
   // Assertion: Check for Antigravity (agy)
   try {
     execSync("agy --version", { stdio: "ignore" });
-    console.log("✅ Antigravity IDE CLI (agy) detected");
-  } catch (err) {
+    logger.info("✅ Antigravity IDE CLI (agy) detected");
+  } catch (err: unknown) {
     const downloadLink = "https://antigravity.google/download";
-
-    console.warn("⚠️ Warning: Antigravity IDE CLI (agy) not found in your PATH.");
-    console.warn(
-      `👉 To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+    throw new FirebaseError(
+      `Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+      { exit: 1 },
     );
-    process.exit(1);
   }
 }
 
@@ -233,48 +238,53 @@ async function createFirebaseConfigs(rootPath: string, projectId: string): Promi
     },
   };
   await fs.writeFile(path.join(rootPath, ".firebaserc"), JSON.stringify(firebaserc, null, 2));
-  console.log("✅ Created .firebaserc");
+  logger.info("✅ Created .firebaserc");
 
   // firebase.json (App Hosting)
   const firebaseJsonPath = path.join(rootPath, "firebase.json");
   try {
     await fs.access(firebaseJsonPath);
-    console.log("ℹ️ firebase.json already exists, skipping creation.");
+    logger.info("ℹ️ firebase.json already exists, skipping creation.");
   } catch {
     let backendId = "studio"; // Default
     try {
-      console.log(`⏳ Fetching App Hosting backends for project ${projectId}...`);
-      const backendsOutput = execSync(
-        `firebase apphosting:backends:list --project=${projectId} --json`,
-        { encoding: "utf8" },
-      );
-      const backendsData = JSON.parse(backendsOutput) as { result?: Backend[] };
-      const backends = backendsData.result || [];
+      logger.info(`⏳ Fetching App Hosting backends for project ${projectId}...`);
+      const backendsData = await apphosting.listBackends(projectId, "-");
+      const backends = backendsData.backends || [];
 
       if (backends.length > 0) {
         const studioBackend = backends.find(
-          (b) => b.name.endsWith("/studio") || b.displayName?.toLowerCase() === "studio",
+          (b) => b.name.endsWith("/studio") || b.name.toLowerCase().includes("studio"),
         );
         if (studioBackend) {
           backendId = studioBackend.name.split("/").pop()!;
         } else {
           backendId = backends[0].name.split("/").pop()!;
         }
-        console.log(`✅ Selected App Hosting backend: ${backendId}`);
+        logger.info(`✅ Selected App Hosting backend: ${backendId}`);
       } else {
-        console.warn('⚠️ No App Hosting backends found, using default "studio"');
+        utils.logWarning('No App Hosting backends found, using default "studio"');
       }
-    } catch (err) {
-      console.warn('⚠️ Could not fetch backends from Firebase CLI, using default "studio"');
+    } catch (err: unknown) {
+      utils.logWarning(`Could not fetch backends from Firebase CLI, using default "studio". ${err}`);
     }
 
     const firebaseJson = {
       apphosting: {
         backendId: backendId,
+        ignore: [
+          "node_modules",
+          ".git",
+          ".agent",
+          ".idx",
+          "firebase-debug.log",
+          "firebase-debug.*.log",
+          "functions"
+        ]
       },
     };
     await fs.writeFile(firebaseJsonPath, JSON.stringify(firebaseJson, null, 2));
-    console.log(`✅ Created firebase.json with backendId: ${backendId}`);
+    logger.info(`✅ Created firebase.json with backendId: ${backendId}`);
   }
 }
 
@@ -296,7 +306,7 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     ],
   };
   await fs.writeFile(path.join(vscodeDir, "tasks.json"), JSON.stringify(tasksJson, null, 2));
-  console.log("✅ Created .vscode/tasks.json");
+  logger.info("✅ Created .vscode/tasks.json");
 
   // Clean and set preferences in .vscode/settings.json
   const settingsPath = path.join(vscodeDir, "settings.json");
@@ -304,7 +314,9 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   try {
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
-  } catch (err) {}
+  } catch (err: unknown) {
+    logger.debug(`Could not read ${settingsPath}: ${err}`);
+  }
 
   const cleanSettings: Record<string, any> = {};
   for (const [key, value] of Object.entries(settings)) {
@@ -317,7 +329,7 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   cleanSettings["workbench.startupEditor"] = "readme";
 
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
-  console.log("✅ Updated .vscode/settings.json with startup preferences");
+  logger.info("✅ Updated .vscode/settings.json with startup preferences");
 
   const launchJson = {
     version: "0.2.0",
@@ -335,7 +347,7 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     ],
   };
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
-  console.log("✅ Created .vscode/launch.json");
+  logger.info("✅ Created .vscode/launch.json");
 }
 
 async function askToOpenAgy(
@@ -345,40 +357,33 @@ async function askToOpenAgy(
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
   if (noStartAgyFlag) {
-    console.log(
-      `\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.`,
+    logger.info(
+      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
     return;
   }
 
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+  const answer = await prompt.confirm({
+    message: `Migration complete for ${appName}! Would you like to open it in Antigravity now?`,
+    default: true,
   });
 
-  try {
-    const answer = await rl.question(
-      `\n🚀 Migration complete for ${appName}! Would you like to open it in Antigravity now? (y/n): `,
-    );
-    if (answer.toLowerCase() === "y" || answer.toLowerCase() === "yes") {
-      console.log(`⏳ Opening ${appName} in Antigravity...`);
-      try {
-        const agyProcess = spawn("agy", ["."], {
-          cwd: rootPath,
-          stdio: "ignore",
-          detached: true,
-        });
-        agyProcess.unref();
-      } catch (err) {
-        console.warn("⚠️ Could not open Antigravity IDE automatically. Please open it manually.");
-      }
-    } else {
-      console.log(
-        `\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.`,
-      );
+  if (answer) {
+    logger.info(`⏳ Opening ${appName} in Antigravity...`);
+    try {
+      const agyProcess = spawn("agy", ["."], {
+        cwd: rootPath,
+        stdio: "ignore",
+        detached: true,
+      });
+      agyProcess.unref();
+    } catch (err: unknown) {
+      utils.logWarning("Could not open Antigravity IDE automatically. Please open it manually.");
     }
-  } finally {
-    rl.close();
+  } else {
+    logger.info(
+      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
+    );
   }
 }
 
@@ -386,7 +391,7 @@ export async function migrate(rootPath: string): Promise<void> {
   const args = process.argv.slice(2);
   const noStartAgyFlag = args.includes("--nostart_agy");
 
-  console.log("🚀 Starting Firebase Studio to Antigravity migration...");
+  logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
 
@@ -403,25 +408,24 @@ export async function migrate(rootPath: string): Promise<void> {
   const metadataPath = path.join(rootPath, "metadata.json");
   try {
     await fs.unlink(metadataPath);
-    console.log("✅ Cleaned up metadata.json");
-  } catch (err) {}
+    logger.info("✅ Cleaned up metadata.json");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${metadataPath}: ${err}`);
+  }
 
   const modifiedPath = path.join(rootPath, ".modified");
   try {
     await fs.unlink(modifiedPath);
-    console.log("✅ Cleaned up .modified");
-  } catch (err) {}
-
-  // 7. Folder Renaming (Optional/Attempt)
-  // Note: This might fail if the script is running inside the folder
+    logger.info("✅ Cleaned up .modified");
+  } catch (err: unknown) {
+    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
+  }
 
   // Suggest renaming if we are in the 'download' folder
   const currentFolderName = path.basename(rootPath);
   if (currentFolderName === "download") {
-    console.log(
-      `\n💡 Tip: You might want to rename this folder to "${appName
-        .toLowerCase()
-        .replace(/\\s+/g, "-")}"`,
+    logger.info(
+      `\n💡 Tip: You might want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
     );
   }
   await askToOpenAgy(rootPath, appName, noStartAgyFlag);
