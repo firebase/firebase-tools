@@ -178,7 +178,6 @@ export interface CacheSettings {
   maxAge?: string;
   maxSize?: string;
   storage?: "persistent" | "memory";
-  [key: string]: any;
 }
 
 export interface AdminNodeSDK {
