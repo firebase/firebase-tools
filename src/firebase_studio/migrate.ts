@@ -7,9 +7,10 @@ import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
+import { readTemplate } from "../templates";
 
 export interface MigrateOptions {
-  noStartAgy?: boolean;
+  noStartAgy: boolean;
 }
 
 interface GitHubItem {
@@ -104,6 +105,7 @@ async function extractMetadata(rootPath: string): Promise<{
   return { projectId, appName, blueprintContent };
 }
 
+
 async function updateReadme(
   rootPath: string,
   blueprintContent: string,
@@ -111,10 +113,10 @@ async function updateReadme(
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
-  const readmeTemplate = await fs.readFile(path.join(__dirname, "readme_template.md"), "utf8");
+  const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
-    .replace("${exportDate}", new Date().toLocaleDateString())
+    .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
     .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim());
 
   await fs.writeFile(readmePath, newReadme);
@@ -177,9 +179,8 @@ async function injectAgyContext(
   }
 
   // System Instructions
-  const systemInstructionsTemplate = await fs.readFile(
-    path.join(__dirname, "system_instructions.md"),
-    "utf8",
+  const systemInstructionsTemplate = await readTemplate(
+    "firebase-studio-export/system_instructions_template.md",
   );
   const systemInstructions = systemInstructionsTemplate
     .replace("${projectId}", projectId || "None")
@@ -190,9 +191,8 @@ async function injectAgyContext(
 
   // Startup Workflow
   try {
-    const startupWorkflow = await fs.readFile(
-      path.join(__dirname, "workflows", "startup_workflow.md"),
-      "utf8",
+    const startupWorkflow = await readTemplate(
+      "firebase-studio-export/workflows/startup_workflow.md",
     );
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
     logger.info("✅ Created AGY startup workflow");
@@ -379,7 +379,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     logger.debug(`Could not delete ${modifiedPath}: ${err}`);
   }
 }
-async function askToOpenAgy(
+async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
   noStartAgyFlag: boolean,
@@ -416,10 +416,7 @@ async function askToOpenAgy(
   }
 }
 
-
-export async function migrate(rootPath: string, options: MigrateOptions = {}): Promise<void> {
-  const noStartAgyFlag = !!options.noStartAgy;
-
+export async function migrate(rootPath: string, options: MigrateOptions = { noStartAgy: false }): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
@@ -440,5 +437,5 @@ export async function migrate(rootPath: string, options: MigrateOptions = {}): P
     );
   }
 
-  await askToOpenAgy(rootPath, appName, noStartAgyFlag);
+  await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
 }
