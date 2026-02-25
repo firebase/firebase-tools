@@ -10,6 +10,7 @@ import * as discovery from "../discovery";
 import * as supported from "../supported";
 import { logger } from "../../../../logger";
 import { FirebaseError } from "../../../../error";
+import { logLabeledBullet } from "../../../../utils";
 import { Build } from "../../build";
 
 /**
@@ -61,8 +62,80 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   async build(): Promise<void> {
-    // No-op: build_runner handles building
-    return Promise.resolve();
+    // Run build_runner to generate up-to-date functions.yaml
+    logLabeledBullet("functions", "running build_runner...");
+
+    const buildRunnerProcess = spawn(
+      this.bin,
+      ["run", "build_runner", "build", "--delete-conflicting-outputs"],
+      {
+        cwd: this.sourceDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+
+    buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.debug(`[build_runner] ${chunk.toString("utf8").trim()}`);
+    });
+    buildRunnerProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.debug(`[build_runner] ${chunk.toString("utf8").trim()}`);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      buildRunnerProcess.on("exit", (code) => {
+        if (code === 0 || code === null) {
+          resolve();
+        } else {
+          reject(
+            new FirebaseError(
+              `build_runner failed with exit code ${code}. ` +
+                `Make sure your Dart project is properly configured.`,
+            ),
+          );
+        }
+      });
+      buildRunnerProcess.on("error", reject);
+    });
+
+    // Compile Dart to native Linux executable
+    const binDir = path.join(this.sourceDir, "bin");
+    await fs.promises.mkdir(binDir, { recursive: true });
+
+    logLabeledBullet("functions", "compiling Dart to native executable...");
+
+    const compileProcess = spawn(
+      this.bin,
+      ["compile", "exe", "lib/main.dart", "-o", "bin/server", "--target-os=linux"],
+      {
+        cwd: this.sourceDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+
+    compileProcess.stdout?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart compile] ${chunk.toString("utf8").trim()}`);
+    });
+    compileProcess.stderr?.on("data", (chunk: Buffer) => {
+      logger.debug(`[dart compile] ${chunk.toString("utf8").trim()}`);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      compileProcess.on("exit", (code) => {
+        if (code === 0 || code === null) {
+          resolve();
+        } else {
+          reject(
+            new FirebaseError(
+              `Dart compilation failed with exit code ${code}. ` +
+                `Make sure your Dart project compiles successfully with: dart compile exe lib/main.dart`,
+            ),
+          );
+        }
+      });
+      compileProcess.on("error", reject);
+    });
+
+    logLabeledBullet("functions", "Dart compilation complete.");
   }
 
   /**
