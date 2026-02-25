@@ -400,8 +400,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   async sendRequest(trigger: EmulatedTriggerDefinition, body?: any) {
     const record = this.getTriggerRecordByKey(this.getTriggerKey(trigger));
     const pool = this.workerPools[record.backend.codebase];
-    const runtime = record.backend.runtime;
-    if (!pool.readyForWork(trigger.id, runtime)) {
+    if (!pool.readyForWork(trigger.id, record.backend.runtime)) {
       try {
         await this.startRuntime(record.backend, trigger);
       } catch (e: any) {
@@ -409,7 +408,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         return;
       }
     }
-    const worker = pool.getIdleWorker(trigger.id, runtime)!;
+    const worker = pool.getIdleWorker(trigger.id, record.backend.runtime)!;
     if (this.debugMode) {
       await worker.sendDebugMsg({
         functionTarget: trigger.entryPoint,
@@ -424,7 +423,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // For Dart, include the function name in the path so the server can route
     // For other runtimes, use / as they use FUNCTION_TARGET env var
-    const isDart = isLanguageRuntime(runtime, "dart");
+    const isDart = isLanguageRuntime(record.backend.runtime, "dart");
     const path = isDart ? `/${trigger.name}` : `/`;
 
     return new Promise((resolve, reject) => {
@@ -1887,8 +1886,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     this.logger.log("DEBUG", `[functions] Got req.url=${req.url}, mapping to path=${path}`);
 
     const pool = this.workerPools[record.backend.codebase];
-    const runtime = record.backend.runtime;
-    if (!pool.readyForWork(trigger.id, runtime)) {
+    if (!pool.readyForWork(trigger.id, record.backend.runtime)) {
       try {
         await this.startRuntime(record.backend, trigger);
       } catch (e: any) {
@@ -1917,7 +1915,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       res as http.ServerResponse,
       reqBody,
       debugBundle,
-      runtime,
+      record.backend.runtime,
     );
   }
 }

@@ -2,51 +2,11 @@ import * as spawn from "cross-spawn";
 import { Config } from "../../../config";
 import { confirm } from "../../../prompt";
 import { latest } from "../../../deploy/functions/runtimes/supported";
+import { readTemplateSync } from "../../../templates";
 
-// TODO(ehesp): Create these template files in templates/init/functions/dart/
-// TODO(ehesp): Dont use relative path for firebase_functions
-const PUBSPEC_TEMPLATE = `name: functions
-description: Firebase Functions for Dart
-version: 1.0.0
-
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-
-dependencies:
-  firebase_functions:
-    path: ../
-
-dev_dependencies:
-  build_runner: ^2.4.0
-`;
-
-const MAIN_TEMPLATE = `import 'package:firebase_functions/firebase_functions.dart';
-
-void main(List<String> args) {
-  fireUp(args, (firebase) {
-
-    firebase.https.onRequest(
-      name: 'helloWorld',
-      options: const HttpsOptions(cors: Cors(['*'])),
-      (request) async {
-        return Response(200, body: 'Hello from Dart Functions!');
-      });
-  });
-}
-`;
-
-const GITIGNORE_TEMPLATE = `.dart_tool/
-build/
-*.dart.js
-*.info.json
-*.js
-*.js.map
-*.js.deps
-*.js.symbols
-firebase-debug.log
-firebase-debug.*.log
-*.local
-`;
+const PUBSPEC_TEMPLATE = readTemplateSync("init/functions/dart/pubspec.yaml");
+const MAIN_TEMPLATE = readTemplateSync("init/functions/dart/main.dart");
+const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/dart/_gitignore");
 
 /**
  * Create a Dart Firebase Functions project.

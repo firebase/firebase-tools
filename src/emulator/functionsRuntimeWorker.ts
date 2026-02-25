@@ -301,8 +301,8 @@ export class RuntimeWorkerPool {
     if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
       return "~shared~";
     }
-    // For Dart, use a shared key so all functions in a codebase share the same process
-    // Dart loads all functions and routes based on request path
+    // For Dart, use a shared key so all functions in a codebase share the same worker process.
+    // Dart loads all functions into a single process and routes based on request path.
     if (isLanguageRuntime(runtime, "dart")) {
       return "~dart-shared~";
     }

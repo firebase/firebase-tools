@@ -113,16 +113,22 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
     buildRunnerProcess.on("exit", (code) => {
       if (code !== 0 && code !== null) {
-        logger.debug(`build_runner exited with code ${code}. Hot reload may not work.`);
+        logger.debug(`build_runner exited with code ${code}. Initial build failed.`);
         if (!initialBuildComplete) {
-          rejectInitialBuild(new Error(`build_runner exited with code ${code}`));
+          rejectInitialBuild(
+            new FirebaseError(
+              `build_runner exited with code ${code}. Your Dart functions may not be deployed or emulated correctly.`,
+            ),
+          );
         }
       }
       this.buildRunnerProcess = null;
     });
 
     buildRunnerProcess.on("error", (err) => {
-      logger.debug(`Failed to start build_runner: ${err.message}`);
+      logger.debug(
+        `Failed to start build_runner: ${err.message}. Your Dart functions may not be deployed or emulated correctly.`,
+      );
       if (!initialBuildComplete) {
         rejectInitialBuild(err);
       }
