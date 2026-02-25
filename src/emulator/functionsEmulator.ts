@@ -1879,7 +1879,16 @@ export class FunctionsEmulator implements EmulatorInstance {
     // (e.g. "us-central1-helloworld-0" from background function routes).
     const isDart = isLanguageRuntime(record.backend.runtime, "dart");
     if (isDart) {
-      path = `/${trigger.entryPoint}${path === "/" ? "" : path}`;
+      // Background trigger routes (e.g., /functions/projects/.../triggers/...)
+      // leave a path artifact (/functions/projects/) after regex replacement.
+      // Only append remaining path for HTTP trigger routes where the user may
+      // have sub-paths (e.g., /helloworld/extra/path).
+      const isBackgroundRoute = req.url.startsWith("/functions/projects/");
+      if (isBackgroundRoute || path === "/") {
+        path = `/${trigger.entryPoint}`;
+      } else {
+        path = `/${trigger.entryPoint}${path}`;
+      }
     }
 
     // We do this instead of just 302'ing because many HTTP clients don't respect 302s so it may
