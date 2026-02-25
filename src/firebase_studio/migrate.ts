@@ -8,11 +8,20 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 
+export interface MigrateOptions {
+  noStartAgy?: boolean;
+}
+
 interface GitHubItem {
   name: string;
   type: "dir" | "file";
   url: string;
   download_url: string;
+}
+
+interface Metadata {
+  projectId?: string;
+  [key: string]: any;
 }
 
 // TODO revisit quota limits
@@ -39,10 +48,6 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-interface Metadata {
-  projectId?: string;
-  [key: string]: any;
-}
 
 async function extractMetadata(rootPath: string): Promise<{
   projectId: string | undefined;
@@ -411,9 +416,6 @@ async function askToOpenAgy(
   }
 }
 
-export interface MigrateOptions {
-  noStartAgy?: boolean;
-}
 
 export async function migrate(rootPath: string, options: MigrateOptions = {}): Promise<void> {
   const noStartAgyFlag = !!options.noStartAgy;
