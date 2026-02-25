@@ -97,15 +97,24 @@ export class Delegate implements runtimes.RuntimeDelegate {
       buildRunnerProcess.on("error", reject);
     });
 
-    // Compile Dart to native Linux executable
+    // Cross-compile Dart to a Linux x86_64 executable for Cloud Run.
+    // Requires Dart 3.8+ for --target-os and --target-arch support.
     const binDir = path.join(this.sourceDir, "bin");
     await fs.promises.mkdir(binDir, { recursive: true });
 
-    logLabeledBullet("functions", "compiling Dart to native executable...");
+    logLabeledBullet("functions", "compiling Dart to linux-x64 executable...");
 
     const compileProcess = spawn(
       this.bin,
-      ["compile", "exe", "lib/main.dart", "-o", "bin/server", "--target-os=linux"],
+      [
+        "compile",
+        "exe",
+        "lib/main.dart",
+        "-o",
+        "bin/server",
+        "--target-os=linux",
+        "--target-arch=x64",
+      ],
       {
         cwd: this.sourceDir,
         stdio: ["ignore", "pipe", "pipe"],
@@ -127,7 +136,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
           reject(
             new FirebaseError(
               `Dart compilation failed with exit code ${code}. ` +
-                `Make sure your Dart project compiles successfully with: dart compile exe lib/main.dart`,
+                `Make sure your Dart project compiles successfully with: ` +
+                `dart compile exe lib/main.dart --target-os=linux --target-arch=x64`,
             ),
           );
         }
@@ -265,9 +275,13 @@ export class Delegate implements runtimes.RuntimeDelegate {
     }
 
     // Normalize "run" → "gcfv2" for emulator compatibility.
-    for (const ep of Object.values(discovered.endpoints)) {
-      if (ep.platform === "run") {
-        ep.platform = "gcfv2";
+    // The emulator doesn't support "run" platform, but production deploys need it.
+    const isEmulator = !!process.env["FIREBASE_EMULATOR_HUB"];
+    if (isEmulator) {
+      for (const ep of Object.values(discovered.endpoints)) {
+        if (ep.platform === "run") {
+          ep.platform = "gcfv2";
+        }
       }
     }
 
