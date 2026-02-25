@@ -64,7 +64,7 @@ describe("migrate", () => {
         if (pStr.endsWith("readme_template.md")) {
           return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}";
         }
-        if (pStr.endsWith("system_instructions.md")) {
+        if (pStr.endsWith("system_instructions_template.md")) {
           return "Project: ${appName}";
         }
         if (pStr.endsWith("startup_workflow.md")) {
