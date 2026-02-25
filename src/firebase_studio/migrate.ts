@@ -116,7 +116,11 @@ async function updateReadme(
   logger.info("✅ Updated README.md with project details and origin info");
 }
 
-async function injectAgyContext(rootPath: string, projectId: string | undefined, appName: string): Promise<void> {
+async function injectAgyContext(
+  rootPath: string,
+  projectId: string | undefined,
+  appName: string,
+): Promise<void> {
   const agentDir = path.join(rootPath, ".agent");
   const rulesDir = path.join(agentDir, "rules");
   const workflowsDir = path.join(agentDir, "workflows");
@@ -206,7 +210,10 @@ async function assertSystemState(): Promise<void> {
   }
 }
 
-async function createFirebaseConfigs(rootPath: string, projectId: string | undefined): Promise<void> {
+async function createFirebaseConfigs(
+  rootPath: string,
+  projectId: string | undefined,
+): Promise<void> {
   if (!projectId) {
     return;
   }
@@ -244,7 +251,9 @@ async function createFirebaseConfigs(rootPath: string, projectId: string | undef
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
-      utils.logWarning(`Could not fetch backends from Firebase CLI, using default "studio". ${err}`);
+      utils.logWarning(
+        `Could not fetch backends from Firebase CLI, using default "studio". ${err}`,
+      );
     }
 
     const firebaseJson = {
@@ -257,8 +266,8 @@ async function createFirebaseConfigs(rootPath: string, projectId: string | undef
           ".idx",
           "firebase-debug.log",
           "firebase-debug.*.log",
-          "functions"
-        ]
+          "functions",
+        ],
       },
     };
     await fs.writeFile(firebaseJsonPath, JSON.stringify(firebaseJson, null, 2));
@@ -329,7 +338,6 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
 }
 
 async function cleanupUnusedFiles(rootPath: string): Promise<void> {
-
   // Remove docs/blueprint.md and empty docs directory
   const docsDir = path.join(rootPath, "docs");
   const blueprintPath = path.join(docsDir, "blueprint.md");
@@ -403,9 +411,12 @@ async function askToOpenAgy(
   }
 }
 
-export async function migrate(rootPath: string): Promise<void> {
-  const args = process.argv.slice(2);
-  const noStartAgyFlag = args.includes("--nostart_agy");
+export interface MigrateOptions {
+  noStartAgy?: boolean;
+}
+
+export async function migrate(rootPath: string, options: MigrateOptions = {}): Promise<void> {
+  const noStartAgyFlag = !!options.noStartAgy;
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 

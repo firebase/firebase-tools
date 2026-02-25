@@ -7,9 +7,10 @@ import * as experiments from "../experiments";
 
 export const command = new Command("studio:export [path]")
   .description("export Firebase Studio apps for migration to Antigravity")
+  .option("--no-start-agy", "skip starting Antigravity IDE after migration")
   .action(async (exportPath: string | undefined, options: Options) => {
     experiments.assertEnabled("studioexport", "export Studio apps");
     const rootPath = path.resolve(exportPath || options.cwd || process.cwd());
     logger.info(`Exporting Studio apps from ${rootPath} to Antigravity...`);
-    await migrate(rootPath);
+    await migrate(rootPath, { noStartAgy: options.noStartAgy });
   });

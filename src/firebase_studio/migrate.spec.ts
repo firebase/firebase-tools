@@ -19,33 +19,40 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
-    it("should perform a full migration successfully", async function() {
-      this.timeout(5000);
-
+    it("should perform a full migration successfully", async () => {
       // Stub global fetch
       const fetchStub = sandbox.stub(global, "fetch");
-      
+
       // Mock GitHub API for skills listing
-      fetchStub.withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills")
+      fetchStub
+        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills")
         .resolves({
           ok: true,
           json: async () => [
-            { name: "test-skill", type: "dir", url: "https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill" }
-          ]
+            {
+              name: "test-skill",
+              type: "dir",
+              url: "https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill",
+            },
+          ],
         } as any);
 
       // Mock GitHub API for specific skill content
-      fetchStub.withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill")
+      fetchStub
+        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill")
         .resolves({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as any);
 
       // Mock GitHub API for Genkit skill content
-      fetchStub.withArgs("https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main")
+      fetchStub
+        .withArgs(
+          "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
+        )
         .resolves({
           ok: true,
-          json: async () => []
+          json: async () => [],
         } as any);
 
       // Mock filesystem
@@ -81,26 +88,40 @@ describe("migrate", () => {
       // Mock App Hosting backends
       sandbox.stub(apphosting, "listBackends").resolves({
         backends: [
-          { name: "projects/test-project/locations/us-central1/backends/studio", uri: "example.com", servingLocality: "GLOBAL_ACCESS", labels: {}, createTime: "", updateTime: "" }
+          {
+            name: "projects/test-project/locations/us-central1/backends/studio",
+            uri: "example.com",
+            servingLocality: "GLOBAL_ACCESS",
+            labels: {},
+            createTime: "",
+            updateTime: "",
+          },
         ] as any[],
-        unreachable: []
+        unreachable: [],
       });
 
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
       // Mock execSync
-      const child_process = require("child_process");
-      sandbox.stub(child_process, "execSync").returns(Buffer.from("1.0.0"));
+      const childProcess = require("child_process");
+      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
 
       await migrate(testRoot);
 
       // Verify key files were written
       const writeStub = fs.writeFile as sinon.SinonStub;
-      
-      expect(writeStub.calledWith(path.join(testRoot, ".firebaserc"), sinon.match(/test-project/))).to.be.true;
-      expect(writeStub.calledWith(path.join(testRoot, "firebase.json"), sinon.match(/"backendId": "studio"/))).to.be.true;
-      expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be.true;
+
+      expect(writeStub.calledWith(path.join(testRoot, ".firebaserc"), sinon.match(/test-project/)))
+        .to.be.true;
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, "firebase.json"),
+          sinon.match(/"backendId": "studio"/),
+        ),
+      ).to.be.true;
+      expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
+        .true;
     });
   });
 });
