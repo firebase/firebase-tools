@@ -12,6 +12,8 @@ import { logger } from "../../../../logger";
 import { FirebaseError } from "../../../../error";
 import { logLabeledBullet } from "../../../../utils";
 import { Build } from "../../build";
+import { EmulatorRegistry } from "../../../../emulator/registry";
+import { Emulators } from "../../../../emulator/types";
 
 /**
  * Create a runtime delegate for the Dart runtime, if applicable.
@@ -98,6 +100,13 @@ export class Delegate implements runtimes.RuntimeDelegate {
     });
 
     // Cross-compile Dart to a Linux x86_64 executable for Cloud Run.
+    // Skip compilation when running in the emulator (the emulator runs
+    // Dart source directly via `dart run`).
+    if (EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+      logger.debug("Skipping Dart compilation in emulator mode.");
+      return;
+    }
+
     // Requires Dart 3.8+ for --target-os and --target-arch support.
     const binDir = path.join(this.sourceDir, "bin");
     await fs.promises.mkdir(binDir, { recursive: true });
