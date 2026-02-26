@@ -1724,7 +1724,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
 
-    const args = ["--enable-vm-service", "lib/main.dart"];
+    const args = ["run", "--no-serve-devtools", "lib/main.dart"];
 
     // For Dart, don't set FUNCTION_TARGET in environment - the server loads all functions
     // and routes based on the request path (similar to Python's functions-framework)

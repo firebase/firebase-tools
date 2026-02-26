@@ -46,6 +46,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
   public readonly bin = "dart";
 
+  private static watchModeActive = false;
   private buildRunnerProcess: ChildProcess | null = null;
 
   constructor(
@@ -64,9 +65,9 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   async build(): Promise<void> {
-    // If build_runner watch is already running, it handles rebuilds automatically.
-    // Skip running build_runner build to avoid an infinite reload loop.
-    if (this.buildRunnerProcess) {
+    // If build_runner watch is already running (on any delegate instance),
+    // it handles rebuilds automatically. Skip to avoid infinite reload loops.
+    if (Delegate.watchModeActive) {
       return;
     }
 
@@ -169,6 +170,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
    * The returned promise resolves once the initial build completes.
    */
   async watch(onRebuild?: () => void): Promise<() => Promise<void>> {
+    Delegate.watchModeActive = true;
     logger.debug("Starting build_runner watch for Dart functions...");
 
     const buildRunnerProcess = spawn(
