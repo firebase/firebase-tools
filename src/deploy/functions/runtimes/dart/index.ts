@@ -64,6 +64,12 @@ export class Delegate implements runtimes.RuntimeDelegate {
   }
 
   async build(): Promise<void> {
+    // If build_runner watch is already running, it handles rebuilds automatically.
+    // Skip running build_runner build to avoid an infinite reload loop.
+    if (this.buildRunnerProcess) {
+      return;
+    }
+
     // Run build_runner to generate up-to-date functions.yaml
     logLabeledBullet("functions", "running build_runner...");
 
@@ -162,7 +168,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
    * Returns a cleanup function that stops the build_runner process.
    * The returned promise resolves once the initial build completes.
    */
-  async watch(): Promise<() => Promise<void>> {
+  async watch(onRebuild?: () => void): Promise<() => Promise<void>> {
     logger.debug("Starting build_runner watch for Dart functions...");
 
     const buildRunnerProcess = spawn(
@@ -184,14 +190,21 @@ export class Delegate implements runtimes.RuntimeDelegate {
       rejectInitialBuild = reject;
     });
 
+    const buildCompletePattern = /Succeeded after|Built with build_runner/;
+
     buildRunnerProcess.stdout?.on("data", (chunk: Buffer) => {
       const output = chunk.toString("utf8").trim();
       if (output) {
         logger.debug(`[build_runner] ${output}`);
-        if (!initialBuildComplete && output.includes("Succeeded after")) {
-          initialBuildComplete = true;
-          logger.debug("build_runner initial build completed");
-          resolveInitialBuild();
+        if (buildCompletePattern.test(output)) {
+          if (!initialBuildComplete) {
+            initialBuildComplete = true;
+            logger.debug("build_runner initial build completed");
+            resolveInitialBuild();
+          } else if (onRebuild) {
+            // Subsequent rebuild detected — notify the emulator to reload triggers
+            onRebuild();
+          }
         }
       }
     });

@@ -486,9 +486,11 @@ export class FunctionsEmulator implements EmulatorInstance {
 
       const isDart = isLanguageRuntime(backend.runtime, "dart");
 
-      // For Dart, start build_runner watch via the delegate's watch() method.
-      // This waits for the initial build to complete before continuing.
       if (isDart) {
+        // For Dart, build_runner watch handles source file watching and rebuilds
+        // functions.yaml automatically. We use its onRebuild callback to reload
+        // triggers, avoiding chokidar entirely (which would cause infinite loops
+        // since loadTriggers runs build_runner build which rewrites functions.yaml).
         const runtimeDelegateContext: runtimes.DelegateContext = {
           projectId: this.args.projectId,
           projectDir: this.args.projectDir,
@@ -501,29 +503,33 @@ export class FunctionsEmulator implements EmulatorInstance {
           "functions",
           `Starting build_runner watch for Dart functions...`,
         );
-        const cleanup = await delegate.watch();
+        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        const cleanup = await delegate.watch(() => {
+          this.logger.log("DEBUG", "build_runner rebuilt, reloading triggers");
+          debouncedLoadTriggers();
+        });
         this.watchCleanups.push(cleanup);
         this.logger.logLabeled("SUCCESS", "functions", `build_runner initial build completed`);
+      } else {
+        const watcher = chokidar.watch(backend.functionsDir, {
+          ignored: [
+            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+            /.+\.log/, // Ignore log files
+            /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
+            /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
+            ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
+          ],
+          persistent: true,
+        });
+
+        this.watchers.push(watcher);
+
+        const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
+        watcher.on("change", (filePath) => {
+          this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
+          return debouncedLoadTriggers();
+        });
       }
-
-      const watcher = chokidar.watch(backend.functionsDir, {
-        ignored: [
-          /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
-          /.+\.log/, // Ignore log files
-          /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
-          /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
-          ...(backend.ignore?.map((i) => `**/${i}`) ?? []),
-        ],
-        persistent: true,
-      });
-
-      this.watchers.push(watcher);
-
-      const debouncedLoadTriggers = debounce(() => this.loadTriggers(backend), 1000);
-      watcher.on("change", (filePath) => {
-        this.logger.log("DEBUG", `File ${filePath} changed, reloading triggers`);
-        return debouncedLoadTriggers();
-      });
     }
     await this.performPostLoadOperations();
     return;

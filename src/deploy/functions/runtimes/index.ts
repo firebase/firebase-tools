@@ -47,7 +47,7 @@ export interface RuntimeDelegate {
    * This is for languages like TypeScript which have a "watch" feature.
    * Returns a cancel function.
    */
-  watch(): Promise<() => Promise<void>>;
+  watch(onRebuild?: () => void): Promise<() => Promise<void>>;
 
   /**
    * Inspect the customer's source for the backend spec it describes.
