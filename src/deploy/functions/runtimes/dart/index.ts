@@ -230,7 +230,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   async discoverBuild(
     _configValues: backend.RuntimeConfigValues, // eslint-disable-line @typescript-eslint/no-unused-vars
-    _envs: backend.EnvironmentVariables, // eslint-disable-line @typescript-eslint/no-unused-vars
+    envs: backend.EnvironmentVariables,
   ): Promise<Build> {
     const yamlDir = this.sourceDir;
     const yamlPath = path.join(yamlDir, "functions.yaml");
@@ -274,13 +274,15 @@ export class Delegate implements runtimes.RuntimeDelegate {
       }
     }
 
-    // Normalize "run" → "gcfv2" for emulator compatibility.
-    // The emulator doesn't support "run" platform, but production deploys need it.
-    const isEmulator = !!process.env["FIREBASE_EMULATOR_HUB"];
-    if (isEmulator) {
+    // The Dart manifest emits platform "gcfv2" so the emulator treats
+    // functions as v2 CloudEvent endpoints (getSignatureType needs "gcfv2").
+    // During deploy, convert to "run" so fabricator.ts creates Cloud Run services.
+    // The emulator passes FUNCTIONS_EMULATOR=true in envs; deploy does not.
+    const isEmulator = envs.FUNCTIONS_EMULATOR === "true";
+    if (!isEmulator) {
       for (const ep of Object.values(discovered.endpoints)) {
-        if (ep.platform === "run") {
-          ep.platform = "gcfv2";
+        if (ep.platform === "gcfv2") {
+          (ep as any).platform = "run";
         }
       }
     }
