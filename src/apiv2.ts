@@ -19,16 +19,18 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
-const agent = detectAIAgent();
-const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
-const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
-const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
 
-export const STANDARD_HEADERS: Record<string, string> = {
-  Connection: "keep-alive",
-  "User-Agent": clientVersion,
-  "X-Client-Version": clientVersion,
-};
+export const STANDARD_HEADERS: () => Record<string, string> = () => {
+  const agent = detectAIAgent();
+  const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
+  const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
+  const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
+  return {
+    Connection: "keep-alive",
+    "User-Agent": clientVersion,
+    "X-Client-Version": clientVersion,
+  };
+}
 
 // Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
@@ -309,7 +311,7 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+    for (const [h, v] of Object.entries(STANDARD_HEADERS())) {
       if (!reqOptions.headers.has(h)) {
         reqOptions.headers.set(h, v);
       }
