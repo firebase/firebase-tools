@@ -1,0 +1,1 @@
+- Detects when App Hosting fails to deploy, returning an error. (#8866)
