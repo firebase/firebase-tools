@@ -26,9 +26,7 @@ const options: Options = {
   config: new Config({}, { projectDir: "", cwd: "" }),
   filteredTargets: [],
   force: false,
-  json: false,
   nonInteractive: false,
-  interactive: false,
   debug: false,
   rc: new RC(),
 };
@@ -94,7 +92,7 @@ describe("cloudsqladmin", () => {
           location: "us-central",
           instanceId: INSTANCE_ID,
           enableGoogleMlIntegration: false,
-          freeTrial: false,
+          freeTrialLabel: "nt",
         }),
       ).to.be.rejectedWith("Cloud SQL free trial instances are not yet available in us-central");
       expect(nock.isDone()).to.be.true;
@@ -151,7 +149,15 @@ describe("cloudsqladmin", () => {
   });
 
   describe("createInstance", () => {
-    it("should create an instance", async () => {
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+      nock.cleanAll();
+    });
+    it("should create an paid instance", async () => {
       nock(cloudSQLAdminOrigin())
         .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
         .reply(200, {});
@@ -161,7 +167,23 @@ describe("cloudsqladmin", () => {
         location: "us-central",
         instanceId: INSTANCE_ID,
         enableGoogleMlIntegration: false,
-        freeTrial: false,
+        freeTrialLabel: "nt",
+      });
+
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should create a free instance.", async () => {
+      nock(cloudSQLAdminOrigin())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
+        .reply(200, {});
+
+      await sqladmin.createInstance({
+        projectId: PROJECT_ID,
+        location: "us-central",
+        instanceId: INSTANCE_ID,
+        enableGoogleMlIntegration: false,
+        freeTrialLabel: "ft",
       });
 
       expect(nock.isDone()).to.be.true;

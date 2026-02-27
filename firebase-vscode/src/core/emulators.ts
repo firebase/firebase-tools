@@ -21,8 +21,11 @@ export class EmulatorsController implements Disposable {
 
     // called by emulator UI
     this.subscriptions.push(
-      broker.on("runStartEmulators", () => {
-        this.setEmulatorsStarting();
+      broker.on("runStartEmulators", async () => {
+        if (await this.areEmulatorsRunning()) {
+          return;
+        }
+        this.startEmulators();
       }),
     );
 
@@ -143,6 +146,12 @@ export class EmulatorsController implements Disposable {
     this.notifyEmulatorStateChanged();
   }
 
+  public async areEmulatorsRunning(): Promise<boolean> {
+    // Check if any emulators are running
+    // It may have been terminated without VS Code knowing.
+    return (await this.findRunningCliEmulators())?.status === "running";
+  }
+
   async findRunningCliEmulators(): Promise<
     { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
   > {
@@ -186,13 +195,6 @@ export class EmulatorsController implements Disposable {
     } else {
       this.setEmulatorsStopped();
     }
-  }
-
-  public async areEmulatorsRunning(): Promise<boolean> {
-    if (this.emulators.status === "running") {
-      return true;
-    }
-    return (await this.findRunningCliEmulators())?.status === "running";
   }
 
   /** FDC specific functions */

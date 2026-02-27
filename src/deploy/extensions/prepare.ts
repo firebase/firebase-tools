@@ -20,6 +20,7 @@ import {
 } from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
 import { getEndpointFilters } from "../functions/functionsDeployHelper";
+import { normalizeAndValidate } from "../../functions/projectConfig";
 import { DeployOptions } from "..";
 import { logLabeledError } from "../../utils";
 
@@ -167,7 +168,8 @@ export async function prepareDynamicExtensions(
   payload: Payload,
   builds: Record<string, Build>,
 ): Promise<void> {
-  const filters = getEndpointFilters(options);
+  const functionsConfig = normalizeAndValidate(options.config.src.functions);
+  const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);

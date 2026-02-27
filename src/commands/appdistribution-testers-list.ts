@@ -16,10 +16,10 @@ export const command = new Command("appdistribution:testers:list [group]")
   .action(async (group: string | undefined, options: Options): Promise<ListTestersResponse> => {
     const projectName = await getProjectName(options);
     const appDistroClient = new AppDistributionClient();
-    let testersResponse: ListTestersResponse;
+    let testers: Tester[];
     const spinner = ora("Preparing the list of your App Distribution testers").start();
     try {
-      testersResponse = await appDistroClient.listTesters(projectName, group);
+      testers = await appDistroClient.listTesters(projectName, group);
     } catch (err: any) {
       spinner.fail();
       throw new FirebaseError("Failed to list testers.", {
@@ -28,10 +28,9 @@ export const command = new Command("appdistribution:testers:list [group]")
       });
     }
     spinner.succeed();
-    const testers = testersResponse.testers ?? [];
     printTestersTable(testers);
     utils.logSuccess(`Testers listed successfully`);
-    return testersResponse;
+    return { testers };
   });
 
 /**

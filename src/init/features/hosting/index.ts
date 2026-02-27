@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { join } from "path";
 
 import { Client } from "../../../apiv2";
@@ -11,20 +11,34 @@ import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constan
 import * as experiments from "../../../experiments";
 import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHostingSite";
 import { Options } from "../../../options";
-import { last, logSuccess } from "../../../utils";
-import { interactiveCreateHostingSite } from "../../../hosting/interactive";
+import { logSuccess } from "../../../utils";
+import { pickHostingSiteName } from "../../../hosting/interactive";
 import { readTemplateSync } from "../../../templates";
+import { FirebaseError } from "../../../error";
+import { Setup } from "../..";
+import { Config } from "../../../config";
+import { createSite } from "../../../hosting/api";
 
 const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
 const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-/**
- * Does the setup steps for Firebase Hosting.
- * WARNING: #6527 - `options` may not have all the things you think it does.
- */
-export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
-  setup.hosting = {};
+export interface RequiredInfo {
+  newSiteId?: string;
+  source?: string;
+  useWebFrameworks?: boolean;
+  useDiscoveredFramework?: boolean;
+  webFramework?: string;
+  region?: string;
+  public?: string;
+  spa?: boolean;
+}
+
+// TODO: come up with a better way to type this
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.hosting = {};
 
   // There's a path where we can set up Hosting without a project, so if
   // if setup.projectId is empty, we don't do any checking for a Hosting site.
@@ -39,23 +53,18 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
       hasHostingSite = false;
     }
 
-    if (!hasHostingSite) {
-      // N.B. During prompt migration this did not pass options object, so there is no support
-      // for force or nonInteractive; there possibly should be.
-      const confirmCreate = await confirm({
+    if (
+      !hasHostingSite &&
+      (await confirm({
         message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
         default: true,
-      });
-      if (confirmCreate) {
-        const createOptions = {
-          projectId: setup.projectId,
-          nonInteractive: options.nonInteractive,
-        };
-        const newSite = await interactiveCreateHostingSite("", "", createOptions);
-        logger.info();
-        logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
-        logger.info();
-      }
+      }))
+    ) {
+      const createOptions = {
+        projectId: setup.projectId,
+        nonInteractive: options.nonInteractive,
+      };
+      setup.featureInfo.hosting.newSiteId = await pickHostingSiteName("", createOptions);
     }
   }
 
@@ -64,83 +73,71 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
     : undefined;
 
   if (experiments.isEnabled("webframeworks")) {
-    if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework ??= await confirm({
-        message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
+    // First, if we're in a framework directory, ask to use that.
+    if (
+      discoveredFramework &&
+      (await confirm({
+        message: `Detected an existing ${WebFrameworks[discoveredFramework.framework].name} codebase in the current directory, do you want to use this?`,
         default: true,
-      });
-    }
-    if (setup.hosting.useDiscoveredFramework) {
-      setup.hosting.source = ".";
-      setup.hosting.useWebFrameworks = true;
+      }))
+    ) {
+      setup.featureInfo.hosting.source = ".";
+      setup.featureInfo.hosting.useWebFrameworks = true;
+      setup.featureInfo.hosting.useDiscoveredFramework = true;
+      setup.featureInfo.hosting.webFramework = discoveredFramework.framework;
+      // Otherwise, just ask if they want to use web frameworks.
     } else {
-      setup.hosting.useWebFrameworks = await confirm(
+      setup.featureInfo.hosting.useWebFrameworks = await confirm(
         `Do you want to use a web framework? (${clc.bold("experimental")})`,
       );
     }
   }
 
-  if (setup.hosting.useWebFrameworks) {
-    setup.hosting.source ??= await input({
+  // If they say yes, ask for source directory if its not already known
+  if (setup.featureInfo.hosting.useWebFrameworks) {
+    setup.featureInfo.hosting.source ??= await input({
       message: "What folder would you like to use for your web application's root directory?",
       default: "hosting",
     });
 
-    if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(join(config.projectDir, setup.hosting.source));
+    discoveredFramework = await discover(join(config.projectDir, setup.featureInfo.hosting.source));
 
     if (discoveredFramework) {
       const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework ??= await confirm({
-        message: `Detected an existing ${name} codebase in ${setup.hosting.source}, should we use this?`,
+      setup.featureInfo.hosting.useDiscoveredFramework ??= await confirm({
+        message: `Detected an existing ${name} codebase in ${setup.featureInfo.hosting.source}, should we use this?`,
         default: true,
       });
+      if (setup.featureInfo.hosting.useDiscoveredFramework)
+        setup.featureInfo.hosting.webFramework = discoveredFramework.framework;
     }
 
-    if (setup.hosting.useDiscoveredFramework && discoveredFramework) {
-      setup.hosting.webFramework = discoveredFramework.framework;
-    } else {
-      const choices: { name: string; value: string }[] = [];
-      for (const value in WebFrameworks) {
-        if (WebFrameworks[value]) {
-          const { name, init } = WebFrameworks[value];
-          if (init) choices.push({ name, value });
-        }
+    // If it is not known already, ask what framework to use.
+    const choices: { name: string; value: string }[] = [];
+    for (const value in WebFrameworks) {
+      if (WebFrameworks[value]) {
+        const { name, init } = WebFrameworks[value];
+        if (init) choices.push({ name, value });
       }
-
-      const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework,
-      )?.value;
-
-      setup.hosting.whichFramework =
-        setup.hosting.whichFramework ||
-        (await select({
-          message: "Please choose the framework:",
-          default: defaultChoice,
-          choices,
-        }));
-
-      if (discoveredFramework) rmSync(setup.hosting.source, { recursive: true });
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
     }
 
-    setup.hosting.region =
-      setup.hosting.region ||
+    const defaultChoice = choices.find(
+      ({ value }) => value === discoveredFramework?.framework,
+    )?.value;
+
+    setup.featureInfo.hosting.webFramework ??= await select({
+      message: "Please choose the framework:",
+      default: defaultChoice,
+      choices,
+    });
+
+    setup.featureInfo.hosting.region =
+      setup.featureInfo.hosting.region ||
       (await select({
         message: "In which region would you like to host server-side content, if applicable?",
         default: DEFAULT_REGION,
         choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
       }));
-
-    setup.config.hosting = {
-      source: setup.hosting.source,
-      // TODO swap out for framework ignores
-      ignore: DEFAULT_IGNORES,
-      frameworksBackend: {
-        region: setup.hosting.region,
-      },
-    };
   } else {
     logger.info();
     logger.info(
@@ -152,42 +149,77 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
     logger.info("have a build process for your assets, use your build's output directory.");
     logger.info();
 
-    setup.hosting.public =
-      setup.hosting.public ||
-      (await input({
-        message: "What do you want to use as your public directory?",
-        default: "public",
-      }));
-    setup.hosting.spa =
-      setup.hosting.spa ||
-      (await confirm("Configure as a single-page app (rewrite all urls to /index.html)?"));
-
-    setup.config.hosting = {
-      public: setup.hosting.public,
-      ignore: DEFAULT_IGNORES,
-    };
+    setup.featureInfo.hosting.public ??= await input({
+      message: "What do you want to use as your public directory?",
+      default: "public",
+    });
+    setup.featureInfo.hosting.spa ??= await confirm(
+      "Configure as a single-page app (rewrite all urls to /index.html)?",
+    );
   }
 
-  setup.hosting.github =
-    setup.hosting.github || (await confirm("Set up automatic builds and deploys with GitHub?"));
+  // GitHub Action set up is still structured as doSetup
+  if (await confirm("Set up automatic builds and deploys with GitHub?")) {
+    return initGitHub(setup);
+  }
+}
 
-  if (!setup.hosting.useWebFrameworks) {
-    if (setup.hosting.spa) {
+// TODO: come up with a better way to type this
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
+  const hostingInfo = setup.featureInfo?.hosting;
+  if (!hostingInfo) {
+    throw new FirebaseError(
+      "Could not find hosting info in setup.featureInfo.hosting. This should not happen.",
+      { exit: 2 },
+    );
+  }
+
+  if (hostingInfo.newSiteId && setup.projectId) {
+    await createSite(setup.projectId, hostingInfo.newSiteId);
+    logger.info();
+    logSuccess(`Firebase Hosting site ${hostingInfo.newSiteId} created!`);
+    logger.info();
+  }
+
+  if (hostingInfo.webFramework) {
+    if (!hostingInfo.useDiscoveredFramework) {
+      if (hostingInfo.source && existsSync(hostingInfo.source)) {
+        rmSync(hostingInfo.source, { recursive: true });
+      }
+      await WebFrameworks[hostingInfo.webFramework].init!(setup, config);
+    }
+    setup.config.hosting = {
+      source: hostingInfo.source,
+      // TODO swap out for framework ignores
+      ignore: DEFAULT_IGNORES,
+      frameworksBackend: {
+        region: hostingInfo.region,
+      },
+    };
+  } else {
+    setup.config.hosting = {
+      public: hostingInfo.public,
+      ignore: DEFAULT_IGNORES,
+    };
+
+    if (hostingInfo.spa) {
       setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
     } else {
       // SPA doesn't need a 404 page since everything is index.html
-      await config.askWriteProjectFile(`${setup.hosting.public}/404.html`, MISSING_TEMPLATE);
+      await config.askWriteProjectFile(
+        `${hostingInfo.public}/404.html`,
+        MISSING_TEMPLATE,
+        !!options.force,
+      );
     }
 
     const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
     const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
     await config.askWriteProjectFile(
-      `${setup.hosting.public}/index.html`,
+      `${hostingInfo.public}/index.html`,
       INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
+      !!options.force,
     );
-  }
-
-  if (setup.hosting.github) {
-    return initGitHub(setup);
   }
 }

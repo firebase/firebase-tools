@@ -12,6 +12,10 @@ export interface ReaddirRecursiveOpts {
   isGitIgnore?: boolean;
   // Files in the ignore array to include.
   include?: string[];
+  // Maximum depth to recurse.
+  maxDepth?: number;
+  // Ignore symlinked files or directories when traversing.
+  ignoreSymlinks?: boolean;
 }
 
 export interface ReaddirRecursiveFile {
@@ -22,9 +26,13 @@ export interface ReaddirRecursiveFile {
 async function readdirRecursiveHelper(options: {
   path: string;
   filter: (p: string) => boolean;
+  maxDepth: number;
+  ignoreSymlinks: boolean;
 }): Promise<ReaddirRecursiveFile[]> {
-  const dirContents = readdirSync(options.path);
-  const fullPaths = dirContents.map((n) => join(options.path, n));
+  const dirContents = readdirSync(options.path, { withFileTypes: true });
+  const fullPaths = dirContents
+    .filter((n) => !options.ignoreSymlinks || !n.isSymbolicLink())
+    .map((n) => join(options.path, n.name));
   const filteredPaths = fullPaths.filter((p) => !options.filter(p));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
   for (const p of filteredPaths) {
@@ -35,7 +43,16 @@ async function readdirRecursiveHelper(options: {
     if (!fstat.isDirectory()) {
       continue;
     }
-    filePromises.push(readdirRecursiveHelper({ path: p, filter: options.filter }));
+    if (options.maxDepth > 1) {
+      filePromises.push(
+        readdirRecursiveHelper({
+          path: p,
+          filter: options.filter,
+          maxDepth: options.maxDepth - 1,
+          ignoreSymlinks: options.ignoreSymlinks,
+        }),
+      );
+    }
   }
 
   const files = await Promise.all(filePromises);
@@ -70,8 +87,11 @@ export async function readdirRecursive(
       return rule(t);
     });
   };
+  const maxDepth = options.maxDepth && options.maxDepth > 0 ? options.maxDepth : Infinity;
   return await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
+    maxDepth,
+    ignoreSymlinks: !!options.ignoreSymlinks,
   });
 }

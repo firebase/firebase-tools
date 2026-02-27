@@ -1,7 +1,7 @@
 import { Options } from "../../options";
 import * as client from "../../dataconnect/client";
 import * as utils from "../../utils";
-import { Service, ServiceInfo, requiresVector } from "../../dataconnect/types";
+import { Service, ServiceInfo, mainSchema, requiresVector } from "../../dataconnect/types";
 import { needProjectId } from "../../projectUtils";
 import { setupCloudSql } from "../../dataconnect/provisionCloudSql";
 import { parseServiceName } from "../../dataconnect/names";
@@ -9,6 +9,7 @@ import { ResourceFilter } from "../../dataconnect/filters";
 import { vertexAIOrigin } from "../../api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import { confirm } from "../../prompt";
+import { Context } from "./context";
 
 /**
  * Checks for and creates a Firebase DataConnect service, if needed.
@@ -16,19 +17,15 @@ import { confirm } from "../../prompt";
  * @param context The deploy context.
  * @param options The CLI options object.
  */
-export default async function (
-  context: {
-    dataconnect: {
-      serviceInfos: ServiceInfo[];
-      filters?: ResourceFilter[];
-    };
-  },
-  options: Options,
-): Promise<void> {
+export default async function (context: Context, options: Options): Promise<void> {
+  const dataconnect = context.dataconnect;
+  if (!dataconnect) {
+    throw new Error("dataconnect.prepare must be run before dataconnect.deploy");
+  }
   const projectId = needProjectId(options);
-  const serviceInfos = context.dataconnect.serviceInfos as ServiceInfo[];
+  const serviceInfos = dataconnect.serviceInfos as ServiceInfo[];
   const services = await client.listAllServices(projectId);
-  const filters = context.dataconnect.filters;
+  const filters = dataconnect.filters;
 
   if (
     serviceInfos.some((si) => {
@@ -41,12 +38,17 @@ export default async function (
   const servicesToCreate = serviceInfos
     .filter((si) => !services.some((s) => matches(si, s)))
     .filter((si) => {
-      return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
+      return (
+        !filters ||
+        filters?.some((f: ResourceFilter) => si.dataConnectYaml.serviceId === f.serviceId)
+      );
     });
+  dataconnect.deployStats.numServiceCreated = servicesToCreate.length;
 
   const servicesToDelete = filters
     ? []
     : services.filter((s) => !serviceInfos.some((si) => matches(si, s)));
+  dataconnect.deployStats.numServiceDeleted = servicesToDelete.length;
   await Promise.all(
     servicesToCreate.map(async (s) => {
       const { projectId, locationId, serviceId } = splitName(s.serviceName);
@@ -80,10 +82,13 @@ export default async function (
   await Promise.all(
     serviceInfos
       .filter((si) => {
-        return !filters || filters?.some((f) => si.dataConnectYaml.serviceId === f.serviceId);
+        return (
+          !filters ||
+          filters?.some((f: ResourceFilter) => si.dataConnectYaml.serviceId === f.serviceId)
+        );
       })
       .map(async (s) => {
-        const postgresDatasource = s.schema.datasources.find((d) => d.postgresql);
+        const postgresDatasource = mainSchema(s.schemas).datasources.find((d) => d.postgresql);
         if (postgresDatasource) {
           const instanceId = postgresDatasource.postgresql?.cloudSql?.instance.split("/").pop();
           const databaseId = postgresDatasource.postgresql?.database;
@@ -96,6 +101,7 @@ export default async function (
             instanceId,
             databaseId,
             requireGoogleMlIntegration: requiresVector(s.deploymentMetadata),
+            source: "deploy",
           });
         }
       }),

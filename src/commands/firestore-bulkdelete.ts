@@ -1,6 +1,5 @@
 import { Command } from "../command";
 import * as fsi from "../firestore/api";
-import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { Emulators } from "../emulator/types";
 import { warnEmulatorNotSupported } from "../emulator/commandUtils";
@@ -75,21 +74,17 @@ export const command = new Command("firestore:bulkdelete")
 
     const op = await api.bulkDeleteDocuments(options.project, databaseId, collectionIds);
 
-    if (options.json) {
-      logger.info(JSON.stringify(op, undefined, 2));
+    if (op.name) {
+      logSuccess(`Successfully started bulk delete operation.`);
+      logBullet(`Operation name: ` + clc.cyan(op.name));
+      // TODO: Update this message to 'firebase firestore:operations:describe' command once it's implemented.
+      logBullet(
+        "You can monitor the operation's progress using the " +
+          clc.cyan(`gcloud firestore operations describe`) +
+          ` command.`,
+      );
     } else {
-      if (op.name) {
-        logSuccess(`Successfully started bulk delete operation.`);
-        logBullet(`Operation name: ` + clc.cyan(op.name));
-        // TODO: Update this message to 'firebase firestore:operations:describe' command once it's implemented.
-        logBullet(
-          "You can monitor the operation's progress using the " +
-            clc.cyan(`gcloud firestore operations describe`) +
-            ` command.`,
-        );
-      } else {
-        logLabeledError(`Bulk Delete:`, `Failed to start a bulk delete operation.`);
-      }
+      logLabeledError(`Bulk Delete:`, `Failed to start a bulk delete operation.`);
     }
 
     return op;
