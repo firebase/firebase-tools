@@ -182,8 +182,10 @@ export async function prepareDynamicExtensions(
       extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
     );
   } catch (err) {
-    logLabeledError("extensions",
-      "Firebase Extensions is having an outage. Skipping extensions from functions codebase.",
+    logLabeledError(
+      "extensions",
+      "Failed to fetch the list of extensions. Assuming for now that there are no existing extensions. " +
+        "If you are trying to install an extension through Firebase Functions this may fail later.",
     );
     return;
   }
