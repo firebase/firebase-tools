@@ -7,6 +7,8 @@ import * as projectUtils from "../../projectUtils";
 import * as extensionsHelper from "../../extensions/extensionsHelper";
 import * as requirePermissions from "../../requirePermissions";
 import { Context, Payload } from "./args";
+import * as v2FunctionHelper from "./v2FunctionHelper";
+import * as tos from "../../extensions/tos";
 
 describe("Extensions prepare", () => {
   describe("prepareDynamicExtensions", () => {
