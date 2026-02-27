@@ -145,10 +145,8 @@ export async function upsertSchema(
   });
 }
 
-export async function deleteSchema(serviceName: string): Promise<void> {
-  const op = await dataconnectClient().delete<types.Schema>(
-    `${serviceName}/schemas/${types.MAIN_SCHEMA_ID}`,
-  );
+export async function deleteSchema(name: string): Promise<void> {
+  const op = await dataconnectClient().delete<types.Schema>(name);
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,

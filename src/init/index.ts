@@ -43,6 +43,7 @@ export interface SetupInfo {
   apptesting?: features.ApptestingInfo;
   ailogic?: features.AiLogicInfo;
   hosting?: features.HostingInfo;
+  auth?: features.AuthInfo;
 }
 
 interface Feature {
@@ -120,6 +121,12 @@ const featuresList: Feature[] = [
     actuate: features.aiLogicActuate,
   },
   { name: "aitools", displayName: "AI Tools", doSetup: features.aitools },
+  {
+    name: "auth",
+    displayName: "Authentication",
+    askQuestions: features.authAskQuestions,
+    actuate: features.authActuate,
+  },
 ];
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
