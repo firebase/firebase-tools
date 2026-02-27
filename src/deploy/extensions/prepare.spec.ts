@@ -41,7 +41,11 @@ describe("Extensions prepare", () => {
 
       const context: Context = {};
       const payload: Payload = {};
-      const options: any = {};
+      const options: any = {
+        config: {
+          src: { functions: { source: "functions" } },
+        },
+      };
       const builds = {};
 
       // This should not throw.
@@ -62,7 +66,10 @@ describe("Extensions prepare", () => {
       const context: Context = {};
       const payload: Payload = {};
       const options: any = {
-        config: { get: () => [] },
+        config: {
+          get: () => [],
+          src: { functions: { source: "functions" } },
+        },
         rc: { getEtags: () => [] },
         dryRun: true,
       };
