@@ -8,7 +8,7 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
-import { trackGA4 } from "../track";
+import * as track from "../track";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
@@ -63,17 +63,13 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   }
 
   // Check for Next.js config files
-  try {
-    await fs.access(path.join(rootPath, "next.config.js"));
-    return "NEXT_JS";
-  } catch {
-    // Not Next.js
-  }
-  try {
-    await fs.access(path.join(rootPath, "next.config.mjs"));
-    return "NEXT_JS";
-  } catch {
-    // Not Next.js
+   for (const configFile of ["next.config.js", "next.config.mjs"]) {
+    try {
+      await fs.access(path.join(rootPath, configFile));
+      return "NEXT_JS";
+    } catch {
+      // Not this config file, try the next one.
+    }
   }
 
   return "OTHER";
@@ -475,7 +471,7 @@ export async function migrate(
   const platform = process.platform === "win32" ? "windows" : "linux/mac";
 
   if (process.platform === "win32") {
-    void trackGA4("firebase_studio_migrate", { platform });
+    void track.trackGA4("firebase_studio_migrate", { platform });
     throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
       exit: 1,
     });
@@ -486,7 +482,7 @@ export async function migrate(
   await assertSystemState();
 
   const appType = await detectAppType(rootPath);
-  void trackGA4("firebase_studio_migrate", { app_type: appType, platform });
+  void track.trackGA4("firebase_studio_migrate", { app_type: appType, platform });
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
 
