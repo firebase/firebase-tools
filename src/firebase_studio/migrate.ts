@@ -8,6 +8,7 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import { trackGA4 } from "../track";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
@@ -23,6 +24,59 @@ interface GitHubItem {
 interface Metadata {
   projectId?: string;
   [key: string]: any;
+}
+
+type AppType = "NEXT_JS" | "FLUTTER" | "ANGULAR" | "OTHER";
+
+async function detectAppType(rootPath: string): Promise<AppType> {
+  // Check for Flutter
+  try {
+    await fs.access(path.join(rootPath, "pubspec.yaml"));
+    return "FLUTTER";
+  } catch {
+    // Not Flutter
+  }
+
+  // Check for Angular
+  try {
+    await fs.access(path.join(rootPath, "angular.json"));
+    return "ANGULAR";
+  } catch {
+    // Not Angular (directly)
+  }
+
+  // Check package.json for Next.js or Angular
+  try {
+    const packageJsonPath = path.join(rootPath, "package.json");
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(packageJsonContent);
+    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+
+    if (deps.next) {
+      return "NEXT_JS";
+    }
+    if (deps["@angular/core"]) {
+      return "ANGULAR";
+    }
+  } catch {
+    // No package.json or error reading it
+  }
+
+  // Check for Next.js config files
+  try {
+    await fs.access(path.join(rootPath, "next.config.js"));
+    return "NEXT_JS";
+  } catch {
+    // Not Next.js
+  }
+  try {
+    await fs.access(path.join(rootPath, "next.config.mjs"));
+    return "NEXT_JS";
+  } catch {
+    // Not Next.js
+  }
+
+  return "OTHER";
 }
 
 // TODO revisit quota limits
@@ -418,9 +472,21 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { noStartAgy: false },
 ): Promise<void> {
+  const platform = process.platform === "win32" ? "windows" : "linux/mac";
+
+  if (process.platform === "win32") {
+    void trackGA4("firebase_studio_migrate", { platform });
+    throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
+      exit: 1,
+    });
+  }
+
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
+
+  const appType = await detectAppType(rootPath);
+  void trackGA4("firebase_studio_migrate", { app_type: appType, platform });
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
 
