@@ -27,7 +27,9 @@ export async function downloadToTmp(remoteUrl: string, auth: boolean = false): P
     resolveOnHTTPError: true,
   });
   if (res.status !== 200) {
-    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`);
+    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`, {
+      status: res.status,
+    });
   }
 
   const total = parseInt(res.response.headers.get("content-length") || "0", 10);

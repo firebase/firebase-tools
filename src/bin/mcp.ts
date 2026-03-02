@@ -6,6 +6,7 @@ import { homedir } from "os";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
+import { setFirebaseMcp } from "../env";
 import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
 import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
@@ -84,7 +85,7 @@ export async function mcp(): Promise<void> {
   }
   if (earlyExit) return;
 
-  process.env.IS_FIREBASE_MCP = "true";
+  setFirebaseMcp(true);
   // Write debug logs to ~/.firebase/ to avoid polluting the user's project directory.
   // See: https://github.com/firebase/firebase-tools/issues/9982
   const mcpLogDir = join(homedir(), ".firebase");
