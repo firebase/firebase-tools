@@ -126,6 +126,21 @@ describe("crashlytics:sourcemap:upload", () => {
     );
   });
 
+  it("should find and upload mapping files in the current directory if no path is provided", async () => {
+    await command.runner()(undefined, { app: "test-app" });
+    expect(gcsMock.uploadObject).to.be.calledTwice;
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+    expect(uploadedFiles[0]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+    );
+    expect(uploadedFiles[1]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
+    );
+  });
+
   it("should use the provided app version", async () => {
     await command.runner()(FILE_PATH, {
       app: "test-app",

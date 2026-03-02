@@ -54,7 +54,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
     // Find and upload mapping files
     const rootDir = options.projectRoot ?? process.cwd();
-    const filePath = path.relative(rootDir, mappingFiles || "");
+    const filePath = path.relative(rootDir, mappingFiles || ".") || ".";
     let fstat: fs.Stats;
     try {
       fstat = statSync(filePath);
@@ -172,13 +172,12 @@ async function upsertBucket(
 
 async function uploadMap(
   projectId: string,
-  mappingFile: string,
+  filePath: string,
   bucketName: string,
   appVersion: string,
   options: CommandOptions,
 ): Promise<boolean> {
   try {
-    const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
     const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
     const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(filePath)}.zip`;
     const uid = murmurHashV3(`${appVersion}-${filePath}`);
@@ -193,7 +192,7 @@ async function uploadMap(
       bucketName,
     );
     const fileUri = `gs://${bucket}/${object}`;
-    logger.debug(`Uploaded mapping file ${mappingFile} to ${fileUri}`);
+    logger.debug(`Uploaded mapping file ${filePath} to ${fileUri}`);
 
     await registerSourceMap(parent, {
       name,
@@ -204,7 +203,7 @@ async function uploadMap(
 
     return true;
   } catch (e) {
-    logLabeledWarning("crashlytics", `Failed to upload mapping file ${mappingFile}:\n${e}`);
+    logLabeledWarning("crashlytics", `Failed to upload mapping file ${filePath}:\n${e}`);
     return false;
   }
 }
