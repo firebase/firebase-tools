@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
+import { setFirebaseMcp } from "../env";
 import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
 import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
@@ -82,7 +83,7 @@ export async function mcp(): Promise<void> {
   }
   if (earlyExit) return;
 
-  process.env.IS_FIREBASE_MCP = "true";
+  setFirebaseMcp(true);
   useFileLogger();
   const activeFeatures = (values.only || "")
     .split(",")
