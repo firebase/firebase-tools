@@ -5,6 +5,7 @@ import * as sinon from "sinon";
 import { migrate } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
+import * as track from "../track";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -103,6 +104,9 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
+      // Mock trackGA4
+      const trackStub = sandbox.stub(track, "trackGA4").resolves();
+
       // Mock execSync
       const childProcess = require("child_process");
       sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
@@ -122,6 +126,8 @@ describe("migrate", () => {
       ).to.be.true;
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
+
+      expect(trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER" })).to.be.true;
     });
   });
 });
