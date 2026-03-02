@@ -40,6 +40,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
       case "nuxt":
       case "nuxt2":
       case "express":
+      // "svelekit" should not be removed unless it's confirmed to not cause breakages.
       case "svelekit":
       case "sveltekit":
         logger.info();
@@ -61,11 +62,26 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
         break;
 
       default:
-        throw new FirebaseError(
-          `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that this site will work on Firebase Hosting, which is optimized for static sites. Another product, Firebase App Hosting, was designed for SSR web apps. Learn about App Hosting here: https://firebase.google.com/docs/app-hosting/product-comparison#hostings\n` +
-            `Learn how to deploy frameworks with App Hosting here: https://firebase.blog/posts/2025/06/app-hosting-frameworks/`,
-          { exit: 1 },
+        logger.info();
+        logger.info(
+          `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps.`,
         );
+        logger.info(
+          `Learn about App Hosting here: https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+        );
+        logger.info(
+          `Learn how to deploy frameworks with App Hosting here: https://firebase.blog/posts/2025/06/app-hosting-frameworks/`,
+        );
+        const continueWithHosting = await confirm({
+          message: `Would you like to continue setting up Firebase Hosting?`,
+          default: false,
+        });
+        if (!continueWithHosting) {
+          throw new FirebaseError("Hosting initialization cancelled.", { exit: 1 });
+        }
+        break;
     }
   }
 

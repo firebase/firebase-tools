@@ -163,7 +163,7 @@ describe("hosting feature init", () => {
 
     describe("App Hosting unsupported frameworks", () => {
       for (const framework of ["vite", "astro"]) {
-        it(`${framework}: should throw when SSR features are detected`, async () => {
+        it(`${framework}: should throw when user declines to continue with Hosting`, async () => {
           const setup: Setup = {
             config: {},
             rcfile: { projects: {}, targets: {}, etags: {} },
@@ -174,7 +174,7 @@ describe("hosting feature init", () => {
           const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
 
           sandbox.stub(frameworks, "discover").resolves({ framework, mayWantBackend: true });
-          const confirmStub = sandbox.stub(prompt, "confirm");
+          sandbox.stub(prompt, "confirm").resolves(false);
           const inputStub = sandbox.stub(prompt, "input");
 
           await expect(
@@ -185,10 +185,40 @@ describe("hosting feature init", () => {
               except: "",
               nonInteractive: false,
             } as any),
-          ).to.be.rejectedWith(/Firebase App Hosting, was designed for SSR web apps/);
+          ).to.be.rejectedWith(/Hosting initialization cancelled/);
 
-          expect(confirmStub.called).to.be.false;
           expect(inputStub.called).to.be.false;
+        });
+
+        it(`${framework}: should continue hosting init when user accepts`, async () => {
+          const setup: Setup = {
+            config: {},
+            rcfile: { projects: {}, targets: {}, etags: {} },
+            projectId: "demo-project",
+            instructions: [],
+            features: [],
+          };
+          const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+
+          sandbox.stub(frameworks, "discover").resolves({ framework, mayWantBackend: true });
+          sandbox.stub(getDefaultHostingSiteMod, "getDefaultHostingSite").resolves("test-site");
+          sandbox.stub(prompt, "confirm").resolves(true);
+          const inputStub = sandbox.stub(prompt, "input").resolves("public");
+          sandbox.stub(github, "initGitHub").resolves();
+
+          await askQuestions(setup, cfg, {
+            cwd: "/",
+            configPath: "",
+            only: "",
+            except: "",
+            nonInteractive: false,
+          } as any);
+
+          expect(
+            inputStub.calledWith(
+              sinon.match({ message: "What do you want to use as your public directory?" }),
+            ),
+          ).to.be.true;
         });
       }
     });
