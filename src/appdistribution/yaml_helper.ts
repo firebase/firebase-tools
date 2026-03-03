@@ -1,8 +1,8 @@
 import * as jsYaml from "js-yaml";
 import { getErrMsg, FirebaseError } from "../error";
-import { TestCase } from "./types";
+import { TestCase, AiStep } from "./types";
 
-declare interface YamlStep {
+export declare interface YamlStep {
   goal?: string;
   hint?: string;
   finalScreenAssertion?: string;
@@ -64,22 +64,24 @@ function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
   }
 }
 
+export function fromYamlStep(yamlStep: YamlStep): AiStep {
+  checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
+  return {
+    goal: castExists(yamlStep.goal, "goal"),
+    ...(yamlStep.hint && { hint: yamlStep.hint }),
+    ...(yamlStep.finalScreenAssertion && {
+      successCriteria: yamlStep.finalScreenAssertion,
+    }),
+  };
+}
+
 function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): TestCase[] {
   return yamlTestCases.map((yamlTestCase) => {
     checkAllowedKeys(ALLOWED_YAML_TEST_CASE_KEYS, yamlTestCase);
     return {
       displayName: castExists(yamlTestCase.displayName, "displayName"),
       aiInstructions: {
-        steps: castExists(yamlTestCase.steps, "steps").map((yamlStep) => {
-          checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
-          return {
-            goal: castExists(yamlStep.goal, "goal"),
-            ...(yamlStep.hint && { hint: yamlStep.hint }),
-            ...(yamlStep.finalScreenAssertion && {
-              successCriteria: yamlStep.finalScreenAssertion,
-            }),
-          };
-        }),
+        steps: castExists(yamlTestCase.steps, "steps").map((yamlStep) => fromYamlStep(yamlStep)),
       },
       ...(yamlTestCase.id && {
         name: `${appName}/testCases/${yamlTestCase.id}`,
