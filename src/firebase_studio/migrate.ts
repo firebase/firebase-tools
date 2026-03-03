@@ -50,7 +50,7 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-async function extractMetadata(
+export async function extractMetadata(
   rootPath: string,
   overrideProjectId?: string,
 ): Promise<{
