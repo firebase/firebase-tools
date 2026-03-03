@@ -150,7 +150,7 @@ describe("dialogs", () => {
       });
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
       expect(utils.logWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
@@ -162,7 +162,7 @@ describe("dialogs", () => {
       });
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logWarning).to.have.been.calledWith(
@@ -180,7 +180,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(true);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({
         buildServiceAccounts: [modernA.serviceAccount],
         runServiceAccounts: [],
@@ -203,7 +203,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(false);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
@@ -224,7 +224,7 @@ describe("dialogs", () => {
       const accounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -253,7 +253,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -281,7 +281,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(true);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({
         buildServiceAccounts: [modernA.serviceAccount],
         runServiceAccounts: [],
@@ -313,7 +313,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(false);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -342,7 +342,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({ buildServiceAccounts: ["a", "b"], runServiceAccounts: [] });
 
       expect(prompt.checkbox).to.have.been.calledWith({
@@ -370,7 +370,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.checkbox).to.have.been.calledWith({
