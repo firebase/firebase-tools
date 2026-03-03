@@ -8,6 +8,11 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import * as secrets from "../apphosting/secrets";
+import * as config from "../apphosting/config";
+import * as env from "../functions/env";
+import * as gcsm from "../gcp/secretManager";
+import { getProject } from "../management/projects";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
@@ -340,6 +345,77 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   logger.info("✅ Created .vscode/launch.json");
 }
 
+async function deploySecretsFromEnv(rootPath: string, projectId: string | undefined): Promise<void> {
+  if (!projectId) {
+    return;
+  }
+
+  const envPath = path.join(rootPath, ".env");
+  let envData: string;
+  try {
+    envData = await fs.readFile(envPath, "utf8");
+  } catch (err: unknown) {
+    // If .env doesn't exist, just skip
+    return;
+  }
+
+  const envs = env.parse(envData).envs;
+  if (!envs.GEMINI_API_KEY) {
+    return;
+  }
+
+  logger.info("⏳ GEMINI_API_KEY detected in .env, deploying secrets to App Hosting...");
+
+  try {
+    const projectMetadata = await getProject(projectId);
+    const projectNumber = projectMetadata.projectNumber;
+
+    await gcsm.ensureApi({ projectId });
+    await apphosting.ensureApiEnabled({ projectId });
+
+    const backendsData = await apphosting.listBackends(projectId, "-");
+    const backends = backendsData.backends || [];
+    let accounts: secrets.MultiServiceAccounts | undefined;
+
+    if (backends.length > 0) {
+      const studioBackend = backends.find(
+        (b) => b.name.endsWith("/studio") || b.name.toLowerCase().includes("studio"),
+      );
+      const targetBackend = studioBackend || backends[0];
+      accounts = secrets.toMulti(
+        await secrets.serviceAccountsForBackend(projectNumber, targetBackend),
+      );
+    }
+
+    const apphostingYamlPath = path.join(rootPath, "apphosting.yaml");
+    const projectYaml = config.load(apphostingYamlPath);
+
+    for (const [key, value] of Object.entries(envs)) {
+      if (!value) continue;
+
+      const secretName = key.toLowerCase().replace(/_/g, "-");
+      await secrets.upsertSecretValueAndGrantAccess(
+        projectId,
+        projectNumber,
+        secretName,
+        value,
+        undefined,
+        accounts,
+      );
+
+      config.upsertEnv(projectYaml, {
+        variable: key,
+        secret: secretName,
+      });
+    }
+
+    config.store(apphostingYamlPath, projectYaml);
+    logger.info("✅ Successfully deployed secrets and updated apphosting.yaml");
+  } catch (err: unknown) {
+    utils.logWarning(`Failed to deploy secrets from .env: ${err}`);
+  }
+}
+
 async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   // Remove docs/blueprint.md and empty docs directory
   const docsDir = path.join(rootPath, "docs");
@@ -426,6 +502,7 @@ export async function migrate(
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
+  await deploySecretsFromEnv(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath);
   await cleanupUnusedFiles(rootPath);

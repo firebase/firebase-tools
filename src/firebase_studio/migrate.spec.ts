@@ -5,6 +5,10 @@ import * as sinon from "sinon";
 import { migrate } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
+import * as secrets from "../apphosting/secrets";
+import * as config from "../apphosting/config";
+import * as gcsm from "../gcp/secretManager";
+import * as projects from "../management/projects";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -76,6 +80,9 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) {
           return "# **App Name**: Test App\nSome blueprint content";
         }
+        if (pStr.endsWith(".env")) {
+          return "OTHER_VAR=value"; // No GEMINI_API_KEY
+        }
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
@@ -122,6 +129,89 @@ describe("migrate", () => {
       ).to.be.true;
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
+    });
+
+    it("should deploy secrets if GEMINI_API_KEY is found in .env", async () => {
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+      fetchStub.resolves({ ok: true, json: async () => [] } as any);
+
+      // Mock project and APIs
+      sandbox.stub(projects, "getProject").resolves({
+        projectNumber: "123456789",
+        projectId: "test-project",
+      } as any);
+      const gcsmStub = sandbox.stub(gcsm, "ensureApi").resolves();
+      const apphostingApiStub = sandbox.stub(apphosting, "ensureApiEnabled").resolves();
+
+      // Mock backend listing
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [
+          {
+            name: "projects/test-project/locations/us-central1/backends/studio",
+          },
+        ] as any[],
+        unreachable: [],
+      });
+
+      // Mock secret deployment
+      const upsertSecretStub = sandbox.stub(secrets, "upsertSecretValueAndGrantAccess").resolves(true);
+      sandbox.stub(secrets, "serviceAccountsForBackend").resolves({
+        buildServiceAccount: "build-sa",
+        runServiceAccount: "run-sa",
+      });
+
+      // Mock config
+      const configLoadStub = sandbox.stub(config, "load").returns({
+        has: () => false,
+        get: () => [],
+        set: () => {},
+        createNode: (v: any) => v,
+      } as any);
+      const configUpsertStub = sandbox.stub(config, "upsertEnv");
+      const configStoreStub = sandbox.stub(config, "store");
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App\nSome blueprint content";
+        }
+        if (pStr.endsWith(".env")) {
+          return "GEMINI_API_KEY=test-key\nOTHER_SECRET=other-value";
+        }
+        // Return empty templates to avoid errors
+        return "";
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      // Mock execSync
+      const childProcess = require("child_process");
+      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+      sandbox.stub(prompt, "confirm").resolves(false);
+
+      await migrate(testRoot);
+
+      // Verify secret deployment logic
+      expect(gcsmStub.called).to.be.true;
+      expect(apphostingApiStub.called).to.be.true;
+      expect(upsertSecretStub.calledTwice).to.be.true;
+      expect(upsertSecretStub.calledWith(sinon.match.any, sinon.match.any, "gemini-api-key", "test-key"))
+        .to.be.true;
+      expect(
+        upsertSecretStub.calledWith(sinon.match.any, sinon.match.any, "other-secret", "other-value"),
+      ).to.be.true;
+
+      expect(configUpsertStub.calledTwice).to.be.true;
+      expect(configStoreStub.calledOnce).to.be.true;
     });
   });
 });
