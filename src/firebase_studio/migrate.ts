@@ -345,7 +345,10 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   logger.info("✅ Created .vscode/launch.json");
 }
 
-async function deploySecretsFromEnv(rootPath: string, projectId: string | undefined): Promise<void> {
+async function deploySecretsFromEnv(
+  rootPath: string,
+  projectId: string | undefined,
+): Promise<void> {
   if (!projectId) {
     return;
   }

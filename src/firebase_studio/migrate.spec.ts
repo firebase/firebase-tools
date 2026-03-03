@@ -155,7 +155,9 @@ describe("migrate", () => {
       });
 
       // Mock secret deployment
-      const upsertSecretStub = sandbox.stub(secrets, "upsertSecretValueAndGrantAccess").resolves(true);
+      const upsertSecretStub = sandbox
+        .stub(secrets, "upsertSecretValueAndGrantAccess")
+        .resolves(true);
       sandbox.stub(secrets, "serviceAccountsForBackend").resolves({
         buildServiceAccount: "build-sa",
         runServiceAccount: "run-sa",
@@ -204,10 +206,16 @@ describe("migrate", () => {
       expect(gcsmStub.called).to.be.true;
       expect(apphostingApiStub.called).to.be.true;
       expect(upsertSecretStub.calledTwice).to.be.true;
-      expect(upsertSecretStub.calledWith(sinon.match.any, sinon.match.any, "gemini-api-key", "test-key"))
-        .to.be.true;
       expect(
-        upsertSecretStub.calledWith(sinon.match.any, sinon.match.any, "other-secret", "other-value"),
+        upsertSecretStub.calledWith(sinon.match.any, sinon.match.any, "gemini-api-key", "test-key"),
+      ).to.be.true;
+      expect(
+        upsertSecretStub.calledWith(
+          sinon.match.any,
+          sinon.match.any,
+          "other-secret",
+          "other-value",
+        ),
       ).to.be.true;
 
       expect(configUpsertStub.calledTwice).to.be.true;
