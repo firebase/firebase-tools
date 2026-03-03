@@ -42,9 +42,19 @@ export async function tryCreateDelegate(
   return Promise.resolve(new Delegate(context.projectId, context.sourceDir, runtime));
 }
 
+/**
+ * Minimum Dart SDK version required.
+ * Dart 3.8+ is needed for cross-compilation flags (--target-os, --target-arch).
+ */
+const MIN_DART_SDK_VERSION = "3.8.0";
+
+/** Default entry point for Dart functions projects. */
+export const DART_ENTRY_POINT = "lib/main.dart";
+
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
   public readonly bin = "dart";
+  public readonly entryPoint = DART_ENTRY_POINT;
 
   private static watchModeActive = false;
   private buildRunnerProcess: ChildProcess | null = null;
@@ -56,11 +66,51 @@ export class Delegate implements runtimes.RuntimeDelegate {
   ) {}
 
   async validate(): Promise<void> {
+    // Verify the Dart binary exists and meets the minimum version requirement.
+    const result = spawn.sync(this.bin, ["--version"], {
+      encoding: "utf8",
+      timeout: 10_000,
+    });
+
+    if (result.error) {
+      throw new FirebaseError(
+        `Could not find a Dart SDK. Make sure the '${this.bin}' command is available on your PATH.`,
+      );
+    }
+
+    // `dart --version` outputs e.g. "Dart SDK version: 3.8.0 (stable) ... on "macos_arm64""
+    const versionOutput = (result.stdout || result.stderr || "").toString();
+    const match = /Dart SDK version:\s*(\d+\.\d+\.\d+)/.exec(versionOutput);
+    if (match) {
+      const installedVersion = match[1];
+      if (installedVersion.localeCompare(MIN_DART_SDK_VERSION, undefined, { numeric: true }) < 0) {
+        throw new FirebaseError(
+          `Dart SDK version ${installedVersion} is not supported. ` +
+            `Firebase Functions for Dart requires Dart ${MIN_DART_SDK_VERSION} or later. ` +
+            `Please upgrade your Dart SDK.`,
+        );
+      }
+    } else {
+      logger.debug(`Could not parse Dart SDK version from: ${versionOutput}`);
+    }
+
+    // Verify pubspec.yaml exists and is readable.
     const pubspecYamlPath = path.join(this.sourceDir, "pubspec.yaml");
     try {
       await fs.promises.access(pubspecYamlPath, fs.constants.R_OK);
     } catch (err: any) {
       throw new FirebaseError(`Failed to read pubspec.yaml at ${pubspecYamlPath}: ${err.message}`);
+    }
+
+    // Verify the entry point file exists.
+    const entryPointPath = path.join(this.sourceDir, this.entryPoint);
+    try {
+      await fs.promises.access(entryPointPath, fs.constants.R_OK);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `Could not find entry point at ${entryPointPath}. ` +
+          `Firebase Functions for Dart expects your main function in ${this.entryPoint}.`,
+      );
     }
   }
 
@@ -114,7 +164,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
       return;
     }
 
-    // Requires Dart 3.8+ for --target-os and --target-arch support.
     const binDir = path.join(this.sourceDir, "bin");
     await fs.promises.mkdir(binDir, { recursive: true });
 
@@ -125,7 +174,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
       [
         "compile",
         "exe",
-        "lib/main.dart",
+        this.entryPoint,
         "-o",
         "bin/server",
         "--target-os=linux",
@@ -153,7 +202,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
             new FirebaseError(
               `Dart compilation failed with exit code ${code}. ` +
                 `Make sure your Dart project compiles successfully with: ` +
-                `dart compile exe lib/main.dart --target-os=linux --target-arch=x64`,
+                `dart compile exe ${this.entryPoint} --target-os=linux --target-arch=x64`,
             ),
           );
         }

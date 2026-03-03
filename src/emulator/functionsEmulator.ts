@@ -61,6 +61,7 @@ import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { isLanguageRuntime, Runtime } from "../deploy/functions/runtimes/supported";
+import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -1724,7 +1725,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
 
-    const args = ["run", "--no-serve-devtools", "lib/main.dart"];
+    const args = ["run", "--no-serve-devtools", DART_ENTRY_POINT];
 
     // For Dart, don't set FUNCTION_TARGET in environment - the server loads all functions
     // and routes based on the request path (similar to Python's functions-framework)
