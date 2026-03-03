@@ -187,7 +187,7 @@ describe("dialogs", () => {
       });
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message:
           "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
@@ -207,7 +207,7 @@ describe("dialogs", () => {
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message:
           "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
@@ -237,7 +237,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -266,7 +266,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -297,7 +297,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -326,7 +326,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
