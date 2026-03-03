@@ -63,7 +63,7 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   }
 
   // Check for Next.js config files
-   for (const configFile of ["next.config.js", "next.config.mjs"]) {
+  for (const configFile of ["next.config.js", "next.config.mjs"]) {
     try {
       await fs.access(path.join(rootPath, configFile));
       return "NEXT_JS";
