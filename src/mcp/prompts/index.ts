@@ -20,6 +20,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   apptesting: namespacePrompts(apptestingPrompts, "apptesting"),
   apphosting: [],
   database: [],
+  developerknowledge: [],
 };
 
 function namespacePrompts(

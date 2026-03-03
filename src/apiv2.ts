@@ -19,20 +19,23 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
-const agent = detectAIAgent();
-const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
-const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
-const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
-
-export const STANDARD_HEADERS: Record<string, string> = {
-  Connection: "keep-alive",
-  "User-Agent": clientVersion,
-  "X-Client-Version": clientVersion,
+export const standardHeaders: () => Record<string, string> = () => {
+  const agent = detectAIAgent();
+  const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
+  const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
+  const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
+  return {
+    Connection: "keep-alive",
+    "User-Agent": clientVersion,
+    "X-Client-Version": clientVersion,
+  };
 };
 
+// Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
-const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
+// Header for specifying a quota project. See https://cloud.google.com/apis/docs/system-parameters#project-header
+export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
 const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
 export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
@@ -307,7 +310,7 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+    for (const [h, v] of Object.entries(standardHeaders())) {
       if (!reqOptions.headers.has(h)) {
         reqOptions.headers.set(h, v);
       }
@@ -537,11 +540,15 @@ export class Client {
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     const headers = options.headers;
-    if (headers && headers.has(GOOG_QUOTA_USER_HEADER)) {
+    if (headers && (headers.has(GOOG_QUOTA_USER_HEADER) || headers.has(GOOG_USER_PROJECT_HEADER))) {
+      const userHeader = headers.has(GOOG_QUOTA_USER_HEADER)
+        ? `${GOOG_QUOTA_USER_HEADER}=${headers.get(GOOG_QUOTA_USER_HEADER)}`
+        : "";
+      const projectHeader = headers.has(GOOG_USER_PROJECT_HEADER)
+        ? `${GOOG_USER_PROJECT_HEADER}=${headers.get(GOOG_USER_PROJECT_HEADER)}`
+        : "";
       logger.debug(
-        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
-          headers.get(GOOG_QUOTA_USER_HEADER) || ""
-        }`,
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} ${userHeader} ${projectHeader}`,
       );
     }
     if (options.body !== undefined) {

@@ -102,32 +102,38 @@ export class AuthEmulator implements EmulatorInstance {
       );
     }
 
-    const accountsPath = path.join(authExportDir, "accounts.json");
-    const accountsStat = await stat(accountsPath);
-    if (accountsStat?.isFile()) {
-      logger.logLabeled("BULLET", "auth", `Importing accounts from ${accountsPath}`);
+    const accountFiles = fs
+      .readdirSync(authExportDir)
+      .filter((fileName) => fileName.includes("accounts"));
+    for (const accountFile of accountFiles) {
+      const accountsPath = path.join(authExportDir, accountFile);
+      const accountsStat = await stat(accountsPath);
+      const tenantId = accountFile.replace(/accounts(-|)|.json/gm, "");
+      if (accountsStat?.isFile()) {
+        logger.logLabeled("BULLET", "auth", `Importing accounts from ${accountsPath}`);
 
-      await importFromFile(
-        {
-          method: "POST",
-          host: utils.connectableHostname(host),
-          port,
-          path: `/identitytoolkit.googleapis.com/v1/projects/${projectId}/accounts:batchCreate`,
-          headers: {
-            Authorization: "Bearer owner",
-            "Content-Type": "application/json",
+        await importFromFile(
+          {
+            method: "POST",
+            host: utils.connectableHostname(host),
+            port,
+            path: `/identitytoolkit.googleapis.com/v1/projects/${projectId}/tenants/${tenantId}/accounts:batchCreate`,
+            headers: {
+              Authorization: "Bearer owner",
+              "Content-Type": "application/json",
+            },
           },
-        },
-        accountsPath,
-        // Ignore the error when there are no users. No action needed.
-        { ignoreErrors: ["MISSING_USER_ACCOUNT"] },
-      );
-    } else {
-      logger.logLabeled(
-        "WARN",
-        "auth",
-        `Skipped importing accounts because ${accountsPath} does not exist.`,
-      );
+          accountsPath,
+          // Ignore the error when there are no users. No action needed.
+          { ignoreErrors: ["MISSING_USER_ACCOUNT"] },
+        );
+      } else {
+        logger.logLabeled(
+          "WARN",
+          "auth",
+          `Skipped importing accounts because ${accountsPath} does not exist.`,
+        );
+      }
     }
   }
 }

@@ -315,7 +315,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.9
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: npm install --package-lock-only --ignore-scripts
       - run: "git diff --exit-code -- npm-shrinkwrap.json || (echo 'Error: npm-shrinkwrap.json is changed during npm install! Please make sure to use npm >= 8 and commit npm-shrinkwrap.json.' && false)"
@@ -334,7 +334,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-      - run: npm i -g npm@9.5
+      - run: npm i -g npm@11.9
       # --ignore-scripts prevents the `prepare` script from being run.
       - run: "(cd firebase-vscode && npm install --package-lock-only --ignore-scripts)"
       - run: "git diff --exit-code -- firebase-vscode/package-lock.json || (echo 'Error: firebase-vscode/package-lock.json is changed during npm install! Please make sure to use npm >= 8 and commit firebase-vscode/package-lock.json.' && false)"
