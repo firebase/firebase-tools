@@ -2,6 +2,7 @@ import * as jsYaml from "js-yaml";
 import { getErrMsg, FirebaseError } from "../error";
 import { TestCase, AiStep } from "./types";
 
+/** An AI test step in YAML format. */
 export declare interface YamlStep {
   goal?: string;
   hint?: string;
@@ -45,6 +46,7 @@ function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
   }));
 }
 
+/** Converts a list of test cases to YAML format. */
 export function toYaml(testCases: TestCase[]): string {
   return jsYaml.safeDump({ tests: toYamlTestCases(testCases) });
 }
@@ -64,6 +66,7 @@ function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
   }
 }
 
+/** Converts an AI test step from YAML format. */
 export function fromYamlStep(yamlStep: YamlStep): AiStep {
   checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
   return {
@@ -93,6 +96,7 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
   });
 }
 
+/** Converts a list of test cases from YAML format. */
 export function fromYaml(appName: string, yaml: string): TestCase[] {
   let parsedYaml: unknown;
   try {
