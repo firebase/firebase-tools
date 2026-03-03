@@ -82,7 +82,7 @@ describe("parseTestFiles", () => {
               {
                 goal: "View the provided application",
                 hint: "No additional actions should be necessary",
-                successCriteria: "The application should load with no obvious errors",
+                finalScreenAssertion: "The application should load with no obvious errors",
               },
             ],
           },
