@@ -123,7 +123,7 @@ export interface ReleaseTest {
 export interface AiStep {
   goal: string;
   hint?: string;
-  finalScreenAssertion?: string;
+  successCriteria?: string;
 }
 
 export interface AiInstructions {

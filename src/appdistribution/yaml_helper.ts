@@ -38,8 +38,8 @@ function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
     steps: testCase.aiInstructions.steps.map((step) => ({
       goal: step.goal,
       ...(step.hint && { hint: step.hint }),
-      ...(step.finalScreenAssertion && {
-        finalScreenAssertion: step.finalScreenAssertion,
+      ...(step.successCriteria && {
+        finalScreenAssertion: step.successCriteria,
       }),
     })),
   }));
@@ -76,7 +76,7 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
             goal: castExists(yamlStep.goal, "goal"),
             ...(yamlStep.hint && { hint: yamlStep.hint }),
             ...(yamlStep.finalScreenAssertion && {
-              finalScreenAssertion: yamlStep.finalScreenAssertion,
+              successCriteria: yamlStep.finalScreenAssertion,
             }),
           };
         }),

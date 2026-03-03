@@ -16,7 +16,7 @@ const TEST_CASES: TestCase[] = [
         {
           goal: "test-goal",
           hint: "test-hint",
-          finalScreenAssertion: "test-final-screen-assertion",
+          successCriteria: "test-final-screen-assertion",
         },
       ],
     },
