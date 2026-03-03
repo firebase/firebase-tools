@@ -21,7 +21,7 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
-    it("should throw error and track platform if run on Windows", async () => {
+    it("should throw error and track start/error if run on Windows", async () => {
       // Stub process.platform
       sandbox.stub(process, "platform").value("win32");
       // Mock trackGA4
@@ -32,10 +32,12 @@ describe("migrate", () => {
         "Firebase Studio migration is currently not supported on Windows.",
       );
 
-      expect(trackStub.calledWith("firebase_studio_migrate", { platform: "windows" })).to.be.true;
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "error" }),
+      ).to.be.true;
     });
 
-    it("should perform a full migration successfully and track platform", async () => {
+    it("should perform a full migration successfully and track start/success", async () => {
       // Ensure platform is not win32
       sandbox.stub(process, "platform").value("darwin");
 
@@ -146,10 +148,10 @@ describe("migrate", () => {
         .true;
 
       expect(
-        trackStub.calledWith("firebase_studio_migrate", {
-          app_type: "OTHER",
-          platform: "linux/mac",
-        }),
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "started" }),
+      ).to.be.true;
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
       ).to.be.true;
     });
   });

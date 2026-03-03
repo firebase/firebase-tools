@@ -468,21 +468,20 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { noStartAgy: false },
 ): Promise<void> {
-  const platform = process.platform === "win32" ? "windows" : "linux/mac";
+  const appType = await detectAppType(rootPath);
 
   if (process.platform === "win32") {
-    void track.trackGA4("firebase_studio_migrate", { platform });
+    void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "error" });
     throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
       exit: 1,
     });
   }
 
+  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
+
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
-
-  const appType = await detectAppType(rootPath);
-  void track.trackGA4("firebase_studio_migrate", { app_type: appType, platform });
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
 
@@ -501,4 +500,6 @@ export async function migrate(
   }
 
   await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
+
+  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
 }
