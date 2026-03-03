@@ -559,11 +559,22 @@ function batchGet(
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
+  const queryTenantId = ctx.params.query.tenantId;
+  let users: UserInfo[];
 
-  const users = state.queryUsers(
-    {},
-    { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
-  );
+  // Get the accounts from the tenant when tenantId is specified in the query.
+  if (queryTenantId && state instanceof AgentProjectState) {
+    const tenant = state.getTenantProject(queryTenantId);
+    users = tenant.queryUsers(
+      {},
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
+    );
+  } else {
+    users = state.queryUsers(
+      {},
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
+    );
+  }
   let newPageToken: string | undefined = undefined;
 
   // As a non-standard behavior, passing in maxResults=-1 will return all users.

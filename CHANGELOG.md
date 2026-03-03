@@ -1,7 +1,4 @@
-- Added `firebase dataconnect:compile` command.
-- Loads experiments earlier in CLI startup so they can be used earlier. (#9797)
-- Fixed issue where `AuthBlockingEvent` had invalid format for `metadata.creationTime` and `metadata.lastSignInTime`. (#8109)
-- Fixed issue where Storage security rules is overwritten when running `firebase init storage`. (#8170)
-- Add support for firestoreDataAccessMode, mongodbCompatibleDataAccessMode, and
-  the realtimeUpdatesMode flags for Firestore Database creation (#9817)
-- Updated to v3.1.1 of the Data Connect emulator which includes fixes and internal improvements. (#9835)
+- Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
+- Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
+- Detects when App Hosting fails to deploy, returning an error. (#8866)
+- Add `firestore_query_collection` tool back to MCP as it is not available in the OneMCP server yet.
