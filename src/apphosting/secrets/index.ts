@@ -277,7 +277,6 @@ export function getSecretNameParts(secret: string): [string, string] {
   return [name, version];
 }
 
-
 /**
  * Action for the apphosting:secrets:set command.
  */

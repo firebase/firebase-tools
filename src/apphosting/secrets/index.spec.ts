@@ -444,7 +444,10 @@ describe("secrets", () => {
     it("creates a new secret and grants access", async () => {
       gcsm.getSecret.rejects({ status: 404 });
       utils.readSecretValue.resolves("secretValue");
-      gcsm.addVersion.resolves({ secret: { name: "secret", projectId: "project" } as any, versionId: "1" } as any);
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
       prompt.select.resolves("production");
       selectBackendServiceAccounts.resolves({
         buildServiceAccounts: ["buildSA"],
@@ -458,7 +461,10 @@ describe("secrets", () => {
       expect(gcsm.createSecret).to.have.been.called;
       expect(gcsm.addVersion).to.have.been.calledWith("project", "secret", "secretValue");
       expect(gcsm.setIamPolicy).to.have.been.called;
-      expect(maybeAddSecretToYaml).to.have.been.calledWith("secret", config.APPHOSTING_BASE_YAML_FILE);
+      expect(maybeAddSecretToYaml).to.have.been.calledWith(
+        "secret",
+        config.APPHOSTING_BASE_YAML_FILE,
+      );
     });
 
     it("updates an existing secret and exits", async () => {
@@ -469,7 +475,10 @@ describe("secrets", () => {
         replication: { automatic: {} },
       });
       utils.readSecretValue.resolves("newValue");
-      gcsm.addVersion.resolves({ secret: { name: "secret", projectId: "project" } as any, versionId: "1" } as any);
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
 
       await secrets.apphostingSecretsSetAction("secret", "project", "12345");
 
@@ -480,7 +489,10 @@ describe("secrets", () => {
     it("handles local secrets", async () => {
       gcsm.getSecret.rejects({ status: 404 });
       utils.readSecretValue.resolves("localValue");
-      gcsm.addVersion.resolves({ secret: { name: "secret", projectId: "project" } as any, versionId: "1" } as any);
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
       prompt.select.resolves("local");
       prompt.input.resolves("user@example.com");
       gcsm.getIamPolicy.resolves({ bindings: [], etag: "etag", version: 1 });
