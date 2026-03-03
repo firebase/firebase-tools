@@ -28,6 +28,11 @@ interface SourceMap {
   fileUri: string;
 }
 
+interface UploadTask {
+  mapFilePath: string;
+  obfuscatedFilePath: string;
+}
+
 export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]")
   .description("upload javascript source maps to de-minify stack traces")
   .option("--app <appID>", "the app id of your Firebase app")
@@ -53,8 +58,8 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     const bucketName = await upsertBucket(projectId, projectNumber, options);
 
     // Find and upload mapping files
-    const rootDir = options.projectRoot ?? process.cwd();
-    const filePath = path.relative(rootDir, mappingFiles || ".") || ".";
+    const rootDir = path.resolve(options.projectRoot ?? process.cwd());
+    const filePath = path.relative(rootDir, path.resolve(mappingFiles || ".")) || ".";
     let fstat: fs.Stats;
     try {
       fstat = statSync(filePath);
@@ -66,7 +71,14 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     let successCount = 0;
     const failedFiles: string[] = [];
     if (fstat.isFile()) {
-      const success = await uploadMap(projectId, filePath, bucketName, appVersion, options);
+      const success = await uploadMap(
+        projectId,
+        filePath,
+        filePath,
+        bucketName,
+        appVersion,
+        options,
+      );
       if (success) {
         successCount++;
       } else {
@@ -74,18 +86,64 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       }
     } else if (fstat.isDirectory()) {
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
-      const files = (
-        await readdirRecursive({ path: filePath, ignore: ["node_modules", ".git"], maxDepth: 20 })
-      ).filter((f) => f.name.endsWith(".js.map"));
-      (
-        await Promise.all(
-          files.map((f) => uploadMap(projectId, f.name, bucketName, appVersion, options)),
-        )
-      ).forEach((success, i) => {
+      const files = await readdirRecursive({
+        path: filePath,
+        ignore: ["node_modules", ".git"],
+        maxDepth: 20,
+      });
+
+      const jsFiles = files.filter((f) => f.name.endsWith(".js"));
+      const mapFiles = files.filter((f) => f.name.endsWith(".js.map"));
+
+      const uploadTasks: UploadTask[] = [];
+      const mapFilePathsSet = new Set(mapFiles.map((f) => f.name));
+      const mappedPhysicalFiles = new Set<string>();
+
+      for (const jsFile of jsFiles) {
+        const jsContent = fs.readFileSync(jsFile.name, "utf-8");
+        const match = jsContent.match(/\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
+        if (match) {
+          const sourceMappingURL = match[1].trim();
+          const expectedMapFilePath = path.join(path.dirname(jsFile.name), sourceMappingURL);
+
+          if (mapFilePathsSet.has(expectedMapFilePath)) {
+            uploadTasks.push({
+              mapFilePath: expectedMapFilePath,
+              obfuscatedFilePath: path.relative(rootDir, path.resolve(`${jsFile.name}.map`)),
+            });
+            mappedPhysicalFiles.add(expectedMapFilePath);
+          }
+        }
+      }
+
+      // Add map files that were not linked from any JS file
+      for (const mapFile of mapFiles) {
+        if (!mappedPhysicalFiles.has(mapFile.name)) {
+          uploadTasks.push({
+            mapFilePath: mapFile.name,
+            obfuscatedFilePath: path.relative(rootDir, path.resolve(mapFile.name)),
+          });
+        }
+      }
+
+      const results = await Promise.all(
+        uploadTasks.map((task) =>
+          uploadMap(
+            projectId,
+            task.mapFilePath,
+            task.obfuscatedFilePath,
+            bucketName,
+            appVersion,
+            options,
+          ),
+        ),
+      );
+
+      results.forEach((success, i) => {
         if (success) {
           successCount++;
         } else {
-          failedFiles.push(files[i].name);
+          failedFiles.push(uploadTasks[i].mapFilePath);
         }
       });
     } else {
@@ -172,18 +230,21 @@ async function upsertBucket(
 
 async function uploadMap(
   projectId: string,
-  filePath: string,
+  mappingFile: string,
+  obfuscatedFilePath: string,
   bucketName: string,
   appVersion: string,
   options: CommandOptions,
 ): Promise<boolean> {
-  try {
-    const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
-    const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(filePath)}.zip`;
-    const uid = murmurHashV3(`${appVersion}-${filePath}`);
-    const parent = `projects/${projectId}/apps/${options.app}/locations/global/sourceMaps`;
-    const name = `${parent}/${uid}`;
+  const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
+  const obfuscatedPath = path.relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath);
+  const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
+  const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
+  const uid = murmurHashV3(`${appVersion}-${obfuscatedPath}`);
+  const parent = `projects/${projectId}/apps/${options.app}/locations/global/sourceMaps`;
+  const name = `${parent}/${uid}`;
 
+  try {
     const { bucket, object } = await gcs.uploadObject(
       {
         file: gcsFile,
@@ -197,7 +258,7 @@ async function uploadMap(
     await registerSourceMap(parent, {
       name,
       version: appVersion,
-      obfuscatedFilePath: filePath,
+      obfuscatedFilePath: obfuscatedPath,
       fileUri,
     });
 
