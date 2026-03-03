@@ -18,5 +18,5 @@ export const command = new Command("studio:export <path>")
     }
     const rootPath = path.resolve(exportPath);
     logger.info(`Exporting Studio apps from ${rootPath} to Antigravity...`);
-    await migrate(rootPath, { noStartAgy: !options.startAgy });
+    await migrate(rootPath, { noStartAgy: !options.startAgy, projectId: options.project as string });
   });

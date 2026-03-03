@@ -123,5 +123,78 @@ describe("migrate", () => {
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
     });
+
+    it("should use the projectId from options as an override", async () => {
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+
+      // Mock GitHub API for skills listing
+      fetchStub
+        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills")
+        .resolves({
+          ok: true,
+          json: async () => [],
+        } as any);
+
+      // Mock GitHub API for Genkit skill content
+      fetchStub
+        .withArgs(
+          "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
+        )
+        .resolves({
+          ok: true,
+          json: async () => [],
+        } as any);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "original-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "original-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App\nSome blueprint content";
+        }
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      // Mock App Hosting backends
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [],
+        unreachable: [],
+      });
+
+      // Mock prompt
+      sandbox.stub(prompt, "confirm").resolves(false);
+
+      // Mock execSync
+      const childProcess = require("child_process");
+      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+
+      await migrate(testRoot, { noStartAgy: true, projectId: "override-project" });
+
+      // Verify .firebaserc was written with the override project ID
+      const writeStub = fs.writeFile as sinon.SinonStub;
+      expect(writeStub.calledWith(path.join(testRoot, ".firebaserc"), sinon.match(/override-project/)))
+        .to.be.true;
+    });
   });
 });

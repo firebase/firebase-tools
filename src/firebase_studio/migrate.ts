@@ -11,6 +11,7 @@ import { readTemplate } from "../templates";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
+  projectId?: string;
 }
 
 interface GitHubItem {
@@ -49,7 +50,10 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-async function extractMetadata(rootPath: string): Promise<{
+async function extractMetadata(
+  rootPath: string,
+  overrideProjectId?: string,
+): Promise<{
   projectId: string | undefined;
   appName: string;
   blueprintContent: string;
@@ -64,7 +68,7 @@ async function extractMetadata(rootPath: string): Promise<{
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
-  let projectId = metadata.projectId;
+  let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
     try {
@@ -422,7 +426,7 @@ export async function migrate(
 
   await assertSystemState();
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
+  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.projectId);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
