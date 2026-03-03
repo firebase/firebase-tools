@@ -19,7 +19,7 @@ const TestDeviceSchema = z
     `Device to run automated test on. Can run 'gcloud firebase test android|ios models list' to see available devices.`,
   );
 
-const AIStepSchema = z
+const AiStepSchema = z
   .object({
     goal: z.string().describe("A goal to be accomplished during the test."),
     hint: z
@@ -55,7 +55,7 @@ export const run_tests = tool(
       testDevices: z.array(TestDeviceSchema).default(defaultDevices),
       testCase: z.object({
         steps: z
-          .array(AIStepSchema)
+          .array(AiStepSchema)
           .describe("Test case containing the steps that are run during its execution."),
       }),
     }),
