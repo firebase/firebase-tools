@@ -426,7 +426,10 @@ export async function migrate(
 
   await assertSystemState();
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.projectId);
+  const { projectId, appName, blueprintContent } = await extractMetadata(
+    rootPath,
+    options.projectId,
+  );
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
