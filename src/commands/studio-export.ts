@@ -1,7 +1,7 @@
 import { Command } from "../command";
 import { logger } from "../logger";
 import { Options } from "../options";
-import { migrate } from "../firebase_studio/migrate";
+import { migrate, MigrateOptions } from "../firebase_studio/migrate";
 import * as path from "path";
 import * as experiments from "../experiments";
 import { FirebaseError } from "../error";
@@ -18,8 +18,5 @@ export const command = new Command("studio:export <path>")
     }
     const rootPath = path.resolve(exportPath);
     logger.info(`Exporting Studio apps from ${rootPath} to Antigravity...`);
-    await migrate(rootPath, {
-      noStartAgy: !options.startAgy,
-      projectId: options.project as string,
-    });
+    await migrate(rootPath, options as MigrateOptions);
   });

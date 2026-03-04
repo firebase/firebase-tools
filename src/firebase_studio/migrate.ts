@@ -10,8 +10,8 @@ import * as utils from "../utils";
 import { readTemplate } from "../templates";
 
 export interface MigrateOptions {
-  noStartAgy: boolean;
-  projectId?: string;
+  project?: string;
+  startAgy?: boolean;
 }
 
 interface GitHubItem {
@@ -384,10 +384,10 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
 async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
-  noStartAgyFlag: boolean,
+  startAgy?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (noStartAgyFlag) {
+  if (startAgy === false) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -420,16 +420,13 @@ async function askToOpenAntigravity(
 
 export async function migrate(
   rootPath: string,
-  options: MigrateOptions = { noStartAgy: false },
+  options: MigrateOptions = { startAgy: true },
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   await assertSystemState();
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(
-    rootPath,
-    options.projectId,
-  );
+  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
@@ -445,5 +442,5 @@ export async function migrate(
     );
   }
 
-  await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }
