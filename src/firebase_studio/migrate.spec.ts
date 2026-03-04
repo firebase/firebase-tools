@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as sinon from "sinon";
-import { migrate } from "./migrate";
+import { migrate, extractMetadata } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
 
@@ -16,6 +16,40 @@ describe("migrate", () => {
 
   afterEach(() => {
     sandbox.restore();
+  });
+
+  describe("extractMetadata", () => {
+    it("should use overrideProjectId if provided", async () => {
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      const result = await extractMetadata(testRoot, "override-project");
+      expect(result.projectId).to.equal("override-project");
+    });
+
+    it("should fallback to metadata.json if no override is provided", async () => {
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      const result = await extractMetadata(testRoot);
+      expect(result.projectId).to.equal("original-project");
+    });
   });
 
   describe("migrate", () => {
