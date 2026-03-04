@@ -30,6 +30,7 @@ import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
 import { cloudSQLBeingCreated } from "./provisionCloudSql";
 import { requireAuth } from "../requireAuth";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
@@ -658,8 +659,18 @@ export async function ensureServiceIsConnectedToCloudSql(
     // Error out early because if the next `UpdateSchema` request will get queued until Cloud SQL is created.
     const [, , , , , serviceId] = serviceName.split("/");
     const [, projectId, , , , instanceId] = postgresql.cloudSql.instance.split("/");
+    let isFreeTrial = false;
+    let billingEnabled = false;
+    try {
+      const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
+      isFreeTrial = instance.settings?.userLabels?.["firebase-data-connect"] === "ft";
+      billingEnabled = await checkBillingEnabled(projectId);
+    } catch (err: any) {
+      // Ignore errors when fetching instance details for the error message
+    }
     throw new FirebaseError(
-      `While checking the service ${serviceId}, ` + cloudSQLBeingCreated(projectId, instanceId),
+      `While checking the service ${serviceId}, ` +
+        cloudSQLBeingCreated(projectId, instanceId, isFreeTrial, billingEnabled),
     );
   }
   if (!currentSchema || !postgresql) {
