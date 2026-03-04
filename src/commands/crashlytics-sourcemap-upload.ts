@@ -101,7 +101,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
       for (const jsFile of jsFiles) {
         const jsContent = fs.readFileSync(jsFile.name, "utf-8");
-        const match = jsContent.match(/\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
+        const match = jsContent.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
         if (match) {
           const sourceMappingURL = match[1].trim();
           const expectedMapFilePath = path.join(path.dirname(jsFile.name), sourceMappingURL);
