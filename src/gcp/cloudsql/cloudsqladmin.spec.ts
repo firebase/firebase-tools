@@ -9,6 +9,7 @@ import { Options } from "../../options";
 import * as operationPoller from "../../operation-poller";
 import { Config } from "../../config";
 import { RC } from "../../rc";
+import * as freeTrial from "../../dataconnect/freeTrial";
 
 const PROJECT_ID = "test-project";
 const INSTANCE_ID = "test-instance";
@@ -96,6 +97,32 @@ describe("cloudsqladmin", () => {
         }),
       ).to.be.rejectedWith("Cloud SQL free trial instances are not yet available in us-central");
       expect(nock.isDone()).to.be.true;
+    });
+
+    it("should handle billing not in good standing error when free trial used", async () => {
+      const checkFreeTrialStub = sinon.stub(freeTrial, "checkFreeTrialInstanceUsed").resolves(true);
+      nock(cloudSQLAdminOrigin())
+        .post(`/${API_VERSION}/projects/${PROJECT_ID}/instances`)
+        .reply(403, {
+          error: {
+            message:
+              "The billing account is not in good standing; therefore no new instance can be created.",
+          },
+        });
+
+      await expect(
+        sqladmin.createInstance({
+          projectId: PROJECT_ID,
+          location: "us-central",
+          instanceId: INSTANCE_ID,
+          enableGoogleMlIntegration: false,
+          freeTrialLabel: "nt",
+        }),
+      ).to.be.rejectedWith(
+        `You have already used your Cloud SQL free trial. To create more instances, you need to attach a billing account to project ${PROJECT_ID}.`,
+      );
+      expect(nock.isDone()).to.be.true;
+      checkFreeTrialStub.restore();
     });
   });
 
