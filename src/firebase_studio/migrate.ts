@@ -13,6 +13,8 @@ export interface MigrateOptions {
   noStartAgy: boolean;
 }
 
+type ProjectType = "nextjs" | "flutter" | "unknown";
+
 interface GitHubItem {
   name: string;
   type: "dir" | "file";
@@ -23,6 +25,32 @@ interface GitHubItem {
 interface Metadata {
   projectId?: string;
   [key: string]: any;
+}
+
+async function detectProjectType(rootPath: string): Promise<ProjectType> {
+  try {
+    await fs.access(path.join(rootPath, "pubspec.yaml"));
+    return "flutter";
+  } catch {
+    // ignore
+  }
+
+  try {
+    const melosPath = path.join(rootPath, "melos.yaml");
+    await fs.access(melosPath);
+    return "flutter";
+  } catch {
+    // ignore
+  }
+
+  try {
+    await fs.access(path.join(rootPath, "package.json"));
+    return "nextjs";
+  } catch {
+    // ignore
+  }
+
+  return "unknown";
 }
 
 // TODO revisit quota limits
@@ -108,10 +136,15 @@ async function updateReadme(
   rootPath: string,
   blueprintContent: string,
   appName: string,
+  projectType: ProjectType,
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
-  const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
+  let templatePath = "firebase-studio-export/readme_template.md";
+  if (projectType === "flutter") {
+    templatePath = "firebase-studio-export/readme_flutter_template.md";
+  }
+  const readmeTemplate = await readTemplate(templatePath);
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
@@ -125,6 +158,7 @@ async function injectAgyContext(
   rootPath: string,
   projectId: string | undefined,
   appName: string,
+  projectType: ProjectType,
 ): Promise<void> {
   const agentDir = path.join(rootPath, ".agent");
   const rulesDir = path.join(agentDir, "rules");
@@ -177,9 +211,12 @@ async function injectAgyContext(
   }
 
   // System Instructions
-  const systemInstructionsTemplate = await readTemplate(
-    "firebase-studio-export/system_instructions_template.md",
-  );
+  let systemInstructionsTemplatePath = "firebase-studio-export/system_instructions_template.md";
+  if (projectType === "flutter") {
+    systemInstructionsTemplatePath =
+      "firebase-studio-export/system_instructions_flutter_template.md";
+  }
+  const systemInstructionsTemplate = await readTemplate(systemInstructionsTemplatePath);
   const systemInstructions = systemInstructionsTemplate
     .replace("${projectId}", projectId || "None")
     .replace("${appName}", appName);
@@ -189,9 +226,11 @@ async function injectAgyContext(
 
   // Startup Workflow
   try {
-    const startupWorkflow = await readTemplate(
-      "firebase-studio-export/workflows/startup_workflow.md",
-    );
+    let startupWorkflowPath = "firebase-studio-export/workflows/startup_workflow.md";
+    if (projectType === "flutter") {
+      startupWorkflowPath = "firebase-studio-export/workflows/startup_flutter_workflow.md";
+    }
+    const startupWorkflow = await readTemplate(startupWorkflowPath);
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
     logger.info("✅ Created AGY startup workflow");
   } catch (err: unknown) {
@@ -216,6 +255,7 @@ async function assertSystemState(): Promise<void> {
 async function createFirebaseConfigs(
   rootPath: string,
   projectId: string | undefined,
+  projectType: ProjectType,
 ): Promise<void> {
   if (!projectId) {
     return;
@@ -227,6 +267,11 @@ async function createFirebaseConfigs(
   };
   await fs.writeFile(path.join(rootPath, ".firebaserc"), JSON.stringify(firebaserc, null, 2));
   logger.info("✅ Created .firebaserc");
+
+  if (projectType === "flutter") {
+    // Flutter apps don't typically use App Hosting configs in firebase.json
+    return;
+  }
 
   // firebase.json (App Hosting)
   const firebaseJsonPath = path.join(rootPath, "firebase.json");
@@ -278,23 +323,38 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAgyConfigs(rootPath: string): Promise<void> {
+async function writeAgyConfigs(rootPath: string, projectType: ProjectType): Promise<void> {
   // 5. IDE Configs (VS Code / AGY)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
 
   // Create tasks.json for pre-launch tasks
-  const tasksJson = {
-    version: "2.0.0",
-    tasks: [
-      {
-        label: "npm-install",
-        type: "shell",
-        command: "npm install",
-        problemMatcher: [],
-      },
-    ],
-  };
+  let tasksJson;
+  if (projectType === "flutter") {
+    tasksJson = {
+      version: "2.0.0",
+      tasks: [
+        {
+          label: "flutter-pub-get",
+          type: "shell",
+          command: "flutter pub get",
+          problemMatcher: [],
+        },
+      ],
+    };
+  } else {
+    tasksJson = {
+      version: "2.0.0",
+      tasks: [
+        {
+          label: "npm-install",
+          type: "shell",
+          command: "npm install",
+          problemMatcher: [],
+        },
+      ],
+    };
+  }
   await fs.writeFile(path.join(vscodeDir, "tasks.json"), JSON.stringify(tasksJson, null, 2));
   logger.info("✅ Created .vscode/tasks.json");
 
@@ -321,21 +381,35 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
   logger.info("✅ Updated .vscode/settings.json with startup preferences");
 
-  const launchJson = {
-    version: "0.2.0",
-    configurations: [
-      {
-        type: "node",
-        request: "launch",
-        name: "Next.js: debug server-side",
-        runtimeExecutable: "npm",
-        runtimeArgs: ["run", "dev"],
-        port: 9002,
-        console: "integratedTerminal",
-        preLaunchTask: "npm-install",
-      },
-    ],
-  };
+  let launchJson;
+  if (projectType === "flutter") {
+    launchJson = {
+      version: "0.2.0",
+      configurations: [
+        {
+          name: "Flutter",
+          request: "launch",
+          type: "dart",
+        },
+      ],
+    };
+  } else {
+    launchJson = {
+      version: "0.2.0",
+      configurations: [
+        {
+          type: "node",
+          request: "launch",
+          name: "Next.js: debug server-side",
+          runtimeExecutable: "npm",
+          runtimeArgs: ["run", "dev"],
+          port: 9002,
+          console: "integratedTerminal",
+          preLaunchTask: "npm-install",
+        },
+      ],
+    };
+  }
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
   logger.info("✅ Created .vscode/launch.json");
 }
@@ -423,11 +497,13 @@ export async function migrate(
   await assertSystemState();
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
+  const projectType = await detectProjectType(rootPath);
+  logger.info(`✅ Detected project type: ${projectType}`);
 
-  await updateReadme(rootPath, blueprintContent, appName);
-  await createFirebaseConfigs(rootPath, projectId);
-  await injectAgyContext(rootPath, projectId, appName);
-  await writeAgyConfigs(rootPath);
+  await updateReadme(rootPath, blueprintContent, appName, projectType);
+  await createFirebaseConfigs(rootPath, projectId, projectType);
+  await injectAgyContext(rootPath, projectId, appName, projectType);
+  await writeAgyConfigs(rootPath, projectType);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
@@ -440,3 +516,4 @@ export async function migrate(
 
   await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
 }
+
