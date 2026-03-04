@@ -158,6 +158,57 @@ describe("migrate", () => {
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
     });
+
+    it("should skip the open prompt if agy is missing", async () => {
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => [],
+      } as any);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock execSync to fail (agy missing)
+      const childProcess = require("child_process");
+      sandbox.stub(childProcess, "execSync").throws(new Error("not found"));
+
+      // Mock prompt - should NOT be called
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.false;
+    });
   });
 
   describe("uploadSecrets", () => {

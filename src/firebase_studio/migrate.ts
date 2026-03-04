@@ -3,7 +3,6 @@ import * as path from "path";
 import { execSync, spawn } from "child_process";
 
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
@@ -205,21 +204,22 @@ async function injectAgyContext(
   }
 }
 
-async function assertSystemState(startAgy?: boolean): Promise<void> {
+async function assertSystemState(startAgy?: boolean): Promise<boolean> {
   // Assertion: Check for Antigravity (agy)
   // If we're not starting the IDE, skip the check.
-  if (startAgy === false) {
-    return;
+  if (!startAgy) {
+    return false;
   }
   try {
     execSync("agy --version", { stdio: "ignore" });
     logger.info("✅ Antigravity IDE CLI (agy) detected");
+    return true;
   } catch (err: unknown) {
     const downloadLink = "https://antigravity.google/download";
-    throw new FirebaseError(
-      `Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
-      { exit: 1 },
+    logger.info(
+      `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
     );
+    return false;
   }
 }
 
@@ -432,9 +432,10 @@ async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
   startAgy?: boolean,
+  agyExists?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (startAgy === false) {
+  if (!startAgy || agyExists === false) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -471,7 +472,7 @@ export async function migrate(
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState(options.startAgy);
+  const agyExists = await assertSystemState(options.startAgy);
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
@@ -490,5 +491,5 @@ export async function migrate(
     );
   }
 
-  await askToOpenAntigravity(rootPath, appName, options.startAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAgy, agyExists);
 }
