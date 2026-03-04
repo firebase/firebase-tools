@@ -5,6 +5,8 @@ import * as sinon from "sinon";
 import { migrate } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
+import * as track from "../track";
+import { FirebaseError } from "../error";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -19,7 +21,26 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
-    it("should perform a full migration successfully", async () => {
+    it("should throw error and track start/error if run on Windows", async () => {
+      // Stub process.platform
+      sandbox.stub(process, "platform").value("win32");
+      // Mock trackGA4
+      const trackStub = sandbox.stub(track, "trackGA4").resolves();
+
+      await expect(migrate(testRoot)).to.be.rejectedWith(
+        FirebaseError,
+        "Firebase Studio migration is currently not supported on Windows.",
+      );
+
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "error" }),
+      ).to.be.true;
+    });
+
+    it("should perform a full migration successfully and track start/success", async () => {
+      // Ensure platform is not win32
+      sandbox.stub(process, "platform").value("darwin");
+
       // Stub global fetch
       const fetchStub = sandbox.stub(global, "fetch");
 
@@ -103,6 +124,9 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
+      // Mock trackGA4
+      const trackStub = sandbox.stub(track, "trackGA4").resolves();
+
       // Mock execSync
       const childProcess = require("child_process");
       sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
@@ -122,6 +146,13 @@ describe("migrate", () => {
       ).to.be.true;
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
+
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "started" }),
+      ).to.be.true;
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
+      ).to.be.true;
     });
   });
 });
