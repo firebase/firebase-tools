@@ -63,7 +63,7 @@ describe("migrate", () => {
           return JSON.stringify({ projectId: "test-project", appName: "Test App" });
         }
         if (pStr.endsWith("readme_template.md")) {
-          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}";
+          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}\nRun ${startCommand} at ${localUrl}";
         }
         if (pStr.endsWith("system_instructions_template.md")) {
           return "Project: ${appName}";
@@ -124,12 +124,16 @@ describe("migrate", () => {
           sinon.match(/"backendId": "studio"/),
         ),
       ).to.be.true;
-      expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
-        .true;
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Run npm run dev at http:\/\/localhost:9002/),
+        ),
+      ).to.be.true;
       expect(
         writeStub.calledWith(
           path.join(testRoot, ".vscode", "launch.json"),
-          sinon.match(/Next.js: debug server-side/),
+          sinon.match(/"port": 9002/),
         ),
       ).to.be.true;
     });
@@ -163,7 +167,7 @@ describe("migrate", () => {
           return JSON.stringify({ projectId: "test-project", appName: "Test App" });
         }
         if (pStr.endsWith("readme_template.md")) {
-          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}";
+          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}\nRun ${startCommand} at ${localUrl}";
         }
         if (pStr.endsWith("system_instructions_template.md")) {
           return "Project: ${appName}";
@@ -206,10 +210,18 @@ describe("migrate", () => {
 
       // Verify key files were written
       const writeStub = fs.writeFile as sinon.SinonStub;
+
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Run npm run start at http:\/\/localhost:4200/),
+        ),
+      ).to.be.true;
+
       const launchJsonCall = writeStub.args.find((a) => a[0].endsWith("launch.json"));
       expect(launchJsonCall).to.not.be.undefined;
       expect(launchJsonCall![1]).to.contain("Angular: debug server-side");
-      expect(launchJsonCall![1]).to.contain('"runtimeArgs": [\n        "run",\n        "start"\n      ]');
+      expect(launchJsonCall![1]).to.contain('"port": 4200');
     });
   });
 });

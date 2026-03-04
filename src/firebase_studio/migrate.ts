@@ -109,14 +109,21 @@ async function updateReadme(
   rootPath: string,
   blueprintContent: string,
   appName: string,
+  framework?: string,
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
+
+  const startCommand = framework === "angular" ? "npm run start" : "npm run dev";
+  const localUrl = framework === "angular" ? "http://localhost:4200" : "http://localhost:9002";
+
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim());
+    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
+    .replace("${startCommand}", startCommand)
+    .replace("${localUrl}", localUrl);
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -334,7 +341,7 @@ async function writeAgyConfigs(rootPath: string, framework?: string): Promise<vo
       name: "Angular: debug server-side",
       runtimeExecutable: "npm",
       runtimeArgs: ["run", "start"],
-      port: 9002,
+      port: 4200,
       console: "integratedTerminal",
       preLaunchTask: "npm-install",
     });
@@ -447,7 +454,7 @@ export async function migrate(
     logger.info(`✅ Detected framework: ${framework}`);
   }
 
-  await updateReadme(rootPath, blueprintContent, appName);
+  await updateReadme(rootPath, blueprintContent, appName, framework);
   await createFirebaseConfigs(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath, framework);
