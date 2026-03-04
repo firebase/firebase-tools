@@ -2,9 +2,10 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as sinon from "sinon";
-import { migrate } from "./migrate";
+import { migrate, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
+import * as secrets from "../apphosting/secrets";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -122,6 +123,73 @@ describe("migrate", () => {
       ).to.be.true;
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
         .true;
+    });
+  });
+
+  describe("uploadSecrets", () => {
+    let sandbox: sinon.SinonSandbox;
+    const testRoot = "/test/root";
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should call apphostingSecretsSetAction if .env exists and has a non-blank GEMINI_API_KEY", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY=test-key");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(
+        secretsStub.calledWith(
+          "GEMINI_API_KEY",
+          "test-project",
+          undefined,
+          undefined,
+          path.join(testRoot, ".env"),
+          true,
+        ),
+      ).to.be.true;
+    });
+
+    it("should not call apphostingSecretsSetAction if GEMINI_API_KEY is blank in .env", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY= ");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should not call apphostingSecretsSetAction if GEMINI_API_KEY is missing in .env", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("OTHER_KEY=value");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should not call apphostingSecretsSetAction if .env does not exist", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should do nothing if projectId is undefined", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      await uploadSecrets(testRoot, undefined);
+      expect(secretsStub.called).to.be.false;
     });
   });
 });

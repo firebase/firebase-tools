@@ -8,6 +8,8 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import { apphostingSecretsSetAction } from "../apphosting/secrets";
+import * as env from "../functions/env";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
@@ -377,7 +379,49 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     logger.debug(`Could not delete ${modifiedPath}: ${err}`);
   }
 }
+
+export async function uploadSecrets(rootPath: string, projectId: string | undefined): Promise<void> {
+  if (!projectId) {
+    return;
+  }
+
+  const envPath = path.join(rootPath, ".env");
+  let envExists = false;
+  try {
+    await fs.access(envPath);
+    envExists = true;
+  } catch {
+    // .env does not exist
+  }
+
+  if (envExists) {
+    try {
+      const envContent = await fs.readFile(envPath, "utf8");
+      const parsedEnv = env.parse(envContent);
+      const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
+
+      if (geminiApiKey && geminiApiKey.trim().length > 0) {
+        logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
+        await apphostingSecretsSetAction(
+          "GEMINI_API_KEY",
+          projectId,
+          undefined,
+          undefined,
+          envPath,
+          true,
+        );
+        logger.info("✅ Uploaded GEMINI_API_KEY secret");
+      } else {
+        logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
+      }
+    } catch (err: unknown) {
+      utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+    }
+  }
+}
+
 async function askToOpenAntigravity(
+
   rootPath: string,
   appName: string,
   noStartAgyFlag: boolean,
@@ -426,6 +470,7 @@ export async function migrate(
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
+  await uploadSecrets(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath);
   await cleanupUnusedFiles(rootPath);
