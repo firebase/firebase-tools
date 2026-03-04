@@ -97,7 +97,8 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
       const uploadTasks: UploadTask[] = [];
       const mapFilePathsSet = new Set(mapFiles.map((f) => f.name));
-      const mappedPhysicalFiles = new Set<string>();
+      // Set to track map files that were linked from a JS file (via `sourceMappingURL` comment)
+      const mapFilesLinkedInJsComment = new Set<string>();
 
       for (const jsFile of jsFiles) {
         const jsContent = fs.readFileSync(jsFile.name, "utf-8");
@@ -111,14 +112,14 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
               mapFilePath: expectedMapFilePath,
               obfuscatedFilePath: path.relative(rootDir, path.resolve(`${jsFile.name}.map`)),
             });
-            mappedPhysicalFiles.add(expectedMapFilePath);
+            mapFilesLinkedInJsComment.add(expectedMapFilePath);
           }
         }
       }
 
       // Add map files that were not linked from any JS file
       for (const mapFile of mapFiles) {
-        if (!mappedPhysicalFiles.has(mapFile.name)) {
+        if (!mapFilesLinkedInJsComment.has(mapFile.name)) {
           uploadTasks.push({
             mapFilePath: mapFile.name,
             obfuscatedFilePath: path.relative(rootDir, path.resolve(mapFile.name)),
