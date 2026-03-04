@@ -30,7 +30,7 @@ const AiStepSchema = z
       .string()
       .optional()
       .describe(
-        "A description of criteria the agent should use to determine if the goal has been successfully completed.",
+        "A description of what the screen should look like at the end of the step, to determine if the goal has been successfully completed.",
       ),
   })
   .describe("Step within a test case; run during the execution of the test.");
