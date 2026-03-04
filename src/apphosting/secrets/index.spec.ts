@@ -425,12 +425,10 @@ describe("secrets", () => {
   describe("apphostingSecretsSetAction", () => {
     let selectBackendServiceAccounts: sinon.SinonStub;
     let maybeAddSecretToYaml: sinon.SinonStub;
-    let getProject: sinon.SinonStub;
 
     beforeEach(() => {
       selectBackendServiceAccounts = sinon.stub(dialogs, "selectBackendServiceAccounts");
       maybeAddSecretToYaml = sinon.stub(config, "maybeAddSecretToYaml");
-      getProject = sinon.stub(projects, "getProject");
     });
 
     it("aborts if upsertSecret returns null", async () => {
