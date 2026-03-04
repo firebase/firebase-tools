@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import { join } from "path";
 import { Client } from "../../../apiv2";
+import { discover, WebFrameworks } from "../../../frameworks";
 import * as github from "./github";
 import { confirm, input } from "../../../prompt";
 import { logger } from "../../../logger";
@@ -19,6 +20,7 @@ const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
 export interface RequiredInfo {
+  redirectToAppHosting?: boolean;
   newSiteId?: string;
   public?: string;
   spa?: boolean;
@@ -27,6 +29,62 @@ export interface RequiredInfo {
 // TODO: come up with a better way to type this
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
+  const discoveredFramework = await discover(config.projectDir, false);
+  if (discoveredFramework && discoveredFramework.mayWantBackend) {
+    const frameworkName =
+      WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
+
+    switch (discoveredFramework.framework) {
+      case "next":
+      case "angular":
+      case "nuxt":
+      case "nuxt2":
+      case "express":
+      // "svelekit" should not be removed unless it's confirmed to not cause breakages.
+      case "svelekit":
+      case "sveltekit":
+        logger.info();
+        const useAppHosting = await confirm({
+          message:
+            `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps. Would ` +
+            `you like to use App Hosting instead? Learn more here: ` +
+            `https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+          default: true,
+        });
+        if (useAppHosting) {
+          setup.featureInfo ||= {};
+          setup.featureInfo.hosting = { redirectToAppHosting: true };
+          setup.features?.unshift("apphosting");
+          return;
+        }
+        break;
+
+      default:
+        logger.info();
+        logger.info(
+          `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps.`,
+        );
+        logger.info(
+          `Learn about App Hosting here: https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+        );
+        logger.info(
+          `Learn how to deploy frameworks with App Hosting here: https://firebase.blog/posts/2025/06/app-hosting-frameworks/`,
+        );
+        const continueWithHosting = await confirm({
+          message: `Would you like to continue setting up Firebase Hosting?`,
+          default: false,
+        });
+        if (!continueWithHosting) {
+          throw new FirebaseError("Hosting initialization cancelled.", { exit: 1 });
+        }
+        break;
+    }
+  }
+
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.hosting = {};
 
@@ -91,6 +149,10 @@ export async function actuate(setup: Setup, config: Config, options: Options): P
       "Could not find hosting info in setup.featureInfo.hosting. This should not happen.",
       { exit: 2 },
     );
+  }
+
+  if (hostingInfo.redirectToAppHosting) {
+    return;
   }
 
   if (hostingInfo.newSiteId && setup.projectId) {
