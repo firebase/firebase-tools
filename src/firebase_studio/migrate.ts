@@ -8,6 +8,7 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import { discover } from "../frameworks";
 
 export interface MigrateOptions {
   noStartAgy: boolean;
@@ -278,7 +279,7 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAgyConfigs(rootPath: string): Promise<void> {
+async function writeAgyConfigs(rootPath: string, framework?: string): Promise<void> {
   // 5. IDE Configs (VS Code / AGY)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
@@ -321,21 +322,36 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
   logger.info("✅ Updated .vscode/settings.json with startup preferences");
 
-  const launchJson = {
+  const launchJson: any = {
     version: "0.2.0",
-    configurations: [
-      {
-        type: "node",
-        request: "launch",
-        name: "Next.js: debug server-side",
-        runtimeExecutable: "npm",
-        runtimeArgs: ["run", "dev"],
-        port: 9002,
-        console: "integratedTerminal",
-        preLaunchTask: "npm-install",
-      },
-    ],
+    configurations: [],
   };
+
+  if (framework === "angular") {
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Angular: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "start"],
+      port: 9002,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  } else {
+    // Default to Next.js (or "next" in discovery)
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Next.js: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "dev"],
+      port: 9002,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  }
+
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
   logger.info("✅ Created .vscode/launch.json");
 }
@@ -424,10 +440,17 @@ export async function migrate(
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
 
+  // Framework detection
+  const discovery = await discover(rootPath);
+  const framework = discovery?.framework;
+  if (framework) {
+    logger.info(`✅ Detected framework: ${framework}`);
+  }
+
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
-  await writeAgyConfigs(rootPath);
+  await writeAgyConfigs(rootPath, framework);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
