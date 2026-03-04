@@ -9,7 +9,7 @@ import { FirebaseError, getError } from "../error";
 import { marked } from "marked";
 import { AppDistributionClient } from "../appdistribution/client";
 import { Distribution, upload } from "../appdistribution/distribution";
-import { AIInstruction, ReleaseTest, TestDevice } from "../appdistribution/types";
+import { AiInstructions, ReleaseTest, TestDevice } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
 
 const defaultDevices = [
@@ -102,14 +102,14 @@ async function invokeTests(
   try {
     const testInvocations: ReleaseTest[] = [];
     for (const testDef of testDefs) {
-      const aiInstruction: AIInstruction = {
+      const aiInstructions: AiInstructions = {
         steps: testDef.testCase.steps,
       };
       testInvocations.push(
         await client.createReleaseTest(
           releaseName,
           devices,
-          aiInstruction,
+          aiInstructions,
           undefined,
           undefined,
           testDef.testCase.displayName,
