@@ -5,6 +5,7 @@
 The App Hosting emulator enforced overly restrictive validation that rejected any custom start command containing `--port` or `-p` flags. This validation threw a `FirebaseError` and prevented legitimate use cases where developers need explicit port control in their custom commands.
 
 **Previous behavior:**
+
 ```typescript
 if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
   throw new FirebaseError(
@@ -14,6 +15,7 @@ if (startCommand.includes("--port") || startCommand.includes(" -p ")) {
 ```
 
 This blanket rejection was problematic for:
+
 - Framework-specific configurations requiring explicit port binding
 - Custom wrapper scripts that manage port allocation
 - Development workflows where port specification is part of the command chain
@@ -23,9 +25,11 @@ This blanket rejection was problematic for:
 This PR refactors the port handling logic to be more permissive while maintaining intelligent defaults:
 
 ### 1. Removed Restrictive Validation
+
 Eliminated the error-throwing validation that blocked port flags entirely.
 
 ### 2. Conditional Port Injection for Angular CLI
+
 Angular CLI doesn't respect the `PORT` environment variable, so we conditionally append `--port` only when not already present. Uses robust regex detection to avoid duplicate port flags:
 
 ```typescript
@@ -42,6 +46,7 @@ if (startCommand.includes("ng serve") && !hasPortFlag) {
 ```
 
 ### 3. Port Mismatch Detection & Warning
+
 Added regex-based port extraction to detect user-specified ports and warn on mismatches. Uses the same regex for both detection and validation to avoid code duplication:
 
 ```typescript
@@ -61,10 +66,12 @@ if (hasPortFlag) {
 ## Technical Changes
 
 **Modified Files:**
+
 - `src/emulator/apphosting/serve.ts` - Core port handling logic
 - `src/emulator/apphosting/serve.spec.ts` - Updated test suite
 
 **Key Improvements:**
+
 - Replaced imperative validation with declarative conditional logic
 - Robust regex pattern matching for port extraction: `/--port[= ]?(\d+)|-p[= ]?(\d+)/`
   - Handles: `--port 5002`, `--port=5002`, `-p 5002`, `-p=5002`
@@ -113,6 +120,7 @@ it("should handle --port=5003 format and warn on mismatch", async () => {
 ```
 
 **Test Coverage:**
+
 - ✅ Custom commands with explicit ports are accepted without modification
 - ✅ Angular commands without ports receive automatic `--port` injection
 - ✅ Angular commands with ports are passed through unchanged
@@ -122,6 +130,7 @@ it("should handle --port=5003 format and warn on mismatch", async () => {
 - ✅ No regression in existing emulator functionality
 
 **Test Results:**
+
 ```
   serve
     start
@@ -149,24 +158,29 @@ it("should handle --port=5003 format and warn on mismatch", async () => {
 ## Code Review Feedback Addressed
 
 ### 1. Improved Regex Pattern
+
 **Feedback:** The check `!startCommand.includes(" -p ")` is fragile and won't catch `-p=5002`.
 
 **Resolution:** Updated regex to `/--port[= ]?(\d+)|-p[= ]?(\d+)/` with optional `?` quantifier to handle all formats including `--port=5002` and `-p=5002`.
 
 ### 2. Added Radix to parseInt()
+
 **Feedback:** Always provide a radix to `parseInt()` to prevent unexpected behavior.
 
 **Resolution:** Changed `parseInt(portMatch[1] || portMatch[2])` to `parseInt(portMatch[1] || portMatch[2], 10)`.
 
 ### 3. Refactored Port Detection Logic
+
 **Feedback:** Use the same regex for both detection and extraction to avoid code duplication.
 
 **Resolution:** Extract port early with `portMatch` and reuse `hasPortFlag` boolean for both Angular CLI detection and warning logic.
 
 ### 4. Enhanced Test Coverage
+
 **Feedback:** Add assertions for warning logs to ensure the warning logic behaves correctly.
 
-**Resolution:** 
+**Resolution:**
+
 - Added `logLabeledWarningStub` to test setup
 - Added assertions in tests to verify warning is called/not called appropriately
 - Added new test cases for different port flag formats

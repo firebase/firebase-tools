@@ -33,3 +33,6 @@ dev/
 clean/
 .gemini/
 .env
+.kiro
+.PR_APPHOSTING_PORT_VALIDATION.md
+
