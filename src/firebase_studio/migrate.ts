@@ -380,48 +380,47 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   }
 }
 
-export async function uploadSecrets(rootPath: string, projectId: string | undefined): Promise<void> {
+export async function uploadSecrets(
+  rootPath: string,
+  projectId: string | undefined,
+): Promise<void> {
   if (!projectId) {
     return;
   }
 
   const envPath = path.join(rootPath, ".env");
-  let envExists = false;
   try {
     await fs.access(envPath);
-    envExists = true;
   } catch {
     // .env does not exist
+    return;
   }
 
-  if (envExists) {
-    try {
-      const envContent = await fs.readFile(envPath, "utf8");
-      const parsedEnv = env.parse(envContent);
-      const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
+  try {
+    const envContent = await fs.readFile(envPath, "utf8");
+    const parsedEnv = env.parse(envContent);
+    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
 
-      if (geminiApiKey && geminiApiKey.trim().length > 0) {
-        logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
-        await apphostingSecretsSetAction(
-          "GEMINI_API_KEY",
-          projectId,
-          undefined,
-          undefined,
-          envPath,
-          true,
-        );
-        logger.info("✅ Uploaded GEMINI_API_KEY secret");
-      } else {
-        logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
-      }
-    } catch (err: unknown) {
-      utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+    if (geminiApiKey && geminiApiKey.trim().length > 0) {
+      logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
+      await apphostingSecretsSetAction(
+        "GEMINI_API_KEY",
+        projectId,
+        undefined, // projectNumber
+        undefined, // location
+        envPath,
+        true, // nonInteractive
+      );
+      logger.info("✅ Uploaded GEMINI_API_KEY secret");
+    } else {
+      logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
+  } catch (err: unknown) {
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
   }
 }
 
 async function askToOpenAntigravity(
-
   rootPath: string,
   appName: string,
   noStartAgyFlag: boolean,
