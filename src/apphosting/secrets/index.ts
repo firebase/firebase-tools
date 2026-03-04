@@ -259,6 +259,37 @@ export async function fetchSecrets(
 }
 
 /**
+ * High-level function to create or update a secret and grant access to service accounts.
+ * This is a non-interactive version of the logic found in apphosting:secrets:set.
+ * @returns true if a secret was created, false if it already existed, or null if aborted.
+ */
+export async function upsertSecretValueAndGrantAccess(
+  projectId: string,
+  projectNumber: string,
+  secretName: string,
+  secretValue: string,
+  location?: string,
+  accounts?: MultiServiceAccounts,
+): Promise<boolean | null> {
+  const created = await upsertSecret(projectId, secretName, location);
+  if (created === null) {
+    return null;
+  }
+  if (created) {
+    utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
+  }
+
+  const version = await gcsm.addVersion(projectId, secretName, secretValue);
+  utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+
+  if (accounts && (accounts.buildServiceAccounts.length || accounts.runServiceAccounts.length)) {
+    await grantSecretAccess(projectId, projectNumber, secretName, accounts);
+  }
+
+  return created;
+}
+
+/**
  * secret expected to be in format "myApiKeySecret@5",
  * "projects/test-project/secrets/secretID", or
  * "projects/test-project/secrets/secretID/versions/5"

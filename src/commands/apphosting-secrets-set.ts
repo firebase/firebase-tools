@@ -39,20 +39,22 @@ export const command = new Command("apphosting:secrets:set <secretName>")
     const projectId = needProjectId(options);
     const projectNumber = await needProjectNumber(options);
 
-    const created = await secrets.upsertSecret(projectId, secretName, options.location as string);
-    if (created === null) {
-      return;
-    } else if (created) {
-      utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
-    }
-
     const secretValue = await utils.readSecretValue(
       `Enter a value for ${secretName}`,
       options.dataFile as string | undefined,
     );
 
-    const version = await gcsm.addVersion(projectId, secretName, secretValue);
-    utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+    const created = await secrets.upsertSecretValueAndGrantAccess(
+      projectId,
+      projectNumber,
+      secretName,
+      secretValue,
+      options.location as string,
+    );
+    if (created === null) {
+      return;
+    }
+
     utils.logBullet(
       `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
     );
