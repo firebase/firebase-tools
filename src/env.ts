@@ -8,8 +8,13 @@ export function isFirebaseStudio() {
   return googleIdxFolderExists;
 }
 
+let isFirebaseMcpFlag = false;
 export function isFirebaseMcp() {
-  return !!process.env.IS_FIREBASE_MCP;
+  return isFirebaseMcpFlag;
+}
+
+export function setFirebaseMcp(value: boolean) {
+  isFirebaseMcpFlag = value;
 }
 
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.

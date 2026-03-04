@@ -4,6 +4,7 @@ import { logger } from "../logger";
 import { Browser, TestCaseInvocation, TestStep } from "./types";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { FirebaseError, getErrMsg, getError } from "../error";
+import { fromYamlStep, YamlStep } from "../appdistribution/yaml_helper";
 
 export async function parseTestFiles(
   dir: string,
@@ -143,7 +144,7 @@ function toTestCaseInvocation(
       prerequisiteTestCaseId: testDef.prerequisiteTestCaseId,
       startUri: targetUri + route,
       displayName: testDef.displayName,
-      steps: steps,
+      steps: steps.map((step: YamlStep) => fromYamlStep(step)),
     },
     testExecution: browsers.map((browser) => ({ config: { browser } })),
   };

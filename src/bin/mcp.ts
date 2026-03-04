@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
+import { setFirebaseMcp } from "../env";
 import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
 import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
@@ -112,7 +113,7 @@ export async function mcp(): Promise<void> {
     earlyExit = true;
   }
   if (values["generate-tool-list"]) {
-    console.log(markdownDocsOfTools());
+    console.log(await markdownDocsOfTools());
     earlyExit = true;
   }
   if (values["generate-prompt-list"]) {
@@ -125,7 +126,7 @@ export async function mcp(): Promise<void> {
   }
   if (earlyExit) return;
 
-  process.env.IS_FIREBASE_MCP = "true";
+  setFirebaseMcp(true);
   useFileLogger();
   const activeFeatures = (values.only || "")
     .split(",")
