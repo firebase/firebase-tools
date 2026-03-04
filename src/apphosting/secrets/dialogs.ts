@@ -116,7 +116,7 @@ export const GRANT_ACCESS_IN_FUTURE = `To grant access in the future, run ${clc.
 export async function selectBackendServiceAccounts(
   projectNumber: string,
   projectId: string,
-  options: any,
+  nonInteractive: boolean,
 ): Promise<MultiServiceAccounts> {
   const listBackends = await apphosting.listBackends(projectId, "-");
 
@@ -134,7 +134,7 @@ export async function selectBackendServiceAccounts(
 
   if (listBackends.backends.length === 1) {
     const grant = await prompt.confirm({
-      nonInteractive: options.nonInteractive,
+      nonInteractive,
       default: true,
       message:
         "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
@@ -157,7 +157,7 @@ export async function selectBackendServiceAccounts(
         ".\nGranting access to one backend will grant access to all backends.",
     );
     const grant = await prompt.confirm({
-      nonInteractive: options.nonInteractive,
+      nonInteractive,
       default: true,
       message: "Would you like to grant access to all backends now?",
     });
