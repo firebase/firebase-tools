@@ -317,7 +317,7 @@ export async function apphostingSecretsSetAction(
       { name: "Production", value: "production" },
       { name: "Local testing only", value: "local" },
     ],
-    nonInteractive,
+    nonInteractive: !!nonInteractive,
     default: "production",
   });
 

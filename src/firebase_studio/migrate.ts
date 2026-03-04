@@ -12,7 +12,8 @@ import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
 
 export interface MigrateOptions {
-  noStartAgy: boolean;
+  project?: string;
+  startAgy?: boolean;
 }
 
 interface GitHubItem {
@@ -51,7 +52,10 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-async function extractMetadata(rootPath: string): Promise<{
+export async function extractMetadata(
+  rootPath: string,
+  overrideProjectId?: string,
+): Promise<{
   projectId: string | undefined;
   appName: string;
   blueprintContent: string;
@@ -66,7 +70,7 @@ async function extractMetadata(rootPath: string): Promise<{
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
-  let projectId = metadata.projectId;
+  let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
     try {
@@ -201,8 +205,12 @@ async function injectAgyContext(
   }
 }
 
-async function assertSystemState(): Promise<void> {
+async function assertSystemState(startAgy?: boolean): Promise<void> {
   // Assertion: Check for Antigravity (agy)
+  // If we're not starting the IDE, skip the check.
+  if (startAgy === false) {
+    return;
+  }
   try {
     execSync("agy --version", { stdio: "ignore" });
     logger.info("✅ Antigravity IDE CLI (agy) detected");
@@ -423,10 +431,10 @@ export async function uploadSecrets(
 async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
-  noStartAgyFlag: boolean,
+  startAgy?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (noStartAgyFlag) {
+  if (startAgy === false) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -459,13 +467,13 @@ async function askToOpenAntigravity(
 
 export async function migrate(
   rootPath: string,
-  options: MigrateOptions = { noStartAgy: false },
+  options: MigrateOptions = { startAgy: true },
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState();
+  await assertSystemState(options.startAgy);
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
+  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
@@ -482,5 +490,5 @@ export async function migrate(
     );
   }
 
-  await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }
