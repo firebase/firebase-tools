@@ -200,7 +200,7 @@ describe("migrate", () => {
       sandbox.stub(prompt, "confirm").resolves(false);
 
       // Mock framework discovery as Angular
-      sandbox.stub(frameworks, "discover").resolves({ framework: "angular" } as any);
+      sandbox.stub(frameworks, "discover").resolves({ framework: "angular", mayWantBackend: true });
 
       // Mock execSync
       const childProcess = require("child_process");
