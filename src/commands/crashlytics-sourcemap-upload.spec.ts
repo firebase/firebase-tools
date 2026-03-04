@@ -16,6 +16,7 @@ const PROJECT_ID = "test-project";
 const PROJECT_NUMBER = "12345";
 const BUCKET_NAME = "test-bucket";
 const DIR_PATH = "src/test/fixtures/mapping-files";
+const DIR_WITH_JS_PATH = "src/test/fixtures/mapping-files-with-js";
 const FILE_PATH = "src/test/fixtures/mapping-files/mock_mapping.js.map";
 
 describe("crashlytics:sourcemap:upload", () => {
@@ -128,7 +129,6 @@ describe("crashlytics:sourcemap:upload", () => {
 
   it("should find and upload mapping files in the current directory if no path is provided", async () => {
     await command.runner()(undefined, { app: "test-app" });
-    expect(gcsMock.uploadObject).to.be.calledTwice;
     const uploadedFiles = gcsMock.uploadObject
       .getCalls()
       .map((call) => call.args[0].file)
@@ -139,6 +139,40 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(uploadedFiles[1]).to.match(
       /test-app-.*-src-test-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
     );
+    expect(uploadedFiles[2]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
+    );
+    expect(uploadedFiles[3]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
+    );
+  });
+
+  it("should find obfuscated mapping files linked by sourceMappingURL in a directory", async () => {
+    await command.runner()(DIR_WITH_JS_PATH, {
+      app: "test-app",
+    });
+    expect(gcsMock.uploadObject).to.be.calledTwice;
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+
+    // The zip name is based on the obfuscated path, so the first one is the "main.js.map" pretending to be the name
+    expect(uploadedFiles[0]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
+    );
+    expect(uploadedFiles[1]).to.match(
+      /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
+    );
+
+    expect(clientPostStub).to.be.calledTwice;
+    const apiPayloads = clientPostStub
+      .getCalls()
+      .map((call) => call.args[1].sourceMap.obfuscatedFilePath)
+      .sort();
+
+    expect(apiPayloads[0]).to.equal("src/test/fixtures/mapping-files-with-js/main.js.map");
+    expect(apiPayloads[1]).to.equal("src/test/fixtures/mapping-files-with-js/other.js.map");
   });
 
   it("should use the provided app version", async () => {
