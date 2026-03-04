@@ -55,10 +55,31 @@ async function getDatabase(project: string, databaseId: string): Promise<firesto
 export async function ensureFirestoreTriggerRegion(
   endpoint: backend.Endpoint & backend.EventTriggered,
 ): Promise<void> {
-  const db = await getDatabase(
-    endpoint.project,
-    endpoint.eventTrigger.eventFilters?.database || "(default)",
-  );
+  let database = endpoint.eventTrigger.eventFilters?.database;
+  if (!database) {
+    const resource = endpoint.eventTrigger.eventFilters?.resource;
+    const match = resource?.match(/^projects\/[^/]+\/databases\/([^/]+)/);
+    if (match) {
+      database = match[1];
+    } else {
+      database = "(default)";
+    }
+  }
+
+  let db: firestore.Database;
+  try {
+    db = await getDatabase(endpoint.project, database);
+  } catch (err: any) {
+    if (err.status === 404) {
+      throw new FirebaseError(
+        `Firestore database '${database}' does not exist in project '${endpoint.project}'. ` +
+          `Please create the database first by visiting: ` +
+          `https://console.firebase.google.com/project/${endpoint.project}/firestore`,
+      );
+    }
+    throw err;
+  }
+
   const dbRegion = db.locationId;
   if (!endpoint.eventTrigger.region) {
     endpoint.eventTrigger.region = dbRegion;

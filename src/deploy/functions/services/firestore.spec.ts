@@ -77,6 +77,21 @@ describe("ensureFirestoreTriggerRegion", () => {
     expect(ep.eventTrigger.region).to.eq("nam5");
   });
 
+  it("should parse database from resource if database is not set", async () => {
+    firestoreStub.resolves(databaseResp);
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { resource: "projects/123456789/databases/my-db/documents/foo/bar" },
+      },
+    };
+
+    await ensureFirestoreTriggerRegion(ep);
+
+    expect(firestoreStub).to.have.been.calledWith(projectNumber, "my-db");
+    expect(ep.eventTrigger.region).to.eq("nam5");
+  });
+
   it("should cache database lookups to prevent multiple API calls", async () => {
     firestoreStub.resolves(databaseResp);
     const ep1: any = {
@@ -121,5 +136,54 @@ describe("ensureFirestoreTriggerRegion", () => {
     await Promise.all([ensureFirestoreTriggerRegion(ep1), ensureFirestoreTriggerRegion(ep2)]);
 
     expect(firestoreStub).to.have.been.calledTwice;
+  });
+
+  it("should throw a helpful error when database does not exist (404)", async () => {
+    const error404 = new Error("Not found");
+    (error404 as any).status = 404;
+    firestoreStub.rejects(error404);
+
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+
+    await expect(ensureFirestoreTriggerRegion(ep)).to.be.rejectedWith(
+      `Firestore database '(default)' does not exist in project '${projectNumber}'`,
+    );
+  });
+
+  it("should throw a helpful error for non-default database that does not exist", async () => {
+    const error404 = new Error("Not found");
+    (error404 as any).status = 404;
+    firestoreStub.rejects(error404);
+
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "my-custom-db" },
+      },
+    };
+
+    await expect(ensureFirestoreTriggerRegion(ep)).to.be.rejectedWith(
+      `Firestore database 'my-custom-db' does not exist in project '${projectNumber}'`,
+    );
+  });
+
+  it("should rethrow non-404 errors", async () => {
+    const error500 = new Error("Internal server error");
+    (error500 as any).status = 500;
+    firestoreStub.rejects(error500);
+
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+
+    await expect(ensureFirestoreTriggerRegion(ep)).to.be.rejectedWith("Internal server error");
   });
 });
