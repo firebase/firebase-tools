@@ -57,7 +57,9 @@ export async function ensureFirestoreTriggerRegion(
 ): Promise<void> {
   const database =
     endpoint.eventTrigger.eventFilters?.database ||
-    endpoint.eventTrigger.eventFilters?.resource?.match(/^projects\/[^/]+\/databases\/([^/]+)/)?.[1] ||
+    endpoint.eventTrigger.eventFilters?.resource?.match(
+      /^projects\/[^/]+\/databases\/([^/]+)/,
+    )?.[1] ||
     "(default)";
 
   let db: firestore.Database;
@@ -65,11 +67,25 @@ export async function ensureFirestoreTriggerRegion(
     db = await getDatabase(endpoint.project, database);
   } catch (err: unknown) {
     if (err instanceof FirebaseError && err.status === 404) {
-      throw new FirebaseError(
-        `Firestore database '${database}' does not exist in project '${endpoint.project}'. ` +
-          `Please create the database first by visiting: ` +
-          `https://console.firebase.google.com/project/${endpoint.project}/firestore`,
-      );
+      let errorMessage = `Firestore database '${database}' does not exist in project '${endpoint.project}'. `;
+
+      // Special case: help users distinguish between "(default)" and "default"
+      if (database === "(default)") {
+        errorMessage +=
+          `Note: The reserved database ID is "(default)" with parentheses. ` +
+          `If you created a database named "default" (without parentheses), you need to explicitly specify it in your function configuration. `;
+      } else if (database === "default") {
+        errorMessage +=
+          `Note: You're trying to use a database named "default" (without parentheses). ` +
+          `This is different from the reserved "(default)" database ID. ` +
+          `Make sure this database exists, or use "(default)" for the default database. `;
+      }
+
+      errorMessage +=
+        `Please create the database or verify its name by visiting: ` +
+        `https://console.firebase.google.com/project/${endpoint.project}/firestore`;
+
+      throw new FirebaseError(errorMessage);
     }
     throw err;
   }

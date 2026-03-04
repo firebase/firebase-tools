@@ -186,4 +186,44 @@ describe("ensureFirestoreTriggerRegion", () => {
 
     await expect(ensureFirestoreTriggerRegion(ep)).to.be.rejectedWith("Internal server error");
   });
+
+  it("should provide helpful guidance when (default) database doesn't exist", async () => {
+    const error404 = new Error("Not found");
+    (error404 as any).status = 404;
+    firestoreStub.rejects(error404);
+
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+
+    await expect(ensureFirestoreTriggerRegion(ep))
+      .to.be.rejectedWith(
+        `Firestore database '(default)' does not exist in project '${projectNumber}'`,
+      )
+      .and.to.match(/The reserved database ID is "\(default\)" with parentheses/)
+      .and.to.match(/If you created a database named "default" \(without parentheses\)/);
+  });
+
+  it("should provide helpful guidance when 'default' (without parentheses) database doesn't exist", async () => {
+    const error404 = new Error("Not found");
+    (error404 as any).status = 404;
+    firestoreStub.rejects(error404);
+
+    const ep: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "default" },
+      },
+    };
+
+    await expect(ensureFirestoreTriggerRegion(ep))
+      .to.be.rejectedWith(
+        `Firestore database 'default' does not exist in project '${projectNumber}'`,
+      )
+      .and.to.match(/You're trying to use a database named "default" \(without parentheses\)/)
+      .and.to.match(/This is different from the reserved "\(default\)" database ID/);
+  });
 });
