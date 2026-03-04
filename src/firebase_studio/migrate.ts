@@ -203,8 +203,12 @@ async function injectAgyContext(
   }
 }
 
-async function assertSystemState(): Promise<void> {
+async function assertSystemState(startAgy?: boolean): Promise<void> {
   // Assertion: Check for Antigravity (agy)
+  // If we're not starting the IDE, skip the check.
+  if (startAgy === false) {
+    return;
+  }
   try {
     execSync("agy --version", { stdio: "ignore" });
     logger.info("✅ Antigravity IDE CLI (agy) detected");
@@ -424,7 +428,7 @@ export async function migrate(
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState();
+  await assertSystemState(options.startAgy);
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
