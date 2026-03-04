@@ -11,7 +11,6 @@ import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
 import * as dialogs from "./dialogs";
 import * as config from "../config";
-import * as projects from "../../management/projects";
 
 import { Secret } from "../yaml";
 import { FirebaseError } from "../../error";
