@@ -28,7 +28,7 @@ interface SourceMap {
   fileUri: string;
 }
 
-interface UploadTask {
+interface SourceMapMapping {
   mapFilePath: string;
   obfuscatedFilePath: string;
 }
@@ -92,47 +92,14 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
         maxDepth: 20,
       });
 
-      const jsFiles = files.filter((f) => f.name.endsWith(".js"));
-      const mapFiles = files.filter((f) => f.name.endsWith(".js.map"));
-
-      const uploadTasks: UploadTask[] = [];
-      const mapFilePathsSet = new Set(mapFiles.map((f) => f.name));
-      // Set to track map files that were linked from a JS file (via `sourceMappingURL` comment)
-      const mapFilesLinkedInJsComment = new Set<string>();
-
-      for (const jsFile of jsFiles) {
-        const jsContent = fs.readFileSync(jsFile.name, "utf-8");
-        const match = jsContent.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
-        if (match) {
-          const sourceMappingURL = match[1].trim();
-          const expectedMapFilePath = path.join(path.dirname(jsFile.name), sourceMappingURL);
-
-          if (mapFilePathsSet.has(expectedMapFilePath)) {
-            uploadTasks.push({
-              mapFilePath: expectedMapFilePath,
-              obfuscatedFilePath: path.relative(rootDir, path.resolve(`${jsFile.name}.map`)),
-            });
-            mapFilesLinkedInJsComment.add(expectedMapFilePath);
-          }
-        }
-      }
-
-      // Add map files that were not linked from any JS file
-      for (const mapFile of mapFiles) {
-        if (!mapFilesLinkedInJsComment.has(mapFile.name)) {
-          uploadTasks.push({
-            mapFilePath: mapFile.name,
-            obfuscatedFilePath: path.relative(rootDir, path.resolve(mapFile.name)),
-          });
-        }
-      }
+      const mappings = findSourceMapMappings(files, rootDir);
 
       const results = await Promise.all(
-        uploadTasks.map((task) =>
+        mappings.map((mapping) =>
           uploadMap(
             projectId,
-            task.mapFilePath,
-            task.obfuscatedFilePath,
+            mapping.mapFilePath,
+            mapping.obfuscatedFilePath,
             bucketName,
             appVersion,
             options,
@@ -144,7 +111,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
         if (success) {
           successCount++;
         } else {
-          failedFiles.push(uploadTasks[i].mapFilePath);
+          failedFiles.push(mappings[i].mapFilePath);
         }
       });
     } else {
@@ -163,6 +130,49 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       );
     }
   });
+
+function findSourceMapMappings(files: { name: string }[], rootDir: string): SourceMapMapping[] {
+  const jsFiles = files.filter((f) => f.name.endsWith(".js"));
+  const mapFiles = files.filter((f) => f.name.endsWith(".js.map"));
+
+  const mappings: SourceMapMapping[] = [];
+  const mapFilePathsSet = new Set(mapFiles.map((f) => f.name));
+  // Set to track map files that were linked from a JS file (via `sourceMappingURL` comment)
+  const mapFilesLinkedInJsComment = new Set<string>();
+
+  for (const jsFile of jsFiles) {
+    const mapFilePath = getLinkedSourceMapPath(jsFile.name);
+    if (mapFilePath && mapFilePathsSet.has(mapFilePath)) {
+      mappings.push({
+        mapFilePath,
+        obfuscatedFilePath: path.relative(rootDir, path.resolve(`${jsFile.name}.map`)),
+      });
+      mapFilesLinkedInJsComment.add(mapFilePath);
+    }
+  }
+
+  // Add map files that were not linked from any JS file
+  for (const mapFile of mapFiles) {
+    if (!mapFilesLinkedInJsComment.has(mapFile.name)) {
+      mappings.push({
+        mapFilePath: mapFile.name,
+        obfuscatedFilePath: path.relative(rootDir, path.resolve(mapFile.name)),
+      });
+    }
+  }
+
+  return mappings;
+}
+
+function getLinkedSourceMapPath(jsFilePath: string): string | undefined {
+  const jsContent = fs.readFileSync(jsFilePath, "utf-8");
+  const match = jsContent.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
+  if (match) {
+    const sourceMappingURL = match[1].trim();
+    return path.join(path.dirname(jsFilePath), sourceMappingURL);
+  }
+  return undefined;
+}
 
 function checkGoogleAppID(options: CommandOptions): void {
   if (!options.app) {
