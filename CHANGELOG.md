@@ -1,3 +1,4 @@
+- MCP now prefers the project from Application Default Credentials and no longer fails startup when billing checks are unauthorized (#9983)
 - Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
 - Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
 - Detects when App Hosting fails to deploy, returning an error. (#8866)

@@ -24,7 +24,7 @@ import {
   SetLevelRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import * as crossSpawn from "cross-spawn";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { Command } from "../command";
 import { Config } from "../config";
 import { configstore } from "../configstore";
@@ -77,6 +77,7 @@ export class FirebaseMcpServer {
   clientInfo?: { name?: string; version?: string };
   emulatorHubClient?: EmulatorHubClient;
   private cliCommand?: string;
+  private cachedCredentialProjectId?: string | null;
 
   // logging spec:
   // https://modelcontextprotocol.io/specification/2025-03-26/server/utilities/logging
@@ -201,7 +202,7 @@ export class FirebaseMcpServer {
     this.logger.debug("detecting active features of Firebase MCP server...");
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
@@ -252,7 +253,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availableTools(ctx, this.activeFeatures, this.detectedFeatures, this.enabledTools);
   }
@@ -266,7 +267,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availablePrompts(ctx, this.activeFeatures, this.detectedFeatures);
   }
@@ -291,7 +292,56 @@ export class FirebaseMcpServer {
   }
 
   async getProjectId(): Promise<string | undefined> {
-    return getProjectId(await this.resolveOptions());
+    const options = await this.resolveOptions();
+    const configuredProjectId = getProjectId(options);
+    const credentialProjectId = this.getProjectIdFromCredentials();
+    if (credentialProjectId && credentialProjectId !== configuredProjectId) {
+      this.logger.debug(
+        `using project '${credentialProjectId}' from GOOGLE_APPLICATION_CREDENTIALS instead of '${configuredProjectId || "<none>"}'`,
+      );
+    }
+    return credentialProjectId || configuredProjectId;
+  }
+
+  private getProjectIdFromCredentials(): string | undefined {
+    if (this.cachedCredentialProjectId !== undefined) {
+      return this.cachedCredentialProjectId || undefined;
+    }
+
+    const credentialPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!credentialPath) {
+      this.cachedCredentialProjectId = null;
+      return undefined;
+    }
+
+    if (!existsSync(credentialPath)) {
+      this.logger.debug(
+        `GOOGLE_APPLICATION_CREDENTIALS points to a missing file: ${credentialPath}`,
+      );
+      this.cachedCredentialProjectId = null;
+      return undefined;
+    }
+
+    try {
+      const rawCreds = readFileSync(credentialPath, "utf8");
+      const creds = JSON.parse(rawCreds) as { project_id?: string; quota_project_id?: string };
+      this.cachedCredentialProjectId = creds.project_id || creds.quota_project_id || null;
+    } catch (err: unknown) {
+      this.logger.debug(`unable to parse GOOGLE_APPLICATION_CREDENTIALS file: ${err}`);
+      this.cachedCredentialProjectId = null;
+    }
+
+    return this.cachedCredentialProjectId || undefined;
+  }
+
+  private async getBillingEnabled(projectId: string): Promise<boolean> {
+    if (!projectId) return false;
+    try {
+      return await checkBillingEnabled(projectId);
+    } catch (err: unknown) {
+      this.logger.debug(`billing check failed for project '${projectId}': ${err}`);
+      return false;
+    }
   }
 
   async getAuthenticatedUser(skipAutoAuth: boolean = false): Promise<string | null> {
@@ -379,7 +429,7 @@ export class FirebaseMcpServer {
       return mcpAuthError(skipAutoAuthForStudio);
     }
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
@@ -434,7 +484,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const promptsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     try {
@@ -475,7 +525,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = await this.getBillingEnabled(projectId);
     const resourceCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     const resolved = await resolveResource(req.params.uri, resourceCtx);
