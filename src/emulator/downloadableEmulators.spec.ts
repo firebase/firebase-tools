@@ -83,4 +83,22 @@ describe("downloadDetails", () => {
       emulatorUpdateDetails.dataconnect.darwin_arm64.remoteUrl,
     );
   });
+
+  it("should override emulator version when PUBSUB_EMULATOR_VERSION is set", () => {
+    const fakeVersion = "1.2.3";
+    sandbox.stub(process, "env").value({
+      ...process.env,
+      PUBSUB_EMULATOR_VERSION: fakeVersion,
+    });
+
+    const pubsubEmulatorDetails = downloadableEmulators.getDownloadDetails(Emulators.PUBSUB);
+    expect(pubsubEmulatorDetails.version).to.equal(fakeVersion);
+    expect(pubsubEmulatorDetails.downloadPath).to.contain(fakeVersion);
+    expect(pubsubEmulatorDetails.opts.remoteUrl).to.contain(fakeVersion);
+    expect(pubsubEmulatorDetails.opts.skipChecksumAndSize).to.be.true;
+
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.FIRESTORE)).to.be.undefined;
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.DATABASE)).to.be.undefined;
+    expect(downloadableEmulators.emulatorVersionOverride(Emulators.PUBSUB)).to.equal(fakeVersion);
+  });
 });

@@ -1,6 +1,6 @@
 export interface TestStep {
   goal: string;
-  finalScreenAssertion?: string;
+  successCriteria?: string;
   hint?: string;
 }
 
