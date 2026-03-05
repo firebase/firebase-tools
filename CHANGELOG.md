@@ -2,5 +2,6 @@
 - Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
 - Detects when App Hosting fails to deploy, returning an error. (#8866)
 - Add `firestore_query_collection` tool back to MCP as it is not available in the OneMCP server yet.
+- Add support for custom resolvers in Firebase Data Connect (#9967)
 - Updated the Firebase Data Connect local toolkit to v3.2.1, which includes the following changes: (#10022)
   - Resolved metadata pathing issue for @redact and @check directives
