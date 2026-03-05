@@ -70,6 +70,10 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsexport: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {

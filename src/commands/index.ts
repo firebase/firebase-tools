@@ -132,7 +132,9 @@ export function load(client: any): any {
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");
-  client.functions.export = loadCommand("functions-export");
+  if (experiments.isEnabled("functionsexport")) {
+    client.functions.export = loadCommand("functions-export");
+  }
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
