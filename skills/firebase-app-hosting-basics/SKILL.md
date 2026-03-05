@@ -22,11 +22,18 @@ This skill enables the agent to deploy and manage modern, full-stack web applica
 - You need Server-Side Rendering (SSR) or ISR.
 - You want an automated "git push to deploy" workflow with zero configuration.
 
+## Importing an Existing Project
+
+When a user asks to import a Firebase App Hosting project:
+- Confirm Information and ask the user for any information you need (e.g., their project ID, backend names, region, or source code location).
+- When importing a project for the first time, ask the user for a test or staging backend to deploy to (i.e., a new backend) to test changes safely. Do NOT deploy to production when doing an initial deployment.
+- If you run into an error cloning a repository via HTTPS (like `fatal: could not read Username for 'https://github.com': Device not configured`), it might be due to the user's local git setup, and the SSH git clone (`git clone git@github.com:...`) might work instead.
+
 ## Deploying to App Hosting
 
 ### Deploy from Source
 
-This is the recommended flow for most users. 
+This is the recommended flow for most users. You should prefer to do source deployment (`firebase init apphosting` + `firebase deploy`). This allows the user or LLM agent to make changes to the code and deploy them without requiring Git commits or pushes. 
 1. Configure `firebase.json` with an `apphosting` block.
     ```json
     {
