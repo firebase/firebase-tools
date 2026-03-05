@@ -29,6 +29,8 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 
+const DEFAULT_RUNTIME = "nodejs";
+
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -79,6 +81,7 @@ export async function doSetup(
   serviceAccount?: string,
   primaryRegion?: string,
   rootDir?: string,
+  runtime?: string,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -125,6 +128,21 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
+  if (!runtime) {
+    if (nonInteractive) {
+      runtime = DEFAULT_RUNTIME;
+    } else {
+      runtime = await select({
+        message: "Which runtime do you want to use?",
+        choices: [
+          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
+          { name: "Node.js 22", value: "nodejs22" },
+        ],
+        default: DEFAULT_RUNTIME,
+      });
+    }
+  }
+
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
     webAppName ? webAppName : null,
@@ -143,6 +161,7 @@ export async function doSetup(
     gitRepositoryLink,
     webApp?.id,
     rootDir,
+    runtime,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -352,6 +371,7 @@ export async function createBackend(
   repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
+  runtime?: string,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -365,6 +385,7 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
+    runtime: runtime ? { value: runtime } : undefined,
   };
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
