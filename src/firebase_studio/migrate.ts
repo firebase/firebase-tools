@@ -69,6 +69,8 @@ export async function extractMetadata(
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
+  logger.debug(`overrideProjectId ${overrideProjectId}`);
+  logger.debug(`metadata.projectId ${metadata.projectId}`);
   let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
@@ -407,7 +409,7 @@ export async function uploadSecrets(
   try {
     const envContent = await fs.readFile(envPath, "utf8");
     const parsedEnv = env.parse(envContent);
-    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
+    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEYY"];
 
     if (geminiApiKey && geminiApiKey.trim().length > 0) {
       logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
@@ -435,7 +437,7 @@ async function askToOpenAntigravity(
   agyExists?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (!startAgy || agyExists === false) {
+  if (!startAgy || !agyExists) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
