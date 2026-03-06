@@ -270,6 +270,43 @@ describe("cloudfunctionsv2", () => {
       expect(cloudfunctionsv2.functionFromEndpoint(fullEndpoint)).to.deep.equal(fullGcfFunction);
     });
 
+    it("should translate networkInterfaces", () => {
+      const endpointWithNi: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        vpc: {
+          networkInterfaces: [{ network: "my-net" }],
+          egressSettings: "ALL_TRAFFIC",
+        },
+      };
+
+      const gcfFunctionWithNi: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_ALL_TRAFFIC",
+        },
+      };
+
+      expect(cloudfunctionsv2.functionFromEndpoint(endpointWithNi)).to.deep.equal(
+        gcfFunctionWithNi,
+      );
+
+      const reverted = cloudfunctionsv2.endpointFromFunction({
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_ALL_TRAFFIC",
+          uri: RUN_URI,
+          service: "service",
+        },
+      });
+      expect(reverted.vpc).to.deep.equal(endpointWithNi.vpc);
+    });
+
     it("should calculate non-trivial fields", () => {
       const complexEndpoint: backend.Endpoint = {
         ...ENDPOINT,

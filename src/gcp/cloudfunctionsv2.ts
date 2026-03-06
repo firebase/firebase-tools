@@ -32,6 +32,7 @@ const client = new Client({
 });
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export type DirectVpcEgress = `VPC_EGRESS_${"UNSPECIFIED" | VpcConnectorEgressSettings}`;
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
 
@@ -123,6 +124,12 @@ export interface ServiceConfig {
   maxInstanceRequestConcurrency?: number | null;
   vpcConnector?: string | null;
   vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
+  directVpcNetworkInterface?: Array<{
+    network?: string;
+    subnetwork?: string;
+    tags?: string[];
+  }> | null;
+  directVpcEgress?: DirectVpcEgress | null;
   ingressSettings?: IngressSettings | null;
 
   // The service account for default credentials. Defaults to the
@@ -225,8 +232,8 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     utils.logLabeledWarning(
       "functions",
       `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
-        "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
-        "at https://cloud.google.com/run/quotas.",
+      "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
+      "at https://cloud.google.com/run/quotas.",
     );
     const suggestedFix = func.buildConfig.runtime.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
@@ -439,7 +446,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   if (!supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen",
+      " This should never happen",
     );
   }
 
@@ -495,16 +502,20 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   });
 
   if (endpoint.vpc) {
-    proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
-    proto.renameIfPresent(
-      gcfFunction.serviceConfig,
-      endpoint.vpc,
-      "vpcConnectorEgressSettings",
-      "egressSettings",
-    );
+    if (endpoint.vpc.connector) {
+      gcfFunction.serviceConfig.vpcConnector = endpoint.vpc.connector;
+      gcfFunction.serviceConfig.vpcConnectorEgressSettings = endpoint.vpc.egressSettings || null;
+    } else if (endpoint.vpc.networkInterfaces) {
+      gcfFunction.serviceConfig.directVpcNetworkInterface = endpoint.vpc.networkInterfaces;
+      gcfFunction.serviceConfig.directVpcEgress = endpoint.vpc.egressSettings
+        ? `VPC_EGRESS_${endpoint.vpc.egressSettings}`
+        : null;
+    }
   } else if (endpoint.vpc === null) {
     gcfFunction.serviceConfig.vpcConnector = null;
     gcfFunction.serviceConfig.vpcConnectorEgressSettings = null;
+    gcfFunction.serviceConfig.directVpcNetworkInterface = null;
+    gcfFunction.serviceConfig.directVpcEgress = null;
   }
 
   if (backend.isEventTriggered(endpoint)) {
@@ -519,7 +530,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
           "Error: Pub/Sub event trigger is missing topic: " +
-            JSON.stringify(endpoint.eventTrigger, null, 2),
+          JSON.stringify(endpoint.eventTrigger, null, 2),
         );
       }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
@@ -578,7 +589,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
+        endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   }
@@ -735,12 +746,20 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         "egressSettings",
         "vpcConnectorEgressSettings",
       );
+    } else if (gcfFunction.serviceConfig.directVpcNetworkInterface) {
+      endpoint.vpc = { networkInterfaces: gcfFunction.serviceConfig.directVpcNetworkInterface };
+      if (
+        gcfFunction.serviceConfig.directVpcEgress &&
+        gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED"
+      ) {
+        endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring("VPC_EGRESS_".length) as backend.VpcEgressSettings;
+      }
     }
     const serviceName = gcfFunction.serviceConfig.service;
     if (!serviceName) {
       logger.debug(
         "Got a v2 function without a service name." +
-          "Maybe we've migrated to using the v2 API everywhere and missed this code",
+        "Maybe we've migrated to using the v2 API everywhere and missed this code",
       );
     } else {
       endpoint.runServiceId = utils.last(serviceName.split("/"));
