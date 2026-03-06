@@ -549,10 +549,7 @@ export function toBackend(
             if (ni.subnetwork)
               resolved.subnetwork = params.resolveString(ni.subnetwork, paramValues);
             if (ni.tags) {
-              resolved.tags = [];
-              for (const tag of ni.tags) {
-                resolved.tags.push(params.resolveString(tag, paramValues));
-              }
+              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, paramValues));
             }
             return resolved;
           });
