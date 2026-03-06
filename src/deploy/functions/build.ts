@@ -244,7 +244,6 @@ export type Endpoint = Triggered & {
   platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
-  // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
   // The services account that this function should run as.
