@@ -233,8 +233,8 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     utils.logLabeledWarning(
       "functions",
       `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
-      "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
-      "at https://cloud.google.com/run/quotas.",
+        "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
+        "at https://cloud.google.com/run/quotas.",
     );
     const suggestedFix = func.buildConfig.runtime?.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
@@ -447,7 +447,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   if (endpoint.runtime && !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-      " This should never happen",
+        " This should never happen",
     );
   }
 
@@ -531,7 +531,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
           "Error: Pub/Sub event trigger is missing topic: " +
-          JSON.stringify(endpoint.eventTrigger, null, 2),
+            JSON.stringify(endpoint.eventTrigger, null, 2),
         );
       }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
@@ -592,7 +592,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-        endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   }
@@ -759,14 +759,16 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         gcfFunction.serviceConfig.directVpcEgress &&
         gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED"
       ) {
-        endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring("VPC_EGRESS_".length) as backend.VpcEgressSettings;
+        endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring(
+          "VPC_EGRESS_".length,
+        ) as backend.VpcEgressSettings;
       }
     }
     const serviceName = gcfFunction.serviceConfig.service;
     if (!serviceName) {
       logger.debug(
         "Got a v2 function without a service name." +
-        "Maybe we've migrated to using the v2 API everywhere and missed this code",
+          "Maybe we've migrated to using the v2 API everywhere and missed this code",
       );
     } else {
       endpoint.runServiceId = utils.last(serviceName.split("/"));
