@@ -183,7 +183,7 @@ export interface AdminNodeSDK {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
-  clientCache?: CacheSettings; 
+  clientCache?: CacheSettings;
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
