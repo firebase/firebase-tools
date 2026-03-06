@@ -206,23 +206,38 @@ async function injectAgyContext(
   }
 }
 
-async function assertSystemState(startAgy?: boolean): Promise<boolean> {
-  // Assertion: Check for Antigravity (agy)
+async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
+  // Assertion: Check for Antigravity (agy or antigravity)
   // If we're not starting the IDE, skip the check.
   if (!startAgy) {
-    return false;
+    return undefined;
   }
-  try {
-    execSync("agy --version", { stdio: "ignore" });
-    logger.info("✅ Antigravity IDE CLI (agy) detected");
-    return true;
-  } catch (err: unknown) {
-    const downloadLink = "https://antigravity.google/download";
-    logger.info(
-      `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
-    );
-    return false;
+
+  const commands = ["agy", "antigravity"];
+  for (const cmd of commands) {
+    if (utils.commandExistsSync(cmd)) {
+      logger.info(`✅ Antigravity IDE CLI (${cmd}) detected`);
+      return cmd;
+    }
   }
+
+  // Check common macOS install location
+  if (process.platform === "darwin") {
+    const macPath = "/Applications/Antigravity.app/Contents/Resources/app/bin/agy";
+    try {
+      await fs.access(macPath);
+      logger.info(`✅ Antigravity IDE CLI detected at ${macPath}`);
+      return macPath;
+    } catch {
+      // Not found in Applications
+    }
+  }
+
+  const downloadLink = "https://antigravity.google/download";
+  logger.info(
+    `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+  );
+  return undefined;
 }
 
 async function createFirebaseConfigs(
@@ -409,7 +424,7 @@ export async function uploadSecrets(
   try {
     const envContent = await fs.readFile(envPath, "utf8");
     const parsedEnv = env.parse(envContent);
-    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEYY"];
+    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
 
     if (geminiApiKey && geminiApiKey.trim().length > 0) {
       logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
@@ -434,10 +449,9 @@ async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
   startAgy?: boolean,
-  agyExists?: boolean,
 ): Promise<void> {
-  // 8. Open in Antigravity (Optional)
-  if (!startAgy || !agyExists) {
+  const agyCommand = await getAgyCommand(startAgy);
+  if (!startAgy || !agyCommand) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -452,7 +466,7 @@ async function askToOpenAntigravity(
   if (answer) {
     logger.info(`⏳ Opening ${appName} in Antigravity...`);
     try {
-      const agyProcess = spawn("agy", ["."], {
+      const agyProcess = spawn(agyCommand, ["."], {
         cwd: rootPath,
         stdio: "ignore",
         detached: true,
@@ -474,7 +488,6 @@ export async function migrate(
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  const agyExists = await assertSystemState(options.startAgy);
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
@@ -493,5 +506,5 @@ export async function migrate(
     );
   }
 
-  await askToOpenAntigravity(rootPath, appName, options.startAgy, agyExists);
+  await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }

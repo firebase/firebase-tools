@@ -6,6 +6,7 @@ import { migrate, extractMetadata, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
 import * as secrets from "../apphosting/secrets";
+import * as utils from "../utils";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -138,9 +139,8 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
-      // Mock execSync
-      const childProcess = require("child_process");
-      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+      // Mock commandExistsSync
+      sandbox.stub(utils, "commandExistsSync").withArgs("agy").returns(true);
 
       await migrate(testRoot);
 
@@ -198,9 +198,8 @@ describe("migrate", () => {
       sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
       sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
 
-      // Mock execSync to fail (agy missing)
-      const childProcess = require("child_process");
-      sandbox.stub(childProcess, "execSync").throws(new Error("not found"));
+      // Mock commandExistsSync to fail
+      sandbox.stub(utils, "commandExistsSync").returns(false);
 
       // Mock prompt - should NOT be called
       const confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
@@ -208,6 +207,57 @@ describe("migrate", () => {
       await migrate(testRoot);
 
       expect(confirmStub.called).to.be.false;
+    });
+
+    it("should detect antigravity command if agy is missing", async () => {
+      // Stub global fetch
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as any);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync: agy missing, antigravity present
+      const commandStub = sandbox.stub(utils, "commandExistsSync");
+      commandStub.withArgs("agy").returns(false);
+      commandStub.withArgs("antigravity").returns(true);
+
+      // Mock prompt - should be called
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.true;
     });
   });
 
