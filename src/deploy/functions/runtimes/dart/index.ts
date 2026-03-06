@@ -112,6 +112,39 @@ export class Delegate implements runtimes.RuntimeDelegate {
           `Firebase Functions for Dart expects your main function in ${this.entryPoint}.`,
       );
     }
+
+    // Run `dart pub get` if dependencies have not been resolved yet.
+    const packageConfigPath = path.join(this.sourceDir, ".dart_tool", "package_config.json");
+    try {
+      await fs.promises.access(packageConfigPath, fs.constants.R_OK);
+    } catch {
+      logLabeledBullet("functions", "running dart pub get...");
+      const pubGetProcess = spawn(this.bin, ["pub", "get"], {
+        cwd: this.sourceDir,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      pubGetProcess.stdout?.on("data", (chunk: Buffer) => {
+        logger.debug(`[dart pub get] ${chunk.toString("utf8").trim()}`);
+      });
+      pubGetProcess.stderr?.on("data", (chunk: Buffer) => {
+        logger.debug(`[dart pub get] ${chunk.toString("utf8").trim()}`);
+      });
+      await new Promise<void>((resolve, reject) => {
+        pubGetProcess.on("exit", (code) => {
+          if (code === 0 || code === null) {
+            resolve();
+          } else {
+            reject(
+              new FirebaseError(
+                `dart pub get failed with exit code ${code}. ` +
+                  `Make sure your pubspec.yaml is valid and dependencies are available.`,
+              ),
+            );
+          }
+        });
+        pubGetProcess.on("error", reject);
+      });
+    }
   }
 
   async build(): Promise<void> {

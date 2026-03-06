@@ -1,9 +1,9 @@
-name: functions
-description: Firebase Functions for Dart
+name: functions_template
+description: An app using Firebase Functions for Dart
 version: 1.0.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ^3.8.0
 
 dependencies:
   # TODO(ehesp): Replace with published package version once available on pub.dev
