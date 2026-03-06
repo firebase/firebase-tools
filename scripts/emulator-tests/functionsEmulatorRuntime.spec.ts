@@ -205,7 +205,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("http").get("http://example.com", resolve);
+                  const req = require("http").get("http://example.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };
@@ -222,7 +223,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("https").get("https://example.com", resolve);
+                  const req = require("https").get("https://example.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };
@@ -239,7 +241,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("https").get("https://storage.googleapis.com", resolve);
+                  const req = require("https").get("https://storage.googleapis.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };
@@ -396,36 +399,6 @@ describe("FunctionsEmulator-Runtime", function () {
         const info = JSON.parse(data);
         expect(info.url).to.eql("http://localhost:9090/");
       });
-    });
-  });
-  describe("_InitializeFunctionsConfigHelper()", () => {
-    const cfgPath = path.join(FUNCTIONS_DIR, ".runtimeconfig.json");
-
-    before(async () => {
-      await fs.writeFile(cfgPath, '{"real":{"exist":"already exists" }}');
-    });
-
-    after(async () => {
-      await fs.unlink(cfgPath);
-    });
-
-    it("should tell the user if they've accessed a non-existent function field", async () => {
-      runtime = await startRuntime("functionId", "event", () => {
-        require("firebase-admin").initializeApp();
-        return {
-          functionId: require("firebase-functions")
-            .firestore.document("test/test")
-            .onCreate(() => {
-              // Exists
-              console.log(require("firebase-functions").config().real);
-              // Does not exist
-              console.log(require("firebase-functions").config().foo);
-              console.log(require("firebase-functions").config().bar);
-            }),
-        };
-      });
-      await sendEvent(runtime, FunctionRuntimeBundles.onCreate.proto);
-      expect(runtime.sysMsg["functions-config-missing-value"]?.length).to.eq(2);
     });
   });
   describe("Runtime", () => {

@@ -66,11 +66,13 @@ describe("deploy", () => {
       haveBackend = backend.of(endpoint1InHaveBackend, endpoint2InHaveBackend);
     });
 
-    it("should skip if all endpoints are identical", () => {
+    it("should skip if all endpoints are identical and ACTIVE", () => {
       endpoint1InWantBackend.hash = "1";
       endpoint2InWantBackend.hash = "2";
       endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
       endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "ACTIVE";
 
       // Execute
       const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
@@ -140,6 +142,19 @@ describe("deploy", () => {
       // Expect
       expect(result).to.be.false;
     });
+
+    it("should not skip if state is not ACTIVE", () => {
+      endpoint1InWantBackend.hash = "1";
+      endpoint2InWantBackend.hash = "2";
+      endpoint1InHaveBackend.hash = endpoint1InWantBackend.hash;
+      endpoint2InHaveBackend.hash = endpoint2InWantBackend.hash;
+      endpoint1InHaveBackend.state = "ACTIVE";
+      endpoint2InHaveBackend.state = "FAILED";
+
+      const result = deploy.shouldUploadBeSkipped(CONTEXT, wantBackend, haveBackend);
+
+      expect(result).to.be.false;
+    });
   });
 
   describe("uploadSourceV2", () => {
@@ -155,9 +170,9 @@ describe("deploy", () => {
     };
 
     before(() => {
-      experimentEnabled = experiments.isEnabled("runfunctions");
+      experimentEnabled = experiments.isEnabled("functionsrunapionly");
     });
-    after(() => experiments.setEnabled("runfunctions", experimentEnabled));
+    after(() => experiments.setEnabled("functionsrunapionly", experimentEnabled));
 
     beforeEach(() => {
       gcsUploadStub = sinon.stub(gcs, "upload").resolves({ generation: "1" });
@@ -176,11 +191,11 @@ describe("deploy", () => {
       sinon.restore();
     });
 
-    describe("with runfunctions experiment enabled", () => {
+    describe("with functionsrunapionly experiment enabled", () => {
       const PROJECT_NUMBER = "123456";
       const BUCKET_NAME = `firebase-functions-src-${PROJECT_NUMBER}`;
 
-      before(() => experiments.setEnabled("runfunctions", true));
+      before(() => experiments.setEnabled("functionsrunapionly", true));
 
       it("should call gcs.upsertBucket and gcs.upload for gcfv2 functions", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
@@ -237,8 +252,8 @@ describe("deploy", () => {
       });
     });
 
-    context("with runfunctions experiment disabled", () => {
-      before(() => experiments.setEnabled("runfunctions", false));
+    context("with functionsrunapionly experiment disabled", () => {
+      before(() => experiments.setEnabled("functionsrunapionly", false));
 
       it("should call gcfv2.generateUploadUrl and gcs.upload", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });

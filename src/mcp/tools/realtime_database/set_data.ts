@@ -8,6 +8,7 @@ import { getErrMsg } from "../../../error";
 import path from "node:path";
 
 export const set_data = tool(
+  "database",
   {
     name: "set_data",
     description:

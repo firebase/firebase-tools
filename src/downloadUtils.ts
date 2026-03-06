@@ -27,7 +27,9 @@ export async function downloadToTmp(remoteUrl: string, auth: boolean = false): P
     resolveOnHTTPError: true,
   });
   if (res.status !== 200) {
-    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`);
+    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`, {
+      status: res.status,
+    });
   }
 
   const total = parseInt(res.response.headers.get("content-length") || "0", 10);
@@ -38,8 +40,8 @@ export async function downloadToTmp(remoteUrl: string, auth: boolean = false): P
     bar.tick(chunk.length);
   });
 
-  await new Promise((resolve) => {
-    writeStream.on("finish", resolve);
+  await new Promise<void>((resolve) => {
+    writeStream.on("finish", () => resolve());
     res.body.pipe(writeStream);
   });
 

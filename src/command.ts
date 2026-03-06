@@ -18,6 +18,14 @@ import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
 
+export interface CommandModule {
+  load: () => void;
+}
+
+export function isCommandModule(value: unknown): value is CommandModule {
+  return typeof value === "function" && typeof (value as any).load === "function";
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
 
@@ -27,9 +35,10 @@ interface BeforeFunction {
   args: any[];
 }
 
-interface CLIClient {
+export interface CLIClient {
   cli: CommanderStatic;
   errorOut: (e: Error) => void;
+  [key: string]: any;
 }
 
 /**
@@ -190,6 +199,9 @@ export class Command {
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
       if (args.length - 1 > cmd._args.length) {
+        if (!getInheritedOption(options, "json") && !options.isMCP) {
+          useConsoleLoggers();
+        }
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
@@ -224,12 +236,15 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4("command_execution", {
-            command_name: this.name,
-            result: "success",
+          const trackSuccess = trackGA4(
+            "command_execution",
+            {
+              command_name: this.name,
+              result: "success",
+              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+            },
             duration,
-            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-          });
+          );
           if (!isEmulator) {
             await withTimeout(5000, trackSuccess);
           } else {
@@ -295,16 +310,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async prepare(options: any): Promise<void> {
+  public async prepare(options: Options): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
-    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
+    if (
+      !process.stdin.isTTY ||
+      getInheritedOption(options, "nonInteractive") ||
+      getInheritedOption(options, "json") // --json implies --non-interactive.
+    ) {
       options.nonInteractive = true;
     }
+
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
-      options.interactive = true;
       options.nonInteractive = false;
     }
 
@@ -312,9 +331,7 @@ export class Command {
       options.debug = true;
     }
 
-    if (getInheritedOption(options, "json")) {
-      options.nonInteractive = true;
-    } else if (!options.isMCP) {
+    if (!getInheritedOption(options, "json") && !options.isMCP) {
       useConsoleLoggers();
     }
 
@@ -343,8 +360,8 @@ export class Command {
 
     await this.applyRC(options);
     if (options.project) {
-      await this.resolveProjectIdentifiers(options);
-      validateProjectId(options.projectId);
+      await this.resolveProjectIdentifiers(options); // Sets options.projectId.
+      validateProjectId(options.projectId!);
     }
   }
 

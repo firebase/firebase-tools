@@ -84,12 +84,13 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
-    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
+    projectNumber: projectNumber,
   });
 
   const summary = await fab.applyPlan(plan);
@@ -102,7 +103,7 @@ export async function release(
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
-  printTriggerUrls(wantBackend);
+  printTriggerUrls(wantBackend, projectNumber);
 
   await setupArtifactCleanupPolicies(
     options,
@@ -126,8 +127,10 @@ export async function release(
  * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
-export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+export function printTriggerUrls(results: backend.Backend, projectNumber: string): void {
+  const httpsFunctions = backend
+    .allEndpoints(results)
+    .filter((b) => backend.isHttpsTriggered(b) || backend.isDataConnectGraphqlTriggered(b));
   if (httpsFunctions.length === 0) {
     return;
   }
@@ -137,6 +140,13 @@ export function printTriggerUrls(results: backend.Backend): void {
       logger.debug(
         "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment",
       );
+      continue;
+    }
+    if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
+      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for Data Connect
+      // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
+      const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
+      logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);

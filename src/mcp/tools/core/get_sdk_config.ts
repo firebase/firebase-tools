@@ -4,6 +4,7 @@ import { mcpError, toContent } from "../../util";
 import { AppPlatform, getAppConfig, listFirebaseApps } from "../../../management/apps";
 
 export const get_sdk_config = tool(
+  "core",
   {
     name: "get_sdk_config",
     description:
