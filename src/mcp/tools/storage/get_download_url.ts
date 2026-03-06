@@ -5,6 +5,7 @@ import { getDownloadUrl } from "../../../gcp/storage";
 import { Emulators } from "../../../emulator/types";
 
 export const get_object_download_url = tool(
+  "storage",
   {
     name: "get_object_download_url",
     description:

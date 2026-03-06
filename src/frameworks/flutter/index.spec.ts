@@ -139,7 +139,7 @@ describe("Flutter", () => {
 
       const stub = sandbox.stub(crossSpawn, "sync").returns(process as any);
 
-      const result = init({ projectId, hosting: { source } }, { projectDir });
+      const result = init({ projectId, featureInfo: { hosting: { source } } }, { projectDir });
 
       expect(await result).to.eql(undefined);
       sinon.assert.calledWith(

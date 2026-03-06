@@ -23,7 +23,7 @@ import { DelegateContext } from "..";
 import * as supported from "../supported";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
-import * as parseTriggers from "./parseTriggers";
+
 import { fileExistsSync } from "../../../../fsutils";
 
 // The versions of the Firebase Functions SDK that added support for the container contract.
@@ -291,28 +291,24 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     env: backend.EnvironmentVariables,
   ): Promise<build.Build> {
-    if (!semver.valid(this.sdkVersion)) {
-      logger.debug(
-        `Could not parse firebase-functions version '${this.sdkVersion}' into semver. Falling back to parseTriggers.`,
-      );
-      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
-    }
-    if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
-      logLabeledWarning(
-        "functions",
-        `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
-          `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`,
-      );
-      return parseTriggers.discoverBuild(this.projectId, this.sourceDir, this.runtime, config, env);
-    }
-    // Perform a check for the minimum SDK version that added annotation support for the `Build.extensions` property
-    // and log to the user explaining why they need to upgrade their version.
-    if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES)) {
-      logLabeledBullet(
-        "functions",
-        `You are using a version of firebase-functions SDK (${this.sdkVersion}) that does not have support for the newest Firebase Extensions features. ` +
-          `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES} to use them correctly`,
-      );
+    if (semver.valid(this.sdkVersion)) {
+      if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION)) {
+        throw new FirebaseError(
+          `You are using an old version of firebase-functions SDK (${this.sdkVersion}). ` +
+            `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION}`,
+        );
+      }
+      // Perform a check for the minimum SDK version that added annotation support for the `Build.extensions` property
+      // and log to the user explaining why they need to upgrade their version.
+      if (semver.lt(this.sdkVersion, MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES)) {
+        logLabeledBullet(
+          "functions",
+          `You are using a version of firebase-functions SDK (${this.sdkVersion}) that does not have support for the newest Firebase Extensions features. ` +
+            `Please update firebase-functions SDK to >=${MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES} to use them correctly`,
+        );
+      }
+    } else {
+      logger.debug(`Could not parse firebase-functions version '${this.sdkVersion}' into semver.`);
     }
     let discovered = await discovery.detectFromYaml(this.sourceDir, this.projectId, this.runtime);
     if (!discovered) {

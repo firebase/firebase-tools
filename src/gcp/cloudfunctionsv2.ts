@@ -47,7 +47,7 @@ export type RetryPolicy =
 
 /** Settings for building a container out of the customer source. */
 export interface BuildConfig {
-  runtime: supported.Runtime;
+  runtime?: supported.Runtime;
   entryPoint: string;
   source: Source;
   sourceToken?: string;
@@ -165,7 +165,7 @@ export interface EventTrigger {
 interface CloudFunctionBase {
   name: string;
   description?: string;
-  buildConfig: BuildConfig;
+  buildConfig?: BuildConfig;
   serviceConfig?: ServiceConfig;
   eventTrigger?: EventTrigger;
   labels?: Record<string, string> | null;
@@ -179,6 +179,7 @@ export type OutputCloudFunction = CloudFunctionBase & {
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
+  buildConfig: BuildConfig;
   // serviceConfig is required.
   serviceConfig: ServiceConfig;
 };
@@ -235,7 +236,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
       "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
       "at https://cloud.google.com/run/quotas.",
     );
-    const suggestedFix = func.buildConfig.runtime.startsWith("python")
+    const suggestedFix = func.buildConfig.runtime?.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
       : "setGlobalOptions({maxInstances: 10})";
     utils.logLabeledWarning(
@@ -443,7 +444,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
   }
 
-  if (!supported.isRuntime(endpoint.runtime)) {
+  if (endpoint.runtime && !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
       " This should never happen",
@@ -453,7 +454,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   const gcfFunction: InputCloudFunction = {
     name: backend.functionName(endpoint),
     buildConfig: {
-      runtime: endpoint.runtime,
+      runtime: endpoint.runtime || undefined,
       entryPoint: endpoint.entryPoint,
       source: {
         storageSource: endpoint.source?.storageSource,
@@ -584,6 +585,8 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     if (endpoint.callableTrigger.genkitAction) {
       gcfFunction.labels["genkit-action"] = "true";
     }
+  } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+    gcfFunction.labels = { ...gcfFunction.labels, "deployment-fdcgraphql": "true" };
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -628,6 +631,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.labels?.["deployment-callable"] === "true") {
     trigger = {
       callableTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["deployment-fdcgraphql"] === "true") {
+    trigger = {
+      dataConnectGraphqlTrigger: {},
     };
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     trigger = {
@@ -675,7 +682,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     trigger = { httpsTrigger: {} };
   }
 
-  if (!supported.isRuntime(gcfFunction.buildConfig.runtime)) {
+  if (gcfFunction.buildConfig?.runtime && !supported.isRuntime(gcfFunction.buildConfig.runtime)) {
     logger.debug("GCFv2 function has a deprecated runtime:", JSON.stringify(gcfFunction, null, 2));
   }
 
@@ -685,9 +692,9 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     project,
     region,
     ...trigger,
-    entryPoint: gcfFunction.buildConfig.entryPoint,
-    runtime: gcfFunction.buildConfig.runtime,
-    source: gcfFunction.buildConfig.source,
+    entryPoint: gcfFunction.buildConfig?.entryPoint || "",
+    runtime: gcfFunction.buildConfig?.runtime || undefined,
+    source: gcfFunction.buildConfig?.source,
   };
   if (gcfFunction.serviceConfig) {
     proto.copyIfPresent(

@@ -4,6 +4,7 @@ import { checkLogin } from "../core/user";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
 import { currentProjectId } from "../core/project";
+import { EmulatorHub } from "../../../src/emulator/hub";
 
 let environmentVariables: Record<string, string> = {};
 
@@ -93,25 +94,19 @@ export function registerTerminalTasks(
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
 
     let cmd = `${settings.firebasePath} emulators:start`;
-    if (currentProjectId.value) {
-      cmd += ` --project ${currentProjectId.value}`;
-    }
+    cmd += ` --project ${currentProjectId.value || EmulatorHub.MISSING_PROJECT_PLACEHOLDER}`;
     if (settings.importPath) {
       cmd += ` --import ${settings.importPath}`;
     }
     if (settings.exportOnExit) {
       cmd += ` --export-on-exit ${settings.exportPath}`;
     }
-    vscode.window.showInformationMessage("Starting emulators... Please see terminal.");
     runTerminalTask(
       "firebase emulators",
       cmd,
       { focus: true },
     );
   };
-  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    startEmulatorsTask();
-  });
   const startEmulatorsCommand = vscode.commands.registerCommand(
     "firebase.emulators.start",
     startEmulatorsTask,
@@ -119,7 +114,6 @@ export function registerTerminalTasks(
 
   return Disposable.from(
     { dispose: loginTaskBroker },
-    { dispose: startEmulatorsTaskBroker },
     startEmulatorsCommand,
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",

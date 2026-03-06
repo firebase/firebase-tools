@@ -196,15 +196,8 @@ const extensionConfig = {
           to: "./schema",
         },
         // TODO(hlshen): Sanity check if these should be fixed or removed. AFIACT, they exist for functions and hosting deploys, which are not relevant anymore.
-        // Copy uncompiled JS files called at runtime by
-        // firebase-tools/src/parseTriggers.ts
-        // {
-        //   from: "*.js",
-        //   to: "./",
-        //   context: "../src/deploy/functions/runtimes/node",
-        // },
-        // // Copy cross-env-shell.js used to run predeploy scripts
-        // // to ensure they work in Windows
+        // Copy cross-env-shell.js used to run predeploy scripts
+        // to ensure they work in Windows
         // {
         //   from: "../node_modules/cross-env/dist",
         //   to: "./cross-env/dist",
