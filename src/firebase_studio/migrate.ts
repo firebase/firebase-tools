@@ -8,9 +8,12 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import { apphostingSecretsSetAction } from "../apphosting/secrets";
+import * as env from "../functions/env";
 
 export interface MigrateOptions {
-  noStartAgy: boolean;
+  project?: string;
+  startAgy?: boolean;
 }
 
 interface GitHubItem {
@@ -49,7 +52,10 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
-async function extractMetadata(rootPath: string): Promise<{
+export async function extractMetadata(
+  rootPath: string,
+  overrideProjectId?: string,
+): Promise<{
   projectId: string | undefined;
   appName: string;
   blueprintContent: string;
@@ -64,7 +70,7 @@ async function extractMetadata(rootPath: string): Promise<{
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
-  let projectId = metadata.projectId;
+  let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
     try {
@@ -199,8 +205,12 @@ async function injectAgyContext(
   }
 }
 
-async function assertSystemState(): Promise<void> {
+async function assertSystemState(startAgy?: boolean): Promise<void> {
   // Assertion: Check for Antigravity (agy)
+  // If we're not starting the IDE, skip the check.
+  if (startAgy === false) {
+    return;
+  }
   try {
     execSync("agy --version", { stdio: "ignore" });
     logger.info("✅ Antigravity IDE CLI (agy) detected");
@@ -377,13 +387,54 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     logger.debug(`Could not delete ${modifiedPath}: ${err}`);
   }
 }
+
+export async function uploadSecrets(
+  rootPath: string,
+  projectId: string | undefined,
+): Promise<void> {
+  if (!projectId) {
+    return;
+  }
+
+  const envPath = path.join(rootPath, ".env");
+  try {
+    await fs.access(envPath);
+  } catch {
+    // .env does not exist
+    return;
+  }
+
+  try {
+    const envContent = await fs.readFile(envPath, "utf8");
+    const parsedEnv = env.parse(envContent);
+    const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
+
+    if (geminiApiKey && geminiApiKey.trim().length > 0) {
+      logger.info("⏳ Uploading GEMINI_API_KEY from .env to App Hosting secrets...");
+      await apphostingSecretsSetAction(
+        "GEMINI_API_KEY",
+        projectId,
+        undefined, // projectNumber
+        undefined, // location
+        envPath,
+        true, // nonInteractive
+      );
+      logger.info("✅ Uploaded GEMINI_API_KEY secret");
+    } else {
+      logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
+    }
+  } catch (err: unknown) {
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+  }
+}
+
 async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
-  noStartAgyFlag: boolean,
+  startAgy?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (noStartAgyFlag) {
+  if (startAgy === false) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -416,16 +467,17 @@ async function askToOpenAntigravity(
 
 export async function migrate(
   rootPath: string,
-  options: MigrateOptions = { noStartAgy: false },
+  options: MigrateOptions = { startAgy: true },
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState();
+  await assertSystemState(options.startAgy);
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath);
+  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
+  await uploadSecrets(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath);
   await cleanupUnusedFiles(rootPath);
@@ -438,5 +490,5 @@ export async function migrate(
     );
   }
 
-  await askToOpenAntigravity(rootPath, appName, options.noStartAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }
