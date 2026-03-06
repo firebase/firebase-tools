@@ -488,7 +488,6 @@ export async function migrate(
 ): Promise<void> {
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
