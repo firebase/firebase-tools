@@ -245,17 +245,20 @@ export class Fabricator {
       apiFunction.httpsTrigger.securityLevel = "SECURE_ALWAYS";
     }
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        // try to get the source token right before deploying
-        apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.createFunction(apiFunction);
-        return poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
-      })
+      .run(
+        async () => {
+          // try to get the source token right before deploying
+          apiFunction.sourceToken = await scraper.getToken();
+          const op: { name: string } = await gcf.createFunction(apiFunction);
+          return poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
@@ -313,21 +316,24 @@ export class Fabricator {
     const topic = apiFunction.eventTrigger?.pubsubTopic;
     if (topic) {
       await this.executor
-        .run(async () => {
-          try {
-            await pubsub.createTopic({ name: topic });
-          } catch (err: any) {
-            // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
-            // ALREADY_EXISTS if the topic already exists.
-            if (err.status === 409) {
-              return;
+        .run(
+          async () => {
+            try {
+              await pubsub.createTopic({ name: topic });
+            } catch (err: any) {
+              // Pub/Sub uses HTTP 409 (CONFLICT) with a status message of
+              // ALREADY_EXISTS if the topic already exists.
+              if (err.status === 409) {
+                return;
+              }
+              throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
+                original: err as Error,
+                status: err.status,
+              });
             }
-            throw new FirebaseError("Unexpected error creating Pub/Sub topic", {
-              original: err as Error,
-              status: err.status,
-            });
-          }
-        })
+          },
+          { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] },
+        )
         .catch(rethrowAs(endpoint, "create topic"));
     }
 
@@ -473,16 +479,19 @@ export class Fabricator {
     const apiFunction = gcf.functionFromEndpoint(endpoint, sourceUrl);
 
     const resultFunction = await this.functionExecutor
-      .run(async () => {
-        apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.updateFunction(apiFunction);
-        return await poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
-      })
+      .run(
+        async () => {
+          apiFunction.sourceToken = await scraper.getToken();
+          const op: { name: string } = await gcf.updateFunction(apiFunction);
+          return await poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
@@ -586,16 +595,20 @@ export class Fabricator {
 
   async deleteV1Function(endpoint: backend.Endpoint): Promise<void> {
     const fnName = backend.functionName(endpoint);
+
     await this.functionExecutor
-      .run(async () => {
-        const op: { name: string } = await gcf.deleteFunction(fnName);
-        const pollerOptions = {
-          ...gcfV1PollerOptions,
-          pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-        };
-        await poller.pollOperation<void>(pollerOptions);
-      })
+      .run(
+        async () => {
+          const op: { name: string } = await gcf.deleteFunction(fnName);
+          const pollerOptions = {
+            ...gcfV1PollerOptions,
+            pollerName: `delete-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          };
+          await poller.pollOperation<void>(pollerOptions);
+        },
+        { retryCodes: [...DEFAULT_RETRY_CODES] },
+      )
       .catch(rethrowAs(endpoint, "delete"));
   }
 
