@@ -238,6 +238,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       schedule: "Field<string>",
       timeZone: "Field<string>?",
       retryConfig: "object?",
+      attemptDeadline: "Field<string>?",
     });
     if (ep.scheduleTrigger.retryConfig) {
       assertKeyTypes(prefix + ".scheduleTrigger.retryConfig", ep.scheduleTrigger.retryConfig, {
@@ -344,6 +345,7 @@ function parseEndpointForBuild(
       // invalid values before actually modifying prod.
       schedule: ep.scheduleTrigger.schedule || "",
       timeZone: ep.scheduleTrigger.timeZone ?? null,
+      attemptDeadline: ep.scheduleTrigger.attemptDeadline ?? null,
     };
     if (ep.scheduleTrigger.retryConfig) {
       st.retryConfig = {};
