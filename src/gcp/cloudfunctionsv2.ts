@@ -168,7 +168,6 @@ export type OutputCloudFunction = CloudFunctionBase & {
   state: FunctionState;
   updateTime: Date;
   serviceConfig?: RequireKeys<ServiceConfig, "service" | "uri">;
-  url: string;
 };
 
 export type InputCloudFunction = CloudFunctionBase & {
@@ -753,7 +752,6 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       endpoint.runServiceId = utils.last(serviceName.split("/"));
     }
   }
-  proto.renameIfPresent(endpoint, gcfFunction, "uri", "url");
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];

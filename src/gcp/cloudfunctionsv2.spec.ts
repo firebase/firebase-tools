@@ -49,14 +49,12 @@ describe("cloudfunctionsv2", () => {
   };
 
   const RUN_URI = "https://id-nonce-region-project.run.app";
-  const GCF_URL = "https://region-project.cloudfunctions.net/id";
   const HAVE_CLOUD_FUNCTION_V2: cloudfunctionsv2.OutputCloudFunction = {
     ...CLOUD_FUNCTION_V2,
     serviceConfig: {
       service: "service",
       uri: RUN_URI,
     },
-    url: GCF_URL,
     state: "ACTIVE",
     updateTime: new Date(),
   };
@@ -435,7 +433,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         httpsTrigger: {},
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
       });
     });
 
@@ -452,7 +450,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         httpsTrigger: {},
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         runServiceId: "service-id",
       });
     });
@@ -461,7 +459,7 @@ describe("cloudfunctionsv2", () => {
       let want: backend.Endpoint = {
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         eventTrigger: {
           eventType: events.v2.PUBSUB_PUBLISH_EVENT,
           eventFilters: { topic: "projects/p/topics/t" },
@@ -588,7 +586,7 @@ describe("cloudfunctionsv2", () => {
       const want: backend.Endpoint = {
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         eventTrigger: {
           eventType: "com.custom.event",
           eventFilters: { customattr: "customvalue" },
@@ -623,7 +621,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         taskQueueTrigger: {},
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         labels: { "deployment-taskqueue": "true" },
       });
     });
@@ -640,7 +638,7 @@ describe("cloudfunctionsv2", () => {
           eventType: events.v1.BEFORE_CREATE_EVENT,
         },
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         labels: { "deployment-blocking": "before-create" },
       });
     });
@@ -657,7 +655,7 @@ describe("cloudfunctionsv2", () => {
           eventType: events.v1.BEFORE_SIGN_IN_EVENT,
         },
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         labels: { "deployment-blocking": "before-sign-in" },
       });
     });
@@ -695,7 +693,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         httpsTrigger: {},
-        uri: GCF_URL,
+        uri: RUN_URI,
         ...extraFields,
         serviceAccount: "inlined@google.com",
         vpc,
@@ -730,7 +728,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         httpsTrigger: {},
         ...extraFields,
       });
@@ -748,7 +746,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
@@ -771,7 +769,7 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...ENDPOINT,
         platform: "gcfv2",
-        uri: GCF_URL,
+        uri: RUN_URI,
         httpsTrigger: {},
         labels: {
           ...ENDPOINT.labels,
@@ -788,7 +786,6 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         httpsTrigger: {},
-        uri: GCF_URL,
       };
       delete expectedEndpoint.runServiceId;
       expect(
@@ -804,7 +801,7 @@ describe("cloudfunctionsv2", () => {
         ...ENDPOINT,
         platform: "gcfv2",
         httpsTrigger: {},
-        uri: GCF_URL,
+        uri: RUN_URI,
         entryPoint: "",
         runtime: undefined,
         source: undefined,
