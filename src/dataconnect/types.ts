@@ -173,29 +173,43 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
+// Describe the cache configuration from YAML
+export interface CacheSettings {
+  maxAge?: string;
+  maxSize?: string;
+  storage?: "persistent" | "memory";
+}
+
 export interface AdminNodeSDK {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: CacheSettings; 
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: CacheSettings; 
 }
 
 export interface SwiftSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
+
 export interface KotlinSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
+
 export interface DartSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
 
 // Helper types && converters
@@ -321,5 +335,3 @@ interface ImpersonationUnauthenticated {
   includeDebugDetails?: boolean;
 }
 export type Impersonation = ImpersonationAuthenticated | ImpersonationUnauthenticated;
-
-/** End Dataplane Client Types */
