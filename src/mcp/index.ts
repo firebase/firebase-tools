@@ -38,6 +38,7 @@ import { requireAuth } from "../requireAuth";
 import { timeoutFallback } from "../timeout";
 import { trackGA4 } from "../track";
 import { mcpAuthError, NO_PROJECT_ERROR, noProjectDirectory } from "./errors";
+import { createHttpTransport, HttpTransportResult } from "./http-transport";
 import { LoggingStdioServerTransport } from "./logging-transport";
 import { ServerPrompt } from "./prompt";
 import { availablePrompts } from "./prompts/index";
@@ -488,11 +489,57 @@ export class FirebaseMcpServer {
     return resolved.result;
   }
 
-  async start(): Promise<void> {
-    const transport = process.env.FIREBASE_MCP_DEBUG_LOG
-      ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
-      : new StdioServerTransport();
-    await this.server.connect(transport);
+  /** HTTP transport result when running in streamable-http mode */
+  private httpTransportResult?: HttpTransportResult;
+
+  /**
+   * Start the MCP server with the specified transport.
+   *
+   * @param options - Transport configuration options
+   * @param options.transport - Transport type: 'stdio' (default) or 'streamable-http'
+   * @param options.port - HTTP server port (default: 8000, only used with streamable-http)
+   * @param options.host - HTTP server host (default: 127.0.0.1, only used with streamable-http)
+   * @param options.stateless - Enable stateless mode for horizontal scaling (only used with streamable-http)
+   */
+  async start(options?: {
+    transport?: "stdio" | "streamable-http";
+    port?: number;
+    host?: string;
+    stateless?: boolean;
+  }): Promise<void> {
+    const transportType = options?.transport || "stdio";
+
+    if (transportType === "streamable-http") {
+      // Use HTTP transport
+      const port = options?.port || 8000;
+      const host = options?.host || "127.0.0.1";
+      const stateless = options?.stateless || false;
+
+      this.httpTransportResult = await createHttpTransport({
+        port,
+        host,
+        stateless,
+      });
+
+      await this.server.connect(this.httpTransportResult.transport);
+    } else {
+      // Use STDIO transport (default)
+      const transport = process.env.FIREBASE_MCP_DEBUG_LOG
+        ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
+        : new StdioServerTransport();
+      await this.server.connect(transport);
+    }
+  }
+
+  /**
+   * Stop the MCP server and close all connections.
+   * Only applicable when running in HTTP mode.
+   */
+  async stop(): Promise<void> {
+    if (this.httpTransportResult) {
+      await this.httpTransportResult.close();
+      this.httpTransportResult = undefined;
+    }
   }
 
   get logger() {
