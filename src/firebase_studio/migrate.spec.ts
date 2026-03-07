@@ -5,6 +5,7 @@ import * as sinon from "sinon";
 import { migrate, extractMetadata, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
+import * as frameworks from "../frameworks";
 import * as secrets from "../apphosting/secrets";
 
 describe("migrate", () => {
@@ -54,7 +55,7 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
-    it("should perform a full migration successfully", async () => {
+    it("should perform a full migration for Next.js (default) successfully", async () => {
       // Stub global fetch
       const fetchStub = sandbox.stub(global, "fetch");
 
@@ -97,7 +98,7 @@ describe("migrate", () => {
           return JSON.stringify({ projectId: "test-project", appName: "Test App" });
         }
         if (pStr.endsWith("readme_template.md")) {
-          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}";
+          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}\nRun ${startCommand} at ${localUrl}";
         }
         if (pStr.endsWith("system_instructions_template.md")) {
           return "Project: ${appName}";
@@ -138,6 +139,9 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
+      // Mock framework discovery (defaults to Next.js or unknown which also defaults to Next.js in migrate.ts)
+      sandbox.stub(frameworks, "discover").resolves(undefined);
+
       // Mock execSync
       const childProcess = require("child_process");
       sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
@@ -155,8 +159,104 @@ describe("migrate", () => {
           sinon.match(/"backendId": "studio"/),
         ),
       ).to.be.true;
-      expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
-        .true;
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Run npm run dev at http:\/\/localhost:9002/),
+        ),
+      ).to.be.true;
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, ".vscode", "launch.json"),
+          sinon.match(/"port": 9002/),
+        ),
+      ).to.be.true;
+    });
+
+    it("should perform a full migration for Angular successfully", async () => {
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+
+      // Mock GitHub API for skills listing
+      fetchStub
+        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills")
+        .resolves({
+          ok: true,
+          json: async () => [],
+        } as any);
+
+      // Mock GitHub API for Genkit skill content
+      fetchStub
+        .withArgs(
+          "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
+        )
+        .resolves({
+          ok: true,
+          json: async () => [],
+        } as any);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}\nRun ${startCommand} at ${localUrl}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App\nSome blueprint content";
+        }
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      // Mock App Hosting backends
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [],
+        unreachable: [],
+      });
+
+      // Mock prompt
+      sandbox.stub(prompt, "confirm").resolves(false);
+
+      // Mock framework discovery as Angular
+      sandbox.stub(frameworks, "discover").resolves({ framework: "angular", mayWantBackend: true });
+
+      // Mock execSync
+      const childProcess = require("child_process");
+      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+
+      await migrate(testRoot);
+
+      // Verify key files were written
+      const writeStub = fs.writeFile as sinon.SinonStub;
+
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Run npm run start at http:\/\/localhost:4200/),
+        ),
+      ).to.be.true;
+
+      const launchJsonCall = writeStub.args.find((a) => a[0].endsWith("launch.json"));
+      expect(launchJsonCall).to.not.be.undefined;
+      expect(launchJsonCall![1]).to.contain("Angular: debug server-side");
+      expect(launchJsonCall![1]).to.contain('"port": 4200');
     });
   });
 

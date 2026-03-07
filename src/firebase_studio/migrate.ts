@@ -8,6 +8,7 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import { discover } from "../frameworks";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
 
@@ -114,14 +115,21 @@ async function updateReadme(
   rootPath: string,
   blueprintContent: string,
   appName: string,
+  framework?: string,
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
+
+  const startCommand = framework === "angular" ? "npm run start" : "npm run dev";
+  const localUrl = framework === "angular" ? "http://localhost:4200" : "http://localhost:9002";
+
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim());
+    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
+    .replace("${startCommand}", startCommand)
+    .replace("${localUrl}", localUrl);
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -288,7 +296,7 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAgyConfigs(rootPath: string): Promise<void> {
+async function writeAgyConfigs(rootPath: string, framework?: string): Promise<void> {
   // 5. IDE Configs (VS Code / AGY)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
@@ -331,21 +339,36 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
   logger.info("✅ Updated .vscode/settings.json with startup preferences");
 
-  const launchJson = {
+  const launchJson: any = {
     version: "0.2.0",
-    configurations: [
-      {
-        type: "node",
-        request: "launch",
-        name: "Next.js: debug server-side",
-        runtimeExecutable: "npm",
-        runtimeArgs: ["run", "dev"],
-        port: 9002,
-        console: "integratedTerminal",
-        preLaunchTask: "npm-install",
-      },
-    ],
+    configurations: [],
   };
+
+  if (framework === "angular") {
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Angular: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "start"],
+      port: 4200,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  } else {
+    // Default to Next.js (or "next" in discovery)
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Next.js: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "dev"],
+      port: 9002,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  }
+
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
   logger.info("✅ Created .vscode/launch.json");
 }
@@ -475,11 +498,18 @@ export async function migrate(
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
-  await updateReadme(rootPath, blueprintContent, appName);
+  // Framework detection
+  const discovery = await discover(rootPath);
+  const framework = discovery?.framework;
+  if (framework) {
+    logger.info(`✅ Detected framework: ${framework}`);
+  }
+
+  await updateReadme(rootPath, blueprintContent, appName, framework);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
-  await writeAgyConfigs(rootPath);
+  await writeAgyConfigs(rootPath, framework);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
