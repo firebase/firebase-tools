@@ -685,7 +685,7 @@ export async function ɵcodegenFunctionsDirectory(
         external: productionDeps,
       };
       if (configFile === "next.config.mjs" || configFile === "next.config.mts") {
-        // ensure generated file is .mjs if the config is .mjs
+        // ensure generated file is .mjs if the config is .mjs or .mts
         esbuildArgs.format = "esm";
         esbuildArgs.outfile = join(destDir, "next.config.mjs");
       } else {
