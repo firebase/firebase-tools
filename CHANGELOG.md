@@ -1,2 +1,0 @@
-- add support for `next.config.ts` and `next.config.mts` in Next.js deployments (#9871)
-- Enabled free trials without a billing instrument for Firebase Data Connect (#10042)
