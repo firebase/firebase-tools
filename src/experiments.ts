@@ -124,6 +124,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  apphostinglocalbuild: {
+    shortDescription: "Enable local builds for App Hosting",
+    default: false,
+    public: false,
+  },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {

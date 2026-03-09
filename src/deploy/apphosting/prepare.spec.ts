@@ -11,6 +11,9 @@ import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
+import * as experiments from "../../experiments";
+import { FirebaseError } from "../../error";
+import * as projectUtils from "../../getProjectNumber";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -51,6 +54,7 @@ describe("apphosting", () => {
   let doSetupSourceDeployStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
+  let assertEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -63,10 +67,13 @@ describe("apphosting", () => {
       .stub(apphosting, "listBackends")
       .throws("Unexpected listBackends call");
     sinon.stub(backend, "ensureAppHostingComputeServiceAccount").resolves();
+    sinon.stub(backend, "ensureAppHostingServiceAgentRoles").resolves();
+    sinon.stub(projectUtils, "getProjectNumber").resolves("123456789");
     sinon.stub(apiEnabled, "ensure").resolves();
     getGitRepositoryLinkStub = sinon
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
+    assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
   });
 
   afterEach(() => {
@@ -287,6 +294,40 @@ describe("apphosting", () => {
         alwaysDeployFromSource: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.undefined;
+    });
+
+    it("throws an error for localBuild when experiment is not enabled", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+
+      assertEnabledStub.throws(
+        new FirebaseError(
+          "Cannot perform a local build because the experiment apphostinglocalbuild is not enabled.",
+        ),
+      );
+
+      const context = initializeContext();
+      listBackendsStub.resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
+        FirebaseError,
+        "Cannot perform a local build",
+      );
     });
   });
 

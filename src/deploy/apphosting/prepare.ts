@@ -21,6 +21,7 @@ import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
 import { getAutoinitEnvVars } from "../../apphosting/utils";
+import * as experiments from "../../experiments";
 
 /**
  * Prepares backend targets for deployment.
@@ -189,6 +190,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
+    experiments.assertEnabled("apphostinglocalbuild", "perform a local build");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
     if (backend?.appId) {
