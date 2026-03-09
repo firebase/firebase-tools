@@ -2,11 +2,12 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
 import * as sinon from "sinon";
-import { migrate } from "./migrate";
+import { migrate, extractMetadata, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
 import * as track from "../track";
 import { FirebaseError } from "../error";
+import * as secrets from "../apphosting/secrets";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -18,6 +19,40 @@ describe("migrate", () => {
 
   afterEach(() => {
     sandbox.restore();
+  });
+
+  describe("extractMetadata", () => {
+    it("should use overrideProjectId if provided", async () => {
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      const result = await extractMetadata(testRoot, "override-project");
+      expect(result.projectId).to.equal("override-project");
+    });
+
+    it("should fallback to metadata.json if no override is provided", async () => {
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      const result = await extractMetadata(testRoot);
+      expect(result.projectId).to.equal("original-project");
+    });
   });
 
   describe("migrate", () => {
@@ -153,6 +188,73 @@ describe("migrate", () => {
       expect(
         trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
       ).to.be.true;
+    });
+  });
+
+  describe("uploadSecrets", () => {
+    let sandbox: sinon.SinonSandbox;
+    const testRoot = "/test/root";
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should call apphostingSecretsSetAction if .env exists and has a non-blank GEMINI_API_KEY", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY=test-key");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(
+        secretsStub.calledWith(
+          "GEMINI_API_KEY",
+          "test-project",
+          undefined,
+          undefined,
+          path.join(testRoot, ".env"),
+          true,
+        ),
+      ).to.be.true;
+    });
+
+    it("should not call apphostingSecretsSetAction if GEMINI_API_KEY is blank in .env", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY= ");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should not call apphostingSecretsSetAction if GEMINI_API_KEY is missing in .env", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("OTHER_KEY=value");
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should not call apphostingSecretsSetAction if .env does not exist", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
+    it("should do nothing if projectId is undefined", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      await uploadSecrets(testRoot, undefined);
+      expect(secretsStub.called).to.be.false;
     });
   });
 });

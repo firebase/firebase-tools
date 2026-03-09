@@ -66,8 +66,9 @@ Here are a list of prerequisite steps that must be completed before running a te
 
 	* Goal (required): In one sentence or less, describe what you want the agent to do in this step.
 	* Hint (optional): Provide additional information to help Gemini understand and navigate your app.
-	* Success Criteria (optional): Your success criteria should be phrased as an observation, such as 'The screen shows a
-    success message' or 'The checkout page is visible'.
+	* Final Screen Assertion (required for last step): Your final screen assertion should be phrased as an observation, such
+    as 'The screen shows a success message' or 'The checkout page is visible'. You can think of these as test assertions
+    that are checked at the end of the step. Optional except for the last step, for which it is required.
 
   The developer has optionally specified the following description for their test:
   * ${testDescription}
@@ -81,8 +82,8 @@ Here are a list of prerequisite steps that must be completed before running a te
     For example, if a step has a list in it, it should probably be broken up into multiple steps. Steps do not need
     to be too small though. The test case should provide a good balance between strict guidance and flexibility. As a
     rule of thumb, each step should require between 2-5 actions.
-	* Include a hint and success criteria whenever possible. Specifically, try to always include a success criteria to help
-    the agent determine when the goal has been completed.
+	* Include a hint and final screen assertion whenever possible. Specifically, try to always include a final screen assertion
+    to help the agent determine when the goal has been completed.
 	* Avoid functionality that the app testing agent struggles with. The app testing agent struggles with the following:
 		* Journeys that require specific timing (like observing that something should be visible for a certain number of
       seconds), interacting with moving or transient elements, etc.
@@ -98,7 +99,7 @@ Here are a list of prerequisite steps that must be completed before running a te
   above, convert the test description provided by the user to make it easier for the agent to follow so that the tests can
   be re-run reliably. If there is no test description, generate a test case that you think will be useful given the functionality 
   of the app. Generate an explanation on why you generated the new test case the way you did, and then generate the
-  new test case, which again is an array of steps where each step contains a goal, hint, and success criteria. Show this
+  new test case, which again is an array of steps where each step contains a goal, hint, and final screen assertion. Show this
   to the user and have them confirm before moving forward. 
 
 ## Run Test
