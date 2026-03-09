@@ -159,6 +159,7 @@ const dynamicDispatch = exports as {
   upsertEnv: typeof upsertEnv;
   store: typeof store;
   overrideChosenEnv: typeof overrideChosenEnv;
+  maybeAddSecretToYaml: typeof maybeAddSecretToYaml;
 };
 
 /**
@@ -171,9 +172,10 @@ const dynamicDispatch = exports as {
 export async function maybeAddSecretToYaml(
   secretName: string,
   fileName: string = APPHOSTING_BASE_YAML_FILE,
+  cwd: string = process.cwd(),
 ): Promise<void> {
   // Note: The API proposal suggested that we would check if the env exists. This is stupidly hard because the YAML may not exist yet.
-  const backendRoot = dynamicDispatch.discoverBackendRoot(process.cwd());
+  const backendRoot = dynamicDispatch.discoverBackendRoot(cwd);
   let path: string | undefined;
   let projectYaml: yaml.Document;
   if (backendRoot) {
@@ -196,7 +198,7 @@ export async function maybeAddSecretToYaml(
   if (!path) {
     path = await prompt.input({
       message: `It looks like you don't have an ${fileName} yet. Where would you like to store it?`,
-      default: process.cwd(),
+      default: cwd,
     });
     path = join(path, fileName);
   }

@@ -287,6 +287,7 @@ export async function apphostingSecretsSetAction(
   location?: string,
   dataFile?: string,
   nonInteractive?: boolean,
+  cwd?: string,
 ): Promise<void> {
   if (!projectNumber) {
     projectNumber = (await getProject(projectId)).projectNumber;
@@ -334,7 +335,11 @@ export async function apphostingSecretsSetAction(
           clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --emails [email list]`),
       );
     }
-    await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
+    await config.maybeAddSecretToYaml(
+      secretName,
+      config.APPHOSTING_EMULATORS_YAML_FILE,
+      cwd,
+    );
     return;
   }
 
@@ -355,7 +360,7 @@ export async function apphostingSecretsSetAction(
     await grantSecretAccess(projectId, projectNumber, secretName, accounts);
   }
 
-  await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE);
+  await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE, cwd);
   utils.logBullet(
     "To grant additional users access to this secret run " +
       clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) +
