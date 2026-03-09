@@ -61,11 +61,6 @@ export default async function (context: Context, options: Options): Promise<void
               },
             ],
           },
-          iamConfiguration: {
-            uniformBucketLevelAccess: {
-              enabled: true,
-            },
-          },
         },
       });
       bucketsPerLocation[loc] = resolvedName;
