@@ -21,9 +21,10 @@ import { logLabeledError, logLabeledWarning } from "../../utils";
 import * as apphosting from "../../gcp/apphosting";
 import { Constants } from "../constants";
 import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
-import { AppPlatform, getAppConfig } from "../../management/apps";
 import { spawnSync } from "child_process";
 import { gte as semverGte } from "semver";
+import { getAutoinitEnvVars } from "../../apphosting/utils";
+import { AppPlatform, getAppConfig } from "../../management/apps";
 
 interface StartOptions {
   projectId?: string;
@@ -156,14 +157,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
   } else {
     const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
-    if (webappConfig) {
-      environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
-      environmentVariablesToInject["FIREBASE_CONFIG"] ||= JSON.stringify({
-        databaseURL: webappConfig.databaseURL,
-        storageBucket: webappConfig.storageBucket,
-        projectId: webappConfig.projectId,
-      });
-    }
+    Object.assign(environmentVariablesToInject, getAutoinitEnvVars(webappConfig));
     await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }
 
