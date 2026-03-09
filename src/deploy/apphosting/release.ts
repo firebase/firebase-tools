@@ -62,7 +62,7 @@ export default async function (context: Context, options: Options): Promise<void
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-            locallyBuiltSource: true, // generalize
+            locallyBuiltSource: !!context.backendLocalBuilds[backendId],
           },
         },
       },
