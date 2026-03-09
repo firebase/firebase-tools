@@ -335,11 +335,7 @@ export async function apphostingSecretsSetAction(
           clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --emails [email list]`),
       );
     }
-    await config.maybeAddSecretToYaml(
-      secretName,
-      config.APPHOSTING_EMULATORS_YAML_FILE,
-      cwd,
-    );
+    await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE, cwd);
     return;
   }
 
