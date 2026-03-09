@@ -549,6 +549,6 @@ export async function migrate(
     );
   }
 
-  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
+  await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
   await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }
