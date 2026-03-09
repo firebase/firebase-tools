@@ -173,29 +173,40 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
+export interface CacheSettings {
+  maxAge?: string;
+  maxSize?: string;
+  storage?: "persistent" | "memory";
+}
+
 export interface AdminNodeSDK {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: CacheSettings; 
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: CacheSettings; 
 }
 
 export interface SwiftSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
 export interface KotlinSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
 export interface DartSDK {
   outputDir: string;
   package: string;
+  clientCache?: CacheSettings; 
 }
 
 // Helper types && converters
