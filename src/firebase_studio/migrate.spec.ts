@@ -67,9 +67,7 @@ describe("migrate", () => {
         "Firebase Studio migration is currently not supported on Windows.",
       );
 
-      expect(
-        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "error" }),
-      ).to.be.true;
+      expect(trackStub.notCalled).to.be.true;
     });
 
     it("should perform a full migration successfully and track start/success", async () => {
