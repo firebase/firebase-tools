@@ -1,0 +1,1 @@
+- add support for `next.config.ts` and `next.config.mts` in Next.js deployments (#9871)
