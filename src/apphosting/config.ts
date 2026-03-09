@@ -11,6 +11,7 @@ import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";
 import * as csm from "../gcp/secretManager";
 import { FirebaseError, getError } from "../error";
+import { basename } from "path";
 
 // Common config across all environments
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
@@ -111,6 +112,67 @@ export function load(yamlPath: string): yaml.Document {
   return yaml.parseDocument(raw);
 }
 
+/**
+ * Splits the environment variables in an EnvMap into build and runtime maps.
+ */
+export function splitEnvVars(env: EnvMap): Record<"build" | "runtime", EnvMap> {
+  const result: Record<"build" | "runtime", EnvMap> = { build: {}, runtime: {} };
+  for (const [key, val] of Object.entries(env)) {
+    // If not specified, default to both build and runtime.
+    const availabilities = val.availability || ["BUILD", "RUNTIME"];
+    if (availabilities.includes("BUILD")) {
+      result.build[key] = val;
+    }
+    if (availabilities.includes("RUNTIME")) {
+      result.runtime[key] = val;
+    }
+  }
+  return result;
+}
+
+/**
+ * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
+ * overriding union. In order to keep apphosting.emulator.yaml safe to commit,
+ * users cannot change a secret environment variable to plaintext.
+ * apphosting.local.yaml can, however, for reverse compatibility, though its existence
+ * will be downplayed and tooling will not assist in creating or managing it.
+ */
+export async function getAppHostingConfiguration(
+  backendDir: string,
+  options?: { allowEmulator?: boolean; allowLocal?: boolean },
+): Promise<AppHostingYamlConfig> {
+  const opt = { allowEmulator: true, allowLocal: true, ...options };
+  const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
+  // generate a map to make it easier to interface between file name and it's path
+  const fileNameToPathMap = Object.fromEntries(
+    appHostingConfigPaths.map((path) => [basename(path), path]),
+  );
+
+  const output = AppHostingYamlConfig.empty();
+
+  const baseFilePath = fileNameToPathMap[APPHOSTING_BASE_YAML_FILE];
+  const emulatorsFilePath = fileNameToPathMap[APPHOSTING_EMULATORS_YAML_FILE];
+  const localFilePath = fileNameToPathMap[APPHOSTING_LOCAL_YAML_FILE];
+
+  if (baseFilePath) {
+    // N.B. merging from empty helps tests stay hermetic.
+    const baseFile = await AppHostingYamlConfig.loadFromFile(baseFilePath);
+    output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
+  }
+
+  if (opt.allowEmulator && emulatorsFilePath) {
+    const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
+    output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
+  }
+
+  if (opt.allowLocal && localFilePath) {
+    const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
+    output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
+  }
+
+  return output;
+}
+
 /** Save apphosting.yaml */
 export function store(yamlPath: string, document: yaml.Document): void {
   writeFileSync(yamlPath, document.toString());
@@ -159,6 +221,8 @@ const dynamicDispatch = exports as {
   upsertEnv: typeof upsertEnv;
   store: typeof store;
   overrideChosenEnv: typeof overrideChosenEnv;
+  listAppHostingFilesInPath: typeof listAppHostingFilesInPath;
+  getAppHostingConfiguration: typeof getAppHostingConfiguration;
 };
 
 /**
