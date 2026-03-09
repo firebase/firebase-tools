@@ -8,6 +8,7 @@ import { Options } from "../../options";
 import { logger } from "../../logger";
 import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
+import { checkFreeTrialInstanceUsed } from "../../dataconnect/freeTrial";
 
 const API_VERSION = "v1";
 
@@ -98,7 +99,7 @@ export async function createInstance(args: {
     });
     return;
   } catch (err: any) {
-    handleAllowlistError(err, args.location);
+    await handleCreateInstanceError(err, args.location, args.projectId);
     throw err;
   }
 }
@@ -145,10 +146,18 @@ export async function updateInstanceForDataConnect(
   return pollRes;
 }
 
-function handleAllowlistError(err: any, region: string) {
-  if (err.message.includes("Not allowed to set system label: firebase-data-connect")) {
+async function handleCreateInstanceError(err: any, region: string, projectId: string) {
+  if (err?.message?.includes("Not allowed to set system label: firebase-data-connect")) {
     throw new FirebaseError(
       `Cloud SQL free trial instances are not yet available in ${region}. Please check https://firebase.google.com/docs/data-connect/ for a full list of available regions.`,
+    );
+  }
+  if (
+    err?.message?.includes("The billing account is not in good standing") &&
+    (await checkFreeTrialInstanceUsed(projectId))
+  ) {
+    throw new FirebaseError(
+      `You have already used your Cloud SQL free trial. To create more instances, you need to attach a billing account to project ${projectId}.`,
     );
   }
 }
