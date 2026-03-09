@@ -208,7 +208,7 @@ async function injectAgyContext(
 async function assertSystemState(startAgy?: boolean): Promise<void> {
   // Assertion: Check for Antigravity (agy)
   // If we're not starting the IDE, skip the check.
-  if (startAgy === false) {
+  if (!startAgy) {
     return;
   }
   try {
