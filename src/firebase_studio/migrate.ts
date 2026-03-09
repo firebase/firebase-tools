@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 
 import { logger } from "../logger";
 import * as prompt from "../prompt";
