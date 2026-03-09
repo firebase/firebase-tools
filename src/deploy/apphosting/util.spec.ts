@@ -41,8 +41,9 @@ describe("util", () => {
 
       // Verify: List files in tarball
       const files: string[] = [];
-      await tar.list({
+      tar.list({
         file: tarballPath,
+        sync: true,
         onentry: (entry: any) => files.push(entry.path),
       } as any);
 
@@ -68,8 +69,9 @@ describe("util", () => {
 
       // Verify: List files in tarball
       const files: string[] = [];
-      await tar.list({
+      tar.list({
         file: tarballPath,
+        sync: true,
         onentry: (entry: any) => files.push(entry.path),
       } as any);
 
