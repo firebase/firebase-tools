@@ -1,2 +1,1 @@
 - Fix proxy.js/proxy.ts in Next.js 16 (#9631)
-- Fixes an issue where Python was missing from the firebase-tools Docker image (#9855).

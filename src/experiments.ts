@@ -166,6 +166,11 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcwebhooks: {
     shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    default: true,
+    public: false,
+  },
+  studioexport: {
+    shortDescription: "Enable the experimental studio:export command.",
     default: false,
     public: false,
   },
