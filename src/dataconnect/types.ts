@@ -174,7 +174,15 @@ export interface SupportedFrameworks {
 }
 
 export interface CacheSettings {
+  /**
+   * The maximum duration for which a client-side cache entry is considered valid.
+   * The format is a string representing a duration, e.g., "60s", "5m", "1h".
+   */
   maxAge?: string;
+  /**
+   * The maximum size of the client-side cache.
+   * The format is a string representing a size, e.g., "100KB", "50MB", "1GB".
+   */
   maxSize?: string;
   storage?: "persistent" | "memory";
 }
