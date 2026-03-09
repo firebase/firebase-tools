@@ -22,10 +22,6 @@ interface Codebase {
   rootDirectory: string;
 }
 
-interface Runtime {
-  value: string;
-}
-
 /**
  * Specifies how Backend's data is replicated and served.
  *   GLOBAL_ACCESS: Stores and serves content from multiple points-of-presence (POP)
@@ -39,7 +35,6 @@ export interface Backend {
   name: string;
   mode?: string;
   codebase?: Codebase;
-  runtime?: Runtime;
   servingLocality: ServingLocality;
   labels: Record<string, string>;
   createTime: string;
