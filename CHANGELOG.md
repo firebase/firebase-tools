@@ -1,1 +1,1 @@
-- Implemented `--only` for `emulators:export` (#4033)
+- Added `--only` flag for `emulators:export` (#4033)
