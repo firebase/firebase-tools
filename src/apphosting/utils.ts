@@ -65,8 +65,8 @@ export function getAutoinitEnvVars(webappConfig: WebConfig | undefined): Record<
     return {};
   }
   return {
-    "FIREBASE_WEBAPP_CONFIG": JSON.stringify(webappConfig),
-    "FIREBASE_CONFIG": JSON.stringify({
+    FIREBASE_WEBAPP_CONFIG: JSON.stringify(webappConfig),
+    FIREBASE_CONFIG: JSON.stringify({
       databaseURL: webappConfig.databaseURL,
       storageBucket: webappConfig.storageBucket,
       projectId: webappConfig.projectId,
