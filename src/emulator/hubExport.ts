@@ -95,8 +95,6 @@ export class HubExport {
     const toExport = ALL_EMULATORS.filter(shouldExport).filter((e) =>
       this.exportTargets.includes(e),
     );
-    console.log("--- toExport", toExport);
-    console.log("--- this.exportTargets", this.exportTargets);
     if (toExport.length === 0) {
       throw new FirebaseError("No running emulators support import/export.");
     }
@@ -253,7 +251,6 @@ export class HubExport {
   }
 
   private async exportAuth(metadata: ExportMetadata): Promise<void> {
-    console.log("--- exportAuth");
     void trackEmulator("emulator_export", {
       initiated_by: this.options.initiatedBy,
       emulator_name: Emulators.AUTH,
