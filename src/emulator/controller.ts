@@ -285,6 +285,7 @@ export async function startAll(
   // 1) The service must have a top-level entry in firebase.json or an entry in the emulators{} object
   // 2) If the --only flag is passed, then this list is the intersection
   const targets = filterEmulatorTargets(options);
+  console.log("--- targets", targets);
   options.targets = targets;
   const singleProjectModeEnabled =
     options.config.src.emulators?.singleProjectMode === undefined ||
@@ -1134,7 +1135,9 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
 
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
-    await hubClient.postExport({ path: exportAbsPath, initiatedBy });
+    const targets = filterEmulatorTargets(options);
+    console.log("--- targets", targets);
+    await hubClient.postExport({ path: exportAbsPath, initiatedBy, targets });
   } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
