@@ -8,6 +8,8 @@ import { checkFreeTrialInstanceUsed, freeTrialTermsLink } from "./freeTrial";
 import { promiseWithSpinner } from "../utils";
 import { trackGA4 } from "../track";
 import * as utils from "../utils";
+import { Source } from "../init/features/dataconnect";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 const GOOGLE_ML_INTEGRATION_ROLE = "roles/aiplatform.user";
 
@@ -24,7 +26,7 @@ export async function setupCloudSql(args: {
   instanceId: string;
   databaseId: string;
   requireGoogleMlIntegration: boolean;
-  source: "init" | "mcp_init" | "deploy";
+  source: Source;
   dryRun?: boolean;
 }): Promise<void> {
   const { projectId, instanceId, requireGoogleMlIntegration, dryRun } = args;
@@ -37,7 +39,7 @@ export async function setupCloudSql(args: {
     success = true;
   } finally {
     if (!dryRun) {
-      await trackGA4(
+      void trackGA4(
         "dataconnect_cloud_sql",
         {
           source: args.source,
@@ -76,9 +78,10 @@ async function upsertInstance(
       `Found existing Cloud SQL instance ${clc.bold(instanceId)}.`,
     );
     stats.databaseVersion = existingInstance.databaseVersion;
-    stats.dataconnectLabel = existingInstance.settings?.userLabels?.["firebase-data-connect"] as
-      | cloudSqlAdminClient.DataConnectLabel
-      | undefined;
+    stats.dataconnectLabel =
+      (existingInstance.settings?.userLabels?.[
+        "firebase-data-connect"
+      ] as cloudSqlAdminClient.DataConnectLabel) || "absent";
 
     const why = getUpdateReason(existingInstance, requireGoogleMlIntegration);
     if (why) {
@@ -145,7 +148,12 @@ async function createInstance(args: {
     });
     utils.logLabeledBullet(
       "dataconnect",
-      cloudSQLBeingCreated(projectId, instanceId, freeTrialLabel === "ft"),
+      cloudSQLBeingCreated(
+        projectId,
+        instanceId,
+        freeTrialLabel === "ft",
+        await checkBillingEnabled(projectId),
+      ),
     );
   }
 }
@@ -156,18 +164,22 @@ async function createInstance(args: {
 export function cloudSQLBeingCreated(
   projectId: string,
   instanceId: string,
-  includeFreeTrialToS?: boolean,
+  isFreeTrial?: boolean,
+  billingEnabled?: boolean,
 ): string {
   return (
     `Cloud SQL Instance ${clc.bold(instanceId)} is being created.` +
-    (includeFreeTrialToS
+    (isFreeTrial
       ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
-    `
-   Meanwhile, your data are saved in a temporary database and will be migrated once complete. Monitor its progress at
-
-   ${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}
-`
+    `\n
+   Meanwhile, your data are saved in a temporary database and will be migrated once complete.` +
+    (isFreeTrial && !billingEnabled
+      ? ` 
+   Your free trial instance won't show in google cloud console until a billing account is added.
+   However, you can still use the gcloud cli to monitor your database instance:\n\n\te.g. gcloud sql instances list --project ${projectId}\n`
+      : ` 
+   Monitor its progress at\n\n\t${cloudSqlAdminClient.instanceConsoleLink(projectId, instanceId)}\n`)
   );
 }
 

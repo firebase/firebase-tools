@@ -4,7 +4,7 @@ import { expect } from "chai";
 import * as promptImport from "../../prompt";
 import { Config } from "../../config";
 import { Setup } from "..";
-import { doSetup } from "./functions";
+import { actuate, askQuestions } from "./functions";
 import { Options } from "../../options";
 import { RC } from "../../rc";
 
@@ -54,7 +54,6 @@ describe("functions", () => {
       filteredTargets: [],
       force: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: emptyConfig,
       rc: new RC(),
@@ -79,15 +78,17 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, emptyConfig, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
           codebase: TEST_CODEBASE_DEFAULT,
           ignore: ["node_modules", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"],
           predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+          disallowLegacyRuntimeConfig: true,
         });
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/index.js`,
@@ -105,7 +106,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(emptyConfig, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, emptyConfig, options);
+        await askQuestions(setup, emptyConfig, options);
+        await actuate(setup, emptyConfig);
 
         expect(setup.config.functions[0]).to.deep.equal({
           source: TEST_SOURCE_DEFAULT,
@@ -115,8 +117,9 @@ describe("functions", () => {
             'npm --prefix "$RESOURCE_DIR" run lint',
             'npm --prefix "$RESOURCE_DIR" run build',
           ],
+          disallowLegacyRuntimeConfig: true,
         });
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/tsconfig.dev.json`,
@@ -143,7 +146,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, config, options);
+        await askQuestions(setup, config, options);
+        await actuate(setup, config);
 
         expect(setup.config.functions).to.deep.equal([
           {
@@ -169,9 +173,10 @@ describe("functions", () => {
               "*.local",
             ],
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
+            disallowLegacyRuntimeConfig: true,
           },
         ]);
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `testsource2/package.json`,
           `testsource2/.eslintrc.js`,
           `testsource2/index.js`,
@@ -190,7 +195,8 @@ describe("functions", () => {
         askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
         askWriteProjectFileStub.resolves();
 
-        await doSetup(setup, config, options);
+        await askQuestions(setup, config, options);
+        await actuate(setup, config);
 
         expect(setup.config.functions).to.deep.equal([
           {
@@ -206,7 +212,7 @@ describe("functions", () => {
             predeploy: ['npm --prefix "$RESOURCE_DIR" run lint'],
           },
         ]);
-        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.deep.equal([
+        expect(askWriteProjectFileStub.getCalls().map((call) => call.args[0])).to.have.members([
           `${TEST_SOURCE_DEFAULT}/package.json`,
           `${TEST_SOURCE_DEFAULT}/.eslintrc.js`,
           `${TEST_SOURCE_DEFAULT}/index.js`,

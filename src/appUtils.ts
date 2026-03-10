@@ -11,6 +11,7 @@ export enum Platform {
   WEB = "WEB",
   IOS = "IOS",
   FLUTTER = "FLUTTER",
+  ADMIN_NODE = "ADMIN_NODE",
 }
 
 /**
@@ -58,29 +59,31 @@ export async function getPlatformsFromFolder(dirPath: string): Promise<Platform[
  * @return A list of apps detected.
  */
 export async function detectApps(dirPath: string): Promise<App[]> {
-  const packageJsonFiles = await detectFiles(dirPath, "package.json");
-  const pubSpecYamlFiles = await detectFiles(dirPath, "pubspec.yaml");
-  const srcMainFolders = await detectFiles(dirPath, "src/main/");
-  const xCodeProjects = await detectFiles(dirPath, "*.xcodeproj/");
-  const webApps = await Promise.all(packageJsonFiles.map((p) => packageJsonToWebApp(dirPath, p)));
+  const [packageJsonFiles, pubSpecYamlFiles, srcMainFolders, xCodeProjects] = await Promise.all([
+    detectFiles(dirPath, "package.json"),
+    detectFiles(dirPath, "pubspec.yaml"),
+    detectFiles(dirPath, "src/main/"),
+    detectFiles(dirPath, "*.xcodeproj/"),
+  ]);
 
-  const flutterAppPromises = await Promise.all(
-    pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f)),
+  const [adminAndWebApps, flutterApps, androidAppsRaw, iosAppsRaw] = await Promise.all([
+    Promise.all(packageJsonFiles.map((p) => packageJsonToAdminOrWebApp(dirPath, p))).then((r) =>
+      r.flat(),
+    ),
+    Promise.all(pubSpecYamlFiles.map((f) => processFlutterDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(srcMainFolders.map((f) => processAndroidDir(dirPath, f))).then((r) => r.flat()),
+    Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f))).then((r) => r.flat()),
+  ]);
+
+  const androidApps = androidAppsRaw.filter(
+    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
   );
-  const flutterApps = flutterAppPromises.flat();
 
-  const androidAppPromises = await Promise.all(
-    srcMainFolders.map((f) => processAndroidDir(dirPath, f)),
+  const iosApps = iosAppsRaw.filter(
+    (a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)),
   );
-  const androidApps = androidAppPromises
-    .flat()
-    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
 
-  const iosAppPromises = await Promise.all(xCodeProjects.map((f) => processIosDir(dirPath, f)));
-  const iosApps = iosAppPromises
-    .flat()
-    .filter((a) => !flutterApps.some((f) => isPathInside(f.directory, a.directory)));
-  return [...webApps, ...flutterApps, ...androidApps, ...iosApps];
+  return [...flutterApps, ...androidApps, ...iosApps, ...adminAndWebApps];
 }
 
 async function processIosDir(dirPath: string, filePath: string): Promise<App[]> {
@@ -164,14 +167,40 @@ function isPathInside(parent: string, child: string): boolean {
   return !relativePath.startsWith(`..`);
 }
 
-async function packageJsonToWebApp(dirPath: string, packageJsonFile: string): Promise<App> {
-  const fullPath = path.join(dirPath, packageJsonFile);
-  const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
-  return {
-    platform: Platform.WEB,
-    directory: path.dirname(packageJsonFile),
-    frameworks: getFrameworksFromPackageJson(packageJson),
-  };
+export function getAllDepsFromPackageJson(packageJson: PackageJSON) {
+  const devDependencies = Object.keys(packageJson.devDependencies ?? {});
+  const dependencies = Object.keys(packageJson.dependencies ?? {});
+  const allDeps = Array.from(new Set([...devDependencies, ...dependencies]));
+  return allDeps;
+}
+
+async function packageJsonToAdminOrWebApp(
+  dirPath: string,
+  packageJsonFile: string,
+): Promise<App[]> {
+  try {
+    const fullPath = path.join(dirPath, packageJsonFile);
+    const packageJson = JSON.parse((await fs.readFile(fullPath)).toString()) as PackageJSON;
+    const allDeps = getAllDepsFromPackageJson(packageJson);
+    const detectedApps = [];
+    if (allDeps.includes("firebase-admin") || allDeps.includes("firebase-functions")) {
+      detectedApps.push({
+        platform: Platform.ADMIN_NODE,
+        directory: path.dirname(packageJsonFile),
+      });
+    }
+    if (allDeps.includes("firebase") || detectedApps.length === 0) {
+      detectedApps.push({
+        platform: Platform.WEB,
+        directory: path.dirname(packageJsonFile),
+        frameworks: getFrameworksFromPackageJson(packageJson),
+      });
+    }
+    return detectedApps;
+  } catch (err) {
+    // If there is a malformed package.json, don't crash
+    return [];
+  }
 }
 
 const WEB_FRAMEWORKS: Framework[] = Object.values(Framework);
@@ -215,9 +244,7 @@ async function detectAppIdsForPlatform(
 }
 
 function getFrameworksFromPackageJson(packageJson: PackageJSON): Framework[] {
-  const devDependencies = Object.keys(packageJson.devDependencies ?? {});
-  const dependencies = Object.keys(packageJson.dependencies ?? {});
-  const allDeps = Array.from(new Set([...devDependencies, ...dependencies]));
+  const allDeps = getAllDepsFromPackageJson(packageJson);
   return WEB_FRAMEWORKS.filter((framework) =>
     WEB_FRAMEWORKS_SIGNALS[framework].find((dep) => allDeps.includes(dep)),
   );
@@ -296,7 +323,13 @@ export function extractAppIdentifiersAndroid(fileContent: string): AppIdentifier
   return identifiers;
 }
 
-async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
+/**
+ * Detects files matching a pattern within a directory, ignoring common dependency and build folders.
+ * @param dirPath The directory to search in.
+ * @param filePattern The glob pattern for the files to detect (e.g., "*.json").
+ * @return A promise that resolves to an array of file paths relative to `dirPath`.
+ */
+export async function detectFiles(dirPath: string, filePattern: string): Promise<string[]> {
   const options = {
     cwd: dirPath,
     ignore: [
@@ -309,6 +342,7 @@ async function detectFiles(dirPath: string, filePattern: string): Promise<string
       "**/coverage/**", // Test coverage reports
     ],
     absolute: false,
+    maxDepth: 4,
   };
   return glob(`**/${filePattern}`, options);
 }

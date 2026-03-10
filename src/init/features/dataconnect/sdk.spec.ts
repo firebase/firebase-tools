@@ -82,7 +82,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
     expect(connectorYaml.generate?.dartSdk).to.deep.equal([
       {
         outputDir: "../app/lib/dataconnect_generated",
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       },
     ]);
   });
@@ -105,6 +105,18 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+      },
+    ]);
+  });
+
+  it("should add adminSdk for admin node platform", () => {
+    app.platform = Platform.ADMIN_NODE;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
+      {
+        outputDir: "../app/src/dataconnect-admin-generated",
+        package: "@dataconnect/admin-generated",
+        packageJsonDir: "../app",
       },
     ]);
   });

@@ -32,15 +32,6 @@ export function assertExecutionResult(
   }
 }
 
-export function isExecutionResult(response: any): response is ExecutionResult {
-  try {
-    assertExecutionResult(response);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /** Asserts that an unknown object is a {@link GraphQLError} */
 export function assertGraphQLError(
   error: unknown

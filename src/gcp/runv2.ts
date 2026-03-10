@@ -11,7 +11,7 @@ import * as backend from "../deploy/functions/backend";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
-import { logger } from "..";
+import { logger } from "../logger";
 import { partition } from "../functional";
 
 export const API_VERSION = "v2";
@@ -46,6 +46,10 @@ export interface Container {
     // N.B. This defaults to true if resources is not set and must manually be set to true if it is set.
     cpuIdle?: boolean; // If true, the container will be allowed to idle CPU when not processing requests.
   };
+  baseImageUri?: string;
+  sourceCode?: {
+    cloudStorageSource: StorageSource;
+  };
   // Lots more. Most intereeseting is baseImageUri and maybe buildInfo.
 }
 export interface RevisionTemplate {
@@ -68,7 +72,7 @@ export interface RevisionTemplate {
   timeout?: proto.Duration;
   serviceAccount?: string;
   containers?: Container[];
-  containerConcurrency?: number;
+  maxInstanceRequestConcurrency?: number;
 }
 
 export interface BuildConfig {
@@ -109,6 +113,7 @@ export interface Service {
   invokerIamDisabled?: boolean;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
+  uri?: string;
 }
 
 export type ServiceOutputFields =
@@ -155,6 +160,10 @@ export interface SubmitBuildResponse {
   baseImageWarning?: string;
 }
 
+/**
+ * Submits a build to Cloud Build using the v2 API, tracking the long-running operation.
+ * Used for building source code into container images.
+ */
 export async function submitBuild(
   projectId: string,
   location: string,
@@ -174,6 +183,10 @@ export async function submitBuild(
   });
 }
 
+/**
+ * Updates an existing Cloud Run service.
+ * Tracks the long-running operation until completion.
+ */
 export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
   const fieldMask = proto.fieldMasks(
     service,
@@ -183,7 +196,7 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
   );
   // Always update revision name to ensure null generates a new unique revision name.
   fieldMask.push("template.revision");
-  const res = await client.post<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
+  const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
     {
@@ -198,6 +211,111 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     operationResourceName: res.body.name,
   });
   return svc;
+}
+
+/**
+ * Creates a new Cloud Run service in the specified project and location.
+ * Tracks the long-running operation until completion.
+ */
+export async function createService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+  service: Omit<Service, ServiceOutputFields>,
+): Promise<Service> {
+  // The create API expects the name to be empty or unset, as the parent is in the URL
+  // and resource ID is a query param.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { name, ...serviceBody } = service;
+  const res = await client.post<Partial<Service>, LongRunningOperation<Service>>(
+    `/projects/${projectId}/locations/${location}/services`,
+    serviceBody,
+    {
+      queryParams: {
+        serviceId,
+      },
+    },
+  );
+  const svc = await pollOperation<Service>({
+    apiOrigin: runOrigin(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
+  return svc;
+}
+
+/**
+ * Deletes a Cloud Run service.
+ * Tracks the long-running operation until completion.
+ */
+export async function deleteService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+): Promise<void> {
+  const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
+  const res = await client.delete<LongRunningOperation<Service>>(name);
+  await pollOperation({
+    apiOrigin: runOrigin(),
+    apiVersion: API_VERSION,
+    operationResourceName: res.body.name,
+  });
+}
+
+/**
+ * Gets a Cloud Run service details.
+ */
+export async function getService(
+  projectId: string,
+  location: string,
+  serviceId: string,
+): Promise<Service> {
+  const name = `projects/${projectId}/locations/${location}/services/${serviceId}`;
+  const res = await client.get<Service>(name);
+  return res.body;
+}
+
+/**
+ * Lists Cloud Run services in the given project.
+ *
+ * This method only returns services with the "goog-managed-by" label set to
+ * "cloud-functions" or "firebase-functions".
+ */
+export async function listServices(projectId: string): Promise<Service[]> {
+  const allServices: Service[] = [];
+  let pageToken: string | undefined = undefined;
+
+  do {
+    const queryParams: Record<string, string> = {};
+    if (pageToken) {
+      queryParams["pageToken"] = pageToken;
+    }
+
+    const res = await client.get<{ services?: Service[]; nextPageToken?: string }>(
+      `/projects/${projectId}/locations/-/services`,
+      { queryParams },
+    );
+
+    if (res.status !== 200) {
+      throw new FirebaseError(`Failed to list services. HTTP Error: ${res.status}`, {
+        original: res.body as any,
+      });
+    }
+
+    if (res.body.services) {
+      for (const service of res.body.services) {
+        if (
+          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
+        ) {
+          allServices.push(service);
+        }
+      }
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return allServices;
 }
 
 // TODO: Replace with real version:
@@ -449,6 +567,10 @@ export interface FirebaseFunctionMetadata {
 // values from the dependent services? But serviceFromEndpoint currently
 // only returns the service and not the dependent resources, which we will
 // need for updates.
+/**
+ * Converts a Cloud Run Service definition into a Firebase internal Endpoint representation.
+ * Handles parsing of environment variables, secrets, and labels to reconstruct the function configuration.
+ */
 export function endpointFromService(service: Omit<Service, ServiceOutputFields>): backend.Endpoint {
   const [, /* projects*/ project /* locations*/, , location /* services*/, , svcId] =
     service.name.split("/");
@@ -487,11 +609,28 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       service.annotations?.[FUNCTION_TARGET_ANNOTATION] ||
       service.annotations?.[FUNCTION_ID_ANNOTATION] ||
       id,
-
-    // TODO: trigger types.
-    httpsTrigger: {},
+    timeoutSeconds: service.template.timeout
+      ? proto.secondsFromDuration(service.template.timeout)
+      : 60,
+    serviceAccount: service.template.serviceAccount || null,
+    ingressSettings: (service.annotations?.["run.googleapis.com/ingress"] === "internal"
+      ? "ALLOW_INTERNAL_ONLY"
+      : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
+        ? "ALLOW_INTERNAL_AND_GCLB"
+        : "ALLOW_ALL") as backend.IngressSettings,
+    // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
+    ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+    service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+      ? { httpsTrigger: {} }
+      : {
+          eventTrigger: {
+            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+            // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
+            retry: false,
+          },
+        }),
   };
-  proto.renameIfPresent(endpoint, service.template, "concurrency", "containerConcurrency");
+  proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
   proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
   proto.renameIfPresent(endpoint, service.scaling || {}, "maxInstances", "maxInstanceCount");
@@ -510,16 +649,26 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       version: e.valueSource.secretKeyRef.version || "latest",
     };
   });
+  if (service.template.vpcAccess) {
+    endpoint.vpc = {
+      connector: service.template.vpcAccess.connector || "",
+      egressSettings: service.template.vpcAccess.egress || null,
+    };
+  }
   return endpoint;
 }
 
+/**
+ * Converts a Firebase internal Endpoint representation into a Cloud Run Service definition.
+ * Used for creating or updating services.
+ */
 export function serviceFromEndpoint(
   endpoint: backend.Endpoint,
   image: string,
 ): Omit<Service, ServiceOutputFields> {
   const labels: Record<string, string> = {
     ...endpoint.labels,
-    [RUNTIME_LABEL]: endpoint.runtime,
+    ...(endpoint.runtime ? { [RUNTIME_LABEL]: endpoint.runtime } : {}),
     [CLIENT_NAME_LABEL]: "firebase-functions",
   };
 
@@ -575,11 +724,14 @@ export function serviceFromEndpoint(
           cpuIdle: true,
           startupCpuBoost: true,
         },
+        ...(endpoint.baseImageUri ? { baseImageUri: endpoint.baseImageUri } : {}),
+        ...(endpoint.command ? { command: endpoint.command } : {}),
+        ...(endpoint.args ? { args: endpoint.args } : {}),
       },
     ],
-    containerConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
+    maxInstanceRequestConcurrency: endpoint.concurrency || backend.DEFAULT_CONCURRENCY,
   };
-  proto.renameIfPresent(template, endpoint, "containerConcurrency", "concurrency");
+  proto.renameIfPresent(template, endpoint, "maxInstanceRequestConcurrency", "concurrency");
 
   const service: Omit<Service, ServiceOutputFields> = {
     name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(
@@ -597,6 +749,35 @@ export function serviceFromEndpoint(
     proto.renameIfPresent(service.scaling, endpoint, "maxInstanceCount", "maxInstances");
   }
 
-  // TODO: other trigger types, service accounts, concurrency, etc.
+  // TODO: other trigger types (callable, scheduled, etc)
+
+  if (endpoint.serviceAccount) {
+    template.serviceAccount = endpoint.serviceAccount;
+  }
+
+  if (endpoint.timeoutSeconds) {
+    template.timeout = proto.durationFromSeconds(endpoint.timeoutSeconds);
+  }
+
+  if (endpoint.vpc) {
+    template.vpcAccess = {
+      connector: endpoint.vpc.connector,
+      egress: endpoint.vpc.egressSettings || undefined,
+    };
+  }
+
+  if (endpoint.ingressSettings) {
+    const ingressAnnotation =
+      endpoint.ingressSettings === "ALLOW_INTERNAL_ONLY"
+        ? "internal"
+        : endpoint.ingressSettings === "ALLOW_INTERNAL_AND_GCLB"
+          ? "internal-and-cloud-load-balancing"
+          : "all";
+    service.annotations = {
+      ...service.annotations,
+      "run.googleapis.com/ingress": ingressAnnotation,
+    };
+  }
+
   return service;
 }

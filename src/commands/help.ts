@@ -11,7 +11,7 @@ export const command = new Command("help [command]")
   .action(function (commandName) {
     // @ts-ignore
     const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
-    const cmd = client.getCommand(commandName);
+    const cmd = commandName ? client.getCommand(commandName) : undefined;
     if (cmd) {
       cmd.outputHelp();
     } else if (commandName) {

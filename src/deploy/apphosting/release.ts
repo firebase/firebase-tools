@@ -11,6 +11,7 @@ import {
   logLabeledWarning,
 } from "../../utils";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
@@ -70,6 +71,7 @@ export default async function (context: Context, options: Options): Promise<void
     `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
     if (res.status === "fulfilled") {
@@ -77,9 +79,15 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledSuccess("apphosting", `Rollout for backend ${backendIds[i]} complete!`);
       logLabeledSuccess("apphosting", `Your backend is now deployed at:\n\thttps://${backend.uri}`);
     } else {
+      failed = true;
       logLabeledWarning("apphosting", `Rollout for backend ${backendIds[i]} failed.`);
-      logLabeledError("apphosting", res.reason);
+      logLabeledError("apphosting", `${res.reason}`);
     }
   }
   rolloutsSpinner.stop();
+  if (failed) {
+    throw new FirebaseError(
+      "One or more rollouts failed. Please review the errors above and try again.",
+    );
+  }
 }

@@ -34,7 +34,7 @@ export const FIREBASE_FUNCTIONS_VERSION = "^6.0.1";
 export const FIREBASE_ADMIN_VERSION = "^11.11.1";
 export const SHARP_VERSION = "^0.32 || ^0.33";
 export const NODE_VERSION = parseInt(process.versions.node, 10);
-export const VALID_ENGINES = { node: [16, 18, 20] };
+export const VALID_ENGINES = { node: [20, 22, 24] };
 
 export const VALID_LOCALE_FORMATS = [/^ALL_[a-z]+$/, /^[a-z]+_ALL$/, /^[a-z]+(_[a-z]+)?$/];
 

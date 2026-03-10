@@ -4,6 +4,7 @@ import { mcpError, toContent } from "../../util";
 import { toggleUserEnablement, setCustomClaim } from "../../../gcp/auth";
 
 export const update_user = tool(
+  "auth",
   {
     name: "update_user",
     description: "Use this to disable, enable, or set a custom claim on a specific user's account.",

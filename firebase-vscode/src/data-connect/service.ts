@@ -1,4 +1,4 @@
-import fetch, { Response } from "node-fetch";
+import fetch from "node-fetch";
 import { ExtensionContext } from "vscode";
 import {
   ExecutionResult,
@@ -6,8 +6,6 @@ import {
   getIntrospectionQuery,
 } from "graphql";
 import { DataConnectError } from "../../common/error";
-import { AuthService } from "../auth/service";
-import { UserMockKind } from "../../common/messaging/protocol";
 import { firstWhereDefined } from "../utils/signal";
 import { EmulatorsController } from "../core/emulators";
 import { dataConnectConfigs } from "../data-connect/config";
@@ -24,23 +22,21 @@ import {
   ExecuteGraphqlRequest,
   GraphqlResponse,
   GraphqlResponseError,
-  Impersonation,
 } from "../dataconnect/types";
 import { Client, ClientResponse } from "../../../src/apiv2";
 import { InstanceType } from "./code-lens-provider";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectToolkit } from "./toolkit";
 import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { ExecutionParamsService } from "./execution/execution-params";
 
 /**
  * DataConnect Emulator service
  */
 export class DataConnectService {
   constructor(
-    private authService: AuthService,
     private dataConnectToolkit: DataConnectToolkit,
     private emulatorsController: EmulatorsController,
-    private context: ExtensionContext,
     private analyticsLogger: AnalyticsLogger,
   ) {}
 
@@ -53,34 +49,6 @@ export class DataConnectService {
     }
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
     return dcs?.getApiServicePathByPath(projectId, path);
-  }
-
-  private async handleProdResponse(
-    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
-  ): Promise<ExecutionResult> {
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${response.status}`);
-    if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse = response as ClientResponse<GraphqlResponseError>;
-      throw new DataConnectError(
-        `Prod Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
-      );
-    }
-    const successResponse = response as ClientResponse<GraphqlResponse>;
-    return successResponse.body;
-  }
-
-  private async handleEmulatorResponse(
-    response: ClientResponse<GraphqlResponse | GraphqlResponseError>,
-  ): Promise<ExecutionResult> {
-    this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${response.status}`);
-    if (!(response.status >= 200 && response.status < 300)) {
-      const errorResponse = response as ClientResponse<GraphqlResponseError>;
-      throw new DataConnectError(
-        `Emulator Request failed with status ${response.status}\nError Response: ${JSON.stringify(errorResponse?.body)}`,
-      );
-    }
-    const successResponse = response as ClientResponse<GraphqlResponse>;
-    return successResponse.body;
   }
 
   /** Encode a body while handling the fact that "variables" is raw JSON.
@@ -100,22 +68,6 @@ export class DataConnectService {
       ...rest,
       variables: JSON.parse(variables),
     });
-  }
-
-  private _auth(): { impersonate?: Impersonation } {
-    const userMock = this.authService.userMock;
-    if (!userMock || userMock.kind === UserMockKind.ADMIN) {
-      return {};
-    }
-    return {
-      impersonate:
-        userMock.kind === UserMockKind.AUTHENTICATED
-          ? {
-              authClaims: JSON.parse(userMock.claims),
-              includeDebugDetails: true,
-            }
-          : { unauthenticated: true, includeDebugDetails: true },
-    };
   }
 
   // This introspection is used to generate a basic graphql schema
@@ -200,36 +152,16 @@ export class DataConnectService {
     }
   }
 
-  async executeGraphQL(params: {
-    query: string;
-    operationName?: string;
-    variables: string;
-    path: string;
-    instance: InstanceType;
-  }) {
-    const servicePath = await this.servicePath(params.path);
-    if (!servicePath) {
-      throw new Error("No service found for path: " + params.path);
-    }
-    const prodBody: ExecuteGraphqlRequest = {
-      operationName: params.operationName,
-      variables: parseVariableString(params.variables),
-      query: params.query,
-      extensions: this._auth(),
-    };
-
-    const body = this._serializeBody({
-      ...params,
-      name: `${servicePath}`,
-      extensions: this._auth(),
-    });
-    if (params.instance === InstanceType.PRODUCTION) {
+  async executeGraphQL(servicePath: string, instance: InstanceType, body: ExecuteGraphqlRequest):
+    Promise<ClientResponse<GraphqlResponse | GraphqlResponseError>> {
+    if (instance === InstanceType.PRODUCTION) {
       const client = dataconnectDataplaneClient();
       pluginLogger.info(
-        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(prodBody, undefined, 4)}`,
+        `ExecuteGraphQL (${dataconnectOrigin()}) request: ${JSON.stringify(body, undefined, 4)}`,
       );
-      const resp = await executeGraphQL(client, servicePath, prodBody);
-      return this.handleProdResponse(resp);
+      const resp = await executeGraphQL(client, servicePath, body);
+      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${resp.status}`);
+      return resp;
     } else {
       const endpoint = this.emulatorsController.getLocalEndpoint();
       if (!endpoint) {
@@ -241,25 +173,13 @@ export class DataConnectService {
         urlPrefix: endpoint,
         apiVersion: DATACONNECT_API_VERSION,
       });
-      const resp = await executeGraphQL(client, servicePath, prodBody);
-      return this.handleEmulatorResponse(resp);
+      const resp = await executeGraphQL(client, servicePath, body);
+      this.analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${resp.status}`);
+      return resp;
     }
   }
 
   docsLink() {
     return this.dataConnectToolkit.getGeneratedDocsURL();
-  }
-}
-
-function parseVariableString(variables: string): Record<string, any> {
-  if (!variables) {
-    return {};
-  }
-  try {
-    return JSON.parse(variables);
-  } catch (e: any) {
-    throw new Error(
-      "Unable to parse variables as JSON. Double check that that there are no unmatched braces or quotes, or unqouted keys in the variables pane.",
-    );
   }
 }
