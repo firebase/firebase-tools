@@ -61,14 +61,15 @@ export async function promptForAppHostingYaml(
  * @returns A mapping of auto-init environment variables.
  */
 export function getAutoinitEnvVars(webappConfig: WebConfig | undefined): Record<string, string> {
-  const env: Record<string, string> = {};
-  if (webappConfig) {
-    env["FIREBASE_WEBAPP_CONFIG"] = JSON.stringify(webappConfig);
-    env["FIREBASE_CONFIG"] = JSON.stringify({
+  if (!webappConfig) {
+    return {};
+  }
+  return {
+    "FIREBASE_WEBAPP_CONFIG": JSON.stringify(webappConfig),
+    "FIREBASE_CONFIG": JSON.stringify({
       databaseURL: webappConfig.databaseURL,
       storageBucket: webappConfig.storageBucket,
       projectId: webappConfig.projectId,
-    });
-  }
-  return env;
+    }),
+  };
 }
