@@ -8,6 +8,7 @@ import deploy from "./deploy";
 import * as util from "./util";
 import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
+import * as experiments from "../../experiments";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -51,8 +52,10 @@ describe("apphosting", () => {
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
+  let createTarArchiveStub: sinon.SinonStub;
   let createReadStreamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
+  let isEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     getProjectNumberStub = sinon
@@ -61,9 +64,13 @@ describe("apphosting", () => {
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
     createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
+    createTarArchiveStub = sinon
+      .stub(util, "createTarArchive")
+      .throws("Unexpected createTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    isEnabledStub = sinon.stub(experiments, "isEnabled").returns(false);
   });
 
   afterEach(() => {
@@ -194,6 +201,32 @@ describe("apphosting", () => {
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
         `gs://${bucketName}/foo-local-build-1234.zip`,
       );
+    });
+
+    it("uses createTarArchive for local builds when experiment is enabled", async () => {
+      const context = initializeContext();
+      // Remove the non-local build backend for this test for simplicity
+      delete context.backendConfigs.foo;
+      delete context.backendLocations.foo;
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
+      isEnabledStub.withArgs("apphostinglocalbuilds").returns(true);
+      createTarArchiveStub.resolves("path/to/foo-local-build-1234.tar.gz");
+      uploadObjectStub.resolves({
+        bucket: bucketName,
+        object: "foo-local-build-1234.tar.gz",
+      });
+      createReadStreamStub.returns("stream" as any);
+
+      await deploy(context, { ...opts, config: new Config({ apphosting: { backendId: "fooLocalBuild", localBuild: true } }) });
+
+      expect(createTarArchiveStub).to.be.calledOnce;
+      expect(createArchiveStub).to.not.be.called;
+      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(`gs://${bucketName}/foo-local-build-1234.tar.gz`);
     });
   });
 });

@@ -51,6 +51,60 @@ export async function createArchive(
   return tmpFile;
 }
 
+/**
+ * Locates the source code for a backend and creates a tar archive to eventually upload to GCS.
+ */
+export async function createTarArchive(
+  config: AppHostingSingle,
+  rootDir: string,
+  targetSubDir?: string,
+): Promise<string> {
+  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
+  const fileStream = fs.createWriteStream(tmpFile, {
+    flags: "w",
+    encoding: "binary",
+  });
+  const archive = archiver("tar", {
+    gzip: true,
+    gzipOptions: {
+      level: 9,
+    },
+  });
+
+  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
+  const ignore = config.ignore || ["node_modules", ".git"];
+  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
+  ignore.push(...gitIgnorePatterns);
+  try {
+    const files = await fsAsync.readdirRecursive({
+      path: targetDir,
+      ignore: ignore,
+      isGitIgnore: true,
+    });
+    for (const file of files) {
+      const name = path.relative(rootDir, file.name);
+      archive.file(file.name, {
+        name,
+        mode: file.mode,
+        // Set fixed metadata for deterministic hashing
+        stats: {
+          uid: 0,
+          gid: 0,
+          mtime: new Date(0),
+        },
+      } as archiver.EntryData);
+    }
+    await pipeAsync(archive, fileStream);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      "Could not read source directory. Remove links and shortcuts and try again.",
+      { original: err as Error, exit: 1 },
+    );
+  }
+  return tmpFile;
+}
+
 function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
   const absoluteFilePath = path.resolve(projectRoot, gitIgnorePath);
   if (!fs.existsSync(absoluteFilePath)) {
