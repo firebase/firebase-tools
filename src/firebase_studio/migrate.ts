@@ -476,7 +476,9 @@ export async function uploadSecrets(
   try {
     const backendsData = await apphosting.listBackends(projectId, "-");
     if (!backendsData.backends || backendsData.backends.length === 0) {
-      logger.debug(`No App Hosting backends found for project ${projectId}. Skipping secret upload.`);
+      logger.debug(
+        `No App Hosting backends found for project ${projectId}. Skipping secret upload.`,
+      );
       return;
     }
   } catch (err: unknown) {
