@@ -23,7 +23,7 @@ export const command = new Command("studio:export <path>")
     let rootPath = path.resolve(exportPath);
 
     if (fs.existsSync(rootPath) && fs.statSync(rootPath).isFile() && rootPath.endsWith(".zip")) {
-      logger.info(`Unzipping ${rootPath}...`);
+      logger.info(`⏳ Unzipping ${rootPath}...`);
       const extractPath = rootPath.slice(0, -4);
       await unzip(rootPath, extractPath);
 
@@ -40,6 +40,6 @@ export const command = new Command("studio:export <path>")
       }
     }
 
-    logger.info(`Exporting Studio apps from ${rootPath} to Antigravity...`);
+    logger.info(`⏳ Exporting Studio apps from ${rootPath} to Antigravity...`);
     await migrate(rootPath, options as MigrateOptions);
   });
