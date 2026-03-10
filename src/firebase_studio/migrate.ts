@@ -136,7 +136,9 @@ export async function extractMetadata(
     logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
-    logger.info(`✅ Failed to determine the Firebase Project ID`);
+    logger.info(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    );
   }
 
   // Extract App Name and Blueprint Content
