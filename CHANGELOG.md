@@ -1,0 +1,2 @@
+- Add support for VPC direct connect in GCF 2nd gen (#10033)
+- Added `--only` flag for `emulators:export` (#4033)

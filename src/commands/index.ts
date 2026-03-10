@@ -266,9 +266,9 @@ export function load(client: CLIClient): CLIClient {
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
+  client.apptesting = {};
+  client.apptesting.execute = loadCommand("apptesting");
   if (experiments.isEnabled("apptesting")) {
-    client.apptesting = {};
-    client.apptesting.execute = loadCommand("apptesting");
     client.apptesting.wata = loadCommand("apptesting-wata");
   }
 
