@@ -109,29 +109,7 @@ export async function load(
       const connectorDir = path.join(resolvedDir, dir);
       const connectorYaml = await readConnectorYaml(connectorDir);
       const connectorGqls = await readGQLFiles(connectorDir);
-
-      // If the connect defines clientCache configs for any client SDK, patch the connector.
-      let client_cache:
-        | { strictValidationEnabled?: boolean; entityIdsIncluded?: boolean }
-        | undefined;
-      const clientSdks = [
-        connectorYaml.generate?.javascriptSdk,
-        connectorYaml.generate?.swiftSdk,
-        connectorYaml.generate?.kotlinSdk,
-        connectorYaml.generate?.dartSdk,
-      ];
-      for (const sdk of clientSdks) {
-        if (sdk) {
-          const sdkList = Array.isArray(sdk) ? sdk : [sdk];
-          if (sdkList.some((s) => s.clientCache)) {
-            client_cache = {
-              strictValidationEnabled: true,
-              entityIdsIncluded: true,
-            };
-            break;
-          }
-        }
-      }
+      const client_cache = inferClientCache(connectorYaml);
 
       return {
         directory: connectorDir,
@@ -198,6 +176,34 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
     throw new FirebaseError("Either 'schema' or 'schemas' is required in dataconnect.yaml");
   }
   return unvalidated as DataConnectYaml;
+}
+
+/**
+ * Infer the client cache settings for a given connector configuration.
+ * If any client SDK enables caching, we'll enable strict validation and entity ID inclusion.
+ */
+function inferClientCache(
+  connectorYaml: ConnectorYaml,
+): { strictValidationEnabled?: boolean; entityIdsIncluded?: boolean } | undefined {
+  const platforms = [
+    connectorYaml.generate?.javascriptSdk,
+    connectorYaml.generate?.swiftSdk,
+    connectorYaml.generate?.kotlinSdk,
+    connectorYaml.generate?.dartSdk,
+  ];
+
+  for (const sdk of platforms) {
+    if (sdk) {
+      const sdkList = Array.isArray(sdk) ? sdk : [sdk];
+      if (sdkList.some((s) => s.clientCache)) {
+        return {
+          strictValidationEnabled: true,
+          entityIdsIncluded: true,
+        };
+      }
+    }
+  }
+  return undefined;
 }
 
 export async function readConnectorYaml(sourceDirectory: string): Promise<ConnectorYaml> {
