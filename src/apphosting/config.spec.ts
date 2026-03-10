@@ -531,6 +531,10 @@ env:
       listAppHostingFilesInPathStub = sinon.stub(config, "listAppHostingFilesInPath");
     });
 
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
     it("should return an empty config if no base or local apphosting yaml files found", async () => {
       listAppHostingFilesInPathStub.returns([]);
 
