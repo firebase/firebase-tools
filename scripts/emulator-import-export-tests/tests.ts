@@ -986,4 +986,45 @@ describe("import/export end to end", () => {
     await bApp.delete();
     await cApp.delete();
   });
+
+  it("should be able to export using POST", async function (this) {
+    this.timeout(2 * TEST_SETUP_TIMEOUT);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    // Start up emulator suite
+    const emulatorsCLI = new CLIProcess("1", __dirname);
+    await emulatorsCLI.start(
+      "emulators:start",
+      FIREBASE_PROJECT,
+      ["--only", "firestore"],
+      logIncludes(ALL_EMULATORS_STARTED_LOG),
+    );
+
+    const config = readConfig();
+    const hubPort = config.emulators!.hub!.port;
+    const host = await localhost();
+
+    // Ask for export using HTTP POST to hub
+    const exportPath = fs.mkdtempSync(path.join(os.tmpdir(), "emulator-data"));
+    const postData = JSON.stringify({ path: exportPath });
+
+    const response = await fetch(`http://${host}:${hubPort}/_admin/export`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: postData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to export: ${response.status}`);
+    }
+
+    // Check that the export files are created
+    const exportFiles = fs.readdirSync(exportPath);
+    expect(exportFiles).to.include("firebase-export-metadata.json");
+
+    // Stop the suite
+    await emulatorsCLI.stop();
+  });
 });
