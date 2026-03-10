@@ -9,6 +9,15 @@ App Name: ${appName}
 
 # Migration Guidelines
 
-- Focus on ensuring zero-friction deployments to Firebase App Hosting.
-- Maintain the original intent defined in docs/blueprint.md.
-- Use Genkit for AI features as already configured in src/ai/.
+- `docs/blueprint.md` describes what this app was supposed when it was exported. Read it before making changes to the app.
+
+- When asked to deploy or publish the app, deploy to Firebase App Hosting using `firebase deploy`.
+If you run into issues, ensure `firebase.json` contains a valid `apphosting` block (with `backendId` and `rootDir`).
+DO NOT use `firebase apphosting:backends:create` or `firebase apphosting:rollouts:create`.
+DO NOT try to deploy to Firebase Hosting.
+
+- When asked to add AI features, use Genkit (as already configured in `src/ai/`).
+
+# Important
+
+Never display, log, or commit sensitive credentials, .env files, or service account keys.
