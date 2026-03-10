@@ -111,14 +111,18 @@ export async function extractMetadata(
   blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
+  const studioJsonPath = path.join(rootPath, "studio.json");
   const metadataPath = path.join(rootPath, "metadata.json");
   let metadata: Metadata = {};
-  try {
-    const metadataContent = await fs.readFile(metadataPath, "utf8");
-    metadata = JSON.parse(metadataContent) as Metadata;
-  } catch (err: unknown) {
-    logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
-  }
+  // Try to read studio.json aka metadata.json. Preference given to studio.json
+  [metadataPath, studioJsonPath].forEach(async (path) => {
+    try {
+      const metadataContent = await fs.readFile(path, "utf8");
+      metadata = JSON.parse(metadataContent) as Metadata;
+    } catch (err: unknown) {
+      logger.debug(`Could not read metadata.json at ${path}: ${err}`);
+    }
+  });
 
   let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
