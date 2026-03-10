@@ -435,6 +435,7 @@ export async function uploadSecrets(
         undefined, // location
         envPath,
         true, // nonInteractive
+        rootPath,
       );
       logger.info("✅ Uploaded GEMINI_API_KEY secret");
     } else {
