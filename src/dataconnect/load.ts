@@ -50,7 +50,7 @@ export async function pickServices(
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json." +
-        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+      `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
   }
 
@@ -71,16 +71,16 @@ export async function pickServices(
 }
 
 /**
- * Loads all Data Connect service configurations from the firebase.json file.
- */
+* Loads all Data Connect service configurations from the firebase.json file.
+*/
 export async function loadAll(projectId: string, config: Config): Promise<ServiceInfo[]> {
   const serviceCfgs = readFirebaseJson(config);
   return await Promise.all(serviceCfgs.map((c) => load(projectId, config, c.source)));
 }
 
 /**
- * loads schemas and connectors from  {sourceDirectory}/dataconnect.yaml
- */
+* loads schemas and connectors from  {sourceDirectory}/dataconnect.yaml
+*/
 export async function load(
   projectId: string,
   config: Config,
@@ -109,6 +109,30 @@ export async function load(
       const connectorDir = path.join(resolvedDir, dir);
       const connectorYaml = await readConnectorYaml(connectorDir);
       const connectorGqls = await readGQLFiles(connectorDir);
+
+      // If the connect defines clientCache configs for any client SDK, patch the connector.
+      let client_cache:
+        | { strictValidationEnabled?: boolean; entityIdsIncluded?: boolean }
+        | undefined;
+      const clientSdks = [
+        connectorYaml.generate?.javascriptSdk,
+        connectorYaml.generate?.swiftSdk,
+        connectorYaml.generate?.kotlinSdk,
+        connectorYaml.generate?.dartSdk,
+      ];
+      for (const sdk of clientSdks) {
+        if (sdk) {
+          const sdkList = Array.isArray(sdk) ? sdk : [sdk];
+          if (sdkList.some((s) => s.clientCache)) {
+            client_cache = {
+              strictValidationEnabled: true,
+              entityIdsIncluded: true,
+            };
+            break;
+          }
+        }
+      }
+
       return {
         directory: connectorDir,
         connectorYaml,
@@ -117,6 +141,7 @@ export async function load(
           source: {
             files: connectorGqls,
           },
+          client_cache,
         },
       };
     }),
@@ -207,9 +232,9 @@ function toFile(sourceDir: string, fullPath: string): File {
 }
 
 /**
- * Combine the contents in all GQL files into a string.
- * @return combined file contents, possible deliminated by boundary comments.
- */
+* Combine the contents in all GQL files into a string.
+* @return combined file contents, possible deliminated by boundary comments.
+*/
 export function squashGraphQL(source: Source): string {
   if (!source.files || !source.files.length) {
     return "";
