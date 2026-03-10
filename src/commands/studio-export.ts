@@ -8,7 +8,6 @@ import { FirebaseError } from "../error";
 import { unzip } from "../unzip";
 import * as fs from "fs";
 
-
 export const command = new Command("studio:export <path>")
   .description(
     "Bootstrap Firebase Studio apps for migration to Antigravity. Run on the unzipped folder from the Firebase Studio download, or directly on the downloaded zip file.",
@@ -24,7 +23,12 @@ export const command = new Command("studio:export <path>")
 
     if (fs.existsSync(rootPath) && fs.statSync(rootPath).isFile() && rootPath.endsWith(".zip")) {
       logger.info(`⏳ Unzipping ${rootPath}...`);
-      const extractPath = rootPath.slice(0, -4);
+      const parsedPath = path.parse(rootPath);
+      let extractDirName = parsedPath.name;
+      if (!extractDirName || extractDirName === ".") {
+        extractDirName = "studio-export";
+      }
+      const extractPath = path.join(parsedPath.dir, extractDirName);
       await unzip(rootPath, extractPath);
 
       // Studio exports usually contain a single top-level directory.
