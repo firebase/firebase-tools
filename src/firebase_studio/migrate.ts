@@ -260,7 +260,7 @@ async function injectAntigravityContext(
 async function assertSystemState(startAntigravity?: boolean): Promise<void> {
   // Assertion: Check for Antigravity (antigravity)
   // If we're not starting the IDE, skip the check.
-  if (startAntigravity === false) {
+  if (!startAntigravity) {
     return;
   }
   try {
@@ -486,7 +486,7 @@ async function askToOpenAntigravity(
   startAntigravity?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (startAntigravity === false) {
+  if (!startAntigravity) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
