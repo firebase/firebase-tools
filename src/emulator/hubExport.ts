@@ -54,7 +54,7 @@ export interface ExportMetadata {
 export interface ExportOptions {
   path: string;
   initiatedBy: string;
-  targets: string[];
+  targets?: string[];
 }
 
 export class HubExport {
