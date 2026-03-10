@@ -307,6 +307,39 @@ describe("cloudfunctionsv2", () => {
       expect(reverted.vpc).to.deep.equal(endpointWithNi.vpc);
     });
 
+    it("should throw on unexpected VPC egress setting", () => {
+      expect(() => {
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: {
+            ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+            directVpcNetworkInterface: [{ network: "my-net" }],
+            directVpcEgress: "ALL_TRAFFIC" as any,
+            uri: RUN_URI,
+            service: "service",
+          },
+        } as cloudfunctionsv2.OutputCloudFunction);
+      }).to.throw("Unexpected VPC egress setting: ALL_TRAFFIC");
+    });
+
+    it("should ignore VPC_EGRESS_UNSPECIFIED", () => {
+      const gcf = {
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_UNSPECIFIED" as any,
+          uri: RUN_URI,
+          service: "service",
+        },
+      } as cloudfunctionsv2.OutputCloudFunction;
+      const endpoint = cloudfunctionsv2.endpointFromFunction(gcf);
+      expect(endpoint.vpc).to.deep.equal({
+        networkInterfaces: [{ network: "my-net" }],
+      });
+      expect(endpoint.vpc?.egressSettings).to.be.undefined;
+    });
+
     it("should calculate non-trivial fields", () => {
       const complexEndpoint: backend.Endpoint = {
         ...ENDPOINT,

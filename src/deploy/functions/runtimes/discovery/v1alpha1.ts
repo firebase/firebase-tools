@@ -189,6 +189,11 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
         `VPC settings on ${id} must specify either 'connector' or 'networkInterfaces'`,
       );
     }
+    if (ep.vpc.connector && ep.vpc.networkInterfaces) {
+      throw new FirebaseError(
+        `VPC settings on ${id} cannot specify both 'connector' and 'networkInterfaces'`,
+      );
+    }
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {

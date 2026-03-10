@@ -755,13 +755,17 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       );
     } else if (gcfFunction.serviceConfig.directVpcNetworkInterface) {
       endpoint.vpc = { networkInterfaces: gcfFunction.serviceConfig.directVpcNetworkInterface };
-      if (
-        gcfFunction.serviceConfig.directVpcEgress &&
-        gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED"
-      ) {
-        endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring(
-          "VPC_EGRESS_".length,
-        ) as backend.VpcEgressSettings;
+      if (gcfFunction.serviceConfig.directVpcEgress) {
+        if (!gcfFunction.serviceConfig.directVpcEgress.startsWith("VPC_EGRESS_")) {
+          throw new FirebaseError(
+            `Unexpected VPC egress setting: ${gcfFunction.serviceConfig.directVpcEgress}`,
+          );
+        }
+        if (gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED") {
+          endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring(
+            "VPC_EGRESS_".length,
+          ) as backend.VpcEgressSettings;
+        }
       }
     }
     const serviceName = gcfFunction.serviceConfig.service;
