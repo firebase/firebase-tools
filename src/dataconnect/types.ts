@@ -23,6 +23,10 @@ export interface Schema extends BaseResource {
 export interface Connector extends BaseResource {
   name: string;
   source: Source;
+  client_cache?: {
+    strictValidationEnabled?: boolean;
+    entityIdsIncluded?: boolean;
+  };
 }
 
 export interface Datasource {
@@ -173,7 +177,7 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
-export interface CacheSettings {
+export interface ClientCacheOptions {
   /**
    * The maximum duration for which a client-side cache entry is considered valid.
    * The format is a string representing a duration, e.g., "60s", "5m", "1h".
@@ -191,30 +195,29 @@ export interface AdminNodeSDK {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
-  clientCache?: CacheSettings; 
 }
 
 export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
-  clientCache?: CacheSettings; 
+  clientCache?: ClientCacheOptions;
 }
 
 export interface SwiftSDK {
   outputDir: string;
   package: string;
-  clientCache?: CacheSettings; 
+  clientCache?: ClientCacheOptions;
 }
 export interface KotlinSDK {
   outputDir: string;
   package: string;
-  clientCache?: CacheSettings; 
+  clientCache?: ClientCacheOptions;
 }
 export interface DartSDK {
   outputDir: string;
   package: string;
-  clientCache?: CacheSettings; 
+  clientCache?: ClientCacheOptions;
 }
 
 // Helper types && converters
