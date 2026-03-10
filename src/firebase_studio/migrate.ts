@@ -14,7 +14,7 @@ import * as env from "../functions/env";
 
 export interface MigrateOptions {
   project?: string;
-  startAgy?: boolean;
+  startAntigravity?: boolean;
 }
 
 interface GitHubItem {
@@ -179,7 +179,7 @@ async function updateReadme(
   logger.info("✅ Updated README.md with project details and origin info");
 }
 
-async function injectAgyContext(
+async function injectAntigravityContext(
   rootPath: string,
   projectId: string | undefined,
   appName: string,
@@ -194,7 +194,7 @@ async function injectAgyContext(
   await fs.mkdir(skillsDir, { recursive: true });
 
   // Download Skills from GitHub
-  logger.info("⏳ Fetching AGY skills from firebase/agent-skills...");
+  logger.info("⏳ Fetching Antigravity skills from firebase/agent-skills...");
   try {
     const skillsResponse = await fetch(
       "https://api.github.com/repos/firebase/agent-skills/contents/skills",
@@ -218,7 +218,7 @@ async function injectAgyContext(
     }
     logger.info(`✅ Downloaded Firebase skills`);
   } catch (err: unknown) {
-    utils.logWarning(`Could not download AGY skills, skipping. ${err}`);
+    utils.logWarning(`Could not download Antigravity skills, skipping. ${err}`);
   }
 
   // Download Genkit skill
@@ -243,7 +243,7 @@ async function injectAgyContext(
     .replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
-  logger.info("✅ Injected AGY rules");
+  logger.info("✅ Injected Antigravity rules");
 
   // Startup Workflow
   try {
@@ -251,25 +251,25 @@ async function injectAgyContext(
       "firebase-studio-export/workflows/startup_workflow.md",
     );
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
-    logger.info("✅ Created AGY startup workflow");
+    logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
     logger.debug(`Could not read or write startup workflow: ${err}`);
   }
 }
 
-async function assertSystemState(startAgy?: boolean): Promise<void> {
-  // Assertion: Check for Antigravity (agy)
+async function assertSystemState(startAntigravity?: boolean): Promise<void> {
+  // Assertion: Check for Antigravity (antigravity)
   // If we're not starting the IDE, skip the check.
-  if (startAgy === false) {
+  if (startAntigravity === false) {
     return;
   }
   try {
-    execSync("agy --version", { stdio: "ignore" });
-    logger.info("✅ Antigravity IDE CLI (agy) detected");
+    execSync("antigravity --version", { stdio: "ignore" });
+    logger.info("✅ Antigravity IDE CLI (antigravity) detected");
   } catch (err: unknown) {
     const downloadLink = "https://antigravity.google/download";
     throw new FirebaseError(
-      `Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+      `Antigravity IDE CLI (antigravity) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
       { exit: 1 },
     );
   }
@@ -340,8 +340,8 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAgyConfigs(rootPath: string): Promise<void> {
-  // 5. IDE Configs (VS Code / AGY)
+async function writeAntigravityConfigs(rootPath: string): Promise<void> {
+  // 5. IDE Configs (VS Code / Antigravity)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
 
@@ -377,7 +377,7 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     }
   }
 
-  // Add AGY/VSCode startup preference
+  // Add Antigravity/VSCode startup preference
   cleanSettings["workbench.startupEditor"] = "readme";
 
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
@@ -483,10 +483,10 @@ export async function uploadSecrets(
 async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
-  startAgy?: boolean,
+  startAntigravity?: boolean,
 ): Promise<void> {
   // 8. Open in Antigravity (Optional)
-  if (startAgy === false) {
+  if (startAntigravity === false) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -501,12 +501,12 @@ async function askToOpenAntigravity(
   if (answer) {
     logger.info(`⏳ Opening ${appName} in Antigravity...`);
     try {
-      const agyProcess = spawn("agy", ["."], {
+      const antigravityProcess = spawn("antigravity", ["."], {
         cwd: rootPath,
         stdio: "ignore",
         detached: true,
       });
-      agyProcess.unref();
+      antigravityProcess.unref();
     } catch (err: unknown) {
       utils.logWarning("Could not open Antigravity IDE automatically. Please open it manually.");
     }
@@ -519,7 +519,7 @@ async function askToOpenAntigravity(
 
 export async function migrate(
   rootPath: string,
-  options: MigrateOptions = { startAgy: true },
+  options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
   if (process.platform === "win32") {
     throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
@@ -532,15 +532,15 @@ export async function migrate(
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState(options.startAgy);
+  await assertSystemState(options.startAntigravity);
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
-  await injectAgyContext(rootPath, projectId, appName);
-  await writeAgyConfigs(rootPath);
+  await injectAntigravityContext(rootPath, projectId, appName);
+  await writeAntigravityConfigs(rootPath);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
@@ -552,5 +552,5 @@ export async function migrate(
   }
 
   await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
-  await askToOpenAntigravity(rootPath, appName, options.startAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAntigravity);
 }
