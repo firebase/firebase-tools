@@ -414,14 +414,6 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     logger.debug(`Could not remove ${docsDir}: ${err}`);
   }
 
-  const metadataPath = path.join(rootPath, "metadata.json");
-  try {
-    await fs.unlink(metadataPath);
-    logger.info("✅ Cleaned up metadata.json");
-  } catch (err: unknown) {
-    logger.debug(`Could not delete ${metadataPath}: ${err}`);
-  }
-
   const modifiedPath = path.join(rootPath, ".modified");
   try {
     await fs.unlink(modifiedPath);
