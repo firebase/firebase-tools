@@ -298,7 +298,7 @@ async function createFirebaseConfigs(
     // Does not exist or not JSON
   }
 
-  if (firebaseJson.apphosting) {
+  if (firebaseJson?.apphosting) {
     logger.info("ℹ️ firebase.json already contains apphosting configuration, skipping.");
     return;
   }
@@ -333,21 +333,24 @@ async function createFirebaseConfigs(
     return;
   }
 
-  firebaseJson.apphosting = {
-    backendId: backendId,
-    ignore: [
-      "node_modules",
-      ".git",
-      ".agent",
-      ".idx",
-      "firebase-debug.log",
-      "firebase-debug.*.log",
-      "functions",
-    ],
+  const updatedFirebaseJson = {
+    ...firebaseJson,
+    apphosting: {
+      backendId: backendId,
+      ignore: [
+        "node_modules",
+        ".git",
+        ".agent",
+        ".idx",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions",
+      ],
+    },
   };
 
-  await fs.writeFile(firebaseJsonPath, JSON.stringify(firebaseJson, null, 2));
-  if (exists) {
+  await fs.writeFile(firebaseJsonPath, JSON.stringify(updatedFirebaseJson, null, 2));
+  if (firebaseJson) {
     logger.info(`✅ Updated firebase.json with backendId: ${backendId}`);
   } else {
     logger.info(`✅ Created firebase.json with backendId: ${backendId}`);
