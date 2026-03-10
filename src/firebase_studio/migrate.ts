@@ -403,13 +403,6 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
 async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   // Remove docs/blueprint.md and empty docs directory
   const docsDir = path.join(rootPath, "docs");
-  const blueprintPath = path.join(docsDir, "blueprint.md");
-  try {
-    await fs.unlink(blueprintPath);
-    logger.info("✅ Cleaned up docs/blueprint.md");
-  } catch (err: unknown) {
-    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
-  }
 
   try {
     const files = await fs.readdir(docsDir);
