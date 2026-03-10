@@ -157,8 +157,8 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcift: {
     shortDescription: "Enable instrumentless trial for Data Connect",
+    default: true,
     public: false,
-    default: false,
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
@@ -166,7 +166,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcwebhooks: {
     shortDescription: "Enable Firebase Data Connect webhooks feature.",
-    default: false,
+    default: true,
     public: false,
   },
   studioexport: {
