@@ -113,24 +113,6 @@ export function load(yamlPath: string): yaml.Document {
 }
 
 /**
- * Splits the environment variables in an EnvMap into build and runtime maps.
- */
-export function splitEnvVars(env: EnvMap): Record<"build" | "runtime", EnvMap> {
-  const result: Record<"build" | "runtime", EnvMap> = { build: {}, runtime: {} };
-  for (const [key, val] of Object.entries(env)) {
-    // If not specified, default to both build and runtime.
-    const availabilities = val.availability || ["BUILD", "RUNTIME"];
-    if (availabilities.includes("BUILD")) {
-      result.build[key] = val;
-    }
-    if (availabilities.includes("RUNTIME")) {
-      result.runtime[key] = val;
-    }
-  }
-  return result;
-}
-
-/**
  * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
  * overriding union. In order to keep apphosting.emulator.yaml safe to commit,
  * users cannot change a secret environment variable to plaintext.

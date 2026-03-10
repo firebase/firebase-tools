@@ -473,34 +473,6 @@ env:
     });
   });
 
-  describe("splitEnvVars", () => {
-    it("splits env vars default availability to both build and runtime", () => {
-      const vars = {
-        VAR: { value: "value" },
-      };
-      const split = config.splitEnvVars(vars);
-      expect(split.build).to.deep.equal(vars);
-      expect(split.runtime).to.deep.equal(vars);
-    });
-
-    it("splits explicit availabilities correctly", () => {
-      const vars: Record<string, config.Env> = {
-        BUILD_ONLY: { variable: "BUILD_ONLY", value: "b", availability: ["BUILD"] },
-        RUNTIME_ONLY: { variable: "RUNTIME_ONLY", value: "r", availability: ["RUNTIME"] },
-        BOTH: { variable: "BOTH", value: "a", availability: ["BUILD", "RUNTIME"] },
-      };
-      const split = config.splitEnvVars(vars);
-      expect(split.build).to.deep.equal({
-        BUILD_ONLY: vars["BUILD_ONLY"],
-        BOTH: vars["BOTH"],
-      });
-      expect(split.runtime).to.deep.equal({
-        RUNTIME_ONLY: vars["RUNTIME_ONLY"],
-        BOTH: vars["BOTH"],
-      });
-    });
-  });
-
   describe("getAppHostingConfiguration", () => {
     let loadAppHostingYamlStub: sinon.SinonStub;
     let listAppHostingFilesInPathStub: sinon.SinonStub;
