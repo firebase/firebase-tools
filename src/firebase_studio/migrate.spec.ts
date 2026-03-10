@@ -201,10 +201,14 @@ describe("migrate", () => {
       sandbox.restore();
     });
 
-    it("should call apphostingSecretsSetAction if .env exists and has a non-blank GEMINI_API_KEY", async () => {
+    it("should call apphostingSecretsSetAction if .env exists, has a non-blank GEMINI_API_KEY, and backends exist", async () => {
       const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
       sandbox.stub(fs, "access").resolves();
       sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY=test-key");
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [{ name: "backend" }] as any[],
+        unreachable: [],
+      });
 
       await uploadSecrets(testRoot, "test-project");
 
@@ -220,10 +224,28 @@ describe("migrate", () => {
       ).to.be.true;
     });
 
+    it("should not call apphostingSecretsSetAction if no backends exist", async () => {
+      const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
+      sandbox.stub(fs, "access").resolves();
+      sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY=test-key");
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [],
+        unreachable: [],
+      });
+
+      await uploadSecrets(testRoot, "test-project");
+
+      expect(secretsStub.called).to.be.false;
+    });
+
     it("should not call apphostingSecretsSetAction if GEMINI_API_KEY is blank in .env", async () => {
       const secretsStub = sandbox.stub(secrets, "apphostingSecretsSetAction").resolves();
       sandbox.stub(fs, "access").resolves();
       sandbox.stub(fs, "readFile").resolves("GEMINI_API_KEY= ");
+      sandbox.stub(apphosting, "listBackends").resolves({
+        backends: [{ name: "backend" }] as any[],
+        unreachable: [],
+      });
 
       await uploadSecrets(testRoot, "test-project");
 

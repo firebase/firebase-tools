@@ -455,6 +455,17 @@ export async function uploadSecrets(
   }
 
   try {
+    const backendsData = await apphosting.listBackends(projectId, "-");
+    if (!backendsData.backends || backendsData.backends.length === 0) {
+      logger.debug(`No App Hosting backends found for project ${projectId}. Skipping secret upload.`);
+      return;
+    }
+  } catch (err: unknown) {
+    utils.logWarning(`Could not fetch App Hosting backends for project ${projectId}: ${err}`);
+    return;
+  }
+
+  try {
     const envContent = await fs.readFile(envPath, "utf8");
     const parsedEnv = env.parse(envContent);
     const geminiApiKey = parsedEnv.envs["GEMINI_API_KEY"];
