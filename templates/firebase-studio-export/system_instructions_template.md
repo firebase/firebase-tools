@@ -9,7 +9,7 @@ App Name: ${appName}
 
 # Migration Guidelines
 
-- `docs/blueprint.md` describes what this app was supposed when it was exported. Read it before making changes to the app.
+- `docs/blueprint.md` describes what this app was supposed to do when it was exported. Read it before making changes to the app.
 
 - Use Agent Skills to guide Firebase usage. If they are not available, install them by running `npx -y skills add  firebase/agent-skills --skill "*" -y`
 
