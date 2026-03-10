@@ -30,7 +30,8 @@ type cliEventNames =
   | "mcp_client_connected"
   | "mcp_list_prompts"
   | "mcp_get_prompt"
-  | "mcp_read_resource";
+  | "mcp_read_resource"
+  | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
