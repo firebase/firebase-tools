@@ -139,9 +139,7 @@ export function splitEnvVars(env: EnvMap): Record<"build" | "runtime", EnvMap> {
  */
 export async function getAppHostingConfiguration(
   backendDir: string,
-  options?: { allowEmulator?: boolean; allowLocal?: boolean },
 ): Promise<AppHostingYamlConfig> {
-  const opt = { allowEmulator: true, allowLocal: true, ...options };
   const appHostingConfigPaths = dynamicDispatch.listAppHostingFilesInPath(backendDir);
   // generate a map to make it easier to interface between file name and it's path
   const fileNameToPathMap = Object.fromEntries(
@@ -160,12 +158,12 @@ export async function getAppHostingConfiguration(
     output.merge(baseFile, /* allowSecretsToBecomePlaintext= */ false);
   }
 
-  if (opt.allowEmulator && emulatorsFilePath) {
+  if (emulatorsFilePath) {
     const emulatorsConfig = await AppHostingYamlConfig.loadFromFile(emulatorsFilePath);
     output.merge(emulatorsConfig, /* allowSecretsToBecomePlaintext= */ false);
   }
 
-  if (opt.allowLocal && localFilePath) {
+  if (localFilePath) {
     const localYamlConfig = await AppHostingYamlConfig.loadFromFile(localFilePath);
     output.merge(localYamlConfig, /* allowSecretsToBecomePlaintext= */ true);
   }
