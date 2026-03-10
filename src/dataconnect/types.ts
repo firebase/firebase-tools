@@ -23,7 +23,7 @@ export interface Schema extends BaseResource {
 export interface Connector extends BaseResource {
   name: string;
   source: Source;
-  client_cache?: {
+  clientCache?: {
     strictValidationEnabled?: boolean;
     entityIdsIncluded?: boolean;
   };
