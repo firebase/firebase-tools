@@ -345,7 +345,7 @@ async function createFirebaseConfigs(
         ignore: [
           "node_modules",
           ".git",
-          ".agent",
+          ".agents",
           ".idx",
           "firebase-debug.log",
           "firebase-debug.*.log",
