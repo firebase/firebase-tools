@@ -77,7 +77,7 @@ describe("apphosting", () => {
     sinon.verifyAndRestore();
   });
 
-  describe("deploy local source", () => {
+  describe("deploy local source and local build", () => {
     const opts = {
       ...BASE_OPTS,
       projectId: "my-project",
@@ -106,8 +106,9 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
+      isEnabledStub.withArgs("apphostinglocalbuilds").returns(true);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -115,7 +116,7 @@ describe("apphosting", () => {
       });
       uploadObjectStub.onSecondCall().resolves({
         bucket: bucketName,
-        object: "foo-local-build-1234",
+        object: "foo-local-build-1234.tar.gz",
       });
 
       createReadStreamStub.returns("stream" as any);
@@ -163,7 +164,7 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createArchiveStub).to.be.calledWithExactly(
+      expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
         process.cwd(),
         "./nextjs/standalone",
@@ -181,8 +182,9 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
+      isEnabledStub.withArgs("apphostinglocalbuilds").returns(true);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -191,7 +193,7 @@ describe("apphosting", () => {
 
       uploadObjectStub.onSecondCall().resolves({
         bucket: bucketName,
-        object: "foo-local-build-1234",
+        object: "foo-local-build-1234.tar.gz",
       });
       createReadStreamStub.returns("stream" as any);
 
@@ -199,15 +201,39 @@ describe("apphosting", () => {
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
-        `gs://${bucketName}/foo-local-build-1234.zip`,
+        `gs://${bucketName}/foo-local-build-1234.tar.gz`,
       );
+    });
+
+    it("skips local builds when experiment is disabled but continues with others", async () => {
+      const context = initializeContext();
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
+
+      isEnabledStub.withArgs("apphostinglocalbuilds").returns(false);
+      createArchiveStub.resolves("path/to/foo-1234.zip");
+      uploadObjectStub.resolves({
+        bucket: bucketName,
+        object: "foo-1234",
+      });
+      createReadStreamStub.returns("stream" as any);
+
+      await deploy(context, opts);
+
+      // Standard backend 'foo' should be processed
+      expect(createArchiveStub).to.be.calledWith(context.backendConfigs["foo"]);
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
+
+      // Local build backend 'fooLocalBuild' should be skipped
+      expect(createTarArchiveStub).to.not.be.called;
+      expect(context.backendStorageUris["fooLocalBuild"]).to.be.undefined;
     });
 
     it("uses createTarArchive for local builds when experiment is enabled", async () => {
       const context = initializeContext();
-      // Remove the non-local build backend for this test for simplicity
-      delete context.backendConfigs.foo;
-      delete context.backendLocations.foo;
       const projectNumber = "000000000000";
       const location = "us-central1";
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
@@ -215,17 +241,26 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       isEnabledStub.withArgs("apphostinglocalbuilds").returns(true);
-      createTarArchiveStub.resolves("path/to/foo-local-build-1234.tar.gz");
-      uploadObjectStub.resolves({
+
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
+
+      uploadObjectStub.onFirstCall().resolves({
+        bucket: bucketName,
+        object: "foo-1234",
+      });
+      uploadObjectStub.onSecondCall().resolves({
         bucket: bucketName,
         object: "foo-local-build-1234.tar.gz",
       });
       createReadStreamStub.returns("stream" as any);
 
-      await deploy(context, { ...opts, config: new Config({ apphosting: { backendId: "fooLocalBuild", localBuild: true } }) });
+      await deploy(context, opts);
 
-      expect(createTarArchiveStub).to.be.calledOnce;
-      expect(createArchiveStub).to.not.be.called;
+      expect(createArchiveStub).to.be.calledWith(context.backendConfigs["foo"]);
+      expect(createTarArchiveStub).to.be.calledWith(context.backendConfigs["fooLocalBuild"]);
+
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(`gs://${bucketName}/foo-local-build-1234.tar.gz`);
     });
   });

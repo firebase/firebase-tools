@@ -146,7 +146,7 @@ describe("apphosting", () => {
       }));
     });
 
-    it("skips local builds when experiment is disabled", async () => {
+    it("skips local builds when experiment is disabled but continues with others", async () => {
       isEnabledStub.withArgs("apphostinglocalbuilds").returns(false);
       const context: Context = {
         backendConfigs: {
@@ -156,10 +156,16 @@ describe("apphosting", () => {
             ignore: [],
             localBuild: true,
           },
+          bar: {
+            backendId: "bar",
+            rootDir: "/",
+            ignore: [],
+          },
         },
-        backendLocations: { foo: "us-central1" },
+        backendLocations: { foo: "us-central1", bar: "us-central1" },
         backendStorageUris: {
           foo: "gs://bucket/built.tar.gz",
+          bar: "gs://bucket/source.zip",
         },
         backendLocalBuilds: {
           foo: {
@@ -174,7 +180,11 @@ describe("apphosting", () => {
 
       await release(context, opts);
 
-      expect(orchestrateRolloutStub).to.not.be.called;
+      // Should only be called once for 'bar'
+      expect(orchestrateRolloutStub).to.be.calledOnce;
+      expect(orchestrateRolloutStub).to.be.calledWith(sinon.match({
+        backendId: "bar",
+      }));
     });
   });
 });
