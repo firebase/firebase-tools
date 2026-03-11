@@ -117,7 +117,7 @@ describe("migrate", () => {
         unref: () => {
           // No-op for testing
         },
-      } as any);
+      } as unknown as import("child_process").ChildProcess);
 
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(true);
@@ -211,7 +211,7 @@ describe("migrate", () => {
             createTime: "",
             updateTime: "",
           },
-        ] as any[],
+        ] as apphosting.Backend[],
         unreachable: [],
       });
 
