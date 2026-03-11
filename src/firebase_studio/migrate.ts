@@ -477,7 +477,7 @@ async function writeAntigravityConfigs(rootPath: string): Promise<void> {
 }
 
 async function cleanupUnusedFiles(rootPath: string): Promise<void> {
-  // Remove docs/blueprint.md and empty docs directory
+  // Remove the empty docs directory
   const docsDir = path.join(rootPath, "docs");
 
   try {
