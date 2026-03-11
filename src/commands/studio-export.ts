@@ -3,7 +3,6 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { migrate, MigrateOptions } from "../firebase_studio/migrate";
 import * as path from "path";
-import * as experiments from "../experiments";
 import { FirebaseError } from "../error";
 import { unzip } from "../unzip";
 import * as fs from "fs";
@@ -14,7 +13,6 @@ export const command = new Command("studio:export <path>")
   )
   .option("--no-start-antigravity", "skip starting the Antigravity IDE after migration")
   .action(async (exportPath: string, options: Options) => {
-    experiments.assertEnabled("studioexport", "export Studio apps");
     if (!exportPath) {
       throw new FirebaseError("Must specify a path for migration.", { exit: 1 });
     }
