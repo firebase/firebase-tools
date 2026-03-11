@@ -56,7 +56,6 @@ describe("apphosting", () => {
   let createReadStreamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
   let isEnabledStub: sinon.SinonStub;
-  let assertEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     getProjectNumberStub = sinon
@@ -72,11 +71,6 @@ describe("apphosting", () => {
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
     isEnabledStub = sinon.stub(experiments, "isEnabled").returns(false);
-    assertEnabledStub = sinon.stub(experiments, "assertEnabled").callsFake((name, task) => {
-      if (!experiments.isEnabled(name)) {
-        throw new Error(`Cannot ${task} because the experiment ${name} is not enabled.`);
-      }
-    });
   });
 
   afterEach(() => {
@@ -113,7 +107,7 @@ describe("apphosting", () => {
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
       createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -121,37 +115,97 @@ describe("apphosting", () => {
       });
       uploadObjectStub.onSecondCall().resolves({
         bucket: bucketName,
-        object: "foo-local-build-1234.tar.gz",
+        object: "foo-local-build-1234",
       });
 
       createReadStreamStub.returns("stream" as any);
-      // For standard source deploy, experiment is not required.
-      // But fooLocalBuild will trigger assertEnabled.
-      isEnabledStub.withArgs("apphostinglocalbuilds").returns(true);
 
       await deploy(context, opts);
 
-      expect(upsertBucketStub).to.be.calledWithMatch({ projectId: "my-project" });
+      // assert backend foo calls
+
+      expect(upsertBucketStub).to.be.calledWith({
+        product: "apphosting",
+        createMessage: `Creating Cloud Storage bucket in ${location} to store App Hosting source code uploads at ${bucketName}...`,
+        projectId: "my-project",
+        req: {
+          baseName: bucketName,
+          purposeLabel: `apphosting-source-${location}`,
+          location: location,
+          lifecycle: {
+            rule: [
+              {
+                action: { type: "Delete" },
+                condition: { age: 30 },
+              },
+            ],
+          },
+        },
+      });
+
+      // assert backend fooLocalBuild calls
+      expect(upsertBucketStub).to.be.calledWith({
+        product: "apphosting",
+        createMessage:
+          "Creating Cloud Storage bucket in us-central1 to store App Hosting source code uploads at firebaseapphosting-sources-000000000000-us-central1...",
+        projectId: "my-project",
+        req: {
+          baseName: "firebaseapphosting-sources-000000000000-us-central1",
+          purposeLabel: `apphosting-source-${location}`,
+          location: "us-central1",
+          lifecycle: {
+            rule: [
+              {
+                action: { type: "Delete" },
+                condition: { age: 30 },
+              },
+            ],
+          },
+        },
+      });
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+      );
     });
 
-    it("fails for local builds when experiment is disabled", async () => {
+    it("correctly creates and sets storage URIs", async () => {
       const context = initializeContext();
-      delete context.backendConfigs.foo;
-      delete context.backendLocations.foo;
-      
-      getProjectNumberStub.resolves("000000");
-      upsertBucketStub.resolves("bucket");
-      isEnabledStub.withArgs("apphostinglocalbuilds").returns(false);
+      const projectNumber = "000000000000";
+      const location = "us-central1";
+      const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
+      getProjectNumberStub.resolves(projectNumber);
+      upsertBucketStub.resolves(bucketName);
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.zip");
 
-      const localOpts = { ...opts, config: new Config({ apphosting: { backendId: "fooLocalBuild", localBuild: true } }) };
-      await deploy(context, localOpts);
+      uploadObjectStub.onFirstCall().resolves({
+        bucket: bucketName,
+        object: "foo-1234",
+      });
 
-      expect(createTarArchiveStub).to.not.be.called;
-      expect(createArchiveStub).to.not.be.called;
+      uploadObjectStub.onSecondCall().resolves({
+        bucket: bucketName,
+        object: "foo-local-build-1234",
+      });
+      createReadStreamStub.returns("stream" as any);
+
+      await deploy(context, opts);
+
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
+      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
+        `gs://${bucketName}/foo-local-build-1234.zip`,
+      );
     });
 
     it("uses createTarArchive for local builds when experiment is enabled", async () => {
       const context = initializeContext();
+      // Remove the non-local build backend for this test for simplicity
       delete context.backendConfigs.foo;
       delete context.backendLocations.foo;
       const projectNumber = "000000000000";
@@ -168,8 +222,7 @@ describe("apphosting", () => {
       });
       createReadStreamStub.returns("stream" as any);
 
-      const localOpts = { ...opts, config: new Config({ apphosting: { backendId: "fooLocalBuild", localBuild: true } }) };
-      await deploy(context, localOpts);
+      await deploy(context, { ...opts, config: new Config({ apphosting: { backendId: "fooLocalBuild", localBuild: true } }) });
 
       expect(createTarArchiveStub).to.be.calledOnce;
       expect(createArchiveStub).to.not.be.called;
