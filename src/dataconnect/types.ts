@@ -40,6 +40,7 @@ export type SchemaValidation = "STRICT" | "COMPATIBLE";
 export interface PostgreSql {
   ephemeral?: boolean;
   database?: string;
+  schema?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
@@ -148,6 +149,7 @@ export interface SchemaYaml {
 export interface DatasourceYaml {
   postgresql?: {
     database: string;
+    schema?: string;
     cloudSql: {
       instanceId: string;
     };
@@ -245,6 +247,7 @@ export function toDatasource(
     return {
       postgresql: {
         database: ds.postgresql.database,
+        schema: ds.postgresql.schema,
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },
