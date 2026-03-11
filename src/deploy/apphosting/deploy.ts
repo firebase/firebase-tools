@@ -5,7 +5,7 @@ import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { Context } from "./args";
 import { createArchive, createTarArchive } from "./util";
 import { isEnabled } from "../../experiments";
@@ -67,6 +67,13 @@ export default async function (context: Context, options: Options): Promise<void
       const rootDir = options.projectRoot ?? process.cwd();
       let builtAppDir;
       if (cfg.localBuild) {
+        if (!isEnabled("apphostinglocalbuilds")) {
+          logLabeledWarning(
+            "apphosting",
+            `Skipping local build for backend ${cfg.backendId} because the experiment apphostinglocalbuilds is not enabled.`,
+          );
+          return;
+        }
         builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
         if (!builtAppDir) {
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);

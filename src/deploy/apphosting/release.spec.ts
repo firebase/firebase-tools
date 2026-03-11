@@ -3,12 +3,10 @@ import * as rollout from "../../apphosting/rollout";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import { RC } from "../../rc";
-import { needProjectId } from "../../projectUtils";
 import { Context } from "./args";
 import release from "./release";
 import { expect } from "chai";
 import * as experiments from "../../experiments";
-import { isEnabled } from "../../experiments";
 
 const BASE_OPTS = {
   cwd: "/",

@@ -31,13 +31,11 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter(
-    (id) => context.backendLocalBuilds[id] && !isEnabled("apphostinglocalbuilds"),
-  );
-  if (localBuildBackends.length > 0) {
+  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
+  if (localBuildBackends.length > 0 && !isEnabled("apphostinglocalbuilds")) {
     logLabeledWarning(
       "apphosting",
-      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`,
+      `Skipping local build backend(s) ${localBuildBackends.join(", ")} because the experiment apphostinglocalbuilds is not enabled.`,
     );
     backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
   }
@@ -49,7 +47,7 @@ export default async function (context: Context, options: Options): Promise<void
   const projectId = needProjectId(options);
   const rollouts = backendIds.map((backendId) => {
     const cfg = context.backendConfigs[backendId];
-    const isLocalBuild = cfg.localBuild && isEnabled("apphostinglocalbuilds");
+    const isLocalBuild = cfg.localBuild;
     let source: any;
     if (isLocalBuild) {
       source = {
