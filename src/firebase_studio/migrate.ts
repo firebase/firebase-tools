@@ -1,9 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
@@ -11,10 +10,62 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
+import { FirebaseError } from "../error";
+import * as os from "os";
 
 export interface MigrateOptions {
   project?: string;
-  startAgy?: boolean;
+  startAntigravity?: boolean;
+}
+
+interface McpServerConfig {
+  command: string;
+  args: string[];
+}
+
+interface McpConfig {
+  mcpServers: Record<string, McpServerConfig>;
+}
+
+async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
+  const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
+  const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+  let mcpConfig: McpConfig = { mcpServers: {} };
+  try {
+    await fs.mkdir(mcpConfigDir, { recursive: true });
+    const content = await fs
+      .readFile(mcpConfigPath, "utf-8")
+      .catch((err: Error & { code?: string }) => {
+        if (err.code === "ENOENT") {
+          return null;
+        }
+        throw err;
+      });
+
+    if (content) {
+      mcpConfig = JSON.parse(content) as McpConfig;
+      if (!mcpConfig.mcpServers) {
+        mcpConfig.mcpServers = {};
+      }
+    }
+
+    if (mcpConfig.mcpServers["firebase"]) {
+      logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
+      return;
+    }
+
+    mcpConfig.mcpServers["firebase"] = {
+      command: "npx",
+      args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+    };
+
+    await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
+  }
 }
 
 interface GitHubItem {
@@ -102,6 +153,16 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
+// Based on https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects
+const isValidFirebaseProjectId = (projectId: string): boolean => {
+  // ^[a-z]         : Starts with a lowercase letter
+  // [a-z0-9-]{4,28}: Middle characters (allows hyphens, letters, numbers), makes total length 6-30
+  // [a-z0-9]$      : Ends with a lowercase letter or number (no hyphens)
+  const projectIdRegex = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
+  return projectIdRegex.test(projectId);
+};
+
 export async function extractMetadata(
   rootPath: string,
   overrideProjectId?: string,
@@ -120,6 +181,8 @@ export async function extractMetadata(
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
+  logger.debug(`overrideProjectId ${overrideProjectId}`);
+  logger.debug(`metadata.projectId ${metadata.projectId}`);
   let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
@@ -133,10 +196,17 @@ export async function extractMetadata(
   }
 
   if (projectId) {
+    if (!isValidFirebaseProjectId(projectId)) {
+      throw new FirebaseError(`Invalid project ID: ${projectId}.`, {
+        exit: 1,
+      });
+    }
     logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
-    logger.info(`✅ Failed to determine the Firebase Project ID`);
+    logger.info(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    );
   }
 
   // Extract App Name and Blueprint Content
@@ -177,7 +247,7 @@ async function updateReadme(
   logger.info("✅ Updated README.md with project details and origin info");
 }
 
-async function injectAgyContext(
+async function injectAntigravityContext(
   rootPath: string,
   projectId: string | undefined,
   appName: string,
@@ -192,7 +262,7 @@ async function injectAgyContext(
   await fs.mkdir(skillsDir, { recursive: true });
 
   // Download Skills from GitHub
-  logger.info("⏳ Fetching AGY skills from firebase/agent-skills...");
+  logger.info("⏳ Fetching Antigravity skills from firebase/agent-skills...");
   try {
     const skillsResponse = await fetch(
       "https://api.github.com/repos/firebase/agent-skills/contents/skills",
@@ -216,20 +286,7 @@ async function injectAgyContext(
     }
     logger.info(`✅ Downloaded Firebase skills`);
   } catch (err: unknown) {
-    utils.logWarning(`Could not download AGY skills, skipping. ${err}`);
-  }
-
-  // Download Genkit skill
-  logger.info("⏳ Fetching Genkit skill...");
-  try {
-    const genkitSkillDir = path.join(skillsDir, "developing-genkit-js");
-    await downloadGitHubDir(
-      "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
-      genkitSkillDir,
-    );
-    logger.info(`✅ Downloaded Genkit skill`);
-  } catch (err: unknown) {
-    utils.logWarning(`Could not download Genkit skill, skipping. ${err}`);
+    utils.logWarning(`Could not download Antigravity skills, skipping. ${err}`);
   }
 
   // System Instructions
@@ -241,7 +298,7 @@ async function injectAgyContext(
     .replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
-  logger.info("✅ Injected AGY rules");
+  logger.info("✅ Injected Antigravity rules");
 
   // Startup Workflow
   try {
@@ -249,28 +306,45 @@ async function injectAgyContext(
       "firebase-studio-export/workflows/startup_workflow.md",
     );
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
-    logger.info("✅ Created AGY startup workflow");
+    logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
-    logger.debug(`Could not read or write startup workflow: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read or write startup workflow: ${message}`);
   }
 }
 
-async function assertSystemState(startAgy?: boolean): Promise<void> {
-  // Assertion: Check for Antigravity (agy)
+async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
+  // Assertion: Check for Antigravity (agy or antigravity)
   // If we're not starting the IDE, skip the check.
-  if (startAgy === false) {
-    return;
+  if (!startAgy) {
+    return undefined;
   }
-  try {
-    execSync("agy --version", { stdio: "ignore" });
-    logger.info("✅ Antigravity IDE CLI (agy) detected");
-  } catch (err: unknown) {
-    const downloadLink = "https://antigravity.google/download";
-    throw new FirebaseError(
-      `Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
-      { exit: 1 },
-    );
+
+  const commands = ["agy", "antigravity"];
+  for (const cmd of commands) {
+    if (utils.commandExistsSync(cmd)) {
+      logger.info(`✅ Antigravity IDE detected`);
+      return cmd;
+    }
   }
+
+  // Check common macOS install location
+  if (process.platform === "darwin") {
+    const macPath = "/Applications/Antigravity.app/Contents/Resources/app/bin/agy";
+    try {
+      await fs.access(macPath);
+      logger.info(`✅ Antigravity IDE detected at ${macPath}`);
+      return macPath;
+    } catch {
+      // Not found in Applications
+    }
+  }
+
+  const downloadLink = "https://antigravity.google/download";
+  logger.info(
+    `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+  );
+  return undefined;
 }
 
 async function createFirebaseConfigs(
@@ -314,8 +388,9 @@ async function createFirebaseConfigs(
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${err}`,
+        `Could not fetch backends from Firebase CLI, using default "studio". ${message}`,
       );
     }
 
@@ -338,8 +413,8 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAgyConfigs(rootPath: string): Promise<void> {
-  // 5. IDE Configs (VS Code / AGY)
+async function writeAntigravityConfigs(rootPath: string): Promise<void> {
+  // 5. IDE Configs (VS Code / Antigravity)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
 
@@ -365,7 +440,8 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
   } catch (err: unknown) {
-    logger.debug(`Could not read ${settingsPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read ${settingsPath}: ${message}`);
   }
 
   const cleanSettings: Record<string, any> = {};
@@ -375,7 +451,7 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     }
   }
 
-  // Add AGY/VSCode startup preference
+  // Add Antigravity/VSCode startup preference
   cleanSettings["workbench.startupEditor"] = "readme";
 
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
@@ -411,7 +487,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
       logger.info("✅ Removed empty docs directory");
     }
   } catch (err: unknown) {
-    logger.debug(`Could not remove ${docsDir}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not remove ${docsDir}: ${message}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
@@ -419,7 +496,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(modifiedPath);
     logger.info("✅ Cleaned up .modified");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${modifiedPath}: ${message}`);
   }
 }
 
@@ -459,17 +537,18 @@ export async function uploadSecrets(
       logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
   } catch (err: unknown) {
-    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${message}`);
   }
 }
 
 async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
-  startAgy?: boolean,
+  startAntigravity?: boolean,
 ): Promise<void> {
-  // 8. Open in Antigravity (Optional)
-  if (startAgy === false) {
+  const agyCommand = await getAgyCommand(startAntigravity);
+  if (!startAntigravity || !agyCommand) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -484,12 +563,12 @@ async function askToOpenAntigravity(
   if (answer) {
     logger.info(`⏳ Opening ${appName} in Antigravity...`);
     try {
-      const agyProcess = spawn("agy", ["."], {
+      const antigravityProcess = spawn(agyCommand, ["."], {
         cwd: rootPath,
         stdio: "ignore",
         detached: true,
       });
-      agyProcess.unref();
+      antigravityProcess.unref();
     } catch (err: unknown) {
       utils.logWarning("Could not open Antigravity IDE automatically. Please open it manually.");
     }
@@ -502,7 +581,7 @@ async function askToOpenAntigravity(
 
 export async function migrate(
   rootPath: string,
-  options: MigrateOptions = { startAgy: true },
+  options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
   if (process.platform === "win32") {
     throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
@@ -515,15 +594,14 @@ export async function migrate(
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  await assertSystemState(options.startAgy);
-
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
   await updateReadme(rootPath, blueprintContent, appName);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
-  await injectAgyContext(rootPath, projectId, appName);
-  await writeAgyConfigs(rootPath);
+  await injectAntigravityContext(rootPath, projectId, appName);
+  await writeAntigravityConfigs(rootPath);
+  await setupAntigravityMcpServer(rootPath);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
@@ -535,5 +613,5 @@ export async function migrate(
   }
 
   await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
-  await askToOpenAntigravity(rootPath, appName, options.startAgy);
+  await askToOpenAntigravity(rootPath, appName, options.startAntigravity);
 }
