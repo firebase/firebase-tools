@@ -90,7 +90,7 @@ describe("migrate", () => {
               url: "https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill",
             },
           ],
-        } as any);
+        } as Response);
 
       // Mock GitHub API for specific skill content
       fetchStub
@@ -98,7 +98,7 @@ describe("migrate", () => {
         .resolves({
           ok: true,
           json: async () => [],
-        } as any);
+        } as Response);
 
       // Mock GitHub API for Genkit skill content
       fetchStub
@@ -108,7 +108,7 @@ describe("migrate", () => {
         .resolves({
           ok: true,
           json: async () => [],
-        } as any);
+        } as Response);
 
       // Mock filesystem
       sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
@@ -197,7 +197,7 @@ describe("migrate", () => {
       fetchStub.resolves({
         ok: true,
         json: async () => [],
-      } as any);
+      } as Response);
 
       // Mock filesystem
       sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
@@ -246,7 +246,7 @@ describe("migrate", () => {
       sandbox.stub(global, "fetch").resolves({
         ok: true,
         json: async () => [],
-      } as any);
+      } as Response);
 
       // Mock filesystem
       sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
