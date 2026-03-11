@@ -134,6 +134,16 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${startCommand}'`);
   }
 
+  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
+  let autoinitEnvVars: Record<string, string> = {};
+  if (packageManager === "pnpm") {
+    // TODO(jamesdaniels) look into pnpm support for autoinit
+    logLabeledWarning("apphosting", "Firebase JS SDK autoinit does not currently support PNPM.");
+  } else {
+    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
+    autoinitEnvVars = getAutoinitEnvVars(webappConfig);
+  }
+
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
   const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
     key,
@@ -142,7 +152,11 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
 
   const environmentVariablesToInject: NodeJS.ProcessEnv = {
     NODE_ENV: process.env.NODE_ENV,
+    // autoinitEnvVars serve as fallback defaults.
+    ...autoinitEnvVars,
+    // Emulator variables take precedence over auto-init.
     ...getEmulatorEnvs(),
+    // User-defined variables from apphosting.<env>.yaml take highest precedence.
     ...Object.fromEntries(await Promise.all(resolveEnv)),
     FIREBASE_APP_HOSTING: "1",
     X_GOOGLE_TARGET_PLATFORM: "fah",
@@ -151,13 +165,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     PORT: port.toString(),
   };
 
-  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
-  if (packageManager === "pnpm") {
-    // TODO(jamesdaniels) look into pnpm support for autoinit
-    logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
-  } else {
-    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
-    Object.assign(environmentVariablesToInject, getAutoinitEnvVars(webappConfig));
+  if (packageManager !== "pnpm") {
     await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }
 
