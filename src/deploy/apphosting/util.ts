@@ -1,10 +1,12 @@
 import * as archiver from "archiver";
 import * as fs from "fs";
 import * as path from "path";
+import * as tar from "tar";
 import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 
 /**
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
@@ -52,7 +54,7 @@ export async function createArchive(
 }
 
 /**
- * Locates the source code for a backend and creates a tar archive to eventually upload to GCS.
+ * Locates the built artifacts for a backend and creates a tar archive to eventually upload to GCS.
  */
 export async function createTarArchive(
   config: AppHostingSingle,
@@ -60,48 +62,63 @@ export async function createTarArchive(
   targetSubDir?: string,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
-  const fileStream = fs.createWriteStream(tmpFile, {
-    flags: "w",
-    encoding: "binary",
-  });
-  const archive = archiver("tar", {
-    gzip: true,
-    gzipOptions: {
-      level: 9,
-    },
-  });
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  ignore.push(...gitIgnorePatterns);
+  // For built artifacts, we typically want to include everything except debug logs and git metadata.
+  // We do NOT ignore node_modules here because local builds (like Next.js standalone) often require them.
+  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
+
   try {
-    const files = await fsAsync.readdirRecursive({
+    const rdrFiles = await fsAsync.readdirRecursive({
       path: targetDir,
       ignore: ignore,
       isGitIgnore: true,
     });
-    for (const file of files) {
-      const name = path.relative(rootDir, file.name);
-      archive.file(file.name, {
-        name,
-        mode: file.mode,
-        // Set fixed metadata for deterministic hashing
-        stats: {
-          uid: 0,
-          gid: 0,
-          mtime: new Date(0),
-        },
-      } as archiver.EntryData);
+
+    const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+
+    // If we're archiving a built app directory, we must also include the apphosting.yaml
+    // from the root directory so the backend knows the configuration.
+    if (targetSubDir) {
+      const rootFiles = fs.readdirSync(rootDir).filter((file) =>
+        APPHOSTING_YAML_FILE_REGEX.test(file),
+      );
+      for (const file of rootFiles) {
+        if (!allFiles.includes(file)) {
+          allFiles.push(file);
+        }
+      }
     }
-    await pipeAsync(archive, fileStream);
+
+    if (!allFiles.length) {
+      throw new FirebaseError(
+        `Cannot create a tar archive with 0 files from directory "${targetDir}"`,
+      );
+    }
+
+    // Sort files to ensure deterministic hashing (order matters in tarballs)
+    allFiles.sort();
+
+    await tar.create(
+      {
+        gzip: true,
+        file: tmpFile,
+        cwd: rootDir,
+        portable: true, // Strips host-specific UID/GID
+        mtime: new Date(0), // Set fixed timestamp for deterministic hashing
+      },
+      allFiles,
+    );
   } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      throw err;
+    }
     throw new FirebaseError(
       "Could not read source directory. Remove links and shortcuts and try again.",
       { original: err as Error, exit: 1 },
     );
   }
+
   return tmpFile;
 }
 
