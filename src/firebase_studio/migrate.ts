@@ -310,50 +310,69 @@ async function createFirebaseConfigs(
 
   // firebase.json (App Hosting)
   const firebaseJsonPath = path.join(rootPath, "firebase.json");
+  let firebaseJson: any;
   try {
-    await fs.access(firebaseJsonPath);
-    logger.info("ℹ️ firebase.json already exists, skipping creation.");
+    const content = await fs.readFile(firebaseJsonPath, "utf8");
+    firebaseJson = JSON.parse(content);
   } catch {
-    let backendId = "studio"; // Default
-    try {
-      logger.info(`⏳ Fetching App Hosting backends for project ${projectId}...`);
-      const backendsData = await apphosting.listBackends(projectId, "-");
-      const backends = backendsData.backends || [];
+    // Does not exist or not JSON
+  }
 
-      if (backends.length > 0) {
-        const studioBackend = backends.find(
-          (b) => b.name.endsWith("/studio") || b.name.toLowerCase().includes("studio"),
-        );
-        if (studioBackend) {
-          backendId = studioBackend.name.split("/").pop()!;
-        } else {
-          backendId = backends[0].name.split("/").pop()!;
-        }
-        logger.info(`✅ Selected App Hosting backend: ${backendId}`);
-      } else {
-        utils.logWarning('No App Hosting backends found, using default "studio"');
-      }
-    } catch (err: unknown) {
-      utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${err}`,
+  if (firebaseJson?.apphosting) {
+    logger.info("ℹ️ firebase.json already contains apphosting configuration, skipping.");
+    return;
+  }
+
+  let backendId: string | undefined;
+  try {
+    logger.info(`⏳ Fetching App Hosting backends for project ${projectId}...`);
+    const backendsData = await apphosting.listBackends(projectId, "-");
+    const backends = backendsData.backends || [];
+
+    if (backends.length > 0) {
+      const studioBackend = backends.find(
+        (b) => b.name.endsWith("/studio") || b.name.toLowerCase().includes("studio"),
       );
+      if (studioBackend) {
+        backendId = studioBackend.name.split("/").pop()!;
+      } else {
+        backendId = backends[0].name.split("/").pop()!;
+      }
+      logger.info(`✅ Selected App Hosting backend: ${backendId}`);
     }
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch backends from Firebase CLI: ${err}`);
+  }
 
-    const firebaseJson = {
-      apphosting: {
-        backendId: backendId,
-        ignore: [
-          "node_modules",
-          ".git",
-          ".agent",
-          ".idx",
-          "firebase-debug.log",
-          "firebase-debug.*.log",
-          "functions",
-        ],
-      },
-    };
-    await fs.writeFile(firebaseJsonPath, JSON.stringify(firebaseJson, null, 2));
+  if (!backendId) {
+    if (firebaseJson) {
+      logger.info("ℹ️ No App Hosting backends found, skipping update to existing firebase.json.");
+    } else {
+      logger.info("ℹ️ No App Hosting backends found, skipping creation of firebase.json.");
+    }
+    return;
+  }
+
+  const updatedFirebaseJson = {
+    ...firebaseJson,
+    apphosting: {
+      backendId: backendId,
+      ignore: [
+        "node_modules",
+        ".git",
+        ".agent",
+        ".idx",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "functions",
+      ],
+    },
+  };
+
+  await fs.writeFile(firebaseJsonPath, JSON.stringify(updatedFirebaseJson, null, 2));
+  if (firebaseJson) {
+    logger.info(`✅ Updated firebase.json with backendId: ${backendId}`);
+  } else {
     logger.info(`✅ Created firebase.json with backendId: ${backendId}`);
   }
 }
@@ -471,6 +490,19 @@ export async function uploadSecrets(
     await fs.access(envPath);
   } catch {
     // .env does not exist
+    return;
+  }
+
+  try {
+    const backendsData = await apphosting.listBackends(projectId, "-");
+    if (!backendsData.backends || backendsData.backends.length === 0) {
+      logger.debug(
+        `No App Hosting backends found for project ${projectId}. Skipping secret upload.`,
+      );
+      return;
+    }
+  } catch (err: unknown) {
+    utils.logWarning(`Could not fetch App Hosting backends for project ${projectId}: ${err}`);
     return;
   }
 
