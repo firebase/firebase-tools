@@ -59,8 +59,8 @@ describe("firestore prepare", () => {
 
       expect(createDatabaseStub.calledOnce).to.be.true;
       const args = createDatabaseStub.firstCall.args[0];
-      expect(args.firestoreDataAccessMode).to.equal(types.DataAccessMode.ENABLED);
-      expect(args.mongodbCompatibleDataAccessMode).to.equal(types.DataAccessMode.DISABLED);
+      expect(args.firestoreDataAccessMode).to.be.undefined;
+      expect(args.mongodbCompatibleDataAccessMode).to.be.undefined;
       expect(args.databaseEdition).to.equal(types.DatabaseEdition.STANDARD);
     });
 

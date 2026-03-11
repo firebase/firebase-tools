@@ -135,9 +135,8 @@ async function createDatabase(context: any, options: Options): Promise<void> {
         databaseEdition: edition,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
-        firestoreDataAccessMode: firestoreDataAccessMode ?? types.DataAccessMode.ENABLED,
-        mongodbCompatibleDataAccessMode:
-          mongodbCompatibleDataAccessMode ?? types.DataAccessMode.DISABLED,
+        firestoreDataAccessMode,
+        mongodbCompatibleDataAccessMode,
       };
       await api.createDatabase(createDatabaseReq);
     }
