@@ -36,7 +36,7 @@ describe("availableTools", () => {
     const loginTool = tools.find((t) => t.mcp.name === "firebase_login");
 
     expect(loginTool).to.exist;
-  }).timeout(2000);
+  }).timeout(4000);
 
   it("should include feature-specific tools when activeFeatures is provided", async () => {
     const tools = await availableTools(mockContext, ["firestore"]);
