@@ -175,11 +175,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-  studioexport: {
-    shortDescription: "Enable the experimental studio:export command.",
-    default: false,
-    public: false,
-  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
