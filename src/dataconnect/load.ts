@@ -50,7 +50,7 @@ export async function pickServices(
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
       "No Data Connect services found in firebase.json." +
-        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+      `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
   }
 
@@ -119,7 +119,7 @@ export async function load(
           source: {
             files: connectorGqls,
           },
-          clientCache,
+          client_cache: clientCache,
         },
       };
     }),
@@ -182,9 +182,9 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
  * Infer the client cache settings for a given connector configuration.
  * If any client SDK enables caching, we'll enable strict validation and entity ID inclusion.
  */
-function inferClientCache(
+export function inferClientCache(
   connectorYaml: ConnectorYaml,
-): { strictValidationEnabled?: boolean; entityIdsIncluded?: boolean } | undefined {
+): { strict_validation_enabled?: boolean; entity_id_included?: boolean } | undefined {
   const platforms = [
     connectorYaml.generate?.javascriptSdk,
     connectorYaml.generate?.swiftSdk,
@@ -197,8 +197,8 @@ function inferClientCache(
       const sdkList = Array.isArray(sdk) ? sdk : [sdk];
       if (sdkList.some((s) => s.clientCache)) {
         return {
-          strictValidationEnabled: true,
-          entityIdsIncluded: true,
+          strict_validation_enabled: true,
+          entity_id_included: true,
         };
       }
     }
