@@ -11,10 +11,47 @@ import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
 import { FirebaseError } from "../error";
+import * as os from "os";
 
 export interface MigrateOptions {
   project?: string;
   startAgy?: boolean;
+}
+
+async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
+  const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
+  const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+  let mcpConfig: any = { mcpServers: {} };
+  try {
+    await fs.mkdir(mcpConfigDir, { recursive: true });
+    try {
+      const content = await fs.readFile(mcpConfigPath, "utf-8");
+      mcpConfig = JSON.parse(content);
+      if (!mcpConfig.mcpServers) {
+        mcpConfig.mcpServers = {};
+      }
+    } catch (err: any) {
+      if (err.code !== "ENOENT") {
+        throw err;
+      }
+    }
+
+    if (mcpConfig.mcpServers["firebase"]) {
+      logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
+      return;
+    }
+
+    mcpConfig.mcpServers["firebase"] = {
+      command: "npx",
+      args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+    };
+
+    await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+  } catch (err: any) {
+    utils.logWarning(`Could not configure Antigravity MCP server: ${err.message}`);
+  }
 }
 
 interface GitHubItem {
@@ -557,6 +594,7 @@ export async function migrate(
   await uploadSecrets(rootPath, projectId);
   await injectAgyContext(rootPath, projectId, appName);
   await writeAgyConfigs(rootPath);
+  await setupAntigravityMcpServer(rootPath);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
