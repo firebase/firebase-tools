@@ -7,6 +7,7 @@ import { Context } from "./args";
 import deploy from "./deploy";
 import * as util from "./util";
 import * as fs from "fs";
+import { PassThrough } from "stream";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 
@@ -119,7 +120,7 @@ describe("apphosting", () => {
         object: "foo-local-build-1234.tar.gz",
       });
 
-      createReadStreamStub.returns("stream" as any);
+      createReadStreamStub.returns(new PassThrough());
 
       await deploy(context, opts);
 
@@ -170,7 +171,7 @@ describe("apphosting", () => {
         "./nextjs/standalone",
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
+        sinon.match.object,
         "firebaseapphosting-sources-000000000000-us-central1",
       );
     });
@@ -195,7 +196,7 @@ describe("apphosting", () => {
         bucket: bucketName,
         object: "foo-local-build-1234.tar.gz",
       });
-      createReadStreamStub.returns("stream" as any);
+      createReadStreamStub.returns(new PassThrough());
 
       await deploy(context, opts);
 
@@ -219,7 +220,7 @@ describe("apphosting", () => {
         bucket: bucketName,
         object: "foo-1234",
       });
-      createReadStreamStub.returns("stream" as any);
+      createReadStreamStub.returns(new PassThrough());
 
       await deploy(context, opts);
 
@@ -253,7 +254,7 @@ describe("apphosting", () => {
         bucket: bucketName,
         object: "foo-local-build-1234.tar.gz",
       });
-      createReadStreamStub.returns("stream" as any);
+      createReadStreamStub.returns(new PassThrough());
 
       await deploy(context, opts);
 

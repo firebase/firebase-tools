@@ -7,6 +7,7 @@ import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
+import { resolveWithin } from "../../utils";
 
 /**
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.

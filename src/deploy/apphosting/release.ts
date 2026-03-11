@@ -1,7 +1,8 @@
 import * as ora from "ora";
 import { consoleOrigin } from "../../api";
 import { getBackend } from "../../apphosting/backend";
-import { orchestrateRollout } from "../../apphosting/rollout";
+import * as apphosting from "../../gcp/apphosting";
+import * as rollout from "../../apphosting/rollout";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import {
@@ -50,7 +51,7 @@ export default async function (context: Context, options: Options): Promise<void
   const rollouts = backendIds.map((backendId) => {
     const cfg = context.backendConfigs[backendId];
     const isLocalBuild = cfg.localBuild && isEnabled("apphostinglocalbuilds");
-    let source: import("../../gcp/apphosting").Build["source"];
+    let source: apphosting.Build["source"];
     if (isLocalBuild) {
       source = {
         locallyBuilt: {
@@ -66,7 +67,7 @@ export default async function (context: Context, options: Options): Promise<void
       };
     }
 
-    return orchestrateRollout({
+    return rollout.orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],

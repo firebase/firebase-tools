@@ -9,6 +9,7 @@ import release from "./release";
 import { expect } from "chai";
 import * as experiments from "../../experiments";
 import { isEnabled } from "../../experiments";
+import * as apphosting from "../../gcp/apphosting";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -28,7 +29,14 @@ describe("apphosting", () => {
 
   beforeEach(() => {
     isEnabledStub = sinon.stub(experiments, "isEnabled").returns(false);
-    getBackendStub = sinon.stub(backend, "getBackend").resolves({ uri: "https://foo-us-central1.a.run.app" } as any);
+    getBackendStub = sinon.stub(backend, "getBackend").resolves({
+      name: "projects/my-project/locations/us-central1/backends/foo",
+      servingLocality: "REGIONAL_STRICT",
+      labels: {},
+      createTime: "2026-01-01T00:00:00Z",
+      updateTime: "2026-01-01T00:00:00Z",
+      uri: "https://foo-us-central1.a.run.app",
+    } as apphosting.Backend);
   });
 
   afterEach(() => {
