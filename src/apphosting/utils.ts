@@ -58,7 +58,7 @@ export async function promptForAppHostingYaml(
 /**
  * Helper to get the JS SDK auto-init environment variables.
  * @param webappConfig - An optional web app config from Firebase.
- * @returns A mapping of auto-init environment variables.
+ * @return A mapping of auto-init environment variables.
  */
 export function getAutoinitEnvVars(webappConfig: WebConfig | undefined): Record<string, string> {
   if (!webappConfig) {
