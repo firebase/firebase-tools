@@ -108,6 +108,37 @@ describe("buildFromV1Alpha", () => {
       }
     }); // Top level function keys
 
+    describe("VPC settings", () => {
+      it("throws when both connector and networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                connector: "connector",
+                networkInterfaces: [{ network: "network" }],
+              },
+            },
+          },
+        });
+      });
+
+      it("throws when neither connector nor networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                egressSettings: "ALL_TRAFFIC",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("Event triggers", () => {
       const validTrigger: build.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
