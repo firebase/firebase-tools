@@ -200,8 +200,8 @@ describe("migrate", () => {
       const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
       expect(writeStub.calledWith(mcpConfigPath, sinon.match(/--dir/))).to.be.true;
-      expect(writeStub.calledWith(mcpConfigPath, sinon.match(new RegExp(path.resolve(testRoot))))).to
-        .be.true;
+      expect(writeStub.calledWith(mcpConfigPath, sinon.match(new RegExp(path.resolve(testRoot)))))
+        .to.be.true;
     });
 
     it("should skip MCP server configuration if 'firebase' already exists", async () => {

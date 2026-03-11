@@ -18,22 +18,35 @@ export interface MigrateOptions {
   startAgy?: boolean;
 }
 
+interface McpServerConfig {
+  command: string;
+  args: string[];
+}
+
+interface McpConfig {
+  mcpServers: Record<string, McpServerConfig>;
+}
+
 async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
   const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
   const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
-  let mcpConfig: any = { mcpServers: {} };
+  let mcpConfig: McpConfig = { mcpServers: {} };
   try {
     await fs.mkdir(mcpConfigDir, { recursive: true });
-    try {
-      const content = await fs.readFile(mcpConfigPath, "utf-8");
-      mcpConfig = JSON.parse(content);
+    const content = await fs
+      .readFile(mcpConfigPath, "utf-8")
+      .catch((err: Error & { code?: string }) => {
+        if (err.code === "ENOENT") {
+          return null;
+        }
+        throw err;
+      });
+
+    if (content) {
+      mcpConfig = JSON.parse(content) as McpConfig;
       if (!mcpConfig.mcpServers) {
         mcpConfig.mcpServers = {};
-      }
-    } catch (err: any) {
-      if (err.code !== "ENOENT") {
-        throw err;
       }
     }
 
@@ -49,8 +62,9 @@ async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
 
     await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
     logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
-  } catch (err: any) {
-    utils.logWarning(`Could not configure Antigravity MCP server: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
   }
 }
 
@@ -292,7 +306,8 @@ async function injectAgyContext(
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
     logger.info("✅ Created AGY startup workflow");
   } catch (err: unknown) {
-    logger.debug(`Could not read or write startup workflow: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read or write startup workflow: ${message}`);
   }
 }
 
@@ -371,8 +386,9 @@ async function createFirebaseConfigs(
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${err}`,
+        `Could not fetch backends from Firebase CLI, using default "studio". ${message}`,
       );
     }
 
@@ -422,7 +438,8 @@ async function writeAgyConfigs(rootPath: string): Promise<void> {
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
   } catch (err: unknown) {
-    logger.debug(`Could not read ${settingsPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read ${settingsPath}: ${message}`);
   }
 
   const cleanSettings: Record<string, any> = {};
@@ -465,7 +482,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(blueprintPath);
     logger.info("✅ Cleaned up docs/blueprint.md");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${blueprintPath}: ${message}`);
   }
 
   try {
@@ -475,7 +493,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
       logger.info("✅ Removed empty docs directory");
     }
   } catch (err: unknown) {
-    logger.debug(`Could not remove ${docsDir}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not remove ${docsDir}: ${message}`);
   }
 
   const metadataPath = path.join(rootPath, "metadata.json");
@@ -483,7 +502,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(metadataPath);
     logger.info("✅ Cleaned up metadata.json");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${metadataPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${metadataPath}: ${message}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
@@ -491,7 +511,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(modifiedPath);
     logger.info("✅ Cleaned up .modified");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${modifiedPath}: ${message}`);
   }
 }
 
@@ -531,7 +552,8 @@ export async function uploadSecrets(
       logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
   } catch (err: unknown) {
-    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${message}`);
   }
 }
 
