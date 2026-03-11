@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import { logger } from "../logger";
 import * as pathUtil from "path";
 import * as utils from "../utils";
-import { UploadReleaseResult, TestDevice, ReleaseTest } from "../appdistribution/types";
+import { UploadReleaseResult, TestDevice, ReleaseTest, Release } from "../appdistribution/types";
 import { AppDistributionClient } from "./client";
 import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 
@@ -20,7 +20,7 @@ export async function upload(
   requests: AppDistributionClient,
   appName: string,
   distribution: Distribution,
-): Promise<string> {
+): Promise<Release> {
   utils.logBullet("uploading binary...");
   try {
     const operationName = await requests.uploadRelease(appName, distribution);
@@ -55,7 +55,7 @@ export async function upload(
     utils.logSuccess(
       `Download the release binary (link expires in 1 hour): ${release.binaryDownloadUri}`,
     );
-    return uploadResponse.release.name;
+    return uploadResponse.release;
   } catch (err: unknown) {
     if (getErrStatus(err) === 404) {
       throw new FirebaseError(
