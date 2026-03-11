@@ -50,7 +50,7 @@ export default async function (context: Context, options: Options): Promise<void
   const rollouts = backendIds.map((backendId) => {
     const cfg = context.backendConfigs[backendId];
     const isLocalBuild = cfg.localBuild && isEnabled("apphostinglocalbuilds");
-    let source: any;
+    let source: import("../../gcp/apphosting").Build["source"];
     if (isLocalBuild) {
       source = {
         locallyBuilt: {
