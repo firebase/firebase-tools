@@ -63,7 +63,7 @@ export async function createTarArchive(
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
+  const targetDir = targetSubDir ? resolveWithin(rootDir, targetSubDir) : rootDir;
   // For built artifacts, we typically want to include everything except debug logs and git metadata.
   // We do NOT ignore node_modules here because local builds (like Next.js standalone) often require them.
   const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
