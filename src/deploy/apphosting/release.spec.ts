@@ -3,12 +3,10 @@ import * as rollout from "../../apphosting/rollout";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import { RC } from "../../rc";
-import { needProjectId } from "../../projectUtils";
 import { Context } from "./args";
 import release from "./release";
 import { expect } from "chai";
 import * as experiments from "../../experiments";
-import { isEnabled } from "../../experiments";
 import * as apphosting from "../../gcp/apphosting";
 
 const BASE_OPTS = {
@@ -25,11 +23,10 @@ const BASE_OPTS = {
 describe("apphosting", () => {
   let isEnabledStub: sinon.SinonStub;
   let orchestrateRolloutStub: sinon.SinonStub;
-  let getBackendStub: sinon.SinonStub;
 
   beforeEach(() => {
     isEnabledStub = sinon.stub(experiments, "isEnabled").returns(false);
-    getBackendStub = sinon.stub(backend, "getBackend").resolves({
+    sinon.stub(backend, "getBackend").resolves({
       name: "projects/my-project/locations/us-central1/backends/foo",
       servingLocality: "REGIONAL_STRICT",
       labels: {},
@@ -103,16 +100,18 @@ describe("apphosting", () => {
 
       await release(context, opts);
 
-      expect(orchestrateRolloutStub).to.be.calledOnceWith(sinon.match({
-        buildInput: {
-          source: {
-            archive: {
-              userStorageUri: "gs://bucket/source.zip",
-              rootDirectory: "/",
+      expect(orchestrateRolloutStub).to.be.calledOnceWith(
+        sinon.match({
+          buildInput: {
+            source: {
+              archive: {
+                userStorageUri: "gs://bucket/source.zip",
+                rootDirectory: "/",
+              },
             },
           },
-        },
-      }));
+        }),
+      );
     });
 
     it("uses locallyBuilt for local builds when experiment is enabled", async () => {
@@ -143,15 +142,17 @@ describe("apphosting", () => {
 
       await release(context, opts);
 
-      expect(orchestrateRolloutStub).to.be.calledOnceWith(sinon.match({
-        buildInput: {
-          source: {
-            locallyBuilt: {
-              userStorageUri: "gs://bucket/built.tar.gz",
+      expect(orchestrateRolloutStub).to.be.calledOnceWith(
+        sinon.match({
+          buildInput: {
+            source: {
+              locallyBuilt: {
+                userStorageUri: "gs://bucket/built.tar.gz",
+              },
             },
           },
-        },
-      }));
+        }),
+      );
     });
 
     it("skips local builds when experiment is disabled but continues with others", async () => {
@@ -190,9 +191,11 @@ describe("apphosting", () => {
 
       // Should only be called once for 'bar'
       expect(orchestrateRolloutStub).to.be.calledOnce;
-      expect(orchestrateRolloutStub).to.be.calledWith(sinon.match({
-        backendId: "bar",
-      }));
+      expect(orchestrateRolloutStub).to.be.calledWith(
+        sinon.match({
+          backendId: "bar",
+        }),
+      );
     });
   });
 });

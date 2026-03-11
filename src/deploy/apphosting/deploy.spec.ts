@@ -262,7 +262,9 @@ describe("apphosting", () => {
       expect(createTarArchiveStub).to.be.calledWith(context.backendConfigs["fooLocalBuild"]);
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
-      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(`gs://${bucketName}/foo-local-build-1234.tar.gz`);
+      expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
+        `gs://${bucketName}/foo-local-build-1234.tar.gz`,
+      );
     });
   });
 });

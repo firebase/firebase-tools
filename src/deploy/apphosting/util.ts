@@ -81,9 +81,9 @@ export async function createTarArchive(
     // If we're archiving a built app directory, we must also include the apphosting.yaml
     // from the root directory so the backend knows the configuration.
     if (targetSubDir) {
-      const rootFiles = fs.readdirSync(rootDir).filter((file) =>
-        APPHOSTING_YAML_FILE_REGEX.test(file),
-      );
+      const rootFiles = fs
+        .readdirSync(rootDir)
+        .filter((file) => APPHOSTING_YAML_FILE_REGEX.test(file));
       for (const file of rootFiles) {
         if (!allFiles.includes(file)) {
           allFiles.push(file);
