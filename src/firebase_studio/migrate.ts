@@ -10,7 +10,6 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
-import { FirebaseError } from "../error";
 import * as os from "os";
 
 export interface MigrateOptions {
