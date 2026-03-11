@@ -223,19 +223,6 @@ async function injectAgyContext(
     utils.logWarning(`Could not download AGY skills, skipping. ${err}`);
   }
 
-  // Download Genkit skill
-  logger.info("⏳ Fetching Genkit skill...");
-  try {
-    const genkitSkillDir = path.join(skillsDir, "developing-genkit-js");
-    await downloadGitHubDir(
-      "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
-      genkitSkillDir,
-    );
-    logger.info(`✅ Downloaded Genkit skill`);
-  } catch (err: unknown) {
-    utils.logWarning(`Could not download Genkit skill, skipping. ${err}`);
-  }
-
   // System Instructions
   const systemInstructionsTemplate = await readTemplate(
     "firebase-studio-export/system_instructions_template.md",
