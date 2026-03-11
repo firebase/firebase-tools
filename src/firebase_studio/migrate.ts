@@ -10,10 +10,62 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
+import { FirebaseError } from "../error";
+import * as os from "os";
 
 export interface MigrateOptions {
   project?: string;
   startAntigravity?: boolean;
+}
+
+interface McpServerConfig {
+  command: string;
+  args: string[];
+}
+
+interface McpConfig {
+  mcpServers: Record<string, McpServerConfig>;
+}
+
+async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
+  const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
+  const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+  let mcpConfig: McpConfig = { mcpServers: {} };
+  try {
+    await fs.mkdir(mcpConfigDir, { recursive: true });
+    const content = await fs
+      .readFile(mcpConfigPath, "utf-8")
+      .catch((err: Error & { code?: string }) => {
+        if (err.code === "ENOENT") {
+          return null;
+        }
+        throw err;
+      });
+
+    if (content) {
+      mcpConfig = JSON.parse(content) as McpConfig;
+      if (!mcpConfig.mcpServers) {
+        mcpConfig.mcpServers = {};
+      }
+    }
+
+    if (mcpConfig.mcpServers["firebase"]) {
+      logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
+      return;
+    }
+
+    mcpConfig.mcpServers["firebase"] = {
+      command: "npx",
+      args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+    };
+
+    await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
+  }
 }
 
 interface GitHubItem {
@@ -222,19 +274,6 @@ async function injectAntigravityContext(
     utils.logWarning(`Could not download Antigravity skills, skipping. ${err}`);
   }
 
-  // Download Genkit skill
-  logger.info("⏳ Fetching Genkit skill...");
-  try {
-    const genkitSkillDir = path.join(skillsDir, "developing-genkit-js");
-    await downloadGitHubDir(
-      "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
-      genkitSkillDir,
-    );
-    logger.info(`✅ Downloaded Genkit skill`);
-  } catch (err: unknown) {
-    utils.logWarning(`Could not download Genkit skill, skipping. ${err}`);
-  }
-
   // System Instructions
   const systemInstructionsTemplate = await readTemplate(
     "firebase-studio-export/system_instructions_template.md",
@@ -254,7 +293,8 @@ async function injectAntigravityContext(
     await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
-    logger.debug(`Could not read or write startup workflow: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read or write startup workflow: ${message}`);
   }
 }
 
@@ -351,8 +391,9 @@ async function createFirebaseConfigs(
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${err}`,
+        `Could not fetch backends from Firebase CLI, using default "studio". ${message}`,
       );
     }
 
@@ -402,7 +443,8 @@ async function writeAntigravityConfigs(rootPath: string): Promise<void> {
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
   } catch (err: unknown) {
-    logger.debug(`Could not read ${settingsPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not read ${settingsPath}: ${message}`);
   }
 
   const cleanSettings: Record<string, any> = {};
@@ -445,7 +487,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(blueprintPath);
     logger.info("✅ Cleaned up docs/blueprint.md");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${blueprintPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${blueprintPath}: ${message}`);
   }
 
   try {
@@ -455,7 +498,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
       logger.info("✅ Removed empty docs directory");
     }
   } catch (err: unknown) {
-    logger.debug(`Could not remove ${docsDir}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not remove ${docsDir}: ${message}`);
   }
 
   const metadataPath = path.join(rootPath, "metadata.json");
@@ -463,7 +507,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(metadataPath);
     logger.info("✅ Cleaned up metadata.json");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${metadataPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${metadataPath}: ${message}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
@@ -471,7 +516,8 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(modifiedPath);
     logger.info("✅ Cleaned up .modified");
   } catch (err: unknown) {
-    logger.debug(`Could not delete ${modifiedPath}: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${modifiedPath}: ${message}`);
   }
 }
 
@@ -511,7 +557,8 @@ export async function uploadSecrets(
       logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
   } catch (err: unknown) {
-    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${err}`);
+    const message = err instanceof Error ? err.message : String(err);
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${message}`);
   }
 }
 
@@ -571,6 +618,7 @@ export async function migrate(
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
   await writeAntigravityConfigs(rootPath);
+  await setupAntigravityMcpServer(rootPath);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder

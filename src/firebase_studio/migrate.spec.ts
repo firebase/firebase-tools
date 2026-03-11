@@ -191,6 +191,11 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) {
           return "# **App Name**: Test App\nSome blueprint content";
         }
+        if (pStr.endsWith("mcp_config.json")) {
+          const err = new Error("File not found");
+          (err as any).code = "ENOENT";
+          throw err;
+        }
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
@@ -249,6 +254,69 @@ describe("migrate", () => {
       expect(
         trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
       ).to.be.true;
+
+      // Verify MCP config was written
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+      expect(writeStub.calledWith(mcpConfigPath, sinon.match(/--dir/))).to.be.true;
+      expect(writeStub.calledWith(mcpConfigPath, sinon.match(new RegExp(path.resolve(testRoot)))))
+        .to.be.true;
+    });
+
+    it("should skip MCP server configuration if 'firebase' already exists", async () => {
+      // Ensure platform is not win32
+      sandbox.stub(process, "platform").value("darwin");
+
+      // Stub global fetch
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        if (pStr.endsWith("mcp_config.json")) {
+          return JSON.stringify({ mcpServers: { firebase: { command: "npx", args: [] } } });
+        }
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      const writeStub = sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync
+      sandbox.stub(utils, "commandExistsSync").returns(false);
+
+      await migrate(testRoot);
+
+      // Verify MCP config was NOT written (because it already existed)
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeStub.calledWith(mcpConfigPath, sinon.match.any)).to.be.false;
     });
 
     it("should skip the open prompt if agy is missing", async () => {
