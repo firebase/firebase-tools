@@ -32,6 +32,7 @@ const client = new Client({
 });
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export type DirectVpcEgress = `VPC_EGRESS_${"UNSPECIFIED" | VpcConnectorEgressSettings}`;
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
 
@@ -123,6 +124,12 @@ export interface ServiceConfig {
   maxInstanceRequestConcurrency?: number | null;
   vpcConnector?: string | null;
   vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
+  directVpcNetworkInterface?: Array<{
+    network?: string;
+    subnetwork?: string;
+    tags?: string[];
+  }> | null;
+  directVpcEgress?: DirectVpcEgress | null;
   ingressSettings?: IngressSettings | null;
 
   // The service account for default credentials. Defaults to the
@@ -496,16 +503,20 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   });
 
   if (endpoint.vpc) {
-    proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
-    proto.renameIfPresent(
-      gcfFunction.serviceConfig,
-      endpoint.vpc,
-      "vpcConnectorEgressSettings",
-      "egressSettings",
-    );
+    if (endpoint.vpc.connector) {
+      gcfFunction.serviceConfig.vpcConnector = endpoint.vpc.connector;
+      gcfFunction.serviceConfig.vpcConnectorEgressSettings = endpoint.vpc.egressSettings || null;
+    } else if (endpoint.vpc.networkInterfaces) {
+      gcfFunction.serviceConfig.directVpcNetworkInterface = endpoint.vpc.networkInterfaces;
+      gcfFunction.serviceConfig.directVpcEgress = endpoint.vpc.egressSettings
+        ? `VPC_EGRESS_${endpoint.vpc.egressSettings}`
+        : null;
+    }
   } else if (endpoint.vpc === null) {
     gcfFunction.serviceConfig.vpcConnector = null;
     gcfFunction.serviceConfig.vpcConnectorEgressSettings = null;
+    gcfFunction.serviceConfig.directVpcNetworkInterface = null;
+    gcfFunction.serviceConfig.directVpcEgress = null;
   }
 
   if (backend.isEventTriggered(endpoint)) {
@@ -742,6 +753,20 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         "egressSettings",
         "vpcConnectorEgressSettings",
       );
+    } else if (gcfFunction.serviceConfig.directVpcNetworkInterface) {
+      endpoint.vpc = { networkInterfaces: gcfFunction.serviceConfig.directVpcNetworkInterface };
+      if (gcfFunction.serviceConfig.directVpcEgress) {
+        if (!gcfFunction.serviceConfig.directVpcEgress.startsWith("VPC_EGRESS_")) {
+          throw new FirebaseError(
+            `Unexpected VPC egress setting: ${gcfFunction.serviceConfig.directVpcEgress}`,
+          );
+        }
+        if (gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED") {
+          endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring(
+            "VPC_EGRESS_".length,
+          ) as backend.VpcEgressSettings;
+        }
+      }
     }
     const serviceName = gcfFunction.serviceConfig.service;
     if (!serviceName) {
