@@ -1,4 +1,3 @@
-- Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
-- Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
-- Detects when App Hosting fails to deploy, returning an error. (#8866)
-- Add `firestore_query_collection` tool back to MCP as it is not available in the OneMCP server yet.
+- Add support for VPC direct connect in GCF 2nd gen (#10033)
+- Added `--only` flag for `emulators:export` (#4033)
+- Added support for custom PostgreSQL schema names in Data Connect. (#9271)

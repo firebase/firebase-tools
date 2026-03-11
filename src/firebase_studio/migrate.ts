@@ -7,8 +7,10 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
+import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
+import { FirebaseError } from "../error";
 
 export interface MigrateOptions {
   project?: string;
@@ -25,6 +27,55 @@ interface GitHubItem {
 interface Metadata {
   projectId?: string;
   [key: string]: any;
+}
+
+type AppType = "NEXT_JS" | "FLUTTER" | "ANGULAR" | "OTHER";
+
+async function detectAppType(rootPath: string): Promise<AppType> {
+  // Check for Flutter
+  try {
+    await fs.access(path.join(rootPath, "pubspec.yaml"));
+    return "FLUTTER";
+  } catch {
+    // Not Flutter
+  }
+
+  // Check for Angular
+  try {
+    await fs.access(path.join(rootPath, "angular.json"));
+    return "ANGULAR";
+  } catch {
+    // Not Angular (directly)
+  }
+
+  // Check package.json for Next.js or Angular
+  try {
+    const packageJsonPath = path.join(rootPath, "package.json");
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(packageJsonContent);
+    const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+
+    if (deps.next) {
+      return "NEXT_JS";
+    }
+    if (deps["@angular/core"]) {
+      return "ANGULAR";
+    }
+  } catch {
+    // No package.json or error reading it
+  }
+
+  // Check for Next.js config files
+  for (const configFile of ["next.config.js", "next.config.mjs"]) {
+    try {
+      await fs.access(path.join(rootPath, configFile));
+      return "NEXT_JS";
+    } catch {
+      // Not this config file, try the next one.
+    }
+  }
+
+  return "OTHER";
 }
 
 // TODO revisit quota limits
@@ -87,7 +138,9 @@ export async function extractMetadata(
     logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
-    logger.info(`✅ Failed to determine the Firebase Project ID`);
+    logger.info(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    );
   }
 
   // Extract App Name and Blueprint Content
@@ -486,8 +539,16 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { startAgy: true },
 ): Promise<void> {
-  logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
+  if (process.platform === "win32") {
+    throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
+      exit: 1,
+    });
+  }
 
+  const appType: AppType = await detectAppType(rootPath);
+  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
+
+  logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
@@ -506,5 +567,6 @@ export async function migrate(
     );
   }
 
+  await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
   await askToOpenAntigravity(rootPath, appName, options.startAgy);
 }

@@ -1134,7 +1134,8 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
 
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
-    await hubClient.postExport({ path: exportAbsPath, initiatedBy });
+    const targets = filterEmulatorTargets(options);
+    await hubClient.postExport({ path: exportAbsPath, initiatedBy, targets });
   } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
