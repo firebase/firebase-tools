@@ -477,16 +477,8 @@ async function writeAntigravityConfigs(rootPath: string): Promise<void> {
 }
 
 async function cleanupUnusedFiles(rootPath: string): Promise<void> {
-  // Remove docs/blueprint.md and empty docs directory
+  // Remove the empty docs directory
   const docsDir = path.join(rootPath, "docs");
-  const blueprintPath = path.join(docsDir, "blueprint.md");
-  try {
-    await fs.unlink(blueprintPath);
-    logger.info("✅ Cleaned up docs/blueprint.md");
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${blueprintPath}: ${message}`);
-  }
 
   try {
     const files = await fs.readdir(docsDir);
@@ -497,15 +489,6 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     logger.debug(`Could not remove ${docsDir}: ${message}`);
-  }
-
-  const metadataPath = path.join(rootPath, "metadata.json");
-  try {
-    await fs.unlink(metadataPath);
-    logger.info("✅ Cleaned up metadata.json");
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${metadataPath}: ${message}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
