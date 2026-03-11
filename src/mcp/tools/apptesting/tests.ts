@@ -68,8 +68,8 @@ export const run_tests = tool(
     // For some reason, testDevices can still be
     const devices = testDevices || defaultDevices;
     const client = new AppDistributionClient();
-    const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaseName, devices, testCase));
+    const release = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
+    return toContent(await client.createReleaseTest(release.name, devices, testCase));
   },
 );
 

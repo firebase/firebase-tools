@@ -6,10 +6,9 @@ import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
-import { marked } from "marked";
 import { AppDistributionClient } from "../appdistribution/client";
 import { Distribution, upload } from "../appdistribution/distribution";
-import { AiInstructions, ReleaseTest, TestDevice } from "../appdistribution/types";
+import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
 
 const defaultDevices = [
@@ -63,16 +62,16 @@ export const command = new Command("apptesting:execute <release-binary-file>")
 
     const invokeSpinner = ora("Requesting test execution");
 
-    let testInvocations;
-    let releaseId;
+    let releaseTests: ReleaseTest[];
+    let release: Release;
     try {
       const client = new AppDistributionClient();
-      releaseId = await upload(client, appName, new Distribution(target));
+      release = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
-      testInvocations = await invokeTests(
+      releaseTests = await invokeTests(
         client,
-        releaseId,
+        release.name,
         tests,
         !testDevices.length ? defaultDevices : testDevices,
       );
@@ -83,10 +82,10 @@ export const command = new Command("apptesting:execute <release-binary-file>")
       throw ex;
     }
 
+    logger.info(clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(releaseTests.length)}`));
     logger.info(
-      clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(testInvocations.length)}`),
+      `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
     );
-    logger.info(await marked(`View progress and results in the Firebase Console`));
   });
 
 function pluralizeTests(numTests: number) {
@@ -98,14 +97,14 @@ async function invokeTests(
   releaseName: string,
   testDefs: TestCaseInvocation[],
   devices: TestDevice[],
-) {
+): Promise<ReleaseTest[]> {
   try {
-    const testInvocations: ReleaseTest[] = [];
+    const releaseTests: ReleaseTest[] = [];
     for (const testDef of testDefs) {
       const aiInstructions: AiInstructions = {
         steps: testDef.testCase.steps,
       };
-      testInvocations.push(
+      releaseTests.push(
         await client.createReleaseTest(
           releaseName,
           devices,
@@ -116,7 +115,7 @@ async function invokeTests(
         ),
       );
     }
-    return testInvocations;
+    return releaseTests;
   } catch (err: unknown) {
     throw new FirebaseError("Test invocation failed", { original: getError(err) });
   }

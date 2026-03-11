@@ -1,9 +1,8 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { execSync, spawn } from "child_process";
+import { spawn } from "child_process";
 
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
@@ -11,6 +10,7 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
+import { FirebaseError } from "../error";
 
 export interface MigrateOptions {
   project?: string;
@@ -120,6 +120,8 @@ export async function extractMetadata(
     logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
   }
 
+  logger.debug(`overrideProjectId ${overrideProjectId}`);
+  logger.debug(`metadata.projectId ${metadata.projectId}`);
   let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
     // try to get project ID from .firebaserc
@@ -257,22 +259,38 @@ async function injectAntigravityContext(
   }
 }
 
-async function assertSystemState(startAntigravity?: boolean): Promise<void> {
-  // Assertion: Check for Antigravity (antigravity)
+async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
+  // Assertion: Check for Antigravity (agy or antigravity)
   // If we're not starting the IDE, skip the check.
-  if (!startAntigravity) {
-    return;
+  if (!startAgy) {
+    return undefined;
   }
-  try {
-    execSync("antigravity --version", { stdio: "ignore" });
-    logger.info("✅ Antigravity IDE CLI (antigravity) detected");
-  } catch (err: unknown) {
-    const downloadLink = "https://antigravity.google/download";
-    throw new FirebaseError(
-      `Antigravity IDE CLI (antigravity) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
-      { exit: 1 },
-    );
+
+  const commands = ["agy", "antigravity"];
+  for (const cmd of commands) {
+    if (utils.commandExistsSync(cmd)) {
+      logger.info(`✅ Antigravity IDE detected`);
+      return cmd;
+    }
   }
+
+  // Check common macOS install location
+  if (process.platform === "darwin") {
+    const macPath = "/Applications/Antigravity.app/Contents/Resources/app/bin/agy";
+    try {
+      await fs.access(macPath);
+      logger.info(`✅ Antigravity IDE detected at ${macPath}`);
+      return macPath;
+    } catch {
+      // Not found in Applications
+    }
+  }
+
+  const downloadLink = "https://antigravity.google/download";
+  logger.info(
+    `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+  );
+  return undefined;
 }
 
 async function createFirebaseConfigs(
@@ -485,8 +503,8 @@ async function askToOpenAntigravity(
   appName: string,
   startAntigravity?: boolean,
 ): Promise<void> {
-  // 8. Open in Antigravity (Optional)
-  if (!startAntigravity) {
+  const agyCommand = await getAgyCommand(startAntigravity);
+  if (!startAntigravity || !agyCommand) {
     logger.info(
       '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
     );
@@ -501,7 +519,7 @@ async function askToOpenAntigravity(
   if (answer) {
     logger.info(`⏳ Opening ${appName} in Antigravity...`);
     try {
-      const antigravityProcess = spawn("antigravity", ["."], {
+      const antigravityProcess = spawn(agyCommand, ["."], {
         cwd: rootPath,
         stdio: "ignore",
         detached: true,
@@ -531,8 +549,6 @@ export async function migrate(
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
-
-  await assertSystemState(options.startAntigravity);
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
