@@ -64,7 +64,16 @@ export function getAppName(options: any): string {
   return toAppName(options.app);
 }
 
-export function toAppName(appId: string) {
+const APP_ID_FORMAT = /^\d+:\d+:(android|ios|web):[a-fA-F0-9]+$/;
+
+function validateAppId(appId: string): void {
+  if (!APP_ID_FORMAT.test(appId)) {
+    throw new FirebaseError(`Invalid Firebase app ID: ${appId}`);
+  }
+}
+
+export function toAppName(appId: string): string {
+  validateAppId(appId);
   return `projects/${appId.split(":")[1]}/apps/${appId}`;
 }
 
