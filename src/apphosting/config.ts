@@ -112,6 +112,18 @@ export function load(yamlPath: string): yaml.Document {
   return yaml.parseDocument(raw);
 }
 
+// We must go through the exports object for stubbing to work in tests.
+const dynamicDispatch = exports as {
+  discoverBackendRoot: typeof discoverBackendRoot;
+  load: typeof load;
+  findEnv: typeof findEnv;
+  upsertEnv: typeof upsertEnv;
+  store: typeof store;
+  overrideChosenEnv: typeof overrideChosenEnv;
+  listAppHostingFilesInPath: typeof listAppHostingFilesInPath;
+  getAppHostingConfiguration: typeof getAppHostingConfiguration;
+};
+
 /**
  * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
  * overriding union. In order to keep apphosting.emulator.yaml safe to commit,
@@ -192,18 +204,6 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
 
   envs.add(envYaml);
 }
-
-// We must go through the exports object for stubbing to work in tests.
-const dynamicDispatch = exports as {
-  discoverBackendRoot: typeof discoverBackendRoot;
-  load: typeof load;
-  findEnv: typeof findEnv;
-  upsertEnv: typeof upsertEnv;
-  store: typeof store;
-  overrideChosenEnv: typeof overrideChosenEnv;
-  listAppHostingFilesInPath: typeof listAppHostingFilesInPath;
-  getAppHostingConfiguration: typeof getAppHostingConfiguration;
-};
 
 /**
  * Given a secret name, guides the user whether they want to add that secret to the specified apphosting yaml file.
