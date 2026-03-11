@@ -102,6 +102,16 @@ async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<voi
   }
 }
 
+// Based on https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects
+const isValidFirebaseProjectId = (projectId: string): boolean => {
+  // ^[a-z]         : Starts with a lowercase letter
+  // [a-z0-9-]{4,28}: Middle characters (allows hyphens, letters, numbers), makes total length 6-30
+  // [a-z0-9]$      : Ends with a lowercase letter or number (no hyphens)
+  const projectIdRegex = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+
+  return projectIdRegex.test(projectId);
+};
+
 export async function extractMetadata(
   rootPath: string,
   overrideProjectId?: string,
@@ -135,6 +145,11 @@ export async function extractMetadata(
   }
 
   if (projectId) {
+    if (!isValidFirebaseProjectId(projectId)) {
+      throw new FirebaseError(`Invalid project ID: ${projectId}.`, {
+        exit: 1,
+      });
+    }
     logger.info(`✅ Detected Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
