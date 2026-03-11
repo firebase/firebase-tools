@@ -49,8 +49,8 @@ export async function pickServices(
   const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
-      "No Data Connect services found in firebase.json." +
-      `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+      "No Data Connect services found in firebase.json. " +
+        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
     );
   }
 
