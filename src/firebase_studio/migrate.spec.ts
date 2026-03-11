@@ -8,6 +8,7 @@ import * as prompt from "../prompt";
 import * as track from "../track";
 import { FirebaseError } from "../error";
 import * as secrets from "../apphosting/secrets";
+import * as utils from "../utils";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
@@ -89,7 +90,7 @@ describe("migrate", () => {
               url: "https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill",
             },
           ],
-        } as any);
+        } as Response);
 
       // Mock GitHub API for specific skill content
       fetchStub
@@ -97,7 +98,7 @@ describe("migrate", () => {
         .resolves({
           ok: true,
           json: async () => [],
-        } as any);
+        } as Response);
 
       // Mock GitHub API for Genkit skill content
       fetchStub
@@ -107,7 +108,7 @@ describe("migrate", () => {
         .resolves({
           ok: true,
           json: async () => [],
-        } as any);
+        } as Response);
 
       // Mock filesystem
       sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
@@ -157,6 +158,8 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
+      // Mock commandExistsSync
+      sandbox.stub(utils, "commandExistsSync").withArgs("agy").returns(true);
       // Mock trackGA4
       const trackStub = sandbox.stub(track, "trackGA4").resolves();
 
@@ -186,6 +189,107 @@ describe("migrate", () => {
       expect(
         trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
       ).to.be.true;
+    });
+
+    it("should skip the open prompt if agy is missing", async () => {
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync to fail
+      sandbox.stub(utils, "commandExistsSync").returns(false);
+
+      // Mock prompt - should NOT be called
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.false;
+    });
+
+    it("should detect antigravity command if agy is missing", async () => {
+      // Stub global fetch
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync: agy missing, antigravity present
+      const commandStub = sandbox.stub(utils, "commandExistsSync");
+      commandStub.withArgs("agy").returns(false);
+      commandStub.withArgs("antigravity").returns(true);
+
+      // Mock prompt - should be called
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.true;
     });
   });
 
