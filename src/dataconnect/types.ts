@@ -23,9 +23,9 @@ export interface Schema extends BaseResource {
 export interface Connector extends BaseResource {
   name: string;
   source: Source;
-  clientCache?: {
-    strictValidationEnabled?: boolean;
-    entityIdsIncluded?: boolean;
+  client_cache?: {
+    strict_validation_enabled?: boolean;
+    entity_id_included?: boolean;
   };
 }
 
@@ -40,7 +40,6 @@ export type SchemaValidation = "STRICT" | "COMPATIBLE";
 export interface PostgreSql {
   ephemeral?: boolean;
   database?: string;
-  schema?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
@@ -149,7 +148,6 @@ export interface SchemaYaml {
 export interface DatasourceYaml {
   postgresql?: {
     database: string;
-    schema?: string;
     cloudSql: {
       instanceId: string;
     };
@@ -247,7 +245,6 @@ export function toDatasource(
     return {
       postgresql: {
         database: ds.postgresql.database,
-        schema: ds.postgresql.schema,
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },
