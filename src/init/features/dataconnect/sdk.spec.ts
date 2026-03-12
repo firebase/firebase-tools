@@ -59,6 +59,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -73,6 +74,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -84,6 +86,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       },
     ]);
   });
@@ -95,6 +98,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
+        clientCache: {},
       },
     ]);
   });
@@ -106,6 +110,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+        clientCache: {},
       },
     ]);
   });
@@ -136,10 +141,10 @@ describe("addSdkGenerateToConnectorYaml", () => {
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, flutterApp);
 
     expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.be.undefined;
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
 
     expect(connectorYaml.generate?.dartSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.dartSdk as any)[0].clientCache).to.be.undefined;
+    expect((connectorYaml.generate?.dartSdk as any)[0].clientCache).to.deep.equal({});
   });
 
   it("should add clientCache: {} when fdcrealtime experiment is enabled", () => {
