@@ -28,6 +28,7 @@ import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
+import { isEnabled } from "../experiments";
 
 const DEFAULT_RUNTIME = "nodejs";
 
@@ -129,7 +130,7 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
-  if (!runtime) {
+  if (!runtime && isEnabled("abiu")) {
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {

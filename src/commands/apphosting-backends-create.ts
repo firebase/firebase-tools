@@ -5,6 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
+import { isEnabled } from "../experiments";
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
 
@@ -42,6 +43,18 @@ export const command = new Command("apphosting:backends:create")
       throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
     }
 
+    const abiuAllowed = isEnabled("abiu");
+    if (!abiuAllowed && (options.runtime || options.automaticBaseImageUpdates !== undefined)) {
+      throw new FirebaseError(
+        "The --runtime and --automatic-base-image-updates flags are only available when the 'abiu' experiment is enabled. To enable it, run 'firebase experiments:enable abiu'.",
+      );
+    }
+    const runtime = abiuAllowed ? (options.runtime as string | undefined) : undefined;
+    const automaticBaseImageUpdatesDisabled =
+      abiuAllowed && options.automaticBaseImageUpdates != null
+        ? !options.automaticBaseImageUpdates
+        : undefined;
+
     await doSetup(
       projectId,
       options.nonInteractive,
@@ -50,7 +63,7 @@ export const command = new Command("apphosting:backends:create")
       options.serviceAccount as string | undefined,
       options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
-      options.runtime as string | undefined,
-      options.automaticBaseImageUpdates != null ? !options.automaticBaseImageUpdates : undefined,
+      runtime,
+      automaticBaseImageUpdatesDisabled,
     );
   });
