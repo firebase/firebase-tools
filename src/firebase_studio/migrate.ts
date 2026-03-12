@@ -560,6 +560,7 @@ async function askToOpenAntigravity(
   logger.info(
     "  2.  Open the Agent Chat: Use the side panel or press Cmd+L (Ctrl+L on Windows/Linux). This is your main interface with the AI.",
   );
+  
   logger.info("\n File any bugs at https://github.com/firebase/firebase-tools/issues");
 
   if (!startAntigravity || !agyCommand) {
