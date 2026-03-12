@@ -42,6 +42,6 @@ export const command = new Command("studio:export <path>")
       }
     }
 
-    logger.info(`⏳ Exporting Studio apps from ${rootPath} to Antigravity...`);
+    logger.info(`⏳ Exporting Studio app from ${rootPath} to Antigravity...`);
     await migrate(rootPath, options as MigrateOptions);
   });
