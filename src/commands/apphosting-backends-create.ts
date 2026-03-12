@@ -28,7 +28,7 @@ export const command = new Command("apphosting:backends:create")
     "--primary-region <primaryRegion>",
     "specify the primary region for the backend. Required with --non-interactive.",
   )
-  .option("--root-dir <rootDir>", "specify the root directory for the backend.")
+  .option("--root-dir <rootDir>", "specify the root directory for the backend.");
 const abiuEnabled = isEnabled("abiu");
 if (abiuEnabled) {
   command
@@ -54,10 +54,9 @@ command
       );
     }
     const runtime = abiuAllowed ? (options.runtime as string | undefined) : undefined;
-    const automaticBaseImageUpdatesDisabled =
-      abiuAllowed && options.automaticBaseImageUpdates != null
-        ? !options.automaticBaseImageUpdates
-        : undefined;
+    const automaticBaseImageUpdatesDisabled = abiuAllowed
+      ? options.automaticBaseImageUpdates === false
+      : undefined;
 
     await doSetup(
       projectId,

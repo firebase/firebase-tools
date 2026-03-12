@@ -389,7 +389,7 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
-    runtime: runtime ? { value: runtime } : undefined,
+    runtime: { value: runtime ?? "" },
     automaticBaseImageUpdatesDisabled,
   };
 

@@ -120,7 +120,7 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
-        runtime: undefined,
+        runtime: { value: "" },
         automaticBaseImageUpdatesDisabled: undefined,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
@@ -152,7 +152,7 @@ describe("apphosting setup functions", () => {
           labels: deploymentTool.labels(),
           serviceAccount: "custom-service-account",
           appId: webAppId,
-          runtime: runtime ? { value: runtime } : undefined,
+          runtime: { value: runtime ?? "" },
           automaticBaseImageUpdatesDisabled: undefined,
         };
         expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
@@ -184,7 +184,7 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
-        runtime: undefined,
+        runtime: { value: "" },
         automaticBaseImageUpdatesDisabled: true,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
