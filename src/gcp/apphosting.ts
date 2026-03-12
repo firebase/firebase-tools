@@ -30,6 +30,12 @@ interface Codebase {
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 
+export type AutomaticBaseImageUpdateState =
+  | "AUTOMATIC_BASE_IMAGE_UPDATE_STATE_UNSPECIFIED"
+  | "SUPPORTED"
+  | "RUNTIME_NOT_SUPPORTED"
+  | "DISABLED";
+
 export interface Runtime {
   value: string;
 }
@@ -48,6 +54,7 @@ export interface Backend {
   appId?: string;
   managedResources?: ManagedResource[];
   runtime?: Runtime;
+  automaticBaseImageUpdatesDisabled?: boolean;
 }
 
 export interface ManagedResource {
@@ -76,6 +83,8 @@ export interface Build {
   createTime: string;
   updateTime: string;
   deleteTime: string;
+  automaticBaseImageUpdateState?: AutomaticBaseImageUpdateState;
+  baseImage?: string;
 }
 
 export interface ListBuildsResponse {

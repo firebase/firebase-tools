@@ -82,6 +82,7 @@ export async function doSetup(
   primaryRegion?: string,
   rootDir?: string,
   runtime?: string,
+  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -162,6 +163,7 @@ export async function doSetup(
     webApp?.id,
     rootDir,
     runtime,
+    automaticBaseImageUpdatesDisabled,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -372,6 +374,7 @@ export async function createBackend(
   webAppId: string | undefined,
   rootDir = "/",
   runtime?: string,
+  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -386,6 +389,7 @@ export async function createBackend(
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
     runtime: runtime ? { value: runtime } : undefined,
+    automaticBaseImageUpdatesDisabled,
   };
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
