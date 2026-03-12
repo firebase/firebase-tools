@@ -32,9 +32,10 @@ export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 
 export type AutomaticBaseImageUpdateState =
   | "AUTOMATIC_BASE_IMAGE_UPDATE_STATE_UNSPECIFIED"
-  | "SUPPORTED"
+  | "UPDATES_ENABLED"
+  | "UPDATES_DISABLED"
   | "RUNTIME_NOT_SUPPORTED"
-  | "DISABLED";
+  | "RUNTIME_NOT_SET";
 
 export interface Runtime {
   value: string;

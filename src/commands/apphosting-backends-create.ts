@@ -51,8 +51,6 @@ export const command = new Command("apphosting:backends:create")
       options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
       options.runtime as string | undefined,
-      options.automaticBaseImageUpdates != null
-        ? !options.automaticBaseImageUpdates
-        : undefined,
+      options.automaticBaseImageUpdates != null ? !options.automaticBaseImageUpdates : undefined,
     );
   });
