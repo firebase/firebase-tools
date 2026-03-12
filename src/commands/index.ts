@@ -254,15 +254,19 @@ export function load(client: CLIClient): CLIClient {
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
+  client.dataconnect.compile = loadCommand("dataconnect-compile");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
+  client.studio = {};
+  client.studio.export = loadCommand("studio-export");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
+  client.apptesting = {};
+  client.apptesting.execute = loadCommand("apptesting");
   if (experiments.isEnabled("apptesting")) {
-    client.apptesting = {};
     client.apptesting.wata = loadCommand("apptesting-wata");
   }
 

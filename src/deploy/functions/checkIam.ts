@@ -61,7 +61,6 @@ export async function checkServiceAccountIam(projectId: string): Promise<void> {
 /**
  * Checks a functions deployment for HTTP function creation, and tests IAM
  * permissions accordingly.
- *
  * @param context The deploy context.
  * @param options The command-wide options object.
  * @param payload The deploy payload.
@@ -77,8 +76,11 @@ export async function checkHttpIam(
   const filters = context.filters || getEndpointFilters(options, context.config!);
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
-    .filter(backend.isHttpsTriggered || backend.isDataConnectGraphqlTriggered)
-    .filter((f) => endpointMatchesAnyFilter(f, filters));
+    .filter((f) => backend.isHttpsTriggered(f) || backend.isDataConnectGraphqlTriggered(f))
+    .filter((f) => endpointMatchesAnyFilter(f, filters))
+    // Services with platform: "run" are not GCFv1 or GCFv2 functions and are handled separately.
+    // TODO: We'll need similar check for Run functions too.
+    .filter((f) => f.platform !== "run");
 
   const existing = await backend.existingBackend(context);
   const newHttpsEndpoints = httpEndpoints.filter(backend.missingEndpoint(existing));

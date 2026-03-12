@@ -1,3 +1,5 @@
-- Removed MCP tools and prompts that required Gemini in Firebase terms of service.
-- Fixes an issue where the `--only` flag was not always respected for `firebase mcp`
-- Removed timeout when connecting to Cloud SQL. Hopefully, should mitigate issue #9314. (#9725)
+- Add support for VPC direct connect in GCF 2nd gen (#10033)
+- Added `--only` flag for `emulators:export` (#4033)
+- Added support for custom PostgreSQL schema names in Data Connect. (#9271)
+- When SSR web app features are detected in the `firebase init hosting` flow, offer to switch to App Hosting (#9887)
+- Removed the experimental web frameworks prompt from `firebase init hosting` (#9843)
