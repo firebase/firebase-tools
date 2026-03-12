@@ -1,1 +1,4 @@
 - Fix proxy.js/proxy.ts in Next.js 16 (#9631)
+- Add support for VPC direct connect in GCF 2nd gen (#10033)
+- Added `--only` flag for `emulators:export` (#4033)
+- Added support for custom PostgreSQL schema names in Data Connect. (#9271)

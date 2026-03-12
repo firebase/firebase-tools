@@ -204,6 +204,43 @@ describe("toBackend", () => {
     }
   });
 
+  it("populates networkInterfaces from param values", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        vpc: {
+          networkInterfaces: [
+            {
+              network: "{{ params.NETWORK }}",
+              subnetwork: "{{ params.SUBNETWORK }}",
+              tags: ["{{ params.TAG }}"],
+            },
+          ],
+          egressSettings: "ALL_TRAFFIC",
+        },
+        httpsTrigger: {},
+      },
+    });
+    const backendResult = build.toBackend(desiredBuild, {
+      NETWORK: new ParamValue("my-network", false, { string: true }),
+      SUBNETWORK: new ParamValue("my-subnetwork", false, { string: true }),
+      TAG: new ParamValue("my-tag", false, { string: true }),
+    });
+    expect(Object.keys(backendResult.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backendResult.endpoints)[0];
+    expect(endpointDef).to.not.equal(undefined);
+    if (endpointDef) {
+      expect(endpointDef.func.vpc?.networkInterfaces).to.deep.equal([
+        { network: "my-network", subnetwork: "my-subnetwork", tags: ["my-tag"] },
+      ]);
+      expect(endpointDef.func.vpc?.egressSettings).to.equal("ALL_TRAFFIC");
+    }
+  });
+
   it("enforces enum correctness for VPC egress settings", () => {
     const desiredBuild: build.Build = build.of({
       func: {
