@@ -6,7 +6,6 @@ import { migrate, extractMetadata, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
 import * as track from "../track";
-import { FirebaseError } from "../error";
 import * as secrets from "../apphosting/secrets";
 import * as utils from "../utils";
 
@@ -57,18 +56,79 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
-    it("should throw error and track start/error if run on Windows", async () => {
+    it("should perform migration on Windows successfully", async () => {
       // Stub process.platform
       sandbox.stub(process, "platform").value("win32");
+      // Stub global fetch
+      const fetchStub = sandbox.stub(global, "fetch");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json")) {
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        }
+        if (pStr.endsWith("readme_template.md")) {
+          return "# ${appName}";
+        }
+        if (pStr.endsWith("system_instructions_template.md")) {
+          return "Project: ${appName}";
+        }
+        if (pStr.endsWith("startup_workflow.md")) {
+          return "Step 1: Build";
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "test-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(fs, "access").callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.includes("agy.exe")) {
+          return;
+        }
+        throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
+      });
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync
+      const commandStub = sandbox.stub(utils, "commandExistsSync");
+      commandStub.withArgs("agy").returns(false);
+      commandStub.withArgs("antigravity").returns(false);
+
       // Mock trackGA4
       const trackStub = sandbox.stub(track, "trackGA4").resolves();
 
-      await expect(migrate(testRoot)).to.be.rejectedWith(
-        FirebaseError,
-        "Firebase Studio migration is currently not supported on Windows.",
-      );
+      // Mock spawn
+      const childProcess = require("child_process");
+      const spawnStub = sandbox.stub(childProcess, "spawn").returns({
+        unref: () => {
+          // No-op for testing
+        },
+      } as unknown as import("child_process").ChildProcess);
 
-      expect(trackStub.notCalled).to.be.true;
+      // Mock prompt
+      sandbox.stub(prompt, "confirm").resolves(true);
+
+      await migrate(testRoot);
+
+      expect(
+        trackStub.calledWith("firebase_studio_migrate", { app_type: "OTHER", result: "success" }),
+      ).to.be.true;
+      expect(spawnStub.calledOnce).to.be.true;
+      expect(spawnStub.firstCall.args[2].shell).to.be.true;
     });
 
     it("should perform a full migration successfully and track start/success", async () => {
@@ -156,7 +216,7 @@ describe("migrate", () => {
             createTime: "",
             updateTime: "",
           },
-        ] as any[],
+        ] as apphosting.Backend[],
         unreachable: [],
       });
 
@@ -374,6 +434,77 @@ describe("migrate", () => {
       commandStub.withArgs("antigravity").returns(true);
 
       // Mock prompt - should be called
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.true;
+    });
+
+    it("should detect antigravity command on Windows if in PATH or common location", async () => {
+      sandbox.stub(process, "platform").value("win32");
+      sandbox.stub(process, "env").value({ LOCALAPPDATA: "C:\\Users\\Test\\AppData\\Local" });
+
+      // Stub global fetch
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").resolves("");
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync: agy missing, antigravity present in path
+      const commandStub = sandbox.stub(utils, "commandExistsSync");
+      commandStub.withArgs("agy").returns(false);
+      commandStub.withArgs("antigravity").returns(true);
+
+      sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
+
+      // Mock prompt
+      const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+
+      await migrate(testRoot);
+
+      expect(confirmStub.called).to.be.true;
+    });
+
+    it("should detect antigravity command on Windows in common install location", async () => {
+      sandbox.stub(process, "platform").value("win32");
+      const localAppData = "C:\\Users\\Test\\AppData\\Local";
+      sandbox.stub(process, "env").value({ LOCALAPPDATA: localAppData });
+
+      // Stub global fetch
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
+      // Mock filesystem
+      sandbox.stub(fs, "readFile").resolves("");
+      sandbox.stub(fs, "writeFile").resolves();
+      sandbox.stub(fs, "mkdir").resolves();
+      sandbox.stub(fs, "unlink").resolves();
+      sandbox.stub(fs, "readdir").resolves([]);
+      sandbox.stub(apphosting, "listBackends").resolves({ backends: [], unreachable: [] });
+
+      // Mock commandExistsSync: both missing from PATH
+      const commandStub = sandbox.stub(utils, "commandExistsSync");
+      commandStub.withArgs("agy").returns(false);
+      commandStub.withArgs("antigravity").returns(false);
+
+      // Mock fs.access to succeed for the Windows install path
+      const accessStub = sandbox.stub(fs, "access");
+      const expectedPath = path.join(localAppData, "Programs", "Antigravity", "bin", "agy.exe");
+      accessStub.withArgs(expectedPath).resolves();
+      accessStub.rejects({ code: "ENOENT" });
+
+      // Mock prompt
       const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
 
       await migrate(testRoot);
