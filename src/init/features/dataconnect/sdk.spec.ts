@@ -147,7 +147,6 @@ describe("addSdkGenerateToConnectorYaml", () => {
   });
 });
 
-
 describe("chooseApp", () => {
   let detectAppsStub: sinon.SinonStub;
   let promptStub: sinon.SinonStub;
