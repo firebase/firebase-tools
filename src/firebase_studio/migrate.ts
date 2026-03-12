@@ -252,7 +252,7 @@ async function injectAntigravityContext(
   projectId: string | undefined,
   appName: string,
 ): Promise<void> {
-  const agentDir = path.join(rootPath, ".agent");
+  const agentDir = path.join(rootPath, ".agents");
   const rulesDir = path.join(agentDir, "rules");
   const workflowsDir = path.join(agentDir, "workflows");
   const skillsDir = path.join(agentDir, "skills");
@@ -400,7 +400,7 @@ async function createFirebaseConfigs(
         ignore: [
           "node_modules",
           ".git",
-          ".agent",
+          ".agents",
           ".idx",
           "firebase-debug.log",
           "firebase-debug.*.log",
