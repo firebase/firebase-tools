@@ -340,6 +340,24 @@ async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
     }
   }
 
+  // Check common Windows install location
+  if (process.platform === "win32") {
+    const winPath = path.join(
+      process.env.LOCALAPPDATA || "",
+      "Programs",
+      "Antigravity",
+      "bin",
+      "agy.exe",
+    );
+    try {
+      await fs.access(winPath);
+      logger.info(`✅ Antigravity IDE CLI detected at ${winPath}`);
+      return winPath;
+    } catch {
+      // Not found in LocalAppData
+    }
+  }
+
   const downloadLink = "https://antigravity.google/download";
   logger.info(
     `⚠️ Antigravity IDE not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
@@ -579,6 +597,7 @@ async function askToOpenAntigravity(
         cwd: rootPath,
         stdio: "ignore",
         detached: true,
+        shell: process.platform === "win32",
       });
       antigravityProcess.unref();
     } catch (err: unknown) {
@@ -591,12 +610,6 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
-  if (process.platform === "win32") {
-    throw new FirebaseError("Firebase Studio migration is currently not supported on Windows.", {
-      exit: 1,
-    });
-  }
-
   const appType: AppType = await detectAppType(rootPath);
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
