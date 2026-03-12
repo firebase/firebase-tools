@@ -11,7 +11,6 @@ export const command = new Command("studio:export [path]")
     "Bootstrap Firebase Studio apps for migration to Antigravity. Run on the unzipped folder from the Firebase Studio download.",
   )
   .option("--no-start-agy", "skip starting the Antigravity IDE after migration")
-  .help("sup")
   .action(async (exportPath: string, options: Options) => {
     experiments.assertEnabled("studioexport", "export Studio apps");
     if (!exportPath) {
