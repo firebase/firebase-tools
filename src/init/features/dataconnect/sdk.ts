@@ -251,6 +251,7 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
     }
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
   }
+  ensureClientCache(connectorYaml);
 
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(connectorYaml);
@@ -383,22 +384,20 @@ export function addSdkGenerateToConnectorYaml(
 
     case Platform.WEB: {
       const javascriptSdk: JavascriptSDK = {
-        outputDir: path.relative(connectorDir, path.join(appDir, `src/dataconnect-generated`)),
-        package: `@dataconnect/generated`,
-        packageJsonDir: path.relative(connectorDir, appDir),
-        react: false,
-        angular: false,
+        outputDir: path.relative(
+          connectorDir,
+          path.join(app.directory, "src/dataconnect-generated"),
+        ),
+        package: "@dataconnect/generated",
+        packageJsonDir: path.relative(connectorDir, app.directory),
+        react: app.frameworks?.includes(Framework.REACT) ?? false,
+        angular: app.frameworks?.includes(Framework.ANGULAR) ?? false,
       };
-      if (experiments.isEnabled("fdcrealtime")) {
-        javascriptSdk.clientCache = {};
-      }
-      for (const f of app.frameworks || []) {
-        javascriptSdk[f] = true;
-      }
       if (!isArray(generate?.javascriptSdk)) {
         generate.javascriptSdk = generate.javascriptSdk ? [generate.javascriptSdk] : [];
       }
-      if (!generate.javascriptSdk.some((s) => s.outputDir === javascriptSdk.outputDir)) {
+      const existing = generate.javascriptSdk.find((s) => s.outputDir === javascriptSdk.outputDir);
+      if (!existing) {
         generate.javascriptSdk.push(javascriptSdk);
       }
       break;
@@ -408,29 +407,25 @@ export function addSdkGenerateToConnectorYaml(
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
         package: "dataconnect_generated/generated.dart",
       };
-      if (experiments.isEnabled("fdcrealtime")) {
-        dartSdk.clientCache = {};
-      }
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
       }
-      if (!generate.dartSdk.some((s) => s.outputDir === dartSdk.outputDir)) {
+      const existing = generate.dartSdk.find((s) => s.outputDir === dartSdk.outputDir);
+      if (!existing) {
         generate.dartSdk.push(dartSdk);
       }
       break;
     }
     case Platform.ANDROID: {
       const kotlinSdk: KotlinSDK = {
-        outputDir: path.relative(connectorDir, path.join(appDir, `src/main/kotlin`)),
+        outputDir: path.relative(connectorDir, path.join(app.directory, "src/main/kotlin")),
         package: `com.google.firebase.dataconnect.generated`,
       };
-      if (experiments.isEnabled("fdcrealtime")) {
-        kotlinSdk.clientCache = {};
-      }
       if (!isArray(generate?.kotlinSdk)) {
         generate.kotlinSdk = generate.kotlinSdk ? [generate.kotlinSdk] : [];
       }
-      if (!generate.kotlinSdk.some((s) => s.outputDir === kotlinSdk.outputDir)) {
+      const existing = generate.kotlinSdk.find((s) => s.outputDir === kotlinSdk.outputDir);
+      if (!existing) {
         generate.kotlinSdk.push(kotlinSdk);
       }
       break;
@@ -443,13 +438,11 @@ export function addSdkGenerateToConnectorYaml(
         ),
         package: "DataConnectGenerated",
       };
-      if (experiments.isEnabled("fdcrealtime")) {
-        swiftSdk.clientCache = {};
-      }
       if (!isArray(generate?.swiftSdk)) {
         generate.swiftSdk = generate.swiftSdk ? [generate.swiftSdk] : [];
       }
-      if (!generate.swiftSdk.some((s) => s.outputDir === swiftSdk.outputDir)) {
+      const existing = generate.swiftSdk.find((s) => s.outputDir === swiftSdk.outputDir);
+      if (!existing) {
         generate.swiftSdk.push(swiftSdk);
       }
       break;
@@ -460,6 +453,35 @@ export function addSdkGenerateToConnectorYaml(
           Platform,
         ).join(", ")}\n${JSON.stringify(app)}`,
       );
+  }
+  ensureClientCache(connectorYaml);
+}
+
+/**
+ * Ensures all supported client SDKs in the connector.yaml have clientCache: {} if missing and experiment is on.
+ */
+export function ensureClientCache(connectorYaml: ConnectorYaml): void {
+  if (!connectorYaml.generate || !experiments.isEnabled("fdcrealtime")) {
+    return;
+  }
+  const generate = connectorYaml.generate;
+  const sdkFields: (keyof typeof generate)[] = [
+    "javascriptSdk",
+    "swiftSdk",
+    "kotlinSdk",
+    "dartSdk",
+  ];
+  for (const field of sdkFields) {
+    const val = generate[field];
+    if (val) {
+      const sdkList = isArray(val) ? val : [val];
+      (generate as any)[field] = sdkList;
+      for (const sdk of sdkList as any[]) {
+        if (!sdk.clientCache) {
+          sdk.clientCache = {};
+        }
+      }
+    }
   }
 }
 
