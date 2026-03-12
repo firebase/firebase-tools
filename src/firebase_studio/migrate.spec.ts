@@ -178,12 +178,12 @@ describe("migrate", () => {
       const writeStub = fs.writeFile as sinon.SinonStub;
       const mkdirStub = fs.mkdir as sinon.SinonStub;
 
-      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "rules"), { recursive: true }))
-        .to.be.true;
+      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "rules"), { recursive: true })).to
+        .be.true;
       expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "workflows"), { recursive: true }))
         .to.be.true;
-      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "skills"), { recursive: true }))
-        .to.be.true;
+      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "skills"), { recursive: true })).to
+        .be.true;
 
       expect(
         writeStub.calledWith(
