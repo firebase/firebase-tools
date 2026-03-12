@@ -236,13 +236,34 @@ describe("migrate", () => {
 
       // Verify key files were written
       const writeStub = fs.writeFile as sinon.SinonStub;
+      const mkdirStub = fs.mkdir as sinon.SinonStub;
+
+      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "rules"), { recursive: true })).to
+        .be.true;
+      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "workflows"), { recursive: true }))
+        .to.be.true;
+      expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "skills"), { recursive: true })).to
+        .be.true;
+
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, ".agents", "rules", "migration-context.md"),
+          sinon.match(/Test App/),
+        ),
+      ).to.be.true;
+      expect(
+        writeStub.calledWith(
+          path.join(testRoot, ".agents", "workflows", "startup.md"),
+          sinon.match(/Step 1: Build/),
+        ),
+      ).to.be.true;
 
       expect(writeStub.calledWith(path.join(testRoot, ".firebaserc"), sinon.match(/test-project/)))
         .to.be.true;
       expect(
         writeStub.calledWith(
           path.join(testRoot, "firebase.json"),
-          sinon.match(/"backendId": "studio"/),
+          sinon.match(/"backendId": "studio"/).and(sinon.match(/\.agents/)),
         ),
       ).to.be.true;
       expect(writeStub.calledWith(path.join(testRoot, "README.md"), sinon.match(/Test App/))).to.be
