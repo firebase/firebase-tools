@@ -177,6 +177,9 @@ export const appTestingOrigin = () =>
 export const cloudTestingOrigin = () =>
   utils.envOverride("CLOUD_TESTING_URL", "https://testing.googleapis.com");
 
+export const developerKnowledgeOrigin = () =>
+  utils.envOverride("DEVELOPER_KNOWLEDGE_URL", "https://developerknowledge.googleapis.com");
+
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {
   return Array.from(commandScopes);
