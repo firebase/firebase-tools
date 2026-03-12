@@ -3,3 +3,4 @@
 - Added support for custom PostgreSQL schema names in Data Connect. (#9271)
 - When SSR web app features are detected in the `firebase init hosting` flow, offer to switch to App Hosting (#9887)
 - Removed the experimental web frameworks prompt from `firebase init hosting` (#9843)
+- Added `studio:export` command to export Firebase Studio projects to Antigravity.
