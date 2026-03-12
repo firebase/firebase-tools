@@ -602,8 +602,6 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
-  // No-op for platform support check now
-
   const appType: AppType = await detectAppType(rootPath);
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
