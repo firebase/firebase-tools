@@ -551,15 +551,16 @@ async function askToOpenAntigravity(
 
   logger.info(`\n🎉 Your Firebase Studio project "${appName}" is now ready for Antigravity!`);
   logger.info(
-    "\n  Antigravity is Google's agentic IDE, where you can collaborate with AI agents to build, test, and deploy your application.",
+    "Antigravity is Google's agentic IDE, where you can collaborate with AI agents to build, test, and deploy your application.",
   );
-  logger.info("\n  What to do next inside Antigravity:\n");
+  logger.info("\nWhat to do next inside Antigravity:");
   logger.info(
     "  1.  Review the README.md: It has been updated with specifics about this migrated project.",
   );
   logger.info(
     "  2.  Open the Agent Chat: Use the side panel or press Cmd+L (Ctrl+L on Windows/Linux). This is your main interface with the AI.",
   );
+  logger.info("\n File any bugs at https://github.com/firebase/firebase-tools/issues");
 
   if (!startAntigravity || !agyCommand) {
     return;
