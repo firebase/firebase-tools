@@ -58,6 +58,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -72,6 +73,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -83,6 +85,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       },
     ]);
   });
@@ -94,6 +97,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
+        clientCache: {},
       },
     ]);
   });
@@ -105,11 +109,12 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+        clientCache: {},
       },
     ]);
   });
 
-  it("should add adminSdk for admin node platform", () => {
+  it("should add adminSdk for admin node platform and NOT include clientCache", () => {
     app.platform = Platform.ADMIN_NODE;
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
@@ -119,8 +124,29 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
       },
     ]);
+    expect((connectorYaml.generate?.adminNodeSdk as any)[0].clientCache).to.be.undefined;
+  });
+
+  it("should add clientCache: {} to all new generated SDKs when multiple are added", () => {
+    // Add Web SDK
+    app.platform = Platform.WEB;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+
+    // Add Flutter SDK
+    const flutterApp: App = {
+      directory: "/users/test/project/flutter_app",
+      platform: Platform.FLUTTER,
+    };
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, flutterApp);
+
+    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+
+    expect(connectorYaml.generate?.dartSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.dartSdk as any)[0].clientCache).to.deep.equal({});
   });
 });
+
 
 describe("chooseApp", () => {
   let detectAppsStub: sinon.SinonStub;

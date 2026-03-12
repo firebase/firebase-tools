@@ -386,6 +386,7 @@ export function addSdkGenerateToConnectorYaml(
         packageJsonDir: path.relative(connectorDir, appDir),
         react: false,
         angular: false,
+        clientCache: {},
       };
       for (const f of app.frameworks || []) {
         javascriptSdk[f] = true;
@@ -402,6 +403,7 @@ export function addSdkGenerateToConnectorYaml(
       const dartSdk: DartSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       };
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
@@ -415,6 +417,7 @@ export function addSdkGenerateToConnectorYaml(
       const kotlinSdk: KotlinSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `src/main/kotlin`)),
         package: `com.google.firebase.dataconnect.generated`,
+        clientCache: {},
       };
       if (!isArray(generate?.kotlinSdk)) {
         generate.kotlinSdk = generate.kotlinSdk ? [generate.kotlinSdk] : [];
@@ -431,6 +434,7 @@ export function addSdkGenerateToConnectorYaml(
           path.join(app.directory, `../FirebaseDataConnectGenerated`),
         ),
         package: "DataConnectGenerated",
+        clientCache: {},
       };
       if (!isArray(generate?.swiftSdk)) {
         generate.swiftSdk = generate.swiftSdk ? [generate.swiftSdk] : [];
