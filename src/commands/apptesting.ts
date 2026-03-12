@@ -1,6 +1,5 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
-import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
@@ -65,11 +64,11 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     }
 
     const invokeSpinner = ora("Requesting test execution");
+    const client = new AppDistributionClient();
 
     let releaseTests: ReleaseTest[];
     let release: Release;
     try {
-      const client = new AppDistributionClient();
       release = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
@@ -81,20 +80,20 @@ export const command = new Command("apptesting:execute <release-binary-file>")
       );
       invokeSpinner.text = `${pluralizeTests(releaseTests.length)} started successfully!`;
       invokeSpinner.succeed();
-
-      if (options.testNonBlocking) {
-        utils.logBullet(
-          `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
-        );
-      } else {
-        await awaitTestResults(releaseTests, client);
-        utils.logBullet(
-          `View detailed results in the Firebase Console:\n${release.firebaseConsoleUri}`,
-        );
-      }
     } catch (ex) {
       invokeSpinner.fail("Failed to request test execution");
       throw ex;
+    }
+
+    if (options.testNonBlocking) {
+      utils.logBullet(
+        `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
+    } else {
+      await awaitTestResults(releaseTests, client);
+      utils.logBullet(
+        `View detailed results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
     }
   });
 
