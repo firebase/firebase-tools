@@ -201,7 +201,7 @@ export async function extractMetadata(
         exit: 1,
       });
     }
-    logger.info(`✅ Detected Firebase Project: ${projectId}`);
+    logger.info(`✅ Using Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
     logger.info(
@@ -360,7 +360,7 @@ async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
 
   const downloadLink = "https://antigravity.google/download";
   logger.info(
-    `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+    `⚠️ Antigravity IDE not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
   );
   return undefined;
 }
@@ -566,15 +566,27 @@ async function askToOpenAntigravity(
   startAntigravity?: boolean,
 ): Promise<void> {
   const agyCommand = await getAgyCommand(startAntigravity);
+
+  logger.info(`\n🎉 Your Firebase Studio project "${appName}" is now ready for Antigravity!`);
+  logger.info(
+    "Antigravity is Google's agentic IDE, where you can collaborate with AI agents to build, test, and deploy your application.",
+  );
+  logger.info("\nWhat to do next inside Antigravity:");
+  logger.info(
+    "  1.  Review the README.md: It has been updated with specifics about this migrated project.",
+  );
+  logger.info(
+    "  2.  Open the Agent Chat: Use the side panel or press Cmd+L (Ctrl+L on Windows/Linux). This is your main interface with the AI.",
+  );
+
+  logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
+
   if (!startAntigravity || !agyCommand) {
-    logger.info(
-      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
-    );
     return;
   }
 
   const answer = await prompt.confirm({
-    message: `Migration complete for ${appName}! Would you like to open it in Antigravity now?`,
+    message: "Would you like to open it in Antigravity now?",
     default: true,
   });
 
@@ -591,10 +603,6 @@ async function askToOpenAntigravity(
     } catch (err: unknown) {
       utils.logWarning("Could not open Antigravity IDE automatically. Please open it manually.");
     }
-  } else {
-    logger.info(
-      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
-    );
   }
 }
 
@@ -621,7 +629,7 @@ export async function migrate(
   const currentFolderName = path.basename(rootPath);
   if (currentFolderName === "download") {
     logger.info(
-      `\n💡 Tip: You might want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
+      `\n💡 Tip: You may want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
     );
   }
 
