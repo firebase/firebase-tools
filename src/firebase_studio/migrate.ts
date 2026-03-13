@@ -498,7 +498,7 @@ async function writeAntigravityConfigs(rootPath: string, framework?: string): Pr
       console: "integratedTerminal",
       preLaunchTask: "npm-install",
     });
-  } else if (framework === "NEXT_JS"){
+  } else if (framework === "NEXT_JS") {
     launchJson.configurations.push({
       type: "node",
       request: "launch",

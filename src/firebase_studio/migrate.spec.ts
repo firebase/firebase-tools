@@ -63,7 +63,9 @@ describe("migrate", () => {
     it("should fail if the directory does not exist", async () => {
       (fs.stat as sinon.SinonStub).restore();
       sandbox.stub(fs, "stat").rejects({ code: "ENOENT" });
-      await expect(migrate(testRoot)).to.be.rejectedWith("The directory /test/root does not exist.");
+      await expect(migrate(testRoot)).to.be.rejectedWith(
+        "The directory /test/root does not exist.",
+      );
     });
 
     it("should perform migration on Windows successfully", async () => {
@@ -202,7 +204,7 @@ describe("migrate", () => {
           return "# **App Name**: Test App\nSome blueprint content";
         }
         if (pStr.endsWith("package.json")) {
-          return JSON.stringify({ dependencies: { "next": "12345" } });
+          return JSON.stringify({ dependencies: { next: "12345" } });
         }
         if (pStr.endsWith("mcp_config.json")) {
           const err = new Error("File not found");
