@@ -11,9 +11,18 @@ import {
   logLabeledWarning,
 } from "../../utils";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
+ *
+ * This step executes the actual "release" phase of the deployment. It takes the
+ * potentially uploaded source code (or linked repository commits) and triggers
+ * the App Hosting rollout API. It tracks the progress of the rollouts and reports
+ * success or failure to the user.
+ *
+ * @param context - The deployment context containing backend configs, locations, and storage URIs.
+ * @param options - CLI options.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   let backendIds = Object.keys(context.backendConfigs);
@@ -29,13 +38,6 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
-  if (localBuildBackends.length > 0) {
-    console.log(localBuildBackends);
-    console.log(context.backendStorageUris);
-    console.log(context.backendLocalBuilds);
-  }
-
   if (backendIds.length === 0) {
     return;
   }
@@ -49,12 +51,18 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-	config: context.backendLocalBuilds[backendId].buildConfig,
+        config: {
+          ...context.backendLocalBuilds[backendId]?.buildConfig,
+          env: [
+            ...(context.backendLocalBuilds[backendId]?.buildConfig?.env || []),
+            ...(context.backendLocalBuilds[backendId]?.env || []),
+          ],
+        },
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
-	    locallyBuiltSource: true, // generalize
+            locallyBuiltSource: !!context.backendLocalBuilds[backendId],
           },
         },
       },
@@ -69,6 +77,7 @@ export default async function (context: Context, options: Options): Promise<void
     `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
     if (res.status === "fulfilled") {
@@ -76,9 +85,15 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledSuccess("apphosting", `Rollout for backend ${backendIds[i]} complete!`);
       logLabeledSuccess("apphosting", `Your backend is now deployed at:\n\thttps://${backend.uri}`);
     } else {
+      failed = true;
       logLabeledWarning("apphosting", `Rollout for backend ${backendIds[i]} failed.`);
-      logLabeledError("apphosting", res.reason);
+      logLabeledError("apphosting", `${res.reason}`);
     }
   }
   rolloutsSpinner.stop();
+  if (failed) {
+    throw new FirebaseError(
+      "One or more rollouts failed. Please review the errors above and try again.",
+    );
+  }
 }

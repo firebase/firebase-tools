@@ -112,11 +112,13 @@ export class EmulatorHub extends ExpressBasedEmulator {
       }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
+      const targets: string[] = req.body.targets;
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
       try {
         await new HubExport(this.args.projectId, {
           path,
           initiatedBy,
+          targets,
         }).exportAll();
         utils.logLabeledSuccess("emulators", "Export complete.");
         res.status(200).send({

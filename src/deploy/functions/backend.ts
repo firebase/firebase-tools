@@ -306,8 +306,13 @@ export interface ServiceConfiguration {
   maxInstances?: number | null;
   minInstances?: number | null;
   vpc?: {
-    connector: string;
+    connector?: string;
     egressSettings?: VpcEgressSettings | null;
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }> | null;
   } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;

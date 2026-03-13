@@ -38,8 +38,7 @@ export const appDistributionOrigin = () =>
     "https://firebaseappdistribution.googleapis.com",
   );
 export const apphostingOrigin = () =>
-  utils.envOverride("FIREBASE_APPHOSTING_URL", "https://staging-firebaseapphosting.sandbox.googleapis.com");
-//    firebaseapphosting.googleapis.com");
+  utils.envOverride("FIREBASE_APPHOSTING_URL", "https://firebaseapphosting.googleapis.com");
 export const apphostingP4SADomain = () =>
   utils.envOverride(
     "FIREBASE_APPHOSTING_P4SA_DOMAIN",
@@ -177,6 +176,9 @@ export const appTestingOrigin = () =>
   utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");
 export const cloudTestingOrigin = () =>
   utils.envOverride("CLOUD_TESTING_URL", "https://testing.googleapis.com");
+
+export const developerKnowledgeOrigin = () =>
+  utils.envOverride("DEVELOPER_KNOWLEDGE_URL", "https://developerknowledge.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {
