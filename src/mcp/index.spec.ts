@@ -2,17 +2,16 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { FirebaseMcpServer } from "./index";
 import * as requireAuthModule from "../requireAuth";
+import * as cloudbilling from "../gcp/cloudbilling";
+import * as availability from "./util/availability";
 
 describe("FirebaseMcpServer.getAuthenticatedUser", () => {
   let server: FirebaseMcpServer;
   let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
-    // Mock the methods that may cause hanging BEFORE creating the instance
     sinon.stub(FirebaseMcpServer.prototype, "detectProjectRoot").resolves("/test/project");
-    sinon.stub(FirebaseMcpServer.prototype, "detectActiveFeatures").resolves([]);
-
-    server = new FirebaseMcpServer({});
+    server = new FirebaseMcpServer({ activeFeatures: ["core"] });
 
     // Mock the resolveOptions method to avoid dependency issues
     sinon.stub(server, "resolveOptions").resolves({});
@@ -59,5 +58,61 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
 
     expect(result).to.be.null;
     expect(requireAuthStub.calledOnce).to.be.true;
+  });
+});
+
+describe("FirebaseMcpServer.getProjectId", () => {
+  let server: FirebaseMcpServer;
+
+  beforeEach(() => {
+    sinon.stub(FirebaseMcpServer.prototype, "detectProjectRoot").resolves("/test/project");
+    server = new FirebaseMcpServer({ activeFeatures: ["core"] });
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should prefer credential project over configured default project", async () => {
+    sinon.stub(server, "resolveOptions").resolves({ project: "project-a", projectId: "project-a" });
+    sinon.stub(server as any, "getProjectIdFromCredentials").returns("project-b");
+
+    const projectId = await server.getProjectId();
+
+    expect(projectId).to.equal("project-b");
+  });
+
+  it("should use configured project when no credential project is available", async () => {
+    sinon.stub(server, "resolveOptions").resolves({ project: "project-a", projectId: "project-a" });
+    sinon.stub(server as any, "getProjectIdFromCredentials").returns(undefined);
+
+    const projectId = await server.getProjectId();
+
+    expect(projectId).to.equal("project-a");
+  });
+});
+
+describe("FirebaseMcpServer.detectActiveFeatures", () => {
+  let server: FirebaseMcpServer;
+
+  beforeEach(() => {
+    sinon.stub(FirebaseMcpServer.prototype, "detectProjectRoot").resolves("/test/project");
+    server = new FirebaseMcpServer({ activeFeatures: ["core"] });
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should continue feature detection when billing check fails", async () => {
+    sinon.stub(server, "getProjectId").resolves("project-a");
+    sinon.stub(server, "getAuthenticatedUser").resolves("adc@example.com");
+    sinon.stub(cloudbilling, "checkBillingEnabled").rejects(new Error("permission denied"));
+    sinon.stub(server as any, "_createMcpContext").returns({} as any);
+    sinon.stub(availability, "getDefaultFeatureAvailabilityCheck").returns(async () => false);
+
+    const features = await server.detectActiveFeatures();
+
+    expect(features).to.deep.equal([]);
   });
 });
