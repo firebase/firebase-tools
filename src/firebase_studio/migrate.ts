@@ -68,13 +68,6 @@ async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
   }
 }
 
-interface GitHubItem {
-  name: string;
-  type: "dir" | "file";
-  url: string;
-  download_url: string;
-}
-
 interface Metadata {
   projectId?: string;
   [key: string]: any;
@@ -128,8 +121,6 @@ async function detectAppType(rootPath: string): Promise<AppType> {
 
   return "OTHER";
 }
-
-
 
 // Based on https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects
 const isValidFirebaseProjectId = (projectId: string): boolean => {
@@ -253,11 +244,15 @@ async function injectAntigravityContext(
   // Add Skills using npx
   logger.info("⏳ Adding Antigravity skills...");
   try {
-    const result = spawnSync("npx", ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"], {
-      cwd: rootPath,
-      stdio: "ignore",
-      shell: process.platform === "win32",
-    });
+    const result = spawnSync(
+      "npx",
+      ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"],
+      {
+        cwd: rootPath,
+        stdio: "ignore",
+        shell: process.platform === "win32",
+      },
+    );
     if (result.error) {
       throw result.error;
     }

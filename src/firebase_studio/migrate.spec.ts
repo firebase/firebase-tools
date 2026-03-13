@@ -51,7 +51,7 @@ describe("migrate", () => {
     let writeFileStub: sinon.SinonStub;
     let mkdirStub: sinon.SinonStub;
     let accessStub: sinon.SinonStub;
-    let fetchStub: sinon.SinonStub;
+
     let listBackendsStub: sinon.SinonStub;
     let commandStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
@@ -62,11 +62,6 @@ describe("migrate", () => {
       const cp = require("child_process");
       sandbox.stub(cp, "spawnSync").returns({ status: 0 });
       sandbox.stub(process, "platform").value("darwin");
-
-      fetchStub = sandbox.stub(global, "fetch").resolves({
-        ok: true,
-        json: async () => [],
-      } as Response);
 
       readFileStub = sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
         const pStr = p.toString();
@@ -233,7 +228,17 @@ describe("migrate", () => {
       expect(
         (cp.spawnSync as sinon.SinonStub).calledWith(
           "npx",
-          ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"],
+          [
+            "-y",
+            "skills",
+            "add",
+            "firebase/agent-skills",
+            "-a",
+            "antigravity",
+            "--skill",
+            "*",
+            "-y",
+          ],
           sinon.match.any,
         ),
       ).to.be.true;
@@ -288,7 +293,6 @@ describe("migrate", () => {
       expect(
         writeFileStub.calledWith(mcpConfigPath, sinon.match(new RegExp(path.resolve(testRoot)))),
       ).to.be.true;
-
     });
 
     it("should skip MCP server configuration if 'firebase' already exists", async () => {
