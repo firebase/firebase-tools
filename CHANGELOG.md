@@ -1,3 +1,1 @@
-- Add support for VPC direct connect in GCF 2nd gen (#10033)
-- Added `--only` flag for `emulators:export` (#4033)
-- Added support for custom PostgreSQL schema names in Data Connect. (#9271)
+- Updated Pub/Sub emulator to version 0.8.29.
