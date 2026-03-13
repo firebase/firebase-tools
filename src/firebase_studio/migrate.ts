@@ -563,7 +563,7 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
         return;
       }
       for (const [name, version] of Object.entries(deps)) {
-        if (name === "genkit" || name.startsWith("@genkit-ai/")) {
+        if (name === "genkit" || name === "genkit-cli" || name.startsWith("@genkit-ai/")) {
           if (version !== "^1.29") {
             deps[name] = "^1.29";
             modified = true;

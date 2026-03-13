@@ -162,12 +162,6 @@ describe("migrate", () => {
         .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill")
         .resolves({ ok: true, json: async () => [] } as Response);
 
-      fetchStub
-        .withArgs(
-          "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
-        )
-        .resolves({ ok: true, json: async () => [] } as Response);
-
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -379,8 +373,8 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
         if (pStr.endsWith("package.json"))
           return JSON.stringify({
-            dependencies: { genkit: "1.0.0", "@genkit-ai/core": "1.0.0", next: "14.0.0" },
-            devDependencies: { "@genkit-ai/test": "1.0.0" },
+            dependencies: { genkit: "1.0.0", "@genkit-ai/google-genai": "1.0.0", next: "14.0.0" },
+            devDependencies: { "genkit-cli": "1.0.0" },
           });
         if (pStr.endsWith("mcp_config.json"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
@@ -393,9 +387,9 @@ describe("migrate", () => {
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
       expect(packageJson.dependencies.genkit).to.equal("^1.29");
-      expect(packageJson.dependencies["@genkit-ai/core"]).to.equal("^1.29");
+      expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("^1.29");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("^1.29");
       expect(packageJson.dependencies.next).to.equal("14.0.0");
-      expect(packageJson.devDependencies["@genkit-ai/test"]).to.equal("^1.29");
     });
 
     it("should detect antigravity command if agy is missing", async () => {
