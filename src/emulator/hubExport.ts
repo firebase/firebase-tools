@@ -54,6 +54,7 @@ export interface ExportMetadata {
 export interface ExportOptions {
   path: string;
   initiatedBy: string;
+  targets?: string[];
 }
 
 export class HubExport {
@@ -61,12 +62,17 @@ export class HubExport {
 
   private tmpDir: string;
   private exportPath: string;
+  private exportTargets: string[];
 
   constructor(
     private projectId: string,
     private options: ExportOptions,
   ) {
     this.exportPath = options.path;
+    // Only apply targets if it's explicitly defined. Otherwise, export all.
+    // This makes sure that the behavior does not change for those who use POST
+    // request to export.
+    this.exportTargets = options.targets ?? [...IMPORT_EXPORT_EMULATORS];
     this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
   }
 
@@ -86,7 +92,9 @@ export class HubExport {
   }
 
   public async exportAll(): Promise<void> {
-    const toExport = ALL_EMULATORS.filter(shouldExport);
+    const toExport = ALL_EMULATORS.filter(shouldExport).filter((e) =>
+      this.exportTargets.includes(e),
+    );
     if (toExport.length === 0) {
       throw new FirebaseError("No running emulators support import/export.");
     }
@@ -98,7 +106,7 @@ export class HubExport {
       version: EmulatorHub.CLI_VERSION,
     };
 
-    if (shouldExport(Emulators.FIRESTORE)) {
+    if (shouldExport(Emulators.FIRESTORE) && toExport.includes(Emulators.FIRESTORE)) {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
@@ -107,7 +115,7 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
-    if (shouldExport(Emulators.DATABASE)) {
+    if (shouldExport(Emulators.DATABASE) && toExport.includes(Emulators.DATABASE)) {
       metadata.database = {
         version: getDownloadDetails(Emulators.DATABASE).version,
         path: "database_export",
@@ -115,7 +123,7 @@ export class HubExport {
       await this.exportDatabase(metadata);
     }
 
-    if (shouldExport(Emulators.AUTH)) {
+    if (shouldExport(Emulators.AUTH) && toExport.includes(Emulators.AUTH)) {
       metadata.auth = {
         version: EmulatorHub.CLI_VERSION,
         path: "auth_export",
@@ -123,7 +131,7 @@ export class HubExport {
       await this.exportAuth(metadata);
     }
 
-    if (shouldExport(Emulators.STORAGE)) {
+    if (shouldExport(Emulators.STORAGE) && toExport.includes(Emulators.STORAGE)) {
       metadata.storage = {
         version: EmulatorHub.CLI_VERSION,
         path: "storage_export",
@@ -131,7 +139,7 @@ export class HubExport {
       await this.exportStorage(metadata);
     }
 
-    if (shouldExport(Emulators.DATACONNECT)) {
+    if (shouldExport(Emulators.DATACONNECT) && toExport.includes(Emulators.DATACONNECT)) {
       metadata.dataconnect = {
         version: EmulatorHub.CLI_VERSION,
         path: "dataconnect_export",

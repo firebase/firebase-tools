@@ -40,6 +40,7 @@ import {
   findEsbuildPath,
   installEsbuild,
   isNextJsVersionVulnerable,
+  whichNextConfigFile,
 } from "./utils";
 
 import * as frameworksUtils from "../utils";
@@ -76,6 +77,62 @@ import {
 import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
 
 describe("Next.js utils", () => {
+  describe("whichNextConfigFile", () => {
+    let sandbox: sinon.SinonSandbox;
+    let pathExistsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      pathExistsStub = sandbox.stub(fsExtra, "pathExists");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should return next.config.js if it exists", async () => {
+      pathExistsStub.withArgs("next.config.js").resolves(true);
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.equal("next.config.js");
+    });
+
+    it("should return next.config.mjs if it exists", async () => {
+      pathExistsStub.withArgs("next.config.mjs").resolves(true);
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.equal("next.config.mjs");
+    });
+
+    it("should return next.config.ts if it exists", async () => {
+      pathExistsStub.withArgs("next.config.ts").resolves(true);
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.equal("next.config.ts");
+    });
+
+    it("should return next.config.mts if it exists", async () => {
+      pathExistsStub.withArgs("next.config.mts").resolves(true);
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.equal("next.config.mts");
+    });
+
+    it("should return null if no config file exists", async () => {
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.be.null;
+    });
+
+    it("should prioritize next.config.js over others", async () => {
+      pathExistsStub.withArgs("next.config.js").resolves(true);
+      pathExistsStub.withArgs("next.config.mjs").resolves(true);
+      pathExistsStub.resolves(false);
+
+      expect(await whichNextConfigFile("")).to.equal("next.config.js");
+    });
+  });
+
   describe("cleanEscapedChars", () => {
     it("should clean escaped chars", () => {
       // path containing all escaped chars
