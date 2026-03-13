@@ -545,6 +545,46 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   }
 }
 
+/**
+ * Upgrades Genkit related dependencies to ^1.29 in package.json.
+ */
+async function upgradeGenkitVersion(rootPath: string): Promise<void> {
+  const packageJsonPath = path.join(rootPath, "package.json");
+  try {
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(packageJsonContent) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    let modified = false;
+
+    const upgradeDeps = (deps: Record<string, string> | undefined): void => {
+      if (!deps) {
+        return;
+      }
+      for (const [name, version] of Object.entries(deps)) {
+        if (name === "genkit" || name.startsWith("@genkit-ai/")) {
+          if (version !== "^1.29") {
+            deps[name] = "^1.29";
+            modified = true;
+          }
+        }
+      }
+    };
+
+    upgradeDeps(packageJson.dependencies);
+    upgradeDeps(packageJson.devDependencies);
+
+    if (modified) {
+      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+      logger.info("✅ Upgraded Genkit version to ^1.29 in package.json");
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not upgrade Genkit version: ${message}`);
+  }
+}
+
 export async function uploadSecrets(
   rootPath: string,
   projectId: string | undefined,
@@ -665,6 +705,7 @@ export async function migrate(
   await updateReadme(rootPath, blueprintContent, appName, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
+  await upgradeGenkitVersion(rootPath);
   await injectAntigravityContext(rootPath, projectId, appName);
   await writeAntigravityConfigs(rootPath, appType);
   await setupAntigravityMcpServer(rootPath);
