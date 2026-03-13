@@ -130,7 +130,7 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
-  if (!runtime && isEnabled("abiu")) {
+  if (runtime === undefined && isEnabled("abiu")) {
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {

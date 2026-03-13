@@ -53,8 +53,8 @@ command
         "The --runtime and --automatic-base-image-updates flags are only available when the 'abiu' experiment is enabled. To enable it, run 'firebase experiments:enable abiu'.",
       );
     }
-    // When ABIU is allowed but the user doesn't provide a runtime, we default the runtime to an empty string
-    const runtime = abiuAllowed ? (options.runtime as string | undefined) ?? "" : undefined;
+    // When ABIU is allowed but the user doesn't provide a runtime, we let doSetup handle it.
+    const runtime = abiuAllowed ? (options.runtime as string | undefined) : undefined;
     const automaticBaseImageUpdatesDisabled = abiuAllowed
       ? options.automaticBaseImageUpdates === false
       : undefined;

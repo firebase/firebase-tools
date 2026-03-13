@@ -58,7 +58,7 @@ describe("apphosting:backends:create", () => {
       "", // serviceAccount default
       "us-central1", // primaryRegion
       undefined, // rootDir
-      "", // expected default runtime
+      undefined, // expected runtime (doSetup handles the default to 'nodejs')
       false, // expected default automaticBaseImageUpdatesDisabled (enabled)
     );
   });
@@ -84,8 +84,34 @@ describe("apphosting:backends:create", () => {
       "",
       "us-central1",
       undefined,
-      "",
+      undefined,
       true, // automaticBaseImageUpdatesDisabled should be true
+    );
+  });
+
+  it("should pass explicit empty runtime", async () => {
+    isEnabledStub.returns(true);
+    const options = {
+      project: PROJECT_ID,
+      nonInteractive: true,
+      backend: "test-backend",
+      primaryRegion: "us-central1",
+      serviceAccount: "",
+      runtime: "",
+    };
+
+    await command.runner()(options);
+
+    expect(doSetupStub).to.be.calledWith(
+      PROJECT_ID,
+      true,
+      undefined,
+      "test-backend",
+      "",
+      "us-central1",
+      undefined,
+      "", // explicit empty string should be preserved
+      false,
     );
   });
 
