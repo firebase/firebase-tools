@@ -458,8 +458,11 @@ describe("migrate", () => {
       const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
       expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart"/))).to.be.false;
-      expect(logWarningStub.calledWith("Dart is not available. You should install Flutter.")).to.be
-        .true;
+      expect(
+        logWarningStub.calledWith(
+          "Couldn't find Dart/Flutter on PATH. Install Flutter by following the instruction at https://docs.flutter.dev/install.",
+        ),
+      ).to.be.true;
     });
 
     it("should NOT configure Dart MCP server if app is not Flutter", async () => {
