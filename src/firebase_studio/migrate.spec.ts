@@ -57,6 +57,16 @@ describe("migrate", () => {
   });
 
   describe("migrate", () => {
+    beforeEach(() => {
+      sandbox.stub(fs, "stat").resolves({ isDirectory: () => true } as any);
+    });
+
+    it("should fail if the directory does not exist", async () => {
+      (fs.stat as sinon.SinonStub).restore();
+      sandbox.stub(fs, "stat").rejects({ code: "ENOENT" });
+      await expect(migrate(testRoot)).to.be.rejectedWith("The directory /test/root does not exist.");
+    });
+
     it("should perform migration on Windows successfully", async () => {
       // Stub process.platform
       sandbox.stub(process, "platform").value("win32");

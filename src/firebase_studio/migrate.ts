@@ -629,10 +629,25 @@ async function askToOpenAntigravity(
   }
 }
 
+async function checkDirectoryExists(dir: string): Promise<void> {
+  try {
+    const stat = await fs.stat(dir);
+    if (!stat.isDirectory()) {
+      throw new FirebaseError(`The path ${dir} is not a directory.`, { exit: 1 });
+    }
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      throw new FirebaseError(`The directory ${dir} does not exist.`, { exit: 1 });
+    }
+    throw err;
+  }
+}
+
 export async function migrate(
   rootPath: string,
   options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
+  await checkDirectoryExists(rootPath);
   const appType: AppType = await detectAppType(rootPath);
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
