@@ -7,7 +7,6 @@ import * as prompt from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as utils from "../utils";
 import { readTemplate } from "../templates";
-import { discover } from "../frameworks";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
@@ -241,8 +240,8 @@ async function updateReadme(
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
 
-  const startCommand = framework === "angular" ? "npm run start" : "npm run dev";
-  const localUrl = framework === "angular" ? "http://localhost:4200" : "http://localhost:9002";
+  const startCommand = framework === "ANGULAR" ? "npm run start" : "npm run dev";
+  const localUrl = framework === "ANGULAR" ? "http://localhost:4200" : "http://localhost:9002";
 
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
@@ -488,7 +487,7 @@ async function writeAntigravityConfigs(rootPath: string, framework?: string): Pr
     configurations: [],
   };
 
-  if (framework === "angular") {
+  if (framework === "ANGULAR") {
     launchJson.configurations.push({
       type: "node",
       request: "launch",
@@ -499,8 +498,7 @@ async function writeAntigravityConfigs(rootPath: string, framework?: string): Pr
       console: "integratedTerminal",
       preLaunchTask: "npm-install",
     });
-  } else {
-    // Default to Next.js (or "next" in discovery)
+  } else if (framework === "NEXT_JS"){
     launchJson.configurations.push({
       type: "node",
       request: "launch",
@@ -511,6 +509,8 @@ async function writeAntigravityConfigs(rootPath: string, framework?: string): Pr
       console: "integratedTerminal",
       preLaunchTask: "npm-install",
     });
+  } else {
+    return;
   }
 
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
@@ -655,18 +655,15 @@ export async function migrate(
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
-  // Framework detection
-  const discovery = await discover(rootPath);
-  const framework = discovery?.framework;
-  if (framework) {
-    logger.info(`✅ Detected framework: ${framework}`);
+  if (appType) {
+    logger.info(`✅ Detected framework: ${appType}`);
   }
 
-  await updateReadme(rootPath, blueprintContent, appName, framework);
+  await updateReadme(rootPath, blueprintContent, appName, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
-  await writeAntigravityConfigs(rootPath, framework);
+  await writeAntigravityConfigs(rootPath, appType);
   await setupAntigravityMcpServer(rootPath);
   await cleanupUnusedFiles(rootPath);
 

@@ -5,7 +5,6 @@ import * as sinon from "sinon";
 import { migrate, extractMetadata, uploadSecrets } from "./migrate";
 import * as apphosting from "../gcp/apphosting";
 import * as prompt from "../prompt";
-import * as frameworks from "../frameworks";
 import * as track from "../track";
 import * as secrets from "../apphosting/secrets";
 import * as utils from "../utils";
@@ -202,6 +201,9 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) {
           return "# **App Name**: Test App\nSome blueprint content";
         }
+        if (pStr.endsWith("package.json")) {
+          return JSON.stringify({ dependencies: { "next": "12345" } });
+        }
         if (pStr.endsWith("mcp_config.json")) {
           const err = new Error("File not found");
           (err as any).code = "ENOENT";
@@ -234,8 +236,6 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
-      // Mock framework discovery (defaults to Next.js or unknown which also defaults to Next.js in migrate.ts)
-      sandbox.stub(frameworks, "discover").resolves(undefined);
       // Mock commandExistsSync
       sandbox.stub(utils, "commandExistsSync").withArgs("agy").returns(true);
       // Mock trackGA4
@@ -362,9 +362,6 @@ describe("migrate", () => {
       // Mock prompt
       sandbox.stub(prompt, "confirm").resolves(false);
 
-      // Mock framework discovery as Angular
-      sandbox.stub(frameworks, "discover").resolves({ framework: "angular", mayWantBackend: true });
-
       // Mock commandExistsSync
       sandbox.stub(utils, "commandExistsSync").returns(false);
 
@@ -486,6 +483,9 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) {
           return "# **App Name**: Test App";
         }
+        if (pStr.endsWith("package.json")) {
+          return JSON.stringify({ dependencies: { "@angular/core": "17.0.0" } });
+        }
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
@@ -503,9 +503,6 @@ describe("migrate", () => {
 
       // Mock prompt
       const confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
-
-      // Mock framework discovery as Angular
-      sandbox.stub(frameworks, "discover").resolves({ framework: "angular", mayWantBackend: true });
 
       // Mock execSync
       const childProcess = require("child_process");
