@@ -59,6 +59,8 @@ describe("migrate", () => {
 
     beforeEach(() => {
       sandbox.stub(fs, "stat").resolves({ isDirectory: () => true } as any);
+      const cp = require("child_process");
+      sandbox.stub(cp, "spawnSync").returns({ status: 0 });
       sandbox.stub(process, "platform").value("darwin");
 
       fetchStub = sandbox.stub(global, "fetch").resolves({
@@ -145,28 +147,7 @@ describe("migrate", () => {
     });
 
     it("should perform a full migration successfully and track start/success", async () => {
-      fetchStub
-        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills")
-        .resolves({
-          ok: true,
-          json: async () => [
-            {
-              name: "test-skill",
-              type: "dir",
-              url: "https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill",
-            },
-          ],
-        } as Response);
-
-      fetchStub
-        .withArgs("https://api.github.com/repos/firebase/agent-skills/contents/skills/test-skill")
-        .resolves({ ok: true, json: async () => [] } as Response);
-
-      fetchStub
-        .withArgs(
-          "https://api.github.com/repos/genkit-ai/skills/contents/skills/developing-genkit-js?ref=main",
-        )
-        .resolves({ ok: true, json: async () => [] } as Response);
+      // fetchStub mocks for skills removed
 
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
@@ -203,8 +184,7 @@ describe("migrate", () => {
 
       commandStub.withArgs("agy").returns(true);
 
-      const childProcess = require("child_process");
-      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+      // Local execSync stub removed
 
       await migrate(testRoot);
 
@@ -246,6 +226,15 @@ describe("migrate", () => {
         writeFileStub.calledWith(
           path.join(testRoot, ".vscode", "launch.json"),
           sinon.match(/"port": 9002/),
+        ),
+      ).to.be.true;
+
+      const cp = require("child_process");
+      expect(
+        (cp.spawnSync as sinon.SinonStub).calledWith(
+          "npx",
+          ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"],
+          sinon.match.any,
         ),
       ).to.be.true;
     });
@@ -299,6 +288,7 @@ describe("migrate", () => {
       expect(
         writeFileStub.calledWith(mcpConfigPath, sinon.match(new RegExp(path.resolve(testRoot)))),
       ).to.be.true;
+
     });
 
     it("should skip MCP server configuration if 'firebase' already exists", async () => {
@@ -345,8 +335,7 @@ describe("migrate", () => {
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
-      const childProcess = require("child_process");
-      sandbox.stub(childProcess, "execSync").returns(Buffer.from("1.0.0"));
+      // Local execSync stub removed
 
       await migrate(testRoot);
 

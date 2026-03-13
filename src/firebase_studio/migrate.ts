@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 
 import { logger } from "../logger";
 import * as prompt from "../prompt";
@@ -129,28 +129,7 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   return "OTHER";
 }
 
-async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
-  const response = await fetch(apiUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch directory listing: ${apiUrl}`);
-  }
-  const items = (await response.json()) as GitHubItem[];
 
-  await fs.mkdir(localPath, { recursive: true });
-
-  for (const item of items) {
-    const itemLocalPath = path.join(localPath, item.name);
-    if (item.type === "dir") {
-      await downloadGitHubDir(item.url, itemLocalPath);
-    } else if (item.type === "file") {
-      const fileResponse = await fetch(item.download_url);
-      if (fileResponse.ok) {
-        const content = await fileResponse.arrayBuffer();
-        await fs.writeFile(itemLocalPath, Buffer.from(content));
-      }
-    }
-  }
-}
 
 // Based on https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects
 const isValidFirebaseProjectId = (projectId: string): boolean => {
@@ -271,32 +250,23 @@ async function injectAntigravityContext(
   await fs.mkdir(workflowsDir, { recursive: true });
   await fs.mkdir(skillsDir, { recursive: true });
 
-  // Download Skills from GitHub
-  logger.info("⏳ Fetching Antigravity skills from firebase/agent-skills...");
+  // Add Skills using npx
+  logger.info("⏳ Adding Antigravity skills...");
   try {
-    const skillsResponse = await fetch(
-      "https://api.github.com/repos/firebase/agent-skills/contents/skills",
-    );
-    if (!skillsResponse.ok) {
-      throw new Error(`GitHub API returned ${skillsResponse.status}`);
+    const result = spawnSync("npx", ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"], {
+      cwd: rootPath,
+      stdio: "ignore",
+      shell: process.platform === "win32",
+    });
+    if (result.error) {
+      throw result.error;
     }
-    const skillsData = (await skillsResponse.json()) as GitHubItem[];
-
-    if (Array.isArray(skillsData)) {
-      for (const item of skillsData) {
-        if (item.type === "dir") {
-          const skillName = item.name;
-          const skillDir = path.join(skillsDir, skillName);
-
-          await downloadGitHubDir(item.url, skillDir);
-        }
-      }
-    } else {
-      utils.logWarning("GitHub API response for skills is not an array.");
+    if (result.status !== 0) {
+      throw new Error(`npx skills add exited with code ${result.status}`);
     }
-    logger.info(`✅ Downloaded Firebase skills`);
+    logger.info(`✅ Added Antigravity skills`);
   } catch (err: unknown) {
-    utils.logWarning(`Could not download Antigravity skills, skipping. ${err}`);
+    utils.logWarning(`Could not add Antigravity skills, skipping. ${err}`);
   }
 
   // System Instructions
