@@ -243,7 +243,10 @@ async function updateReadme(
   const frameworkConfigs: Record<AppType, { startCommand: string; localUrl: string }> = {
     NEXT_JS: { startCommand: "npm run dev", localUrl: "http://localhost:9002" },
     ANGULAR: { startCommand: "npm run start", localUrl: "http://localhost:4200" },
-    FLUTTER: { startCommand: "flutter run -d chrome --web-port=8080", localUrl: "http://localhost:8080" },
+    FLUTTER: {
+      startCommand: "flutter run -d chrome --web-port=8080",
+      localUrl: "http://localhost:8080",
+    },
     OTHER: { startCommand: "npm run dev", localUrl: "http://localhost:9002" },
   };
 
