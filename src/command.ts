@@ -165,8 +165,7 @@ export class Command {
     if (this.aliases) {
       cmd.aliases(this.aliases);
     }
-    this.options.forEach((args) => {
-      const flags = args.shift();
+    this.options.forEach(([flags, ...args]) => {
       cmd.option(flags, ...args);
     });
 
