@@ -105,19 +105,32 @@ export async function doSetup(
       backendId = await promptNewBackendId(projectId, location);
       logSuccess(`Name set to ${backendId}\n`);
     }
+
+    const deployMethod = await select({
+      message: "How do you want to deploy your app?",
+      choices: [
+        { name: "GitHub", value: "github" },
+        { name: "Local Source", value: "source" },
+      ],
+    });
+
+    if (deployMethod === "github") {
+      gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
+      // TODO: Once tag patterns are implemented, prompt which method the user
+      // prefers. We could reduce the number of questions asked by letting people
+      // enter tag:<pattern>?
+      branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+      logSuccess(`Repo linked successfully!\n`);
+    } else {
+      logBullet(`${clc.yellow("===")} Set up your backend`);
+    }
+
     if (!rootDir) {
       rootDir = await input({
         default: "/",
-        message: "Specify your app's root directory relative to your repository",
+        message: "Specify your app's root directory",
       });
     }
-
-    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
-    // TODO: Once tag patterns are implemented, prompt which method the user
-    // prefers. We could reduce the number of questions asked by letting people
-    // enter tag:<pattern>?
-    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
-    logSuccess(`Repo linked successfully!\n`);
   }
   // Confirm both backendId and location are set at this point
   if (!location || !backendId) {
@@ -146,14 +159,10 @@ export async function doSetup(
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
-  // In non-interactive mode, we never connected the backend to a github repo. Return
-  // early and skip the rollout and setting default traffic policy.
-  if (nonInteractive) {
+  // In non-interactive mode, or if no branch was provided (e.g. source deploy),
+  // skip the rollout and setting default traffic policy.
+  if (nonInteractive || !branch) {
     return;
-  }
-
-  if (!branch) {
-    throw new FirebaseError("Branch was not set while connecting to a github repo.");
   }
 
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
