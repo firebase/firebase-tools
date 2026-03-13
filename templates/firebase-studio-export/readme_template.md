@@ -8,4 +8,4 @@ ${blueprintContent}
 
 ---
 
-To get started, run \`npm run dev\` and visit \`http://localhost:9002\`.
+To get started, run `${startCommand}` and visit `${localUrl}`.
