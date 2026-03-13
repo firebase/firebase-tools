@@ -201,7 +201,7 @@ export async function extractMetadata(
         exit: 1,
       });
     }
-    logger.info(`✅ Detected Firebase Project: ${projectId}`);
+    logger.info(`✅ Using Firebase Project: ${projectId}`);
   } else {
     // TODO need a mitigation here
     logger.info(
@@ -234,14 +234,21 @@ async function updateReadme(
   rootPath: string,
   blueprintContent: string,
   appName: string,
+  framework?: string,
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
+
+  const startCommand = framework === "ANGULAR" ? "npm run start" : "npm run dev";
+  const localUrl = framework === "ANGULAR" ? "http://localhost:4200" : "http://localhost:9002";
+
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim());
+    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
+    .replace("${startCommand}", startCommand)
+    .replace("${localUrl}", localUrl);
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -360,7 +367,7 @@ async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
 
   const downloadLink = "https://antigravity.google/download";
   logger.info(
-    `⚠️ Antigravity IDE CLI (agy) not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
+    `⚠️ Antigravity IDE not found in your PATH. To ensure a seamless migration, please download and install Antigravity: ${downloadLink}`,
   );
   return undefined;
 }
@@ -431,8 +438,8 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAntigravityConfigs(rootPath: string): Promise<void> {
-  // 5. IDE Configs (VS Code / Antigravity)
+async function writeAntigravityConfigs(rootPath: string, framework?: string): Promise<void> {
+  // 5. IDE Configs (VS Code / AGY)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
 
@@ -475,21 +482,37 @@ async function writeAntigravityConfigs(rootPath: string): Promise<void> {
   await fs.writeFile(settingsPath, JSON.stringify(cleanSettings, null, 2));
   logger.info("✅ Updated .vscode/settings.json with startup preferences");
 
-  const launchJson = {
+  const launchJson: any = {
     version: "0.2.0",
-    configurations: [
-      {
-        type: "node",
-        request: "launch",
-        name: "Next.js: debug server-side",
-        runtimeExecutable: "npm",
-        runtimeArgs: ["run", "dev"],
-        port: 9002,
-        console: "integratedTerminal",
-        preLaunchTask: "npm-install",
-      },
-    ],
+    configurations: [],
   };
+
+  if (framework === "ANGULAR") {
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Angular: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "start"],
+      port: 4200,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  } else if (framework === "NEXT_JS") {
+    launchJson.configurations.push({
+      type: "node",
+      request: "launch",
+      name: "Next.js: debug server-side",
+      runtimeExecutable: "npm",
+      runtimeArgs: ["run", "dev"],
+      port: 9002,
+      console: "integratedTerminal",
+      preLaunchTask: "npm-install",
+    });
+  } else {
+    return;
+  }
+
   await fs.writeFile(path.join(vscodeDir, "launch.json"), JSON.stringify(launchJson, null, 2));
   logger.info("✅ Created .vscode/launch.json");
 }
@@ -566,15 +589,27 @@ async function askToOpenAntigravity(
   startAntigravity?: boolean,
 ): Promise<void> {
   const agyCommand = await getAgyCommand(startAntigravity);
+
+  logger.info(`\n🎉 Your Firebase Studio project "${appName}" is now ready for Antigravity!`);
+  logger.info(
+    "Antigravity is Google's agentic IDE, where you can collaborate with AI agents to build, test, and deploy your application.",
+  );
+  logger.info("\nWhat to do next inside Antigravity:");
+  logger.info(
+    "  1.  Review the README.md: It has been updated with specifics about this migrated project.",
+  );
+  logger.info(
+    "  2.  Open the Agent Chat: Use the side panel or press Cmd+L (Ctrl+L on Windows/Linux). This is your main interface with the AI.",
+  );
+
+  logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
+
   if (!startAntigravity || !agyCommand) {
-    logger.info(
-      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
-    );
     return;
   }
 
   const answer = await prompt.confirm({
-    message: `Migration complete for ${appName}! Would you like to open it in Antigravity now?`,
+    message: "Would you like to open it in Antigravity now?",
     default: true,
   });
 
@@ -591,10 +626,20 @@ async function askToOpenAntigravity(
     } catch (err: unknown) {
       utils.logWarning("Could not open Antigravity IDE automatically. Please open it manually.");
     }
-  } else {
-    logger.info(
-      '\n👉 Next steps: Open this folder in Antigravity and run the "Initial Project Setup" workflow.',
-    );
+  }
+}
+
+async function checkDirectoryExists(dir: string): Promise<void> {
+  try {
+    const stat = await fs.stat(dir);
+    if (!stat.isDirectory()) {
+      throw new FirebaseError(`The path ${dir} is not a directory.`, { exit: 1 });
+    }
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      throw new FirebaseError(`The directory ${dir} does not exist.`, { exit: 1 });
+    }
+    throw err;
   }
 }
 
@@ -602,6 +647,7 @@ export async function migrate(
   rootPath: string,
   options: MigrateOptions = { startAntigravity: true },
 ): Promise<void> {
+  await checkDirectoryExists(rootPath);
   const appType: AppType = await detectAppType(rootPath);
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
@@ -609,11 +655,15 @@ export async function migrate(
 
   const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
 
-  await updateReadme(rootPath, blueprintContent, appName);
+  if (appType) {
+    logger.info(`✅ Detected framework: ${appType}`);
+  }
+
+  await updateReadme(rootPath, blueprintContent, appName, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
-  await writeAntigravityConfigs(rootPath);
+  await writeAntigravityConfigs(rootPath, appType);
   await setupAntigravityMcpServer(rootPath);
   await cleanupUnusedFiles(rootPath);
 
@@ -621,7 +671,7 @@ export async function migrate(
   const currentFolderName = path.basename(rootPath);
   if (currentFolderName === "download") {
     logger.info(
-      `\n💡 Tip: You might want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
+      `\n💡 Tip: You may want to rename this folder to "${appName.toLowerCase().replace(/\s+/g, "-")}"`,
     );
   }
 
