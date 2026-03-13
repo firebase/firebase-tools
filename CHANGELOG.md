@@ -1,0 +1,1 @@
+- Fixed `firestore_query_collection` tool to correctly handle subcollections (#9698)

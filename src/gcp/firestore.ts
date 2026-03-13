@@ -225,9 +225,13 @@ export async function queryCollection(
   structuredQuery: StructuredQuery,
   databaseId: string = "(default)",
   emulatorUrl?: string,
+  parent?: string,
 ): Promise<{ documents: FirestoreDocument[] }> {
   const apiClient = getClient(emulatorUrl);
-  const basePath = `projects/${project}/databases/${databaseId}/documents`;
+  let basePath = `projects/${project}/databases/${databaseId}/documents`;
+  if (parent) {
+    basePath = `${basePath}/${parent}`;
+  }
   const url = `${basePath}:runQuery`;
   try {
     const res = await apiClient.post<
