@@ -129,7 +129,6 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   return "OTHER";
 }
 
-// TODO revisit quota limits
 async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
   const response = await fetch(apiUrl);
   if (!response.ok) {
@@ -203,9 +202,8 @@ export async function extractMetadata(
     }
     logger.info(`✅ Using Firebase Project: ${projectId}`);
   } else {
-    // TODO need a mitigation here
-    logger.info(
-      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    logger.debug(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later by setting the '--project' flag.`,
     );
   }
 
