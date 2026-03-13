@@ -1,15 +1,14 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
-import { logger } from "../logger";
-import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
-import { Distribution, upload } from "../appdistribution/distribution";
+import { awaitTestResults, Distribution, upload } from "../appdistribution/distribution";
 import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
+import * as utils from "../utils";
 
 const defaultDevices = [
   {
@@ -43,6 +42,10 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     "--test-devices-file <string>",
     "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
+  .option(
+    "--test-non-blocking",
+    "run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
+  )
   .before(requireAuth)
   .action(async (target: string, options: any) => {
     const appName = getAppName(options);
@@ -61,11 +64,11 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     }
 
     const invokeSpinner = ora("Requesting test execution");
+    const client = new AppDistributionClient();
 
     let releaseTests: ReleaseTest[];
     let release: Release;
     try {
-      const client = new AppDistributionClient();
       release = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
@@ -75,17 +78,23 @@ export const command = new Command("apptesting:execute <release-binary-file>")
         tests,
         !testDevices.length ? defaultDevices : testDevices,
       );
-      invokeSpinner.text = "Test execution requested";
+      invokeSpinner.text = `${pluralizeTests(releaseTests.length)} started successfully!`;
       invokeSpinner.succeed();
     } catch (ex) {
       invokeSpinner.fail("Failed to request test execution");
       throw ex;
     }
 
-    logger.info(clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(releaseTests.length)}`));
-    logger.info(
-      `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
-    );
+    if (options.testNonBlocking) {
+      utils.logBullet(
+        `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
+    } else {
+      await awaitTestResults(releaseTests, client);
+      utils.logBullet(
+        `View detailed results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
+    }
   });
 
 function pluralizeTests(numTests: number) {
