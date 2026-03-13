@@ -64,7 +64,7 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
     if (!project) {
       throw new FirebaseError(
         `Cannot load secret ${match[1]} without a project. ` +
-        `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
+          `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
       );
     }
     projectId = project;
@@ -78,7 +78,7 @@ async function loadSecret(project: string | undefined, name: string): Promise<st
       logLabeledError(
         Emulators.APPHOSTING,
         `Permission denied to access secret ${secretId}. Use ` +
-        `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+          `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
       );
     }
     throw err;

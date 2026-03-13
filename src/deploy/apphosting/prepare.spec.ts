@@ -311,7 +311,7 @@ describe("apphosting", () => {
 
       assertEnabledStub.throws(
         new FirebaseError(
-          "Cannot perform a local build because the experiment apphostinglocalbuild is not enabled.",
+          "Cannot perform a local build because the experiment apphostinglocalbuilds is not enabled.",
         ),
       );
 
@@ -328,6 +328,22 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
+    });
+
+    it("should succeed for source deploys even if experiment is disabled", async () => {
+      const context = initializeContext();
+      listBackendsStub.resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      // No localBuild: true in config
+      await prepare(context, opts);
+
+      expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
     });
   });
 

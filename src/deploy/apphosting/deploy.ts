@@ -8,6 +8,7 @@ import { needProjectId } from "../../projectUtils";
 import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
 import * as util from "./util";
+import * as experiments from "../../experiments";
 
 /**
  * Zips and uploads App Hosting source code to Google Cloud Storage.
@@ -72,16 +73,22 @@ export default async function (context: Context, options: Options): Promise<void
     Object.values(context.backendConfigs).map(async (cfg) => {
       const rootDir = options.projectRoot ?? process.cwd();
       let builtAppDir;
-      if (cfg.localBuild) {
+      const isLocalBuild = !!cfg.localBuild;
+      if (isLocalBuild) {
+        experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
         builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
         if (!builtAppDir) {
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
         }
       }
-      const zippedSourcePath = await util.createTarArchive(cfg, rootDir, builtAppDir);
+
+      const zippedSourcePath = isLocalBuild
+        ? await util.createTarArchive(cfg, rootDir, builtAppDir)
+        : await util.createArchive(cfg, rootDir);
+
       logLabeledBullet(
-        "apphosting....",
-        `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+        "apphosting",
+        `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
       );
 
       const backendLocation = context.backendLocations[cfg.backendId];
@@ -92,7 +99,7 @@ export default async function (context: Context, options: Options): Promise<void
       }
       logLabeledBullet(
         "apphosting",
-        `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+        `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = bucketsPerLocation[backendLocation]!;
       const { bucket, object } = await gcs.uploadObject(
@@ -101,7 +108,7 @@ export default async function (context: Context, options: Options): Promise<void
           stream: fs.createReadStream(zippedSourcePath),
         },
         bucketName,
-        gcs.ContentType.TAR,
+        isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =

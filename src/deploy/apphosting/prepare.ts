@@ -190,7 +190,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
-    experiments.assertEnabled("apphostinglocalbuild", "perform a local build");
+    experiments.assertEnabled("apphostinglocalbuilds", "perform a local build");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
     if (backend?.appId) {

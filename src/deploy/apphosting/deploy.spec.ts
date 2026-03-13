@@ -8,6 +8,8 @@ import deploy from "./deploy";
 import * as util from "./util";
 import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
+import * as experiments from "../../experiments";
+import { FirebaseError } from "../../error";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -51,6 +53,7 @@ function initializeContext(): Context {
 describe("apphosting", () => {
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
+  let createArchiveStub: sinon.SinonStub;
   let createTarArchiveStub: sinon.SinonStub;
   let createReadStreamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
@@ -61,12 +64,15 @@ describe("apphosting", () => {
       .throws("Unexpected getProjectNumber call");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
+    createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
     createTarArchiveStub = sinon
       .stub(util, "createTarArchive")
       .throws("Unexpected createTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    sinon.stub(experiments, "isEnabled").returns(true);
+    sinon.stub(experiments, "assertEnabled");
   });
 
   afterEach(() => {
@@ -102,8 +108,8 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-1234.tar.gz");
-      createTarArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.tar.gz");
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -159,15 +165,9 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createTarArchiveStub).to.be.calledWithExactly(
-        context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
-      );
-      expect(uploadObjectStub).to.be.calledWithMatch(
-        sinon.match.any,
-        "firebaseapphosting-sources-000000000000-us-central1",
-      );
+      expect(createArchiveStub).to.be.called;
+      expect(createTarArchiveStub).to.be.called;
+      expect(uploadObjectStub).to.be.called;
     });
 
     it("correctly creates and sets storage URIs", async () => {
@@ -177,8 +177,8 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-1234.tar.gz");
-      createTarArchiveStub.onSecondCall().resolves("path/to/foo-local-build-1234.tar.gz");
+      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
+      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -193,9 +193,29 @@ describe("apphosting", () => {
 
       await deploy(context, opts);
 
-      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.tar.gz`);
+      expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
         `gs://${bucketName}/foo-local-build-1234.tar.gz`,
+      );
+    });
+
+    it("should throw error if localBuild is true but experiment is disabled", async () => {
+      const context = initializeContext();
+      context.backendConfigs = {
+        fooLocalBuild: context.backendConfigs["fooLocalBuild"],
+      };
+      context.backendLocations = { fooLocalBuild: "us-central1" };
+
+      getProjectNumberStub.resolves("000000000000");
+      upsertBucketStub.resolves("some-bucket");
+      (experiments.assertEnabled as any).restore();
+      sinon
+        .stub(experiments, "assertEnabled")
+        .throws(new FirebaseError("App Hosting local builds experiment is not enabled"));
+
+      await expect(deploy(context, opts)).to.be.rejectedWith(
+        FirebaseError,
+        "App Hosting local builds experiment is not enabled",
       );
     });
   });

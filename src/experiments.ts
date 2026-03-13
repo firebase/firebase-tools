@@ -124,11 +124,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-  apphostinglocalbuild: {
-    shortDescription: "Enable local builds for App Hosting",
-    default: false,
-    public: false,
-  },
 
   apphostinglocalbuilds: {
     shortDescription: "Enable App Hosting local builds",
