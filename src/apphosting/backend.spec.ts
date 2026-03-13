@@ -190,6 +190,37 @@ describe("apphosting setup functions", () => {
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
+    it("should create a new backend with automatic base image updates enabled", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        "custom-service-account",
+        cloudBuildConnRepo,
+        webAppId,
+        "/",
+        undefined,
+        false, // automaticBaseImageUpdatesDisabled
+      );
+
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
+        appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: false,
+      };
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+    });
+
     it("should set default rollout policy to 100% all at once", async () => {
       const completeTraffic: apphosting.Traffic = {
         name: `projects/${projectId}/locations/${location}/backends/${backendId}/traffic`,

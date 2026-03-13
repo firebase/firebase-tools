@@ -5,7 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
-import { isEnabled } from "../experiments";
+import * as experiments from "../experiments";
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
 
@@ -29,7 +29,7 @@ export const command = new Command("apphosting:backends:create")
     "specify the primary region for the backend. Required with --non-interactive.",
   )
   .option("--root-dir <rootDir>", "specify the root directory for the backend.");
-const abiuEnabled = isEnabled("abiu");
+const abiuEnabled = experiments.isEnabled("abiu");
 if (abiuEnabled) {
   command
     .option("--runtime <runtime>", "specify the runtime for the backend (e.g., nodejs, nodejs22)")
@@ -47,23 +47,24 @@ command
       throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
     }
 
-    const abiuAllowed = isEnabled("abiu");
+    const abiuAllowed = experiments.isEnabled("abiu");
     if (!abiuAllowed && (options.runtime || options.automaticBaseImageUpdates !== undefined)) {
       throw new FirebaseError(
         "The --runtime and --automatic-base-image-updates flags are only available when the 'abiu' experiment is enabled. To enable it, run 'firebase experiments:enable abiu'.",
       );
     }
-    const runtime = abiuAllowed ? (options.runtime as string | undefined) : undefined;
+    // When ABIU is allowed but the user doesn't provide a runtime, we default the runtime to an empty string
+    const runtime = abiuAllowed ? (options.runtime as string | undefined) ?? "" : undefined;
     const automaticBaseImageUpdatesDisabled = abiuAllowed
       ? options.automaticBaseImageUpdates === false
       : undefined;
 
-    await doSetup(
+    return doSetup(
       projectId,
-      options.nonInteractive,
+      options.nonInteractive || false,
       options.app as string | undefined,
       options.backend as string | undefined,
-      options.serviceAccount as string | undefined,
+      options.serviceAccount as string,
       options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
       runtime,
