@@ -74,6 +74,7 @@ describe("apphosting", () => {
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
+    sinon.stub(experiments, "isEnabled").returns(true);
   });
 
   afterEach(() => {
@@ -132,6 +133,7 @@ describe("apphosting", () => {
         annotations,
         env: [],
       });
+      expect(backend.ensureAppHostingServiceAgentRoles).to.have.been.called;
     });
 
     it("injects Firebase configuration when appId is present", async () => {
@@ -309,6 +311,7 @@ describe("apphosting", () => {
         }),
       };
 
+      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
       assertEnabledStub.throws(
         new FirebaseError(
           "Cannot perform a local build because the experiment apphostinglocalbuilds is not enabled.",
@@ -328,6 +331,7 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
+      expect(backend.ensureAppHostingServiceAgentRoles).to.not.have.been.called;
     });
 
     it("should succeed for source deploys even if experiment is disabled", async () => {
@@ -341,6 +345,7 @@ describe("apphosting", () => {
       });
 
       // No localBuild: true in config
+      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
       await prepare(context, opts);
 
       expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
