@@ -129,7 +129,6 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   return "OTHER";
 }
 
-// TODO revisit quota limits
 async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
   const response = await fetch(apiUrl);
   if (!response.ok) {
@@ -172,13 +171,18 @@ export async function extractMetadata(
   blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
+  const studioJsonPath = path.join(rootPath, "studio.json");
   const metadataPath = path.join(rootPath, "metadata.json");
   let metadata: Metadata = {};
-  try {
-    const metadataContent = await fs.readFile(metadataPath, "utf8");
-    metadata = JSON.parse(metadataContent) as Metadata;
-  } catch (err: unknown) {
-    logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
+  // Try to read studio.json aka metadata.json. Preference given to studio.json
+  for (const metadataFile of [metadataPath, studioJsonPath]) {
+    try {
+      const metadataContent = await fs.readFile(metadataFile, "utf8");
+      metadata = JSON.parse(metadataContent) as Metadata;
+      logger.info(`✅ Read ${metadataFile}`);
+    } catch (err: unknown) {
+      logger.debug(`Could not read metadata at ${metadataFile}: ${err}`);
+    }
   }
 
   logger.debug(`overrideProjectId ${overrideProjectId}`);
@@ -203,9 +207,8 @@ export async function extractMetadata(
     }
     logger.info(`✅ Using Firebase Project: ${projectId}`);
   } else {
-    // TODO need a mitigation here
-    logger.info(
-      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    logger.debug(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later by setting the '--project' flag.`,
     );
   }
 
