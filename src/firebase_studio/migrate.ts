@@ -400,14 +400,41 @@ async function createFirebaseConfigs(
       const backends = backendsData.backends || [];
 
       if (backends.length > 0) {
+        const backendIds = backends.map((b) => b.name.split("/").pop()!);
         const studioBackend = backends.find(
           (b) => b.name.endsWith("/studio") || b.name.toLowerCase().includes("studio"),
         );
+
+        let selectedBackendId = "";
         if (studioBackend) {
-          backendId = studioBackend.name.split("/").pop()!;
+          selectedBackendId = studioBackend.name.split("/").pop()!;
         } else {
-          backendId = backends[0].name.split("/").pop()!;
+          selectedBackendId = backendIds[0];
         }
+
+        const confirmBackend = await prompt.confirm({
+          message: `Would you like to use the App Hosting backend "${selectedBackendId}"?`,
+          default: true,
+        });
+
+        if (confirmBackend) {
+          backendId = selectedBackendId;
+        } else {
+          logger.info("Available App Hosting backends:");
+          for (const id of backendIds) {
+            logger.info(`  - ${id}`);
+          }
+
+          const inputBackendId = await prompt.input({
+            message: "Please enter the name of the backend you would like to use:",
+          });
+
+          if (!backendIds.includes(inputBackendId)) {
+            throw new FirebaseError(`Invalid backend selected: ${inputBackendId}`, { exit: 1 });
+          }
+          backendId = inputBackendId;
+        }
+
         logger.info(`✅ Selected App Hosting backend: ${backendId}`);
       } else {
         utils.logWarning('No App Hosting backends found, using default "studio"');
