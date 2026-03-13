@@ -39,6 +39,7 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
   const head = ["Backend", "Repository", "URL", "Primary Region"];
   if (abiuEnabled) {
     head.push("ABIU");
+    head.push("Runtime");
   }
   head.push("Updated Date");
 
@@ -62,6 +63,7 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
         abiuStatus = backend.automaticBaseImageUpdatesDisabled ? "Disabled" : "Enabled";
       }
       row.push(abiuStatus);
+      row.push(backend.runtime?.value ?? "N/A");
     }
     row.push(datetimeString(new Date(backend.updateTime)));
     table.push(row);
