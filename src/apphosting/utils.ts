@@ -1,6 +1,6 @@
 import { FirebaseError } from "../error";
-import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import { WebConfig } from "../fetchWebSetup";
+import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import * as prompt from "../prompt";
 
 /**
