@@ -1,5 +1,5 @@
-import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import { getAppHostingConfiguration } from "../../apphosting/config";
+import { AppHostingYamlConfig } from "../../apphosting/yaml";
 
 /**
  * Loads in apphosting.yaml, apphosting.emulator.yaml & apphosting.local.yaml as an
@@ -11,5 +11,5 @@ import { getAppHostingConfiguration } from "../../apphosting/config";
 export async function getLocalAppHostingConfiguration(
   backendDir: string,
 ): Promise<AppHostingYamlConfig> {
-  return getAppHostingConfiguration(backendDir, { allowEmulator: true, allowLocal: true });
+  return getAppHostingConfiguration(backendDir);
 }
