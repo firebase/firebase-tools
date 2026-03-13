@@ -115,14 +115,14 @@ export async function extractMetadata(
   const metadataPath = path.join(rootPath, "metadata.json");
   let metadata: Metadata = {};
   // Try to read studio.json aka metadata.json. Preference given to studio.json
-  [metadataPath, studioJsonPath].forEach(async (path) => {
+  for (const metadataFile of [metadataPath, studioJsonPath]) {
     try {
-      const metadataContent = await fs.readFile(path, "utf8");
+      const metadataContent = await fs.readFile(metadataFile, "utf8");
       metadata = JSON.parse(metadataContent) as Metadata;
     } catch (err: unknown) {
-      logger.debug(`Could not read metadata.json at ${path}: ${err}`);
+      logger.debug(`Could not read metadata at ${metadataFile}: ${err}`);
     }
-  });
+  }
 
   let projectId = overrideProjectId || metadata.projectId;
   if (!projectId) {
