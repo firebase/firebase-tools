@@ -365,6 +365,37 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
+    it("should perform a full migration for Flutter successfully", async () => {
+      accessStub.withArgs(sinon.match(/pubspec.yaml/)).resolves();
+
+      await migrate(testRoot);
+
+      expect(
+        writeFileStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Run flutter run -d chrome --web-port=8080 at http:\/\/localhost:8080/),
+        ),
+      ).to.be.true;
+
+      const tasksJsonCall = writeFileStub.args.find((a) => a[0].endsWith("tasks.json"));
+      expect(tasksJsonCall).to.not.be.undefined;
+      expect(tasksJsonCall![1]).to.contain("flutter-pub-get");
+      expect(tasksJsonCall![1]).to.contain("flutter pub get");
+      expect(tasksJsonCall![1]).to.contain('"kind": "build"');
+
+      const launchJsonCall = writeFileStub.args.find((a) => a[0].endsWith("launch.json"));
+      expect(launchJsonCall).to.not.be.undefined;
+      expect(launchJsonCall![1]).to.contain('"type": "dart"');
+      expect(launchJsonCall![1]).to.contain('"preLaunchTask": "flutter-pub-get"');
+    });
+
+    it("should not create launch.json for OTHER app type", async () => {
+      await migrate(testRoot);
+
+      const launchJsonCall = writeFileStub.args.find((a) => a[0].endsWith("launch.json"));
+      expect(launchJsonCall).to.be.undefined;
+    });
+
     it("should detect antigravity command if agy is missing", async () => {
       commandStub.withArgs("agy").returns(false);
       commandStub.withArgs("antigravity").returns(true);
