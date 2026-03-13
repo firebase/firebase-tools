@@ -23,6 +23,10 @@ export interface Schema extends BaseResource {
 export interface Connector extends BaseResource {
   name: string;
   source: Source;
+  client_cache?: {
+    strict_validation_enabled?: boolean;
+    entity_id_included?: boolean;
+  };
 }
 
 export interface Datasource {
@@ -36,6 +40,7 @@ export type SchemaValidation = "STRICT" | "COMPATIBLE";
 export interface PostgreSql {
   ephemeral?: boolean;
   database?: string;
+  schema?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
@@ -80,7 +85,7 @@ export interface Diff {
   destructive: boolean;
 }
 
-export type WarningLevel = "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
+export type WarningLevel = "LOG_ONLY" | "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE";
 
 export interface Workaround {
   description: string;
@@ -95,13 +100,18 @@ export interface GraphqlError {
     line: number;
     column: number;
   }[];
-  extensions?: {
-    file?: string;
-    warningLevel?: WarningLevel;
-    workarounds?: Workaround[];
-    [key: string]: any;
-  };
+  extensions?: GraphqlErrorExtensions;
 }
+
+export interface GraphqlErrorExtensions {
+  file?: string;
+  code?: string;
+  debugDetails?: string;
+  warningLevel?: WarningLevel;
+  workarounds?: Workaround[];
+  [key: string]: any;
+}
+
 export interface BuildResult {
   errors?: GraphqlError[];
   metadata?: DeploymentMetadata;
@@ -139,6 +149,7 @@ export interface SchemaYaml {
 export interface DatasourceYaml {
   postgresql?: {
     database: string;
+    schema?: string;
     cloudSql: {
       instanceId: string;
     };
@@ -168,6 +179,20 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
+export interface ClientCacheOptions {
+  /**
+   * The maximum duration for which a client-side cache entry is considered valid.
+   * The format is a string representing a duration, e.g., "60s", "5m", "1h".
+   */
+  maxAge?: string;
+  /**
+   * The maximum size of the client-side cache.
+   * The format is a string representing a size, e.g., "100KB", "50MB", "1GB".
+   */
+  maxSize?: string;
+  storage?: "persistent" | "memory";
+}
+
 export interface AdminNodeSDK {
   outputDir: string;
   package: string;
@@ -178,19 +203,23 @@ export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: ClientCacheOptions;
 }
 
 export interface SwiftSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 export interface KotlinSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 export interface DartSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 
 // Helper types && converters
@@ -218,6 +247,7 @@ export function toDatasource(
     return {
       postgresql: {
         database: ds.postgresql.database,
+        schema: ds.postgresql.schema,
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },
@@ -248,6 +278,14 @@ export function mainSchemaYaml(dataconnectYaml: DataConnectYaml): SchemaYaml {
   return mainSch;
 }
 
+/** Returns the secondary schema YAMLs for a Data Connect YAML */
+export function secondarySchemaYamls(dataconnectYaml: DataConnectYaml): SchemaYaml[] {
+  if (dataconnectYaml.schema) {
+    return [];
+  }
+  return (dataconnectYaml.schemas || []).filter((s) => s.id && s.id !== MAIN_SCHEMA_ID);
+}
+
 /** Returns the main schema from a list of schemas */
 export function mainSchema(schemas: Schema[]): Schema {
   const mainSch = schemas.find((s) => isMainSchema(s));
@@ -272,7 +310,7 @@ export interface ExecuteGraphqlRequest {
 
 export interface GraphqlResponse {
   data: Record<string, any>;
-  errors: any[];
+  errors: GraphqlError[];
 }
 
 export interface ExecuteOperationRequest {
@@ -281,11 +319,23 @@ export interface ExecuteOperationRequest {
 }
 
 export interface GraphqlResponseError {
-  error: { code: number; message: string; status: string; details: any[] };
+  // One Platform standard puts error body under `error` field.
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+    details?: GraphqlError[];
+  };
+  // However, the GRPC library in emulator service them at top-level.
+  code?: number;
+  message?: string;
+  status?: string;
+  details?: GraphqlError[];
 }
 
 export const isGraphQLResponse = (g: any): g is GraphqlResponse => !!g.data || !!g.errors;
-export const isGraphQLResponseError = (g: any): g is GraphqlResponseError => !!g.error;
+export const isGraphQLResponseError = (g: any): g is GraphqlResponseError =>
+  !!g.error?.message || !!g.message;
 
 interface ImpersonationAuthenticated {
   authClaims: any;

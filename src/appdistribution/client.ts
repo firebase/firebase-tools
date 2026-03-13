@@ -9,7 +9,7 @@ import { appDistributionOrigin } from "../api";
 
 import {
   AabInfo,
-  AIInstruction,
+  AiInstructions,
   BatchRemoveTestersResponse,
   BatchUpdateTestCasesRequest,
   BatchUpdateTestCasesResponse,
@@ -276,9 +276,10 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
-    aiInstruction?: AIInstruction,
+    aiInstructions?: AiInstructions,
     loginCredential?: LoginCredential,
     testCaseName?: string,
+    displayName?: string,
   ): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
@@ -288,7 +289,8 @@ export class AppDistributionClient {
           deviceExecutions: devices.map((device) => ({ device })),
           loginCredential,
           testCase: testCaseName,
-          aiInstructions: aiInstruction,
+          aiInstructions: aiInstructions,
+          displayName: displayName,
         },
       });
       return response.body;

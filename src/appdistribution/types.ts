@@ -116,17 +116,8 @@ export interface ReleaseTest {
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
   testCase?: string;
-  aiInstructions?: AIInstruction;
-}
-
-export interface AIInstruction {
-  steps: AIStep[];
-}
-
-export interface AIStep {
-  goal: string;
-  hint?: string;
-  successCriteria?: string;
+  aiInstructions?: AiInstructions;
+  displayName?: string;
 }
 
 export interface AiStep {

@@ -4,19 +4,8 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent, isFirebaseMcp } from "./env";
 const pkg = require("../package.json");
-
-// Detect if the CLI was invoked by a coding agent, based on well-known env vars.
-function detectAIAgent(): string {
-  if (process.env.CLAUDECODE) return "claude_code";
-  if (process.env.CLINE_ACTIVE) return "cline";
-  if (process.env.CODEX_SANDBOX) return "codex_cli";
-  if (process.env.CURSOR_AGENT) return "cursor";
-  if (process.env.GEMINI_CLI) return "gemini_cli";
-  if (process.env.OPENCODE) return "open_code";
-  return "unknown";
-}
 
 type cliEventNames =
   | "command_execution"
@@ -41,7 +30,8 @@ type cliEventNames =
   | "mcp_client_connected"
   | "mcp_list_prompts"
   | "mcp_get_prompt"
-  | "mcp_read_resource";
+  | "mcp_read_resource"
+  | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -76,9 +66,7 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return (
-    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
-  );
+  return (!!process.env.IS_FIREBASE_CLI || isFirebaseMcp()) && !!configstore.get("usage");
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
