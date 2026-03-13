@@ -140,4 +140,30 @@ describe("apphosting:backends:create", () => {
       false, // ABIU defaults to enabled even with explicit runtime
     );
   });
+
+  it("should default runtime if flag is present without value (boolean true)", async () => {
+    isEnabledStub.returns(true);
+    const options = {
+      project: PROJECT_ID,
+      nonInteractive: true,
+      backend: "test-backend",
+      primaryRegion: "us-central1",
+      serviceAccount: "",
+      runtime: true, // Flag present without value
+    };
+
+    await command.runner()(options);
+
+    expect(doSetupStub).to.be.calledWith(
+      PROJECT_ID,
+      true,
+      undefined,
+      "test-backend",
+      "",
+      "us-central1",
+      undefined,
+      undefined, // Should default to undefined, then nodejs in doSetup
+      false,
+    );
+  });
 });
