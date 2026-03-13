@@ -130,6 +130,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
+    default: false,
+    public: false,
+  },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
