@@ -175,6 +175,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase Data Connect realtime feature.",
+    default: true,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

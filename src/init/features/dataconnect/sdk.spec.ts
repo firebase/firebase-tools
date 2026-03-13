@@ -6,6 +6,7 @@ import {
   chooseApp,
   askQuestions,
   actuate,
+  ensureClientCache,
   FDC_SDK_PLATFORM_ENV,
   FDC_SDK_FRAMEWORKS_ENV,
   FDC_APP_FOLDER,
@@ -22,6 +23,7 @@ import * as dcLoad from "../../../dataconnect/load";
 import * as fsutils from "../../../fsutils";
 import * as auth from "../../../auth";
 import * as utils from "../../../utils";
+import * as experiments from "../../../experiments";
 import * as prompt from "../../../prompt";
 
 const expect = chai.expect;
@@ -49,6 +51,10 @@ describe("addSdkGenerateToConnectorYaml", () => {
     };
   });
 
+  afterEach(() => {
+    sinon.restore();
+  });
+
   it("should add javascriptSdk for web platform", () => {
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.javascriptSdk).to.deep.equal([
@@ -58,6 +64,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -72,6 +79,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -83,6 +91,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       },
     ]);
   });
@@ -94,6 +103,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
+        clientCache: {},
       },
     ]);
   });
@@ -105,11 +115,12 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+        clientCache: {},
       },
     ]);
   });
 
-  it("should add adminSdk for admin node platform", () => {
+  it("should add adminSdk for admin node platform and NOT include clientCache", () => {
     app.platform = Platform.ADMIN_NODE;
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
@@ -119,6 +130,146 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
       },
     ]);
+    expect((connectorYaml.generate?.adminNodeSdk as any)[0].clientCache).to.be.undefined;
+  });
+
+  it("should add clientCache: {} to all new generated SDKs when multiple are added", () => {
+    // Add Web SDK
+    app.platform = Platform.WEB;
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+
+    // Add Flutter SDK
+    const flutterApp: App = {
+      directory: "/users/test/project/flutter_app",
+      platform: Platform.FLUTTER,
+    };
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, flutterApp);
+
+    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+
+    expect(connectorYaml.generate?.dartSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.dartSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should add clientCache: {} when fdcrealtime experiment is enabled", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should upgrade existing SDK entry with clientCache: {} if missing", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+    connectorYaml.generate = {
+      javascriptSdk: [
+        {
+          outputDir: "../app/src/dataconnect-generated",
+          package: "@dataconnect/generated",
+          packageJsonDir: "../app",
+          react: false,
+          angular: false,
+        },
+      ],
+    };
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should NOT overwrite existing clientCache configuration", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+    connectorYaml.generate = {
+      javascriptSdk: [
+        {
+          outputDir: "../app/src/dataconnect-generated",
+          package: "@dataconnect/generated",
+          packageJsonDir: "../app",
+          react: false,
+          angular: false,
+          clientCache: {
+            type: "memory",
+          } as any,
+        },
+      ],
+    };
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({
+      type: "memory",
+    });
+  });
+});
+
+describe("ensureClientCache", () => {
+  let connectorYaml: ConnectorYaml;
+
+  beforeEach(() => {
+    connectorYaml = {
+      connectorId: "test-connector",
+    };
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+  });
+
+  afterEach(() => {
+    sinon.restore();
+  });
+
+  it("should upgrade all client SDKs to include clientCache: {} if missing", () => {
+    connectorYaml.generate = {
+      javascriptSdk: [{ outputDir: "js", package: "js", packageJsonDir: "." }],
+      swiftSdk: [{ outputDir: "swift", package: "swift" }],
+      kotlinSdk: [{ outputDir: "kotlin", package: "kotlin" }],
+      dartSdk: [{ outputDir: "dart", package: "dart" }],
+    };
+    ensureClientCache(connectorYaml);
+    expect((connectorYaml.generate.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+    expect((connectorYaml.generate.swiftSdk as any)[0].clientCache).to.deep.equal({});
+    expect((connectorYaml.generate.kotlinSdk as any)[0].clientCache).to.deep.equal({});
+    expect((connectorYaml.generate.dartSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should handle single SDK objects (non-array) and normalize them", () => {
+    connectorYaml.generate = {
+      javascriptSdk: { outputDir: "js", package: "js", packageJsonDir: "." } as any,
+    };
+    ensureClientCache(connectorYaml);
+    expect(connectorYaml.generate.javascriptSdk).to.be.an("array");
+    expect((connectorYaml.generate.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should preserve existing clientCache configurations", () => {
+    connectorYaml.generate = {
+      javascriptSdk: [
+        {
+          outputDir: "js",
+          package: "js",
+          packageJsonDir: ".",
+          clientCache: { type: "memory" } as any,
+        },
+      ],
+    };
+    ensureClientCache(connectorYaml);
+    expect((connectorYaml.generate.javascriptSdk as any)[0].clientCache).to.deep.equal({
+      type: "memory",
+    });
+  });
+
+  it("should NOT add clientCache to adminNodeSdk", () => {
+    connectorYaml.generate = {
+      adminNodeSdk: [{ outputDir: "admin", package: "admin", packageJsonDir: "." }],
+    };
+    ensureClientCache(connectorYaml);
+    expect((connectorYaml.generate.adminNodeSdk as any)[0].clientCache).to.be.undefined;
+  });
+
+  it("should NOT upgrade SDKs if fdcrealtime experiment is disabled", () => {
+    sinon.restore();
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(false);
+    connectorYaml.generate = {
+      javascriptSdk: [{ outputDir: "js", package: "js", packageJsonDir: "." }],
+    };
+    ensureClientCache(connectorYaml);
+    expect((connectorYaml.generate.javascriptSdk as any)[0].clientCache).to.be.undefined;
   });
 });
 
