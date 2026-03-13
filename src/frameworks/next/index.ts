@@ -90,7 +90,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 15.0";
+export const supportedRange = "12 - 16.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
