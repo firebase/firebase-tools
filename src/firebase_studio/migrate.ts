@@ -119,6 +119,7 @@ export async function extractMetadata(
     try {
       const metadataContent = await fs.readFile(metadataFile, "utf8");
       metadata = JSON.parse(metadataContent) as Metadata;
+      logger.info(`✅ Read ${metadataFile}`);
     } catch (err: unknown) {
       logger.debug(`Could not read metadata at ${metadataFile}: ${err}`);
     }
