@@ -1,0 +1,4 @@
+- Fixed MCP server writing `firebase-debug.log` to the user's project directory; logs now go to `~/.firebase/firebase-debug.log` instead. (#9982)
+- Added `*_EMULATOR_VERSION` env variables to allow overriding specific versions of downloadable emulators
+- Updated the functions.config deprecation notice from March 2026 to March 2027 (#9941)
+- Detects when App Hosting fails to deploy, returning an error. (#8866)
