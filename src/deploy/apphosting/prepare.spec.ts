@@ -11,6 +11,7 @@ import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as experiments from "../../experiments";
+import * as getProjectNumber from "../../getProjectNumber";
 import { FirebaseError } from "../../error";
 
 const BASE_OPTS = {
@@ -53,6 +54,8 @@ describe("apphosting", () => {
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
+  let getProjectNumberStub: sinon.SinonStub;
+  let ensureAppHostingServiceAgentRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -71,6 +74,10 @@ describe("apphosting", () => {
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
+    getProjectNumberStub = sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
+    ensureAppHostingServiceAgentRolesStub = sinon
+      .stub(backend, "ensureAppHostingServiceAgentRoles")
+      .resolves();
   });
 
   afterEach(() => {
@@ -128,6 +135,10 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
+      expect(ensureAppHostingServiceAgentRolesStub).to.have.been.calledWith(
+        "my-project",
+        "123456789",
+      );
     });
 
 
@@ -267,6 +278,7 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
+      expect(ensureAppHostingServiceAgentRolesStub).to.not.have.been.called;
     });
 
     it("should succeed for source deploys even if experiment is disabled", async () => {

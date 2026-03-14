@@ -2,6 +2,7 @@ import * as path from "path";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
+  ensureAppHostingServiceAgentRoles,
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
@@ -35,6 +36,10 @@ export default async function (context: Context, options: Options): Promise<void
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
   const configs = getBackendConfigs(options);
+  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
+    const projectNumber = await getProjectNumber(options);
+    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
+  }
 
   context.backendConfigs = {};
   context.backendLocations = {};
