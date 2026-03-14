@@ -6,32 +6,43 @@ import {
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
+import { getAppHostingConfiguration } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
+import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
+import * as experiments from "../../experiments";
 
 /**
- * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
- * and that the App Hosting Compute Service Account exists and has the necessary IAM roles.
+ * Prepares backend targets for deployment.
+ *
+ * This step validates that the necessary APIs are enabled and that the Compute Service Account
+ * is set up correctly. It also handles the discovery of backends to deploy (matching `--only` flags),
+ * resolves ambiguous backend IDs, and executes local builds if configured (e.g. for Frameworks
+ * that support building locally before deploy).
+ *
+ * @param context - The deployment context to populate with backend configurations and local build results.
+ * @param options - CLI options.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
+  const configs = getBackendConfigs(options);
 
   context.backendConfigs = {};
   context.backendLocations = {};
   context.backendStorageUris = {};
   context.backendLocalBuilds = {};
 
-  const configs = getBackendConfigs(options);
   const { backends } = await listBackends(projectId, "-");
+
 
   const foundBackends: AppHostingSingle[] = [];
   const notFoundBackends: AppHostingSingle[] = [];
@@ -152,11 +163,13 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
+    experiments.assertEnabled("apphostinglocalbuilds", "perform a local build");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
-        options.projectRoot || "./",
+        path.resolve(path.join(options.projectRoot || process.cwd(), cfg.rootDir || "")),
         "nextjs",
+        {},
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(

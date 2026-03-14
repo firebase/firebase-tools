@@ -13,6 +13,7 @@ import {
   iamOrigin,
   secretManagerOrigin,
 } from "../api";
+import { logger } from "../logger";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
@@ -271,6 +272,7 @@ export async function createGitRepoLink(
 
   await githubConnections.linkGitHubRepository(projectId, location, connectionId);
 }
+
 
 /**
  * Ensures the service account is present the user has permissions to use it by
