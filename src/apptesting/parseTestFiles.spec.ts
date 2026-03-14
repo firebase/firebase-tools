@@ -208,7 +208,7 @@ describe("parseTestFiles", () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       await expect(getTestCaseNames("*.txt")).to.be.rejectedWith(
         FirebaseError,
-        "Invalid file pattern regex",
+        "Invalid file pattern regex: *.txt",
       );
     });
 
@@ -216,7 +216,7 @@ describe("parseTestFiles", () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       await expect(getTestCaseNames("", "*.txt")).to.be.rejectedWith(
         FirebaseError,
-        "Invalid test name pattern regex",
+        "Invalid test name pattern regex: *.txt",
       );
     });
   });
