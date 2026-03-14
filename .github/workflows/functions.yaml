@@ -28,7 +28,7 @@ jobs:
         with:
           node-version: "16"
 
-      - uses: google-github-actions/auth@v0
+      - uses: google-github-actions/auth@v3
         with:
           credentials_json: "${{ secrets.CF3_INTEGRATION_TEST_GOOGLE_CREDENTIALS }}"
           create_credentials_file: true
