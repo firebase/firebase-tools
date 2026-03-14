@@ -1007,7 +1007,7 @@ function sendVerificationCode(
   // a real text message out to the phone number.
   EmulatorLogger.forEmulator(Emulators.AUTH).log(
     "BULLET",
-    `To verify the phone number ${phoneNumber}, use the code ${code}.`,
+    `Use the code ${code} to verify the phone number ${phoneNumber}.`,
   );
 
   return {
