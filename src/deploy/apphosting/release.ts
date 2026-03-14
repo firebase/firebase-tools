@@ -1,7 +1,8 @@
 import * as ora from "ora";
 import { consoleOrigin } from "../../api";
 import { getBackend } from "../../apphosting/backend";
-import { orchestrateRollout } from "../../apphosting/rollout";
+import * as apphosting from "../../gcp/apphosting";
+import * as rollout from "../../apphosting/rollout";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import {
@@ -12,6 +13,7 @@ import {
 } from "../../utils";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
+import { isEnabled } from "../../experiments";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
@@ -30,7 +32,9 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
+  const localBuildBackends = backendIds.filter(
+    (id) => context.backendLocalBuilds[id] && !isEnabled("apphostinglocalbuilds"),
+  );
   if (localBuildBackends.length > 0) {
     logLabeledWarning(
       "apphosting",
@@ -44,24 +48,34 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   const projectId = needProjectId(options);
-  const rollouts = backendIds.map((backendId) =>
-    // TODO(9114): Add run_command
-    // TODO(914): Set the buildConfig.
-    // TODO(914): Set locallyBuiltSource.
-    orchestrateRollout({
+  const rollouts = backendIds.map((backendId) => {
+    const cfg = context.backendConfigs[backendId];
+    const isLocalBuild = cfg.localBuild && isEnabled("apphostinglocalbuilds");
+    let source: apphosting.Build["source"];
+    if (isLocalBuild) {
+      source = {
+        locallyBuilt: {
+          userStorageUri: context.backendStorageUris[backendId],
+        },
+      };
+    } else {
+      source = {
+        archive: {
+          userStorageUri: context.backendStorageUris[backendId],
+          rootDirectory: cfg.rootDir,
+        },
+      };
+    }
+
+    return rollout.orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        source: {
-          archive: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
-          },
-        },
+        source,
       },
-    }),
-  );
+    });
+  });
 
   logLabeledBullet(
     "apphosting",
