@@ -399,6 +399,100 @@ describe("migrate", () => {
 
       expect(confirmStub.called).to.be.true;
     });
+
+    it("should configure Dart MCP server for Flutter apps if dart is available", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(true);
+
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json")) return "{}";
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.true;
+    });
+
+    it("should NOT configure Dart MCP server for Flutter apps if dart is NOT available, and log warning", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(false);
+
+      const logWarningStub = sandbox.stub(utils, "logWarning");
+
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json")) return "{}";
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart"/))).to.be.false;
+      expect(
+        logWarningStub.calledWith(
+          "Couldn't find Dart/Flutter on PATH. Install Flutter by following the instruction at https://docs.flutter.dev/install.",
+        ),
+      ).to.be.true;
+    });
+
+    it("should NOT configure Dart MCP server if app is not Flutter", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).rejects({ code: "ENOENT" });
+      commandStub.withArgs("dart").returns(true);
+
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json")) return "{}";
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart"/))).to.be.false;
+    });
   });
 
   describe("uploadSecrets", () => {
