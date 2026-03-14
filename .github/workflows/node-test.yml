@@ -26,7 +26,7 @@ jobs:
         node-version:
           - "20"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v3
@@ -50,7 +50,7 @@ jobs:
           - "22"
           - "24"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -88,7 +88,7 @@ jobs:
   #         java-version: 21
   #         distribution: temurin
 
-  #     - uses: actions/checkout@v4
+  #     - uses: actions/checkout@v6
   #     - name: Setup Chrome
   #       uses: browser-actions/setup-chrome@v1.7.2
   #       with:
@@ -133,7 +133,7 @@ jobs:
         node-version:
           - "22"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -156,7 +156,7 @@ jobs:
           - "22"
           - "24"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -205,7 +205,7 @@ jobs:
           # - npm run test:dataconnect-deploy
           - npm run test:dataconnect-emulator
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -278,7 +278,7 @@ jobs:
           java-version: 21
           distribution: temurin
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
@@ -310,7 +310,7 @@ jobs:
           - "20"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -329,7 +329,7 @@ jobs:
           - "20"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -348,7 +348,7 @@ jobs:
           - "20"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
