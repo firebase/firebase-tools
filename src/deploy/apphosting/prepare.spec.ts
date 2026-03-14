@@ -10,9 +10,10 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
+import * as managementApps from "../../management/apps";
 import * as experiments from "../../experiments";
-import * as getProjectNumber from "../../getProjectNumber";
 import { FirebaseError } from "../../error";
+import * as projectUtils from "../../getProjectNumber";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -54,8 +55,6 @@ describe("apphosting", () => {
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
-  let getProjectNumberStub: sinon.SinonStub;
-  let ensureAppHostingServiceAgentRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -68,16 +67,14 @@ describe("apphosting", () => {
       .stub(apphosting, "listBackends")
       .throws("Unexpected listBackends call");
     sinon.stub(backend, "ensureAppHostingComputeServiceAccount").resolves();
+    sinon.stub(backend, "ensureAppHostingServiceAgentRoles").resolves();
+    sinon.stub(projectUtils, "getProjectNumber").resolves("123456789");
     sinon.stub(apiEnabled, "ensure").resolves();
     getGitRepositoryLinkStub = sinon
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
-    getProjectNumberStub = sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
-    ensureAppHostingServiceAgentRolesStub = sinon
-      .stub(backend, "ensureAppHostingServiceAgentRoles")
-      .resolves();
   });
 
   afterEach(() => {
@@ -134,13 +131,69 @@ describe("apphosting", () => {
         buildDir: "./next/standalone",
         buildConfig,
         annotations,
+        env: [],
       });
-      expect(ensureAppHostingServiceAgentRolesStub).to.have.been.calledWith(
-        "my-project",
-        "123456789",
-      );
+      expect(backend.ensureAppHostingServiceAgentRoles).to.have.been.called;
     });
 
+    it("injects Firebase configuration when appId is present", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const webAppConfig = {
+        projectId: "my-project",
+        appId: "my-app-id",
+        apiKey: "my-api-key",
+        authDomain: "my-project.firebaseapp.com",
+        databaseURL: "https://my-project.firebaseio.com",
+        storageBucket: "my-project.appspot.com",
+        messagingSenderId: "123456",
+        measurementId: "G-123456",
+      };
+
+      sinon.stub(managementApps, "getAppConfig").resolves(webAppConfig);
+      const localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig: { runCommand: "npm run build", env: [] },
+        annotations: {},
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+            appId: "my-app-id",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(localBuildStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "nextjs",
+        sinon.match({
+          FIREBASE_WEBAPP_CONFIG: { value: JSON.stringify(webAppConfig) },
+          FIREBASE_CONFIG: {
+            value: JSON.stringify({
+              databaseURL: webAppConfig.databaseURL,
+              storageBucket: webAppConfig.storageBucket,
+              projectId: webAppConfig.projectId,
+            }),
+          },
+        }),
+      );
+    });
 
     it("links to existing backend if it already exists", async () => {
       const context = initializeContext();
@@ -278,7 +331,7 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
-      expect(ensureAppHostingServiceAgentRolesStub).to.not.have.been.called;
+      expect(backend.ensureAppHostingServiceAgentRoles).to.not.have.been.called;
     });
 
     it("should succeed for source deploys even if experiment is disabled", async () => {
