@@ -20,11 +20,8 @@ import * as secrets from "../../gcp/secretManager";
 import { logLabeledError, logLabeledWarning } from "../../utils";
 import * as apphosting from "../../gcp/apphosting";
 import { Constants } from "../constants";
-import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
 import { spawnSync } from "child_process";
 import { gte as semverGte } from "semver";
-import { getAutoinitEnvVars } from "../../apphosting/utils";
-import { AppPlatform, getAppConfig } from "../../management/apps";
 
 interface StartOptions {
   projectId?: string;
@@ -135,14 +132,6 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
   }
 
   const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
-  let autoinitEnvVars: Record<string, string> = {};
-  if (packageManager === "pnpm") {
-    // TODO(jamesdaniels) look into pnpm support for autoinit
-    logLabeledWarning("apphosting", "Firebase JS SDK autoinit does not currently support PNPM.");
-  } else {
-    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
-    autoinitEnvVars = getAutoinitEnvVars(webappConfig);
-  }
 
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
   const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
@@ -152,9 +141,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
 
   const environmentVariablesToInject: NodeJS.ProcessEnv = {
     NODE_ENV: process.env.NODE_ENV,
-    // autoinitEnvVars serve as fallback defaults.
-    ...autoinitEnvVars,
-    // Emulator variables take precedence over auto-init.
+    // Emulator variables take precedence.
     ...getEmulatorEnvs(),
     // User-defined variables from apphosting.<env>.yaml take highest precedence.
     ...Object.fromEntries(await Promise.all(resolveEnv)),
@@ -250,38 +237,3 @@ async function tripFirebasePostinstall(
   );
 }
 
-async function getBackendAppConfig(
-  projectId?: string,
-  backendId?: string,
-): Promise<WebConfig | undefined> {
-  if (!projectId) {
-    return undefined;
-  }
-
-  if (Constants.isDemoProject(projectId)) {
-    return constructDefaultWebSetup(projectId);
-  }
-
-  if (!backendId) {
-    return undefined;
-  }
-
-  const backendsList = await apphosting.listBackends(projectId, "-").catch(() => undefined);
-  const backend = backendsList?.backends.find(
-    (b) => apphosting.parseBackendName(b.name).id === backendId,
-  );
-
-  if (!backend) {
-    logLabeledWarning(
-      "apphosting",
-      `Unable to lookup details for backend ${backendId}. Firebase SDK autoinit will not be available.`,
-    );
-    return undefined;
-  }
-
-  if (!backend.appId) {
-    return undefined;
-  }
-
-  return (await getAppConfig(backend.appId, AppPlatform.WEB)) as WebConfig;
-}

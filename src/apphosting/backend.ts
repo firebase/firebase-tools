@@ -273,31 +273,6 @@ export async function createGitRepoLink(
   await githubConnections.linkGitHubRepository(projectId, location, connectionId);
 }
 
-/**
- * Ensures that the App Hosting service agent has the necessary permissions to
- * manage resources in the project.
- */
-export async function ensureAppHostingServiceAgentRoles(
-  projectId: string,
-  projectNumber: string,
-): Promise<void> {
-  const p4saEmail = apphosting.serviceAgentEmail(projectNumber);
-  try {
-    await addServiceAccountToRoles(
-      projectId,
-      p4saEmail,
-      ["roles/storage.objectViewer"],
-      /* skipAccountLookup= */ true,
-    );
-  } catch (err: unknown) {
-    logger.debug(`Failed to grant storage.objectViewer to ${p4saEmail}: ${err}`);
-    // We don't want to fail the entire prepare step if this fails, as it might
-    // be due to insufficient permissions to grant roles.
-    logWarning(
-      `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
-    );
-  }
-}
 
 /**
  * Ensures the service account is present the user has permissions to use it by
