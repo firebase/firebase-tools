@@ -55,6 +55,12 @@ describe("config", () => {
 
       expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent/cwd");
     });
+
+    it("discovers backend root from any env file", () => {
+      fs.listFiles.withArgs("/parent/cwd").returns([".env"]);
+
+      expect(config.discoverBackendRoot("/parent/cwd")).equals("/parent/cwd");
+    });
   });
 
   describe("get/setEnv", () => {
