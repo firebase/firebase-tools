@@ -9,7 +9,7 @@ import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
-import { isFirebaseMcp, detectAIAgent } from "./env";
+import { isFirebaseMcp, detectAIAgent, UNKNOWN } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
@@ -21,7 +21,7 @@ const CLI_VERSION: string = pkg.version;
 
 export const standardHeaders: () => Record<string, string> = () => {
   const agent = detectAIAgent();
-  const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
+  const agentStr = agent === UNKNOWN ? "" : ` agent-name/${agent}`;
   const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
   const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
   return {
