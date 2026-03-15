@@ -356,6 +356,7 @@ export async function createBackend(
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
+    runtime: {value: "nodejs22"},
     codebase: repository
       ? {
           repository: `${repository.name}`,
