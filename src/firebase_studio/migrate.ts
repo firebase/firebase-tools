@@ -210,15 +210,28 @@ export async function extractMetadata(
 
   logger.debug(`overrideProjectId ${overrideProjectId}`);
   logger.debug(`metadata.projectId ${metadata.projectId}`);
-  let projectId = overrideProjectId || metadata.projectId;
-  if (!projectId) {
+  let projectId: string | undefined;
+  let projectIdSource = "";
+
+  if (overrideProjectId) {
+    projectId = overrideProjectId;
+    projectIdSource = "--project flag";
+  } else {
     // try to get project ID from .firebaserc
     try {
       const firebasercContent = await fs.readFile(path.join(rootPath, ".firebaserc"), "utf8");
       const firebaserc = JSON.parse(firebasercContent) as { projects?: { default?: string } };
-      projectId = firebaserc.projects?.default;
+      if (firebaserc.projects?.default) {
+        projectId = firebaserc.projects.default;
+        projectIdSource = ".firebaserc";
+      }
     } catch (err: unknown) {
       logger.debug(`Could not read .firebaserc at ${rootPath}: ${err}`);
+    }
+
+    if (!projectId && metadata.projectId) {
+      projectId = metadata.projectId;
+      projectIdSource = "studio.json";
     }
   }
 
@@ -228,7 +241,7 @@ export async function extractMetadata(
         exit: 1,
       });
     }
-    logger.info(`✅ Using Firebase Project: ${projectId}`);
+    logger.info(`✅ Using Firebase Project: ${projectId} (source: ${projectIdSource})`);
   } else {
     logger.debug(
       `❌ Failed to determine the Firebase Project ID. You can set a project later by setting the '--project' flag.`,

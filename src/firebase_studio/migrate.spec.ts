@@ -22,11 +22,15 @@ describe("migrate", () => {
   });
 
   describe("extractMetadata", () => {
+    let readFileStub: sinon.SinonStub;
     beforeEach(() => {
-      sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
+      readFileStub = sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
         const pStr = p.toString();
-        if (pStr.endsWith("metadata.json")) {
+        if (pStr.endsWith("metadata.json") || pStr.endsWith("studio.json")) {
           return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         }
         if (pStr.endsWith("blueprint.md")) {
           return "# **App Name**: Test App";
@@ -40,7 +44,25 @@ describe("migrate", () => {
       expect(result.projectId).to.equal("override-project");
     });
 
-    it("should fallback to metadata.json if no override is provided", async () => {
+    it("should use firebaserc project if override is not provided", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json") || pStr.endsWith("studio.json")) {
+          return JSON.stringify({ projectId: "original-project" });
+        }
+        if (pStr.endsWith(".firebaserc")) {
+          return JSON.stringify({ projects: { default: "firebaserc-project" } });
+        }
+        if (pStr.endsWith("blueprint.md")) {
+          return "# **App Name**: Test App";
+        }
+        return "";
+      });
+      const result = await extractMetadata(testRoot);
+      expect(result.projectId).to.equal("firebaserc-project");
+    });
+
+    it("should fallback to metadata.json/studio.json if no override or firebaserc is provided", async () => {
       const result = await extractMetadata(testRoot);
       expect(result.projectId).to.equal("original-project");
     });
