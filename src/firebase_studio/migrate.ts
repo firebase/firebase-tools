@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 
 import { logger } from "../logger";
 import * as prompt from "../prompt";
@@ -91,13 +91,6 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
   }
 }
 
-interface GitHubItem {
-  name: string;
-  type: "dir" | "file";
-  url: string;
-  download_url: string;
-}
-
 interface Metadata {
   projectId?: string;
   [key: string]: any;
@@ -152,29 +145,6 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   return "OTHER";
 }
 
-async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
-  const response = await fetch(apiUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch directory listing: ${apiUrl}`);
-  }
-  const items = (await response.json()) as GitHubItem[];
-
-  await fs.mkdir(localPath, { recursive: true });
-
-  for (const item of items) {
-    const itemLocalPath = path.join(localPath, item.name);
-    if (item.type === "dir") {
-      await downloadGitHubDir(item.url, itemLocalPath);
-    } else if (item.type === "file") {
-      const fileResponse = await fetch(item.download_url);
-      if (fileResponse.ok) {
-        const content = await fileResponse.arrayBuffer();
-        await fs.writeFile(itemLocalPath, Buffer.from(content));
-      }
-    }
-  }
-}
-
 // Based on https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects
 const isValidFirebaseProjectId = (projectId: string): boolean => {
   // ^[a-z]         : Starts with a lowercase letter
@@ -191,7 +161,6 @@ export async function extractMetadata(
 ): Promise<{
   projectId: string | undefined;
   appName: string;
-  blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
   const studioJsonPath = path.join(rootPath, "studio.json");
@@ -248,13 +217,12 @@ export async function extractMetadata(
     );
   }
 
-  // Extract App Name and Blueprint Content
+  // Extract App Name
   let appName = "firebase-studio-export";
-  let blueprintContent = "";
   const blueprintPath = path.join(rootPath, "docs", "blueprint.md");
   try {
-    blueprintContent = await fs.readFile(blueprintPath, "utf8");
-    const nameMatch = blueprintContent.match(/# \*\*App Name\*\*: (.*)/);
+    const content = await fs.readFile(blueprintPath, "utf8");
+    const nameMatch = content.match(/# \*\*App Name\*\*: (.*)/);
     if (nameMatch && nameMatch[1]) {
       appName = nameMatch[1].trim();
     }
@@ -266,15 +234,10 @@ export async function extractMetadata(
     logger.info(`✅ Detected App Name: ${appName}`);
   }
 
-  return { projectId, appName, blueprintContent };
+  return { projectId, appName };
 }
 
-async function updateReadme(
-  rootPath: string,
-  blueprintContent: string,
-  appName: string,
-  framework: AppType,
-): Promise<void> {
+async function updateReadme(rootPath: string, framework: AppType): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
@@ -291,12 +254,21 @@ async function updateReadme(
 
   const { startCommand, localUrl } = frameworkConfigs[framework];
 
-  const newReadme = readmeTemplate
-    .replace(/\${appName}/g, appName)
+  let existingReadme = "";
+  try {
+    existingReadme = await fs.readFile(readmePath, "utf8");
+  } catch (err: unknown) {
+    // If README.md doesn't exist, just continue with an empty string
+  }
+
+  let newReadme = readmeTemplate
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
     .replace("${startCommand}", startCommand)
     .replace("${localUrl}", localUrl);
+
+  if (existingReadme.trim()) {
+    newReadme += `\n\n---\n\n## Previous README.md contents:\n\n${existingReadme}`;
+  }
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -316,51 +288,42 @@ async function injectAntigravityContext(
   await fs.mkdir(workflowsDir, { recursive: true });
   await fs.mkdir(skillsDir, { recursive: true });
 
-  // Download Skills from GitHub
-  logger.info("⏳ Fetching Antigravity skills from firebase/agent-skills...");
+  // Add Skills using npx
+  logger.info("⏳ Adding Antigravity skills...");
   try {
-    const skillsResponse = await fetch(
-      "https://api.github.com/repos/firebase/agent-skills/contents/skills",
+    const result = spawnSync(
+      "npx",
+      ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"],
+      {
+        cwd: rootPath,
+        stdio: "ignore",
+        shell: process.platform === "win32",
+      },
     );
-    if (!skillsResponse.ok) {
-      throw new Error(`GitHub API returned ${skillsResponse.status}`);
+    if (result.error) {
+      throw result.error;
     }
-    const skillsData = (await skillsResponse.json()) as GitHubItem[];
-
-    if (Array.isArray(skillsData)) {
-      for (const item of skillsData) {
-        if (item.type === "dir") {
-          const skillName = item.name;
-          const skillDir = path.join(skillsDir, skillName);
-
-          await downloadGitHubDir(item.url, skillDir);
-        }
-      }
-    } else {
-      utils.logWarning("GitHub API response for skills is not an array.");
+    if (result.status !== 0) {
+      throw new Error(`npx skills add exited with code ${result.status}`);
     }
-    logger.info(`✅ Downloaded Firebase skills`);
+    logger.info(`✅ Added Antigravity skills`);
   } catch (err: unknown) {
-    utils.logWarning(`Could not download Antigravity skills, skipping. ${err}`);
+    utils.logWarning(`Could not add Antigravity skills, skipping. ${err}`);
   }
 
   // System Instructions
   const systemInstructionsTemplate = await readTemplate(
     "firebase-studio-export/system_instructions_template.md",
   );
-  const systemInstructions = systemInstructionsTemplate
-    .replace("${projectId}", projectId || "None")
-    .replace("${appName}", appName);
+  const systemInstructions = systemInstructionsTemplate.replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
   logger.info("✅ Injected Antigravity rules");
 
-  // Startup Workflow
+  // Cleanup Workflow
   try {
-    const startupWorkflow = await readTemplate(
-      "firebase-studio-export/workflows/startup_workflow.md",
-    );
-    await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
+    const cleanupWorkflow = await readTemplate("firebase-studio-export/workflows/cleanup.md");
+    await fs.writeFile(path.join(workflowsDir, "cleanup.md"), cleanupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -611,6 +574,46 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
   }
 }
 
+/**
+ * Upgrades Genkit related dependencies to 1.29 in package.json.
+ */
+async function upgradeGenkitVersion(rootPath: string): Promise<void> {
+  const packageJsonPath = path.join(rootPath, "package.json");
+  try {
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
+    const packageJson = JSON.parse(packageJsonContent) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+    let modified = false;
+
+    const upgradeDeps = (deps: Record<string, string> | undefined): void => {
+      if (!deps) {
+        return;
+      }
+      for (const [name, version] of Object.entries(deps)) {
+        if (name === "genkit" || name === "genkit-cli" || name.startsWith("@genkit-ai/")) {
+          if (version !== "1.29") {
+            deps[name] = "1.29";
+            modified = true;
+          }
+        }
+      }
+    };
+
+    upgradeDeps(packageJson.dependencies);
+    upgradeDeps(packageJson.devDependencies);
+
+    if (modified) {
+      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+      logger.info("✅ Upgraded Genkit version to 1.29 in package.json");
+    }
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not upgrade Genkit version: ${message}`);
+  }
+}
+
 export async function uploadSecrets(
   rootPath: string,
   projectId: string | undefined,
@@ -722,15 +725,16 @@ export async function migrate(
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
+  const { projectId, appName } = await extractMetadata(rootPath, options.project);
 
   if (appType) {
     logger.info(`✅ Detected framework: ${appType}`);
   }
 
-  await updateReadme(rootPath, blueprintContent, appName, appType);
+  await updateReadme(rootPath, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
+  await upgradeGenkitVersion(rootPath);
   await injectAntigravityContext(rootPath, projectId, appName);
   await writeAntigravityConfigs(rootPath, appType);
   await setupAntigravityMcpServer(rootPath, appType);
