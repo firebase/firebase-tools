@@ -239,10 +239,21 @@ async function updateReadme(rootPath: string, framework?: string): Promise<void>
   const startCommand = framework === "ANGULAR" ? "npm run start" : "npm run dev";
   const localUrl = framework === "ANGULAR" ? "http://localhost:4200" : "http://localhost:9002";
 
-  const newReadme = readmeTemplate
+  let existingReadme = "";
+  try {
+    existingReadme = await fs.readFile(readmePath, "utf8");
+  } catch (err: unknown) {
+    // If README.md doesn't exist, just continue with an empty string
+  }
+
+  let newReadme = readmeTemplate
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
     .replace("${startCommand}", startCommand)
     .replace("${localUrl}", localUrl);
+
+  if (existingReadme.trim()) {
+    newReadme += `\n\n---\n\n## Previous README.md contents:\n\n${existingReadme}`;
+  }
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -299,12 +310,12 @@ async function injectAntigravityContext(
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
   logger.info("✅ Injected Antigravity rules");
 
-  // Startup Workflow
+  // Cleanup Workflow
   try {
-    const startupWorkflow = await readTemplate(
-      "firebase-studio-export/workflows/startup_workflow.md",
+    const cleanupWorkflow = await readTemplate(
+      "firebase-studio-export/workflows/cleanup.md",
     );
-    await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
+    await fs.writeFile(path.join(workflowsDir, "cleanup.md"), cleanupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

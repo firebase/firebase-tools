@@ -77,7 +77,7 @@ describe("migrate", () => {
         if (pStr.endsWith("system_instructions_template.md")) {
           return "Project: ${appName}";
         }
-        if (pStr.endsWith("startup_workflow.md")) {
+        if (pStr.endsWith("cleanup.md")) {
           return "Step 1: Build";
         }
         if (pStr.endsWith(".firebaserc")) {
@@ -90,6 +90,9 @@ describe("migrate", () => {
           return "{}";
         }
         if (pStr.endsWith("mcp_config.json")) {
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        }
+        if (pStr.endsWith("README.md")) {
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         }
         return "";
@@ -175,7 +178,7 @@ describe("migrate", () => {
         if (pStr.endsWith("readme_template.md"))
           return "Export Date: ${exportDate}\nRun ${startCommand} at ${localUrl}";
         if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
-        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith("cleanup.md")) return "Step 1: Build";
         if (pStr.endsWith(".firebaserc"))
           return JSON.stringify({ projects: { default: "test-project" } });
         if (pStr.endsWith("blueprint.md"))
@@ -183,6 +186,8 @@ describe("migrate", () => {
         if (pStr.endsWith("package.json"))
           return JSON.stringify({ dependencies: { next: "12345" } });
         if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        if (pStr.endsWith("README.md"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
@@ -223,7 +228,7 @@ describe("migrate", () => {
       ).to.be.true;
       expect(
         writeFileStub.calledWith(
-          path.join(testRoot, ".agents", "workflows", "startup.md"),
+          path.join(testRoot, ".agents", "workflows", "cleanup.md"),
           sinon.match(/Step 1: Build/),
         ),
       ).to.be.true;
@@ -250,6 +255,41 @@ describe("migrate", () => {
       ).to.be.true;
     });
 
+    it("should append existing README.md content if it exists", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("cleanup.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json")) return "{}";
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        if (pStr.endsWith("README.md")) return "Existing README content";
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      expect(
+        writeFileStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/Existing README content/),
+        ),
+      ).to.be.true;
+      expect(
+        writeFileStub.calledWith(
+          path.join(testRoot, "README.md"),
+          sinon.match(/## Previous README.md contents:/),
+        ),
+      ).to.be.true;
+    });
+
     it("should perform a full migration for Angular successfully", async () => {
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
@@ -258,13 +298,15 @@ describe("migrate", () => {
         if (pStr.endsWith("readme_template.md"))
           return "# ${appName}\nRun ${startCommand} at ${localUrl}";
         if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
-        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith("cleanup.md")) return "Step 1: Build";
         if (pStr.endsWith(".firebaserc"))
           return JSON.stringify({ projects: { default: "test-project" } });
         if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
         if (pStr.endsWith("package.json"))
           return JSON.stringify({ dependencies: { "@angular/core": "17.0.0" } });
         if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        if (pStr.endsWith("README.md"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
@@ -309,13 +351,15 @@ describe("migrate", () => {
         if (pStr.endsWith("readme_template.md"))
           return "# ${appName}\nRun ${startCommand} at ${localUrl}";
         if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
-        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith("cleanup.md")) return "Step 1: Build";
         if (pStr.endsWith(".firebaserc"))
           return JSON.stringify({ projects: { default: "test-project" } });
         if (pStr.endsWith("blueprint.md"))
           return "# **App Name**: Test App\nSome blueprint content";
         if (pStr.endsWith("mcp_config.json"))
           return JSON.stringify({ mcpServers: { firebase: { command: "npx", args: [] } } });
+        if (pStr.endsWith("README.md"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
@@ -334,13 +378,15 @@ describe("migrate", () => {
         if (pStr.endsWith("readme_template.md"))
           return "# ${appName}\nRun ${startCommand} at ${localUrl}";
         if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
-        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith("cleanup.md")) return "Step 1: Build";
         if (pStr.endsWith(".firebaserc"))
           return JSON.stringify({ projects: { default: "test-project" } });
         if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
         if (pStr.endsWith("package.json"))
           return JSON.stringify({ dependencies: { "@angular/core": "17.0.0" } });
         if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        if (pStr.endsWith("README.md"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
