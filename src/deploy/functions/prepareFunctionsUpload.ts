@@ -131,7 +131,7 @@ async function packageSource(
       throw err;
     }
     throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
       {
         original: err,
         exit: 1,
