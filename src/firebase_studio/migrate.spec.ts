@@ -57,12 +57,18 @@ describe("migrate", () => {
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
     let unlinkStub: sinon.SinonStub;
+    let spawnStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox.stub(fs, "stat").resolves({ isDirectory: () => true } as any);
       const cp = require("child_process");
       sandbox.stub(cp, "spawnSync").returns({ status: 0 });
       sandbox.stub(process, "platform").value("darwin");
+
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
 
       readFileStub = sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
         const pStr = p.toString();
@@ -108,7 +114,14 @@ describe("migrate", () => {
 
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
-      confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+
+      const childProcess = require("child_process");
+      spawnStub = sandbox.stub(childProcess, "spawn").returns({
+        unref: () => {
+          // No-op for testing
+        },
+      } as unknown as import("child_process").ChildProcess);
     });
 
     it("should fail if the directory does not exist", async () => {
@@ -126,13 +139,6 @@ describe("migrate", () => {
         if (p.toString().includes("agy.exe")) return;
         throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
       });
-
-      const childProcess = require("child_process");
-      const spawnStub = sandbox.stub(childProcess, "spawn").returns({
-        unref: () => {
-          // No-op for testing
-        },
-      } as unknown as import("child_process").ChildProcess);
 
       confirmStub.resolves(true);
 
@@ -182,8 +188,6 @@ describe("migrate", () => {
       });
 
       commandStub.withArgs("agy").returns(true);
-
-      // Local execSync stub removed
 
       await migrate(testRoot);
 
@@ -383,8 +387,6 @@ describe("migrate", () => {
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
-
-      // Local execSync stub removed
 
       await migrate(testRoot);
 
