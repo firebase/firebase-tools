@@ -19,7 +19,7 @@ export const query_collection = tool(
       collection_path: z
         .string()
         .describe(
-          "A collection path (e.g. `collectionName/` or `parentCollection/parentDocument/collectionName`)",
+          "A collection path (e.g. `collectionName` or `parentCollection/parentDocument/collectionName`)",
         ),
       filters: z
         .object({
@@ -92,30 +92,22 @@ export const query_collection = tool(
   ) => {
     // database ??= "(default)";
 
-    if (!collection_path || !collection_path.length) {
-      return mcpError("Must supply at least one collection path.");
-    }
-
-    // Remove leading and trailing slashes
-    let cleanPath = collection_path.trim();
-    if (cleanPath.startsWith("/")) {
-      cleanPath = cleanPath.slice(1);
-    }
-    if (cleanPath.endsWith("/")) {
-      cleanPath = cleanPath.slice(0, -1);
+    const cleanPath = collection_path.trim().replace(/^\/+|\/+$/g, "");
+    if (!cleanPath) {
+      return mcpError("Must supply a non-empty collection path.");
     }
 
     const parts = cleanPath.split("/");
     if (parts.length % 2 === 0) {
       return mcpError(
-        `Invalid collection path: "${collection_path}". Path must point to a collection, not a document.`,
+        `Invalid collection path: "${collection_path}". Path must point to a collection, not a document. A valid collection path must have an odd number of segments, ex. \`collectionName\` or \`parentCollection/parentDocument/collectionName\`.`,
       );
     }
 
     let parent: string | undefined;
     let collectionId = cleanPath;
     if (parts.length > 1) {
-      collectionId = parts.pop()!;
+      collectionId = parts.pop() ?? "";
       parent = parts.join("/");
     }
 
