@@ -434,6 +434,7 @@ describe("migrate", () => {
       expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
       expect(packageJson.dependencies.next).to.equal("14.0.0");
     });
+
     it("should perform a full migration for Flutter successfully", async () => {
       accessStub.withArgs(sinon.match(/pubspec.yaml/)).resolves();
 
