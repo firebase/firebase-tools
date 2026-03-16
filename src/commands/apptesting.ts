@@ -67,8 +67,9 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
 
     if (!tests.length) {
-      throw new FirebaseError("No tests found");
+      throw new FirebaseError(`No tests found under test directory ${testDir}`);
     }
+    utils.logBullet(`Found ${tests.length} tests to run under test directory ${testDir}`);
 
     const invokeSpinner = ora("Requesting test execution");
     const client = new AppDistributionClient();

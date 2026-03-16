@@ -100,25 +100,24 @@ async function parseTestFilesRecursive(params: {
 }): Promise<TestCaseFile[]> {
   const testDir = params.testDir;
   const targetUri = params.targetUri;
-  const items = listFiles(testDir);
+  const filenames = listFiles(testDir);
   const results = [];
-  for (const item of items) {
-    const path = join(testDir, item);
+  for (const filename of filenames) {
+    const path = join(testDir, filename);
     if (dirExistsSync(path)) {
       results.push(...(await parseTestFilesRecursive({ testDir: path, targetUri })));
     } else if (fileExistsSync(path)) {
       try {
-        const file = await readFileFromDirectory(testDir, item);
-        logger.debug(`Read the file ${file.source}.`);
+        logger.debug(`Reading ${path}.`);
+        const file = await readFileFromDirectory(testDir, filename);
         const parsedFile = wrappedSafeLoad(file.source);
-        logger.debug(`Parsed the file.`);
         const tests = parsedFile.tests;
-        logger.debug(`There are ${tests.length} tests.`);
         const defaultConfig = parsedFile.defaultConfig;
         if (!tests || !tests.length) {
           logger.debug(`No tests found in ${path}. Ignoring.`);
           continue;
         }
+        logger.debug(`File contains ${tests.length} tests.`);
         const invocations = [];
         for (const rawTestDef of tests) {
           const invocation = toTestCaseInvocation(rawTestDef, targetUri, defaultConfig);
