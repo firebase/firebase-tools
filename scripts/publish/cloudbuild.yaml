@@ -113,7 +113,7 @@ steps:
 
   # Wait a bit of time for npm to catch up.
   - name: "gcr.io/$PROJECT_ID/package-builder"
-    args: ["sleep", "240"]
+    args: ["sleep", "120"]
 
   # Set up the hub credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
@@ -134,7 +134,8 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          VERSION=$(cat /workspace/version_number.txt)
+          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@${VERSION} --publish
           echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
