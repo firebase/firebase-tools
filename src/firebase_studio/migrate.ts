@@ -260,14 +260,23 @@ async function updateReadme(
   rootPath: string,
   blueprintContent: string,
   appName: string,
-  framework?: string,
+  framework: AppType,
 ): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
 
-  const startCommand = framework === "ANGULAR" ? "npm run start" : "npm run dev";
-  const localUrl = framework === "ANGULAR" ? "http://localhost:4200" : "http://localhost:9002";
+  const frameworkConfigs: Record<AppType, { startCommand: string; localUrl: string }> = {
+    NEXT_JS: { startCommand: "npm run dev", localUrl: "http://localhost:9002" },
+    ANGULAR: { startCommand: "npm run start", localUrl: "http://localhost:4200" },
+    FLUTTER: {
+      startCommand: "flutter run -d chrome --web-port=8080",
+      localUrl: "http://localhost:8080",
+    },
+    OTHER: { startCommand: "npm run dev", localUrl: "http://localhost:9002" },
+  };
+
+  const { startCommand, localUrl } = frameworkConfigs[framework];
 
   const newReadme = readmeTemplate
     .replace(/\${appName}/g, appName)
@@ -464,23 +473,37 @@ async function createFirebaseConfigs(
   }
 }
 
-async function writeAntigravityConfigs(rootPath: string, framework?: string): Promise<void> {
+async function writeAntigravityConfigs(rootPath: string, framework: AppType): Promise<void> {
   // 5. IDE Configs (VS Code / AGY)
   const vscodeDir = path.join(rootPath, ".vscode");
   await fs.mkdir(vscodeDir, { recursive: true });
 
   // Create tasks.json for pre-launch tasks
-  const tasksJson = {
+  const tasksJson: any = {
     version: "2.0.0",
-    tasks: [
-      {
-        label: "npm-install",
-        type: "shell",
-        command: "npm install",
-        problemMatcher: [],
-      },
-    ],
+    tasks: [],
   };
+
+  if (framework === "FLUTTER") {
+    tasksJson.tasks.push({
+      label: "flutter-pub-get",
+      type: "shell",
+      command: "flutter pub get",
+      problemMatcher: [],
+      group: {
+        kind: "build",
+        isDefault: true,
+      },
+    });
+  } else {
+    tasksJson.tasks.push({
+      label: "npm-install",
+      type: "shell",
+      command: "npm install",
+      problemMatcher: [],
+    });
+  }
+
   await fs.writeFile(path.join(vscodeDir, "tasks.json"), JSON.stringify(tasksJson, null, 2));
   logger.info("✅ Created .vscode/tasks.json");
 
@@ -534,6 +557,13 @@ async function writeAntigravityConfigs(rootPath: string, framework?: string): Pr
       port: 9002,
       console: "integratedTerminal",
       preLaunchTask: "npm-install",
+    });
+  } else if (framework === "FLUTTER") {
+    launchJson.configurations.push({
+      name: "Flutter",
+      request: "launch",
+      type: "dart",
+      preLaunchTask: "flutter-pub-get",
     });
   } else {
     return;
