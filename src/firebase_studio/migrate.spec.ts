@@ -404,6 +404,39 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
+    it("should upgrade Genkit version to 1.29 if present in package.json", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json"))
+          return JSON.stringify({
+            dependencies: { genkit: "1.0.0", "@genkit-ai/google-genai": "1.0.0", next: "14.0.0" },
+            devDependencies: { "genkit-cli": "1.0.0" },
+          });
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
+      expect(packageJsonCall).to.not.be.undefined;
+      const packageJson = JSON.parse(packageJsonCall![1]);
+      expect(packageJson.dependencies.genkit).to.equal("1.29");
+      expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("1.29");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
+      expect(packageJson.dependencies.next).to.equal("14.0.0");
+    });
+
     it("should perform a full migration for Flutter successfully", async () => {
       accessStub.withArgs(sinon.match(/pubspec.yaml/)).resolves();
 
