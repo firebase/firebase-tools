@@ -56,6 +56,8 @@ describe("migrate", () => {
     let commandStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
+    let inputStub: sinon.SinonStub;
+    let spawnStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox.stub(fs, "stat").resolves({ isDirectory: () => true } as any);
@@ -108,6 +110,14 @@ describe("migrate", () => {
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
       confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
+      inputStub = sandbox.stub(prompt, "input").resolves("studio");
+
+      const childProcess = require("child_process");
+      spawnStub = sandbox.stub(childProcess, "spawn").returns({
+        unref: () => {
+          // No-op for testing
+        },
+      } as unknown as import("child_process").ChildProcess);
     });
 
     it("should fail if the directory does not exist", async () => {
@@ -125,13 +135,6 @@ describe("migrate", () => {
         if (p.toString().includes("agy.exe")) return;
         throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });
       });
-
-      const childProcess = require("child_process");
-      const spawnStub = sandbox.stub(childProcess, "spawn").returns({
-        unref: () => {
-          // No-op for testing
-        },
-      } as unknown as import("child_process").ChildProcess);
 
       confirmStub.resolves(true);
 
