@@ -413,6 +413,7 @@ async function createFirebaseConfigs(
         const confirmBackend = await prompt.confirm({
           message: `Would you like to use the App Hosting backend "${selectedBackendId}"?`,
           default: true,
+          nonInteractive: process.env.NODE_ENV === "test",
         });
 
         if (confirmBackend) {

@@ -64,6 +64,11 @@ describe("migrate", () => {
       sandbox.stub(cp, "spawnSync").returns({ status: 0 });
       sandbox.stub(process, "platform").value("darwin");
 
+      sandbox.stub(global, "fetch").resolves({
+        ok: true,
+        json: async () => [],
+      } as Response);
+
       readFileStub = sandbox.stub(fs, "readFile").callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json")) {
@@ -108,8 +113,7 @@ describe("migrate", () => {
 
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
-      confirmStub = sandbox.stub(prompt, "confirm").resolves(false);
-      inputStub = sandbox.stub(prompt, "input").resolves("studio");
+      confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
 
       const childProcess = require("child_process");
       spawnStub = sandbox.stub(childProcess, "spawn").returns({
@@ -147,8 +151,6 @@ describe("migrate", () => {
     });
 
     it("should perform a full migration successfully and track start/success", async () => {
-      // fetchStub mocks for skills removed
-
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -185,8 +187,6 @@ describe("migrate", () => {
       });
 
       commandStub.withArgs("agy").returns(true);
-
-      // Local execSync stub removed
 
       await migrate(testRoot);
 
@@ -386,8 +386,6 @@ describe("migrate", () => {
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
-
-      // Local execSync stub removed
 
       await migrate(testRoot);
 
