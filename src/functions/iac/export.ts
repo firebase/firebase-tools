@@ -7,6 +7,39 @@ import * as yaml from "js-yaml";
 import * as tf from "./terraform";
 import * as gcfv1 from "../../gcp/cloudfunctions";
 
+const STANDARD_TF_VARS: tf.Block[] = [
+  {
+    type: "variable",
+    labels: ["project"],
+    attributes: {
+      description: "The ID of the project to deploy to.",
+    },
+  },
+  {
+    type: "variable",
+    labels: ["location"],
+    attributes: {
+      description: "The location to deploy to. Default us-central1 (deprecated)",
+      default: "us-central1",
+    }
+  },
+  {
+    type: "variable",
+    labels: ["gcf_bucket"],
+    attributes: {
+      description: "The name of the bucket to deploy to.",
+    },
+  },
+  {
+    type: "variable",
+    labels: ["gcf_archive"],
+    attributes: {
+      description: "The name of the archive to deploy to.",
+    },
+  },
+];
+
+// N.B. ProjectId needs to be a variable, not a string here.
 export async function getFunctionsManifest(
   sourceDir: string,
   projectDir: string,
@@ -49,11 +82,12 @@ export async function getFunctionsManifest(
   const blocks: tf.Block[] = [];
   for (const [name, ep] of Object.entries(build.endpoints)) {
     if (ep.platform === "gcfv1") {
-      blocks.push(...gcfv1.terraformFromEndpoint(name, ep, tf.expr("TODO-bucket"), tf.expr("TODO-archive")));
+      blocks.push(...gcfv1.terraformFromEndpoint(name, ep, tf.expr("var.gcf_bucket"), tf.expr("var.gcf_archive")));
     } else {
       logger.debug(`Skipping ${name} because it is not a GCFv1 function`);
     }
   }
+
   blocks.sort((left, right) => {
     if (left.type != right.type) {
       return left.type.localeCompare(right.type);
@@ -74,5 +108,10 @@ export async function getFunctionsManifest(
 
     logger.warn("Unexpected: two blocks with identical types and labels");
     return 0;
-  })
+  });
+
+  return {
+    "variables.tf": STANDARD_TF_VARS.map(tf.blockToString).join("\n\n"),
+    "main.tf": blocks.map(tf.blockToString).join("\n\n"),
+  }
 }

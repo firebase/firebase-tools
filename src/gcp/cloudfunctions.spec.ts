@@ -93,7 +93,7 @@ describe("cloudfunctions", () => {
       );
 
       expect(actual.length).to.equal(1);
-      expect(actual[0].resourceType).to.equal("google_cloudfunctions_function");
+      expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
     });
 
     it("should return compute and permissions resources if invoker is present", () => {
@@ -105,8 +105,8 @@ describe("cloudfunctions", () => {
       );
 
       expect(actual.length).to.equal(2);
-      expect(actual[0].resourceType).to.equal("google_cloudfunctions_function");
-      expect(actual[1].resourceType).to.equal("google_cloudfunctions_function_iam_binding");
+      expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
+      expect(actual[1].labels![0]).to.equal("google_cloudfunctions_function_iam_binding");
     });
   });
 

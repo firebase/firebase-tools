@@ -1,6 +1,6 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getFunctionsManifest } from "../deploy/functions/export";
+import { getFunctionsManifest } from "../functions/iac/export";
 import { requirePermissions } from "../requirePermissions";
 import { normalizeAndValidate, configForCodebase } from "../functions/projectConfig";
 import { needProjectId } from "../projectUtils";

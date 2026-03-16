@@ -1,6 +1,6 @@
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-import { Field } from "../../deploy/functions/build";
+import { Field, Endpoint } from "../../deploy/functions/build";
 
 /**
  * Represents a raw HCL expression that should NOT be quoted.
@@ -28,37 +28,7 @@ export interface Block {
   type: "output" | "resource" | "variable" | "data";
   labels?: string[];
   attributes: Record<string, Value>;
-  nestedBlocks?: Block[];
-}
-
-export interface OutputBlock extends Block {
-  type: "output";
-  value: Value;
-}
-
-/**
- * Specialized interface for Terraform Resources.
- */
-export interface ResourceBlock extends Block {
-  type: "resource";
-}
-
-/**
- * Specialized interface for Terraform Variables.
- * NOTE: To make this code easier, we use variableName, which is really a type of label
- * as a scalar here.
- */
-export interface VariableBlock extends Block {
-  type: "variable";
-  variableType: string;
-}
-
-/**
- * Specialized interface for Terraform Data blocks.
- */
-export interface DataBlock extends Block {
-  type: "data";
-  state: string;
+  // TODO: nested blocks?
 }
 
 export function copyField<
@@ -87,7 +57,7 @@ export function renameField<
   attributes[attribute_field] = val as Value;
 }
 
-export function serializeValue(value: Value): string {
+export function serializeValue(value: Value, indentation: number = 0): string {
   if (typeof value === "string") {
     return JSON.stringify(value);
   } else if (typeof value === "number" || typeof value === "boolean") {
@@ -95,23 +65,21 @@ export function serializeValue(value: Value): string {
   } else if (value === null || value === undefined) {
     return "null";
   } else if (Array.isArray(value)) {
+    if (value.some((e) => typeof e === "object")) {
+      return `[\n${value.map((v) => serializeValue(v, indentation + 1)).join(",\n")}${"  ".repeat(indentation)}]`;
+    }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
   } else if (typeof value === "object") {
     if (value["@type"] === "HCLExpression") {
       return (value as Expression).value;
     }
-    // TODO: indentation level
-    const entries = Object.entries(value).map(([k, v]) => `${k} = ${serializeValue(v)}`);
-    return `{\n${entries.join("\n")}\n}`;
+    const entries = Object.entries(value).map(([k, v]) => `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`);
+    return `{\n${entries.join("\n")}\n${"  ".repeat(indentation)}}`;
   }
   return "null";
 }
 
-// TODO: Grouping attributes (e.g. for_each at the top?), proper formatting for objects.
 export function blockToString(block: Block): string {
-  return `${block.type} ${block.labels?.map((l) => `"${l}" `).join("")} {
-  ${Object.entries(block.attributes)
-      .map(([key, value]) => `  ${key} = ${serializeValue(value)}`)
-      .join("\n")}
-}`;
+  return `${block.type} ${block.labels?.map((l) => `"${l}" `).join("")} ${serializeValue(block.attributes)}`
 }
+
