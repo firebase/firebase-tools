@@ -173,7 +173,7 @@ describe("migrate", () => {
         if (pStr.endsWith("metadata.json"))
           return JSON.stringify({ projectId: "test-project", appName: "Test App" });
         if (pStr.endsWith("readme_template.md"))
-          return "# ${appName}\nExport Date: ${exportDate}\n${blueprintContent}\nRun ${startCommand} at ${localUrl}";
+          return "Export Date: ${exportDate}\nRun ${startCommand} at ${localUrl}";
         if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
         if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
         if (pStr.endsWith(".firebaserc"))

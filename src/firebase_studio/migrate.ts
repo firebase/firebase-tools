@@ -168,7 +168,6 @@ export async function extractMetadata(
 ): Promise<{
   projectId: string | undefined;
   appName: string;
-  blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
   const studioJsonPath = path.join(rootPath, "studio.json");
@@ -212,13 +211,12 @@ export async function extractMetadata(
     );
   }
 
-  // Extract App Name and Blueprint Content
+  // Extract App Name
   let appName = "firebase-studio-export";
-  let blueprintContent = "";
   const blueprintPath = path.join(rootPath, "docs", "blueprint.md");
   try {
-    blueprintContent = await fs.readFile(blueprintPath, "utf8");
-    const nameMatch = blueprintContent.match(/# \*\*App Name\*\*: (.*)/);
+    const content = await fs.readFile(blueprintPath, "utf8");
+    const nameMatch = content.match(/# \*\*App Name\*\*: (.*)/);
     if (nameMatch && nameMatch[1]) {
       appName = nameMatch[1].trim();
     }
@@ -230,15 +228,10 @@ export async function extractMetadata(
     logger.info(`✅ Detected App Name: ${appName}`);
   }
 
-  return { projectId, appName, blueprintContent };
+  return { projectId, appName };
 }
 
-async function updateReadme(
-  rootPath: string,
-  blueprintContent: string,
-  appName: string,
-  framework?: string,
-): Promise<void> {
+async function updateReadme(rootPath: string, framework?: string): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
@@ -247,9 +240,7 @@ async function updateReadme(
   const localUrl = framework === "ANGULAR" ? "http://localhost:4200" : "http://localhost:9002";
 
   const newReadme = readmeTemplate
-    .replace(/\${appName}/g, appName)
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
     .replace("${startCommand}", startCommand)
     .replace("${localUrl}", localUrl);
 
@@ -303,9 +294,7 @@ async function injectAntigravityContext(
   const systemInstructionsTemplate = await readTemplate(
     "firebase-studio-export/system_instructions_template.md",
   );
-  const systemInstructions = systemInstructionsTemplate
-    .replace("${projectId}", projectId || "None")
-    .replace("${appName}", appName);
+  const systemInstructions = systemInstructionsTemplate.replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
   logger.info("✅ Injected Antigravity rules");
@@ -656,13 +645,13 @@ export async function migrate(
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
+  const { projectId, appName } = await extractMetadata(rootPath, options.project);
 
   if (appType) {
     logger.info(`✅ Detected framework: ${appType}`);
   }
 
-  await updateReadme(rootPath, blueprintContent, appName, appType);
+  await updateReadme(rootPath, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
