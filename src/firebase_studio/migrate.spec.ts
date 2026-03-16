@@ -56,6 +56,7 @@ describe("migrate", () => {
     let commandStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
+    let unlinkStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox.stub(fs, "stat").resolves({ isDirectory: () => true } as any);
@@ -97,7 +98,7 @@ describe("migrate", () => {
 
       writeFileStub = sandbox.stub(fs, "writeFile").resolves();
       mkdirStub = sandbox.stub(fs, "mkdir").resolves();
-      sandbox.stub(fs, "unlink").resolves();
+      unlinkStub = sandbox.stub(fs, "unlink").resolves();
       sandbox.stub(fs, "readdir").resolves([]);
       accessStub = sandbox.stub(fs, "access").rejects({ code: "ENOENT" });
 
@@ -432,7 +433,6 @@ describe("migrate", () => {
     });
 
     it("should delete .idx/mcp.json if it exists", async () => {
-      const unlinkStub = sandbox.stub(fs, "unlink").resolves();
       await migrate(testRoot);
       expect(unlinkStub.calledWith(path.join(testRoot, ".idx", "mcp.json"))).to.be.true;
     });
