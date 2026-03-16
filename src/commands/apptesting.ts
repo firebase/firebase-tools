@@ -1,16 +1,16 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
-import { logger } from "../logger";
-import * as clc from "colorette";
-import { parseTestFiles } from "../apptesting/parseTestFiles";
+import { parseTestFiles, pluralizeTests } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
-import { marked } from "marked";
 import { AppDistributionClient } from "../appdistribution/client";
-import { Distribution, upload } from "../appdistribution/distribution";
-import { AIInstruction, ReleaseTest, TestDevice } from "../appdistribution/types";
+import { awaitTestResults, Distribution, upload } from "../appdistribution/distribution";
+import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
+import * as utils from "../utils";
+import { dirExistsSync } from "../fsutils";
+import * as path from "path";
 
 const defaultDevices = [
   {
@@ -35,20 +35,29 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     "--test-name-pattern <pattern>",
     "Test name pattern. Only tests with names that match this pattern will be executed.",
   )
-  .option("--test-dir <test_dir>", "Directory where tests can be found.")
+  .option("--test-dir <test_dir>", "Directory where tests can be found. Defaults to './tests'.")
   .option(
     "--test-devices <string>",
-    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+    "Semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
   .option(
     "--test-devices-file <string>",
-    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+    "Path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+  )
+  .option(
+    "--test-non-blocking",
+    "Run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
   .before(requireAuth)
   .action(async (target: string, options: any) => {
     const appName = getAppName(options);
 
-    const testDir = options.testDir || "tests";
+    const testDir = path.resolve(options.testDir || "tests");
+    if (!dirExistsSync(testDir)) {
+      throw new FirebaseError(
+        `Tests directory not found: ${testDir}. Use the --test-dir flag to choose a different directory.`,
+      );
+    }
     const tests = await parseTestFiles(
       testDir,
       undefined,
@@ -58,65 +67,68 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
 
     if (!tests.length) {
-      throw new FirebaseError("No tests found");
+      throw new FirebaseError(`No tests found under test directory ${testDir}`);
     }
+    utils.logBullet(`Found ${pluralizeTests(tests.length)} to run under test directory ${testDir}`);
 
     const invokeSpinner = ora("Requesting test execution");
+    const client = new AppDistributionClient();
 
-    let testInvocations;
-    let releaseId;
+    let releaseTests: ReleaseTest[];
+    let release: Release;
     try {
-      const client = new AppDistributionClient();
-      releaseId = await upload(client, appName, new Distribution(target));
+      release = await upload(client, appName, new Distribution(target));
 
       invokeSpinner.start();
-      testInvocations = await invokeTests(
+      releaseTests = await invokeTests(
         client,
-        releaseId,
+        release.name,
         tests,
         !testDevices.length ? defaultDevices : testDevices,
       );
-      invokeSpinner.text = "Test execution requested";
+      invokeSpinner.text = `${pluralizeTests(releaseTests.length)} started successfully!`;
       invokeSpinner.succeed();
     } catch (ex) {
       invokeSpinner.fail("Failed to request test execution");
       throw ex;
     }
 
-    logger.info(
-      clc.bold(`\n${clc.white("===")} Running ${pluralizeTests(testInvocations.length)}`),
-    );
-    logger.info(await marked(`View progress and results in the Firebase Console`));
+    if (options.testNonBlocking) {
+      utils.logBullet(
+        `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
+    } else {
+      await awaitTestResults(releaseTests, client);
+      utils.logBullet(
+        `View detailed results in the Firebase Console:\n${release.firebaseConsoleUri}`,
+      );
+    }
   });
-
-function pluralizeTests(numTests: number) {
-  return `${numTests} test${numTests === 1 ? "" : "s"}`;
-}
 
 async function invokeTests(
   client: AppDistributionClient,
   releaseName: string,
   testDefs: TestCaseInvocation[],
   devices: TestDevice[],
-) {
+): Promise<ReleaseTest[]> {
   try {
-    const testInvocations: ReleaseTest[] = [];
+    const releaseTests: ReleaseTest[] = [];
     for (const testDef of testDefs) {
-      const aiInstruction: AIInstruction = {
+      const aiInstructions: AiInstructions = {
         steps: testDef.testCase.steps,
       };
-      testInvocations.push(
+      releaseTests.push(
         await client.createReleaseTest(
           releaseName,
           devices,
-          aiInstruction,
+          aiInstructions,
           undefined,
           undefined,
           testDef.testCase.displayName,
         ),
       );
     }
-    return testInvocations;
+    return releaseTests;
   } catch (err: unknown) {
     throw new FirebaseError("Test invocation failed", { original: getError(err) });
   }

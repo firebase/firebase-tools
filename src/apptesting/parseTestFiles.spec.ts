@@ -82,7 +82,7 @@ describe("parseTestFiles", () => {
               {
                 goal: "View the provided application",
                 hint: "No additional actions should be necessary",
-                finalScreenAssertion: "The application should load with no obvious errors",
+                successCriteria: "The application should load with no obvious errors",
               },
             ],
           },
@@ -202,6 +202,22 @@ describe("parseTestFiles", () => {
       writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
       writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
       expect(await getTestCaseNames("a$", "xx")).to.eql(["axx"]);
+    });
+
+    it("throws an error for invalid filename regex", async () => {
+      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
+      await expect(getTestCaseNames("*.txt")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid file pattern regex: *.txt",
+      );
+    });
+
+    it("throws an error for invalid test case name regex", async () => {
+      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
+      await expect(getTestCaseNames("", "*.txt")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid test name pattern regex: *.txt",
+      );
     });
   });
 

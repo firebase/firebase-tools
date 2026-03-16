@@ -19,18 +19,18 @@ const TestDeviceSchema = z
     `Device to run automated test on. Can run 'gcloud firebase test android|ios models list' to see available devices.`,
   );
 
-const AIStepSchema = z
+const AiStepSchema = z
   .object({
     goal: z.string().describe("A goal to be accomplished during the test."),
     hint: z
       .string()
       .optional()
       .describe("Hint text containing suggestions to help the agent accomplish the goal."),
-    successCriteria: z
+    finalScreenAssertion: z
       .string()
       .optional()
       .describe(
-        "A description of criteria the agent should use to determine if the goal has been successfully completed.",
+        "A description of what the screen should look like at the end of the step, to determine if the goal has been successfully completed.",
       ),
   })
   .describe("Step within a test case; run during the execution of the test.");
@@ -55,7 +55,7 @@ export const run_tests = tool(
       testDevices: z.array(TestDeviceSchema).default(defaultDevices),
       testCase: z.object({
         steps: z
-          .array(AIStepSchema)
+          .array(AiStepSchema)
           .describe("Test case containing the steps that are run during its execution."),
       }),
     }),
@@ -68,8 +68,8 @@ export const run_tests = tool(
     // For some reason, testDevices can still be
     const devices = testDevices || defaultDevices;
     const client = new AppDistributionClient();
-    const releaseName = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(releaseName, devices, testCase));
+    const release = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
+    return toContent(await client.createReleaseTest(release.name, devices, testCase));
   },
 );
 

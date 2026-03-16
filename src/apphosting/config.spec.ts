@@ -472,4 +472,110 @@ env:
       );
     });
   });
+
+  describe("getAppHostingConfiguration", () => {
+    let loadAppHostingYamlStub: sinon.SinonStub;
+    let listAppHostingFilesInPathStub: sinon.SinonStub;
+
+    const apphostingYamlEnvOne = {
+      randomEnvOne: { value: "ENV_ONE_FROM_CONFIG_ONE" },
+      randomSecretOne: { secret: "SECRET_ONE_FROM_CONFIG_ONE" },
+    };
+    const apphostingYamlEnvTwo = {
+      randomEnvOne: { value: "ENV_ONE_FROM_CONFIG_TWO" },
+      randomSecretTwo: { secret: "SECRET_TWO_FROM_CONFIG_TWO" },
+    };
+    const apphostingYamlSecretToPlaintext = {
+      randomSecretOne: { value: "RANDOM_SECRET_ONE_PLAINTEXT" },
+    };
+
+    const configOne = AppHostingYamlConfig.empty();
+    configOne.env = { ...apphostingYamlEnvOne };
+
+    const configTwo = AppHostingYamlConfig.empty();
+    configTwo.env = { ...apphostingYamlEnvTwo };
+
+    const configSecretsToPlaintext = AppHostingYamlConfig.empty();
+    configSecretsToPlaintext.env = { ...apphostingYamlSecretToPlaintext };
+
+    beforeEach(() => {
+      loadAppHostingYamlStub = sinon.stub(AppHostingYamlConfig, "loadFromFile");
+      listAppHostingFilesInPathStub = sinon.stub(config, "listAppHostingFilesInPath");
+    });
+
+    afterEach(() => {
+      sinon.verifyAndRestore();
+    });
+
+    it("should return an empty config if no base or local apphosting yaml files found", async () => {
+      listAppHostingFilesInPathStub.returns([]);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./");
+      expect(apphostingConfig.env).to.deep.equal({});
+    });
+
+    it("should return local config if only local config found", async () => {
+      listAppHostingFilesInPathStub.returns(["/parent/apphosting.local.yaml"]);
+      loadAppHostingYamlStub.onFirstCall().returns(configOne);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./");
+
+      expect(apphostingConfig.env).to.deep.equal(apphostingYamlEnvOne);
+    });
+
+    it("should combine apphosting yaml files according to precedence", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
+
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.yaml").returns(configOne);
+      loadAppHostingYamlStub
+        .withArgs("/parent/apphosting.local.yaml")
+        .returns(configSecretsToPlaintext);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./");
+
+      expect(apphostingConfig.env).to.deep.equal({
+        ...apphostingYamlEnvOne,
+        ...apphostingYamlSecretToPlaintext,
+      });
+    });
+
+    it("should allow merging all three file types", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+        "/parent/apphosting.local.yaml",
+      ]);
+
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.yaml").returns(configOne);
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.emulator.yaml").returns(configTwo);
+      loadAppHostingYamlStub
+        .withArgs("/parent/apphosting.local.yaml")
+        .returns(configSecretsToPlaintext);
+
+      const apphostingConfig = await config.getAppHostingConfiguration("./");
+
+      expect(apphostingConfig.env).to.deep.equal({
+        ...apphostingYamlEnvOne,
+        ...apphostingYamlEnvTwo,
+        ...apphostingYamlSecretToPlaintext,
+      });
+    });
+
+    it("Should not allow apphosting.emulator.yaml to convert secrets to plaintext", async () => {
+      listAppHostingFilesInPathStub.returns([
+        "/parent/cwd/apphosting.yaml",
+        "/parent/cwd/apphosting.emulator.yaml",
+      ]);
+
+      loadAppHostingYamlStub.withArgs("/parent/cwd/apphosting.yaml").returns(configOne);
+      loadAppHostingYamlStub
+        .withArgs("/parent/cwd/apphosting.emulator.yaml")
+        .returns(configSecretsToPlaintext);
+
+      await expect(config.getAppHostingConfiguration("./")).to.be.rejectedWith(FirebaseError);
+    });
+  });
 });
