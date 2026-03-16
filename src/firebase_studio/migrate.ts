@@ -191,7 +191,6 @@ export async function extractMetadata(
 ): Promise<{
   projectId: string | undefined;
   appName: string;
-  blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
   const studioJsonPath = path.join(rootPath, "studio.json");
@@ -235,13 +234,12 @@ export async function extractMetadata(
     );
   }
 
-  // Extract App Name and Blueprint Content
+  // Extract App Name
   let appName = "firebase-studio-export";
-  let blueprintContent = "";
   const blueprintPath = path.join(rootPath, "docs", "blueprint.md");
   try {
-    blueprintContent = await fs.readFile(blueprintPath, "utf8");
-    const nameMatch = blueprintContent.match(/# \*\*App Name\*\*: (.*)/);
+    const content = await fs.readFile(blueprintPath, "utf8");
+    const nameMatch = content.match(/# \*\*App Name\*\*: (.*)/);
     if (nameMatch && nameMatch[1]) {
       appName = nameMatch[1].trim();
     }
@@ -253,15 +251,10 @@ export async function extractMetadata(
     logger.info(`✅ Detected App Name: ${appName}`);
   }
 
-  return { projectId, appName, blueprintContent };
+  return { projectId, appName };
 }
 
-async function updateReadme(
-  rootPath: string,
-  blueprintContent: string,
-  appName: string,
-  framework: AppType,
-): Promise<void> {
+async function updateReadme(rootPath: string, framework: AppType): Promise<void> {
   // Update README.md
   const readmePath = path.join(rootPath, "README.md");
   const readmeTemplate = await readTemplate("firebase-studio-export/readme_template.md");
@@ -278,12 +271,21 @@ async function updateReadme(
 
   const { startCommand, localUrl } = frameworkConfigs[framework];
 
-  const newReadme = readmeTemplate
-    .replace(/\${appName}/g, appName)
+  let existingReadme = "";
+  try {
+    existingReadme = await fs.readFile(readmePath, "utf8");
+  } catch (err: unknown) {
+    // If README.md doesn't exist, just continue with an empty string
+  }
+
+  let newReadme = readmeTemplate
     .replace("${exportDate}", new Date().toISOString().split("T")[0]) // YYYY-MM-DD format
-    .replace("${blueprintContent}", blueprintContent.replace(/# \*\*App Name\*\*: .*/, "").trim())
     .replace("${startCommand}", startCommand)
     .replace("${localUrl}", localUrl);
+
+  if (existingReadme.trim()) {
+    newReadme += `\n\n---\n\n## Previous README.md contents:\n\n${existingReadme}`;
+  }
 
   await fs.writeFile(readmePath, newReadme);
   logger.info("✅ Updated README.md with project details and origin info");
@@ -335,19 +337,15 @@ async function injectAntigravityContext(
   const systemInstructionsTemplate = await readTemplate(
     "firebase-studio-export/system_instructions_template.md",
   );
-  const systemInstructions = systemInstructionsTemplate
-    .replace("${projectId}", projectId || "None")
-    .replace("${appName}", appName);
+  const systemInstructions = systemInstructionsTemplate.replace("${appName}", appName);
 
   await fs.writeFile(path.join(rulesDir, "migration-context.md"), systemInstructions);
   logger.info("✅ Injected Antigravity rules");
 
-  // Startup Workflow
+  // Cleanup Workflow
   try {
-    const startupWorkflow = await readTemplate(
-      "firebase-studio-export/workflows/startup_workflow.md",
-    );
-    await fs.writeFile(path.join(workflowsDir, "startup.md"), startupWorkflow);
+    const cleanupWorkflow = await readTemplate("firebase-studio-export/workflows/cleanup.md");
+    await fs.writeFile(path.join(workflowsDir, "cleanup.md"), cleanupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -709,13 +707,13 @@ export async function migrate(
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
 
-  const { projectId, appName, blueprintContent } = await extractMetadata(rootPath, options.project);
+  const { projectId, appName } = await extractMetadata(rootPath, options.project);
 
   if (appType) {
     logger.info(`✅ Detected framework: ${appType}`);
   }
 
-  await updateReadme(rootPath, blueprintContent, appName, appType);
+  await updateReadme(rootPath, appType);
   await createFirebaseConfigs(rootPath, projectId);
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
