@@ -117,7 +117,7 @@ async function parseTestFilesRecursive(params: {
           logger.debug(`No tests found in ${path}. Ignoring.`);
           continue;
         }
-        logger.debug(`File contains ${tests.length} tests.`);
+        logger.debug(`File contains ${pluralizeTests(tests.length)}.`);
         const invocations = [];
         for (const rawTestDef of tests) {
           const invocation = toTestCaseInvocation(rawTestDef, targetUri, defaultConfig);
@@ -134,6 +134,10 @@ async function parseTestFilesRecursive(params: {
   }
 
   return results;
+}
+
+export function pluralizeTests(numTests: number) {
+  return `${numTests} test${numTests === 1 ? "" : "s"}`;
 }
 
 function toTestCaseInvocation(
