@@ -4,6 +4,7 @@ import * as nock from "nock";
 import { functionsOrigin } from "../api";
 
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v1";
 import * as cloudfunctions from "./cloudfunctions";
 import * as projectConfig from "../functions/projectConfig";
@@ -48,6 +49,65 @@ describe("cloudfunctions", () => {
   after(() => {
     expect(nock.isDone()).to.be.true;
     nock.enableNetConnect();
+  });
+
+  describe("terraformFromEndpoint", () => {
+    const BUCKET: any = { "@type": "HCLExpression", value: "bucket" };
+    const ARCHIVE: any = { "@type": "HCLExpression", value: "archive" };
+
+    it("should reject non-gcfv1 endpoints", () => {
+      expect(() => {
+        cloudfunctions.terraformFromEndpoint(
+          "id",
+          { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        );
+      }).to.throw("Cannot create 1st gen function terraform for endpoint id with platform gcfv2");
+    });
+
+    it("should reject invalid runtimes", () => {
+      expect(() => {
+        cloudfunctions.terraformFromEndpoint(
+          "id",
+          { ...ENDPOINT, runtime: "invalid" as any, httpsTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        );
+      }).to.throw("Cannot create 1st gen function terraform for endpoint id with invalid runtime invalid");
+    });
+
+    it("should return just compute resource if no invoker is present", () => {
+      const actual = cloudfunctions.terraformFromEndpoint(
+        "id",
+        {
+          ...ENDPOINT,
+          eventTrigger: {
+            eventType: "google.pubsub.topic.publish",
+            eventFilters: { resource: "projects/p/topics/t" },
+            retry: false,
+          },
+        } as unknown as build.Endpoint,
+        BUCKET,
+        ARCHIVE,
+      );
+
+      expect(actual.length).to.equal(1);
+      expect(actual[0].resourceType).to.equal("google_cloudfunctions_function");
+    });
+
+    it("should return compute and permissions resources if invoker is present", () => {
+      const actual = cloudfunctions.terraformFromEndpoint(
+        "id",
+        { ...ENDPOINT, httpsTrigger: { invoker: ["public"] } } as unknown as build.Endpoint,
+        BUCKET,
+        ARCHIVE,
+      );
+
+      expect(actual.length).to.equal(2);
+      expect(actual[0].resourceType).to.equal("google_cloudfunctions_function");
+      expect(actual[1].resourceType).to.equal("google_cloudfunctions_function_iam_binding");
+    });
   });
 
   describe("functionFromEndpoint", () => {

@@ -3,6 +3,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import * as utils from "../utils";
 import * as proto from "./proto";
 import * as supported from "../deploy/functions/runtimes/supported";
@@ -18,6 +19,8 @@ import {
   CODEBASE_LABEL,
   HASH_LABEL,
 } from "../functions/constants";
+import * as tf from "../deploy/functions/iac/terraform";
+import { assertExhaustive } from "../functional";
 
 export const API_VERSION = "v1";
 const client = new Client({ urlPrefix: functionsOrigin(), apiVersion: API_VERSION });
@@ -737,4 +740,157 @@ export function functionFromEndpoint(
     };
   }
   return gcfFunction;
+}
+
+/**
+ * Create Terraform resource blocks for all resources associated with a Cloud Function.
+ * Assumes source information provided upstream.
+ * See: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/cloudfunctions_function
+ */
+// Missing types: Tasks, Schedules, IAM roles
+// Field support for region (cannot know if it's a list or string without access to the params block)
+// NOTE: Do we have ABIU in firebase-functions? Think that's only App Hosting. Leaving update policy as default for now.
+// NOTE:  I think we might have to do a lot of resolving that Build normally does? E.g. resource names?
+export function terraformFromEndpoint(id: string, endpoint: build.Endpoint, bucket: tf.Expression, archive: tf.Expression): tf.ResourceBlock[] {
+  if (endpoint.platform !== "gcfv1") {
+    throw new FirebaseError(`Cannot create 1st gen function terraform for endpoint ${id} with platform ${endpoint.platform}`, { exit: 1 });
+  }
+  if (!endpoint.runtime || !supported.isRuntime(endpoint.runtime)) {
+    throw new FirebaseError(`Cannot create 1st gen function terraform for endpoint ${id} with invalid runtime ${endpoint.runtime}`, { exit: 1 });
+  }
+
+  const compute = functionTerraform(id, endpoint, bucket, archive);
+  const permissions = invokerTerraform(id, endpoint);
+  return [
+    compute,
+    ...(permissions ? [permissions] : []),
+    // TODO: advanced triggers
+  ];
+}
+
+// Exported just for testing.
+export function functionTerraform(id: string, endpoint: build.Endpoint, bucket: tf.Expression, archive: tf.Expression): tf.ResourceBlock {
+  const attributes: Record<string, tf.Value> = {
+    name: id,
+    runtime: endpoint.runtime,
+    source_archive_bucket: bucket,
+    source_archive_object: archive,
+    docker_repository: "ARTIFACT_REGISTRY",
+  };
+
+  if (typeof endpoint.region === "string") {
+    if (endpoint.region.includes("{{")) {
+      throw new FirebaseError("Functions with parameterized regions are not supported in Terraform yet", { exit: 1 });
+    }
+    attributes["region"] = endpoint.region;
+  } else if (Array.isArray(endpoint.region)) {
+    attributes["for_each"] = tf.expr(`toSet(${JSON.stringify(endpoint.region)})`);
+    attributes["region"] = tf.expr("each.value");
+  }
+
+
+  tf.copyField(attributes, endpoint, "entryPoint");
+  tf.copyField(attributes, endpoint, "availableMemoryMb");
+  tf.copyField(attributes, endpoint, "serviceAccount");
+  tf.copyField(attributes, endpoint, "minInstances");
+  tf.copyField(attributes, endpoint, "maxInstances");
+
+
+  tf.renameField(attributes, endpoint, "service_account_email", "serviceAccount");
+  tf.renameField(attributes, endpoint, "timeout", "timeoutSeconds");
+
+  // Nit: I could make copyField do this correctly, but the type decls get even more ugly
+  if (endpoint.environmentVariables) {
+    attributes["environment_variables"] = endpoint.environmentVariables;
+  }
+  if (endpoint.secretEnvironmentVariables) {
+    attributes["secret_environment_variables"] = endpoint.secretEnvironmentVariables.map((secret) => {
+      return {
+        key: secret.key,
+        secret: secret.secret,
+        // TODO: Where does this get resolved normally?
+        version: "latest",
+      }
+    })
+  }
+  if (endpoint.vpc) {
+    tf.renameField(attributes, endpoint.vpc, "vpc_connector", "connector");
+    tf.renameField(attributes, endpoint.vpc, "vpc_connector_egress_settings", "egressSettings");
+  }
+
+  const functionLabels: Record<string, string> = {
+    ...endpoint.labels,
+    "firebase-functions-codebase": "functions",
+    "firebase-functions-id": id,
+  };
+
+  attributes.labels = {
+    ...endpoint.labels,
+  } as Record<string, string>;
+
+  if (build.isHttpsTriggered(endpoint) || build.isCallableTriggered(endpoint)) {
+    attributes["https_trigger_security_level"] = "SECURE_ALWAYS";
+    attributes["trigger_http"] = true;
+    if (build.isCallableTriggered(endpoint)) {
+      attributes["labels"]["deployment-callable"] = "true";
+      // Note: Genkit callables are only v2
+    }
+  } else if (build.isEventTriggered(endpoint)) {
+    if (typeof endpoint.eventTrigger.retry === "string") {
+      throw new FirebaseError("Cannot have a parameterized retry policy in terraform yet", { exit: 1 });
+    }
+    attributes["event_trigger"] = {
+      event_type: endpoint.eventTrigger.eventType,
+      // V1 always uses "resource" as its event filter and it is always required.
+      resource: endpoint.eventTrigger.eventFilters!.resource!,
+      //failure_policy: (endpoint.eventTrigger.retry ? { retry: {} } : undefined) as unknown as tf.Value
+    };
+  } else if (build.isScheduleTriggered(endpoint)) {
+    throw new FirebaseError("Scheduled functions are nto supported in terraform yet", { exit: 1 });
+  } else if (build.isTaskQueueTriggered(endpoint)) {
+    throw new FirebaseError("Task queue functions are nto supported in terraform yet", { exit: 1 });
+  } else if (build.isBlockingTriggered(endpoint)) {
+    throw new FirebaseError("Blocking functions are nto supported in terraform yet", { exit: 1 });
+  } else if (build.isDataConnectGraphqlTriggered(endpoint)) {
+    throw new FirebaseError("Data connector functions are nto supported in terraform yet", { exit: 1 });
+  } else {
+    // There is no valid endpoint because we've handled every valid trigger type before this.
+    assertExhaustive(endpoint);
+  }
+
+  return {
+    type: "resource",
+    resourceType: "google_cloudfunctions_function",
+    resourceName: utils.toLowerSnakeCase(id),
+    attributes,
+  };
+}
+
+export function invokerTerraform(id: string, endpoint: build.Endpoint): tf.ResourceBlock | null {
+  let members: string[] = [];
+
+  if (!build.isCallableTriggered(endpoint) && !build.isHttpsTriggered(endpoint)) {
+    return null;
+  }
+  if (build.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
+    const invoker = endpoint.httpsTrigger.invoker;
+    if (invoker.includes("private")) {
+      members = [];
+    } else if (invoker.includes("public")) {
+      members = ["allUsers"];
+    } else if (Array.isArray(invoker)) {
+      members = invoker.map((sa) => proto.formatServiceAccount(sa, endpoint.project));
+    }
+  }
+
+  return {
+    type: "resource",
+    resourceType: "google_cloudfunctions_function_iam_binding",
+    resourceName: utils.toLowerSnakeCase(id),
+    attributes: {
+      function: id,
+      role: "roles/cloudfunctions.invoker",
+      members: members,
+    },
+  };
 }
