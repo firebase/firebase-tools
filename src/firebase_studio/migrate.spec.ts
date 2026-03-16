@@ -242,7 +242,7 @@ describe("migrate", () => {
             "add",
             "firebase/agent-skills",
             "-a",
-            "antigravity",
+            "gemini-cli",
             "--skill",
             "*",
             "-y",

@@ -280,8 +280,8 @@ async function injectAntigravityContext(
   try {
     const result = spawnSync(
       "npx",
-      // gemini-CLI chosen for the .agents subfolder (instead of .agent) which is current for
-      // antigravity's location from vercel.
+      // gemini-CLI is chosen as a workaround for the .agents subfolder (instead of .agent)
+      // which is current for antigravity's location from vercel.
       ["-y", "skills", "add", "firebase/agent-skills", "-a", "gemini-cli", "--skill", "*", "-y"],
       {
         cwd: rootPath,
