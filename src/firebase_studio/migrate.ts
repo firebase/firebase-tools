@@ -27,7 +27,7 @@ interface McpConfig {
   mcpServers: Record<string, McpServerConfig>;
 }
 
-async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
+async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): Promise<void> {
   const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
   const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
@@ -50,18 +50,41 @@ async function setupAntigravityMcpServer(rootPath: string): Promise<void> {
       }
     }
 
-    if (mcpConfig.mcpServers["firebase"]) {
+    let updated = false;
+
+    if (!mcpConfig.mcpServers["firebase"]) {
+      mcpConfig.mcpServers["firebase"] = {
+        command: "npx",
+        args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+      };
+      updated = true;
+      logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+    } else {
       logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
-      return;
     }
 
-    mcpConfig.mcpServers["firebase"] = {
-      command: "npx",
-      args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
-    };
+    if (appType === "FLUTTER") {
+      if (utils.commandExistsSync("dart")) {
+        if (!mcpConfig.mcpServers["dart"]) {
+          mcpConfig.mcpServers["dart"] = {
+            command: "dart",
+            args: ["mcp-server"],
+          };
+          updated = true;
+          logger.info(`✅ Configured Dart MCP server in ${mcpConfigPath}`);
+        } else {
+          logger.info("ℹ️ Dart MCP server already configured in Antigravity, skipping.");
+        }
+      } else {
+        utils.logWarning(
+          "Couldn't find Dart/Flutter on PATH. Install Flutter by following the instruction at https://docs.flutter.dev/install.",
+        );
+      }
+    }
 
-    await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
-    logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+    if (updated) {
+      await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
+    }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
@@ -129,7 +152,6 @@ async function detectAppType(rootPath: string): Promise<AppType> {
   return "OTHER";
 }
 
-// TODO revisit quota limits
 async function downloadGitHubDir(apiUrl: string, localPath: string): Promise<void> {
   const response = await fetch(apiUrl);
   if (!response.ok) {
@@ -172,13 +194,18 @@ export async function extractMetadata(
   blueprintContent: string;
 }> {
   // Verify export & Extract Metadata
+  const studioJsonPath = path.join(rootPath, "studio.json");
   const metadataPath = path.join(rootPath, "metadata.json");
   let metadata: Metadata = {};
-  try {
-    const metadataContent = await fs.readFile(metadataPath, "utf8");
-    metadata = JSON.parse(metadataContent) as Metadata;
-  } catch (err: unknown) {
-    logger.debug(`Could not read metadata.json at ${metadataPath}: ${err}`);
+  // Try to read studio.json aka metadata.json. Preference given to studio.json
+  for (const metadataFile of [metadataPath, studioJsonPath]) {
+    try {
+      const metadataContent = await fs.readFile(metadataFile, "utf8");
+      metadata = JSON.parse(metadataContent) as Metadata;
+      logger.info(`✅ Read ${metadataFile}`);
+    } catch (err: unknown) {
+      logger.debug(`Could not read metadata at ${metadataFile}: ${err}`);
+    }
   }
 
   logger.debug(`overrideProjectId ${overrideProjectId}`);
@@ -203,9 +230,8 @@ export async function extractMetadata(
     }
     logger.info(`✅ Using Firebase Project: ${projectId}`);
   } else {
-    // TODO need a mitigation here
-    logger.info(
-      `❌ Failed to determine the Firebase Project ID. You can set a project later with 'firebase use <project-id>' or by setting the '--project' flag.`,
+    logger.debug(
+      `❌ Failed to determine the Firebase Project ID. You can set a project later by setting the '--project' flag.`,
     );
   }
 
@@ -694,7 +720,7 @@ export async function migrate(
   await uploadSecrets(rootPath, projectId);
   await injectAntigravityContext(rootPath, projectId, appName);
   await writeAntigravityConfigs(rootPath, appType);
-  await setupAntigravityMcpServer(rootPath);
+  await setupAntigravityMcpServer(rootPath, appType);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
