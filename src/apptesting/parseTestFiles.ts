@@ -35,8 +35,8 @@ export async function parseTestFiles(
       {} as Record<string, TestCaseInvocation>,
     );
 
-  const fileFilterFn = createFilter(filePattern);
-  const nameFilterFn = createFilter(namePattern);
+  const fileFilterFn = createFilter(filePattern, "file pattern");
+  const nameFilterFn = createFilter(namePattern, "test name pattern");
   const filteredInvocations = files
     .filter((file) => fileFilterFn(file.path))
     .flatMap((file) => file.invocations)
@@ -76,9 +76,17 @@ export async function parseTestFiles(
   });
 }
 
-function createFilter(pattern?: string) {
-  const regex = pattern ? new RegExp(pattern) : undefined;
-  return (s: string) => !regex || regex.test(s);
+function createFilter(pattern?: string, context?: string) {
+  try {
+    const regex = pattern ? new RegExp(pattern) : undefined;
+    return (s: string) => !regex || regex.test(s);
+  } catch (ex) {
+    if (ex instanceof SyntaxError) {
+      const errMsg = context ? `Invalid ${context} regex: ${pattern}` : `Invalid regex: ${pattern}`;
+      throw new FirebaseError(errMsg, { original: getError(ex) });
+    }
+    throw ex;
+  }
 }
 
 interface TestCaseFile {

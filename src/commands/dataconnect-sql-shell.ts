@@ -104,7 +104,7 @@ export const command = new Command("dataconnect:sql:shell")
       options.service,
       options.location,
     );
-    const { instanceId, databaseId } = getIdentifiers(mainSchema(serviceInfo.schemas));
+    const { instanceId, databaseId, schemaName } = getIdentifiers(mainSchema(serviceInfo.schemas));
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 
@@ -129,6 +129,9 @@ export const command = new Command("dataconnect:sql:shell")
       database: databaseId,
     });
     const conn: pg.PoolClient = await pool.connect();
+
+    // Set search_path to the configured PostgreSQL schema so unqualified table names resolve correctly.
+    await conn.query(`SET search_path TO "${schemaName}"`);
 
     logger.info(`Logged in as ${username}`);
     logger.info(clc.cyan("Welcome to Data Connect Cloud SQL Shell"));
