@@ -1,6 +1,6 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
-import { parseTestFiles } from "../apptesting/parseTestFiles";
+import { parseTestFiles, pluralizeTests } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
@@ -67,8 +67,9 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
 
     if (!tests.length) {
-      throw new FirebaseError("No tests found");
+      throw new FirebaseError(`No tests found under test directory ${testDir}`);
     }
+    utils.logBullet(`Found ${pluralizeTests(tests.length)} to run under test directory ${testDir}`);
 
     const invokeSpinner = ora("Requesting test execution");
     const client = new AppDistributionClient();
@@ -103,10 +104,6 @@ export const command = new Command("apptesting:execute <release-binary-file>")
       );
     }
   });
-
-function pluralizeTests(numTests: number) {
-  return `${numTests} test${numTests === 1 ? "" : "s"}`;
-}
 
 async function invokeTests(
   client: AppDistributionClient,
