@@ -1,6 +1,6 @@
 ---
-name: Initial Project Setup
-description: Run initial checks and fix common migration issues
+name: Cleanup
+description: Run initial checks and clean up dead files.
 ---
 
 # Step 1: Check Compilation
