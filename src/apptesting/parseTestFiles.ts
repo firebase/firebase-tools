@@ -106,7 +106,7 @@ async function parseTestFilesRecursive(params: {
     const path = join(testDir, item);
     if (dirExistsSync(path)) {
       results.push(...(await parseTestFilesRecursive({ testDir: path, targetUri })));
-    } else if (fileExistsSync(path) && path.endsWith(".yaml")) {
+    } else if (fileExistsSync(path) && (path.endsWith(".yaml") || path.endsWith(".yml"))) {
       try {
         const file = await readFileFromDirectory(testDir, item);
         logger.debug(`Read the file ${file.source}.`);
