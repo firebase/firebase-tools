@@ -431,6 +431,12 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.true;
     });
 
+    it("should delete .idx/mcp.json if it exists", async () => {
+      const unlinkStub = sandbox.stub(fs, "unlink").resolves();
+      await migrate(testRoot);
+      expect(unlinkStub.calledWith(path.join(testRoot, ".idx", "mcp.json"))).to.be.true;
+    });
+
     it("should configure Dart MCP server for Flutter apps if dart is available", async () => {
       accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
       commandStub.withArgs("dart").returns(true);

@@ -596,6 +596,15 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     logger.debug(`Could not delete ${modifiedPath}: ${message}`);
   }
+
+  const mcpJsonPath = path.join(rootPath, ".idx", "mcp.json");
+  try {
+    await fs.unlink(mcpJsonPath);
+    logger.info("✅ Cleaned up .idx/mcp.json");
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.debug(`Could not delete ${mcpJsonPath}: ${message}`);
+  }
 }
 
 export async function uploadSecrets(
