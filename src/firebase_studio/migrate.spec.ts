@@ -56,7 +56,6 @@ describe("migrate", () => {
     let commandStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
-    let inputStub: sinon.SinonStub;
     let spawnStub: sinon.SinonStub;
 
     beforeEach(() => {
