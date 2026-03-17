@@ -53,12 +53,23 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
     let updated = false;
 
     if (!mcpConfig.mcpServers["firebase"]) {
-      mcpConfig.mcpServers["firebase"] = {
-        command: "npx",
-        args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
-      };
-      updated = true;
-      logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+      if (utils.commandExistsSync("npx")) {
+        const confirmFirebase = await prompt.confirm({
+          message: "Would you like to enable the Firebase MCP server for Antigravity?",
+          default: true,
+        });
+
+        if (confirmFirebase) {
+          mcpConfig.mcpServers["firebase"] = {
+            command: "npx",
+            args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+          };
+          updated = true;
+          logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+        }
+      } else {
+        logger.info("ℹ️ npx not found on PATH, skipping Firebase MCP server configuration.");
+      }
     } else {
       logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
     }
@@ -66,12 +77,19 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
     if (appType === "FLUTTER") {
       if (utils.commandExistsSync("dart")) {
         if (!mcpConfig.mcpServers["dart"]) {
-          mcpConfig.mcpServers["dart"] = {
-            command: "dart",
-            args: ["mcp-server"],
-          };
-          updated = true;
-          logger.info(`✅ Configured Dart MCP server in ${mcpConfigPath}`);
+          const confirmDart = await prompt.confirm({
+            message: "Would you like to enable the Dart MCP server for Antigravity?",
+            default: true,
+          });
+
+          if (confirmDart) {
+            mcpConfig.mcpServers["dart"] = {
+              command: "dart",
+              args: ["mcp-server"],
+            };
+            updated = true;
+            logger.info(`✅ Configured Dart MCP server in ${mcpConfigPath}`);
+          }
         } else {
           logger.info("ℹ️ Dart MCP server already configured in Antigravity, skipping.");
         }
@@ -280,7 +298,9 @@ async function injectAntigravityContext(
   try {
     const result = spawnSync(
       "npx",
-      ["-y", "skills", "add", "firebase/agent-skills", "-a", "antigravity", "--skill", "*", "-y"],
+      // gemini-CLI is chosen as a workaround for the .agents subfolder (instead of .agent)
+      // which is current for antigravity's location from vercel.
+      ["-y", "skills", "add", "firebase/agent-skills", "-a", "gemini-cli", "--skill", "*", "-y"],
       {
         cwd: rootPath,
         stdio: "ignore",
