@@ -605,18 +605,18 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
  */
 async function upgradeGenkitVersion(rootPath: string): Promise<void> {
   const GENKIT_VERSION_MAP: Record<string, string> = {
-    "genkit": "1.29",
-    "genkit-cli": "1.29",
+    "genkit": "1.30",
+    "genkit-cli": "1.30",
     "@genkit-ai/googleai": "1.28",
-    "@genkit-ai/next": "1.29",
-    "@genkit-ai/ai": "1.29",
-    "@genkit-ai/core": "1.29",
-    "@genkit-ai/dotprompt": "1.29",
-    "@genkit-ai/flow": "1.29",
-    "@genkit-ai/vertexai": "1.29",
-    "@genkit-ai/firebase": "1.29",
-    "@genkit-ai/dev-tools": "1.29",
-    "@genkit-ai/google-genai": "1.29",
+    "@genkit-ai/next": "1.30",
+    "@genkit-ai/ai": "1.30",
+    "@genkit-ai/core": "1.30",
+    "@genkit-ai/dotprompt": "1.30",
+    "@genkit-ai/flow": "1.30",
+    "@genkit-ai/vertexai": "1.30",
+    "@genkit-ai/firebase": "1.30",
+    "@genkit-ai/dev-tools": "1.30",
+    "@genkit-ai/google-genai": "1.30",
   };
 
   const packageJsonPath = path.join(rootPath, "package.json");

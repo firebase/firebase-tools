@@ -437,10 +437,10 @@ describe("migrate", () => {
       const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
-      expect(packageJson.dependencies.genkit).to.equal("1.29");
+      expect(packageJson.dependencies.genkit).to.equal("1.30");
       expect(packageJson.dependencies["@genkit-ai/googleai"]).to.equal("1.28");
-      expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("1.29");
-      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
+      expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("1.30");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.30");
       expect(packageJson.dependencies.next).to.equal("14.0.0");
     });
 
