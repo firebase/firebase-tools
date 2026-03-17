@@ -308,6 +308,11 @@ describe("migrate", () => {
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(true);
+
       await migrate(testRoot);
 
       expect(mkdirStub.calledWith(path.join(testRoot, ".agents", "rules"), { recursive: true })).to
@@ -601,6 +606,68 @@ describe("migrate", () => {
       const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
       expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart"/))).to.be.false;
+    });
+
+    it("should prompt user for Firebase MCP server and configure if they confirm", async () => {
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(true);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.true;
+    });
+
+    it("should prompt user for Firebase MCP server and NOT configure if they decline", async () => {
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.false;
+    });
+
+    it("should skip Firebase MCP server if npx is not available", async () => {
+      commandStub.withArgs("npx").returns(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.false;
+    });
+
+    it("should prompt user for Dart MCP server and configure if they confirm", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(true);
+      confirmStub.withArgs(sinon.match({ message: sinon.match(/Dart MCP server/) })).resolves(true);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.true;
+    });
+
+    it("should prompt user for Dart MCP server and NOT configure if they decline", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Dart MCP server/) }))
+        .resolves(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.false;
     });
   });
 
