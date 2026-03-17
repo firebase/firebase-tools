@@ -41,7 +41,11 @@ describe("export", () => {
       mockDelegate.discoverBuild.resolves(mockBuild);
 
       const options = { config: { path: (s: string) => s, projectDir: "dir" } };
-      const codebase: projectConfig.ValidatedSingle = { source: "src", codebase: "default", runtime: "nodejs18" };
+      const codebase: projectConfig.ValidatedSingle = {
+        source: "src",
+        codebase: "default",
+        runtime: "nodejs18",
+      };
 
       const result = await exportIac.getInternalIac(options, codebase);
 
@@ -75,7 +79,11 @@ describe("export", () => {
       mockDelegate.discoverBuild.resolves(mockBuild);
 
       const options = { config: { path: (s: string) => s, projectDir: "dir" } };
-      const codebase: projectConfig.ValidatedSingle = { source: "src", codebase: "default", runtime: "nodejs18" };
+      const codebase: projectConfig.ValidatedSingle = {
+        source: "src",
+        codebase: "default",
+        runtime: "nodejs18",
+      };
 
       const result = await exportIac.getTerraformIac(options, codebase);
 

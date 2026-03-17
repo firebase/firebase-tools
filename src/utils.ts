@@ -1061,5 +1061,7 @@ export function resolveWithin(base: string, subPath: string, errMsg?: string): s
  * Useful for converting camelCase for Python or Terraform
  */
 export function toLowerSnakeCase(s: string): string {
-  return s.replace(/[A-Z]/g, (letter, index) => `${index > 0 ? '_' : ''}${letter.toLowerCase()}`).replace(/-/g, "_");
+  return s
+    .replace(/[A-Z]/g, (letter, index) => `${index > 0 ? "_" : ""}${letter.toLowerCase()}`)
+    .replace(/-/g, "_");
 }

@@ -150,7 +150,7 @@ describe("cloudfunctions", () => {
         ...BUILD_ENDPOINT,
         region: ["asia-east1"],
         httpsTrigger: {},
-      }; 
+      };
       actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
       expect(actual.attributes["region"]).to.equal("asia-east1");
 
@@ -159,7 +159,7 @@ describe("cloudfunctions", () => {
         ...BUILD_ENDPOINT,
         region: ["us-central1", "us-east1"],
         httpsTrigger: {},
-      }; 
+      };
       actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
       expect(actual.attributes["for_each"]).to.deep.equal({
         "@type": "HCLExpression",

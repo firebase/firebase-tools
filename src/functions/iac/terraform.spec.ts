@@ -57,7 +57,7 @@ describe("terraform iac", () => {
 
     it("should throw for other parameterized fields", () => {
       expect(() => tf.serializeValue("param: {{ params.OTHER }}")).to.throw(
-        "Generalized parameterized fields are not supported in terraform yet"
+        "Generalized parameterized fields are not supported in terraform yet",
       );
     });
 
