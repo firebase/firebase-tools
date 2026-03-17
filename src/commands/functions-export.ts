@@ -25,8 +25,7 @@ export const command = new Command("functions:export")
     let codebaseConfig;
     if (options.codebase) {
       codebaseConfig = configForCodebase(config, options.codebase);
-    }
-    if (config.length === 1) {
+    } else if (config.length === 1) {
       codebaseConfig = config[0];
     } else {
       codebaseConfig = configForCodebase(config, "default");
