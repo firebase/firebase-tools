@@ -614,24 +614,16 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
     let modified = false;
 
     if (
-      packageJson.dependencies?.["genkit-cli"] &&
-      packageJson.dependencies["genkit-cli"] !== "1.30"
-    ) {
-      packageJson.dependencies["genkit-cli"] = "1.30";
-      modified = true;
-    }
-
-    if (
       packageJson.devDependencies?.["genkit-cli"] &&
-      packageJson.devDependencies["genkit-cli"] !== "1.30"
+      packageJson.devDependencies["genkit-cli"] !== "^1.28.0"
     ) {
-      packageJson.devDependencies["genkit-cli"] = "1.30";
+      packageJson.devDependencies["genkit-cli"] = "^1.28.0";
       modified = true;
     }
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-      logger.info("✅ Upgraded genkit-cli version to 1.30 in package.json");
+      logger.info("✅ Upgraded genkit-cli version to 1.28 in package.json");
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

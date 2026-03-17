@@ -405,7 +405,7 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
-    it("should only upgrade genkit-cli version to 1.30 if present in package.json", async () => {
+    it("should only upgrade genkit-cli version to ^1.28.0 if present in package.json", async () => {
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -436,7 +436,7 @@ describe("migrate", () => {
       const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
-      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.30");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("^1.28.0");
       expect(packageJson.dependencies.genkit).to.equal("1.0.0");
       expect(packageJson.dependencies["@genkit-ai/googleai"]).to.equal("1.0.0");
       expect(packageJson.dependencies.next).to.equal("14.0.0");
