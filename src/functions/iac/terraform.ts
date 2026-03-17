@@ -12,7 +12,7 @@ export interface Expression {
 }
 
 /**
- *
+ * Shorthand to create an expression that won't be quoted in the generated HCL.
  */
 export function expr(string: string): Expression {
   return { "@type": "HCLExpression", value: string };
@@ -42,7 +42,9 @@ export interface Block {
 }
 
 /**
- *
+ * Copy a field from a TypeScript interface into a Terraform HCL attribute map.
+ * Automatically converts the field name to lower snake case.
+ * Supports an optional transform function.
  */
 export function copyField<
   Kind extends string | number | boolean,
@@ -58,7 +60,9 @@ export function copyField<
 }
 
 /**
- *
+ * Moves a field from a TypeScript interface to a Terraform HCL attribute map with explicit naming.
+ * Skips over the field if it is missing from the original input.
+ * Supports an optional transform function.
  */
 export function renameField<
   Kind extends string | number | boolean,
@@ -72,7 +76,7 @@ export function renameField<
   transform: (v: NonNullable<Field<Kind>>) => Value = (v) => v,
 ): void {
   const val = source[sourceField];
-  // Reset is always the behavior.
+  // Terraform is always authorative. Leaving out val will reset the field
   if (val === null || val === undefined) {
     return;
   }
@@ -81,7 +85,7 @@ export function renameField<
 }
 
 /**
- *
+ * Fully qualifies project-relative SAs using the project variable.
  */
 export function serviceAccount(sa: string): string {
   if (sa.endsWith("@")) {
@@ -91,7 +95,10 @@ export function serviceAccount(sa: string): string {
 }
 
 /**
- *
+ * Serializes a Terraform Value to a string.
+ * This is the recursive function that serializes blocks.
+ * N.B. strings must be JSON encoded (e.g. have " around them and escape other quotes)
+ * so they can be distinguished from bare strings which are HCL expressions (e.g. var refs).
  */
 export function serializeValue(value: Value, indentation = 0): string {
   if (typeof value === "string") {
@@ -107,7 +114,7 @@ export function serializeValue(value: Value, indentation = 0): string {
   } else if (value === null || value === undefined) {
     return "null";
   } else if (Array.isArray(value)) {
-    if (value.some((e) => typeof e === "object")) {
+    if (value.some((e) => e !== null && typeof e === "object")) {
       return `[\n${value.map((v) => "  ".repeat(indentation + 1) + serializeValue(v, indentation + 1)).join(",\n")}\n${"  ".repeat(indentation)}]`;
     }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
@@ -124,7 +131,7 @@ export function serializeValue(value: Value, indentation = 0): string {
 }
 
 /**
- *
+ * Converts a block to a string.
  */
 export function blockToString(block: Block): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");

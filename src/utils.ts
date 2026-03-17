@@ -977,13 +977,10 @@ export async function promptForDirectory(args: {
   return dir;
 }
 
-/*
+/**
  * Deeply compares two JSON-serializable objects.
  * It's a simplified version of a deep equal function, sufficient for comparing the structure
  * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
- */
-/**
- *
  */
 export function deepEqual(a: any, b: any): boolean {
   if (a === b) {
@@ -1065,6 +1062,8 @@ export function resolveWithin(base: string, subPath: string, errMsg?: string): s
  */
 export function toLowerSnakeCase(s: string): string {
   return s
-    .replace(/[A-Z]/g, (letter, index) => `${index > 0 ? "_" : ""}${letter.toLowerCase()}`)
-    .replace(/-/g, "_");
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[-\s]+/g, "_")
+    .toLowerCase();
 }
