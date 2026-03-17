@@ -14,16 +14,18 @@ describe("export", () => {
 
   const mockDelegate = {
     language: "nodejs",
-    runtime: "nodejs18",
+    runtime: supported.latest("nodejs"),
     validate: sinon.stub(),
     build: sinon.stub(),
     discoverBuild: sinon.stub(),
-  };
+    bin: "node",
+    watch: sinon.stub(),
+  } as const;
 
   beforeEach(() => {
     sinon.stub(functionsConfig, "getFirebaseConfig").resolves({ projectId: "my-project" });
     sinon.stub(functionsEnv, "loadFirebaseEnvs").returns({});
-    sinon.stub(runtimes, "getRuntimeDelegate").resolves(mockDelegate as any);
+    sinon.stub(runtimes, "getRuntimeDelegate").resolves(mockDelegate);
     sinon.stub(supported, "guardVersionSupport");
     needProjectIdStub = sinon.stub(projectUtils, "needProjectId").returns("my-project");
   });
@@ -44,7 +46,7 @@ describe("export", () => {
       const codebase: projectConfig.ValidatedSingle = {
         source: "src",
         codebase: "default",
-        runtime: "nodejs18",
+        runtime: supported.latest("nodejs") as supported.ActiveRuntime,
       };
 
       const result = await exportIac.getInternalIac(options, codebase);
@@ -56,6 +58,33 @@ describe("export", () => {
       expect(result).to.deep.equal({
         "functions.yaml": yaml.dump(mockBuild),
       });
+    });
+
+    it("should throw if codebase has no source", async () => {
+      const options = { config: { path: (s: string) => s, projectDir: "dir" } };
+      const codebase: projectConfig.ValidatedSingle = {
+        codebase: "default",
+        runtime: supported.latest("nodejs") as supported.ActiveRuntime,
+      } as unknown as projectConfig.ValidatedSingle;
+
+      await expect(exportIac.getInternalIac(options, codebase)).to.be.rejectedWith(
+        "Cannot export a codebase with no source",
+      );
+    });
+
+    it("should throw an error if discoverBuild fails", async () => {
+      mockDelegate.discoverBuild.rejects(new Error("Failed to discover build"));
+
+      const options = { config: { path: (s: string) => s, projectDir: "dir" } };
+      const codebase: projectConfig.ValidatedSingle = {
+        source: "src",
+        codebase: "default",
+        runtime: supported.latest("nodejs") as supported.ActiveRuntime,
+      };
+
+      await expect(exportIac.getInternalIac(options, codebase)).to.be.rejectedWith(
+        "Failed to discover build",
+      );
     });
   });
 });

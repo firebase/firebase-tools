@@ -6,6 +6,7 @@ import * as functionsEnv from "../../functions/env";
 import { logger } from "../../logger";
 import * as yaml from "js-yaml";
 import { needProjectId } from "../../projectUtils";
+import { FirebaseError } from "../../error";
 
 export type Exporter = (
   options: any,
@@ -13,12 +14,15 @@ export type Exporter = (
 ) => Promise<Record<string, string>>;
 
 /**
- *
+ * Exports the functions.yaml format of the codebase.
  */
 export async function getInternalIac(
   options: any,
   codebase: projectConfig.ValidatedSingle,
 ): Promise<Record<string, string>> {
+  if (!codebase.source) {
+    throw new FirebaseError("Cannot export a codebase with no source");
+  }
   const projectId = needProjectId(options);
 
   const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
@@ -26,7 +30,7 @@ export async function getInternalIac(
 
   const delegateContext: runtimes.DelegateContext = {
     projectId,
-    sourceDir: options.config.path(codebase.source!),
+    sourceDir: options.config.path(codebase.source),
     projectDir: options.config.projectDir,
     runtime: codebase.runtime,
   };
