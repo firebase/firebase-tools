@@ -20,6 +20,7 @@ COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
 RUN npm install && npm update
+RUN chmod -R 755 /usr/local/node_packages /usr/local/lib/node_modules
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 
 WORKDIR /
