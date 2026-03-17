@@ -117,21 +117,20 @@ steps:
     args:
       - "-c"
       - |
-        VERSION=$(cat /workspace/version_number.txt)
-        echo "Waiting for firebase-tools@$VERSION to be available on npm..."
+        echo "Waiting for firebase-tools@$(cat /workspace/version_number.txt) to be available on npm..."
         timeout=300
         elapsed=0
         interval=15
-        until npm view "firebase-tools@$VERSION" > /dev/null 2>&1; do
-          if [ $elapsed -ge $timeout ]; then
+        until npm view "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+          if [ $$elapsed -ge $$timeout ]; then
             echo "Timeout waiting for package."
             exit 1
           fi
           echo "Still waiting..."
-          sleep $interval
-          elapsed=$((elapsed + interval))
+          sleep $$interval
+          elapsed=$$((elapsed + interval))
         done
-        echo "Package firebase-tools@$VERSION is now available on npm."
+        echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
   # Set up the hub credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
@@ -152,8 +151,7 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          VERSION=$(cat /workspace/version_number.txt)
-          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@${VERSION} --publish
+          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
           echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
