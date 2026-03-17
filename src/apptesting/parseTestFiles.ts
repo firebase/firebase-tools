@@ -35,8 +35,8 @@ export async function parseTestFiles(
       {} as Record<string, TestCaseInvocation>,
     );
 
-  const fileFilterFn = createFilter(filePattern);
-  const nameFilterFn = createFilter(namePattern);
+  const fileFilterFn = createFilter(filePattern, "file pattern");
+  const nameFilterFn = createFilter(namePattern, "test name pattern");
   const filteredInvocations = files
     .filter((file) => fileFilterFn(file.path))
     .flatMap((file) => file.invocations)
@@ -76,9 +76,17 @@ export async function parseTestFiles(
   });
 }
 
-function createFilter(pattern?: string) {
-  const regex = pattern ? new RegExp(pattern) : undefined;
-  return (s: string) => !regex || regex.test(s);
+function createFilter(pattern?: string, context?: string) {
+  try {
+    const regex = pattern ? new RegExp(pattern) : undefined;
+    return (s: string) => !regex || regex.test(s);
+  } catch (ex) {
+    if (ex instanceof SyntaxError) {
+      const errMsg = context ? `Invalid ${context} regex: ${pattern}` : `Invalid regex: ${pattern}`;
+      throw new FirebaseError(errMsg, { original: getError(ex) });
+    }
+    throw ex;
+  }
 }
 
 interface TestCaseFile {
@@ -92,25 +100,24 @@ async function parseTestFilesRecursive(params: {
 }): Promise<TestCaseFile[]> {
   const testDir = params.testDir;
   const targetUri = params.targetUri;
-  const items = listFiles(testDir);
+  const filenames = listFiles(testDir);
   const results = [];
-  for (const item of items) {
-    const path = join(testDir, item);
+  for (const filename of filenames) {
+    const path = join(testDir, filename);
     if (dirExistsSync(path)) {
       results.push(...(await parseTestFilesRecursive({ testDir: path, targetUri })));
     } else if (fileExistsSync(path)) {
       try {
-        const file = await readFileFromDirectory(testDir, item);
-        logger.debug(`Read the file ${file.source}.`);
+        logger.debug(`Reading ${path}.`);
+        const file = await readFileFromDirectory(testDir, filename);
         const parsedFile = wrappedSafeLoad(file.source);
-        logger.debug(`Parsed the file.`);
         const tests = parsedFile.tests;
-        logger.debug(`There are ${tests.length} tests.`);
         const defaultConfig = parsedFile.defaultConfig;
         if (!tests || !tests.length) {
           logger.debug(`No tests found in ${path}. Ignoring.`);
           continue;
         }
+        logger.debug(`File contains ${pluralizeTests(tests.length)}.`);
         const invocations = [];
         for (const rawTestDef of tests) {
           const invocation = toTestCaseInvocation(rawTestDef, targetUri, defaultConfig);
@@ -127,6 +134,10 @@ async function parseTestFilesRecursive(params: {
   }
 
   return results;
+}
+
+export function pluralizeTests(numTests: number) {
+  return `${numTests} test${numTests === 1 ? "" : "s"}`;
 }
 
 function toTestCaseInvocation(
