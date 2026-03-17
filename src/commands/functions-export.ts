@@ -7,6 +7,7 @@ import { logger } from "../logger";
 
 const EXPORTERS: Record<string, iac.Exporter> = {
   internal: iac.getInternalIac,
+  terraform: iac.getTerraformIac,
 };
 
 export const command = new Command("functions:export")
