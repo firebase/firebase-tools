@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { spawn, spawnSync } from "child_process";
+import * as semver from "semver";
 
 import { logger } from "../logger";
 import * as prompt from "../prompt";
@@ -601,7 +602,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
 }
 
 /**
- * Upgrades Genkit CLI dependency to 1.30 in package.json.
+ * Upgrades Genkit CLI dependency if it's a fixed version < 1.29.
  */
 async function upgradeGenkitVersion(rootPath: string): Promise<void> {
   const packageJsonPath = path.join(rootPath, "package.json");
@@ -613,17 +614,34 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
     };
     let modified = false;
 
-    if (
-      packageJson.devDependencies?.["genkit-cli"] &&
-      packageJson.devDependencies["genkit-cli"] !== "^1.28.0"
-    ) {
-      packageJson.devDependencies["genkit-cli"] = "^1.28.0";
-      modified = true;
-    }
+    const targetVersion = "1.29.0";
+
+    const checkAndUpgrade = (deps: Record<string, string> | undefined) => {
+      if (!deps || !deps["genkit-cli"]) {
+        return;
+      }
+
+      const currentVersion = deps["genkit-cli"];
+      // ^version should not need updating.
+      if (currentVersion.startsWith("^")) {
+        return;
+      }
+
+      // If it's a non-magic version like 1.14 we can upgrade to a version 1.29
+      // but only if the current version is < 1.29
+      const coerced = semver.coerce(currentVersion);
+      if (coerced && semver.lt(coerced, targetVersion)) {
+        deps["genkit-cli"] = "1.29";
+        modified = true;
+      }
+    };
+
+    checkAndUpgrade(packageJson.dependencies);
+    checkAndUpgrade(packageJson.devDependencies);
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-      logger.info("✅ Upgraded genkit-cli version to 1.28 in package.json");
+      logger.info("✅ Upgraded genkit-cli version to 1.29 in package.json");
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

@@ -405,7 +405,7 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
-    it("should only upgrade genkit-cli version to ^1.28.0 if present in package.json", async () => {
+    it("should upgrade genkit-cli to 1.29 if it is a fixed version < 1.29", async () => {
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -424,7 +424,7 @@ describe("migrate", () => {
               "@genkit-ai/googleai": "1.0.0",
               next: "14.0.0",
             },
-            devDependencies: { "genkit-cli": "1.0.0" },
+            devDependencies: { "genkit-cli": "1.14" },
           });
         if (pStr.endsWith("mcp_config.json"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
@@ -436,10 +436,61 @@ describe("migrate", () => {
       const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
-      expect(packageJson.devDependencies["genkit-cli"]).to.equal("^1.28.0");
-      expect(packageJson.dependencies.genkit).to.equal("1.0.0");
-      expect(packageJson.dependencies["@genkit-ai/googleai"]).to.equal("1.0.0");
-      expect(packageJson.dependencies.next).to.equal("14.0.0");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
+    });
+
+    it("should NOT upgrade genkit-cli if version starts with ^", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json"))
+          return JSON.stringify({
+            devDependencies: { "genkit-cli": "^1.28.0" },
+          });
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
+      expect(packageJsonCall).to.be.undefined; // No write since no modification
+    });
+
+    it("should NOT upgrade genkit-cli if version is fixed and >= 1.29", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json"))
+          return JSON.stringify({
+            devDependencies: { "genkit-cli": "1.30.0" },
+          });
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
+      expect(packageJsonCall).to.be.undefined; // No write since no modification
     });
 
     it("should perform a full migration for Flutter successfully", async () => {
