@@ -878,7 +878,7 @@ export function functionTerraform(
       event_type: endpoint.eventTrigger.eventType,
       // V1 always uses "resource" as its event filter and it is always required.
       resource: endpoint.eventTrigger.eventFilters!.resource!,
-      // failure_policy: (endpoint.eventTrigger.retry ? { retry: {} } : undefined) as unknown as tf.Value
+      // TODO: Failure policy
     };
   } else if (build.isScheduleTriggered(endpoint)) {
     throw new FirebaseError("Scheduled functions are not supported in terraform yet", { exit: 1 });

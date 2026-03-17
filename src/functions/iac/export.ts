@@ -45,7 +45,7 @@ const STANDARD_TF_VARS: tf.Block[] = [
     labels: ["extension_id"],
     attributes: {
       description:
-        "The extension ID. Used for reverse compatibility when extensions ahve been ported. Injects an env var and adds a function name prefix",
+        "The extension ID. Used for reverse compatibility when extensions have been ported. Injects an env var and adds a function name prefix",
       default: null,
     },
   },
