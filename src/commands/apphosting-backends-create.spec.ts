@@ -14,7 +14,7 @@ describe("apphosting:backends:create", () => {
 
   beforeEach(() => {
     command = apphostingBackendsCreate;
-    (command as any).befores = []; // Bypass pre-action hooks for unit testing action
+    (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
     isEnabledStub = sinon.stub(experiments, "isEnabled");
     doSetupStub = sinon.stub(backend, "doSetup").resolves();
   });

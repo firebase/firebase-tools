@@ -63,10 +63,10 @@ command
 
     return doSetup(
       projectId,
-      options.nonInteractive || false,
+      options.nonInteractive,
       options.app as string | undefined,
       options.backend as string | undefined,
-      options.serviceAccount as string,
+      options.serviceAccount as string | undefined,
       options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
       runtime,
