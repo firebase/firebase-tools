@@ -95,11 +95,7 @@ export function serviceAccount(sa: string): string {
  */
 export function serializeValue(value: Value, indentation = 0): string {
   if (typeof value === "string") {
-<<<<<<< HEAD
-    value = value.replace(/{{ ?params.PROJECT_ID ?}}/g, "${var.project}");
-=======
-    value = value.replace(/{{ ?params\.PROJECT_ID ?}}/g, "${var.project}");
->>>>>>> 68fa701a9 (PR feedback)
+    value = value.replace(/{{ *params\.PROJECT_ID *}}/g, "${var.project}");
     if (value.includes("{{ ")) {
       throw new FirebaseError(
         "Generalized parameterized fields are not supported in terraform yet",
