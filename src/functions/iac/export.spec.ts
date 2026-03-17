@@ -40,7 +40,7 @@ describe("export", () => {
       mockDelegate.discoverBuild.resolves(mockBuild);
 
       const options = { config: { path: (s: string) => s, projectDir: "dir" } };
-      const codebase = { source: "src", runtime: "nodejs18" } as any;
+      const codebase: Partial<projectConfig.ValidatedSingle> = { source: "src", runtime: "nodejs18" };
 
       const result = await exportIac.getInternalIac(options, codebase);
 
