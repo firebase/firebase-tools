@@ -8,6 +8,7 @@ import * as supported from "../../deploy/functions/runtimes/supported";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
 import * as projectUtils from "../../projectUtils";
+import * as projectConfig from "../projectConfig";
 describe("export", () => {
   let needProjectIdStub: sinon.SinonStub;
 
@@ -40,7 +41,11 @@ describe("export", () => {
       mockDelegate.discoverBuild.resolves(mockBuild);
 
       const options = { config: { path: (s: string) => s, projectDir: "dir" } };
+<<<<<<< HEAD
       const codebase: Partial<projectConfig.ValidatedSingle> = { source: "src", runtime: "nodejs18" };
+=======
+      const codebase: projectConfig.ValidatedSingle = { source: "src", codebase: "default", runtime: "nodejs18" };
+>>>>>>> 68fa701a9 (PR feedback)
 
       const result = await exportIac.getInternalIac(options, codebase);
 
@@ -74,7 +79,7 @@ describe("export", () => {
       mockDelegate.discoverBuild.resolves(mockBuild);
 
       const options = { config: { path: (s: string) => s, projectDir: "dir" } };
-      const codebase = { source: "src", runtime: "nodejs18" } as any;
+      const codebase: projectConfig.ValidatedSingle = { source: "src", codebase: "default", runtime: "nodejs18" };
 
       const result = await exportIac.getTerraformIac(options, codebase);
 

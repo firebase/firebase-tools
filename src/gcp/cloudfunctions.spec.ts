@@ -18,6 +18,7 @@ describe("cloudfunctions", () => {
     project: "project",
   };
 
+  // Omit a random trigger to make this compile
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,

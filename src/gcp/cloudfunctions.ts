@@ -847,8 +847,9 @@ export function functionTerraform(
       if (connector.includes("/")) {
         attributes["vpc_connector"] = connector;
       } else {
+        const regionString = typeof regionValue === "string" ? regionValue : `\${${regionValue.value}}`;
         attributes["vpc_connector"] =
-          `projects/\${var.project}/locations/${regionValue}/connectors/${connector}`;
+          `projects/\${var.project}/locations/${regionString}/connectors/${connector}`;
       }
     }
     tf.renameField(attributes, endpoint.vpc, "vpc_connector_egress_settings", "egressSettings");

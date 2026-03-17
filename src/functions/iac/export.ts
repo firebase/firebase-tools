@@ -168,18 +168,17 @@ export async function getTerraformIac(
     if (left.type !== right.type) {
       return left.type.localeCompare(right.type);
     }
-    for (let i = 0; i < (left.labels || []).length; i++) {
-      if (i >= (right.labels?.length ?? 0)) {
-        return 1;
-      }
-      const leftLabel = left.labels![i];
-      const rightLabel = right.labels![i];
-      if (leftLabel !== rightLabel) {
-        return leftLabel.localeCompare(rightLabel);
+    const leftLabels = left.labels || [];
+    const rightLabels = right.labels || [];
+    const len = Math.min(leftLabels.length, rightLabels.length);
+    for (let i = 0; i < len; i++) {
+      const labelCompare = leftLabels[i].localeCompare(rightLabels[i]);
+      if (labelCompare !== 0) {
+        return labelCompare;
       }
     }
-    if ((right.labels || []).length > (left.labels || []).length) {
-      return -1;
+    if (leftLabels.length !== rightLabels.length) {
+      return leftLabels.length - rightLabels.length;
     }
 
     logger.warn("Unexpected: two blocks with identical types and labels");
