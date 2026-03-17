@@ -405,7 +405,7 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
-    it("should upgrade Genkit version to 1.29 if present in package.json", async () => {
+    it("should upgrade Genkit version to mapped versions if present in package.json", async () => {
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -419,7 +419,12 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
         if (pStr.endsWith("package.json"))
           return JSON.stringify({
-            dependencies: { genkit: "1.0.0", "@genkit-ai/google-genai": "1.0.0", next: "14.0.0" },
+            dependencies: {
+              genkit: "1.0.0",
+              "@genkit-ai/googleai": "1.0.0",
+              "@genkit-ai/google-genai": "1.0.0",
+              next: "14.0.0",
+            },
             devDependencies: { "genkit-cli": "1.0.0" },
           });
         if (pStr.endsWith("mcp_config.json"))
@@ -433,6 +438,7 @@ describe("migrate", () => {
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
       expect(packageJson.dependencies.genkit).to.equal("1.29");
+      expect(packageJson.dependencies["@genkit-ai/googleai"]).to.equal("1.28");
       expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("1.29");
       expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
       expect(packageJson.dependencies.next).to.equal("14.0.0");

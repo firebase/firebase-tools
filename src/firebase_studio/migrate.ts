@@ -601,9 +601,24 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
 }
 
 /**
- * Upgrades Genkit related dependencies to 1.29 in package.json.
+ * Upgrades Genkit related dependencies based on a version map in package.json.
  */
 async function upgradeGenkitVersion(rootPath: string): Promise<void> {
+  const GENKIT_VERSION_MAP: Record<string, string> = {
+    "genkit": "1.29",
+    "genkit-cli": "1.29",
+    "@genkit-ai/googleai": "1.28",
+    "@genkit-ai/next": "1.29",
+    "@genkit-ai/ai": "1.29",
+    "@genkit-ai/core": "1.29",
+    "@genkit-ai/dotprompt": "1.29",
+    "@genkit-ai/flow": "1.29",
+    "@genkit-ai/vertexai": "1.29",
+    "@genkit-ai/firebase": "1.29",
+    "@genkit-ai/dev-tools": "1.29",
+    "@genkit-ai/google-genai": "1.29",
+  };
+
   const packageJsonPath = path.join(rootPath, "package.json");
   try {
     const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
@@ -617,12 +632,10 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
       if (!deps) {
         return;
       }
-      for (const [name, version] of Object.entries(deps)) {
-        if (name === "genkit" || name === "genkit-cli" || name.startsWith("@genkit-ai/")) {
-          if (version !== "1.29") {
-            deps[name] = "1.29";
-            modified = true;
-          }
+      for (const [name, targetVersion] of Object.entries(GENKIT_VERSION_MAP)) {
+        if (deps[name] && deps[name] !== targetVersion) {
+          deps[name] = targetVersion;
+          modified = true;
         }
       }
     };
@@ -632,7 +645,7 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-      logger.info("✅ Upgraded Genkit version to 1.29 in package.json");
+      logger.info("✅ Upgraded Genkit versions in package.json");
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
