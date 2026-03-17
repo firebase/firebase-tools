@@ -922,32 +922,26 @@ export function invokerTerraform(id: string, endpoint: build.Endpoint): tf.Block
     }
   }
 
-  if (Array.isArray(endpoint.region) && endpoint.region.length > 1) {
-    return {
-      type: "resource",
-      labels: ["google_cloudfunctions_function_iam_binding", utils.toLowerSnakeCase(id)],
-      attributes: {
-        for_each: tf.expr(`google_cloudfunctions_function.${utils.toLowerSnakeCase(id)}`),
-        cloud_function: tf.expr("each.value.name"),
-        region: tf.expr("each.value.region"),
-        project: tf.expr("each.value.project"),
+  const resourceName = utils.toLowerSnakeCase(id);
+  const attributes: Record<string, tf.Value> = {
+    role: "roles/cloudfunctions.invoker",
+    members: members,
+  };
 
-        role: "roles/cloudfunctions.invoker",
-        members: members,
-      },
-    };
+  if (Array.isArray(endpoint.region) && endpoint.region.length > 1) {
+    attributes["for_each"] = tf.expr(`google_cloudfunctions_function.${resourceName}`);
+    attributes["cloud_function"] = tf.expr("each.value.name");
+    attributes["region"] = tf.expr("each.value.region");
+    attributes["project"] = tf.expr("each.value.project");
+  } else {
+    attributes["cloud_function"] = tf.expr(`google_cloudfunctions_function.${resourceName}.name`);
+    attributes["region"] = tf.expr(`google_cloudfunctions_function.${resourceName}.region`);
+    attributes["project"] = tf.expr(`google_cloudfunctions_function.${resourceName}.project`);
   }
 
   return {
     type: "resource",
-    labels: ["google_cloudfunctions_function_iam_binding", utils.toLowerSnakeCase(id)],
-    attributes: {
-      cloud_function: tf.expr(`google_cloudfunctions_function.${utils.toLowerSnakeCase(id)}.name`),
-      region: tf.expr(`google_cloudfunctions_function.${utils.toLowerSnakeCase(id)}.region`),
-      project: tf.expr(`google_cloudfunctions_function.${utils.toLowerSnakeCase(id)}.project`),
-
-      role: "roles/cloudfunctions.invoker",
-      members: members,
-    },
+    labels: ["google_cloudfunctions_function_iam_binding", resourceName],
+    attributes,
   };
 }

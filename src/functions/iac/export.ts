@@ -98,7 +98,7 @@ export async function getInternalIac(
 }
 
 /**
- *
+ * Exports the codebase as a series of Terraform files.
  */
 export async function getTerraformIac(
   options: any,
