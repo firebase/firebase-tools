@@ -130,7 +130,6 @@ describe("apphosting", () => {
       });
     });
 
-
     it("links to existing backend if it already exists", async () => {
       const context = initializeContext();
       listBackendsStub.onFirstCall().resolves({
