@@ -2,6 +2,12 @@ import { expect } from "chai";
 import * as tf from "./terraform";
 
 describe("terraform iac", () => {
+  interface TestInterface {
+    camelCaseField?: string;
+    field?: number;
+    other?: number;
+  }
+
   describe("expr", () => {
     it("should return an HCLExpression object", () => {
       expect(tf.expr("var.foo")).to.deep.equal({
@@ -13,29 +19,40 @@ describe("terraform iac", () => {
 
   describe("copyField", () => {
     it("should copy a field to attributes, converting its name to lower snake case", () => {
-      const attrs: any = {};
-      tf.copyField(attrs, { camelCaseField: "value" }, "camelCaseField");
+      const attrs: Record<string, tf.Value> = {};
+      const test: TestInterface = { camelCaseField: "value" };
+      tf.copyField(attrs, test, "camelCaseField");
       expect(attrs).to.deep.equal({ camel_case_field: "value" });
     });
 
     it("should optionally transform the field value", () => {
-      const attrs: any = {};
-      tf.copyField(attrs, { field: 42 }, "field", (v) => (v as number) * 2);
+      const attrs: Record<string, tf.Value> = {};
+      const test: TestInterface = { field: 42 };
+      tf.copyField(attrs, test, "field", (v) => (v as number) * 2);
       expect(attrs).to.deep.equal({ field: 84 });
     });
 
     it("should not set anything if the source field is missing", () => {
-      const attrs: any = {};
-      tf.copyField(attrs, { other: 123 } as any, "field");
+      const attrs: Record<string, tf.Value> = {};
+      const test: TestInterface = { other: 123 };
+      tf.copyField(attrs, test, "field");
       expect(attrs).to.deep.equal({});
     });
   });
 
   describe("renameField", () => {
     it("should copy a field to a different attribute name", () => {
-      const attrs: any = {};
-      tf.renameField(attrs, { field: "value" }, "new_field", "field");
-      expect(attrs).to.deep.equal({ new_field: "value" });
+      const attrs: Record<string, tf.Value> = {};
+      const test: TestInterface = { field: 42 };
+      tf.renameField(attrs, test, "new_field", "field");
+      expect(attrs).to.deep.equal({ new_field: 42 });
+    });
+
+    it("should not set anything if the source field is missing", () => {
+      const attrs: Record<string, tf.Value> = {};
+      const test: TestInterface = { other: 123 };
+      tf.renameField(attrs, test, "new_field", "field");
+      expect(attrs).to.deep.equal({});
     });
   });
 
