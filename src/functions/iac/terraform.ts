@@ -21,7 +21,14 @@ export function expr(string: string): Expression {
 /**
  * Valid types for HCL attributes.
  */
-export type Value = string | number | boolean | null | Expression | Value[] | { [key: string]: Value };
+export type Value =
+  | string
+  | number
+  | boolean
+  | null
+  | Expression
+  | Value[]
+  | { [key: string]: Value };
 
 /**
  * Represents a generic HCL block.
@@ -101,7 +108,7 @@ export function serializeValue(value: Value, indentation = 0): string {
     return "null";
   } else if (Array.isArray(value)) {
     if (value.some((e) => typeof e === "object")) {
-      return `[\n${value.map((v) => serializeValue(v, indentation + 1)).join(",\n")}${"  ".repeat(indentation)}]`;
+      return `[\n${value.map((v) => "  ".repeat(indentation + 1) + serializeValue(v, indentation + 1)).join(",\n")}\n${"  ".repeat(indentation)}]`;
     }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
   } else if (typeof value === "object") {
@@ -120,5 +127,6 @@ export function serializeValue(value: Value, indentation = 0): string {
  *
  */
 export function blockToString(block: Block): string {
-  return `${block.type} ${(block.labels || []).map((l) => `"${l}" `).join("")} ${serializeValue(block.attributes)}`;
+  const labels = (block.labels || []).map((l) => `"${l}" `).join("");
+  return `${block.type} ${labels}${serializeValue(block.attributes)}`;
 }

@@ -159,7 +159,7 @@ export function captureRuntimeValidationError(errMessage: string): string {
   //     runtime: Runtime validation errors: [error_code: INVALID_RUNTIME\n
   //     message: \"Runtime \\\"nodejs22\\\" is not supported on GCF Gen1\"\n]`
   const regex = /message: "((?:\\.|[^"\\])*)"/;
-  const match = errMessage.match(regex);
+  const match = regex.exec(errMessage);
   if (match && match[1]) {
     // The captured string may still contain escaped quotes (e.g., \\").
     // This replaces them with a standard double quote.
@@ -628,7 +628,7 @@ export function functionFromEndpoint(
   if (!endpoint.runtime || !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-      " This should never happen",
+        " This should never happen",
       { exit: 1 },
     );
   }
@@ -677,7 +677,7 @@ export function functionFromEndpoint(
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-        endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
+          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   } else {
@@ -857,7 +857,7 @@ export function functionTerraform(
   // TODO: codebase label, deployment tool label (or some general extensions-y thing)
   attributes.labels = {
     ...endpoint.labels,
-  }
+  };
 
   if (build.isHttpsTriggered(endpoint) || build.isCallableTriggered(endpoint)) {
     attributes["https_trigger_security_level"] = "SECURE_ALWAYS";

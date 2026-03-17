@@ -9,6 +9,7 @@ import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v
 import * as cloudfunctions from "./cloudfunctions";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
+import * as tf from "../functions/iac/terraform";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -17,7 +18,6 @@ describe("cloudfunctions", () => {
     project: "project",
   };
 
-  // Omit a random trigger to make this compile
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
@@ -25,6 +25,15 @@ describe("cloudfunctions", () => {
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     state: "ACTIVE",
+  };
+
+  const BUILD_ENDPOINT: build.Endpoint = {
+    platform: "gcfv1",
+    region: ["region"],
+    project: "project",
+    entryPoint: "function",
+    runtime: "nodejs16",
+    httpsTrigger: {},
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
@@ -52,14 +61,14 @@ describe("cloudfunctions", () => {
   });
 
   describe("terraformFromEndpoint", () => {
-    const BUCKET: any = { "@type": "HCLExpression", value: "bucket" };
-    const ARCHIVE: any = { "@type": "HCLExpression", value: "archive" };
+    const BUCKET: tf.Expression = tf.expr("bucket");
+    const ARCHIVE: tf.Expression = tf.expr("archive");
 
     it("should reject non-gcfv1 endpoints", () => {
       expect(() => {
         cloudfunctions.terraformFromEndpoint(
           "id",
-          { ...ENDPOINT, platform: "gcfv2", httpsTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
           BUCKET,
           ARCHIVE,
         );
@@ -70,7 +79,7 @@ describe("cloudfunctions", () => {
       expect(() => {
         cloudfunctions.terraformFromEndpoint(
           "id",
-          { ...ENDPOINT, runtime: "invalid" as any, httpsTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, runtime: "invalid" as any, httpsTrigger: {} },
           BUCKET,
           ARCHIVE,
         );
@@ -80,19 +89,20 @@ describe("cloudfunctions", () => {
     });
 
     it("should return just compute resource if no invoker is present", () => {
-      const actual = cloudfunctions.terraformFromEndpoint(
-        "id",
-        {
-          ...ENDPOINT,
-          eventTrigger: {
-            eventType: "google.pubsub.topic.publish",
-            eventFilters: { resource: "projects/p/topics/t" },
-            retry: false,
-          },
-        } as unknown as build.Endpoint,
-        BUCKET,
-        ARCHIVE,
-      );
+      const endpoint: build.Endpoint = {
+        platform: "gcfv1",
+        region: ["region"],
+        project: "project",
+        entryPoint: "function",
+        runtime: "nodejs16",
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: { resource: "projects/p/topics/t" },
+          retry: false,
+        },
+      };
+
+      const actual = cloudfunctions.terraformFromEndpoint("id", endpoint, BUCKET, ARCHIVE);
 
       expect(actual.length).to.equal(1);
       expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
@@ -101,7 +111,7 @@ describe("cloudfunctions", () => {
     it("should return compute and permissions resources if invoker is present", () => {
       const actual = cloudfunctions.terraformFromEndpoint(
         "id",
-        { ...ENDPOINT, httpsTrigger: { invoker: ["public"] } } as unknown as build.Endpoint,
+        { ...BUILD_ENDPOINT, httpsTrigger: { invoker: ["public"] } },
         BUCKET,
         ARCHIVE,
       );
@@ -109,6 +119,196 @@ describe("cloudfunctions", () => {
       expect(actual.length).to.equal(2);
       expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
       expect(actual[1].labels![0]).to.equal("google_cloudfunctions_function_iam_binding");
+    });
+  });
+
+  describe("functionTerraform", () => {
+    const BUCKET: tf.Expression = tf.expr("bucket");
+    const ARCHIVE: tf.Expression = tf.expr("archive");
+
+    it("should handle different region formats", () => {
+      // String region
+      let endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        region: ["europe-west1"],
+        httpsTrigger: {},
+      };
+      let actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.equal("europe-west1");
+
+      // Empty array region
+      endpoint = { ...BUILD_ENDPOINT, region: [], httpsTrigger: {} };
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "var.location",
+      });
+
+      // Single element array region
+      endpoint = {
+        ...ENDPOINT,
+        region: ["asia-east1"],
+        httpsTrigger: {},
+      } as unknown as build.Endpoint;
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.equal("asia-east1");
+
+      // Multi element array region
+      endpoint = {
+        ...ENDPOINT,
+        region: ["us-central1", "us-east1"],
+        httpsTrigger: {},
+      } as unknown as build.Endpoint;
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["for_each"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: `toset(["us-central1","us-east1"])`,
+      });
+      expect(actual.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "each.value",
+      });
+    });
+
+    it("should handle VPC connectivity", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "my-connector",
+          egressSettings: "ALL_TRAFFIC",
+        },
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+
+      expect(actual.attributes["vpc_connector"]).to.equal(
+        "projects/${var.project}/locations/region/connectors/my-connector",
+      );
+      expect(actual.attributes["vpc_connector_egress_settings"]).to.equal("ALL_TRAFFIC");
+    });
+
+    it("should handle full VPC connector string", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "projects/p/locations/l/connectors/c",
+        },
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+
+      expect(actual.attributes["vpc_connector"]).to.equal("projects/p/locations/l/connectors/c");
+    });
+
+    it("should throw for unsupported trigger types", () => {
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...ENDPOINT, scheduleTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Scheduled functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...ENDPOINT, taskQueueTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Task queue functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...ENDPOINT, blockingTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Blocking functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...ENDPOINT, dataConnectGraphqlTrigger: {} } as unknown as build.Endpoint,
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Data connector functions are not supported in terraform yet");
+    });
+
+    it("should support secret environment variables", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [{ key: "API_KEY", secret: "MY_SECRET", projectId: "project" }],
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["secret_environment_variables"]).to.deep.equal([
+        { key: "API_KEY", secret: "MY_SECRET", version: "latest" },
+      ]);
+    });
+  });
+
+  describe("invokerTerraform", () => {
+    it("should return null if not https or callable", () => {
+      const endpoint: build.Endpoint = {
+        platform: "gcfv1",
+        region: ["region"],
+        project: "project",
+        entryPoint: "function",
+        runtime: "nodejs16",
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          retry: false,
+        },
+      };
+
+      expect(cloudfunctions.invokerTerraform("id", endpoint)).to.be.null;
+    });
+
+    it("should handle public invoker", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["public"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal(["allUsers"]);
+    });
+
+    it("should handle private invoker", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["private"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal([]);
+    });
+
+    it("should handle array of custom service accounts", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["foo@", "bar@baz.com"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal([
+        "serviceAccount:foo@${var.project}.iam.gserviceaccount.com",
+        "serviceAccount:bar@baz.com",
+      ]);
+    });
+
+    it("should use for_each when deployed to multiple regions", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        region: ["us-central1", "us-east1"],
+        httpsTrigger: { invoker: ["public"] },
+      });
+      expect(actual?.attributes["for_each"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "google_cloudfunctions_function.id",
+      });
+      expect(actual?.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "each.value.region",
+      });
     });
   });
 

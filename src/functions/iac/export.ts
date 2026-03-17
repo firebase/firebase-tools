@@ -43,9 +43,10 @@ const STANDARD_TF_VARS: tf.Block[] = [
     type: "variable",
     labels: ["extension_id"],
     attributes: {
-      description: "The extension ID. Used for reverse compatibility when extensions ahve been ported. Injects an env var and adds a function name prefix",
+      description:
+        "The extension ID. Used for reverse compatibility when extensions ahve been ported. Injects an env var and adds a function name prefix",
       default: null,
-    }
+    },
   },
 ];
 
@@ -168,7 +169,7 @@ export async function getTerraformIac(
       return left.type.localeCompare(right.type);
     }
     for (let i = 0; i < (left.labels || []).length; i++) {
-      if (i > (right.labels?.length ?? -1)) {
+      if (i >= (right.labels?.length ?? 0)) {
         return 1;
       }
       const leftLabel = left.labels![i];
