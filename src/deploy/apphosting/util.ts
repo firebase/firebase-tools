@@ -44,7 +44,7 @@ export async function createArchive(
     await pipeAsync(archive, fileStream);
   } catch (err: unknown) {
     throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
       { original: err as Error, exit: 1 },
     );
   }
