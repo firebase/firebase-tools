@@ -76,12 +76,10 @@ export function renameField<
   transform: (v: NonNullable<Field<Kind>>) => Value = (v) => v,
 ): void {
   const val = source[sourceField];
-  // Terraform is always authorative. Leaving out val will reset the field
-  if (val === null || val === undefined) {
+  if (val === undefined) {
     return;
   }
-
-  attributes[attributeField] = transform(val);
+  attributes[attributeField] = val === null ? null : transform(val);
 }
 
 /**
