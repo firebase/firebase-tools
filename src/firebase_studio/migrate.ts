@@ -601,24 +601,9 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
 }
 
 /**
- * Upgrades Genkit related dependencies based on a version map in package.json.
+ * Upgrades Genkit CLI dependency to 1.30 in package.json.
  */
 async function upgradeGenkitVersion(rootPath: string): Promise<void> {
-  const GENKIT_VERSION_MAP: Record<string, string> = {
-    "genkit": "1.30",
-    "genkit-cli": "1.30",
-    "@genkit-ai/googleai": "1.28",
-    "@genkit-ai/next": "1.30",
-    "@genkit-ai/ai": "1.30",
-    "@genkit-ai/core": "1.30",
-    "@genkit-ai/dotprompt": "1.30",
-    "@genkit-ai/flow": "1.30",
-    "@genkit-ai/vertexai": "1.30",
-    "@genkit-ai/firebase": "1.30",
-    "@genkit-ai/dev-tools": "1.30",
-    "@genkit-ai/google-genai": "1.30",
-  };
-
   const packageJsonPath = path.join(rootPath, "package.json");
   try {
     const packageJsonContent = await fs.readFile(packageJsonPath, "utf8");
@@ -628,24 +613,25 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
     };
     let modified = false;
 
-    const upgradeDeps = (deps: Record<string, string> | undefined): void => {
-      if (!deps) {
-        return;
-      }
-      for (const [name, targetVersion] of Object.entries(GENKIT_VERSION_MAP)) {
-        if (deps[name] && deps[name] !== targetVersion) {
-          deps[name] = targetVersion;
-          modified = true;
-        }
-      }
-    };
+    if (
+      packageJson.dependencies?.["genkit-cli"] &&
+      packageJson.dependencies["genkit-cli"] !== "1.30"
+    ) {
+      packageJson.dependencies["genkit-cli"] = "1.30";
+      modified = true;
+    }
 
-    upgradeDeps(packageJson.dependencies);
-    upgradeDeps(packageJson.devDependencies);
+    if (
+      packageJson.devDependencies?.["genkit-cli"] &&
+      packageJson.devDependencies["genkit-cli"] !== "1.30"
+    ) {
+      packageJson.devDependencies["genkit-cli"] = "1.30";
+      modified = true;
+    }
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-      logger.info("✅ Upgraded Genkit versions in package.json");
+      logger.info("✅ Upgraded genkit-cli version to 1.30 in package.json");
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
