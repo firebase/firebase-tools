@@ -74,7 +74,9 @@ describe("cloudfunctions", () => {
           BUCKET,
           ARCHIVE,
         );
-      }).to.throw("Cannot create 1st gen function terraform for endpoint id with invalid runtime invalid");
+      }).to.throw(
+        "Cannot create 1st gen function terraform for endpoint id with invalid runtime invalid",
+      );
     });
 
     it("should return just compute resource if no invoker is present", () => {

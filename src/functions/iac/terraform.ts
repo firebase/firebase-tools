@@ -1,6 +1,6 @@
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
-import { Field, Endpoint } from "../../deploy/functions/build";
+import { Field } from "../../deploy/functions/build";
 
 /**
  * Represents a raw HCL expression that should NOT be quoted.
@@ -11,6 +11,9 @@ export interface Expression {
   value: string;
 }
 
+/**
+ *
+ */
 export function expr(string: string): Expression {
   return { "@type": "HCLExpression", value: string };
 }
@@ -18,47 +21,79 @@ export function expr(string: string): Expression {
 /**
  * Valid types for HCL attributes.
  */
-export type Value = string | number | boolean | Expression | Value[] | { [key: string]: Value };
+export type Value = string | number | boolean | null | Expression | Value[] | { [key: string]: Value };
 
 /**
  * Represents a generic HCL block.
  * Structure: <type> "<label_1>" "<label_2>" { <body> }
  */
 export interface Block {
-  type: "output" | "resource" | "variable" | "data";
+  type: "output" | "resource" | "variable" | "data" | "locals";
   labels?: string[];
   attributes: Record<string, Value>;
   // TODO: nested blocks?
 }
 
+/**
+ *
+ */
 export function copyField<
   Kind extends string | number | boolean,
   Key extends string,
   T extends { [key in Key]?: Field<Kind> },
->(attributes: Record<string, Value>, source: T, field: Key): void {
-  renameField(attributes, source, utils.toLowerSnakeCase(field), field);
+>(
+  attributes: Record<string, Value>,
+  source: T,
+  field: Key,
+  transform: (v: NonNullable<Field<Kind>>) => Value = (v) => v,
+): void {
+  renameField(attributes, source, utils.toLowerSnakeCase(field), field, transform);
 }
 
+/**
+ *
+ */
 export function renameField<
   Kind extends string | number | boolean,
   Key extends string,
   T extends { [key in Key]?: Field<Kind> },
->(attributes: Record<string, Value>, source: T, attribute_field: string, source_field: Key): void {
-  const val = source[source_field];
+>(
+  attributes: Record<string, Value>,
+  source: T,
+  attributeField: string,
+  sourceField: Key,
+  transform: (v: NonNullable<Field<Kind>>) => Value = (v) => v,
+): void {
+  const val = source[sourceField];
   // Reset is always the behavior.
   if (val === null || val === undefined) {
     return;
   }
 
-  // TODO: resolve params into an HCL expression if necessary
-  if (typeof val === "string" && val.includes("{{")) {
-    throw new FirebaseError("Parameterized fields are not supported in terraform yet");
-  }
-  attributes[attribute_field] = val as Value;
+  attributes[attributeField] = transform(val);
 }
 
-export function serializeValue(value: Value, indentation: number = 0): string {
+/**
+ *
+ */
+export function serviceAccount(sa: string): string {
+  if (sa.endsWith("@")) {
+    return `${sa}\${var.project}.iam.gserviceaccount.com`;
+  }
+  return sa;
+}
+
+/**
+ *
+ */
+export function serializeValue(value: Value, indentation = 0): string {
   if (typeof value === "string") {
+    value = value.replace("{{ params.PROJECT_ID }}", "${var.project}");
+    if (value.includes("{{ ")) {
+      throw new FirebaseError(
+        "Generalized parameterized fields are not supported in terraform yet",
+      );
+    }
     return JSON.stringify(value);
   } else if (typeof value === "number" || typeof value === "boolean") {
     return value.toString();
@@ -73,13 +108,17 @@ export function serializeValue(value: Value, indentation: number = 0): string {
     if (value["@type"] === "HCLExpression") {
       return (value as Expression).value;
     }
-    const entries = Object.entries(value).map(([k, v]) => `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`);
+    const entries = Object.entries(value).map(
+      ([k, v]) => `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`,
+    );
     return `{\n${entries.join("\n")}\n${"  ".repeat(indentation)}}`;
   }
-  return "null";
+  throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
 
+/**
+ *
+ */
 export function blockToString(block: Block): string {
-  return `${block.type} ${block.labels?.map((l) => `"${l}" `).join("")} ${serializeValue(block.attributes)}`
+  return `${block.type} ${(block.labels || []).map((l) => `"${l}" `).join("")} ${serializeValue(block.attributes)}`;
 }
-

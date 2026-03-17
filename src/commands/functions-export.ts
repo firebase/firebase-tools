@@ -1,29 +1,27 @@
 import { Command } from "../command";
 import { FirebaseError } from "../error";
-import { getFunctionsManifest } from "../functions/iac/export";
-import { requirePermissions } from "../requirePermissions";
+import * as iac from "../functions/iac/export";
 import { normalizeAndValidate, configForCodebase } from "../functions/projectConfig";
-import { needProjectId } from "../projectUtils";
-import * as functionsConfig from "../functionsConfig";
-import * as functionsEnv from "../functions/env";
 import * as clc from "colorette";
+import { logger } from "../logger";
+
+const EXPORTERS: Record<string, iac.Exporter> = {
+  internal: iac.getInternalIac,
+  terraform: iac.getTerraformIac,
+};
 
 export const command = new Command("functions:export")
   .description("export Cloud Functions code and configuration")
-  .option("--format <format>", "Format of the output. Can be internal, terraform, or designcenter.")
+  .option("--format <format>", `Format of the output. Can be ${Object.keys(EXPORTERS).join(", ")}.`)
   .option(
     "--codebase <codebase>",
     "Optional codebase to export. If not specified, exports the default or only codebase.",
   )
-  .before(requirePermissions, ["cloudfunctions.functions.list"])
   .action(async (options: any) => {
-    if (!options.format || !["internal", "terraform", "designcenter"].includes(options.format)) {
-      throw new FirebaseError(
-        "Must specify --format as 'internal', 'terraform', or 'designcenter'.",
-      );
+    if (!options.format || !Object.keys(EXPORTERS).includes(options.format)) {
+      throw new FirebaseError(`Must specify --format as ${Object.keys(EXPORTERS).join(", ")}.`);
     }
 
-    const projectId = needProjectId(options);
     const config = normalizeAndValidate(options.config?.src?.functions);
     let codebaseConfig;
     if (options.codebase) {
@@ -40,20 +38,10 @@ export const command = new Command("functions:export")
       throw new FirebaseError("Codebase does not have a local source directory.");
     }
 
-    const firebaseConfig = await functionsConfig.getFirebaseConfig(options);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
-
-    const manifest = await getFunctionsManifest(
-      options.config.path(codebaseConfig.source),
-      options.config.projectDir,
-      projectId,
-      codebaseConfig.runtime,
-      firebaseEnvs,
-      options.format,
-    );
+    const manifest = await EXPORTERS[options.format](options, codebaseConfig);
 
     for (const [file, contents] of Object.entries(manifest)) {
-      console.log(`Manifest file: ${clc.bold(file)}`);
-      console.log(contents);
+      logger.info(`Manifest file: ${clc.bold(file)}`);
+      logger.info(contents);
     }
   });
