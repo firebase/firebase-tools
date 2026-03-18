@@ -10,6 +10,7 @@
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.7",
+        "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
@@ -317,6 +318,12 @@
         "apphosting-local-build": "dist/bin/localbuild.js"
       }
     },
+    "node_modules/@apphosting/build/node_modules/@apphosting/common": {
+      "version": "0.0.9",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
+      "license": "Apache-2.0"
+    },
     "node_modules/@apphosting/build/node_modules/commander": {
       "version": "11.1.0",
       "resolved": "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz",
@@ -327,9 +334,9 @@
       }
     },
     "node_modules/@apphosting/common": {
-      "version": "0.0.9",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
-      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ==",
       "license": "Apache-2.0"
     },
     "node_modules/@astrojs/compiler": {
@@ -22475,6 +22482,11 @@
         "ts-node": "^10.9.1"
       },
       "dependencies": {
+        "@apphosting/common": {
+          "version": "0.0.9",
+          "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+          "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
+        },
         "commander": {
           "version": "11.1.0",
           "resolved": "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz",
@@ -22483,9 +22495,9 @@
       }
     },
     "@apphosting/common": {
-      "version": "0.0.9",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
-      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ=="
     },
     "@astrojs/compiler": {
       "version": "1.3.1",
