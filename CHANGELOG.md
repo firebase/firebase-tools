@@ -1,2 +1,8 @@
 - Updated Firestore Emulator to v1.20.4, which includes minor bug fixes for Firestore Native Mode.
 - Added `apptesting:execute` command to run App Testing agent tests from YAML files.
+- Updated Data Connect emulator to v3.3.0:
+  - `firebase dataconnect:sdk:generate` now performs compilation check first before generating SDKs.
+  - Updated the Golang dependency version from 1.24.13 to 1.25.8, which removes support for macOS versions prior to Monterey.
+  - Prevent concurrent execution of operations. https://github.com/firebase/firebase-tools/issues/9866
+  - Support for @skip and @include
+  - Vector similarity search now supports `offset` as well as `limit`
