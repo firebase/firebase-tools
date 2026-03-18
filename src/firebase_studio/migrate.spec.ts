@@ -54,6 +54,7 @@ describe("migrate", () => {
 
     let listBackendsStub: sinon.SinonStub;
     let commandStub: sinon.SinonStub;
+    let selectStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
     let unlinkStub: sinon.SinonStub;
@@ -115,6 +116,7 @@ describe("migrate", () => {
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
       confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+      selectStub = sandbox.stub(prompt, "select").resolves("local");
 
       const childProcess = require("child_process");
       spawnStub = sandbox.stub(childProcess, "spawn").returns({
@@ -472,6 +474,32 @@ describe("migrate", () => {
 
       const launchJsonCall = writeFileStub.args.find((a) => a[0].endsWith("launch.json"));
       expect(launchJsonCall).to.be.undefined;
+    });
+
+    it("should install skills globally if the user chooses global", async () => {
+      selectStub.resolves("global");
+
+      await migrate(testRoot);
+
+      const cp = require("child_process");
+      expect(
+        (cp.spawnSync as sinon.SinonStub).calledWith(
+          "npx",
+          [
+            "-y",
+            "skills",
+            "add",
+            "firebase/agent-skills",
+            "-a",
+            "gemini-cli",
+            "--skill",
+            "*",
+            "-y",
+            "-g",
+          ],
+          sinon.match.any,
+        ),
+      ).to.be.true;
     });
 
     it("should detect antigravity command if agy is missing", async () => {
