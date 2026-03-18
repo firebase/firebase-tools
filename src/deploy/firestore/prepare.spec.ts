@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as prepare from "./prepare";
+import prepare from "./prepare";
 import { FirestoreApi } from "../../firestore/api";
 import * as types from "../../firestore/api-types";
 import { FirebaseError } from "../../error";
@@ -55,7 +55,7 @@ describe("firestore prepare", () => {
       createDatabaseStub.resolves();
 
       // We need to call the default export which calls createDatabase internally
-      await (prepare.default as any)({ projectId }, options);
+      await prepare({ projectId }, options);
 
       expect(createDatabaseStub.calledOnce).to.be.true;
       const args = createDatabaseStub.firstCall.args[0];
@@ -81,7 +81,7 @@ describe("firestore prepare", () => {
       getDatabaseStub.rejects({ status: 404 });
       createDatabaseStub.resolves();
 
-      await (prepare.default as any)({ projectId }, enterpriseOptions);
+      await prepare({ projectId }, enterpriseOptions);
 
       expect(createDatabaseStub.calledOnce).to.be.true;
       const args = createDatabaseStub.firstCall.args[0];
@@ -107,7 +107,7 @@ describe("firestore prepare", () => {
       getDatabaseStub.rejects({ status: 404 });
       createDatabaseStub.resolves();
 
-      await (prepare.default as any)({ projectId }, enterpriseOptions);
+      await prepare({ projectId }, enterpriseOptions);
 
       expect(createDatabaseStub.calledOnce).to.be.true;
       const args = createDatabaseStub.firstCall.args[0];
@@ -131,7 +131,7 @@ describe("firestore prepare", () => {
       } as unknown as Options;
       getDatabaseStub.rejects({ status: 404 });
 
-      await expect((prepare.default as any)({ projectId }, standardOptions)).to.be.rejectedWith(
+      await expect(prepare({ projectId }, standardOptions)).to.be.rejectedWith(
         FirebaseError,
         "dataAccessMode can only be specified for enterprise edition databases.",
       );
@@ -151,7 +151,7 @@ describe("firestore prepare", () => {
       } as unknown as Options;
       getDatabaseStub.rejects({ status: 404 });
 
-      await expect((prepare.default as any)({ projectId }, defaultOptions)).to.be.rejectedWith(
+      await expect(prepare({ projectId }, defaultOptions)).to.be.rejectedWith(
         FirebaseError,
         "dataAccessMode can only be specified for enterprise edition databases.",
       );
