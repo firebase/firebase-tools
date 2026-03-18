@@ -1,3 +1,4 @@
+- Add support for `dataAccessMode` in Firestore database creation. This allows choosing between `FIRESTORE_NATIVE` and `MONGODB_COMPATIBLE` for Enterprise edition databases.
 - Updated Firestore Emulator to v1.20.4, which includes minor bug fixes for Firestore Native Mode.
 - Added `apptesting:execute` command to run App Testing agent tests from YAML files.
 - Updated Data Connect emulator to v3.3.0:
