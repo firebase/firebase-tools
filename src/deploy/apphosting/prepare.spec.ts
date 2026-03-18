@@ -10,8 +10,6 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
-import * as experiments from "../../experiments";
-import { FirebaseError } from "../../error";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -52,7 +50,6 @@ describe("apphosting", () => {
   let doSetupSourceDeployStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
-  let assertEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -69,8 +66,6 @@ describe("apphosting", () => {
     getGitRepositoryLinkStub = sinon
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
-    assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
-    sinon.stub(experiments, "isEnabled").returns(true);
   });
 
   afterEach(() => {
@@ -231,58 +226,6 @@ describe("apphosting", () => {
         alwaysDeployFromSource: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.undefined;
-    });
-
-    it("throws an error for localBuild when experiment is not enabled", async () => {
-      const optsWithLocalBuild = {
-        ...opts,
-        config: new Config({
-          apphosting: {
-            backendId: "foo",
-            rootDir: "/",
-            ignore: [],
-            localBuild: true,
-          },
-        }),
-      };
-
-      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
-      assertEnabledStub.throws(
-        new FirebaseError(
-          "Cannot perform a local build because the experiment apphostinglocalbuilds is not enabled.",
-        ),
-      );
-
-      const context = initializeContext();
-      listBackendsStub.resolves({
-        backends: [
-          {
-            name: "projects/my-project/locations/us-central1/backends/foo",
-          },
-        ],
-      });
-
-      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
-        FirebaseError,
-        "Cannot perform a local build",
-      );
-    });
-
-    it("should succeed for source deploys even if experiment is disabled", async () => {
-      const context = initializeContext();
-      listBackendsStub.resolves({
-        backends: [
-          {
-            name: "projects/my-project/locations/us-central1/backends/foo",
-          },
-        ],
-      });
-
-      // No localBuild: true in config
-      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
-      await prepare(context, opts);
-
-      expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
     });
   });
 
