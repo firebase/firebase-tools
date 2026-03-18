@@ -1,4 +1,4 @@
-import { join, dirname, basename } from "path";
+import { join, dirname } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as clc from "colorette";
@@ -11,6 +11,7 @@ import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
 import { logger } from "../logger";
 import * as csm from "../gcp/secretManager";
 import { FirebaseError, getError } from "../error";
+import { basename } from "path";
 
 // Common config across all environments
 export const APPHOSTING_BASE_YAML_FILE = "apphosting.yaml";
