@@ -54,6 +54,7 @@ describe("migrate", () => {
 
     let listBackendsStub: sinon.SinonStub;
     let commandStub: sinon.SinonStub;
+    let selectStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
     let unlinkStub: sinon.SinonStub;
@@ -115,6 +116,7 @@ describe("migrate", () => {
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
       confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+      selectStub = sandbox.stub(prompt, "select").resolves("local");
 
       const childProcess = require("child_process");
       spawnStub = sandbox.stub(childProcess, "spawn").returns({
@@ -410,7 +412,7 @@ describe("migrate", () => {
       expect(confirmStub.called).to.be.false;
     });
 
-    it("should upgrade Genkit version to 1.29 if present in package.json", async () => {
+    it("should upgrade genkit-cli to 1.29 if it is a fixed version < 1.29", async () => {
       readFileStub.callsFake(async (p: any) => {
         const pStr = p.toString();
         if (pStr.endsWith("metadata.json"))
@@ -424,8 +426,12 @@ describe("migrate", () => {
         if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
         if (pStr.endsWith("package.json"))
           return JSON.stringify({
-            dependencies: { genkit: "1.0.0", "@genkit-ai/google-genai": "1.0.0", next: "14.0.0" },
-            devDependencies: { "genkit-cli": "1.0.0" },
+            dependencies: {
+              genkit: "1.0.0",
+              "@genkit-ai/googleai": "1.0.0",
+              next: "14.0.0",
+            },
+            devDependencies: { "genkit-cli": "1.14" },
           });
         if (pStr.endsWith("mcp_config.json"))
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
@@ -437,10 +443,61 @@ describe("migrate", () => {
       const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
-      expect(packageJson.dependencies.genkit).to.equal("1.29");
-      expect(packageJson.dependencies["@genkit-ai/google-genai"]).to.equal("1.29");
-      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
-      expect(packageJson.dependencies.next).to.equal("14.0.0");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("^1.29");
+    });
+
+    it("should NOT upgrade genkit-cli if version starts with ^", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json"))
+          return JSON.stringify({
+            devDependencies: { "genkit-cli": "^1.28.0" },
+          });
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
+      expect(packageJsonCall).to.be.undefined; // No write since no modification
+    });
+
+    it("should NOT upgrade genkit-cli if version is fixed and >= 1.29", async () => {
+      readFileStub.callsFake(async (p: any) => {
+        const pStr = p.toString();
+        if (pStr.endsWith("metadata.json"))
+          return JSON.stringify({ projectId: "test-project", appName: "Test App" });
+        if (pStr.endsWith("readme_template.md"))
+          return "# ${appName}\nRun ${startCommand} at ${localUrl}";
+        if (pStr.endsWith("system_instructions_template.md")) return "Project: ${appName}";
+        if (pStr.endsWith("startup_workflow.md")) return "Step 1: Build";
+        if (pStr.endsWith(".firebaserc"))
+          return JSON.stringify({ projects: { default: "test-project" } });
+        if (pStr.endsWith("blueprint.md")) return "# **App Name**: Test App";
+        if (pStr.endsWith("package.json"))
+          return JSON.stringify({
+            devDependencies: { "genkit-cli": "1.30.0" },
+          });
+        if (pStr.endsWith("mcp_config.json"))
+          throw Object.assign(new Error("File not found"), { code: "ENOENT" });
+        throw new Error(`Unexpected readFile: ${pStr}`);
+      });
+
+      await migrate(testRoot);
+
+      const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
+      expect(packageJsonCall).to.be.undefined; // No write since no modification
     });
 
     it("should perform a full migration for Flutter successfully", async () => {
@@ -472,6 +529,32 @@ describe("migrate", () => {
 
       const launchJsonCall = writeFileStub.args.find((a) => a[0].endsWith("launch.json"));
       expect(launchJsonCall).to.be.undefined;
+    });
+
+    it("should install skills globally if the user chooses global", async () => {
+      selectStub.resolves("global");
+
+      await migrate(testRoot);
+
+      const cp = require("child_process");
+      expect(
+        (cp.spawnSync as sinon.SinonStub).calledWith(
+          "npx",
+          [
+            "-y",
+            "skills",
+            "add",
+            "firebase/agent-skills",
+            "-a",
+            "gemini-cli",
+            "--skill",
+            "*",
+            "-y",
+            "-g",
+          ],
+          sinon.match.any,
+        ),
+      ).to.be.true;
     });
 
     it("should detect antigravity command if agy is missing", async () => {
