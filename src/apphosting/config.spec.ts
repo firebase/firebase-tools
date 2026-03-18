@@ -473,7 +473,6 @@ env:
     });
   });
 
-
   describe("getAppHostingConfiguration", () => {
     let loadAppHostingYamlStub: sinon.SinonStub;
     let listAppHostingFilesInPathStub: sinon.SinonStub;

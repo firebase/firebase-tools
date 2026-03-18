@@ -392,4 +392,3 @@ export async function overrideChosenEnv(
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }
-

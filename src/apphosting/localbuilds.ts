@@ -10,7 +10,7 @@ import { localBuild as localAppHostingBuild } from "@apphosting/build";
  *
  * @param projectRoot - The root directory of the project to build.
  * @param framework - The framework to use for the build (e.g., 'nextjs').
- * @returns A promise that resolves to the build output, including:
+ * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
  *          - `annotations`: Metadata annotations relating to the build.
  *          - `buildConfig`: Configuration derived from the build process (e.g. run commands, environment variables).
