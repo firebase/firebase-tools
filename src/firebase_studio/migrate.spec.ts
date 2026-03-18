@@ -54,6 +54,7 @@ describe("migrate", () => {
 
     let listBackendsStub: sinon.SinonStub;
     let commandStub: sinon.SinonStub;
+    let selectStub: sinon.SinonStub;
     let trackStub: sinon.SinonStub;
     let confirmStub: sinon.SinonStub;
     let unlinkStub: sinon.SinonStub;
@@ -115,6 +116,7 @@ describe("migrate", () => {
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
       confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
+      selectStub = sandbox.stub(prompt, "select").resolves("local");
 
       const childProcess = require("child_process");
       spawnStub = sandbox.stub(childProcess, "spawn").returns({
@@ -307,6 +309,11 @@ describe("migrate", () => {
           throw Object.assign(new Error("File not found"), { code: "ENOENT" });
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
+
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(true);
 
       await migrate(testRoot);
 
@@ -524,6 +531,32 @@ describe("migrate", () => {
       expect(launchJsonCall).to.be.undefined;
     });
 
+    it("should install skills globally if the user chooses global", async () => {
+      selectStub.resolves("global");
+
+      await migrate(testRoot);
+
+      const cp = require("child_process");
+      expect(
+        (cp.spawnSync as sinon.SinonStub).calledWith(
+          "npx",
+          [
+            "-y",
+            "skills",
+            "add",
+            "firebase/agent-skills",
+            "-a",
+            "gemini-cli",
+            "--skill",
+            "*",
+            "-y",
+            "-g",
+          ],
+          sinon.match.any,
+        ),
+      ).to.be.true;
+    });
+
     it("should detect antigravity command if agy is missing", async () => {
       commandStub.withArgs("agy").returns(false);
       commandStub.withArgs("antigravity").returns(true);
@@ -656,6 +689,68 @@ describe("migrate", () => {
       const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
       expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart"/))).to.be.false;
+    });
+
+    it("should prompt user for Firebase MCP server and configure if they confirm", async () => {
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(true);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.true;
+    });
+
+    it("should prompt user for Firebase MCP server and NOT configure if they decline", async () => {
+      commandStub.withArgs("npx").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Firebase MCP server/) }))
+        .resolves(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.false;
+    });
+
+    it("should skip Firebase MCP server if npx is not available", async () => {
+      commandStub.withArgs("npx").returns(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"firebase":/))).to.be.false;
+    });
+
+    it("should prompt user for Dart MCP server and configure if they confirm", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(true);
+      confirmStub.withArgs(sinon.match({ message: sinon.match(/Dart MCP server/) })).resolves(true);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.true;
+    });
+
+    it("should prompt user for Dart MCP server and NOT configure if they decline", async () => {
+      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
+      commandStub.withArgs("dart").returns(true);
+      confirmStub
+        .withArgs(sinon.match({ message: sinon.match(/Dart MCP server/) }))
+        .resolves(false);
+
+      await migrate(testRoot);
+
+      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
+      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
+      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.false;
     });
   });
 
