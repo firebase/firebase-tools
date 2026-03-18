@@ -796,6 +796,7 @@ export async function migrate(
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
+  logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
 
   const { projectId, appName } = await extractMetadata(rootPath, options.project);
 
