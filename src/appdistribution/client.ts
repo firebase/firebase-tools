@@ -15,9 +15,11 @@ import {
   BatchUpdateTestCasesResponse,
   Group,
   ListGroupsResponse,
+  ListReleasesResponse,
   ListTestCasesResponse,
   ListTestersResponse,
   LoginCredential,
+  Release,
   ReleaseTest,
   TestCase,
   TestDevice,
@@ -355,6 +357,28 @@ export class AppDistributionClient {
       return response.body.testCases;
     } catch (err: unknown) {
       throw new FirebaseError(`Failed to upsert test cases ${getErrMsg(err)}`);
+    }
+  }
+
+  async getLatestRelease(appName: string): Promise<Release | undefined> {
+    try {
+      const response = await this.appDistroV1Client.get<ListReleasesResponse>(
+        `/${appName}/releases`,
+        {
+          queryParams: {
+            pageSize: "1",
+            orderBy: "createTime desc",
+          },
+        },
+      );
+
+      if (!response.body.releases || response.body.releases.length === 0) {
+        return undefined;
+      }
+
+      return response.body.releases[0];
+    } catch (err: unknown) {
+      throw new FirebaseError(`Failed to get latest release for app ${appName}: ${getErrMsg(err)}`);
     }
   }
 }
