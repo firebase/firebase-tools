@@ -1,0 +1,1 @@
+- Updated Firestore Emulator to v1.20.4, which includes minor bug fixes for Firestore Native Mode.
