@@ -1,6 +1,7 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { spawn, spawnSync } from "child_process";
+import * as semver from "semver";
 
 import { logger } from "../logger";
 import * as prompt from "../prompt";
@@ -53,12 +54,23 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
     let updated = false;
 
     if (!mcpConfig.mcpServers["firebase"]) {
-      mcpConfig.mcpServers["firebase"] = {
-        command: "npx",
-        args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
-      };
-      updated = true;
-      logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+      if (utils.commandExistsSync("npx")) {
+        const confirmFirebase = await prompt.confirm({
+          message: "Would you like to enable the Firebase MCP server for Antigravity?",
+          default: true,
+        });
+
+        if (confirmFirebase) {
+          mcpConfig.mcpServers["firebase"] = {
+            command: "npx",
+            args: ["-y", "firebase-tools@latest", "mcp", "--dir", path.resolve(rootPath)],
+          };
+          updated = true;
+          logger.info(`✅ Configured Firebase MCP server in ${mcpConfigPath}`);
+        }
+      } else {
+        logger.info("ℹ️ npx not found on PATH, skipping Firebase MCP server configuration.");
+      }
     } else {
       logger.info("ℹ️ Firebase MCP server already configured in Antigravity, skipping.");
     }
@@ -66,12 +78,19 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
     if (appType === "FLUTTER") {
       if (utils.commandExistsSync("dart")) {
         if (!mcpConfig.mcpServers["dart"]) {
-          mcpConfig.mcpServers["dart"] = {
-            command: "dart",
-            args: ["mcp-server"],
-          };
-          updated = true;
-          logger.info(`✅ Configured Dart MCP server in ${mcpConfigPath}`);
+          const confirmDart = await prompt.confirm({
+            message: "Would you like to enable the Dart MCP server for Antigravity?",
+            default: true,
+          });
+
+          if (confirmDart) {
+            mcpConfig.mcpServers["dart"] = {
+              command: "dart",
+              args: ["mcp-server"],
+            };
+            updated = true;
+            logger.info(`✅ Configured Dart MCP server in ${mcpConfigPath}`);
+          }
         } else {
           logger.info("ℹ️ Dart MCP server already configured in Antigravity, skipping.");
         }
@@ -276,19 +295,38 @@ async function injectAntigravityContext(
   await fs.mkdir(skillsDir, { recursive: true });
 
   // Add Skills using npx
+  const installLocation = await prompt.select({
+    message: "Where would you like to install Firebase project skills?",
+    choices: [
+      { name: "Locally in the project", value: "local" },
+      { name: "Globally for all projects", value: "global" },
+    ],
+    default: "local",
+    nonInteractive: process.env.NODE_ENV === "test",
+  });
+
   logger.info("⏳ Adding Antigravity skills...");
   try {
-    const result = spawnSync(
-      "npx",
-      // gemini-CLI is chosen as a workaround for the .agents subfolder (instead of .agent)
-      // which is current for antigravity's location from vercel.
-      ["-y", "skills", "add", "firebase/agent-skills", "-a", "gemini-cli", "--skill", "*", "-y"],
-      {
-        cwd: rootPath,
-        stdio: "ignore",
-        shell: process.platform === "win32",
-      },
-    );
+    const args = [
+      "-y",
+      "skills",
+      "add",
+      "firebase/agent-skills",
+      "-a",
+      "gemini-cli",
+      "--skill",
+      "*",
+      "-y",
+    ];
+    if (installLocation === "global") {
+      args.push("-g");
+    }
+
+    const result = spawnSync("npx", args, {
+      cwd: rootPath,
+      stdio: "ignore",
+      shell: process.platform === "win32",
+    });
     if (result.error) {
       throw result.error;
     }
@@ -601,7 +639,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
 }
 
 /**
- * Upgrades Genkit related dependencies to 1.29 in package.json.
+ * Upgrades Genkit CLI dependency if it's a fixed version < 1.29.
  */
 async function upgradeGenkitVersion(rootPath: string): Promise<void> {
   const packageJsonPath = path.join(rootPath, "package.json");
@@ -613,26 +651,34 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
     };
     let modified = false;
 
-    const upgradeDeps = (deps: Record<string, string> | undefined): void => {
-      if (!deps) {
+    const targetVersion = "1.29.0";
+
+    const checkAndUpgrade = (deps: Record<string, string> | undefined) => {
+      if (!deps || !deps["genkit-cli"]) {
         return;
       }
-      for (const [name, version] of Object.entries(deps)) {
-        if (name === "genkit" || name === "genkit-cli" || name.startsWith("@genkit-ai/")) {
-          if (version !== "1.29") {
-            deps[name] = "1.29";
-            modified = true;
-          }
-        }
+
+      const currentVersion = deps["genkit-cli"];
+      // ^version should not need updating.
+      if (currentVersion.startsWith("^")) {
+        return;
+      }
+
+      // If it's a non-magic version like 1.14 we can upgrade to a version 1.29
+      // but only if the current version is < 1.29
+      const coerced = semver.coerce(currentVersion);
+      if (coerced && semver.lt(coerced, targetVersion)) {
+        deps["genkit-cli"] = "^1.29";
+        modified = true;
       }
     };
 
-    upgradeDeps(packageJson.dependencies);
-    upgradeDeps(packageJson.devDependencies);
+    checkAndUpgrade(packageJson.dependencies);
+    checkAndUpgrade(packageJson.devDependencies);
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-      logger.info("✅ Upgraded Genkit version to 1.29 in package.json");
+      logger.info("✅ Upgraded genkit-cli version to 1.29 in package.json");
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
@@ -750,6 +796,7 @@ export async function migrate(
   void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
+  logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
 
   const { projectId, appName } = await extractMetadata(rootPath, options.project);
 
