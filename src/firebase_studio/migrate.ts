@@ -631,7 +631,7 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
       // but only if the current version is < 1.29
       const coerced = semver.coerce(currentVersion);
       if (coerced && semver.lt(coerced, targetVersion)) {
-        deps["genkit-cli"] = "1.29";
+        deps["genkit-cli"] = "^1.29";
         modified = true;
       }
     };
