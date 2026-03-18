@@ -153,7 +153,7 @@ describe("apphosting", () => {
         projectId: "my-project",
         req: {
           baseName: "firebaseapphosting-sources-000000000000-us-central1",
-          purposeLabel: `apphosting-source-${location}`,
+          purposeLabel: `apphosting-source-${location.toLowerCase()}`,
           location: "us-central1",
           lifecycle: {
             rule: [
@@ -165,9 +165,25 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createArchiveStub).to.be.called;
-      expect(createTarArchiveStub).to.be.called;
-      expect(uploadObjectStub).to.be.called;
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["foo"],
+        process.cwd(),
+      );
+      expect(createTarArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.ZIP,
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.TAR,
+      );
     });
 
     it("correctly creates and sets storage URIs", async () => {
@@ -192,6 +208,25 @@ describe("apphosting", () => {
       createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["foo"],
+        process.cwd(),
+      );
+      expect(createTarArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.ZIP,
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.TAR,
+      );
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
