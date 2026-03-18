@@ -372,7 +372,7 @@ export class AppDistributionClient {
         },
       );
 
-      if (!response.body.releases || response.body.releases.length === 0) {
+      if (!response.body.releases?.length) {
         return undefined;
       }
 
