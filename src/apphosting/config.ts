@@ -393,26 +393,3 @@ export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }
 
-/**
- * Split a set of environment variables into build and runtime variables.
- */
-export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: Env[] } {
-  const build: EnvMap = {};
-  const runtime: Env[] = [];
-
-  for (const [key, val] of Object.entries(env)) {
-    const envVal = { ...val };
-    if (envVal.value !== undefined) {
-      envVal.value = String(envVal.value);
-    }
-
-    if (val.availability?.includes("BUILD")) {
-      build[key] = envVal;
-    }
-    if (val.availability?.includes("RUNTIME") || !val.availability) {
-      runtime.push({ variable: key, ...envVal });
-    }
-  }
-
-  return { build, runtime };
-}
