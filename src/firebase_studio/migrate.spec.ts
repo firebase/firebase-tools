@@ -443,7 +443,7 @@ describe("migrate", () => {
       const packageJsonCall = writeFileStub.args.find((a) => a[0].endsWith("package.json"));
       expect(packageJsonCall).to.not.be.undefined;
       const packageJson = JSON.parse(packageJsonCall![1]);
-      expect(packageJson.devDependencies["genkit-cli"]).to.equal("1.29");
+      expect(packageJson.devDependencies["genkit-cli"]).to.equal("^1.29");
     });
 
     it("should NOT upgrade genkit-cli if version starts with ^", async () => {
