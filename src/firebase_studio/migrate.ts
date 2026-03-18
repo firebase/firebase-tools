@@ -294,19 +294,38 @@ async function injectAntigravityContext(
   await fs.mkdir(skillsDir, { recursive: true });
 
   // Add Skills using npx
+  const installLocation = await prompt.select({
+    message: "Where would you like to install Firebase project skills?",
+    choices: [
+      { name: "Locally in the project", value: "local" },
+      { name: "Globally for all projects", value: "global" },
+    ],
+    default: "local",
+    nonInteractive: process.env.NODE_ENV === "test",
+  });
+
   logger.info("⏳ Adding Antigravity skills...");
   try {
-    const result = spawnSync(
-      "npx",
-      // gemini-CLI is chosen as a workaround for the .agents subfolder (instead of .agent)
-      // which is current for antigravity's location from vercel.
-      ["-y", "skills", "add", "firebase/agent-skills", "-a", "gemini-cli", "--skill", "*", "-y"],
-      {
-        cwd: rootPath,
-        stdio: "ignore",
-        shell: process.platform === "win32",
-      },
-    );
+    const args = [
+      "-y",
+      "skills",
+      "add",
+      "firebase/agent-skills",
+      "-a",
+      "gemini-cli",
+      "--skill",
+      "*",
+      "-y",
+    ];
+    if (installLocation === "global") {
+      args.push("-g");
+    }
+
+    const result = spawnSync("npx", args, {
+      cwd: rootPath,
+      stdio: "ignore",
+      shell: process.platform === "win32",
+    });
     if (result.error) {
       throw result.error;
     }
