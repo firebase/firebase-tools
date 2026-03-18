@@ -28,7 +28,7 @@ export const command = new Command("apphosting:backends:create")
     "specify the primary region for the backend. Required with --non-interactive.",
   )
   .option("--root-dir <rootDir>", "specify the root directory for the backend.")
-  .before(requireAuth)
+  .before((options: Options) => requireAuth(options))
   .before(ensureApiEnabled)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))
   .action(async (options: Options) => {
