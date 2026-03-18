@@ -87,7 +87,6 @@ describe("apphosting", () => {
               env: [{ variable: "VAR1", value: "VALUE1" }],
             },
             annotations: {},
-            env: [{ variable: "VAR2", value: "VALUE2" }],
           },
         },
       };
@@ -104,10 +103,7 @@ describe("apphosting", () => {
         buildInput: {
           config: {
             runCommand: "npm run build",
-            env: [
-              { variable: "VAR1", value: "VALUE1" },
-              { variable: "VAR2", value: "VALUE2" },
-            ],
+            env: [{ variable: "VAR1", value: "VALUE1" }],
           },
           source: {
             archive: {
