@@ -80,7 +80,9 @@ export const command = new Command("apptesting:execute [release-binary-file]")
       if (target) {
         release = await upload(client, appName, new Distribution(target));
       } else {
-        utils.logBullet("release-binary-file not provided, using the latest App Distribution release.");
+        utils.logBullet(
+          "release-binary-file not provided, using the latest App Distribution release.",
+        );
         const latestRelease = await client.getLatestRelease(appName);
         if (!latestRelease) {
           throw new FirebaseError(
