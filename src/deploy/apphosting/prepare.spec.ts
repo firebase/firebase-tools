@@ -102,6 +102,7 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
+      sinon.stub(experiments, "assertEnabled").returns();
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
