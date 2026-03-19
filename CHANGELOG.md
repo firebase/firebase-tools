@@ -1,2 +1,0 @@
-- Updated Firestore Emulator to v1.20.4, which includes minor bug fixes for Firestore Native Mode.
-- Added `apptesting:execute` command to run App Testing agent tests from YAML files.
