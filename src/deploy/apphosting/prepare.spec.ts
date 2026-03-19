@@ -140,7 +140,9 @@ describe("apphosting", () => {
       };
       const context = initializeContext();
 
-      sinon.stub(experiments, "assertEnabled").throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
+      sinon
+        .stub(experiments, "assertEnabled")
+        .throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
