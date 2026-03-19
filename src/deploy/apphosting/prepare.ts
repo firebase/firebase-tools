@@ -153,7 +153,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
-    experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds are not supported.");
+    experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
