@@ -84,8 +84,8 @@ export default async function (context: Context, options: Options): Promise<void
       }
 
       const zippedSourcePath = isLocalBuild
-        ? await util.createTarArchive(cfg, rootDir, builtAppDir)
-        : await util.createArchive(cfg, rootDir);
+        ? await util.createLocalBuildTarArchive(cfg, rootDir, builtAppDir)
+        : await util.createSourceDeployArchive(cfg, rootDir);
 
       logLabeledBullet(
         "apphosting",

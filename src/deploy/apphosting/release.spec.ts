@@ -92,7 +92,14 @@ describe("apphosting", () => {
       };
 
       const orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves();
-      sinon.stub(backend, "getBackend").resolves({ uri: "foo.apphosting.com" } as any);
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/fooLocalBuild",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "foo.apphosting.com",
+      });
 
       await release(context, opts);
 

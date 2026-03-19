@@ -63,10 +63,12 @@ describe("apphosting", () => {
       .throws("Unexpected getProjectNumber call");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
-    createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
+    createArchiveStub = sinon
+      .stub(util, "createSourceDeployArchive")
+      .throws("Unexpected createSourceDeployArchive call");
     createTarArchiveStub = sinon
-      .stub(util, "createTarArchive")
-      .throws("Unexpected createTarArchive call");
+      .stub(util, "createLocalBuildTarArchive")
+      .throws("Unexpected createLocalBuildTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
@@ -242,7 +244,7 @@ describe("apphosting", () => {
 
       getProjectNumberStub.resolves("000000000000");
       upsertBucketStub.resolves("some-bucket");
-      (experiments.assertEnabled as any).restore();
+      (experiments.assertEnabled as sinon.SinonStub).restore();
       sinon
         .stub(experiments, "assertEnabled")
         .throws(new FirebaseError("App Hosting local builds experiment is not enabled"));

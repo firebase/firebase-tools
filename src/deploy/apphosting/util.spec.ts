@@ -21,7 +21,7 @@ describe("util", () => {
     tmpDir.removeCallback();
   });
 
-  describe("createTarArchive", () => {
+  describe("createLocalBuildTarArchive", () => {
     it("should include apphosting.yaml from root when archiving a subdirectory", async () => {
       // Setup: Create apphosting.yaml in root and some files in dist
       fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
@@ -33,7 +33,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
@@ -61,7 +61,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
