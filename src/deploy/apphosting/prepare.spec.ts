@@ -10,6 +10,7 @@ import { RC } from "../../rc";
 import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
+import * as experiments from "../../experiments";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -123,6 +124,37 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
+    });
+
+    it("should fail if localBuild is specified but experiment is disabled", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      sinon.stub(experiments, "assertEnabled").throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      try {
+        await prepare(context, optsWithLocalBuild);
+        expect.fail("Should have thrown an error");
+      } catch (e: any) {
+        expect(e.message).to.include("Experiment 'apphostinglocalbuilds' is not enabled.");
+      }
     });
 
     it("links to existing backend if it already exists", async () => {

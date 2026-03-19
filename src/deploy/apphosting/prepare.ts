@@ -12,6 +12,7 @@ import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
+import * as experiments from "../../experiments";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 
@@ -59,7 +60,7 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledWarning(
       "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
@@ -113,9 +114,9 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledWarning(
         "apphosting",
         `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-          "then retry deployment.",
+        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+        "then retry deployment.",
       );
       return;
     }
@@ -152,6 +153,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
+    experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds are not supported.");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
