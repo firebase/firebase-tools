@@ -1,1 +1,0 @@
-- Added `apptesting:execute` command to run App Testing agent tests from YAML files.

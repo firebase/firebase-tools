@@ -12,4 +12,6 @@ Antigravity is our next-generation, agent-first IDE designed for high-velocity, 
 
 Enjoy the next era of AI-driven development!
 
+File any bugs at https://github.com/firebase/firebase-tools/issues
+
 **Firebase Studio Export Date:** ${exportDate}

@@ -120,8 +120,105 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: undefined,
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+    });
+
+    const runtimes = ["nodejs22", ""];
+    for (const runtime of runtimes) {
+      it(`should create a new backend with runtime ${runtime}`, async () => {
+        createBackendStub.resolves(op);
+        pollOperationStub.resolves(completeBackend);
+
+        await createBackend(
+          projectId,
+          location,
+          backendId,
+          "custom-service-account",
+          cloudBuildConnRepo,
+          webAppId,
+          "/",
+          runtime,
+        );
+
+        const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+          servingLocality: "GLOBAL_ACCESS",
+          codebase: {
+            repository: cloudBuildConnRepo.name,
+            rootDirectory: "/",
+          },
+          labels: deploymentTool.labels(),
+          serviceAccount: "custom-service-account",
+          appId: webAppId,
+          runtime: { value: runtime ?? "" },
+          automaticBaseImageUpdatesDisabled: undefined,
+        };
+        expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+      });
+    }
+
+    it("should create a new backend with automatic base image updates disabled", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        "custom-service-account",
+        cloudBuildConnRepo,
+        webAppId,
+        "/",
+        undefined,
+        true, // automaticBaseImageUpdatesDisabled
+      );
+
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
+        appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: true,
+      };
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+    });
+
+    it("should create a new backend with automatic base image updates enabled", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        "custom-service-account",
+        cloudBuildConnRepo,
+        webAppId,
+        "/",
+        undefined,
+        false, // automaticBaseImageUpdatesDisabled
+      );
+
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
+        appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: false,
+      };
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
     it("should set default rollout policy to 100% all at once", async () => {
