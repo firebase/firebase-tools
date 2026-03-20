@@ -164,7 +164,6 @@ describe("apphosting setup functions", () => {
   });
 
   describe("createBackend", () => {
-// ... rest of file (delete the old createBackend etc because I'm replacing from top)
     const webAppId = "webAppId";
 
     const op = {
