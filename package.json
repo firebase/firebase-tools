@@ -184,7 +184,7 @@
     "@angular-devkit/architect": "^0.1402.2",
     "@angular-devkit/core": "^14.2.2",
     "@google/events": "^5.1.1",
-    "@swc/cli": "^0.8.0",
+    "@swc/cli": "^0.5.2",
     "@swc/core": "^1.15.18",
     "@types/archiver": "^6.0.0",
     "@types/async-lock": "^1.4.2",
@@ -278,9 +278,6 @@
     "node-fetch": {
       "whatwg-url": "^14.0.0"
     },
-    "hono": "^4.11.4",
-    "@swc/cli": {
-      "chokidar": "$chokidar"
-    }
+    "hono": "^4.11.4"
   }
 }
