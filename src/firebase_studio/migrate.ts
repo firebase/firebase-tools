@@ -17,6 +17,7 @@ import * as os from "os";
 export interface MigrateOptions {
   project?: string;
   startAntigravity?: boolean;
+  nonInteractive?: boolean;
 }
 
 interface McpServerConfig {
@@ -28,7 +29,11 @@ interface McpConfig {
   mcpServers: Record<string, McpServerConfig>;
 }
 
-async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): Promise<void> {
+async function setupAntigravityMcpServer(
+  rootPath: string,
+  appType?: AppType,
+  nonInteractive?: boolean,
+): Promise<void> {
   const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
   const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
@@ -58,6 +63,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
         const confirmFirebase = await prompt.confirm({
           message: "Would you like to enable the Firebase MCP server for Antigravity?",
           default: true,
+          nonInteractive,
         });
 
         if (confirmFirebase) {
@@ -81,6 +87,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
           const confirmDart = await prompt.confirm({
             message: "Would you like to enable the Dart MCP server for Antigravity?",
             default: true,
+            nonInteractive,
           });
 
           if (confirmDart) {
@@ -284,6 +291,7 @@ async function injectAntigravityContext(
   rootPath: string,
   projectId: string | undefined,
   appName: string,
+  nonInteractive?: boolean,
 ): Promise<void> {
   const agentDir = path.join(rootPath, ".agents");
   const rulesDir = path.join(agentDir, "rules");
@@ -302,7 +310,7 @@ async function injectAntigravityContext(
       { name: "Globally for all projects", value: "global" },
     ],
     default: "local",
-    nonInteractive: process.env.NODE_ENV === "test",
+    nonInteractive: nonInteractive || process.env.NODE_ENV === "test",
   });
 
   logger.info("⏳ Adding Antigravity skills...");
@@ -413,6 +421,7 @@ async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
 async function createFirebaseConfigs(
   rootPath: string,
   projectId: string | undefined,
+  nonInteractive?: boolean,
 ): Promise<void> {
   if (!projectId) {
     return;
@@ -453,7 +462,7 @@ async function createFirebaseConfigs(
         const confirmBackend = await prompt.confirm({
           message: `Would you like to use the App Hosting backend "${selectedBackendId}"?`,
           default: true,
-          nonInteractive: process.env.NODE_ENV === "test",
+          nonInteractive: nonInteractive || process.env.NODE_ENV === "test",
         });
 
         if (confirmBackend) {
@@ -731,6 +740,7 @@ async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
   startAntigravity?: boolean,
+  nonInteractive?: boolean,
 ): Promise<void> {
   const agyCommand = await getAgyCommand(startAntigravity);
 
@@ -755,6 +765,7 @@ async function askToOpenAntigravity(
   const answer = await prompt.confirm({
     message: "Would you like to open it in Antigravity now?",
     default: true,
+    nonInteractive,
   });
 
   if (answer) {
@@ -805,12 +816,12 @@ export async function migrate(
   }
 
   await updateReadme(rootPath, appType);
-  await createFirebaseConfigs(rootPath, projectId);
+  await createFirebaseConfigs(rootPath, projectId, options.nonInteractive);
   await uploadSecrets(rootPath, projectId);
   await upgradeGenkitVersion(rootPath);
-  await injectAntigravityContext(rootPath, projectId, appName);
+  await injectAntigravityContext(rootPath, projectId, appName, options.nonInteractive);
   await writeAntigravityConfigs(rootPath, appType);
-  await setupAntigravityMcpServer(rootPath, appType);
+  await setupAntigravityMcpServer(rootPath, appType, options.nonInteractive);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
@@ -822,5 +833,5 @@ export async function migrate(
   }
 
   await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
-  await askToOpenAntigravity(rootPath, appName, options.startAntigravity);
+  await askToOpenAntigravity(rootPath, appName, options.startAntigravity, options.nonInteractive);
 }
