@@ -251,7 +251,6 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
     }
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
   }
-  ensureClientCache(connectorYaml);
 
   // TODO: Prompt user about adding generated paths to .gitignore
   const connectorYamlContents = yaml.stringify(connectorYaml);
@@ -393,6 +392,9 @@ export function addSdkGenerateToConnectorYaml(
         react: app.frameworks?.includes(Framework.REACT) ?? false,
         angular: app.frameworks?.includes(Framework.ANGULAR) ?? false,
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        javascriptSdk.clientCache = {};
+      }
       if (!isArray(generate?.javascriptSdk)) {
         generate.javascriptSdk = generate.javascriptSdk ? [generate.javascriptSdk] : [];
       }
@@ -407,6 +409,9 @@ export function addSdkGenerateToConnectorYaml(
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
         package: "dataconnect_generated/generated.dart",
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        dartSdk.clientCache = {};
+      }
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
       }
@@ -421,6 +426,9 @@ export function addSdkGenerateToConnectorYaml(
         outputDir: path.relative(connectorDir, path.join(app.directory, "src/main/kotlin")),
         package: `com.google.firebase.dataconnect.generated`,
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        kotlinSdk.clientCache = {};
+      }
       if (!isArray(generate?.kotlinSdk)) {
         generate.kotlinSdk = generate.kotlinSdk ? [generate.kotlinSdk] : [];
       }
@@ -438,6 +446,9 @@ export function addSdkGenerateToConnectorYaml(
         ),
         package: "DataConnectGenerated",
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        swiftSdk.clientCache = {};
+      }
       if (!isArray(generate?.swiftSdk)) {
         generate.swiftSdk = generate.swiftSdk ? [generate.swiftSdk] : [];
       }
@@ -453,35 +464,6 @@ export function addSdkGenerateToConnectorYaml(
           Platform,
         ).join(", ")}\n${JSON.stringify(app)}`,
       );
-  }
-  ensureClientCache(connectorYaml);
-}
-
-/**
- * Ensures all supported client SDKs in the connector.yaml have clientCache: {} if missing and experiment is on.
- */
-export function ensureClientCache(connectorYaml: ConnectorYaml): void {
-  if (!connectorYaml.generate || !experiments.isEnabled("fdcrealtime")) {
-    return;
-  }
-  const generate = connectorYaml.generate;
-  const sdkFields: (keyof typeof generate)[] = [
-    "javascriptSdk",
-    "swiftSdk",
-    "kotlinSdk",
-    "dartSdk",
-  ];
-  for (const field of sdkFields) {
-    const val = generate[field];
-    if (val) {
-      const sdkList = isArray(val) ? val : [val];
-      (generate as any)[field] = sdkList;
-      for (const sdk of sdkList as any[]) {
-        if (!sdk.clientCache) {
-          sdk.clientCache = {};
-        }
-      }
-    }
   }
 }
 
