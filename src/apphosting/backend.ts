@@ -133,7 +133,6 @@ export async function doSetup(
       // enter tag:<pattern>?
       branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
       logSuccess(`Repo linked successfully!\n`);
-
     }
   }
   // Confirm both backendId and location are set at this point
