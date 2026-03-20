@@ -389,6 +389,10 @@ export class StorageRulesRuntime {
   }
 }
 
+/**
+ * Converts a JS object to an ExpressionValue for the rules runtime.
+ * @internal
+ */
 function toExpressionValue(obj: any): ExpressionValue {
   if (typeof obj === "string") {
     return { string_value: obj };
@@ -470,11 +474,19 @@ async function fetchFirestoreDocument(
   }
 }
 
-function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
+/**
+ * Creates an ExpressionValue for the auth object in rules.
+ * @internal
+ */
+export function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
   if (!opts.token) {
     return toExpressionValue(null);
   } else {
     const tokenPayload = jwt.decode(opts.token, { json: true }) as any;
+
+    if (!tokenPayload) {
+      return toExpressionValue(null);
+    }
 
     const jsonValue = {
       uid: tokenPayload.user_id,
@@ -485,6 +497,10 @@ function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionVal
   }
 }
 
+/**
+ * Creates an ExpressionValue for the request object in rules.
+ * @internal
+ */
 function createRequestExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
   const fields: { [s: string]: ExpressionValue } = {
     path: {
