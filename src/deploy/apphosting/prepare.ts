@@ -171,8 +171,9 @@ export default async function (context: Context, options: Options): Promise<void
         buildConfig,
         annotations,
       };
-    } catch (e) {
-      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${errorMsg}`);
     }
   }
 }

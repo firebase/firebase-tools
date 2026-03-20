@@ -7,7 +7,6 @@ import { localBuild as localAppHostingBuild } from "@apphosting/build";
  * This function orchestrates the build process using the App Hosting build adapter.
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
- *
  * @param projectRoot - The root directory of the project to build.
  * @param framework - The framework to use for the build (e.g., 'nextjs').
  * @return A promise that resolves to the build output, including:

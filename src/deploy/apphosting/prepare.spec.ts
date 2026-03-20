@@ -155,8 +155,12 @@ describe("apphosting", () => {
       try {
         await prepare(context, optsWithLocalBuild);
         expect.fail("Should have thrown an error");
-      } catch (e: any) {
-        expect(e.message).to.include("Experiment 'apphostinglocalbuilds' is not enabled.");
+      } catch (e: unknown) {
+        if (e instanceof Error) {
+          expect(e.message).to.include("Experiment 'apphostinglocalbuilds' is not enabled.");
+        } else {
+          expect.fail("Expected Error instance");
+        }
       }
     });
 

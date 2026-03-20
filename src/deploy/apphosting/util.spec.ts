@@ -44,8 +44,8 @@ describe("util", () => {
       tar.list({
         file: tarballPath,
         sync: true,
-        onentry: (entry: any) => files.push(entry.path),
-      } as any);
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
 
       expect(files).to.include("dist/index.js");
       expect(files).to.include("apphosting.yaml");
@@ -72,8 +72,8 @@ describe("util", () => {
       tar.list({
         file: tarballPath,
         sync: true,
-        onentry: (entry: any) => files.push(entry.path),
-      } as any);
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
 
       expect(files).to.include("dist/index.js");
       expect(files).to.not.include("apphosting.yaml");
