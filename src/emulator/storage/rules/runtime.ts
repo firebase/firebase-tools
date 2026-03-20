@@ -489,7 +489,7 @@ export function createAuthExpressionValue(opts: RulesetVerificationOpts): Expres
     }
 
     const jsonValue = {
-      uid: (tokenPayload as any).user_id,
+      uid: "user_id" in tokenPayload ? tokenPayload.user_id : undefined,
       token: tokenPayload,
     };
 
