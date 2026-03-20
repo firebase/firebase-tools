@@ -100,6 +100,23 @@ async function createDatabase(context: any, options: Options): Promise<void> {
     edition = upperEdition as types.DatabaseEdition;
   }
 
+  let firestoreDataAccessMode: types.DataAccessMode | undefined;
+  let mongodbCompatibleDataAccessMode: types.DataAccessMode | undefined;
+  if (firestoreCfg.dataAccessMode) {
+    if (edition !== types.DatabaseEdition.ENTERPRISE) {
+      throw new FirebaseError(
+        "dataAccessMode can only be specified for enterprise edition databases.",
+      );
+    }
+    if (firestoreCfg.dataAccessMode === "FIRESTORE_NATIVE") {
+      firestoreDataAccessMode = types.DataAccessMode.ENABLED;
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.DISABLED;
+    } else if (firestoreCfg.dataAccessMode === "MONGODB_COMPATIBLE") {
+      firestoreDataAccessMode = types.DataAccessMode.DISABLED;
+      mongodbCompatibleDataAccessMode = types.DataAccessMode.ENABLED;
+    }
+  }
+
   const api = new FirestoreApi();
   try {
     await api.getDatabase(options.projectId, firestoreCfg.database);
@@ -118,6 +135,8 @@ async function createDatabase(context: any, options: Options): Promise<void> {
         databaseEdition: edition,
         deleteProtectionState: types.DatabaseDeleteProtectionState.DISABLED,
         pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement.DISABLED,
+        firestoreDataAccessMode,
+        mongodbCompatibleDataAccessMode,
       };
       await api.createDatabase(createDatabaseReq);
     }

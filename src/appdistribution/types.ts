@@ -55,6 +55,11 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface ListReleasesResponse {
+  releases: Release[];
+  nextPageToken?: string;
+}
+
 export interface ListGroupsResponse {
   groups: Group[];
   nextPageToken?: string;
