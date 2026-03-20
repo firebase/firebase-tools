@@ -4,7 +4,7 @@
 
 import fetch from "node-fetch";
 import { logger } from "../logger";
-
+import { AbortSignal } from "node-fetch/externals";
 
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",

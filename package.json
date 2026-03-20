@@ -278,6 +278,9 @@
     "node-fetch": {
       "whatwg-url": "^14.0.0"
     },
-    "hono": "^4.11.4"
+    "hono": "^4.11.4",
+    "@swc/cli": {
+      "chokidar": "$chokidar"
+    }
   }
 }
