@@ -747,13 +747,22 @@ describe("migrate", () => {
 
       // Verify that prompts were called with nonInteractive: true
       expect(
-        confirmStub.calledWith(sinon.match({ message: sinon.match(/Firebase MCP server/), nonInteractive: true })),
+        confirmStub.calledWith(
+          sinon.match({ message: sinon.match(/Firebase MCP server/), nonInteractive: true }),
+        ),
       ).to.be.true;
       expect(
-        selectStub.calledWith(sinon.match({ message: sinon.match(/install Firebase project skills/), nonInteractive: true })),
+        selectStub.calledWith(
+          sinon.match({
+            message: sinon.match(/install Firebase project skills/),
+            nonInteractive: true,
+          }),
+        ),
       ).to.be.true;
       expect(
-        confirmStub.calledWith(sinon.match({ message: sinon.match(/open it in Antigravity now/), nonInteractive: true })),
+        confirmStub.calledWith(
+          sinon.match({ message: sinon.match(/open it in Antigravity now/), nonInteractive: true }),
+        ),
       ).to.be.true;
     });
   });
