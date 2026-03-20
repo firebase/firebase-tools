@@ -120,6 +120,13 @@ export async function doSetup(
     });
 
     if (deployMethod === "github") {
+      if (!rootDir) {
+        rootDir = await input({
+          default: "/",
+          message: "Specify your app's root directory relative to your repository",
+        });
+      }
+
       gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
       // TODO: Once tag patterns are implemented, prompt which method the user
       // prefers. We could reduce the number of questions asked by letting people
@@ -127,12 +134,6 @@ export async function doSetup(
       branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
       logSuccess(`Repo linked successfully!\n`);
 
-      if (!rootDir) {
-        rootDir = await input({
-          default: "/",
-          message: "Specify your app's root directory relative to your repository",
-        });
-      }
     }
   }
   // Confirm both backendId and location are set at this point
