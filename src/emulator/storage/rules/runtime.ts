@@ -482,14 +482,14 @@ export function createAuthExpressionValue(opts: RulesetVerificationOpts): Expres
   if (!opts.token) {
     return toExpressionValue(null);
   } else {
-    const tokenPayload = jwt.decode(opts.token, { json: true }) as any;
+    const tokenPayload = jwt.decode(opts.token, { json: true });
 
-    if (!tokenPayload) {
+    if (typeof tokenPayload !== "object" || !tokenPayload) {
       return toExpressionValue(null);
     }
 
     const jsonValue = {
-      uid: tokenPayload.user_id,
+      uid: (tokenPayload as any).user_id,
       token: tokenPayload,
     };
 
