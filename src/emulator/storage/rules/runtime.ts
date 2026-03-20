@@ -481,20 +481,19 @@ async function fetchFirestoreDocument(
 export function createAuthExpressionValue(opts: RulesetVerificationOpts): ExpressionValue {
   if (!opts.token) {
     return toExpressionValue(null);
-  } else {
-    const tokenPayload = jwt.decode(opts.token, { json: true });
-
-    if (typeof tokenPayload !== "object" || !tokenPayload) {
-      return toExpressionValue(null);
-    }
-
-    const jsonValue = {
-      uid: "user_id" in tokenPayload ? tokenPayload.user_id : undefined,
-      token: tokenPayload,
-    };
-
-    return toExpressionValue(jsonValue);
   }
+  const tokenPayload = jwt.decode(opts.token, { json: true });
+
+  if (typeof tokenPayload !== "object" || !tokenPayload) {
+    return toExpressionValue(null);
+  }
+
+  const jsonValue = {
+    uid: "user_id" in tokenPayload ? tokenPayload.user_id : undefined,
+    token: tokenPayload,
+  };
+
+  return toExpressionValue(jsonValue);
 }
 
 /**
