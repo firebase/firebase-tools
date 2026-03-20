@@ -123,5 +123,22 @@ describe("terraform iac", () => {
         }),
       ).to.equal('resource "google_function" "my_func" {\n  name = "test"\n}');
     });
+
+    it("should sort attributes for a resource block and add spaces between categories", () => {
+      expect(
+        tf.blockToString({
+          type: "resource",
+          labels: ["google_cloudfunctions_function", "my_func"],
+          attributes: {
+            event_trigger: { event_type: "pubsub" },
+            name: "test",
+            count: 2,
+            runtime: "nodejs16",
+          },
+        }),
+      ).to.equal(
+        'resource "google_cloudfunctions_function" "my_func" {\n  count = 2\n\n  name = "test"\n  runtime = "nodejs16"\n\n  event_trigger = {\n    event_type = "pubsub"\n  }\n}',
+      );
+    });
   });
 });

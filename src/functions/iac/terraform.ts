@@ -131,7 +131,96 @@ export function serializeValue(value: Value, indentation = 0): string {
 /**
  * Converts a block to a string.
  */
+const META_ARGUMENTS = new Set(["count", "for_each", "provider", "lifecycle", "depends_on"]);
+
+const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
+  google_cloudfunctions_function: new Set([
+    "name",
+    "runtime",
+    "description",
+    "available_memory_mb",
+    "timeout",
+    "entry_point",
+    "source_archive_bucket",
+    "source_archive_object",
+    "trigger_http",
+    "environment_variables",
+    "vpc_connector",
+    "service_account_email",
+    "max_instances",
+    "min_instances",
+    "project",
+    "region",
+  ]),
+  google_cloudfunctions2_function: new Set(["name", "location", "description", "project"]),
+  google_cloud_scheduler_job: new Set([
+    "name",
+    "description",
+    "schedule",
+    "time_zone",
+    "paused",
+    "attempt_deadline",
+    "region",
+    "project",
+  ]),
+  google_cloud_tasks_queue: new Set(["name", "location", "desired_state", "project"]),
+  google_eventarc_trigger: new Set(["name", "location", "project", "service_account"]),
+  google_pubsub_topic: new Set(["name", "project", "labels", "kms_key_name", "message_retention_duration"]),
+  google_pubsub_subscription: new Set([
+    "name",
+    "topic",
+    "project",
+    "labels",
+    "ack_deadline_seconds",
+    "message_retention_duration",
+    "retain_acked_messages",
+    "enable_message_ordering",
+    "filter",
+  ]),
+};
+
+function serializeResourceAttributes(
+  attributes: Record<string, Value>,
+  resourceType: string,
+  indentation = 0,
+): string {
+  const nonBlockParams = NON_BLOCK_PARAMETERS[resourceType] || new Set();
+
+  const metaGroup: string[] = [];
+  const nonBlockGroup: string[] = [];
+  const blockGroup: string[] = [];
+
+  for (const [k, v] of Object.entries(attributes)) {
+    const serialized = `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`;
+    if (META_ARGUMENTS.has(k)) {
+      metaGroup.push(serialized);
+    } else if (nonBlockParams.has(k)) {
+      nonBlockGroup.push(serialized);
+    } else {
+      blockGroup.push(serialized);
+    }
+  }
+
+  const groups: string[][] = [];
+  if (metaGroup.length > 0) groups.push(metaGroup);
+  if (nonBlockGroup.length > 0) groups.push(nonBlockGroup);
+  if (blockGroup.length > 0) groups.push(blockGroup);
+
+  const joinedGroups = groups.map((g) => g.join("\n")).join("\n\n");
+
+  return `{\n${joinedGroups}\n${"  ".repeat(indentation)}}`;
+}
+
+/**
+ * Converts a block to a string.
+ */
 export function blockToString(block: Block): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
+
+  if (block.type === "resource" && block.labels && block.labels.length > 0) {
+    const resourceType = block.labels[0];
+    return `${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType)}`;
+  }
+
   return `${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes)}`;
 }
