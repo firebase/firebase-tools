@@ -9,6 +9,7 @@ import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
 import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
+import { isLanguageRuntime } from "../deploy/functions/runtimes/supported";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -296,12 +297,16 @@ export class RuntimeWorkerPool {
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
-  getKey(triggerId: string | undefined): string {
+  getKey(triggerId: string | undefined, runtime?: string): string {
     if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
       return "~shared~";
-    } else {
-      return triggerId || "~diagnostic~";
     }
+    // For Dart, use a shared key so all functions in a codebase share the same worker process.
+    // Dart loads all functions into a single process and routes based on request path.
+    if (isLanguageRuntime(runtime, "dart")) {
+      return "~dart-shared~";
+    }
+    return triggerId || "~diagnostic~";
   }
 
   /**
@@ -345,8 +350,8 @@ export class RuntimeWorkerPool {
    *
    * @param triggerId
    */
-  readyForWork(triggerId: string | undefined): boolean {
-    const idleWorker = this.getIdleWorker(triggerId);
+  readyForWork(triggerId: string | undefined, runtime?: string): boolean {
+    const idleWorker = this.getIdleWorker(triggerId, runtime);
     return !!idleWorker;
   }
 
@@ -366,9 +371,10 @@ export class RuntimeWorkerPool {
     resp: http.ServerResponse,
     body: unknown,
     debug?: FunctionsRuntimeBundle["debug"],
+    runtime?: string,
   ): Promise<void> {
     this.log(`submitRequest(triggerId=${triggerId})`);
-    const worker = this.getIdleWorker(triggerId);
+    const worker = this.getIdleWorker(triggerId, runtime);
     if (!worker) {
       throw new FirebaseError(
         "Internal Error: can't call submitRequest without checking for idle workers",
@@ -380,11 +386,11 @@ export class RuntimeWorkerPool {
     return worker.request(req, resp, body, !!debug);
   }
 
-  getIdleWorker(triggerId: string | undefined): RuntimeWorker | undefined {
+  getIdleWorker(triggerId: string | undefined, runtime?: string): RuntimeWorker | undefined {
     this.cleanUpWorkers();
-    const triggerWorkers = this.getTriggerWorkers(triggerId);
+    const triggerWorkers = this.getTriggerWorkers(triggerId, runtime);
     if (!triggerWorkers.length) {
-      this.setTriggerWorkers(triggerId, []);
+      this.setTriggerWorkers(triggerId, [], runtime);
       return;
     }
 
@@ -406,8 +412,10 @@ export class RuntimeWorkerPool {
     trigger: EmulatedTriggerDefinition | undefined,
     runtime: FunctionsRuntimeInstance,
     extensionLogInfo: ExtensionLogInfo,
+    runtimeType?: string,
   ): RuntimeWorker {
-    this.log(`addWorker(${this.getKey(trigger?.id)})`);
+    const key = this.getKey(trigger?.id, runtimeType);
+    this.log(`addWorker(${key})`);
     // Disable worker timeout if:
     //   (1) This is a diagnostic call without trigger id OR
     //   (2) If in SEQUENTIAL execution mode
@@ -419,20 +427,24 @@ export class RuntimeWorkerPool {
       disableTimeout ? undefined : trigger?.timeoutSeconds,
     );
 
-    const keyWorkers = this.getTriggerWorkers(trigger?.id);
+    const keyWorkers = this.getTriggerWorkers(trigger?.id, runtimeType);
     keyWorkers.push(worker);
-    this.setTriggerWorkers(trigger?.id, keyWorkers);
+    this.setTriggerWorkers(trigger?.id, keyWorkers, runtimeType);
 
     this.log(`Adding worker with key ${worker.triggerKey}, total=${keyWorkers.length}`);
     return worker;
   }
 
-  getTriggerWorkers(triggerId: string | undefined): Array<RuntimeWorker> {
-    return this.workers.get(this.getKey(triggerId)) || [];
+  getTriggerWorkers(triggerId: string | undefined, runtime?: string): Array<RuntimeWorker> {
+    return this.workers.get(this.getKey(triggerId, runtime)) || [];
   }
 
-  private setTriggerWorkers(triggerId: string | undefined, workers: Array<RuntimeWorker>) {
-    this.workers.set(this.getKey(triggerId), workers);
+  private setTriggerWorkers(
+    triggerId: string | undefined,
+    workers: Array<RuntimeWorker>,
+    runtime?: string,
+  ) {
+    this.workers.set(this.getKey(triggerId, runtime), workers);
   }
 
   private cleanUpWorkers() {
