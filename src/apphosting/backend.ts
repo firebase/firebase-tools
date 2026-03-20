@@ -389,9 +389,9 @@ export async function createBackend(
     servingLocality: "GLOBAL_ACCESS",
     codebase: repository
       ? {
-        repository: `${repository.name}`,
-        rootDirectory: rootDir,
-      }
+          repository: `${repository.name}`,
+          rootDirectory: rootDir,
+        }
       : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
@@ -573,7 +573,7 @@ export async function chooseBackends(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
-      "If your backend is in one of these regions, please try again later.",
+        "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -631,7 +631,7 @@ export async function getBackendForAmbiguousLocation(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
-      "If your backend is in one of these regions, please try again later.",
+        "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -676,7 +676,7 @@ export async function getBackend(
     const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
       `You have multiple backends with the same ${backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-      "Please delete and recreate any backends that share an ID with another backend.",
+        "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
   if (backends.length === 1) {
@@ -685,7 +685,7 @@ export async function getBackend(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
-      "If your backend is in one of these regions, please try again later.",
+        "If your backend is in one of these regions, please try again later.",
     );
   }
   throw new FirebaseError(`No backend named ${backendId} found.`);
