@@ -10,7 +10,7 @@ import {
   ensureApi,
   isFunctionsManaged,
 } from "../gcp/secretManager";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { logBullet, logWarning } from "../utils";
 import { requireAuth } from "../requireAuth";
 import * as secrets from "../functions/secrets";
@@ -18,8 +18,8 @@ import * as backend from "../deploy/functions/backend";
 import * as args from "../deploy/functions/args";
 
 export const command = new Command("functions:secrets:destroy <KEY>[@version]")
-  .description("Destroy a secret. Defaults to destroying the latest version.")
-  .withForce("Destroys a secret without confirmation.")
+  .description("destroy a secret. Defaults to destroying the latest version")
+  .withForce("destroy a secret without confirmation")
   .before(requireAuth)
   .before(ensureApi)
   .action(async (key: string, options: Options) => {
@@ -54,19 +54,16 @@ export const command = new Command("functions:secrets:destroy <KEY>[@version]")
       }
     }
 
-    if (!options.force) {
-      const confirm = await promptOnce(
-        {
-          name: "destroy",
-          type: "confirm",
-          default: true,
-          message: `Are you sure you want to destroy ${sv.secret.name}@${sv.versionId}`,
-        },
-        options,
-      );
-      if (!confirm) {
-        return;
-      }
+    // N.B. While upgrading prompt library, added nonInteractive because the default was
+    // true.
+    const areYouSure = await confirm({
+      message: `Are you sure you want to destroy ${sv.secret.name}@${sv.versionId}`,
+      default: true,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+    });
+    if (!areYouSure) {
+      return;
     }
     await destroySecretVersion(projectId, name, version);
     logBullet(`Destroyed secret version ${name}@${sv.versionId}`);

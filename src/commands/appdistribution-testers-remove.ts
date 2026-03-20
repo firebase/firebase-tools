@@ -7,7 +7,7 @@ import { getEmails, getProjectName } from "../appdistribution/options-parser-uti
 import { logger } from "../logger";
 
 export const command = new Command("appdistribution:testers:remove [emails...]")
-  .description("remove testers from a project (or group)")
+  .description("remove testers from a project (or App Distribution group, if specified via flag)")
   .option("--file <file>", "a path to a file containing a list of tester emails to be removed")
   .option(
     "--group-alias <group-alias>",

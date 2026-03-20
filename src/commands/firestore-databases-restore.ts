@@ -12,19 +12,19 @@ import { PrettyPrint } from "../firestore/pretty-print";
 import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:restore")
-  .description("Restore a Firestore database in your Firebase project.")
+  .description("restore a Firestore database from a backup")
   .option("-d, --database <databaseID>", "ID of the database to restore into")
-  .option("-b, --backup <backup>", "Backup from which to restore")
+  .option("-b, --backup <backup>", "backup from which to restore")
   .option(
     "-e, --encryption-type <encryptionType>",
-    `Encryption method of the restored database; one of ${EncryptionType.USE_SOURCE_ENCRYPTION} (default), ` +
+    `encryption method of the restored database; one of ${EncryptionType.USE_SOURCE_ENCRYPTION} (default), ` +
       `${EncryptionType.CUSTOMER_MANAGED_ENCRYPTION}, ${EncryptionType.GOOGLE_DEFAULT_ENCRYPTION}`,
   )
   // TODO(b/356137854): Remove allowlist only message once feature is public GA.
   .option(
     "-k, --kms-key-name <kmsKeyName>",
-    "Resource ID of the Cloud KMS key to encrypt the restored database. This " +
-      "feature is allowlist only in initial launch.",
+    "resource ID of the Cloud KMS key to encrypt the restored database. This " +
+      "feature is allowlist only in initial launch",
   )
   .before(requirePermissions, ["datastore.backups.restoreDatabase"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -72,21 +72,17 @@ export const command = new Command("firestore:databases:restore")
       encryptionConfig,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(
-        clc.bold(`Successfully initiated restore of ${printer.prettyDatabaseString(databaseResp)}`),
-      );
-      logger.info(
-        "Please be sure to configure Firebase rules in your Firebase config file for\n" +
-          "the new database. By default, created databases will have closed rules that\n" +
-          "block any incoming third-party traffic.",
-      );
-      logger.info(
-        `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
-      );
-    }
+    logger.info(
+      clc.bold(`Successfully initiated restore of ${printer.prettyDatabaseString(databaseResp)}`),
+    );
+    logger.info(
+      "Please be sure to configure Firebase rules in your Firebase config file for\n" +
+        "the new database. By default, created databases will have closed rules that\n" +
+        "block any incoming third-party traffic.",
+    );
+    logger.info(
+      `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
+    );
 
     return databaseResp;
 

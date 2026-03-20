@@ -34,11 +34,8 @@ import { displayDeveloperTOSWarning } from "../extensions/tos";
 /**
  * Command for installing an extension
  */
-export const command = new Command("ext:install [extensionRef]")
-  .description(
-    "add an uploaded extension to firebase.json if [publisherId/extensionId] is provided;" +
-      "or, add a local extension if [localPath] is provided",
-  )
+export const command = new Command("ext:install [extensionRefOrLocalPath]")
+  .description("add an extension to firebase.json")
   .option("--local", "deprecated")
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.create"])
@@ -114,6 +111,7 @@ export const command = new Command("ext:install [extensionRef]")
     }
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,

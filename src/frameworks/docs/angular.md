@@ -15,6 +15,14 @@ to Firebase and serve dynamic content to your users.
 
 <<_includes/_preview-disclaimer.md>>
 
+Caution: For developers creating a full-stack Angular app, we strongly
+recommend [Firebase App Hosting](/docs/app-hosting/).
+If you're already using the frameworks experiment in the Firebase CLI, we
+recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
+
 <<_includes/_before-you-begin.md>>
 
 - Optional: AngularFire
@@ -55,8 +63,10 @@ To prerender dynamic content in Angular, you need to set up Angular SSR.
 ng add @angular/ssr
 ```
 
-See the [Angular Prerendering (SSG) guide](https://angular.dev/guide/prerendering)
+See the [Angular Prerendering (SSG) guide](https://angular.dev/guide/ssr)
 for more information.
+
+### Optional: add a server module
 
 #### Deploy
 

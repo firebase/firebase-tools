@@ -43,14 +43,20 @@ export function registerUser(
     },
   );
 
+  const getInitialData = async () => {
+    isLoadingUser.value = true;
+    currentUser.value = await checkLogin();
+    isLoadingUser.value = false;
+  };
+
+  getInitialData();
+
   const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
 
   const getInitialDataSub = broker.on("getInitialData", async () => {
-    isLoadingUser.value = true;
-    currentUser.value = await checkLogin();
-    isLoadingUser.value = false;
+    await getInitialData();
   });
 
   const isLoadingSub = effect(() => {

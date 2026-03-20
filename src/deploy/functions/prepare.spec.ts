@@ -1,11 +1,18 @@
 import { expect } from "chai";
-
-import * as backend from "./backend";
-import * as prepare from "./prepare";
-import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import * as sinon from "sinon";
+import * as build from "./build";
+import * as prepare from "./prepare";
+import * as runtimes from "./runtimes";
+import * as backend from "./backend";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
+import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
+import { Options } from "../../options";
+import { ValidatedConfig } from "../../functions/projectConfig";
+import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
+import { latest } from "./runtimes/supported";
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -14,13 +21,137 @@ describe("prepare", () => {
     region: "region",
     project: "project",
     entryPoint: "entry",
-    runtime: "nodejs16",
+    runtime: latest("nodejs"),
   };
 
   const ENDPOINT: backend.Endpoint = {
     ...ENDPOINT_BASE,
     httpsTrigger: {},
   };
+
+  describe("loadCodebases", () => {
+    let sandbox: sinon.SinonSandbox;
+    let runtimeDelegateStub: RuntimeDelegate;
+    let discoverBuildStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      discoverBuildStub = sandbox.stub();
+      runtimeDelegateStub = {
+        language: "nodejs",
+        runtime: latest("nodejs"),
+        bin: "node",
+        validate: sandbox.stub().resolves(),
+        build: sandbox.stub().resolves(),
+        watch: sandbox.stub().resolves(() => Promise.resolve()),
+        discoverBuild: discoverBuildStub,
+      };
+      discoverBuildStub.resolves(
+        build.of({
+          test: {
+            platform: "gcfv2",
+            entryPoint: "test",
+            project: "project",
+            runtime: latest("nodejs"),
+            httpsTrigger: {},
+          },
+        }),
+      );
+      sandbox.stub(runtimes, "getRuntimeDelegate").resolves(runtimeDelegateStub);
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should apply the prefix to the function name", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", prefix: "my-prefix", runtime: "nodejs22" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
+    });
+
+    it("should preserve runtime from codebase config", async () => {
+      const config: ValidatedConfig = [
+        { source: "source", codebase: "codebase", runtime: "nodejs20" },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(builds.codebase.runtime).to.equal("nodejs20");
+    });
+
+    it("should pass only firebase config when disallowLegacyRuntimeConfig is true", async () => {
+      const config: ValidatedConfig = [
+        {
+          source: "source",
+          codebase: "codebase",
+          disallowLegacyRuntimeConfig: true,
+          runtime: "nodejs22",
+        },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig, customKey: "customValue" };
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.calledOnce).to.be.true;
+      const callArgs = discoverBuildStub.firstCall.args;
+      expect(callArgs[0]).to.deep.equal({ firebase: firebaseConfig });
+      expect(callArgs[0]).to.not.have.property("customKey");
+    });
+
+    it("should pass full runtime config when disallowLegacyRuntimeConfig is false", async () => {
+      const config: ValidatedConfig = [
+        {
+          source: "source",
+          codebase: "codebase",
+          disallowLegacyRuntimeConfig: false,
+          runtime: "nodejs22",
+        },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = { firebase: firebaseConfig, customKey: "customValue" };
+
+      await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+      expect(discoverBuildStub.calledOnce).to.be.true;
+      const callArgs = discoverBuildStub.firstCall.args;
+      expect(callArgs[0]).to.deep.equal(runtimeConfig);
+      expect(callArgs[0]).to.have.property("customKey", "customValue");
+    });
+  });
 
   describe("inferDetailsFromExisting", () => {
     it("merges env vars if .env is not used", () => {
@@ -302,7 +433,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       httpsTrigger: {},
     };
 
@@ -312,7 +443,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -331,7 +462,7 @@ describe("prepare", () => {
       region: "us-central1",
       project: "project",
       entryPoint: "entry",
-      runtime: "nodejs16",
+      runtime: latest("nodejs"),
       callableTrigger: {
         genkitAction: "action",
       },
@@ -417,6 +548,98 @@ describe("prepare", () => {
           {} as any,
         ),
       ).to.be.rejectedWith(FirebaseError);
+    });
+  });
+
+  describe("ensureAllRequiredAPIsEnabled", () => {
+    let sinonSandbox: sinon.SinonSandbox;
+    let ensureApiStub: sinon.SinonStub;
+    let generateServiceIdentityStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sinonSandbox = sinon.createSandbox();
+      ensureApiStub = sinonSandbox.stub(ensureApiEnabled, "ensure").resolves();
+      generateServiceIdentityStub = sinonSandbox
+        .stub(serviceusage, "generateServiceIdentity")
+        .resolves();
+    });
+
+    afterEach(() => {
+      sinonSandbox.restore();
+    });
+
+    it("should not enable any APIs for an empty backend", async () => {
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty());
+      expect(ensureApiStub.called).to.be.false;
+      expect(generateServiceIdentityStub.called).to.be.false;
+    });
+
+    it("should enable APIs from backend.requiredAPIs", async () => {
+      const api1 = "testapi1.googleapis.com";
+      const api2 = "testapi2.googleapis.com";
+      const b = backend.empty();
+      b.requiredAPIs = [{ api: api1 }, { api: api2 }];
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b);
+      expect(ensureApiStub.calledWith("project", api1, "functions", false)).to.be.true;
+      expect(ensureApiStub.calledWith("project", api2, "functions", false)).to.be.true;
+    });
+
+    it("should enable Secret Manager API if secrets are used ", async () => {
+      const e: backend.Endpoint = {
+        id: "hasSecrets",
+        platform: "gcfv1",
+        region: "us-central1",
+        project: "project",
+        entryPoint: "entry",
+        runtime: latest("nodejs"),
+        httpsTrigger: {},
+        secretEnvironmentVariables: [
+          {
+            key: "SECRET",
+            secret: "secret",
+            projectId: "project",
+          },
+        ],
+      };
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      expect(
+        ensureApiStub.calledWith(
+          "project",
+          "https://secretmanager.googleapis.com",
+          "functions",
+          false,
+        ),
+      ).to.be.true;
+    });
+
+    it("should enable GCFv2 APIs and generate required service identities", async () => {
+      const e: backend.Endpoint = {
+        id: "v2",
+        platform: "gcfv2",
+        region: "us-central1",
+        project: "project",
+        entryPoint: "entry",
+        runtime: latest("nodejs"),
+        httpsTrigger: {},
+      };
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+
+      expect(ensureApiStub.calledWith("project", "https://run.googleapis.com", "functions")).to.be
+        .true;
+      expect(ensureApiStub.calledWith("project", "https://eventarc.googleapis.com", "functions")).to
+        .be.true;
+      expect(ensureApiStub.calledWith("project", "https://pubsub.googleapis.com", "functions")).to
+        .be.true;
+      expect(ensureApiStub.calledWith("project", "https://storage.googleapis.com", "functions")).to
+        .be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "pubsub.googleapis.com", "functions"),
+      ).to.be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "eventarc.googleapis.com", "functions"),
+      ).to.be.true;
     });
   });
 });

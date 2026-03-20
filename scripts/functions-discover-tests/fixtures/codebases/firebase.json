@@ -3,7 +3,7 @@
     {
       "source": "v1",
       "codebase": "v1",
-      "runtime": "nodejs16",
+      "runtime": "nodejs22",
       "ignore": [
         "node_modules",
         ".git",
@@ -14,7 +14,7 @@
     {
       "source": "v2",
       "codebase": "v2",
-      "runtime": "nodejs16",
+      "runtime": "nodejs22",
       "ignore": [
         "node_modules",
         ".git",

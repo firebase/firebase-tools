@@ -8,20 +8,19 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import * as utils from "../utils";
-
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 export const command = new Command("appdistribution:groups:list")
-  .description("list groups in project")
+  .description("list App Distribution groups")
   .alias("appdistribution:group:list")
   .before(requireAuth)
   .action(async (options?: Options): Promise<ListGroupsResponse> => {
     const projectName = await getProjectName(options);
     const appDistroClient = new AppDistributionClient();
-    let groupsResponse: ListGroupsResponse;
+    let groups: Group[];
     const spinner = ora("Preparing the list of your App Distribution Groups").start();
     try {
-      groupsResponse = await appDistroClient.listGroups(projectName);
+      groups = await appDistroClient.listGroups(projectName);
     } catch (err: any) {
       spinner.fail();
       throw new FirebaseError("Failed to list groups.", {
@@ -30,10 +29,9 @@ export const command = new Command("appdistribution:groups:list")
       });
     }
     spinner.succeed();
-    const groups = groupsResponse.groups ?? [];
     printGroupsTable(groups);
     utils.logSuccess(`Groups listed successfully`);
-    return groupsResponse;
+    return { groups };
   });
 
 /**

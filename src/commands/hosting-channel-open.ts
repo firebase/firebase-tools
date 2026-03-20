@@ -9,8 +9,8 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { requireConfig } from "../requireConfig";
 import { logLabeledBullet } from "../utils";
-import { promptOnce } from "../prompt";
 import { requireHostingSite } from "../requireHostingSite";
+import { select } from "../prompt";
 
 export const command = new Command("hosting:channel:open [channelId]")
   .description("opens the URL for a Firebase Hosting channel")
@@ -35,8 +35,7 @@ export const command = new Command("hosting:channel:open [channelId]")
         const channels = await listChannels(projectId, siteId);
         sortBy(channels, ["name"]);
 
-        channelId = await promptOnce({
-          type: "list",
+        channelId = await select({
           message: "Which channel would you like to open?",
           choices: channels.map((c) => last(c.name.split("/")) || c.name),
         });

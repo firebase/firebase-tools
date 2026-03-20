@@ -121,7 +121,7 @@
         "type": {
           "type": "string",
           "description": "The parameter type. Special parameter types might have additional requirements or different UI presentation. See https://firebase.google.com/docs/extensions/reference/extension-yaml#params for more details.",
-          "pattern": "string|STRING|select|SELECT|multiselect|MULTISELECT|secret|SECRET|selectresource|SELECTRESOURCE"
+          "pattern": "string|select|multiSelect|secret|selectResource"
         },
         "resourceType":  {
           "type": "string",
@@ -130,7 +130,7 @@
         },
         "options": {
           "type": "array",
-          "description": "Options for a select or multiselect type param.",
+          "description": "Options for a select or multiSelect type param.",
           "items": {
             "$ref": "#/definitions/paramOption"
           }
@@ -218,8 +218,11 @@
                   "description": "The name or pattern of the resource to trigger on"
                 },
                 "eventFilters": {
-                  "type": "string",
-                  "description": "Filters that further limit the events to listen to."
+                  "type": "array",
+                  "description": "Filters that further limit the events to listen to.",
+                  "items": {
+                    "$ref": "#/definitions/eventFilter"
+                  }
                 },
                 "channel": {
                   "type": "string",
@@ -325,6 +328,16 @@
         "description": {
           "type": "string",
           "description": "A description of the event"
+        }
+      }
+    },
+    "eventFilter": {
+      "type": "object",
+      "properties": {
+        "attribute": {
+          "type": "string",
+          "description": "The event attribute to filter on",
+          "value": "The value to filter for"
         }
       }
     }

@@ -104,7 +104,11 @@ describe("Command", () => {
         projectNumber: "12345678",
         projectId: "resolved-project",
       });
-
+      nock("https://serviceusage.googleapis.com")
+        .get("/v1/projects/12345678/services/cloudresourcemanager.googleapis.com")
+        .reply(200, {
+          state: "ENABLED",
+        });
       const run = command
         .action((options) => {
           return {

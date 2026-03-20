@@ -6,7 +6,7 @@ import { FirebaseError } from "../error";
 import { ExtensionSpec, Param, ParamType } from "./types";
 import * as extensionsHelper from "./extensionsHelper";
 import * as paramHelper from "./paramHelper";
-import * as prompt from "../prompt";
+import * as promptImport from "../prompt";
 import { cloneDeep } from "../utils";
 
 const PROJECT_ID = "test-proj";
@@ -112,12 +112,13 @@ describe("paramHelper", () => {
   });
 
   describe("getParams", () => {
-    let promptStub: sinon.SinonStub;
+    let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
 
     beforeEach(() => {
       sinon.stub(fs, "readFileSync").returns("");
       sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
-      promptStub = sinon.stub(prompt, "promptOnce").resolves("user input");
+      prompt = sinon.stub(promptImport);
+      prompt.input.resolves("user input");
     });
 
     afterEach(() => {
@@ -136,27 +137,26 @@ describe("paramHelper", () => {
         ANOTHER_PARAMETER: { baseValue: "user input" },
       });
 
-      expect(promptStub).to.have.been.calledTwice;
-      expect(promptStub.firstCall.args[0]).to.eql({
+      expect(prompt.input).to.have.been.calledTwice;
+      expect(prompt.input.firstCall.args[0]).to.eql({
         default: undefined,
         message: "Enter a value for Param:",
-        name: "A_PARAMETER",
-        type: "input",
       });
-      expect(promptStub.secondCall.args[0]).to.eql({
+      expect(prompt.input.secondCall.args[0]).to.eql({
         default: "default",
         message: "Enter a value for Another Param:",
-        name: "ANOTHER_PARAMETER",
-        type: "input",
       });
     });
   });
 
   describe("promptForNewParams", () => {
-    let promptStub: sinon.SinonStub;
+    let prompt: sinon.SinonStubbedInstance<typeof promptImport>;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
+      prompt = sinon.stub(promptImport);
+      prompt.input.rejects("Unexpected input call");
+      prompt.confirm.rejects("Unexpected confirm call");
+      prompt.select.rejects("Unexpected select call");
       sinon.stub(extensionsHelper, "getFirebaseProjectParams").resolves({ PROJECT_ID });
     });
 
@@ -165,7 +165,7 @@ describe("paramHelper", () => {
     });
 
     it("should prompt the user for any params in the new spec that are not in the current one", async () => {
-      promptStub.resolves("user input");
+      prompt.input.resolves("user input");
       const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
@@ -186,27 +186,23 @@ describe("paramHelper", () => {
         THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
-      expect(promptStub.callCount).to.equal(2);
-      expect(promptStub.firstCall.args).to.eql([
+      expect(prompt.input).to.have.been.called.calledTwice;
+      expect(prompt.input.firstCall.args).to.eql([
         {
           default: "test-proj",
           message: "Enter a value for New Param:",
-          name: "NEW_PARAMETER",
-          type: "input",
         },
       ]);
-      expect(promptStub.secondCall.args).to.eql([
+      expect(prompt.input.secondCall.args).to.eql([
         {
           default: "default",
           message: "Enter a value for 3:",
-          name: "THIRD_PARAMETER",
-          type: "input",
         },
       ]);
     });
 
     it("should prompt for params that are not currently populated", async () => {
-      promptStub.resolves("user input");
+      prompt.input.resolves("user input");
       const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
@@ -230,7 +226,6 @@ describe("paramHelper", () => {
     });
 
     it("should map LOCATION to system param location and not prompt for it", async () => {
-      promptStub.resolves("user input");
       const oldSpec = cloneDeep(SPEC);
       const newSpec = cloneDeep(SPEC);
       oldSpec.params = [
@@ -261,11 +256,10 @@ describe("paramHelper", () => {
         "firebaseextensions.v1beta.function/location": { baseValue: "us-east1" },
       };
       expect(newParams).to.eql(expected);
-      expect(promptStub).not.to.have.been.called;
+      expect(prompt.input).not.to.have.been.called;
     });
 
     it("should not prompt the user for params that did not change type or param", async () => {
-      promptStub.resolves("Fail");
       const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_3;
 
@@ -285,12 +279,12 @@ describe("paramHelper", () => {
         A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
-      expect(promptStub).not.to.have.been.called;
+      expect(prompt.input).not.to.have.been.called;
     });
 
     it("should populate the spec with the default value if it is returned by prompt", async () => {
-      promptStub.onFirstCall().resolves("test-proj");
-      promptStub.onSecondCall().resolves("user input");
+      prompt.input.onFirstCall().resolves("test-proj");
+      prompt.input.onSecondCall().resolves("user input");
       const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
@@ -311,27 +305,22 @@ describe("paramHelper", () => {
         THIRD_PARAMETER: { baseValue: "user input" },
       };
       expect(newParams).to.eql(expected);
-      expect(promptStub.callCount).to.equal(2);
-      expect(promptStub.firstCall.args).to.eql([
+      expect(prompt.input).to.be.calledTwice;
+      expect(prompt.input.firstCall.args).to.eql([
         {
           default: "test-proj",
           message: "Enter a value for New Param:",
-          name: "NEW_PARAMETER",
-          type: "input",
         },
       ]);
-      expect(promptStub.secondCall.args).to.eql([
+      expect(prompt.input.secondCall.args).to.eql([
         {
           default: "default",
           message: "Enter a value for 3:",
-          name: "THIRD_PARAMETER",
-          type: "input",
         },
       ]);
     });
 
     it("shouldn't prompt if there are no new params", async () => {
-      promptStub.resolves("Fail");
       const newSpec = cloneDeep(SPEC);
 
       const newParams = await paramHelper.promptForNewParams({
@@ -350,11 +339,11 @@ describe("paramHelper", () => {
         A_PARAMETER: { baseValue: "value" },
       };
       expect(newParams).to.eql(expected);
-      expect(promptStub).not.to.have.been.called;
+      expect(prompt.input).not.to.have.been.called;
     });
 
     it("should exit if a prompt fails", async () => {
-      promptStub.rejects(new FirebaseError("this is an error"));
+      prompt.input.rejects(new FirebaseError("this is an error"));
       const newSpec = cloneDeep(SPEC);
       newSpec.params = TEST_PARAMS_2;
 
@@ -371,7 +360,7 @@ describe("paramHelper", () => {
         }),
       ).to.be.rejectedWith(FirebaseError, "this is an error");
       // Ensure that we don't continue prompting if one fails
-      expect(promptStub).to.have.been.calledOnce;
+      expect(prompt.input).to.have.been.calledOnce;
     });
   });
 });

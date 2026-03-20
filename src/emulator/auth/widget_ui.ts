@@ -21,6 +21,7 @@ assert(!internalError, internalError);
 
 var apiKey = query.get('apiKey');
 var appName = query.get('appName');
+var tenantId = query.get('tid');
 var authType = query.get('authType');
 var providerId = query.get('providerId');
 var redirectUrl = query.get('redirectUrl');
@@ -192,7 +193,7 @@ function finishWithUser(urlEncodedIdToken, email) {
     urlResponse: url,
     sessionId: "ValueNotUsedByAuthEmulator",
     postBody: "",
-    tenantId: null,
+    tenantId: tenantId,
     error: null,
   });
 }

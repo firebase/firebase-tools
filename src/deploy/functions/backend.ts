@@ -1,10 +1,13 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
+import * as experiments from "../../experiments";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -40,11 +43,19 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
+/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+export interface DataConnectGraphqlTrigger {
+  invoker?: string[] | null;
+  schemaFilePath?: string;
+}
+
+/** Something that has a Data Connect HTTPS trigger */
+export interface DataConnectGraphqlTriggered {
+  dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
+}
+
 /** API agnostic version of a Firebase callable function. */
 export type CallableTrigger = {
-  // NOTE: This is currently unused because GCF 2nd gen labels do not support
-  // the characterset that may be in a genkit action name.
-  // This should be set as a Cloud Run attribute once we move to Cloud Run Functions.
   genkitAction?: string;
 };
 
@@ -151,6 +162,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    return "dataConnectGraphql";
   } else if (isCallableTriggered(endpoint)) {
     return "callable";
   } else if (isEventTriggered(endpoint)) {
@@ -182,9 +195,6 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
-/**
- * Is a given string a valid VpcEgressSettings?
- */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
 }
@@ -296,18 +306,24 @@ export interface ServiceConfiguration {
   maxInstances?: number | null;
   minInstances?: number | null;
   vpc?: {
-    connector: string;
+    connector?: string;
     egressSettings?: VpcEgressSettings | null;
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }> | null;
   } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2";
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms = ["gcfv1", "gcfv2", "run"] as const;
+export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
@@ -317,6 +333,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -344,6 +367,8 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
+export type EndpointState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -355,7 +380,7 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
-    runtime: Runtime;
+    runtime?: Runtime;
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
@@ -384,6 +409,14 @@ export type Endpoint = TargetIds &
     // This may eventually be different than id because GCF is going to start
     // doing name translations
     runServiceId?: string;
+
+    // State of the endpoint.
+    state?: EndpointState;
+
+    // Fields for Cloud Run platform (for no-build path)
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export interface RequiredAPI {
@@ -514,50 +547,58 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
  * @param forceRefresh If true, ignores and overwrites the cache. These cases should eventually go away.
  * @return The backend
  */
-export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
-  if (!context.loadedExistingBackend || forceRefresh) {
-    await loadExistingBackend(context);
+export function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
+  if (!context.existingBackendPromise || forceRefresh) {
+    context.existingBackendPromise = loadExistingBackend(context);
   }
-  // loadExisting guarantees the validity of existingBackend and unreachableRegions
-  return context.existingBackend!;
+  return context.existingBackendPromise;
 }
 
-async function loadExistingBackend(ctx: Context): Promise<void> {
-  ctx.loadedExistingBackend = true;
+async function loadExistingBackend(ctx: Context): Promise<Backend> {
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
-  ctx.existingBackend = {
+  const existingBackend = {
     ...empty(),
   };
-  ctx.unreachableRegions = {
-    gcfV1: [],
-    gcfV2: [],
+  const unreachableRegions = {
+    gcfV1: [] as string[],
+    gcfV2: [] as string[],
+    run: [] as string[],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction);
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+    existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
-  ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
+  unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  let gcfV2Results;
-  try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  if (experiments.isEnabled("functionsrunapionly")) {
+    try {
+      const runServices = await run.listServices(ctx.projectId);
+      for (const service of runServices) {
+        const endpoint = run.endpointFromService(service);
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    } catch (err: any) {
+      logger.debug(err.message);
+      unreachableRegions.run = ["unknown"];
+    }
+  } else {
+    const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      ctx.existingBackend.endpoints[endpoint.region] =
-        ctx.existingBackend.endpoints[endpoint.region] || {};
-      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
-    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
-  } catch (err: any) {
-    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      return; // customer has preview enabled without allowlist set
-    }
-    throw err;
+    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
   }
+
+  ctx.existingBackend = existingBackend;
+  ctx.unreachableRegions = unreachableRegions;
+  return ctx.existingBackend;
 }
 
 /**
@@ -569,9 +610,7 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
-  if (!context.loadedExistingBackend) {
-    await loadExistingBackend(context);
-  }
+  await existingBackend(context);
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
@@ -619,6 +658,15 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "The following Cloud Functions V2 regions are currently unreachable:\n" +
         context.unreachableRegions.gcfV2.join("\n") +
         "\nCloud Functions in these regions won't be deleted.",
+    );
+  }
+
+  if (context.unreachableRegions?.run.length) {
+    utils.logLabeledWarning(
+      "functions",
+      "The following Cloud Run regions are currently unreachable:\n" +
+        context.unreachableRegions.run.join("\n") +
+        "\nCloud Run services in these regions won't be deleted.",
     );
   }
 }
@@ -719,4 +767,22 @@ export function compareFunctions(
     return 1;
   }
   return 0;
+}
+
+/**
+ * Returns the deterministic Cloud Run URI for a given HTTPS function and project number if available based on the DNS segment length.
+ * If the function name is too long to have a deterministic URI, this method returns the non-deterministic URI from the backend instead.
+ * See https://docs.cloud.google.com/run/docs/triggering/https-request#deterministic for more details.
+ */
+export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber: string): string {
+  const serviceName = httpsFunc.id.toLowerCase().replaceAll("_", "-");
+  const dnsSegment = `${serviceName}-${projectNumber}`;
+  // TODO: Add deploy-time validation to prevent service names that would exceed this.
+  if (dnsSegment.length > 63) {
+    logger.info(
+      `Function name ${httpsFunc.id} is too long to have a deterministic Cloud Run URI. Printing the non-deterministic URI instead.`,
+    );
+    return httpsFunc.uri!;
+  }
+  return `https://${serviceName}-${projectNumber}.${httpsFunc.region}.run.app`;
 }

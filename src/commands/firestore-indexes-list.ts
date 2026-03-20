@@ -11,15 +11,15 @@ import { PrettyPrint } from "../firestore/pretty-print";
 import { needProjectId } from "../projectUtils";
 
 export const command = new Command("firestore:indexes")
-  .description("List indexes in your project's Cloud Firestore database.")
+  .description("list indexes in a Cloud Firestore database")
   .option(
     "--pretty",
-    "Pretty print. When not specified the indexes are printed in the " +
-      "JSON specification format.",
+    "pretty print the indexes. When not specified the indexes are printed in the " +
+      "JSON specification format",
   )
   .option(
     "--database <databaseId>",
-    "Database ID of the firestore database from which to list indexes. (default) if none provided.",
+    "database ID of the firestore database from which to list indexes. (default) if none provided",
   )
   .before(requirePermissions, ["datastore.indexes.list"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)

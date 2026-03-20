@@ -14,6 +14,7 @@ export class CLIProcess {
     project: string,
     additionalArgs: string[],
     logDoneFn?: (d: unknown) => unknown,
+    env?: Record<string, string>,
   ): Promise<void> {
     const args = [cmd, "--project", project];
 
@@ -21,7 +22,10 @@ export class CLIProcess {
       args.push(...additionalArgs);
     }
 
-    const p = spawn("firebase", args, { cwd: this.workdir });
+    const p = spawn("firebase", args, {
+      cwd: this.workdir,
+      env: env ? { ...process.env, ...env } : process.env,
+    });
     if (!p) {
       throw new Error("Failed to start firebase CLI");
     }
@@ -51,6 +55,9 @@ export class CLIProcess {
         };
         p.stdout?.on("data", customCallback);
         p.stdout?.on("close", customFailure);
+        p.stderr?.on("data", (data) => {
+          console.error(`[${this.name} stderr]`, data.toString());
+        });
       });
     } else {
       started = new Promise((resolve) => {

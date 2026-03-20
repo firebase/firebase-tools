@@ -15,7 +15,7 @@ describe("diagnose", () => {
   let getIamStub: sinon.SinonStub;
   let setIamStub: sinon.SinonStub;
   let getProjectNumberStub: sinon.SinonStub;
-  let promptOnceStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
   let listInstancesStub: sinon.SinonStub;
 
   beforeEach(() => {
@@ -28,9 +28,7 @@ describe("diagnose", () => {
     getProjectNumberStub = sinon
       .stub(pn, "getProjectNumber")
       .throws("unexpected call to pn.getProjectNumber");
-    promptOnceStub = sinon
-      .stub(prompt, "promptOnce")
-      .throws("unexpected call to prompt.promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm").throws("unexpected call to prompt.confirm");
     listInstancesStub = sinon
       .stub(extensionsApi, "listInstances")
       .throws("unexpected call to extensionsApi.listInstances");
@@ -49,7 +47,7 @@ describe("diagnose", () => {
       version: 3,
       bindings: [GOOD_BINDING],
     });
-    promptOnceStub.resolves(false);
+    confirmStub.resolves(false);
 
     expect(await diagnose.diagnose("project_id")).to.be.true;
 
@@ -63,7 +61,7 @@ describe("diagnose", () => {
       version: 3,
       bindings: [],
     });
-    promptOnceStub.resolves(false);
+    confirmStub.resolves(false);
 
     expect(await diagnose.diagnose("project_id")).to.be.false;
 
@@ -78,7 +76,7 @@ describe("diagnose", () => {
       bindings: [],
     });
     setIamStub.resolves();
-    promptOnceStub.resolves(true);
+    confirmStub.resolves(true);
 
     expect(await diagnose.diagnose("project_id")).to.be.true;
 

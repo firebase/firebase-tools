@@ -7,16 +7,17 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { requirePermissions } from "../requirePermissions";
-import { pickService } from "../dataconnect/fileUtils";
+import { pickOneService } from "../dataconnect/load";
 import { getIdentifiers } from "../dataconnect/schemaMigration";
 import { requireAuth } from "../requireAuth";
 import { getIAMUser } from "../gcp/cloudsql/connect";
 import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
-import { prompt, Question } from "../prompt";
+import { input } from "../prompt";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { FBToolsAuthClient } from "../gcp/cloudsql/fbToolsAuthClient";
 import { confirmDangerousQuery, interactiveExecuteQuery } from "../gcp/cloudsql/interactive";
+import { mainSchema } from "../dataconnect/types";
 
 // Not a comprehensive list, used for keyword coloring.
 const sqlKeywords = [
@@ -37,12 +38,10 @@ const sqlKeywords = [
 
 async function promptForQuery(): Promise<string> {
   let query = "";
-  let line = "";
+  const line = "";
 
   do {
-    const question: Question = {
-      type: "input",
-      name: "line",
+    let line = await input({
       message: query ? "> " : "Enter your SQL query (or '.exit'):",
       transformer: (input: string) => {
         // Highlight SQL keywords
@@ -51,9 +50,8 @@ async function promptForQuery(): Promise<string> {
           .map((word) => (sqlKeywords.includes(word.toUpperCase()) ? clc.cyan(word) : word))
           .join(" ");
       },
-    };
-
-    ({ line } = await prompt({ nonInteractive: false }, [question]));
+      nonInteractive: false,
+    });
     line = line.trimEnd();
 
     if (line.toLowerCase() === ".exit") {
@@ -84,15 +82,29 @@ async function mainShellLoop(conn: pg.PoolClient) {
   }
 }
 
-export const command = new Command("dataconnect:sql:shell [serviceId]")
-  .description("Starts a shell connected directly to your dataconnect cloudsql instance.")
+type ShellOptions = Options & { service?: string; location?: string };
+
+export const command = new Command("dataconnect:sql:shell")
+  .description(
+    "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
+  )
+  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option(
+    "--location <location>",
+    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+  )
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
-  .action(async (serviceId: string, options: Options) => {
+  .action(async (options: ShellOptions) => {
     const projectId = needProjectId(options);
     await ensureApis(projectId);
-    const serviceInfo = await pickService(projectId, options.config, serviceId);
-    const { instanceId, databaseId } = getIdentifiers(serviceInfo.schema);
+    const serviceInfo = await pickOneService(
+      projectId,
+      options.config,
+      options.service,
+      options.location,
+    );
+    const { instanceId, databaseId, schemaName } = getIdentifiers(mainSchema(serviceInfo.schemas));
     const { user: username } = await getIAMUser(options);
     const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
 
@@ -118,6 +130,9 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     });
     const conn: pg.PoolClient = await pool.connect();
 
+    // Set search_path to the configured PostgreSQL schema so unqualified table names resolve correctly.
+    await conn.query(`SET search_path TO "${schemaName}"`);
+
     logger.info(`Logged in as ${username}`);
     logger.info(clc.cyan("Welcome to Data Connect Cloud SQL Shell"));
     logger.info(
@@ -135,5 +150,5 @@ export const command = new Command("dataconnect:sql:shell [serviceId]")
     await pool.end();
     connector.close();
 
-    return { projectId, serviceId };
+    return { projectId };
   });

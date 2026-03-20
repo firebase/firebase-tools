@@ -32,13 +32,11 @@ describe("utils", () => {
         ["apphosting.staging.yaml", "/parent/apphosting.staging.yaml"],
       ]);
 
-      prompt.promptOnce.returns(Promise.resolve());
+      prompt.select.returns(Promise.resolve());
 
       await utils.promptForAppHostingYaml(apphostingFileNameToPathMap);
 
-      expect(prompt.promptOnce).to.have.been.calledWith({
-        name: "apphosting-yaml",
-        type: "list",
+      expect(prompt.select).to.have.been.calledWith({
         message: "Please select an App Hosting config:",
         choices: [
           {

@@ -3,12 +3,19 @@ import { logger } from "../logger";
 import { Command } from "../command";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
+import { requireAuth } from "../requireAuth";
+import { logWarning } from "../utils";
 
 export const command = new Command("apphosting:builds:get <backendId> <buildId>")
   .description("get a build for an App Hosting backend")
-  .option("-l, --location <location>", "specify the region of the backend", "us-central1")
+  .option("-l, --location <location>", "specify the region of the backend")
+  .before(requireAuth)
   .before(apphosting.ensureApiEnabled)
   .action(async (backendId: string, buildId: string, options: Options) => {
+    if (options.location !== undefined) {
+      logWarning("--location is being removed in the next major release.");
+    }
+    options.location = options.location ?? "us-central";
     const projectId = needProjectId(options);
     const location = options.location as string;
     const build = await apphosting.getBuild(projectId, location, backendId, buildId);

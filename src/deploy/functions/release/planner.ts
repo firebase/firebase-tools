@@ -58,6 +58,7 @@ export function calculateChangesets(
   const toSkipPredicate = (id: string): boolean =>
     !!(
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
@@ -268,6 +269,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   const triggerType = (e: backend.Endpoint): string => {
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
+    } else if (backend.isDataConnectGraphqlTriggered(e)) {
+      return "a Data Connect HTTPS";
     } else if (backend.isCallableTriggered(e)) {
       return "a callable";
     } else if (backend.isEventTriggered(e)) {

@@ -1,13 +1,21 @@
-import { join } from "path";
 import { readdirSync, statSync } from "fs-extra";
+import ignorePkg from "ignore";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
+import { join, relative } from "path";
 
 export interface ReaddirRecursiveOpts {
   // The directory to recurse.
   path: string;
   // Files to ignore.
   ignore?: string[];
+  isGitIgnore?: boolean;
+  // Files in the ignore array to include.
+  include?: string[];
+  // Maximum depth to recurse.
+  maxDepth?: number;
+  // Ignore symlinked files or directories when traversing.
+  ignoreSymlinks?: boolean;
 }
 
 export interface ReaddirRecursiveFile {
@@ -18,9 +26,13 @@ export interface ReaddirRecursiveFile {
 async function readdirRecursiveHelper(options: {
   path: string;
   filter: (p: string) => boolean;
+  maxDepth: number;
+  ignoreSymlinks: boolean;
 }): Promise<ReaddirRecursiveFile[]> {
-  const dirContents = readdirSync(options.path);
-  const fullPaths = dirContents.map((n) => join(options.path, n));
+  const dirContents = readdirSync(options.path, { withFileTypes: true });
+  const fullPaths = dirContents
+    .filter((n) => !options.ignoreSymlinks || !n.isSymbolicLink())
+    .map((n) => join(options.path, n.name));
   const filteredPaths = fullPaths.filter((p) => !options.filter(p));
   const filePromises: Array<Promise<ReaddirRecursiveFile | ReaddirRecursiveFile[]>> = [];
   for (const p of filteredPaths) {
@@ -31,7 +43,16 @@ async function readdirRecursiveHelper(options: {
     if (!fstat.isDirectory()) {
       continue;
     }
-    filePromises.push(readdirRecursiveHelper({ path: p, filter: options.filter }));
+    if (options.maxDepth > 1) {
+      filePromises.push(
+        readdirRecursiveHelper({
+          path: p,
+          filter: options.filter,
+          maxDepth: options.maxDepth - 1,
+          ignoreSymlinks: options.ignoreSymlinks,
+        }),
+      );
+    }
   }
 
   const files = await Promise.all(filePromises);
@@ -52,13 +73,25 @@ export async function readdirRecursive(
   const rules = (options.ignore || []).map((glob) => {
     return (p: string) => minimatch(p, glob, mmopts);
   });
+  const gitIgnoreRules = ignorePkg()
+    .add(options.ignore || [])
+    .createFilter();
+
   const filter = (t: string): boolean => {
+    if (options.isGitIgnore) {
+      // the git ignore filter will return true if given path should be included,
+      // so we need to negative that return false to avoid filtering it.
+      return !gitIgnoreRules(relative(options.path, t));
+    }
     return rules.some((rule) => {
       return rule(t);
     });
   };
-  return readdirRecursiveHelper({
+  const maxDepth = options.maxDepth && options.maxDepth > 0 ? options.maxDepth : Infinity;
+  return await readdirRecursiveHelper({
     path: options.path,
     filter: filter,
+    maxDepth,
+    ignoreSymlinks: !!options.ignoreSymlinks,
   });
 }

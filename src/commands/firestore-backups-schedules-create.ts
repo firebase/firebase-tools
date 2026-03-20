@@ -18,16 +18,16 @@ import { PrettyPrint } from "../firestore/pretty-print";
 import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:backups:schedules:create")
-  .description("Create a backup schedule under your Cloud Firestore database.")
+  .description("create a backup schedule under your Cloud Firestore database")
   .option(
     "-d, --database <databaseId>",
-    "Database under which you want to create a schedule. Defaults to the (default) database",
+    "database under which you want to create a schedule. Defaults to the (default) database",
   )
   .option("--retention <duration>", "duration string (e.g. 12h or 30d) for backup retention")
-  .option("--recurrence <recurrence>", "Recurrence settings; either DAILY or WEEKLY")
+  .option("--recurrence <recurrence>", "recurrence settings; either DAILY or WEEKLY")
   .option(
     "--day-of-week <dayOfWeek>",
-    "On which day of the week to perform backups; one of MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, or SUNDAY",
+    "on which day of the week to perform backups; one of MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, or SUNDAY",
   )
   .before(requirePermissions, ["datastore.backupSchedules.create"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -81,13 +81,9 @@ export const command = new Command("firestore:backups:schedules:create")
       weeklyRecurrence,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(backupSchedule, undefined, 2));
-    } else {
-      logger.info(
-        clc.bold(`Successfully created ${printer.prettyBackupScheduleString(backupSchedule)}`),
-      );
-    }
+    logger.info(
+      clc.bold(`Successfully created ${printer.prettyBackupScheduleString(backupSchedule)}`),
+    );
 
     return backupSchedule;
   });

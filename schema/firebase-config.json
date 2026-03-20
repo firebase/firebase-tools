@@ -2,6 +2,56 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "additionalProperties": false,
     "definitions": {
+        "ActiveRuntime": {
+            "enum": [
+                "dart3",
+                "nodejs18",
+                "nodejs20",
+                "nodejs22",
+                "nodejs24",
+                "python310",
+                "python311",
+                "python312",
+                "python313"
+            ],
+            "type": "string"
+        },
+        "AuthConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "providers": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "anonymous": {
+                            "type": "boolean"
+                        },
+                        "emailPassword": {
+                            "type": "boolean"
+                        },
+                        "googleSignIn": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "authorizedRedirectUris": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "oAuthBrandDisplayName": {
+                                    "type": "string"
+                                },
+                                "supportEmail": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
         "DataConnectSingle": {
             "additionalProperties": false,
             "properties": {
@@ -85,10 +135,23 @@
         "FirestoreSingle": {
             "additionalProperties": false,
             "properties": {
+                "dataAccessMode": {
+                    "enum": [
+                        "FIRESTORE_NATIVE",
+                        "MONGODB_COMPATIBLE"
+                    ],
+                    "type": "string"
+                },
                 "database": {
                     "type": "string"
                 },
+                "edition": {
+                    "type": "string"
+                },
                 "indexes": {
+                    "type": "string"
+                },
+                "location": {
                     "type": "string"
                 },
                 "postdeploy": {
@@ -236,63 +299,14 @@
             "type": "object"
         },
         "FunctionConfig": {
-            "additionalProperties": false,
-            "properties": {
-                "codebase": {
-                    "type": "string"
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/LocalFunctionConfig"
                 },
-                "ignore": {
-                    "items": {
-                        "type": "string"
-                    },
-                    "type": "array"
-                },
-                "postdeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "predeploy": {
-                    "anyOf": [
-                        {
-                            "items": {
-                                "type": "string"
-                            },
-                            "type": "array"
-                        },
-                        {
-                            "type": "string"
-                        }
-                    ]
-                },
-                "runtime": {
-                    "enum": [
-                        "nodejs10",
-                        "nodejs12",
-                        "nodejs14",
-                        "nodejs16",
-                        "nodejs18",
-                        "nodejs20",
-                        "nodejs22",
-                        "python310",
-                        "python311",
-                        "python312"
-                    ],
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
+                {
+                    "$ref": "#/definitions/RemoteFunctionConfig"
                 }
-            },
-            "type": "object"
+            ]
         },
         "HostingHeaders": {
             "anyOf": [
@@ -894,6 +908,76 @@
             },
             "type": "object"
         },
+        "LocalFunctionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "codebase": {
+                    "type": "string"
+                },
+                "configDir": {
+                    "type": "string"
+                },
+                "disallowLegacyRuntimeConfig": {
+                    "type": "boolean"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "enum": [
+                        "dart3",
+                        "nodejs18",
+                        "nodejs20",
+                        "nodejs22",
+                        "nodejs24",
+                        "python310",
+                        "python311",
+                        "python312",
+                        "python313"
+                    ],
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "source"
+            ],
+            "type": "object"
+        },
         "Record<string,string>": {
             "additionalProperties": false,
             "type": "object"
@@ -933,6 +1017,79 @@
             },
             "required": [
                 "template"
+            ],
+            "type": "object"
+        },
+        "RemoteFunctionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "codebase": {
+                    "type": "string"
+                },
+                "configDir": {
+                    "type": "string"
+                },
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "remoteSource": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "dir": {
+                            "type": "string"
+                        },
+                        "ref": {
+                            "type": "string"
+                        },
+                        "repository": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "ref",
+                        "repository"
+                    ],
+                    "type": "object"
+                },
+                "runtime": {
+                    "$ref": "#/definitions/ActiveRuntime"
+                }
+            },
+            "required": [
+                "remoteSource",
+                "runtime"
             ],
             "type": "object"
         },
@@ -980,8 +1137,75 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
+        },
+        "apphosting": {
+            "anyOf": [
+                {
+                    "additionalProperties": false,
+                    "properties": {
+                        "alwaysDeployFromSource": {
+                            "type": "boolean"
+                        },
+                        "backendId": {
+                            "type": "string"
+                        },
+                        "ignore": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "localBuild": {
+                            "type": "boolean"
+                        },
+                        "rootDir": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "backendId",
+                        "ignore",
+                        "rootDir"
+                    ],
+                    "type": "object"
+                },
+                {
+                    "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                            "alwaysDeployFromSource": {
+                                "type": "boolean"
+                            },
+                            "backendId": {
+                                "type": "string"
+                            },
+                            "ignore": {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            "localBuild": {
+                                "type": "boolean"
+                            },
+                            "rootDir": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "backendId",
+                            "ignore",
+                            "rootDir"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            ]
+        },
+        "auth": {
+            "$ref": "#/definitions/AuthConfig"
         },
         "database": {
             "anyOf": [
@@ -1297,10 +1521,7 @@
                             "type": "string"
                         },
                         "port": {
-                            "type": [
-                                "string",
-                                "number"
-                            ]
+                            "type": "number"
                         }
                     },
                     "type": "object"
@@ -1422,7 +1643,10 @@
         "functions": {
             "anyOf": [
                 {
-                    "$ref": "#/definitions/FunctionConfig"
+                    "$ref": "#/definitions/LocalFunctionConfig"
+                },
+                {
+                    "$ref": "#/definitions/RemoteFunctionConfig"
                 },
                 {
                     "items": {

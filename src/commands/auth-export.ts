@@ -17,7 +17,7 @@ interface exportOptions {
 }
 
 export const command = new Command("auth:export [dataFile]")
-  .description("Export accounts from your Firebase project into a data file")
+  .description("export accounts from your Firebase project into a data file")
   .option(
     "--format <format>",
     "Format of exported data (csv, json). Ignored if <dataFile> has format extension.",

@@ -13,7 +13,7 @@ import * as poller from "../operation-poller";
 import { logBullet, sleep } from "../utils";
 import { apphostingOrigin, consoleOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import { getBackendForAmbiguousLocation, getBackendForLocation } from "./backend";
+import { getBackend } from "./backend";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
@@ -31,29 +31,19 @@ const GIT_COMMIT_SHA_REGEX = /^(?:[0-9a-f]{40}|[0-9a-f]{7})$/;
 export async function createRollout(
   backendId: string,
   projectId: string,
-  location: string,
   branch?: string,
   commit?: string,
   force?: boolean,
 ): Promise<void> {
-  let backend: apphosting.Backend;
-  if (location === "-" || location === "") {
-    backend = await getBackendForAmbiguousLocation(
-      projectId,
-      backendId,
-      "Please select the location of the backend you'd like to roll out:",
-      force,
+  const backend = await getBackend(projectId, backendId);
+
+  if (!backend.codebase || !backend.codebase.repository) {
+    throw new FirebaseError(
+      `Backend ${backendId} is missing a connected repository. If you would like to deploy from a branch or commit of a GitHub repository, you can connect one through the Firebase Console. If you would like to deploy from local source, run 'firebase deploy'.`,
     );
-    location = apphosting.parseBackendName(backend.name).location;
-  } else {
-    backend = await getBackendForLocation(projectId, location, backendId);
   }
 
-  if (!backend.codebase.repository) {
-    throw new FirebaseError(
-      `Backend ${backendId} is misconfigured due to missing a connected repository. You can delete and recreate your backend using 'firebase apphosting:backends:delete' and 'firebase apphosting:backends:create'.`,
-    );
-  }
+  const { location } = apphosting.parseBackendName(backend.name);
   const { repoLink, owner, repo, readToken } = await getRepoDetailsFromBackend(
     projectId,
     location,
@@ -216,7 +206,7 @@ export async function orchestrateRollout(
       );
     }
     throw new FirebaseError(
-      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
+      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}`,
       { children: [build.error] },
     );
   }

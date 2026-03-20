@@ -103,7 +103,7 @@ async function upsertConfig() {
   fs.writeFileSync(
     dataconnectYamlPath,
     `
-specVersion: "v1beta"
+specVersion: "v1"
 serviceId: "s"
 location: "asia-east1"
 schema:

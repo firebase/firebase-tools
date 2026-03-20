@@ -17,6 +17,11 @@ export const queriesPath = path.resolve(
   "src/test/test_projects/fishfood/dataconnect/connectors/a/queries.gql",
 );
 
+export const queryWithFragmentPath = path.resolve(
+  process.cwd(),
+  "src/test/test_projects/fishfood/dataconnect/connectors/a/queryWithFragment.gql",
+);
+
 export const firebaseRcPath = path.resolve(
   process.cwd(),
   "src/test/test_projects/empty/.firebaserc",

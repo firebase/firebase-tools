@@ -26,7 +26,7 @@ If you're interested in contributing code, get started by
 
 The preferred means of contribution to the CLI is by creating a branch in your
 own fork, pushing your changes there, and submitting a Pull Request to the
-`master` branch of `firebase/firebase-tools`.
+`main` branch of `firebase/firebase-tools`.
 
 If you believe that your change should be noted in the
 [changelog](https://github.com/firebase/firebase-tools/releases), please also
@@ -112,8 +112,8 @@ the following commands:
 
 *   Run `npm run lint` to view all warnings in your codebase.
 *   Run `npm run lint:changed-files` to view only the warnings of files changed
-    between your working branch and your copy of master. For this reason, it’s
-    important to keep your master up-to-date; otherwise, you might see
+    between your working branch and your copy of main. For this reason, it’s
+    important to keep your main up-to-date; otherwise, you might see
     unnecessary warnings.
 
 We also support an ongoing effort to convert existing JavaScript into
@@ -217,7 +217,7 @@ provide, the `Command.help` method accepts a long-form string to display for the
 
 #### Load the command
 
-Next, go to `command/index.js`, then add a line to load the command, for
+Next, go to `commands/index.ts`, then add a line to load the command, for
 example:
 
 ```javascript

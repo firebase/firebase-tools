@@ -1,6 +1,7 @@
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
-import { promptOnce } from "../../prompt";
+import { checkbox, input, password, select } from "../../prompt";
+import { validateJsonSecret } from "../../functions/secrets";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
@@ -224,6 +225,9 @@ interface SecretParam {
   // A long description of the parameter's purpose and allowed values. If omitted, UX will not
   // provide a description of the parameter
   description?: string;
+
+  // The format of the secret, e.g. "json"
+  format?: string;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -291,6 +295,14 @@ export class ParamValue {
   }
 
   asList(): string[] {
+    // Handle something like "['a', 'b', 'c']"
+    if (this.rawValue.includes("[")) {
+      // Convert quotes to apostrophes
+      const unquoted = this.rawValue.replace(/'/g, '"');
+      return JSON.parse(unquoted);
+    }
+
+    // Continue to handle something like "a,b,c"
     return this.rawValue.split(this.delimiter);
   }
 
@@ -382,15 +394,16 @@ export async function resolveParams(
   }
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
+
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      await handleSecret(param as SecretParam, firebaseConfig.projectId);
+      await handleSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
     }
   }
 
   if (nonInteractive && needPrompt.length > 0) {
-    const envNames = outstanding.map((p) => p.name).join(", ");
+    const envNames = needPrompt.map((p) => p.name).join(", ");
     throw new FirebaseError(
       `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
@@ -452,19 +465,35 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
  * to read its environment variables. They are instead provided through GCF's own
  * Secret Manager integration.
  */
-async function handleSecret(secretParam: SecretParam, projectId: string) {
+async function handleSecret(
+  secretParam: SecretParam,
+  projectId: string,
+  nonInteractive?: boolean,
+): Promise<void> {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
-    const secretValue = await promptOnce({
-      name: secretParam.name,
-      type: "password",
-      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
-        secretParam.name
-      }. Enter a value for ${secretParam.label || secretParam.name}:`,
+    if (nonInteractive) {
+      throw new FirebaseError(
+        `In non-interactive mode but have no value for the secret: ${secretParam.name}\n\n` +
+          "Set this secret before deploying:\n" +
+          `\tfirebase functions:secrets:set ${secretParam.name}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+      );
+    }
+    const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
+      secretParam.name
+    }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
+      secretParam.label || secretParam.name
+    }:`;
+
+    const secretValue = await password({
+      message: promptMessage,
     });
+    if (secretParam.format === "json") {
+      validateJsonSecret(secretParam.name, secretValue);
+    }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
-    return secretValue;
+    return;
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
@@ -689,7 +718,7 @@ async function promptResourceString(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }
@@ -717,7 +746,7 @@ async function promptResourceStrings(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }
@@ -744,23 +773,22 @@ function shouldRetry(obj: any): obj is retryInput {
 
 async function promptText<T extends RawParamValue>(
   prompt: string,
-  input: TextInput<T>,
+  textInput: TextInput<T>,
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
-  const res = await promptOnce({
-    type: "input",
-    default: resolvedDefault,
+  const res = await input({
+    default: resolvedDefault as string,
     message: prompt,
   });
-  if (input.text.validationRegex) {
-    const userRe = new RegExp(input.text.validationRegex);
+  if (textInput.text.validationRegex) {
+    const userRe = new RegExp(textInput.text.validationRegex);
     if (!userRe.test(res)) {
       logger.error(
-        input.text.validationErrorMessage ||
+        textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, input, resolvedDefault, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, converter);
     }
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
@@ -769,7 +797,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, input, resolvedDefault, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, converter);
   }
   return converted;
 }
@@ -780,10 +808,8 @@ async function promptSelect<T extends RawParamValue>(
   resolvedDefault: T | undefined,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
-  const response = await promptOnce({
-    name: "input",
-    type: "list",
-    default: resolvedDefault,
+  const response = await select<string>({
+    default: resolvedDefault as string,
     message: prompt,
     choices: input.select.options.map((option: SelectOptions<T>): ListItem => {
       return {
@@ -807,9 +833,7 @@ async function promptSelectMultiple<T extends string>(
   resolvedDefault: T[] | undefined,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
-  const response = await promptOnce({
-    name: "input",
-    type: "checkbox",
+  const response = await checkbox({
     default: resolvedDefault,
     message: prompt,
     choices: input.multiSelect.options.map((option: SelectOptions<string>): ListItem => {

@@ -8,6 +8,7 @@ import { getProject, ProjectInfo } from "../../management/projects";
 import { assertExhaustive } from "../../functional";
 import { cloudbuildOrigin } from "../../api";
 import * as backend from "./backend";
+import { getDefaultServiceAccount } from "../../gcp/computeEngine";
 
 const FAQ_URL = "https://firebase.google.com/support/faq#functions-runtime";
 
@@ -27,8 +28,8 @@ export async function defaultServiceAccount(e: backend.Endpoint): Promise<string
   const metadata = await metadataCall;
   if (e.platform === "gcfv1") {
     return `${metadata.projectId}@appspot.gserviceaccount.com`;
-  } else if (e.platform === "gcfv2") {
-    return `${metadata.projectNumber}-compute@developer.gserviceaccount.com`;
+  } else if (e.platform === "gcfv2" || e.platform === "run") {
+    return await getDefaultServiceAccount(metadata.projectNumber);
   }
   assertExhaustive(e.platform);
 }

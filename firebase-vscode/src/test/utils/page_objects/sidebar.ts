@@ -21,6 +21,8 @@ export class FirebaseSidebar {
     } catch (e) {
       await this.open();
     }
+
+    await browser.pause(1000); // visual loading delay
   }
 
   async waitForSidebar() {
@@ -137,6 +139,10 @@ export class StudioView {
 
   get fdcDeployElement() {
     return $(`vscode-button=${TEXT.DEPLOY_FDC_ENABLED}`);
+  }
+
+  get geminiButton() {
+    return $("vscode-button=Build your schema and queries with AI");
   }
 }
 

@@ -4,7 +4,7 @@ import { EventEmitter } from "events";
 import * as clc from "colorette";
 import * as path from "path";
 
-import { dataConnectLocalConnString } from "../api";
+import { dataConnectLocalConnString, vertexAIOrigin } from "../api";
 import { Constants } from "./constants";
 import {
   getPID,
@@ -12,28 +12,29 @@ import {
   stop,
   downloadIfNecessary,
   isIncomaptibleArchError,
+  getDownloadDetails,
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
-import { RC } from "../rc";
-import { BuildResult, requiresVector } from "../dataconnect/types";
+import { BuildResult, mainSchemaYaml, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
-import { logger } from "../logger";
 import { load } from "../dataconnect/load";
 import { Config } from "../config";
 import { PostgresServer, TRUNCATE_TABLES_SQL } from "./dataconnect/pgliteServer";
 import { cleanShutdown } from "./controller";
 import { connectableHostname } from "../utils";
+import { Account } from "../types/auth";
+import { ensure } from "../ensureApiEnabled";
+import { getCredentialPathAsync } from "../defaultCredentials";
 
 export interface DataConnectEmulatorArgs {
   projectId: string;
   listen: ListenSpec[];
   configDir: string;
   auto_download?: boolean;
-  rc: RC;
   config: Config;
   autoconnectToPostgres: boolean;
   postgresListen?: ListenSpec[];
@@ -41,17 +42,20 @@ export interface DataConnectEmulatorArgs {
   enable_output_generated_sdk: boolean;
   importPath?: string;
   debug?: boolean;
+  extraEnv?: Record<string, string>;
+  account?: Account;
 }
 
 export interface DataConnectGenerateArgs {
   configDir: string;
-  connectorId: string;
   watch?: boolean;
+  account?: Account;
 }
 
 export interface DataConnectBuildArgs {
   configDir: string;
   projectId?: string;
+  account?: Account;
 }
 
 // TODO: More concrete typing for events. Can we use string unions?
@@ -71,8 +75,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     let resolvedConfigDir;
     try {
       resolvedConfigDir = this.args.config.path(this.args.configDir);
-
-      const info = await DataConnectEmulator.build({ configDir: resolvedConfigDir });
+      const info = await DataConnectEmulator.build({
+        configDir: resolvedConfigDir,
+        account: this.args.account,
+      });
       if (requiresVector(info.metadata)) {
         if (Constants.isDemoProject(this.args.projectId)) {
           this.logger.logLabeled(
@@ -81,6 +87,7 @@ export class DataConnectEmulator implements EmulatorInstance {
             "Detected a 'demo-' project, but vector embeddings require a real project. Operations that use vector_embed will fail.",
           );
         } else {
+          await ensure(this.args.projectId, vertexAIOrigin(), "dataconnect", /* silent=*/ true);
           this.logger.logLabeled(
             "WARN",
             "dataconnect",
@@ -91,18 +98,24 @@ export class DataConnectEmulator implements EmulatorInstance {
     } catch (err: any) {
       this.logger.log("DEBUG", `'fdc build' failed with error: ${err.message}`);
     }
-    await start(Emulators.DATACONNECT, {
-      auto_download: this.args.auto_download,
-      listen: listenSpecsToString(this.args.listen),
-      config_dir: resolvedConfigDir,
-      enable_output_schema_extensions: this.args.enable_output_schema_extensions,
-      enable_output_generated_sdk: this.args.enable_output_generated_sdk,
-    });
+    const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
+    await start(
+      Emulators.DATACONNECT,
+      {
+        auto_download: this.args.auto_download,
+        listen: listenSpecsToString(this.args.listen),
+        config_dir: resolvedConfigDir,
+        enable_output_schema_extensions: this.args.enable_output_schema_extensions,
+        enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+      },
+      env,
+    );
 
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
       const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const dbId =
+        mainSchemaYaml(info.dataConnectYaml).datasource.postgresql?.database || "postgres";
       const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;
@@ -119,7 +132,7 @@ export class DataConnectEmulator implements EmulatorInstance {
           dataDirectory = this.args.config.path(dataDirectory);
         }
         const postgresDumpPath = this.args.importPath
-          ? path.join(this.args.config.path(this.args.importPath), "postgres.tar.gz")
+          ? path.join(this.args.importPath, "postgres.tar.gz")
           : undefined;
         this.postgresServer = new PostgresServer({
           dataDirectory,
@@ -196,6 +209,10 @@ export class DataConnectEmulator implements EmulatorInstance {
     return Emulators.DATACONNECT;
   }
 
+  getVersion(): string {
+    return getDownloadDetails(Emulators.DATACONNECT).version;
+  }
+
   async clearData(): Promise<void> {
     if (this.postgresServer) {
       await this.postgresServer.clearDb();
@@ -218,38 +235,44 @@ export class DataConnectEmulator implements EmulatorInstance {
     }
   }
 
-  static async generate(args: DataConnectGenerateArgs): Promise<string> {
+  static async generate(args: DataConnectGenerateArgs): Promise<void> {
     const commandInfo = await downloadIfNecessary(Emulators.DATACONNECT);
-    const cmd = [
-      "--logtostderr",
-      "-v=2",
-      "generate",
-      `--config_dir=${args.configDir}`,
-      `--connector_id=${args.connectorId}`,
-    ];
+    const cmd = ["--logtostderr", "-v=2", "sdk", "generate", `--config_dir=${args.configDir}`];
     if (args.watch) {
       cmd.push("--watch");
     }
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
-    if (isIncomaptibleArchError(res.error)) {
-      throw new FirebaseError(
-        `Unknown system error when running the Data Connect toolkit. ` +
-          `You may be able to fix this by installing Rosetta: ` +
-          `softwareupdate --install-rosetta`,
-      );
-    }
-    logger.info(res.stderr);
-    if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect generate: ${res.error.message}`, {
-        original: res.error,
-      });
-    }
-    if (res.status !== 0) {
-      throw new FirebaseError(
-        `Unable to generate your Data Connect SDKs (exit code ${res.status}): ${res.stderr}`,
-      );
-    }
-    return res.stdout;
+    const env = await DataConnectEmulator.getEnv(args.account);
+    return new Promise((resolve, reject) => {
+      try {
+        const proc = childProcess.spawn(commandInfo.binary, cmd, { stdio: "inherit", env });
+        proc.on("close", (code) => {
+          if (code === 0) {
+            // Command executed successfully
+            resolve();
+          } else {
+            // Command failed
+            reject(new Error(`Command failed with exit code ${code}`));
+          }
+        });
+
+        proc.on("error", (err) => {
+          // Handle errors like command not found
+          reject(err);
+        });
+      } catch (e: any) {
+        if (isIncomaptibleArchError(e)) {
+          reject(
+            new FirebaseError(
+              `Unknown system error when running the Data Connect toolkit. ` +
+                `You may be able to fix this by installing Rosetta: ` +
+                `softwareupdate --install-rosetta`,
+            ),
+          );
+        } else {
+          reject(e);
+        }
+      }
+    });
   }
 
   static async build(args: DataConnectBuildArgs): Promise<BuildResult> {
@@ -258,8 +281,8 @@ export class DataConnectEmulator implements EmulatorInstance {
     if (args.projectId) {
       cmd.push(`--project_id=${args.projectId}`);
     }
-
-    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8" });
+    const env = await DataConnectEmulator.getEnv(args.account);
+    const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
         `Unkown system error when running the Data Connect toolkit. ` +
@@ -310,7 +333,9 @@ export class DataConnectEmulator implements EmulatorInstance {
           connectionString: connectionString.toString(),
           database,
           serviceId,
-          maxOpenConnections: 1, // PGlite only supports a single open connection at a time - otherwise, prepared statements will misbehave.
+          // NOTE: Previously, we set `maxOpenConnections: 1` to get around PGlite's limitation with prepared statements.
+          // Since we switched emulator to avoid prepared statement, multiple connections are OK.
+          // Transactional operations (`mutation @transaction`) actually requires multiple connections.
         });
         this.logger.logLabeled(
           "DEBUG",
@@ -331,6 +356,21 @@ export class DataConnectEmulator implements EmulatorInstance {
       }
     }
     return false;
+  }
+
+  static async getEnv(
+    account?: Account,
+    extraEnv: Record<string, string> = {},
+  ): Promise<NodeJS.ProcessEnv> {
+    const credsEnv: Record<string, string> = {};
+    if (account) {
+      // If Firebase CLI is logged in, always pass in the credentials to FDC emulator.
+      const defaultCredPath = await getCredentialPathAsync(account);
+      if (defaultCredPath) {
+        credsEnv.GOOGLE_APPLICATION_CREDENTIALS = defaultCredPath;
+      }
+    }
+    return { ...process.env, ...extraEnv, ...credsEnv };
   }
 }
 

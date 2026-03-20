@@ -15,7 +15,7 @@ import { getProjectNumber } from "../getProjectNumber";
 import { logger } from "../logger";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("ext:export")
@@ -56,9 +56,8 @@ export const command = new Command("ext:export")
     if (
       !options.nonInteractive &&
       !options.force &&
-      !(await promptOnce({
+      !(await confirm({
         message: "Do you wish to add these Extension instances to firebase.json?",
-        type: "confirm",
         default: true,
       }))
     ) {
@@ -67,7 +66,7 @@ export const command = new Command("ext:export")
     }
 
     const manifestSpecs = withRefSubbed.map((spec) => {
-      const paramCopy = { ...spec.params };
+      const paramCopy = { ...spec.params, ...spec.systemParams };
       if (spec.eventarcChannel) {
         paramCopy.EVENTARC_CHANNEL = spec.eventarcChannel;
       }

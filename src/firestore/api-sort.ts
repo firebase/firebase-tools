@@ -9,6 +9,21 @@ const QUERY_SCOPE_SEQUENCE = [
   undefined,
 ];
 
+const API_SCOPE_SEQUENCE = [
+  API.ApiScope.ANY_API,
+  API.ApiScope.DATASTORE_MODE_API,
+  API.ApiScope.MONGODB_COMPATIBLE_API,
+  undefined,
+];
+
+const DENSITY_SEQUENCE = [
+  API.Density.DENSITY_UNSPECIFIED,
+  API.Density.SPARSE_ALL,
+  API.Density.SPARSE_ANY,
+  API.Density.DENSE,
+  undefined,
+];
+
 const ORDER_SEQUENCE = [API.Order.ASCENDING, API.Order.DESCENDING, undefined];
 
 const ARRAY_CONFIG_SEQUENCE = [API.ArrayConfig.CONTAINS, undefined];
@@ -20,6 +35,10 @@ const ARRAY_CONFIG_SEQUENCE = [API.ArrayConfig.CONTAINS, undefined];
  *   1) The collection group.
  *   2) The query scope.
  *   3) The fields list.
+ *   4) The API scope.
+ *   5) The index density.
+ *   6) Whether it's multikey.
+ *   7) Whether it's unique.
  */
 export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
   if (a.collectionGroup !== b.collectionGroup) {
@@ -30,7 +49,27 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
     return compareQueryScope(a.queryScope, b.queryScope);
   }
 
-  return compareArrays(a.fields, b.fields, compareIndexField);
+  let cmp = compareArrays(a.fields, b.fields, compareIndexField);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 /**
@@ -40,6 +79,10 @@ export function compareSpecIndex(a: Spec.Index, b: Spec.Index): number {
  *   1) The collection group.
  *   2) The query scope.
  *   3) The fields list.
+ *   4) The API scope.
+ *   5) The index density.
+ *   6) Whether it's multikey.
+ *   7) Whether it's unique.
  */
 export function compareApiIndex(a: API.Index, b: API.Index): number {
   // When these indexes are used as part of a field override, the name is
@@ -57,7 +100,27 @@ export function compareApiIndex(a: API.Index, b: API.Index): number {
     return compareQueryScope(a.queryScope, b.queryScope);
   }
 
-  return compareArrays(a.fields, b.fields, compareIndexField);
+  let cmp = compareArrays(a.fields, b.fields, compareIndexField);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 /**
@@ -215,15 +278,69 @@ function compareFieldIndex(a: Spec.FieldIndex, b: Spec.FieldIndex): number {
     return compareArrayConfig(a.arrayConfig, b.arrayConfig);
   }
 
-  return 0;
+  let cmp = compareApiScope(a.apiScope, b.apiScope);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareDensity(a.density, b.density);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  cmp = compareBoolean(a.multikey, b.multikey);
+  if (cmp !== 0) {
+    return cmp;
+  }
+
+  return compareBoolean(a.unique, b.unique);
 }
 
 function compareQueryScope(a: API.QueryScope, b: API.QueryScope): number {
   return QUERY_SCOPE_SEQUENCE.indexOf(a) - QUERY_SCOPE_SEQUENCE.indexOf(b);
 }
 
+function compareApiScope(a?: API.ApiScope, b?: API.ApiScope): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return API_SCOPE_SEQUENCE.indexOf(a) - API_SCOPE_SEQUENCE.indexOf(b);
+}
+
+function compareDensity(a?: API.Density, b?: API.Density): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return DENSITY_SEQUENCE.indexOf(a) - DENSITY_SEQUENCE.indexOf(b);
+}
+
 function compareOrder(a?: API.Order, b?: API.Order): number {
   return ORDER_SEQUENCE.indexOf(a) - ORDER_SEQUENCE.indexOf(b);
+}
+
+function compareBoolean(a?: boolean, b?: boolean): number {
+  if (a === b) {
+    return 0;
+  }
+  if (a === undefined) {
+    return -1;
+  }
+  if (b === undefined) {
+    return 1;
+  }
+  return Number(a) - Number(b);
 }
 
 function compareArrayConfig(a?: API.ArrayConfig, b?: API.ArrayConfig): number {

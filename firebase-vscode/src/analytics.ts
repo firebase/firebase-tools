@@ -21,19 +21,36 @@ export enum DATA_CONNECT_EVENT_NAME {
   PROJECT_SELECTED = "project_selected",
   RUN_LOCAL = "run_local",
   RUN_PROD = "run_prod",
+  RUN_PROD_MUTATION_WARNING = "run_prod_mutation_warning",
+  RUN_PROD_MUTATION_WARNING_REJECTED = "run_prod_mutation_warning_rejected",
+  RUN_PROD_MUTATION_WARNING_ACKED = "run_prod_mutation_warning_acked",
+  RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS = "run_prod_mutation_warning_acked_always",
+  RUN_AUTH_ADMIN = "run_auth_admin",
+  RUN_AUTH_UNAUTHENTICATED = "run_auth_unauthenticated",
+  RUN_AUTH_AUTHENTICATED = "run_auth_authenticated",
+  RUN_UNDEFINED_VARIABLES = "run_undefined_variables",
+  RUN_MISSING_VARIABLES = "run_missing_variables",
+  GENERATE_OPERATION = "generate_operation",
+  GIF_TOS_MODAL = "gif_tos_modal",
+  GIF_TOS_MODAL_ACKED = "gif_tos_modal_acked",
+  GIF_TOS_MODAL_CLICKED = "gif_tos_modal_clicked",
+  GIF_TOS_MODAL_REJECTED = "gif_tos_modal_rejected",
   ADD_DATA = "add_data",
   READ_DATA = "read_data",
   MOVE_TO_CONNECTOR = "move_to_connector",
   START_EMULATOR_FROM_EXECUTION = "start_emulator_from_execution",
-  REFUSE_START_EMULATOR_FROM_EXECUTION = "refuse_start_emulator_from_execution",
+  INIT = "init",
   INIT_SDK = "init_sdk",
   INIT_SDK_CLI = "init_sdk_cli",
   INIT_SDK_CODELENSE = "init_sdk_codelense",
   START_EMULATORS = "start_emulators",
   AUTO_COMPLETE = "auto_complete",
   SESSION_CHAR_COUNT = "session_char_count",
-  EMULATOR_EXPORT ="emulator_export",
+  EMULATOR_EXPORT = "emulator_export",
   SETUP_FIREBASE_BINARY = "setup_firebase_binary",
+  TRY_FIREBASE_AGENT_CLICKED = "try_firebase_agent_in_gemini_clicked",
+  MCP_DOCS_CLICKED = "mcp_docs_clicked",
+  GIF_TOS_CLICKED = "gif_tos_clicked",
 }
 
 export class AnalyticsLogger {
@@ -42,9 +59,9 @@ export class AnalyticsLogger {
   private sessionCharCount = 0; // Track total chars for the session
 
   constructor(context: vscode.ExtensionContext) {
-    this.logger = monospaceEnv.value.isMonospace ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context) : env.createTelemetryLogger(
-      new GA4TelemetrySender(pluginLogger),
-    );
+    this.logger = monospaceEnv.value.isMonospace
+      ? new IDXLogger(new GA4TelemetrySender(pluginLogger), context)
+      : env.createTelemetryLogger(new GA4TelemetrySender(pluginLogger));
 
     let subscriptions: vscode.Disposable[] = [
       vscode.workspace.onDidChangeTextDocument(
@@ -149,13 +166,15 @@ export class AnalyticsLogger {
 }
 
 export class IDXLogger {
-  constructor(private sender: GA4TelemetrySender, private context: vscode.ExtensionContext) {}
+  constructor(
+    private sender: GA4TelemetrySender,
+    private context: vscode.ExtensionContext,
+  ) {}
   public logUsage(eventName: string, data?: any) {
     const packageJson = this.context.extension.packageJSON;
     data = {
       ...data,
-      extversion: packageJson.version,
-      extname: "idx",
+      ...getAnalyticsContext(this.context),
       isidx: "true",
     };
     this.sender.sendEventData(eventName, data);
@@ -205,6 +224,15 @@ class GA4TelemetrySender implements TelemetrySender {
     // n/a
     // TODO: Sanatize error messages for user data
   }
+}
+
+export function getAnalyticsContext(context: vscode.ExtensionContext) {
+  const packageJson = context.extension.packageJSON;
+
+  return {
+    extversion: packageJson.version,
+    extname: monospaceEnv.value.isMonospace ? "idx" : "vscode",
+  };
 }
 
 function addFirebaseBinaryMetadata(data?: Record<string, any> | undefined) {

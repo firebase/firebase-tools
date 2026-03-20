@@ -8,8 +8,7 @@ import { logger } from "../logger";
 import { Options } from "../options";
 import { requireAuth } from "../requireAuth";
 import * as utils from "../utils";
-
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 export const command = new Command("appdistribution:testers:list [group]")
   .description("list testers in project")
@@ -17,10 +16,10 @@ export const command = new Command("appdistribution:testers:list [group]")
   .action(async (group: string | undefined, options: Options): Promise<ListTestersResponse> => {
     const projectName = await getProjectName(options);
     const appDistroClient = new AppDistributionClient();
-    let testersResponse: ListTestersResponse;
+    let testers: Tester[];
     const spinner = ora("Preparing the list of your App Distribution testers").start();
     try {
-      testersResponse = await appDistroClient.listTesters(projectName, group);
+      testers = await appDistroClient.listTesters(projectName, group);
     } catch (err: any) {
       spinner.fail();
       throw new FirebaseError("Failed to list testers.", {
@@ -29,10 +28,9 @@ export const command = new Command("appdistribution:testers:list [group]")
       });
     }
     spinner.succeed();
-    const testers = testersResponse.testers ?? [];
     printTestersTable(testers);
     utils.logSuccess(`Testers listed successfully`);
-    return testersResponse;
+    return { testers };
   });
 
 /**
@@ -48,11 +46,11 @@ function printTestersTable(testers: Tester[]): void {
 
   for (const tester of testers) {
     const name = tester.name.split("/").pop();
-    const groups = tester.groups
+    const groups = (tester.groups ?? [])
       .map((grp) => grp.split("/").pop())
       .sort()
       .join(";");
-    table.push([name, tester.displayName ?? "", tester.lastActivityTime, groups]);
+    table.push([name, tester.displayName ?? "", tester.lastActivityTime.toString(), groups]);
   }
 
   logger.info(table.toString());

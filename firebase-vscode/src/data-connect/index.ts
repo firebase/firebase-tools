@@ -1,7 +1,7 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { Signal, effect } from "@preact/signals-core";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import { registerExecution } from "./execution";
+import { registerExecution } from "./execution/execution";
 import { registerExplorer } from "./explorer";
 import { registerAdHoc } from "./ad-hoc-mutations";
 import { DataConnectService as FdcService } from "./service";
@@ -11,7 +11,6 @@ import {
   SchemaCodeLensProvider,
 } from "./code-lens-provider";
 import { registerConnectors } from "./connectors";
-import { AuthService } from "../auth/service";
 import { currentProjectId } from "../core/project";
 import { isTest } from "../utils/env";
 import { setupLanguageClient } from "./language-client";
@@ -32,6 +31,8 @@ import { DataConnectToolkit } from "./toolkit";
 import { registerFdcSdkGeneration } from "./sdk-generation";
 import { registerDiagnostics } from "./diagnostics";
 import { AnalyticsLogger } from "../analytics";
+import { registerFirebaseMCP } from "./ai-tools/firebase-mcp";
+import { ExecutionParamsService } from "./execution/execution-params";
 
 class CodeActionsProvider implements vscode.CodeActionProvider {
   constructor(
@@ -131,7 +132,7 @@ class CodeActionsProvider implements vscode.CodeActionProvider {
 export function registerFdc(
   context: ExtensionContext,
   broker: ExtensionBrokerImpl,
-  authService: AuthService,
+  paramsService: ExecutionParamsService,
   emulatorController: EmulatorsController,
   analyticsLogger: AnalyticsLogger,
 ): Disposable {
@@ -150,9 +151,9 @@ export function registerFdc(
   );
 
   const fdcService = new FdcService(
-    authService,
     dataConnectToolkit,
     emulatorController,
+    analyticsLogger,
   );
 
   // register codelens
@@ -161,14 +162,6 @@ export function registerFdc(
   );
   const schemaCodeLensProvider = new SchemaCodeLensProvider(emulatorController);
   const configureSdkCodeLensProvider = new ConfigureSdkCodeLensProvider();
-  const refreshCommand = vscode.commands.registerCommand(
-    "refreshCodelens",
-    () => {
-      operationCodeLensProvider.refresh();
-      schemaCodeLensProvider.refresh();
-      configureSdkCodeLensProvider.refresh();
-    },
-  );
 
   // activate FDC toolkit
   // activate language client/serer
@@ -222,7 +215,14 @@ export function registerFdc(
         selectedProjectStatus.show();
       }),
     },
-    registerExecution(context, broker, fdcService, analyticsLogger),
+    registerExecution(
+      context,
+      broker,
+      fdcService,
+      paramsService,
+      analyticsLogger,
+      emulatorController,
+    ),
     registerExplorer(context, broker, fdcService),
     registerWebview({ name: "data-connect", context, broker }),
     registerAdHoc(fdcService, analyticsLogger),
@@ -230,6 +230,7 @@ export function registerFdc(
     registerFdcDeploy(broker, analyticsLogger),
     registerFdcSdkGeneration(broker, analyticsLogger),
     registerTerminalTasks(broker, analyticsLogger),
+    registerFirebaseMCP(broker, analyticsLogger),
     operationCodeLensProvider,
     vscode.languages.registerCodeLensProvider(
       // **Hack**: For testing purposes, enable code lenses on all graphql files
@@ -256,7 +257,6 @@ export function registerFdc(
       [{ scheme: "file", language: "yaml", pattern: "**/connector.yaml" }],
       configureSdkCodeLensProvider,
     ),
-    refreshCommand,
     {
       dispose: () => {
         client.stop();

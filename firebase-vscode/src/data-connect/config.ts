@@ -1,6 +1,6 @@
 import { isPathInside } from "./file-utils";
 import { DeepReadOnly } from "../metaprogramming";
-import { ConnectorYaml, DataConnectYaml } from "../dataconnect/types";
+import { ConnectorYaml, DataConnectYaml, mainSchemaYaml, secondarySchemaYamls } from "../../../src/dataconnect/types";
 import { Result, ResultValue } from "../result";
 import { computed, effect, signal } from "@preact/signals-core";
 import {
@@ -14,12 +14,13 @@ import {
   readConnectorYaml,
   readDataConnectYaml,
   readFirebaseJson as readFdcFirebaseJson,
-} from "../../../src/dataconnect/fileUtils";
+} from "../../../src/dataconnect/load";
 import { Config } from "../config";
 import { DataConnectMultiple } from "../firebaseConfig";
 import path from "path";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import * as fs from "fs";
+import { EmulatorHub } from "../../../src/emulator/hub";
 
 export * from "../core/config";
 
@@ -263,16 +264,25 @@ export class ResolvedDataConnectConfig {
     return this.value.connectorDirs;
   }
 
-  get schemaDir(): string {
-    return this.value.schema.source;
+  get mainSchemaDir(): string {
+    return mainSchemaYaml(this.value).source;
+  }
+
+  get secondarySchemaDirs(): string[] {
+    return secondarySchemaYamls(this.value).map((s) => s.source);
   }
 
   get relativePath(): string {
-    return this.path.split("/").pop()!;
+    if (!getConfigPath()) {
+      return this.path.split("/").pop()!;
+    }
+    return path.relative(getConfigPath()!, this.path);
   }
 
-  get relativeSchemaPath(): string {
-    return this.schemaDir.replace(".", this.relativePath);
+  get relativeSchemaPaths(): string[] {
+    return [this.mainSchemaDir, ...this.secondarySchemaDirs].map((dir) =>
+      dir.replace(".", this.relativePath),
+    );
   }
 
   get relativeConnectorPaths(): string[] {
@@ -302,26 +312,37 @@ export class ResolvedDataConnectConfig {
 export class ResolvedDataConnectConfigs {
   constructor(readonly values: DeepReadOnly<ResolvedDataConnectConfig[]>) {}
 
-  get serviceIds() {
+  get serviceIds(): string[] {
     return this.values.map((config) => config.value.serviceId);
   }
 
-  get allConnectors() {
+  get allConnectors(): ResolvedConnectorYaml[] {
     return this.values.flatMap((dc) => dc.resolvedConnectors);
   }
 
-  findById(serviceId: string) {
-    return this.values.find((dc) => dc.value.serviceId === serviceId);
+  findById(serviceId: string): ResolvedDataConnectConfig {
+    const dc = this.values.find((dc) => dc.value.serviceId === serviceId);
+    if (!dc) {
+      throw new Error(`No dataconnect.yaml with serviceId ${serviceId}. Available: ${this.serviceIds.join(", ")}`);
+    }
+    return dc;
   }
 
-  findEnclosingServiceForPath(filePath: string) {
-    return this.values.find((dc) => dc.containsPath(filePath));
+  findEnclosingServiceForPath(filePath: string): ResolvedDataConnectConfig {
+    const dc = this.values.find((dc) => dc.containsPath(filePath));
+    if (!dc) {
+      throw new Error(`No enclosing dataconnect.yaml found for path ${filePath}. Available Paths: ${this.values.map((dc) => dc.path).join(", ")}`);
+    }
+    return dc;
   }
 
-  getApiServicePathByPath(projectId: string, path: string) {
+  getApiServicePathByPath(projectId: string | undefined, path: string): string {
     const dataConnectConfig = this.findEnclosingServiceForPath(path);
     const serviceId = dataConnectConfig?.value.serviceId;
     const locationId = dataConnectConfig?.dataConnectLocation;
+    // FDC emulator can service multiple services keyed by serviceId.
+    // ${projectId} and ${locationId} aren't used to resolve emulator service.
+    projectId = projectId || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
     return `projects/${projectId}/locations/${locationId}/services/${serviceId}`;
   }
 }

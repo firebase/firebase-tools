@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { logger } from "../../../logger";
-import { promptOnce } from "../../../prompt";
+import { input, select } from "../../../prompt";
 import { requirePermissions } from "../../../requirePermissions";
 import { Options } from "../../../options";
 import { ensure } from "../../../ensureApiEnabled";
@@ -14,13 +14,14 @@ import {
 } from "../../../functions/projectConfig";
 import { FirebaseError } from "../../../error";
 import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
+import * as supported from "../../../deploy/functions/runtimes/supported";
 
 const MAX_ATTEMPTS = 5;
 
 /**
  * Set up a new firebase project for functions.
  */
-export async function doSetup(setup: any, config: Config, options: Options): Promise<any> {
+export async function askQuestions(setup: any, config: Config, options: Options): Promise<void> {
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });
@@ -33,7 +34,7 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
   // check if functions have been initialized yet
   if (!config.src.functions) {
     setup.config.functions = [];
-    return initNewCodebase(setup, config);
+    return initNewCodebase(setup);
   }
   setup.config.functions = normalizeAndValidate(setup.config.functions);
   const codebases = setup.config.functions.map((cfg: any) => clc.bold(cfg.codebase));
@@ -48,19 +49,18 @@ export async function doSetup(setup: any, config: Config, options: Options): Pro
       value: "overwrite",
     },
   ];
-  const initOpt = await promptOnce({
-    type: "list",
+  const initOpt = await select({
     message: "Would you like to initialize a new codebase, or overwrite an existing one?",
     default: "new",
     choices,
   });
-  return initOpt === "new" ? initNewCodebase(setup, config) : overwriteCodebase(setup, config);
+  return initOpt === "new" ? initNewCodebase(setup) : overwriteCodebase(setup);
 }
 
 /**
  *  User dialogue to set up configuration for functions codebase.
  */
-async function initNewCodebase(setup: any, config: Config): Promise<any> {
+async function initNewCodebase(setup: any): Promise<void> {
   logger.info("Let's create a new codebase for your functions.");
   logger.info("A directory corresponding to the codebase will be created in your project");
   logger.info("with sample code pre-configured.\n");
@@ -84,10 +84,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
           "Exceeded max number of attempts to input valid codebase name. Please restart.",
         );
       }
-      codebase = await promptOnce({
-        type: "input",
-        message: "What should be the name of this codebase?",
-      });
+      codebase = await input("What should be the name of this codebase?");
       try {
         validateCodebase(codebase);
         assertUnique(setup.config.functions, "codebase", codebase);
@@ -105,8 +102,7 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
         );
       }
       attempts++;
-      source = await promptOnce({
-        type: "input",
+      source = await input({
         message: `In what sub-directory would you like to initialize your functions for codebase ${clc.bold(
           codebase,
         )}?`,
@@ -124,21 +120,22 @@ async function initNewCodebase(setup: any, config: Config): Promise<any> {
   setup.config.functions.push({
     source,
     codebase,
+    // Disable legacy runtime config for new codebases by default
+    disallowLegacyRuntimeConfig: true,
   });
   setup.functions.source = source;
   setup.functions.codebase = codebase;
-  return languageSetup(setup, config);
+  return languageSetup(setup);
 }
 
-async function overwriteCodebase(setup: any, config: Config): Promise<any> {
+async function overwriteCodebase(setup: any): Promise<void> {
   let codebase;
   if (setup.config.functions.length > 1) {
     const choices = setup.config.functions.map((cfg: any) => ({
       name: cfg["codebase"],
       value: cfg["codebase"],
     }));
-    codebase = await promptOnce({
-      type: "list",
+    codebase = await select({
       message: "Which codebase would you like to overwrite?",
       choices,
     });
@@ -151,16 +148,16 @@ async function overwriteCodebase(setup: any, config: Config): Promise<any> {
   setup.functions.codebase = cbconfig.codebase;
 
   logger.info(`\nOverwriting ${clc.bold(`codebase ${codebase}...\n`)}`);
-  return languageSetup(setup, config);
+  return languageSetup(setup);
 }
 
 /**
  * User dialogue to set up configuration for functions codebase language choice.
  */
-async function languageSetup(setup: any, config: Config): Promise<any> {
-  // During genkit setup, always select TypeScript here.
+async function languageSetup(setup: any): Promise<void> {
+  // During genkit setup, Typescript is always selected.
   if (setup.languageOverride) {
-    return require("./" + setup.languageOverride).setup(setup, config);
+    return;
   }
 
   const choices = [
@@ -173,12 +170,18 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       value: "typescript",
     },
   ];
+  if (!setup.featureInfo?.dataconnectResolver) {
+    // Data Connect resolvers do not yet support Python.
+    choices.push({
+      name: "Python",
+      value: "python",
+    });
+  }
   choices.push({
-    name: "Python",
-    value: "python",
+    name: "Dart",
+    value: "dart",
   });
-  const language = await promptOnce({
-    type: "list",
+  const language = await select({
     message: "What language would you like to use to write Cloud Functions?",
     default: "javascript",
     choices,
@@ -205,8 +208,30 @@ async function languageSetup(setup: any, config: Config): Promise<any> {
       break;
     case "python":
       cbconfig.ignore = ["venv", ".git", "firebase-debug.log", "firebase-debug.*.log", "*.local"];
+      // In practical sense, latest supported runtime will not be a decomissioned runtime,
+      // but in theory this doesn't have to be the case.
+      cbconfig.runtime = supported.latest("python") as supported.ActiveRuntime;
+      break;
+    case "dart":
+      cbconfig.ignore = [
+        ".dart_tool",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local",
+      ];
+      // In practical sense, latest supported runtime will not be a decomissioned runtime,
+      // but in theory this doesn't have to be the case.
+      cbconfig.runtime = supported.latest("dart") as supported.ActiveRuntime;
       break;
   }
   setup.functions.languageChoice = language;
-  return require("./" + language).setup(setup, config);
+}
+
+export async function actuate(setup: any, config: Config): Promise<void> {
+  // During genkit setup, always select TypeScript here.
+  if (setup.languageOverride) {
+    return require("./" + setup.languageOverride).setup(setup, config);
+  }
+  return require("./" + setup.functions.languageChoice).setup(setup, config);
 }

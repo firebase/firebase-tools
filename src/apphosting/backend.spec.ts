@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 
-import * as prompt from "../prompt";
+import * as promptImport from "../prompt";
 import * as apphosting from "../gcp/apphosting";
 import * as iam from "../gcp/iam";
 import * as resourceManager from "../gcp/resourceManager";
@@ -12,7 +12,9 @@ import {
   promptLocation,
   setDefaultTrafficPolicy,
   ensureAppHostingComputeServiceAccount,
+  chooseBackends,
   getBackendForAmbiguousLocation,
+  getBackend,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
@@ -22,7 +24,7 @@ describe("apphosting setup functions", () => {
   const location = "us-central1";
   const backendId = "backendId";
 
-  let promptOnceStub: sinon.SinonStub;
+  let promptStub: sinon.SinonStubbedInstance<typeof promptImport>;
   let pollOperationStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
@@ -34,7 +36,11 @@ describe("apphosting setup functions", () => {
   let testResourceIamPermissionsStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnceStub = sinon.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+    promptStub = sinon.stub(promptImport);
+    promptStub.input.throws("Unexpected input call");
+    promptStub.confirm.throws("Unexpected confirm call");
+    promptStub.select.throws("Unexpected select call");
+    promptStub.checkbox.throws("Unepxected checkbox call");
     pollOperationStub = sinon.stub(poller, "pollOperation").throws("Unexpected pollOperation call");
     createBackendStub = sinon
       .stub(apphosting, "createBackend")
@@ -100,8 +106,8 @@ describe("apphosting setup functions", () => {
         projectId,
         location,
         backendId,
-        cloudBuildConnRepo,
         "custom-service-account",
+        cloudBuildConnRepo,
         webAppId,
       );
 
@@ -114,8 +120,105 @@ describe("apphosting setup functions", () => {
         labels: deploymentTool.labels(),
         serviceAccount: "custom-service-account",
         appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: undefined,
       };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput);
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+    });
+
+    const runtimes = ["nodejs22", ""];
+    for (const runtime of runtimes) {
+      it(`should create a new backend with runtime ${runtime}`, async () => {
+        createBackendStub.resolves(op);
+        pollOperationStub.resolves(completeBackend);
+
+        await createBackend(
+          projectId,
+          location,
+          backendId,
+          "custom-service-account",
+          cloudBuildConnRepo,
+          webAppId,
+          "/",
+          runtime,
+        );
+
+        const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+          servingLocality: "GLOBAL_ACCESS",
+          codebase: {
+            repository: cloudBuildConnRepo.name,
+            rootDirectory: "/",
+          },
+          labels: deploymentTool.labels(),
+          serviceAccount: "custom-service-account",
+          appId: webAppId,
+          runtime: { value: runtime ?? "" },
+          automaticBaseImageUpdatesDisabled: undefined,
+        };
+        expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+      });
+    }
+
+    it("should create a new backend with automatic base image updates disabled", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        "custom-service-account",
+        cloudBuildConnRepo,
+        webAppId,
+        "/",
+        undefined,
+        true, // automaticBaseImageUpdatesDisabled
+      );
+
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
+        appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: true,
+      };
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
+    });
+
+    it("should create a new backend with automatic base image updates enabled", async () => {
+      createBackendStub.resolves(op);
+      pollOperationStub.resolves(completeBackend);
+
+      await createBackend(
+        projectId,
+        location,
+        backendId,
+        "custom-service-account",
+        cloudBuildConnRepo,
+        webAppId,
+        "/",
+        undefined,
+        false, // automaticBaseImageUpdatesDisabled
+      );
+
+      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
+        servingLocality: "GLOBAL_ACCESS",
+        codebase: {
+          repository: cloudBuildConnRepo.name,
+          rootDirectory: "/",
+        },
+        labels: deploymentTool.labels(),
+        serviceAccount: "custom-service-account",
+        appId: webAppId,
+        runtime: { value: "" },
+        automaticBaseImageUpdatesDisabled: false,
+      };
+      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
 
     it("should set default rollout policy to 100% all at once", async () => {
@@ -146,13 +249,24 @@ describe("apphosting setup functions", () => {
 
     it("should succeed if the user has permissions for the service account", async () => {
       testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
 
       expect(testResourceIamPermissionsStub).to.be.calledOnce;
-      expect(createServiceAccountStub).to.not.be.called;
-      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
+
+    it("should still add permissions even if the service account already exists", async () => {
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.rejects(new FirebaseError("error occurred", { status: 409 }));
+      addServiceAccountToRolesStub.resolves();
+
+      await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
+        .fulfilled;
+
+      expect(addServiceAccountToRolesStub).to.be.calledOnce;
     });
 
     it("should succeed if the user can create the service account when it does not exist", async () => {
@@ -198,6 +312,20 @@ describe("apphosting setup functions", () => {
       expect(createServiceAccountStub).to.be.calledOnce;
       expect(addServiceAccountToRolesStub).to.not.be.called;
     });
+
+    it("should throw an unexpected error", async () => {
+      testResourceIamPermissionsStub.rejects(
+        new FirebaseError("Unexpected error", { status: 500 }),
+      );
+
+      await expect(
+        ensureAppHostingComputeServiceAccount(projectId, serviceAccount),
+      ).to.be.rejectedWith("Unexpected error");
+
+      expect(testResourceIamPermissionsStub).to.be.calledOnce;
+      expect(createServiceAccountStub).to.not.be.called;
+      expect(addServiceAccountToRolesStub).to.not.be.called;
+    });
   });
 
   describe("deleteBackendAndPoll", () => {
@@ -223,7 +351,7 @@ describe("apphosting setup functions", () => {
 
     beforeEach(() => {
       listLocationsStub.returns(supportedLocations);
-      promptOnceStub.returns(supportedLocations[0].locationId);
+      promptStub.select.resolves(supportedLocations[0].locationId);
     });
 
     it("returns a location selection", async () => {
@@ -234,23 +362,9 @@ describe("apphosting setup functions", () => {
     it("uses a default location prompt if none is provided", async () => {
       await promptLocation(projectId);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
+      expect(promptStub.select).to.be.calledWith({
         default: "us-central1",
         message: "Please select a location:",
-        choices: ["us-central1", "us-west1"],
-      });
-    });
-
-    it("uses a custom location prompt if provided", async () => {
-      await promptLocation(projectId, "Custom location prompt:");
-
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
-        default: "us-central1",
-        message: "Custom location prompt:",
         choices: ["us-central1", "us-west1"],
       });
     });
@@ -262,7 +376,86 @@ describe("apphosting setup functions", () => {
         supportedLocations[0].locationId,
       );
 
-      expect(promptOnceStub).to.not.be.called;
+      expect(promptStub.select).to.not.be.called;
+    });
+  });
+
+  describe("chooseBackends", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenUS = {
+      name: `projects/${projectId}/locations/us-central1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/asia-east1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendChickenUS, backendCow];
+
+    it("returns backend if only one is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "cow", /* prompt= */ "")).to.eventually.deep.equal([
+        backendCow,
+      ]);
+    });
+
+    it("throws if --force is used when multiple backends are found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(
+        chooseBackends(projectId, "chicken", /* prompt= */ "", /* force= */ true),
+      ).to.be.rejectedWith(
+        "Force cannot be used because multiple backends were found with ID chicken.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+
+      await expect(chooseBackends(projectId, "farmer", /* prompt= */ "")).to.be.rejectedWith(
+        'No backend named "farmer" found.',
+      );
+    });
+
+    it("lets user choose backends when more than one share a name", async () => {
+      listBackendsStub.resolves({
+        backends: allBackends,
+      });
+      promptStub.checkbox.resolves(["chicken(asia-east1)", "chicken(europe-west4)"]);
+
+      await expect(chooseBackends(projectId, "chicken", /* prompt= */ "")).to.eventually.deep.equal(
+        [backendChickenAsia, backendChickenEurope],
+      );
     });
   });
 
@@ -309,7 +502,7 @@ describe("apphosting setup functions", () => {
 
     it("prompts for location if backend is ambiguous", async () => {
       listBackendsStub.resolves({ backends: [backendFoo, backendFooOtherRegion, backendBar] });
-      promptOnceStub.resolves(location);
+      promptStub.select.resolves(location);
 
       await expect(
         getBackendForAmbiguousLocation(
@@ -319,12 +512,63 @@ describe("apphosting setup functions", () => {
         ),
       ).to.eventually.equal(backendFoo);
 
-      expect(promptOnceStub).to.be.calledWith({
-        name: "location",
-        type: "list",
+      expect(promptStub.select).to.be.calledWith({
         message: "Please select the location of the backend you'd like to delete:",
         choices: [location, "otherRegion"],
       });
+    });
+  });
+
+  describe("getBackend", () => {
+    const backendChickenAsia = {
+      name: `projects/${projectId}/locations/asia-east1/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendChickenEurope = {
+      name: `projects/${projectId}/locations/europe-west4/backends/chicken`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const backendCow = {
+      name: `projects/${projectId}/locations/us-central1/backends/cow`,
+      labels: {},
+      createTime: "0",
+      updateTime: "1",
+      uri: "https://placeholder.com",
+    };
+
+    const allBackends = [backendChickenAsia, backendChickenEurope, backendCow];
+
+    it("throws if more than one backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "chicken")).to.be.rejectedWith(
+        "You have multiple backends with the same chicken ID in regions: " +
+          "asia-east1, europe-west4. " +
+          "This is not allowed until we can support more locations. " +
+          "Please delete and recreate any backends that share an ID with another backend.",
+      );
+    });
+
+    it("throws if no backend is found", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "farmer")).to.be.rejectedWith(
+        "No backend named farmer found.",
+      );
+    });
+
+    it("returns backend", async () => {
+      listBackendsStub.resolves({ backends: allBackends });
+
+      await expect(getBackend(projectId, "cow")).to.eventually.equal(backendCow);
     });
   });
 });

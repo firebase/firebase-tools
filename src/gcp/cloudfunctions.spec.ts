@@ -8,7 +8,6 @@ import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v
 import * as cloudfunctions from "./cloudfunctions";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
-import { FirebaseError } from "../error";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -24,6 +23,7 @@ describe("cloudfunctions", () => {
     entryPoint: "function",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
@@ -267,6 +267,42 @@ describe("cloudfunctions", () => {
         sourceUploadUrl: UPLOAD_URL,
         httpsTrigger: {},
         labels: { ...CLOUD_FUNCTION.labels, [HASH_LABEL]: "my-hash" },
+      });
+    });
+
+    it("should expand shorthand service account", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: "robot@",
+          },
+          UPLOAD_URL,
+        ),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        serviceAccountEmail: `robot@${ENDPOINT.project}.iam.gserviceaccount.com`,
+      });
+    });
+
+    it("should handle null service account", () => {
+      expect(
+        cloudfunctions.functionFromEndpoint(
+          {
+            ...ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: null,
+          },
+          UPLOAD_URL,
+        ),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION,
+        sourceUploadUrl: UPLOAD_URL,
+        httpsTrigger: {},
+        serviceAccountEmail: null,
       });
     });
   });
@@ -719,26 +755,6 @@ describe("cloudfunctions", () => {
           "service-account1@",
         ]),
       ).to.not.be.rejected;
-    });
-  });
-
-  describe("listFunctions", () => {
-    it("should pass back an error with the correct status", async () => {
-      nock(functionsOrigin())
-        .get("/v1/projects/foo/locations/-/functions")
-        .reply(403, { error: "You don't have permissions." });
-
-      let errCaught = false;
-      try {
-        await cloudfunctions.listFunctions("foo", "-");
-      } catch (err: unknown) {
-        errCaught = true;
-        expect(err).instanceOf(FirebaseError);
-        expect(err).has.property("status", 403);
-      }
-
-      expect(errCaught, "should have caught an error").to.be.true;
-      expect(nock.isDone()).to.be.true;
     });
   });
 });

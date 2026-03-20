@@ -2,6 +2,24 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
   "definitions": {
+    "adminNodeSdk": {
+      "additionalProperties": true,
+      "type": "object",
+      "properties": {
+        "outputDir": {
+          "type": "string",
+          "description": "Path to the directory where generated files should be written to."
+        },
+        "package": {
+          "type": "string",
+          "description": "The package name to use for the generated code."
+        },
+        "packageJSONDir": {
+          "type": "string",
+          "description": "The directory containing the package.json to install the generated package in."
+        }
+      }
+    },
     "javascriptSdk": {
       "additionalProperties": true,
       "type": "object",
@@ -89,6 +107,30 @@
             }
           ],
           "description": "Configuration for a generated Javascript SDK"
+        },
+        "adminNodeSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/adminNodeSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/adminNodeSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Admin Node SDK"
+        },
+        "dartSdk": {
+          "oneOf": [
+            { "$ref": "#/definitions/dartSdk" },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/dartSdk"
+              }
+            }
+          ],
+          "description": "Configuration for a generated Dart SDK"
         },
         "kotlinSdk": {
           "oneOf": [

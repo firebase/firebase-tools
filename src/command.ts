@@ -1,9 +1,10 @@
 import * as clc from "colorette";
+import * as path from "node:path";
 import { CommanderStatic } from "commander";
 import { first, last, size, head, keys, values } from "lodash";
 
 import { FirebaseError } from "./error";
-import { getInheritedOption, setupLoggers, withTimeout } from "./utils";
+import { getInheritedOption, withTimeout } from "./utils";
 import { loadRC } from "./rc";
 import { Config } from "./config";
 import { configstore } from "./configstore";
@@ -11,8 +12,19 @@ import { detectProjectRoot } from "./detectProjectRoot";
 import { trackEmulator, trackGA4 } from "./track";
 import { selectAccount, setActiveAccount } from "./auth";
 import { getProject } from "./management/projects";
+import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
+import { useConsoleLoggers } from "./logger";
+import { isFirebaseStudio } from "./env";
+
+export interface CommandModule {
+  load: () => void;
+}
+
+export function isCommandModule(value: unknown): value is CommandModule {
+  return typeof value === "function" && typeof (value as any).load === "function";
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ActionFunction = (...args: any[]) => any;
@@ -23,9 +35,10 @@ interface BeforeFunction {
   args: any[];
 }
 
-interface CLIClient {
+export interface CLIClient {
   cli: CommanderStatic;
   errorOut: (e: Error) => void;
+  [key: string]: any;
 }
 
 /**
@@ -186,6 +199,9 @@ export class Command {
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
       if (args.length - 1 > cmd._args.length) {
+        if (!getInheritedOption(options, "json") && !options.isMCP) {
+          useConsoleLoggers();
+        }
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
@@ -220,12 +236,15 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4("command_execution", {
-            command_name: this.name,
-            result: "success",
+          const trackSuccess = trackGA4(
+            "command_execution",
+            {
+              command_name: this.name,
+              result: "success",
+              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+            },
             duration,
-            interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-          });
+          );
           if (!isEmulator) {
             await withTimeout(5000, trackSuccess);
           } else {
@@ -291,16 +310,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  public async prepare(options: any): Promise<void> {
+  public async prepare(options: Options): Promise<void> {
     options = options || {};
     options.project = getInheritedOption(options, "project");
 
-    if (!process.stdin.isTTY || getInheritedOption(options, "nonInteractive")) {
+    if (
+      !process.stdin.isTTY ||
+      getInheritedOption(options, "nonInteractive") ||
+      getInheritedOption(options, "json") // --json implies --non-interactive.
+    ) {
       options.nonInteractive = true;
     }
+
     // allow override of detected non-interactive with --interactive flag
     if (getInheritedOption(options, "interactive")) {
-      options.interactive = true;
       options.nonInteractive = false;
     }
 
@@ -308,10 +331,8 @@ export class Command {
       options.debug = true;
     }
 
-    if (getInheritedOption(options, "json")) {
-      options.nonInteractive = true;
-    } else {
-      setupLoggers();
+    if (!getInheritedOption(options, "json") && !options.isMCP) {
+      useConsoleLoggers();
     }
 
     if (getInheritedOption(options, "config")) {
@@ -337,10 +358,10 @@ export class Command {
       setActiveAccount(options, activeAccount);
     }
 
-    this.applyRC(options);
+    await this.applyRC(options);
     if (options.project) {
-      await this.resolveProjectIdentifiers(options);
-      validateProjectId(options.projectId);
+      await this.resolveProjectIdentifiers(options); // Sets options.projectId.
+      validateProjectId(options.projectId!);
     }
   }
 
@@ -349,12 +370,20 @@ export class Command {
    * @param options the command options object.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private applyRC(options: Options): void {
+  private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    const activeProject = options.projectRoot
-      ? (configstore.get("activeProjects") ?? {})[options.projectRoot]
-      : undefined;
+    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
+
+    // Only fetch the Studio Workspace project if we're running in Firebase
+    // Studio. If the user passes the project via --project, it should take
+    // priority.
+    // If this is the firebase use command, don't worry about reconciling - the user is changing it anyway
+    const isUseCommand = process.argv.includes("use");
+    if (isFirebaseStudio() && !options.project && !isUseCommand) {
+      activeProject = await reconcileStudioFirebaseProject(options, activeProject);
+    }
+
     options.project = options.project ?? activeProject;
     // support deprecated "firebase" key in firebase.json
     if (options.config && !options.project) {
@@ -376,6 +405,21 @@ export class Command {
       // If there's an alias named 'default', default to that.
       options.projectAlias = "default";
       options.project = aliases["default"];
+    }
+  }
+
+  private configstoreProject(dir: string) {
+    const projectMap = configstore.get("activeProjects") ?? {};
+    let currentDir = path.resolve(dir);
+    while (true) {
+      if (projectMap[currentDir]) {
+        return projectMap[currentDir];
+      }
+      const parentDir = path.dirname(currentDir);
+      if (parentDir === currentDir) {
+        return null;
+      }
+      currentDir = parentDir;
     }
   }
 

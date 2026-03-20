@@ -10,9 +10,8 @@ import { isVSCodeExtension } from "../vsCodeUtils";
 
 function runCommand(command: string, childOptions: childProcess.SpawnOptions) {
   const escapedCommand = command.replace(/\"/g, '\\"');
-  const isVSCode = isVSCodeExtension();
-  const nodeExecutable = isVSCode ? "node" : process.execPath;
-  const crossEnvShellPath = isVSCode
+  const nodeExecutable = isVSCodeExtension() ? "node" : process.execPath;
+  const crossEnvShellPath = isVSCodeExtension()
     ? path.resolve(__dirname, "./cross-env/dist/bin/cross-env-shell.js")
     : path.resolve(require.resolve("cross-env"), "..", "bin", "cross-env-shell.js");
   const translatedCommand =

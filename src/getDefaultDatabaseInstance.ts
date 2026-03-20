@@ -5,7 +5,7 @@ import { getFirebaseProject } from "./management/projects";
  * @param options The command-line options object
  * @return The instance ID, empty if it doesn't exist.
  */
-export async function getDefaultDatabaseInstance(options: any): Promise<string> {
-  const projectDetails = await getFirebaseProject(options.project);
+export async function getDefaultDatabaseInstance(project: string): Promise<string> {
+  const projectDetails = await getFirebaseProject(project);
   return projectDetails.resources?.realtimeDatabaseInstance || "";
 }

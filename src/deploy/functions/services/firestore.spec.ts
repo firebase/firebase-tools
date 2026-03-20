@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import { ensureFirestoreTriggerRegion } from "./firestore";
+import { ensureFirestoreTriggerRegion, clearCache } from "./firestore";
 import * as firestore from "../../../gcp/firestore";
 
 const projectNumber = "123456789";
@@ -23,6 +23,7 @@ describe("ensureFirestoreTriggerRegion", () => {
   let firestoreStub: sinon.SinonStub;
 
   beforeEach(() => {
+    clearCache();
     firestoreStub = sinon
       .stub(firestore, "getDatabase")
       .throws("unexpected call to firestore.getDatabase");
@@ -74,5 +75,51 @@ describe("ensureFirestoreTriggerRegion", () => {
     await ensureFirestoreTriggerRegion(ep);
 
     expect(ep.eventTrigger.region).to.eq("nam5");
+  });
+
+  it("should cache database lookups to prevent multiple API calls", async () => {
+    firestoreStub.resolves(databaseResp);
+    const ep1: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+    const ep2: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+
+    await Promise.all([ensureFirestoreTriggerRegion(ep1), ensureFirestoreTriggerRegion(ep2)]);
+
+    expect(firestoreStub).to.have.been.calledOnce;
+    expect(ep1.eventTrigger.region).to.eq("nam5");
+    expect(ep2.eventTrigger.region).to.eq("nam5");
+  });
+
+  it("should make separate API calls for different databases", async () => {
+    firestoreStub.onFirstCall().resolves(databaseResp);
+    firestoreStub
+      .onSecondCall()
+      .resolves({ ...databaseResp, name: "projects/123456789/databases/db2" });
+
+    const ep1: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "(default)" },
+      },
+    };
+    const ep2: any = {
+      project: projectNumber,
+      eventTrigger: {
+        eventFilters: { database: "db2" },
+      },
+    };
+
+    await Promise.all([ensureFirestoreTriggerRegion(ep1), ensureFirestoreTriggerRegion(ep2)]);
+
+    expect(firestoreStub).to.have.been.calledTwice;
   });
 });

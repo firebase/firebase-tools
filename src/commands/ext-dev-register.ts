@@ -4,7 +4,6 @@ import { marked } from "marked";
 import { Command } from "../command";
 import { registerPublisherProfile } from "../extensions/publisherApi";
 import { needProjectId } from "../projectUtils";
-import { promptOnce } from "../prompt";
 import {
   ensureExtensionsApiEnabled,
   ensureExtensionsPublisherApiEnabled,
@@ -15,12 +14,13 @@ import { requirePermissions } from "../requirePermissions";
 import { FirebaseError, getErrMsg, getErrStatus } from "../error";
 import * as utils from "../utils";
 import { PublisherProfile } from "../extensions/types";
+import { input } from "../prompt";
 
 /**
  * Register a publisher ID; run this before publishing any extensions.
  */
 export const command = new Command("ext:dev:register")
-  .description("register a publisher ID; run this before publishing your first extension.")
+  .description("register a publisher ID; run this before publishing your first extension")
   // temporary until registry-specific permissions are available
   .before(requirePermissions, ["firebaseextensions.sources.create"])
   .before(ensureExtensionsPublisherApiEnabled)
@@ -33,9 +33,7 @@ export const command = new Command("ext:dev:register")
       "This value identifies you in Firebase's registry of extensions as the author of your extensions. " +
       "Examples: my-company-name, MyGitHubUsername.\n\n" +
       "You can only do this once for each project.";
-    const publisherId = await promptOnce({
-      name: "publisherId",
-      type: "input",
+    const publisherId = await input({
       message: msg,
       default: projectId,
     });

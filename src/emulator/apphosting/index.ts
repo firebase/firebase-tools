@@ -1,7 +1,10 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { start as apphostingStart } from "./serve";
 import { logger } from "./developmentServer";
+
 interface AppHostingEmulatorArgs {
+  projectId?: string;
+  backendId?: string;
   options?: any;
   port?: number;
   host?: string;
@@ -18,6 +21,8 @@ export class AppHostingEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { hostname, port } = await apphostingStart({
+      projectId: this.args.projectId,
+      backendId: this.args.backendId,
       port: this.args.port,
       startCommand: this.args.startCommand,
       rootDirectory: this.args.rootDirectory,

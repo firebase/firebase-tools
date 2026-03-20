@@ -13,17 +13,24 @@ describe("unzip", () => {
   });
 
   after(async () => {
-    await fs.promises.rmdir(tempDir, { recursive: true });
+    await fs.promises.rm(tempDir, { recursive: true });
   });
 
-  for (const { name, archivePath, inflatedDir } of ZIP_CASES) {
-    it(`should unzip a zip file with ${name} case`, async () => {
-      const unzipPath = path.join(tempDir, name);
-      await unzip(archivePath, unzipPath);
+  for (const { name, archivePath, inflatedDir, wantErr } of ZIP_CASES) {
+    if (!wantErr) {
+      it(`should unzip a zip file with ${name} case`, async () => {
+        const unzipPath = path.join(tempDir, name);
+        await unzip(archivePath, unzipPath);
 
-      const expectedSize = await calculateFolderSize(inflatedDir);
-      expect(await calculateFolderSize(unzipPath)).to.eql(expectedSize);
-    });
+        const expectedSize = await calculateFolderSize(inflatedDir);
+        expect(await calculateFolderSize(unzipPath)).to.eql(expectedSize);
+      }).timeout(2000);
+    } else {
+      it(`should throw "${wantErr}" when reading a zip file with ${name} case`, async () => {
+        const unzipPath = path.join(tempDir, name);
+        expect(unzip(archivePath, unzipPath)).to.eventually.be.rejectedWith(wantErr);
+      });
+    }
   }
 });
 

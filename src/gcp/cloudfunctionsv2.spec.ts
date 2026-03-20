@@ -7,7 +7,6 @@ import * as events from "../functions/events";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
 import { functionsV2Origin } from "../api";
-import { FirebaseError } from "../error";
 
 describe("cloudfunctionsv2", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -31,6 +30,7 @@ describe("cloudfunctionsv2", () => {
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
     source: { storageSource: CLOUD_FUNCTION_V2_SOURCE },
+    state: "ACTIVE",
   };
 
   const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {
@@ -61,30 +61,6 @@ describe("cloudfunctionsv2", () => {
     updateTime: new Date(),
   };
 
-  describe("megabytes", () => {
-    enum Bytes {
-      KB = 1e3,
-      MB = 1e6,
-      GB = 1e9,
-      KiB = 1 << 10,
-      MiB = 1 << 20,
-      GiB = 1 << 30,
-    }
-    it("Should handle decimal SI units", () => {
-      expect(cloudfunctionsv2.mebibytes("1000k")).to.equal((1000 * Bytes.KB) / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1.5M")).to.equal((1.5 * Bytes.MB) / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1G")).to.equal(Bytes.GB / Bytes.MiB);
-    });
-    it("Should handle binary SI units", () => {
-      expect(cloudfunctionsv2.mebibytes("1Mi")).to.equal(Bytes.MiB / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1Gi")).to.equal(Bytes.GiB / Bytes.MiB);
-    });
-    it("Should handle no unit", () => {
-      expect(cloudfunctionsv2.mebibytes("100000")).to.equal(100000 / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1e9")).to.equal(1e9 / Bytes.MiB);
-      expect(cloudfunctionsv2.mebibytes("1.5E6")).to.equal((1.5 * 1e6) / Bytes.MiB);
-    });
-  });
   describe("functionFromEndpoint", () => {
     it("should guard against version mixing", () => {
       expect(() => {
@@ -221,6 +197,23 @@ describe("cloudfunctionsv2", () => {
           [BLOCKING_LABEL]: "before-sign-in",
         },
       });
+
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          platform: "gcfv2",
+          callableTrigger: {
+            genkitAction: "flows/flow",
+          },
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        labels: {
+          ...CLOUD_FUNCTION_V2.labels,
+          "deployment-callable": "true",
+          "genkit-action": "true",
+        },
+      });
     });
 
     it("should copy trival fields", () => {
@@ -275,6 +268,76 @@ describe("cloudfunctionsv2", () => {
       };
 
       expect(cloudfunctionsv2.functionFromEndpoint(fullEndpoint)).to.deep.equal(fullGcfFunction);
+    });
+
+    it("should translate networkInterfaces", () => {
+      const endpointWithNi: backend.Endpoint = {
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        vpc: {
+          networkInterfaces: [{ network: "my-net" }],
+          egressSettings: "ALL_TRAFFIC",
+        },
+      };
+
+      const gcfFunctionWithNi: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_ALL_TRAFFIC",
+        },
+      };
+
+      expect(cloudfunctionsv2.functionFromEndpoint(endpointWithNi)).to.deep.equal(
+        gcfFunctionWithNi,
+      );
+
+      const reverted = cloudfunctionsv2.endpointFromFunction({
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_ALL_TRAFFIC",
+          uri: RUN_URI,
+          service: "service",
+        },
+      });
+      expect(reverted.vpc).to.deep.equal(endpointWithNi.vpc);
+    });
+
+    it("should throw on unexpected VPC egress setting", () => {
+      expect(() => {
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: {
+            ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+            directVpcNetworkInterface: [{ network: "my-net" }],
+            directVpcEgress: "ALL_TRAFFIC" as any,
+            uri: RUN_URI,
+            service: "service",
+          },
+        } as cloudfunctionsv2.OutputCloudFunction);
+      }).to.throw("Unexpected VPC egress setting: ALL_TRAFFIC");
+    });
+
+    it("should ignore VPC_EGRESS_UNSPECIFIED", () => {
+      const gcf = {
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          directVpcNetworkInterface: [{ network: "my-net" }],
+          directVpcEgress: "VPC_EGRESS_UNSPECIFIED" as any,
+          uri: RUN_URI,
+          service: "service",
+        },
+      } as cloudfunctionsv2.OutputCloudFunction;
+      const endpoint = cloudfunctionsv2.endpointFromFunction(gcf);
+      expect(endpoint.vpc).to.deep.equal({
+        networkInterfaces: [{ network: "my-net" }],
+      });
+      expect(endpoint.vpc?.egressSettings).to.be.undefined;
     });
 
     it("should calculate non-trivial fields", () => {
@@ -334,7 +397,7 @@ describe("cloudfunctionsv2", () => {
           },
           retry: false,
         },
-        serviceAccount: "sa",
+        serviceAccount: "sa@google.com",
       };
 
       const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
@@ -348,14 +411,14 @@ describe("cloudfunctionsv2", () => {
             },
           ],
           retryPolicy: "RETRY_POLICY_DO_NOT_RETRY",
-          serviceAccountEmail: "sa",
+          serviceAccountEmail: "sa@google.com",
         },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           environmentVariables: {
             FUNCTION_SIGNATURE_TYPE: "cloudevent",
           },
-          serviceAccountEmail: "sa",
+          serviceAccountEmail: "sa@google.com",
         },
       };
 
@@ -400,6 +463,38 @@ describe("cloudfunctionsv2", () => {
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
         labels: { ...CLOUD_FUNCTION_V2.labels, [HASH_LABEL]: "my-hash" },
+      });
+    });
+
+    it("should expand shorthand service account to full email", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          serviceAccount: "sa@",
+          httpsTrigger: {},
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: `sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
+        },
+      });
+    });
+
+    it("should handle null service account", () => {
+      expect(
+        cloudfunctionsv2.functionFromEndpoint({
+          ...ENDPOINT,
+          serviceAccount: null,
+          httpsTrigger: {},
+        }),
+      ).to.deep.equal({
+        ...CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: null,
+        },
       });
     });
   });
@@ -773,26 +868,88 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal(expectedEndpoint);
     });
+
+    it("should convert function without buildConfig", () => {
+      const expectedEndpoint = {
+        ...ENDPOINT,
+        platform: "gcfv2",
+        httpsTrigger: {},
+        uri: GCF_URL,
+        entryPoint: "",
+        runtime: undefined,
+        source: undefined,
+      };
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          buildConfig: undefined,
+        }),
+      ).to.deep.equal(expectedEndpoint);
+    });
   });
 
-  describe("listFunctions", () => {
-    it("should pass back an error with the correct status", async () => {
-      nock(functionsV2Origin())
-        .get("/v2/projects/foo/locations/-/functions")
-        .query({ filter: `environment="GEN_2"` })
-        .reply(403, { error: "You don't have permissions." });
+  describe("createFunction", () => {
+    it("should set default environment variables", async () => {
+      const testFunction = {
+        ...CLOUD_FUNCTION_V2,
+        name: "projects/project/locations/region/functions/id",
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          environmentVariables: {},
+        },
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          environmentVariables: {},
+        },
+      };
 
-      let errCaught = false;
-      try {
-        await cloudfunctionsv2.listFunctions("foo", "-");
-      } catch (err: unknown) {
-        errCaught = true;
-        expect(err).instanceOf(FirebaseError);
-        expect(err).has.property("status", 403);
-      }
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
+          return true;
+        })
+        .query({ functionId: "id" })
+        .reply(200, { name: "operations/123", done: true });
 
-      expect(errCaught, "should have caught an error").to.be.true;
-      expect(nock.isDone()).to.be.true;
+      await cloudfunctionsv2.createFunction(testFunction);
+      expect(scope.isDone()).to.be.true;
+    });
+  });
+
+  describe("updateFunction", () => {
+    it("should set default environment variables", async () => {
+      const scope = nock(functionsV2Origin())
+        .patch("/v2/projects/project/locations/region/functions/id", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "LOG_EXECUTION_ID",
+            "true",
+          );
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "function",
+          );
+          expect(body.buildConfig.environmentVariables).to.have.property(
+            "GOOGLE_NODE_RUN_SCRIPTS",
+            "",
+          );
+          return true;
+        })
+        .query(true) // Accept any query parameters
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      expect(scope.isDone()).to.be.true;
     });
   });
 });

@@ -10,6 +10,7 @@ import * as utils from "../utils";
 
 export const command = new Command("functions:config:set [values...]")
   .description("set environment config with key=value syntax")
+  .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.create",
@@ -49,4 +50,5 @@ export const command = new Command("functions:config:set [values...]")
         "firebase deploy --only functions",
       )}\n`,
     );
+    functionsConfig.logFunctionsConfigDeprecationWarning();
   });

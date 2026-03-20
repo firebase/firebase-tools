@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as fs from "fs/promises";
 import * as yaml from "yaml";
 import * as sinon from "sinon";
 import * as nock from "nock";
@@ -63,10 +64,10 @@ describe("yamlToBuild", () => {
 });
 
 describe("detectFromYaml", () => {
-  let readFileAsync: sinon.SinonStub;
+  let readFile: sinon.SinonStub;
 
   beforeEach(() => {
-    readFileAsync = sinon.stub(discovery, "readFileAsync");
+    readFile = sinon.stub(fs, "readFile");
   });
 
   afterEach(() => {
@@ -74,7 +75,7 @@ describe("detectFromYaml", () => {
   });
 
   it("succeeds when YAML can be found", async () => {
-    readFileAsync.resolves(YAML_TEXT);
+    readFile.resolves(YAML_TEXT);
 
     await expect(
       discovery.detectFromYaml("directory", "project", "nodejs16"),
@@ -82,7 +83,7 @@ describe("detectFromYaml", () => {
   });
 
   it("returns undefined when YAML cannot be found", async () => {
-    readFileAsync.rejects({ code: "ENOENT" });
+    readFile.rejects({ code: "ENOENT" });
 
     await expect(discovery.detectFromYaml("directory", "project", "nodejs16")).to.eventually.equal(
       undefined,
@@ -101,9 +102,22 @@ describe("detectFromPort", () => {
       code: "ECONNREFUSED",
     });
 
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").times(3).replyWithError({
+      message: "Almost there",
+      code: "ETIMEDOUT",
+    });
+
     nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
 
     const parsed = await discovery.detectFromPort(8080, "project", "nodejs16");
+    expect(parsed).to.deep.equal(BUILD);
+  });
+
+  it("retries when request times out", async () => {
+    nock("http://127.0.0.1:8081").get("/__/functions.yaml").delay(1_000).reply(200, YAML_TEXT);
+    nock("http://127.0.0.1:8080").get("/__/functions.yaml").reply(200, YAML_TEXT);
+
+    const parsed = await discovery.detectFromPort(8080, "project", "nodejs16", 0, 500);
     expect(parsed).to.deep.equal(BUILD);
   });
 });

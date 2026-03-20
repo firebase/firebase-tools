@@ -21,8 +21,11 @@ export class EmulatorsController implements Disposable {
 
     // called by emulator UI
     this.subscriptions.push(
-      broker.on("runStartEmulators", () => {
-        this.setEmulatorsStarting();
+      broker.on("runStartEmulators", async () => {
+        if (await this.areEmulatorsRunning()) {
+          return;
+        }
+        this.startEmulators();
       }),
     );
 
@@ -49,6 +52,10 @@ export class EmulatorsController implements Disposable {
   readonly emulatorStatusItem = vscode.window.createStatusBarItem("emulators");
   private currExecId = 0;
 
+  public async startEmulators() {
+    this.setEmulatorsStarting();
+    vscode.commands.executeCommand("firebase.emulators.start");
+  }
   // called by webhook
   private readonly findRunningEmulatorsCommand =
     vscode.commands.registerCommand(
@@ -82,7 +89,6 @@ export class EmulatorsController implements Disposable {
 
   notifyEmulatorStateChanged() {
     this.broker.send("notifyEmulatorStateChanged", this.emulators);
-    vscode.commands.executeCommand("refreshCodelens");
   }
 
   // TODO: Move all api calls to CLI DataConnectEmulatorClient
@@ -140,8 +146,14 @@ export class EmulatorsController implements Disposable {
     this.notifyEmulatorStateChanged();
   }
 
+  public async areEmulatorsRunning(): Promise<boolean> {
+    // Check if any emulators are running
+    // It may have been terminated without VS Code knowing.
+    return (await this.findRunningCliEmulators())?.status === "running";
+  }
+
   async findRunningCliEmulators(): Promise<
-    { status: EmulatorsStatus; infos?: RunningEmulatorInfo } | undefined
+    { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
   > {
     const hubClient = this.getHubClient();
     if (hubClient) {
@@ -177,17 +189,12 @@ export class EmulatorsController implements Disposable {
 
   private getHubClient(): EmulatorHubClient | undefined {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-    // TODO: think about what to without projectID, in potentially a logged out mode
-    const hubClient = new EmulatorHubClient(projectId!);
+    const hubClient = new EmulatorHubClient(projectId);
     if (hubClient.foundHub()) {
       return hubClient;
     } else {
       this.setEmulatorsStopped();
     }
-  }
-
-  public areEmulatorsRunning() {
-    return this.emulators.status === "running";
   }
 
   /** FDC specific functions */

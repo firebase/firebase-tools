@@ -11,7 +11,6 @@ import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
 import { FBToolsAuthClient } from "./fbToolsAuthClient";
-import { setupSQLPermissions, firebaseowner, firebasewriter } from "./permissions";
 
 export async function execute(
   sqlStatements: string[],
@@ -22,8 +21,9 @@ export async function execute(
     username: string;
     password?: string;
     silent?: boolean;
+    transaction?: boolean;
   },
-) {
+): Promise<pg.QueryResult[]> {
   const logFn = opts.silent ? logger.debug : logger.info;
   const instance = await cloudSqlAdminClient.getInstance(opts.projectId, opts.instanceId);
   const user = await cloudSqlAdminClient.getUser(opts.projectId, opts.instanceId, opts.username);
@@ -34,39 +34,21 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let pool: pg.Pool;
+  let authType: AuthTypes;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.IAM;
       break;
     }
     case "CLOUD_IAM_SERVICE_ACCOUNT": {
       connector = new Connector();
+      authType = AuthTypes.IAM;
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
       break;
     }
     default: {
@@ -77,34 +59,52 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        password: opts.password,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.PASSWORD;
       break;
     }
   }
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+      ? IpAddressTypes.PUBLIC
+      : IpAddressTypes.PRIVATE,
+    authType: authType,
+  };
+  const pool = new pg.Pool({
+    ...(await connector.getOptions(connectionOpts)),
+    password: opts.password,
+    user: opts.username,
+    database: opts.databaseId,
+  });
+
+  const cleanUpFn = async () => {
+    conn.release();
+    await pool.end();
+    connector.close();
+  };
 
   const conn = await pool.connect();
+  const results: pg.QueryResult[] = [];
   logFn(`Logged in as ${opts.username}`);
+  if (opts.transaction) {
+    sqlStatements.unshift("BEGIN;");
+    sqlStatements.push("COMMIT;");
+  }
   for (const s of sqlStatements) {
-    logFn(`Executing: '${s}'`);
+    logFn(`> ${s}`);
     try {
-      await conn.query(s);
+      results.push(await conn.query(s));
     } catch (err) {
+      logFn(`Rolling back transaction due to error ${err}}`);
+      await conn.query("ROLLBACK;");
+      await cleanUpFn();
       throw new FirebaseError(`Error executing ${err}`);
     }
   }
 
-  conn.release();
-  await pool.end();
-  connector.close();
+  await cleanUpFn();
+  logFn(``);
+  return results;
 }
 
 export async function executeSqlCmdsAsIamUser(
@@ -113,7 +113,8 @@ export async function executeSqlCmdsAsIamUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-): Promise<void> {
+  transaction = false,
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   const { user: iamUser } = await getIAMUser(options);
 
@@ -123,6 +124,7 @@ export async function executeSqlCmdsAsIamUser(
     databaseId,
     username: iamUser,
     silent: silent,
+    transaction: transaction,
   });
 }
 
@@ -135,11 +137,12 @@ export async function executeSqlCmdsAsSuperUser(
   databaseId: string,
   cmds: string[],
   silent = false,
-) {
+  transaction = false,
+): Promise<pg.QueryResult[]> {
   const projectId = needProjectId(options);
   // 1. Create a temporary builtin user
   const superuser = "firebasesuperuser";
-  const temporaryPassword = utils.generateId(20);
+  const temporaryPassword = utils.generatePassword(20);
   await cloudSqlAdminClient.createUser(
     projectId,
     instanceId,
@@ -148,13 +151,14 @@ export async function executeSqlCmdsAsSuperUser(
     temporaryPassword,
   );
 
-  return await execute([`SET ROLE = cloudsqlsuperuser`, ...cmds], {
+  return await execute([`SET ROLE = '${superuser}'`, ...cmds], {
     projectId,
     instanceId,
     databaseId,
     username: superuser,
     password: temporaryPassword,
     silent: silent,
+    transaction: transaction,
   });
 }
 
@@ -177,13 +181,7 @@ export async function getIAMUser(options: Options): Promise<{ user: string; mode
 // Steps:
 // 1. Create an IAM user for the current identity
 // 2. Create an IAM user for FDC P4SA
-// 3. Run setupSQLPermissions to setup the SQL database roles and permissions.
-// 4. Connect to the DB as the temporary user and run the necessary grants
-export async function setupIAMUsers(
-  instanceId: string,
-  databaseId: string,
-  options: Options,
-): Promise<string> {
+export async function setupIAMUsers(instanceId: string, options: Options): Promise<string> {
   // TODO: Is there a good way to short circuit this by checking if the IAM user exists and has the appropriate role first?
   const projectId = needProjectId(options);
 
@@ -200,18 +198,6 @@ export async function setupIAMUsers(
   );
   await cloudSqlAdminClient.createUser(projectId, instanceId, fdcP4SAmode, fdcP4SAUser);
 
-  // 3. Setup FDC required SQL roles and permissions.
-  await setupSQLPermissions(instanceId, databaseId, options, true);
-
-  // 4. Apply necessary grants.
-  const grants = [
-    // Grant firebaseowner role to the current IAM user.
-    `GRANT "${firebaseowner(databaseId)}" TO "${user}"`,
-    // Grant firebaswriter to the FDC P4SA user
-    `GRANT "${firebasewriter(databaseId)}" TO "${fdcP4SAUser}"`,
-  ];
-
-  await executeSqlCmdsAsSuperUser(options, instanceId, databaseId, grants, /** silent=*/ true);
   return user;
 }
 

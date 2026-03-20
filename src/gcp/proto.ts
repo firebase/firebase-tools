@@ -216,10 +216,15 @@ export function getInvokerMembers(invoker: string[], projectId: string): string[
  * '{service-account}@' or '{service-account}@{project}.iam.gserviceaccount.com'.
  * @param serviceAccount the custom service account created by the user
  * @param projectId the ID of the current project
+ * @param removeTypePrefix remove type prefix in the formatted service account
  * @return a correctly formatted service account string
  * @throws {@link FirebaseError} if the supplied service account string is empty or not of the correct form
  */
-export function formatServiceAccount(serviceAccount: string, projectId: string): string {
+export function formatServiceAccount(
+  serviceAccount: string,
+  projectId: string,
+  removeTypePrefix: boolean = false,
+): string {
   if (serviceAccount.length === 0) {
     throw new FirebaseError("Service account cannot be an empty string");
   }
@@ -229,11 +234,13 @@ export function formatServiceAccount(serviceAccount: string, projectId: string):
     );
   }
 
+  const prefix = removeTypePrefix ? "" : "serviceAccount:";
+
   if (serviceAccount.endsWith("@")) {
     const suffix = `${projectId}.iam.gserviceaccount.com`;
-    return `serviceAccount:${serviceAccount}${suffix}`;
+    return `${prefix}${serviceAccount}${suffix}`;
   }
-  return `serviceAccount:${serviceAccount}`;
+  return `${prefix}${serviceAccount}`;
 }
 
 /**

@@ -2,11 +2,12 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { confirm, promptOnce } from "../../prompt";
+import { confirm, number } from "../../prompt";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
+import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
 
@@ -57,12 +58,7 @@ export async function promptForFailurePolicies(
       exit: 1,
     });
   }
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
@@ -161,10 +157,7 @@ export async function promptForUnsafeMigration(
   }
 
   for (const eu of unsafeUpdates) {
-    const shouldUpdate = await promptOnce({
-      type: "confirm",
-      name: "confirm",
-      default: false,
+    const shouldUpdate = await confirm({
       message: `[${getFunctionLabel(
         eu.endpoint,
       )}] Would you like to proceed with the unsafe migration?`,
@@ -260,13 +253,42 @@ export async function promptForMinInstances(
 
   utils.logLabeledWarning("functions", warnMessage);
 
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
+}
+
+/**
+ * Prompt users for days before containers are cleanuped up by the cleanup policy.
+ */
+export async function promptForCleanupPolicyDays(
+  options: Options,
+  locations: string[],
+): Promise<number> {
+  utils.logLabeledWarning(
+    "functions",
+    `No cleanup policy detected for repositories in ${locations.join(", ")}. ` +
+      "This may result in a small monthly bill as container images accumulate over time.",
+  );
+
+  if (options.force) {
+    return artifacts.DEFAULT_CLEANUP_DAYS;
+  }
+
+  if (options.nonInteractive) {
+    throw new FirebaseError(
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locations.length > 1 ? "locations" : "location"} ${locations.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to manually set up a cleanup policy.",
+    );
+  }
+
+  return await number({
+    default: artifacts.DEFAULT_CLEANUP_DAYS,
+    message: "How many days do you want to keep container images before they're deleted?",
+    validate: (days) =>
+      !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
+  });
 }

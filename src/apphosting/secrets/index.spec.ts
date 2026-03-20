@@ -9,8 +9,11 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
+import * as dialogs from "./dialogs";
+import * as config from "../config";
 
 import { Secret } from "../yaml";
+import { FirebaseError } from "../../error";
 
 describe("secrets", () => {
   let gcsm: sinon.SinonStubbedInstance<typeof gcsmImport>;
@@ -32,21 +35,21 @@ describe("secrets", () => {
   });
 
   describe("serviceAccountsForbackend", () => {
-    it("uses explicit account", () => {
+    it("uses explicit account", async () => {
       const backend = {
         serviceAccount: "sa",
       } as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
+      expect(await secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
         buildServiceAccount: "sa",
         runServiceAccount: "sa",
       });
     });
 
-    it("has a fallback for legacy SAs", () => {
+    it("has a fallback for legacy SAs", async () => {
       const backend = {} as any as apphosting.Backend;
-      expect(secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
+      expect(await secrets.serviceAccountsForBackend("number", backend)).to.deep.equal({
         buildServiceAccount: gcb.getDefaultServiceAccount("number"),
-        runServiceAccount: gce.getDefaultServiceAccount("number"),
+        runServiceAccount: await gce.getDefaultServiceAccount("number"),
       });
     });
   });
@@ -259,6 +262,128 @@ describe("secrets", () => {
     });
   });
 
+  describe("grantEmailsSecretAccess", () => {
+    const secret = {
+      projectId: "projectId",
+      name: "secret",
+    };
+    const secret2 = {
+      projectId: "projectId",
+      name: "secret2",
+    };
+    const existingPolicy: iam.Policy = {
+      version: 1,
+      etag: "tag",
+      bindings: [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+      ],
+    };
+
+    it("should brute force its way to success", async () => {
+      gcsm.getIamPolicy.resolves(existingPolicy);
+      gcsm.setIamPolicy
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            'Principal mygroup@mydomain.com is of type "group". The principal should appear as "group:mygroup@mydomain.com"',
+          ),
+        );
+      gcsm.setIamPolicy.onSecondCall().resolves();
+
+      await secrets.grantEmailsSecretAccess(
+        secret.projectId,
+        [secret.name],
+        ["user@mydomain.com", "mygroup@mydomain.com"],
+      );
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy.firstCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "user:mygroup@mydomain.com"],
+        },
+      ]);
+      expect(gcsm.setIamPolicy.secondCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "group:mygroup@mydomain.com"],
+        },
+      ]);
+    });
+
+    it("Should remember what it learns while brute forcing across multiple secrets", async () => {
+      gcsm.getIamPolicy.resolves(existingPolicy);
+      gcsm.setIamPolicy
+        .onFirstCall()
+        .rejects(
+          new FirebaseError(
+            'Principal mygroup@mydomain.com is of type "group". The principal should appear as "group:mygroup@mydomain.com"',
+          ),
+        );
+      gcsm.setIamPolicy.onSecondCall().resolves();
+      gcsm.setIamPolicy.onThirdCall().resolves();
+
+      await secrets.grantEmailsSecretAccess(
+        secret.projectId,
+        [secret.name, secret2.name],
+        ["user@mydomain.com", "mygroup@mydomain.com"],
+      );
+
+      expect(gcsm.getIamPolicy).to.be.calledWithMatch(secret);
+      expect(gcsm.setIamPolicy).to.be.calledThrice;
+      expect(gcsm.setIamPolicy.firstCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "user:mygroup@mydomain.com"],
+        },
+      ]);
+      expect(gcsm.setIamPolicy.secondCall).to.be.calledWithMatch(secret, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "group:mygroup@mydomain.com"],
+        },
+      ]);
+      expect(gcsm.setIamPolicy.thirdCall).to.be.calledWithMatch(secret2, [
+        {
+          role: "roles/viewer",
+          members: ["serviceAccount:existingSA"],
+        },
+        {
+          role: "roles/secretmanager.secretAccessor",
+          members: ["user:user@mydomain.com", "group:mygroup@mydomain.com"],
+        },
+      ]);
+    });
+
+    it("Should fail if the error is not specifically a principal type error", async () => {
+      gcsm.getIamPolicy.resolves(existingPolicy);
+      gcsm.setIamPolicy.rejects(new FirebaseError("Some other error"));
+
+      await expect(
+        secrets.grantEmailsSecretAccess(secret.projectId, [secret.name], ["user@mydomain.com"]),
+      ).to.eventually.be.rejectedWith(/Failed to set IAM bindings/);
+    });
+  });
+
   describe("fetchSecrets", () => {
     const projectId = "randomProject";
     it("correctly attempts to fetch secret and it's version", async () => {
@@ -292,6 +417,90 @@ describe("secrets", () => {
         projectId,
         "projects/test-project/secrets/secretID",
         "latest",
+      );
+    });
+  });
+
+  describe("apphostingSecretsSetAction", () => {
+    let selectBackendServiceAccounts: sinon.SinonStub;
+    let maybeAddSecretToYaml: sinon.SinonStub;
+
+    beforeEach(() => {
+      selectBackendServiceAccounts = sinon.stub(dialogs, "selectBackendServiceAccounts");
+      maybeAddSecretToYaml = sinon.stub(config, "maybeAddSecretToYaml");
+    });
+
+    it("aborts if upsertSecret returns null", async () => {
+      gcsm.getSecret.rejects({ status: 500 }); // triggers Unexpected error loading secret
+
+      await expect(
+        secrets.apphostingSecretsSetAction("secret", "project", "12345"),
+      ).to.be.rejectedWith("Unexpected error loading secret");
+    });
+
+    it("creates a new secret and grants access", async () => {
+      gcsm.getSecret.rejects({ status: 404 });
+      utils.readSecretValue.resolves("secretValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+      prompt.select.resolves("production");
+      selectBackendServiceAccounts.resolves({
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["runSA"],
+      });
+      gcsm.getIamPolicy.resolves({ bindings: [], etag: "etag", version: 1 });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.createSecret).to.have.been.called;
+      expect(gcsm.addVersion).to.have.been.calledWith("project", "secret", "secretValue");
+      expect(gcsm.setIamPolicy).to.have.been.called;
+      expect(maybeAddSecretToYaml).to.have.been.calledWith(
+        "secret",
+        config.APPHOSTING_BASE_YAML_FILE,
+      );
+    });
+
+    it("updates an existing secret and exits", async () => {
+      gcsm.getSecret.resolves({
+        name: "secret",
+        projectId: "project",
+        labels: gcsm.labels("apphosting"),
+        replication: { automatic: {} },
+      });
+      utils.readSecretValue.resolves("newValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.addVersion).to.have.been.calledWith("project", "secret", "newValue");
+      expect(prompt.select).to.not.have.been.called;
+    });
+
+    it("handles local secrets", async () => {
+      gcsm.getSecret.rejects({ status: 404 });
+      utils.readSecretValue.resolves("localValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+      prompt.select.resolves("local");
+      prompt.input.resolves("user@example.com");
+      gcsm.getIamPolicy.resolves({ bindings: [], etag: "etag", version: 1 });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.setIamPolicy).to.have.been.called;
+      expect(maybeAddSecretToYaml).to.have.been.calledWith(
+        "secret",
+        config.APPHOSTING_EMULATORS_YAML_FILE,
       );
     });
   });

@@ -268,7 +268,9 @@ export class TasksEmulator implements EmulatorInstance {
       req.body.task.name =
         req.body.task.name ??
         `/projects/${projectId}/locations/${locationId}/queues/${queueName}/tasks/${Math.floor(Math.random() * Number.MAX_SAFE_INTEGER)}`;
-      req.body.task.httpRequest.body = JSON.parse(atob(req.body.task.httpRequest.body));
+      req.body.task.httpRequest.body = JSON.parse(
+        Buffer.from(req.body.task.httpRequest.body, "base64").toString("utf-8"),
+      );
 
       const task = req.body.task as Task;
 

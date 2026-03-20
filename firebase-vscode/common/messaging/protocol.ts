@@ -10,16 +10,23 @@ import { RCData } from "../../../src/rc";
 import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
+import { GraphqlError, GraphqlResponseError } from "../dataconnect/types";
 
-export enum UserMockKind {
+export enum AuthParamsKind {
   ADMIN = "admin",
   UNAUTHENTICATED = "unauthenticated",
   AUTHENTICATED = "authenticated",
 }
-export type UserMock =
-  | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
+
+export const EXAMPLE_CLAIMS = `{
+  "email_verified": true,
+  "sub": "exampleUserId"
+}`;
+
+export type AuthParams =
+  | { kind: AuthParamsKind.ADMIN | AuthParamsKind.UNAUTHENTICATED }
   | {
-      kind: UserMockKind.AUTHENTICATED;
+      kind: AuthParamsKind.AUTHENTICATED;
       claims: string;
     };
 
@@ -84,12 +91,12 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  definedDataConnectArgs: string;
+  /** Execution parameters */
+  defineVariables: string;
+  defineAuthParams: AuthParams;
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
-
-  notifyAuthUserMockChange: UserMock;
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
@@ -105,9 +112,11 @@ export interface WebviewToExtensionParamsMap {
 
   /** Opens settings page searching for Data Connect emualtor settings */
   "fdc.open-emulator-settings": void;
-  
-    /** Clears data from a running data connect emulator */
+
+  /** Clears data from a running data connect emulator */
   "fdc.clear-emulator-data": void;
+
+  "firebase.activate.gemini": void;
 
   // Initialize "result" tab.
   getDataConnectResults: void;
@@ -116,13 +125,34 @@ export interface WebviewToExtensionParamsMap {
   executeLogin: void;
 
   getDocsLink: void;
+
+  openJSONFile: string;
+
+  // called from execution panel
+  rerunExecution: void;
+
+  /** Docs clicked for analytics */
+  "docs.mcp.clicked": void;
+  "docs.tos.clicked": void;
 }
 
 export interface DataConnectResults {
-  query: string;
   displayName: string;
-  results?: ExecutionResult | SerializedError;
-  args?: string;
+  query: string;
+  variables: string;
+  auth: AuthParams;
+  results: ExecutionResults;
+}
+
+// If non-200 status: respErr and errors from `details` is set
+// If 200 status:
+//   - success: only data is set
+//   - request error: only errors is set
+//   - field error: both data and errors are set
+export interface ExecutionResults {
+  data?: any; // data can be any valid JSON value.
+  gqlErrors?: GraphqlError[];
+  respErr: GraphqlResponseError | SerializedError | undefined;
 }
 
 export type ValueOrError<T> =
@@ -174,9 +204,10 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
-  // data connect specific
+  /** Update execution parameters and results panels */
+  notifyVariables: { variables: string, fixes: string[] };
+  notifyAuthParams: AuthParams;
   notifyDataConnectResults: DataConnectResults;
-  notifyDataConnectRequiredArgs: { args: string[] };
 
   notifyIsLoadingUser: boolean;
 

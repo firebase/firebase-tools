@@ -17,7 +17,7 @@ import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
 import { FirebaseError, getErrStatus, getError } from "../error";
-import { promptOnce } from "../prompt";
+import { input, confirm, select, checkbox, search, Choice } from "../prompt";
 import { DEFAULT_LOCATION } from "./constants";
 import { ensure } from "../ensureApiEnabled";
 import * as deploymentTool from "../deploymentTool";
@@ -27,6 +27,10 @@ import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
+import * as fuzzy from "fuzzy";
+import { isEnabled } from "../experiments";
+
+const DEFAULT_RUNTIME = "nodejs";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -72,63 +76,80 @@ async function awaitTlsReady(url: string): Promise<void> {
  */
 export async function doSetup(
   projectId: string,
-  webAppName: string | null,
-  location: string | null,
-  serviceAccount: string | null,
+  nonInteractive: boolean,
+  webAppName?: string,
+  backendId?: string,
+  serviceAccount?: string,
+  primaryRegion?: string,
+  rootDir?: string,
+  runtime?: string,
+  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<void> {
-  await Promise.all([
-    ensure(projectId, developerConnectOrigin(), "apphosting", true),
-    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
-    ensure(projectId, secretManagerOrigin(), "apphosting", true),
-    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
-    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
-    ensure(projectId, iamOrigin(), "apphosting", true),
-  ]);
+  await ensureRequiredApisEnabled(projectId);
 
   // Hack: Because IAM can take ~45 seconds to propagate, we provision the service account as soon as
   // possible to reduce the likelihood that the subsequent Cloud Build fails. See b/336862200.
-  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount);
+  await ensureAppHostingComputeServiceAccount(projectId, serviceAccount ? serviceAccount : null);
 
-  const allowedLocations = (await apphosting.listLocations(projectId)).map((loc) => loc.locationId);
-  if (location) {
-    if (!allowedLocations.includes(location)) {
-      throw new FirebaseError(
-        `Invalid location ${location}. Valid choices are ${allowedLocations.join(", ")}`,
-      );
+  // TODO(https://github.com/firebase/firebase-tools/issues/8283): The "primary region"
+  // is still "locations" in the V1 API. This will change in the V2 API and we may need to update
+  // the variables and API methods we're calling under the hood when fetching "primary region".
+  let location = primaryRegion;
+  let gitRepositoryLink: GitRepositoryLink | undefined;
+  let branch: string | undefined;
+  if (nonInteractive) {
+    if (!backendId || !primaryRegion) {
+      throw new FirebaseError("nonInteractive mode requires a backendId and primaryRegion");
+    }
+  } else {
+    if (!location) {
+      location = await promptLocation(projectId, "Select a primary region to host your backend:\n");
+    }
+    if (!backendId) {
+      logBullet(`${clc.yellow("===")} Set up your backend`);
+      backendId = await promptNewBackendId(projectId, location);
+      logSuccess(`Name set to ${backendId}\n`);
+    }
+    if (!rootDir) {
+      rootDir = await input({
+        default: "/",
+        message: "Specify your app's root directory relative to your repository",
+      });
+    }
+
+    gitRepositoryLink = await githubConnections.linkGitHubRepository(projectId, location);
+    // TODO: Once tag patterns are implemented, prompt which method the user
+    // prefers. We could reduce the number of questions asked by letting people
+    // enter tag:<pattern>?
+    branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
+    logSuccess(`Repo linked successfully!\n`);
+  }
+  // Confirm both backendId and location are set at this point
+  if (!location || !backendId) {
+    // This should not happen based on the logic above, but it satisfies the type checker.
+    throw new FirebaseError("Internal error: location or backendId is not defined.");
+  }
+
+  if (runtime === undefined && isEnabled("abiu")) {
+    if (nonInteractive) {
+      runtime = DEFAULT_RUNTIME;
+    } else {
+      runtime = await select({
+        message: "Which runtime do you want to use?",
+        choices: [
+          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
+          { name: "Node.js 22", value: "nodejs22" },
+        ],
+        default: DEFAULT_RUNTIME,
+      });
     }
   }
 
-  location =
-    location || (await promptLocation(projectId, "Select a location to host your backend:\n"));
-
-  const gitRepositoryLink: GitRepositoryLink = await githubConnections.linkGitHubRepository(
+  const webApp = await webApps.getOrCreateWebApp(
     projectId,
-    location,
+    webAppName ? webAppName : null,
+    backendId,
   );
-
-  const rootDir = await promptOnce({
-    name: "rootDir",
-    type: "input",
-    default: "/",
-    message: "Specify your app's root directory relative to your repository",
-  });
-
-  // TODO: Once tag patterns are implemented, prompt which method the user
-  // prefers. We could reduce the number of questions asked by letting people
-  // enter tag:<pattern>?
-  const branch = await githubConnections.promptGitHubBranch(gitRepositoryLink);
-  logSuccess(`Repo linked successfully!\n`);
-
-  logBullet(`${clc.yellow("===")} Set up your backend`);
-  const backendId = await promptNewBackendId(projectId, location, {
-    name: "backendId",
-    type: "input",
-    default: "my-web-app",
-    message: "Provide a name for your backend [1-30 characters]",
-  });
-  logSuccess(`Name set to ${backendId}\n`);
-
-  const webApp = await webApps.getOrCreateWebApp(projectId, webAppName, backendId);
   if (!webApp) {
     logWarning(`Firebase web app not set`);
   }
@@ -138,18 +159,28 @@ export async function doSetup(
     projectId,
     location,
     backendId,
+    serviceAccount ? serviceAccount : null,
     gitRepositoryLink,
-    serviceAccount,
     webApp?.id,
     rootDir,
+    runtime,
+    automaticBaseImageUpdatesDisabled,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
+  // In non-interactive mode, we never connected the backend to a github repo. Return
+  // early and skip the rollout and setting default traffic policy.
+  if (nonInteractive) {
+    return;
+  }
+
+  if (!branch) {
+    throw new FirebaseError("Branch was not set while connecting to a github repo.");
+  }
+
   await setDefaultTrafficPolicy(projectId, location, backendId, branch);
 
-  const confirmRollout = await promptOnce({
-    type: "confirm",
-    name: "rollout",
+  const confirmRollout = await confirm({
     default: true,
     message: "Do you want to deploy now?",
   });
@@ -193,6 +224,47 @@ export async function doSetup(
 }
 
 /**
+ * Setup up a new App Hosting backend to deploy from source.
+ */
+export async function doSetupSourceDeploy(
+  projectId: string,
+  backendId: string,
+): Promise<{ backend: Backend; location: string }> {
+  const location = await promptLocation(
+    projectId,
+    "Select a primary region to host your backend:\n",
+  );
+  const webAppSpinner = ora("Creating a new web app...\n").start();
+  const webApp = await webApps.getOrCreateWebApp(projectId, null, backendId);
+  if (!webApp) {
+    logWarning(`Firebase web app not set`);
+  }
+  webAppSpinner.stop();
+
+  const createBackendSpinner = ora("Creating your new backend...").start();
+  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
+  return {
+    backend,
+    location,
+  };
+}
+
+/**
+ * Check that all GCP APIs required for App Hosting are enabled.
+ */
+export async function ensureRequiredApisEnabled(projectId: string): Promise<void> {
+  await Promise.all([
+    ensure(projectId, developerConnectOrigin(), "apphosting", true),
+    ensure(projectId, cloudbuildOrigin(), "apphosting", true),
+    ensure(projectId, secretManagerOrigin(), "apphosting", true),
+    ensure(projectId, cloudRunApiOrigin(), "apphosting", true),
+    ensure(projectId, artifactRegistryDomain(), "apphosting", true),
+    ensure(projectId, iamOrigin(), "apphosting", true),
+  ]);
+}
+
+/**
  * Set up a new App Hosting-type Developer Connect GitRepoLink, optionally with a specific connection ID
  */
 export async function createGitRepoLink(
@@ -225,8 +297,8 @@ export async function createGitRepoLink(
 /**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
- * check fails, this returns an error. If the permission check fails with a
- * "not found" error, this attempts to provision the service account.
+ * check fails, this returns an error. Otherwise, it attempts to provision the
+ * service account.
  */
 export async function ensureAppHostingComputeServiceAccount(
   projectId: string,
@@ -240,33 +312,37 @@ export async function ensureAppHostingComputeServiceAccount(
       "v1",
       name,
       ["iam.serviceAccounts.actAs"],
-      `projects/${projectId}`,
+      `${projectId}`,
     );
   } catch (err: unknown) {
     if (!(err instanceof FirebaseError)) {
       throw err;
     }
-    if (err.status === 404) {
-      await provisionDefaultComputeServiceAccount(projectId);
-    } else if (err.status === 403) {
+    if (err.status === 403) {
       throw new FirebaseError(
         `Failed to create backend due to missing delegation permissions for ${sa}. Make sure you have the iam.serviceAccounts.actAs permission.`,
         { original: err },
       );
+    } else if (err.status !== 404) {
+      throw new FirebaseError(
+        "Unexpected error occurred while testing for IAM service account permissions",
+        { original: err },
+      );
     }
   }
+  await provisionDefaultComputeServiceAccount(projectId);
 }
 
 /**
  * Prompts the user for a backend id and verifies that it doesn't match a pre-existing backend.
  */
-async function promptNewBackendId(
-  projectId: string,
-  location: string,
-  prompt: any,
-): Promise<string> {
+export async function promptNewBackendId(projectId: string, location: string): Promise<string> {
   while (true) {
-    const backendId = await promptOnce(prompt);
+    const backendId = await input({
+      default: "my-web-app",
+      message: "Provide a name for your backend [1-30 characters]",
+      validate: (s) => s.length >= 1 && s.length <= 30,
+    });
     try {
       await apphosting.getBackend(projectId, location, backendId);
     } catch (err: unknown) {
@@ -294,21 +370,27 @@ export async function createBackend(
   projectId: string,
   location: string,
   backendId: string,
-  repository: GitRepositoryLink,
   serviceAccount: string | null,
+  repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
+  runtime?: string,
+  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
     servingLocality: "GLOBAL_ACCESS",
-    codebase: {
-      repository: `${repository.name}`,
-      rootDirectory: rootDir,
-    },
+    codebase: repository
+      ? {
+          repository: `${repository.name}`,
+          rootDirectory: rootDir,
+        }
+      : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
+    runtime: { value: runtime ?? "" },
+    automaticBaseImageUpdatesDisabled,
   };
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
@@ -337,16 +419,27 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       throw err;
     }
   }
-  await addServiceAccountToRoles(
-    projectId,
-    defaultComputeServiceAccountEmail(projectId),
-    [
-      "roles/firebaseapphosting.computeRunner",
-      "roles/firebase.sdkAdminServiceAgent",
-      "roles/developerconnect.readTokenAccessor",
-    ],
-    /* skipAccountLookup= */ true,
-  );
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      defaultComputeServiceAccountEmail(projectId),
+      [
+        "roles/firebaseapphosting.computeRunner",
+        "roles/firebase.sdkAdminServiceAgent",
+        "roles/developerconnect.readTokenAccessor",
+        "roles/storage.objectViewer",
+      ],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 400) {
+      logWarning(
+        "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      );
+    } else {
+      throw err;
+    }
+  }
 }
 
 /**
@@ -399,13 +492,11 @@ export async function promptLocation(
     return allowedLocations[0];
   }
 
-  const location = (await promptOnce({
-    name: "location",
-    type: "list",
+  const location = await select<string>({
     default: DEFAULT_LOCATION,
     message: prompt,
     choices: allowedLocations,
-  })) as string;
+  });
 
   logSuccess(`Location set to ${location}.\n`);
 
@@ -430,6 +521,95 @@ export async function getBackendForLocation(
 }
 
 /**
+ * Prompts users to select an existing backend.
+ * @param projectId the user's project ID
+ * @param promptMessage prompt message to display to the user
+ * @return the selected backend ID
+ */
+export async function promptExistingBackend(
+  projectId: string,
+  promptMessage: string,
+): Promise<string> {
+  const { backends } = await apphosting.listBackends(projectId, "-");
+  const backendId: string = await search({
+    message: promptMessage,
+    source: (input = ""): Promise<Choice<string>[]> => {
+      return new Promise((resolve) =>
+        resolve([
+          ...fuzzy
+            .filter(input, backends, {
+              extract: (backend) => apphosting.parseBackendName(backend.name).id,
+            })
+            .map((result) => {
+              return {
+                name: apphosting.parseBackendName(result.original.name).id,
+                value: apphosting.parseBackendName(result.original.name).id,
+              };
+            }),
+        ]),
+      );
+    },
+  });
+  return backendId;
+}
+
+/**
+ * Fetches backends of the given backendId and lets the user choose if more than one is found.
+ */
+export async function chooseBackends(
+  projectId: string,
+  backendId: string,
+  chooseBackendPrompt: string,
+  force?: boolean,
+): Promise<apphosting.Backend[]> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length === 0) {
+    throw new FirebaseError(`No backend named "${backendId}" found.`);
+  }
+  if (backends.length === 1) {
+    return backends;
+  }
+
+  if (force) {
+    throw new FirebaseError(
+      `Force cannot be used because multiple backends were found with ID ${backendId}.`,
+    );
+  }
+  const backendsByDisplay = new Map<string, apphosting.Backend>();
+  backends.forEach((backend) => {
+    const { location, id } = apphosting.parseBackendName(backend.name);
+    backendsByDisplay.set(`${id}(${location})`, backend);
+  });
+  const chosenBackendDisplays = await checkbox<string>({
+    message: chooseBackendPrompt,
+    choices: Array.from(backendsByDisplay.keys(), (name) => {
+      return {
+        checked: false,
+        name: name,
+        value: name,
+      };
+    }),
+  });
+  const chosenBackends: apphosting.Backend[] = [];
+  chosenBackendDisplays.forEach((backendDisplay) => {
+    const backend = backendsByDisplay.get(backendDisplay);
+    if (backend !== undefined) {
+      chosenBackends.push(backend);
+    }
+  });
+  return chosenBackends;
+}
+
+/**
  * Fetches a backend from the server. If there are multiple backends with that name (ie multi-regional backends),
  * prompts the user to disambiguate. If the force option is specified and multiple backends have the same name,
  * it throws an error.
@@ -443,7 +623,7 @@ export async function getBackendForAmbiguousLocation(
   let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
   if (unreachable && unreachable.length !== 0) {
     logWarning(
-      `The following locations are currently unreachable: ${unreachable}.\n` +
+      `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
         "If your backend is in one of these regions, please try again later.",
     );
   }
@@ -466,11 +646,40 @@ export async function getBackendForAmbiguousLocation(
   backends.forEach((backend) =>
     backendsByLocation.set(apphosting.parseBackendName(backend.name).location, backend),
   );
-  const location = await promptOnce({
-    name: "location",
-    type: "list",
+  const location = await select<string>({
     message: locationDisambugationPrompt,
     choices: [...backendsByLocation.keys()],
   });
   return backendsByLocation.get(location)!;
+}
+
+/**
+ * Fetches a backend from the server. If there are multiple backends with the name, it will throw an error
+ * telling the user that there are other backends with the same name that need to be deleted.
+ */
+export async function getBackend(
+  projectId: string,
+  backendId: string,
+): Promise<apphosting.Backend> {
+  let { unreachable, backends } = await apphosting.listBackends(projectId, "-");
+  backends = backends.filter(
+    (backend) => apphosting.parseBackendName(backend.name).id === backendId,
+  );
+  if (backends.length > 1) {
+    const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
+    throw new FirebaseError(
+      `You have multiple backends with the same ${backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
+        "Please delete and recreate any backends that share an ID with another backend.",
+    );
+  }
+  if (backends.length === 1) {
+    return backends[0];
+  }
+  if (unreachable && unreachable.length !== 0) {
+    logWarning(
+      `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
+        "If your backend is in one of these regions, please try again later.",
+    );
+  }
+  throw new FirebaseError(`No backend named ${backendId} found.`);
 }

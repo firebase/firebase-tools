@@ -30,6 +30,7 @@ const FILTERABLE_TARGETS = new Set([
   "storage",
   "database",
   "dataconnect",
+  "apphosting",
 ]);
 
 /**

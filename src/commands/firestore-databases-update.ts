@@ -13,16 +13,16 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("firestore:databases:update <database>")
   .description(
-    "Update a database in your Firebase project. Must specify at least one property to update.",
+    "update a database in your Firebase project. Must specify at least one property to update",
   )
-  .option("--json", "Prints raw json response of the create API call if specified")
+  .option("--json", "prints raw json response of the create API call if specified")
   .option(
     "--delete-protection <deleteProtectionState>",
-    "Whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether or not to prevent deletion of database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .option(
     "--point-in-time-recovery <enablement>",
-    "Whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
+    "whether to enable the PITR feature on this database, for example 'ENABLED' or 'DISABLED'. Default is 'DISABLED'",
   )
   .before(requirePermissions, ["datastore.databases.update"])
   .before(warnEmulatorNotSupported, Emulators.FIRESTORE)
@@ -34,33 +34,24 @@ export const command = new Command("firestore:databases:update <database>")
     if (!options.deleteProtection && !options.pointInTimeRecovery) {
       throw new FirebaseError(`Missing properties to update. ${helpCommandText}`);
     }
-    if (
-      options.deleteProtection &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.ENABLED &&
-      options.deleteProtection !== types.DatabaseDeleteProtectionStateOption.DISABLED
-    ) {
-      throw new FirebaseError(`Invalid value for flag --delete-protection. ${helpCommandText}`);
-    }
+
+    types.validateEnablementOption(options.deleteProtection, "delete-protection", helpCommandText);
     let deleteProtectionState: types.DatabaseDeleteProtectionState | undefined;
-    if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.ENABLED) {
+    if (options.deleteProtection === types.EnablementOption.ENABLED) {
       deleteProtectionState = types.DatabaseDeleteProtectionState.ENABLED;
-    } else if (options.deleteProtection === types.DatabaseDeleteProtectionStateOption.DISABLED) {
+    } else if (options.deleteProtection === types.EnablementOption.DISABLED) {
       deleteProtectionState = types.DatabaseDeleteProtectionState.DISABLED;
     }
 
-    if (
-      options.pointInTimeRecovery &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.ENABLED &&
-      options.pointInTimeRecovery !== types.PointInTimeRecoveryEnablementOption.DISABLED
-    ) {
-      throw new FirebaseError(
-        `Invalid value for flag --point-in-time-recovery. ${helpCommandText}`,
-      );
-    }
+    types.validateEnablementOption(
+      options.pointInTimeRecovery,
+      "point-in-time-recovery",
+      helpCommandText,
+    );
     let pointInTimeRecoveryEnablement: types.PointInTimeRecoveryEnablement | undefined;
-    if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.ENABLED) {
+    if (options.pointInTimeRecovery === types.EnablementOption.ENABLED) {
       pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.ENABLED;
-    } else if (options.pointInTimeRecovery === types.PointInTimeRecoveryEnablementOption.DISABLED) {
+    } else if (options.pointInTimeRecovery === types.EnablementOption.DISABLED) {
       pointInTimeRecoveryEnablement = types.PointInTimeRecoveryEnablement.DISABLED;
     }
 
@@ -71,11 +62,7 @@ export const command = new Command("firestore:databases:update <database>")
       pointInTimeRecoveryEnablement,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
-    }
+    logger.info(clc.bold(`Successfully updated ${printer.prettyDatabaseString(databaseResp)}`));
 
     return databaseResp;
   });

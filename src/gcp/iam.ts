@@ -10,11 +10,6 @@ export function getDefaultCloudBuildServiceAgent(projectNumber: string): string 
   return `${projectNumber}@cloudbuild.gserviceaccount.com`;
 }
 
-/** Returns the default compute engine service agent */
-export function getDefaultComputeEngineServiceAgent(projectNumber: string): string {
-  return `${projectNumber}-compute@developer.gserviceaccount.com`;
-}
-
 // IAM Policy
 // https://cloud.google.com/resource-manager/reference/rest/Shared.Types/Policy
 export interface Binding {
@@ -192,7 +187,7 @@ export async function testResourceIamPermissions(
   }
   const headers: Record<string, string> = {};
   if (quotaUser) {
-    headers["x-goog-quota-user"] = quotaUser;
+    headers["x-goog-user-project"] = quotaUser;
   }
   const response = await localClient.post<{ permissions: string[] }, { permissions: string[] }>(
     `/${resourceName}:testIamPermissions`,
@@ -227,7 +222,7 @@ export async function testIamPermissions(
     "v1",
     `projects/${projectId}`,
     permissions,
-    `projects/${projectId}`,
+    `${projectId}`,
   );
 }
 

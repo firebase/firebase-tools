@@ -108,6 +108,37 @@ describe("buildFromV1Alpha", () => {
       }
     }); // Top level function keys
 
+    describe("VPC settings", () => {
+      it("throws when both connector and networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                connector: "connector",
+                networkInterfaces: [{ network: "network" }],
+              },
+            },
+          },
+        });
+      });
+
+      it("throws when neither connector nor networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                egressSettings: "ALL_TRAFFIC",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("Event triggers", () => {
       const validTrigger: build.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
@@ -156,6 +187,33 @@ describe("buildFromV1Alpha", () => {
             func: {
               ...MIN_ENDPOINT,
               httpsTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+    });
+
+    describe("dataConnectGraphqlTriggers", () => {
+      it("invalid value for Data Connect https trigger key invoker", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              dataConnectGraphqlTrigger: { invoker: 42 },
+            },
+          },
+        });
+      });
+
+      it("cannot be used with 1st gen", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              platform: "gcfv1",
+              dataConnectGraphqlTrigger: {
+                invoker: "custom@",
+              },
             },
           },
         });
@@ -608,6 +666,32 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies no-build fields (baseImageUri, command, args)", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            baseImageUri: "gcr.io/base",
+            command: ["cmd"],
+            args: ["arg1", "arg2"],
+            httpsTrigger: {},
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg1", "arg2"],
+          httpsTrigger: {},
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("allows some fields of the endpoint to have a Field<> type", () => {
       const yaml: v1alpha1.WireManifest = {
         specVersion: "v1alpha1",
@@ -616,6 +700,7 @@ describe("buildFromV1Alpha", () => {
             ...MIN_WIRE_ENDPOINT,
             httpsTrigger: {},
             concurrency: "{{ params.CONCURRENCY }}",
+            serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
             availableMemoryMb: "{{ params.MEMORY }}",
             timeoutSeconds: "{{ params.TIMEOUT }}",
             maxInstances: "{{ params.MAX_INSTANCES }}",
@@ -628,10 +713,34 @@ describe("buildFromV1Alpha", () => {
         id: {
           ...DEFAULTED_ENDPOINT,
           concurrency: "{{ params.CONCURRENCY }}",
+          serviceAccount: "{{ params.SERVICE_ACCOUNT }}",
           availableMemoryMb: "{{ params.MEMORY }}",
           timeoutSeconds: "{{ params.TIMEOUT }}",
           maxInstances: "{{ params.MAX_INSTANCES }}",
           minInstances: "{{ params.MIN_INSTANCES }}",
+          httpsTrigger: {},
+        },
+      });
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("prefers serviceAccount over serviceAccountEmail", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            serviceAccount: "{{ params.SERVICE_ACCOUNT_PREFERRED }}",
+            serviceAccountEmail: "{{ params.SERVICE_ACCOUNT_IGNORED }}",
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          serviceAccount: "{{ params.SERVICE_ACCOUNT_PREFERRED }}",
           httpsTrigger: {},
         },
       });

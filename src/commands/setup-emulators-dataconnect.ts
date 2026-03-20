@@ -7,7 +7,7 @@ import { downloadIfNecessary } from "../emulator/downloadableEmulators";
 const NAME = Emulators.DATACONNECT;
 
 export const command = new Command(`setup:emulators:${NAME}`)
-  .description(`downloads the ${NAME} emulator`)
+  .description(`download the ${NAME} emulator`)
   .action(async (options: Options) => {
     await downloadIfNecessary(NAME);
     if (!options.config) {

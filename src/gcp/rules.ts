@@ -22,14 +22,20 @@ function _handleErrorResponse(response: any): any {
  * Gets the latest ruleset name on the project.
  * @param projectId Project from which you want to get the ruleset.
  * @param service Service for the ruleset (ex: cloud.firestore or firebase.storage).
+ * @param resourceName (Optional) The specific database name or storage bucket(ex: `my-bucket.appspot.com`, `database-name`).
  * @return Name of the latest ruleset.
  */
 export async function getLatestRulesetName(
   projectId: string,
   service: string,
+  resourceName?: string,
 ): Promise<string | null> {
   const releases = await listAllReleases(projectId);
-  const prefix = `projects/${projectId}/releases/${service}`;
+  let prefix = `projects/${projectId}/releases/${service}`;
+  if (resourceName) {
+    prefix += `/${resourceName}`;
+  }
+
   const release = releases.find((r) => r.name.startsWith(prefix));
 
   if (!release) {
