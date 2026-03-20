@@ -145,13 +145,15 @@ export const validate_security_rules = tool(
       { name: "test.rules", content: rulesSourceContent },
     ]);
 
+
     if (result.body?.issues?.length) {
       const issues = result.body.issues as unknown as Issue[];
       let out = `Found ${issues.length} issues in rules source:\n\n`;
       out += formatRulesetIssues(issues, rulesSourceContent);
       return toContent(out);
     }
+        return mcpError(getErrMsg("ERROR EVERYWHERE"));
 
-    return toContent("OK: No errors detected.");
+    // return toContent("OK: No errors detected.");
   },
 );

@@ -1,0 +1,21 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "dynamicImport": true
+    },
+    "target": "es2020",
+    "keepClassNames": true
+  },
+  "module": {
+    "type": "commonjs",
+    "noInterop": true
+  },
+  "sourceMaps": true,
+  "exclude": [
+    ".*\\.spec\\.ts$",
+    ".*\\.spec\\.js$",
+    ".*/testing/.*",
+    "src/test/.*"
+  ]
+}
