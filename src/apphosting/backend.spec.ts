@@ -16,7 +16,6 @@ import {
   chooseBackends,
   getBackendForAmbiguousLocation,
   getBackend,
-  ensureRequiredApisEnabled,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import * as githubConnections from "./githubConnections";
@@ -40,11 +39,9 @@ describe("apphosting setup functions", () => {
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
   let testResourceIamPermissionsStub: sinon.SinonStub;
-  let ensureStub: sinon.SinonStub;
   let linkGitHubRepositoryStub: sinon.SinonStub;
   let promptGitHubBranchStub: sinon.SinonStub;
   let getOrCreateWebAppStub: sinon.SinonStub;
-  let orchestrateRolloutStub: sinon.SinonStub;
 
   beforeEach(() => {
     promptStub = sinon.stub(promptImport);
@@ -78,11 +75,11 @@ describe("apphosting setup functions", () => {
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
 
-    ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
     linkGitHubRepositoryStub = sinon.stub(githubConnections, "linkGitHubRepository");
     promptGitHubBranchStub = sinon.stub(githubConnections, "promptGitHubBranch");
     getOrCreateWebAppStub = sinon.stub(webApps, "getOrCreateWebApp");
-    orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout");
+    sinon.stub(ensureApiEnabled, "ensure").resolves();
+    sinon.stub(rollout, "orchestrateRollout");
 
     // Default return for common setup functions
     testResourceIamPermissionsStub.resolves();
@@ -143,7 +140,7 @@ describe("apphosting setup functions", () => {
       );
       expect(promptStub.input).to.have.been.calledWith(
         sinon.match({
-          message: "Specify your app's root directory",
+          message: "Specify your app's root directory relative to your repository",
         }),
       );
       expect(linkGitHubRepositoryStub).to.have.been.calledWith(projectId, location);
