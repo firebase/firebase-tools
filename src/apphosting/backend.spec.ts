@@ -98,7 +98,6 @@ describe("apphosting setup functions", () => {
   describe("doSetup", () => {
     it("should set up a backend for source deployment", async () => {
       promptStub.select.resolves("source");
-      promptStub.input.resolves("/");
       getOrCreateWebAppStub.resolves({ id: "webAppId" });
       createBackendStub.resolves({ name: "backendName", uri: "backendUri" });
       pollOperationStub.resolves({ name: "backendName", uri: "backendUri" });
@@ -110,11 +109,7 @@ describe("apphosting setup functions", () => {
           message: "How do you want to deploy your app?",
         }),
       );
-      expect(promptStub.input).to.have.been.calledWith(
-        sinon.match({
-          message: "Specify your app's root directory",
-        }),
-      );
+      expect(promptStub.input).to.not.have.been.called;
       expect(linkGitHubRepositoryStub).to.not.have.been.called;
       expect(createBackendStub).to.have.been.calledWith(
         projectId,
