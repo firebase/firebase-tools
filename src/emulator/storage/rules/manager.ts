@@ -99,11 +99,12 @@ class DefaultStorageRulesManager implements StorageRulesManager {
             "Change detected, updating rules for Cloud Storage...",
           );
           await this.loadRuleset();
-        } catch (e: any) {
+        } catch (e) {
+          const message = e instanceof Error ? e.message : String(e);
           this._logger.logLabeled(
             "DEBUG",
             "storage",
-            `A rule file change was detected, but there was an error reading it: ${e}`,
+            `A rule file change was detected, but there was an error reading it: ${message}`,
           );
         }
       });
