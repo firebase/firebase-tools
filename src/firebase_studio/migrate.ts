@@ -793,7 +793,7 @@ export async function migrate(
 ): Promise<void> {
   await checkDirectoryExists(rootPath);
   const appType: AppType = await detectAppType(rootPath);
-  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
+  await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
   logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
