@@ -29,7 +29,9 @@ describe("ailogic", () => {
     it("should create trigger for beforeGenerateContent", async () => {
       const endpoint = {
         ...mockEndpointBase,
-        eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        blockingTrigger: {
+          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        },
       } as unknown as Endpoint;
 
       postStub.resolves({ body: { name: "trigger-name" } });
@@ -56,7 +58,9 @@ describe("ailogic", () => {
     it("should update trigger if create fails with 409", async () => {
       const endpoint = {
         ...mockEndpointBase,
-        eventType: ailogic.EVENT_TYPE_AFTER_GENERATE_CONTENT,
+        blockingTrigger: {
+          eventType: ailogic.EVENT_TYPE_AFTER_GENERATE_CONTENT,
+        },
         regionalWebhook: true,
       } as unknown as Endpoint;
 
@@ -86,7 +90,9 @@ describe("ailogic", () => {
     it("should throw error if create fails with non-409", async () => {
       const endpoint = {
         ...mockEndpointBase,
-        eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        blockingTrigger: {
+          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        },
       } as unknown as Endpoint;
 
       postStub.rejects({ status: 500 });
@@ -112,7 +118,9 @@ describe("ailogic", () => {
         id: "my-func",
         region: "us-central1",
         project: "my-project",
-        eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        blockingTrigger: {
+          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+        },
       } as unknown as Endpoint;
 
       deleteStub.resolves({});

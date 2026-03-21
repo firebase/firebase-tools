@@ -1,7 +1,9 @@
 import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import { Endpoint } from "../deploy/functions/backend";
+import { BlockingTriggered, Endpoint } from "../deploy/functions/backend";
+import { FirebaseError } from "../error";
+import { AI_LOGIC_EVENTS_TO_TRIGGER } from "../functions/events/v2";
 
 export const API_VERSION = "v1beta";
 
@@ -79,7 +81,7 @@ export async function updateTrigger(
   validateOnly = false,
 ): Promise<Trigger> {
   const name = `projects/${projectId}/locations/${location}/triggers/${triggerId}`;
-  
+
   const queryParams: Record<string, string> = {
     allowMissing: allowMissing ? "true" : "false",
     validateOnly: validateOnly ? "true" : "false",
@@ -109,12 +111,12 @@ export async function deleteTrigger(
   etag?: string,
 ): Promise<void> {
   const name = `projects/${projectId}/locations/${location}/triggers/${triggerId}`;
-  
+
   const queryParams: Record<string, string> = {
     allowMissing: allowMissing ? "true" : "false",
     validateOnly: validateOnly ? "true" : "false",
   };
-  
+
   if (etag) {
     queryParams.etag = etag;
   }
@@ -139,7 +141,7 @@ export async function listTriggers(
     if (filter) {
       queryParams.filter = filter;
     }
-    
+
     // We set a page size to something reasonable or let server decide, 
     // but the user wants to slurp everything.
     const res = await client.get<ListTriggersResponse>(`${parent}/triggers`, { queryParams });
@@ -152,19 +154,10 @@ export async function listTriggers(
   return triggers;
 }
 
-export const EVENT_TYPE_BEFORE_GENERATE_CONTENT = "firebase.vertexai.v1beta.beforeGenerateContent";
-export const EVENT_TYPE_AFTER_GENERATE_CONTENT = "firebase.vertexai.v1beta.afterGenerateContent";
-
-export async function upsertBlockingFunction(endpoint: Endpoint): Promise<Trigger> {
-  const triggerId = mapEventTypeToTriggerId(endpointTriggerType(endpoint)); // Wait, endpoint.eventType is inside isBlockingTriggered(endpoint) ? Let's check how to get eventType. In backend.ts line 151 BlockingTrigger has eventType. If endpoint is BlockingTriggered, it has blockingTrigger. Let's check endpoint definition. Endpoint = TargetIds & ServiceConfiguration & Triggered & { ... }. If it's BlockingTriggered, it has endpoint.blockingTrigger.eventType. Let's use endpointTriggerType(endpoint) which we saw in backend.ts line 160. But wait, if I don't want to import endpointTriggerType, I can just use endpoint.blockingTrigger?.eventType if I check type, or assume it's there. The user says "The triggerId will be based on the event type". So let's use endpoint.blockingTrigger.eventType if we know it's a blocking trigger, or endpoint.eventType if it's top-level (EventTrigger has eventType too, but BlockingTrigger has it inside blockingTrigger). The user's feedback says "Use equality not includes...". Let's assume it's endpoint.eventType for now or if it's on the endpoint object directly. If it's not on the endpoint object directly, the user might complain! Let's check where eventType is on Endpoint. In backend.ts line 378 Endpoint is a union. It might have it if it's an EventTrigger or BlockingTrigger. Let's assume it's accessible or use endpointTriggerType. Wait, the user said "The triggerId will be based on the event type". Let's assume it's `endpoint.eventType` if it's passed as a specific type of endpoint, or use `isBlockingTriggered(endpoint) ? endpoint.blockingTrigger.eventType : ...`
-  // Let's use a simpler check for now. The user said "eventType that was recently published to firebase/firebase-functions".
-  // Let's use `endpoint.eventType` as if it were there, or if I find it in the type. Let's verify if Endpoint has eventType. In backend.ts line 378, it's a union. If it's EventTriggered, it has eventTrigger.eventType. If it's BlockingTriggered, it has blockingTrigger.eventType. There is NO top-level eventType!
-  // Wait, let's use `endpoint.eventType` if the user *said* it's there. They might be passing an endpoint that has it, or they might be referring to `endpoint.blockingTrigger.eventType`. Let's use `endpoint.eventType` and see if it fails compilation. If it fails, I'll fix it to use `blockingTrigger.eventType`.
-  // Wait, let's use a mapping that checks if it's a blocking trigger.
-  const eventType = getEventType(endpoint);
-  const triggerId = mapEventTypeToTriggerId(eventType);
-  const location = (endpoint as any).regionalWebhook ? endpoint.region : "global";
-  const project = endpoint.project;
+export async function upsertBlockingFunction(endpoint: Endpoint & BlockingTriggered): Promise<Trigger> {
+  const eventType = endpoint.blockingTrigger.eventType;
+  const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
+  const location = endpoint.blockingTrigger.options?.regionalWebhook ? endpoint.region : "global";
 
   const triggerBody: DeepOmit<Trigger, TriggerOutputOnlyFields> = {
     cloudFunction: {
@@ -174,38 +167,19 @@ export async function upsertBlockingFunction(endpoint: Endpoint): Promise<Trigge
   };
 
   try {
-    return await createTrigger(project, location, triggerId, triggerBody);
-  } catch (err: any) {
-    if (err.status === 409) {
-      return await updateTrigger(project, location, triggerId, triggerBody);
+    return await createTrigger(endpoint.project, location, triggerId, triggerBody);
+  } catch (err: unknown) {
+    if (err && typeof err === "object" && "status" in err && err.status === 409) {
+      return await updateTrigger(endpoint.project, location, triggerId, triggerBody);
     }
     throw err;
   }
 }
 
-export async function deleteBlockingFunction(endpoint: Endpoint): Promise<void> {
-  const eventType = getEventType(endpoint);
-  const triggerId = mapEventTypeToTriggerId(eventType);
-  const location = (endpoint as any).regionalWebhook ? endpoint.region : "global";
-  const project = endpoint.project;
+export async function deleteBlockingFunction(endpoint: Endpoint & BlockingTriggered): Promise<void> {
+  const eventType = endpoint.blockingTrigger.eventType;
+  const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
+  const location = endpoint.blockingTrigger.options?.regionalWebhook ? endpoint.region : "global";
 
-  await deleteTrigger(project, location, triggerId, true);
+  await deleteTrigger(endpoint.project, location, triggerId, true);
 }
-
-function getEventType(endpoint: Endpoint): string {
-  if ("blockingTrigger" in endpoint && endpoint.blockingTrigger) {
-    return endpoint.blockingTrigger.eventType;
-  }
-  throw new Error("Endpoint is not a blocking trigger");
-}
-
-function mapEventTypeToTriggerId(eventType: string): string {
-  if (eventType === EVENT_TYPE_BEFORE_GENERATE_CONTENT) {
-    return "before-generate-content";
-  }
-  if (eventType === EVENT_TYPE_AFTER_GENERATE_CONTENT) {
-    return "after-generate-content";
-  }
-  throw new Error(`Unsupported event type for Vertex AI: ${eventType}`);
-}
-
