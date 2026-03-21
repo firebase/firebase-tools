@@ -21,7 +21,7 @@ const defaultDevices = [
   },
 ];
 
-export const command = new Command("apptesting:execute <release-binary-file>")
+export const command = new Command("apptesting:execute [release-binary-file]")
   .description("Run mobile automated tests written in natural language driven by AI")
   .option(
     "--app <app_id>",
@@ -49,7 +49,7 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     "Run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
   .before(requireAuth)
-  .action(async (target: string, options: any) => {
+  .action(async (target: string | undefined, options: any) => {
     const appName = getAppName(options);
 
     const testDir = path.resolve(options.testDir || "tests");
@@ -77,7 +77,21 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     let releaseTests: ReleaseTest[];
     let release: Release;
     try {
-      release = await upload(client, appName, new Distribution(target));
+      if (target) {
+        release = await upload(client, appName, new Distribution(target));
+      } else {
+        utils.logBullet(
+          "release-binary-file not provided, using the latest App Distribution release.",
+        );
+        const latestRelease = await client.getLatestRelease(appName);
+        if (!latestRelease) {
+          throw new FirebaseError(
+            `No app binary found for ${appName}. Call apptesting:execute with a local app binary file, or upload a release to App Distribution.`,
+          );
+        }
+        release = latestRelease;
+        utils.logBullet(`Using release ${release.displayVersion} created at ${release.createTime}`);
+      }
 
       invokeSpinner.start();
       releaseTests = await invokeTests(

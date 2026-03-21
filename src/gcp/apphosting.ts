@@ -30,6 +30,17 @@ interface Codebase {
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 
+export type AutomaticBaseImageUpdateState =
+  | "AUTOMATIC_BASE_IMAGE_UPDATE_STATE_UNSPECIFIED"
+  | "UPDATES_ENABLED"
+  | "UPDATES_DISABLED"
+  | "RUNTIME_NOT_SUPPORTED"
+  | "RUNTIME_NOT_SET";
+
+export interface Runtime {
+  value: string;
+}
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
@@ -43,6 +54,8 @@ export interface Backend {
   serviceAccount?: string;
   appId?: string;
   managedResources?: ManagedResource[];
+  runtime?: Runtime;
+  automaticBaseImageUpdatesDisabled?: boolean;
 }
 
 export interface ManagedResource {
@@ -71,6 +84,8 @@ export interface Build {
   createTime: string;
   updateTime: string;
   deleteTime: string;
+  automaticBaseImageUpdateState?: AutomaticBaseImageUpdateState;
+  baseImage?: string;
 }
 
 export interface ListBuildsResponse {

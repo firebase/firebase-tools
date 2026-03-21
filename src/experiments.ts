@@ -69,6 +69,10 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
   functionsrunapionly: {
     shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
@@ -127,6 +131,11 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphostinglocalbuilds: {
     shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
     default: false,
     public: false,
   },
