@@ -165,7 +165,13 @@ const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
   ]),
   google_cloud_tasks_queue: new Set(["name", "location", "desired_state", "project"]),
   google_eventarc_trigger: new Set(["name", "location", "project", "service_account"]),
-  google_pubsub_topic: new Set(["name", "project", "labels", "kms_key_name", "message_retention_duration"]),
+  google_pubsub_topic: new Set([
+    "name",
+    "project",
+    "labels",
+    "kms_key_name",
+    "message_retention_duration",
+  ]),
   google_pubsub_subscription: new Set([
     "name",
     "topic",
@@ -201,12 +207,9 @@ function serializeResourceAttributes(
     }
   }
 
-  const groups: string[][] = [];
-  if (metaGroup.length > 0) groups.push(metaGroup);
-  if (nonBlockGroup.length > 0) groups.push(nonBlockGroup);
-  if (blockGroup.length > 0) groups.push(blockGroup);
-
-  const joinedGroups = groups.map((g) => g.join("\n")).join("\n\n");
+  const nonemptyGroups = [metaGroup, nonBlockGroup, blockGroup].filter((g) => g.length > 0);
+  // Within each group, separate attributes with a newline. Separate different groups with an empty line.
+  const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
 
   return `{\n${joinedGroups}\n${"  ".repeat(indentation)}}`;
 }
@@ -217,7 +220,7 @@ function serializeResourceAttributes(
 export function blockToString(block: Block): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
 
-  if (block.type === "resource" && block.labels && block.labels.length > 0) {
+  if (block.type === "resource" && block.labels?.length) {
     const resourceType = block.labels[0];
     return `${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType)}`;
   }
