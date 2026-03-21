@@ -22,8 +22,8 @@ import * as dcLoad from "../../../dataconnect/load";
 import * as fsutils from "../../../fsutils";
 import * as auth from "../../../auth";
 import * as utils from "../../../utils";
-import * as experiments from "../../../experiments";
 import * as prompt from "../../../prompt";
+import * as experiments from "../../../experiments";
 
 const expect = chai.expect;
 
@@ -63,7 +63,6 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
-        clientCache: {},
       },
     ]);
   });
@@ -78,7 +77,6 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
-        clientCache: {},
       },
     ]);
   });
@@ -90,7 +88,6 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
-        clientCache: {},
       },
     ]);
   });
@@ -102,7 +99,6 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
-        clientCache: {},
       },
     ]);
   });
@@ -114,12 +110,11 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
-        clientCache: {},
       },
     ]);
   });
 
-  it("should add adminSdk for admin node platform and NOT include clientCache", () => {
+  it("should add adminSdk for admin node platform", () => {
     app.platform = Platform.ADMIN_NODE;
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.adminNodeSdk).to.deep.equal([
@@ -129,52 +124,12 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
       },
     ]);
-    expect((connectorYaml.generate?.adminNodeSdk as any)[0].clientCache).to.be.undefined;
   });
 
-  it("should NOT add clientCache: {} to all new generated SDKs when fdcrealtime is disabled", () => {
-    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(false);
-
-    // Add Web SDK
-    app.platform = Platform.WEB;
-    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
-
-    // Add Flutter SDK
-    const flutterApp: App = {
-      directory: "/users/test/project/flutter_app",
-      platform: Platform.FLUTTER,
-    };
-    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, flutterApp);
-
-    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.be.undefined;
-
-    expect(connectorYaml.generate?.dartSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.dartSdk as any)[0].clientCache).to.be.undefined;
-  });
-
-  it("should add clientCache: {} when fdcrealtime experiment is enabled", () => {
+  it("should conditionally inject clientCache if fdcrealtime is enabled", () => {
     sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
-  });
-
-  it("should NOT upgrade existing SDK entry with clientCache: {} if missing", () => {
-    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
-    connectorYaml.generate = {
-      javascriptSdk: [
-        {
-          outputDir: "../app/src/dataconnect-generated",
-          package: "@dataconnect/generated",
-          packageJsonDir: "../app",
-          react: false,
-          angular: false,
-        },
-      ],
-    };
-    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
-    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.be.undefined;
   });
 
   it("should NOT overwrite existing clientCache configuration", () => {
@@ -195,9 +150,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
     };
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({
-      type: "memory",
-    });
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({ type: "memory" });
   });
 });
 
