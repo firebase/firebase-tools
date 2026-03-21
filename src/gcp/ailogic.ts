@@ -2,8 +2,12 @@ import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
 import { BlockingTriggered, Endpoint } from "../deploy/functions/backend";
+import {
+  AI_LOGIC_EVENTS,
+  AI_LOGIC_EVENTS_TO_TRIGGER,
+  isAILogicEventType,
+} from "../functions/events/v2";
 import { FirebaseError } from "../error";
-import { AI_LOGIC_EVENTS_TO_TRIGGER } from "../functions/events/v2";
 
 export const API_VERSION = "v1beta";
 
@@ -142,7 +146,7 @@ export async function listTriggers(
       queryParams.filter = filter;
     }
 
-    // We set a page size to something reasonable or let server decide, 
+    // We set a page size to something reasonable or let server decide,
     // but the user wants to slurp everything.
     const res = await client.get<ListTriggersResponse>(`${parent}/triggers`, { queryParams });
     if (res.body.triggers) {
@@ -154,8 +158,15 @@ export async function listTriggers(
   return triggers;
 }
 
-export async function upsertBlockingFunction(endpoint: Endpoint & BlockingTriggered): Promise<Trigger> {
+export async function upsertBlockingFunction(
+  endpoint: Endpoint & BlockingTriggered,
+): Promise<Trigger> {
   const eventType = endpoint.blockingTrigger.eventType;
+  if (!isAILogicEventType(eventType)) {
+    throw new FirebaseError(
+      `Cannot upsert AI Logic trigger with type ${eventType}. Valid types are ${AI_LOGIC_EVENTS.join(", ")}`,
+    );
+  }
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
   const location = endpoint.blockingTrigger.options?.regionalWebhook ? endpoint.region : "global";
 
@@ -176,8 +187,15 @@ export async function upsertBlockingFunction(endpoint: Endpoint & BlockingTrigge
   }
 }
 
-export async function deleteBlockingFunction(endpoint: Endpoint & BlockingTriggered): Promise<void> {
+export async function deleteBlockingFunction(
+  endpoint: Endpoint & BlockingTriggered,
+): Promise<void> {
   const eventType = endpoint.blockingTrigger.eventType;
+  if (!isAILogicEventType(eventType)) {
+    throw new FirebaseError(
+      `Cannot delete AI Logic trigger with type ${eventType}. Valid types are ${AI_LOGIC_EVENTS.join(", ")}`,
+    );
+  }
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
   const location = endpoint.blockingTrigger.options?.regionalWebhook ? endpoint.region : "global";
 

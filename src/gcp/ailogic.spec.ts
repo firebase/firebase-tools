@@ -2,8 +2,20 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
 import { Endpoint } from "../deploy/functions/backend";
+import {
+  AI_LOGIC_BEFORE_GENERATGE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+} from "../functions/events/v2";
 
 describe("ailogic", () => {
+  const mockEndpointBase = {
+    id: "my-func",
+    region: "us-central1",
+    project: "my-project",
+    entryPoint: "myFunc",
+    platform: "gcfv2",
+  } as const;
+
   describe("upsertBlockingFunction", () => {
     let postStub: sinon.SinonStub;
     let patchStub: sinon.SinonStub;
@@ -18,21 +30,13 @@ describe("ailogic", () => {
       patchStub.restore();
     });
 
-    const mockEndpointBase = {
-      id: "my-func",
-      region: "us-central1",
-      project: "my-project",
-      entryPoint: "myFunc",
-      platform: "gcfv2",
-    } as const;
-
     it("should create trigger for beforeGenerateContent", async () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
         },
-      } as unknown as Endpoint;
+      } satisfies Endpoint;
 
       postStub.resolves({ body: { name: "trigger-name" } });
 
@@ -59,10 +63,12 @@ describe("ailogic", () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: ailogic.EVENT_TYPE_AFTER_GENERATE_CONTENT,
+          eventType: AI_LOGIC_AFTER_GENERATE_CONTENT,
+          options: {
+            regionalWebhook: true,
+          },
         },
-        regionalWebhook: true,
-      } as unknown as Endpoint;
+      } satisfies Endpoint;
 
       postStub.rejects({ status: 409 });
       patchStub.resolves({ body: { name: "trigger-name" } });
@@ -91,9 +97,9 @@ describe("ailogic", () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
         },
-      } as unknown as Endpoint;
+      } satisfies Endpoint;
 
       postStub.rejects({ status: 500 });
 
@@ -115,13 +121,11 @@ describe("ailogic", () => {
 
     it("should delete trigger", async () => {
       const endpoint = {
-        id: "my-func",
-        region: "us-central1",
-        project: "my-project",
+        ...mockEndpointBase,
         blockingTrigger: {
-          eventType: ailogic.EVENT_TYPE_BEFORE_GENERATE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
         },
-      } as unknown as Endpoint;
+      } satisfies Endpoint;
 
       deleteStub.resolves({});
 
