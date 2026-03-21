@@ -186,7 +186,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcrealtime: {
     shortDescription: "Enable Firebase Data Connect realtime feature.",
-    default: true,
+    default: false,
     public: false,
   },
 });
