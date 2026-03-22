@@ -150,7 +150,9 @@ describe("addSdkGenerateToConnectorYaml", () => {
     };
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
-    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({ type: "memory" });
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({
+      type: "memory",
+    });
   });
 });
 
