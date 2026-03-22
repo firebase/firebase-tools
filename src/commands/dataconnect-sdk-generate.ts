@@ -16,7 +16,7 @@ import { FirebaseError } from "../error";
 import { postInitSaves } from "./init";
 import { EmulatorHub } from "../emulator/hub";
 import { isEnabled } from "../experiments";
-import { migrate } from "../dataconnect/migrate";
+import { migrate } from "../dataconnect/migrate-dataconnect-yaml";
 
 type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
