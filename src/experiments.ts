@@ -179,6 +179,11 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
+  migrateconnectoryaml: {
+    shortDescription: "Migrate connector.yaml to dataconnect.yaml",
+    default: true,
+    public: true,
+  },
   fdcwebhooks: {
     shortDescription: "Enable Firebase Data Connect webhooks feature.",
     default: true,

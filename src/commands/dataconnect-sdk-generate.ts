@@ -15,6 +15,8 @@ import * as dataconnectSdkInit from "../init/features/dataconnect/sdk";
 import { FirebaseError } from "../error";
 import { postInitSaves } from "./init";
 import { EmulatorHub } from "../emulator/hub";
+import { isEnabled } from "../experiments";
+import { migrate } from "../dataconnect/migrate";
 
 type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
@@ -34,6 +36,20 @@ export const command = new Command("dataconnect:sdk:generate")
   )
   .action(async (options: GenerateOptions) => {
     const projectId = getProjectId(options);
+
+    if (isEnabled("migrateconnectoryaml")) {
+      const isMigrated = await migrate(projectId, options.config, options);
+      if (isMigrated) {
+        logLabeledSuccess(
+          "dataconnect",
+          "Successfully migrated connector.yaml to dataconnect.yaml.",
+        );
+      }
+    } else {
+      logBullet(
+        "You can enable automatic migration of connector.yaml to dataconnect.yaml by running `firebase experiments:enable migrateconnectoryaml`.",
+      );
+    }
 
     let justRanInit = false;
     let config = options.config;

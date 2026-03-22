@@ -138,6 +138,18 @@ export interface DataConnectYaml {
   schemas?: SchemaYaml[];
   location: string;
   connectorDirs: string[];
+  connectors?: ConnectorConfig[];
+}
+
+export interface ConnectorConfig {
+  id: string;
+  language?: string;
+  appDir?: string;
+  directory?: string;
+  graphqlDirs?: string[];
+  outputDir?: string;
+  package?: string;
+  entryPoint?: string;
 }
 
 export interface SchemaYaml {
