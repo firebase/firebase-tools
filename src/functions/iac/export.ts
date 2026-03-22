@@ -10,6 +10,33 @@ import * as gcfv1 from "../../gcp/cloudfunctions";
 import { needProjectId } from "../../projectUtils";
 import { FirebaseError } from "../../error";
 
+const STANDARD_PROVIDER_BLOCKS: tf.Block[] = [
+  {
+    type: "terraform",
+    attributes: {},
+    nestedBlocks: [
+      {
+        type: "required_providers",
+        attributes: {
+          google: {
+            source: "hashicorp/google",
+            version: "~> 5.0",
+          },
+        },
+      },
+    ],
+  },
+
+  {
+    type: "provider",
+    labels: ["google"],
+    attributes: {
+      project: tf.expr("var.project"),
+      region: tf.expr("var.location"),
+    },
+  },
+];
+
 const STANDARD_TF_VARS: tf.Block[] = [
   {
     type: "variable",
@@ -190,6 +217,7 @@ export async function getTerraformIac(
   });
 
   return {
+    "provider.tf": STANDARD_PROVIDER_BLOCKS.map(tf.blockToString).join("\n\n"),
     "variables.tf": STANDARD_TF_VARS.map(tf.blockToString).join("\n\n"),
     "main.tf": blocks.map(tf.blockToString).join("\n\n"),
   };

@@ -789,6 +789,7 @@ export function functionTerraform(
   bucket: tf.Expression,
   archive: tf.Expression,
 ): tf.Block {
+  const nestedBlocks: tf.Block[] = [];
   const attributes: Record<string, tf.Value> = {
     name: tf.expr(`var.extension_id == null ? "${id}" : "ext-\${var.extension_id}-${id}"`),
     runtime: endpoint.runtime,
@@ -874,12 +875,15 @@ export function functionTerraform(
         exit: 1,
       });
     }
-    attributes["event_trigger"] = {
-      event_type: endpoint.eventTrigger.eventType,
-      // V1 always uses "resource" as its event filter and it is always required.
-      resource: endpoint.eventTrigger.eventFilters!.resource!,
-      // TODO: Failure policy
-    };
+    nestedBlocks.push({
+      type: "event_trigger",
+      attributes: {
+        event_type: endpoint.eventTrigger.eventType,
+        // V1 always uses "resource" as its event filter and it is always required.
+        resource: endpoint.eventTrigger.eventFilters!.resource!,
+        // TODO: Failure policy
+      },
+    });
   } else if (build.isScheduleTriggered(endpoint)) {
     throw new FirebaseError("Scheduled functions are not supported in terraform yet", { exit: 1 });
   } else if (build.isTaskQueueTriggered(endpoint)) {
@@ -899,6 +903,7 @@ export function functionTerraform(
     type: "resource",
     labels: ["google_cloudfunctions_function", utils.toLowerSnakeCase(id)],
     attributes,
+    nestedBlocks: nestedBlocks.length > 0 ? nestedBlocks : undefined,
   };
 }
 

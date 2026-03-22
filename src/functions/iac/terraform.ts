@@ -30,15 +30,28 @@ export type Value =
   | Value[]
   | { [key: string]: Value };
 
+export function serializeBlockBody(
+  attributes: Record<string, Value>,
+  nestedBlocks: Block[] | undefined,
+  indentation = 0,
+): string {
+  const attrs = Object.entries(attributes).map(
+    ([k, v]) => `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`,
+  );
+  const nested = (nestedBlocks || []).map((nb) => blockToString(nb, indentation + 1));
+  const all = [...attrs, ...nested];
+  return `{\n${all.join("\n")}\n${"  ".repeat(indentation)}}`;
+}
+
 /**
  * Represents a generic HCL block.
  * Structure: <type> "<label_1>" "<label_2>" { <body> }
  */
 export interface Block {
-  type: "output" | "resource" | "variable" | "data" | "locals";
+  type: string;
   labels?: string[];
   attributes: Record<string, Value>;
-  // TODO: nested blocks?
+  nestedBlocks?: Block[];
 }
 
 /**
@@ -188,28 +201,49 @@ const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
 function serializeResourceAttributes(
   attributes: Record<string, Value>,
   resourceType: string,
+  nestedBlocks?: Block[],
   indentation = 0,
 ): string {
   const nonBlockParams = NON_BLOCK_PARAMETERS[resourceType] || new Set();
 
-  const metaGroup: string[] = [];
-  const nonBlockGroup: string[] = [];
-  const blockGroup: string[] = [];
+  type Entry = { k: string; v: Value } | { nb: Block };
+  const metaGroup: Entry[] = [];
+  const nonBlockGroup: Entry[] = [];
+  const blockGroup: Entry[] = [];
 
   for (const [k, v] of Object.entries(attributes)) {
-    const serialized = `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`;
+    const entry = { k, v };
     if (META_ARGUMENTS.has(k)) {
-      metaGroup.push(serialized);
+      metaGroup.push(entry);
     } else if (nonBlockParams.has(k)) {
-      nonBlockGroup.push(serialized);
+      nonBlockGroup.push(entry);
     } else {
-      blockGroup.push(serialized);
+      blockGroup.push(entry);
     }
   }
 
-  const nonemptyGroups = [metaGroup, nonBlockGroup, blockGroup].filter((g) => g.length > 0);
-  // Within each group, separate attributes with a newline. Separate different groups with an empty line.
-  const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
+  for (const nb of nestedBlocks || []) {
+    blockGroup.push({ nb });
+  }
+
+  function renderGroup(group: Entry[]): string[] {
+    const keys = group.filter((e) => "k" in e).map((e) => (e as { k: string }).k);
+    const maxKeyLen = Math.max(0, ...keys.map((k) => k.length));
+
+    return group.map((e) => {
+      if ("nb" in e) {
+        return blockToString(e.nb, indentation + 1);
+      } else {
+        return `${"  ".repeat(indentation + 1)}${e.k.padEnd(maxKeyLen)} = ${serializeValue(e.v, indentation + 1)}`;
+      }
+    });
+  }
+
+  const renderedGroups = [metaGroup, nonBlockGroup, blockGroup]
+    .map(renderGroup)
+    .filter((g) => g.length > 0);
+
+  const joinedGroups = renderedGroups.map((g) => g.join("\n")).join("\n\n");
 
   return `{\n${joinedGroups}\n${"  ".repeat(indentation)}}`;
 }
@@ -217,13 +251,23 @@ function serializeResourceAttributes(
 /**
  * Converts a block to a string.
  */
-export function blockToString(block: Block): string {
+export function blockToString(block: Block, indentation: number = 0): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
+  const prefix = "  ".repeat(indentation);
 
   if (block.type === "resource" && block.labels?.length) {
     const resourceType = block.labels[0];
-    return `${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType)}`;
+    return `${prefix}${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(
+      block.attributes,
+      resourceType,
+      block.nestedBlocks,
+      indentation,
+    )}`;
   }
 
-  return `${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes)}`;
+  return `${prefix}${block.type} ${labels ? labels + " " : ""}${serializeBlockBody(
+    block.attributes,
+    block.nestedBlocks,
+    indentation,
+  )}`;
 }

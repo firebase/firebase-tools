@@ -107,21 +107,21 @@ describe("cloudfunctions", () => {
 
       expect(actual.length).to.equal(1);
 
-      const hcl = actual.map(tf.blockToString).join("\n\n");
+      const hcl = actual.map((b) => tf.blockToString(b)).join("\n\n");
       expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
-  name = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
-  runtime = "nodejs16"
-  project = var.project
+  name                  = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime               = "nodejs16"
+  project               = var.project
   source_archive_bucket = bucket
   source_archive_object = archive
-  region = var.location
-  entry_point = "function"
+  region                = var.location
+  entry_point           = "function"
 
   docker_repository = "ARTIFACT_REGISTRY"
-  labels = {
+  labels            = {
 
   }
-  event_trigger = {
+  event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource = "projects/p/topics/t"
   }
@@ -138,30 +138,30 @@ describe("cloudfunctions", () => {
 
       expect(actual.length).to.equal(2);
 
-      const hcl = actual.map(tf.blockToString).join("\n\n");
+      const hcl = actual.map((b) => tf.blockToString(b)).join("\n\n");
       expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
-  name = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
-  runtime = "nodejs16"
-  project = var.project
+  name                  = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime               = "nodejs16"
+  project               = var.project
   source_archive_bucket = bucket
   source_archive_object = archive
-  region = "europe-west1"
-  entry_point = "function"
-  trigger_http = true
+  region                = "europe-west1"
+  entry_point           = "function"
+  trigger_http          = true
 
-  docker_repository = "ARTIFACT_REGISTRY"
-  labels = {
+  docker_repository            = "ARTIFACT_REGISTRY"
+  labels                       = {
 
   }
   https_trigger_security_level = "SECURE_ALWAYS"
 }
 
 resource "google_cloudfunctions_function_iam_binding" "id" {
-  role = "roles/cloudfunctions.invoker"
-  members = ["allUsers"]
+  role           = "roles/cloudfunctions.invoker"
+  members        = ["allUsers"]
   cloud_function = google_cloudfunctions_function.id.name
-  region = google_cloudfunctions_function.id.region
-  project = google_cloudfunctions_function.id.project
+  region         = google_cloudfunctions_function.id.region
+  project        = google_cloudfunctions_function.id.project
 }`);
     });
   });
