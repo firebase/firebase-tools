@@ -92,7 +92,7 @@ describe("cloudfunctions", () => {
     it("should return just compute resource if no invoker is present", () => {
       const endpoint: build.Endpoint = {
         platform: "gcfv1",
-        region: ["region"],
+        region: [],
         project: "project",
         entryPoint: "function",
         runtime: "nodejs16",
@@ -106,20 +106,63 @@ describe("cloudfunctions", () => {
       const actual = cloudfunctions.terraformFromEndpoint("id", endpoint, BUCKET, ARCHIVE);
 
       expect(actual.length).to.equal(1);
-      expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
+
+      const hcl = actual.map(tf.blockToString).join("\n\n");
+      expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
+  name = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime = "nodejs16"
+  project = var.project
+  source_archive_bucket = bucket
+  source_archive_object = archive
+  region = var.location
+  entry_point = "function"
+
+  docker_repository = "ARTIFACT_REGISTRY"
+  labels = {
+
+  }
+  event_trigger = {
+    event_type = "google.pubsub.topic.publish"
+    resource = "projects/p/topics/t"
+  }
+}`);
     });
 
     it("should return compute and permissions resources if invoker is present", () => {
       const actual = cloudfunctions.terraformFromEndpoint(
         "id",
-        { ...BUILD_ENDPOINT, httpsTrigger: { invoker: ["public"] } },
+        { ...BUILD_ENDPOINT, region: ["europe-west1"], httpsTrigger: { invoker: ["public"] } },
         BUCKET,
         ARCHIVE,
       );
 
       expect(actual.length).to.equal(2);
-      expect(actual[0].labels![0]).to.equal("google_cloudfunctions_function");
-      expect(actual[1].labels![0]).to.equal("google_cloudfunctions_function_iam_binding");
+
+      const hcl = actual.map(tf.blockToString).join("\n\n");
+      expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
+  name = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime = "nodejs16"
+  project = var.project
+  source_archive_bucket = bucket
+  source_archive_object = archive
+  region = "europe-west1"
+  entry_point = "function"
+  trigger_http = true
+
+  docker_repository = "ARTIFACT_REGISTRY"
+  labels = {
+
+  }
+  https_trigger_security_level = "SECURE_ALWAYS"
+}
+
+resource "google_cloudfunctions_function_iam_binding" "id" {
+  role = "roles/cloudfunctions.invoker"
+  members = ["allUsers"]
+  cloud_function = google_cloudfunctions_function.id.name
+  region = google_cloudfunctions_function.id.region
+  project = google_cloudfunctions_function.id.project
+}`);
     });
   });
 
