@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "child_process";
 import * as utils from "./utils";
 import { logger } from "./logger";
 import * as prompt from "./prompt";
+import { getErrMsg } from "./error";
 
 export async function promptForAgentSkills(): Promise<boolean> {
   return prompt.confirm({
@@ -41,7 +42,7 @@ export async function installAgentSkills(options: InstallAgentSkillsOptions): Pr
   }
 
   if (options.background) {
-    logger.info("⏳ Installing Agent skills in the background...");
+    utils.logBullet("Installing Agent skills in the background...");
     try {
       const child = spawn("npx", args, {
         cwd: options.cwd,
@@ -50,13 +51,12 @@ export async function installAgentSkills(options: InstallAgentSkillsOptions): Pr
         shell: process.platform === "win32",
       });
       child.unref();
-      logger.info("✅ Agent skills installation started");
+      utils.logSuccess("Agent skills installation started");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      utils.logWarning(`Could not start Agent skills installation: ${message}`);
+      utils.logWarning(`Could not start Agent skills installation: ${getErrMsg(err)}`);
     }
   } else {
-    logger.info("⏳ Adding Agent skills...");
+    utils.logBullet("Adding Agent skills...");
     try {
       const result = spawnSync("npx", args, {
         cwd: options.cwd,
@@ -69,10 +69,9 @@ export async function installAgentSkills(options: InstallAgentSkillsOptions): Pr
       if (result.status !== 0) {
         throw new Error(`npx skills add exited with code ${result.status}`);
       }
-      logger.info(`✅ Added Agent skills`);
+      utils.logSuccess("Added Agent skills");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      utils.logWarning(`Could not add Agent skills: ${message}`);
+      utils.logWarning(`Could not add Agent skills: ${getErrMsg(err)}`);
     }
   }
 }

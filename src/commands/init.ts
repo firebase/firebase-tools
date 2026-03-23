@@ -13,7 +13,7 @@ import * as utils from "../utils";
 import { Options } from "../options";
 import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { logBullet } from "../utils";
 import { promptForAgentSkills, installAgentSkills } from "../agentSkills";
 
@@ -288,7 +288,7 @@ export async function initAction(feature: string, options: Options): Promise<voi
       void installAgentSkills({ background: true, cwd });
     }
   } catch (err: unknown) {
-    logger.debug(`Could not prompt for agent skills: ${err}`);
+    logger.debug(`Could not prompt for agent skills: ${getErrMsg(err)}`);
   }
 
   if (setup.instructions.length) {

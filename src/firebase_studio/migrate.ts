@@ -11,7 +11,7 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import * as os from "os";
 import { installAgentSkills } from "../agentSkills";
 
@@ -106,8 +106,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
       await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
+    utils.logWarning(`Could not configure Antigravity MCP server: ${getErrMsg(err)}`);
   }
 }
 
@@ -328,8 +327,7 @@ async function injectAntigravityContext(
     await fs.writeFile(path.join(workflowsDir, "cleanup.md"), cleanupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not read or write startup workflow: ${message}`);
+    logger.debug(`Could not read or write startup workflow: ${getErrMsg(err)}`);
   }
 }
 
@@ -454,9 +452,8 @@ async function createFirebaseConfigs(
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${message}`,
+        `Could not fetch backends from Firebase CLI, using default "studio". ${getErrMsg(err)}`,
       );
     }
 
@@ -520,8 +517,7 @@ async function writeAntigravityConfigs(rootPath: string, framework: AppType): Pr
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not read ${settingsPath}: ${message}`);
+    logger.debug(`Could not read ${settingsPath}: ${getErrMsg(err)}`);
   }
 
   const cleanSettings: Record<string, any> = {};
@@ -590,8 +586,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
       logger.info("✅ Removed empty docs directory");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not remove ${docsDir}: ${message}`);
+    logger.debug(`Could not remove ${docsDir}: ${getErrMsg(err)}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
@@ -599,8 +594,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(modifiedPath);
     logger.info("✅ Cleaned up .modified");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${modifiedPath}: ${message}`);
+    logger.debug(`Could not delete ${modifiedPath}: ${getErrMsg(err)}`);
   }
 
   const mcpJsonPath = path.join(rootPath, ".idx", "mcp.json");
@@ -608,8 +602,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(mcpJsonPath);
     logger.info("✅ Cleaned up .idx/mcp.json");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${mcpJsonPath}: ${message}`);
+    logger.debug(`Could not delete ${mcpJsonPath}: ${getErrMsg(err)}`);
   }
 }
 
@@ -656,8 +649,7 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
       logger.info("✅ Upgraded genkit-cli version to 1.29 in package.json");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not upgrade Genkit version: ${message}`);
+    logger.debug(`Could not upgrade Genkit version: ${getErrMsg(err)}`);
   }
 }
 
@@ -697,8 +689,7 @@ export async function uploadSecrets(
       logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${message}`);
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${getErrMsg(err)}`);
   }
 }
 
