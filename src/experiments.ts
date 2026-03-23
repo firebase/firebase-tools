@@ -69,9 +69,22 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
   functionsrunapionly: {
     shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
   },
 
   // Emulator experiments
@@ -127,6 +140,11 @@ export const ALL_EXPERIMENTS = experiments({
 
   apphostinglocalbuilds: {
     shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
     default: false,
     public: false,
   },

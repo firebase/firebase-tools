@@ -1,6 +1,6 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
-import { parseTestFiles } from "../apptesting/parseTestFiles";
+import { parseTestFiles, pluralizeTests } from "../apptesting/parseTestFiles";
 import * as ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
@@ -9,6 +9,8 @@ import { awaitTestResults, Distribution, upload } from "../appdistribution/distr
 import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
 import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
 import * as utils from "../utils";
+import { dirExistsSync } from "../fsutils";
+import * as path from "path";
 
 const defaultDevices = [
   {
@@ -19,7 +21,7 @@ const defaultDevices = [
   },
 ];
 
-export const command = new Command("apptesting:execute <release-binary-file>")
+export const command = new Command("apptesting:execute [release-binary-file]")
   .description("Run mobile automated tests written in natural language driven by AI")
   .option(
     "--app <app_id>",
@@ -33,24 +35,29 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     "--test-name-pattern <pattern>",
     "Test name pattern. Only tests with names that match this pattern will be executed.",
   )
-  .option("--test-dir <test_dir>", "Directory where tests can be found.")
+  .option("--test-dir <test_dir>", "Directory where tests can be found. Defaults to './tests'.")
   .option(
     "--test-devices <string>",
-    "semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+    "Semicolon-separated list of devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
   .option(
     "--test-devices-file <string>",
-    "path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
+    "Path to file containing a list of semicolon- or newline-separated devices to run automated tests on, in the format 'model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>'. Run 'gcloud firebase test android|ios models list' to see available devices. Note: This feature is in beta.",
   )
   .option(
     "--test-non-blocking",
-    "run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
+    "Run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
   .before(requireAuth)
-  .action(async (target: string, options: any) => {
+  .action(async (target: string | undefined, options: any) => {
     const appName = getAppName(options);
 
-    const testDir = options.testDir || "tests";
+    const testDir = path.resolve(options.testDir || "tests");
+    if (!dirExistsSync(testDir)) {
+      throw new FirebaseError(
+        `Tests directory not found: ${testDir}. Use the --test-dir flag to choose a different directory.`,
+      );
+    }
     const tests = await parseTestFiles(
       testDir,
       undefined,
@@ -60,8 +67,9 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
 
     if (!tests.length) {
-      throw new FirebaseError("No tests found");
+      throw new FirebaseError(`No tests found under test directory ${testDir}`);
     }
+    utils.logBullet(`Found ${pluralizeTests(tests.length)} to run under test directory ${testDir}`);
 
     const invokeSpinner = ora("Requesting test execution");
     const client = new AppDistributionClient();
@@ -69,7 +77,21 @@ export const command = new Command("apptesting:execute <release-binary-file>")
     let releaseTests: ReleaseTest[];
     let release: Release;
     try {
-      release = await upload(client, appName, new Distribution(target));
+      if (target) {
+        release = await upload(client, appName, new Distribution(target));
+      } else {
+        utils.logBullet(
+          "release-binary-file not provided, using the latest App Distribution release.",
+        );
+        const latestRelease = await client.getLatestRelease(appName);
+        if (!latestRelease) {
+          throw new FirebaseError(
+            `No app binary found for ${appName}. Call apptesting:execute with a local app binary file, or upload a release to App Distribution.`,
+          );
+        }
+        release = latestRelease;
+        utils.logBullet(`Using release ${release.displayVersion} created at ${release.createTime}`);
+      }
 
       invokeSpinner.start();
       releaseTests = await invokeTests(
@@ -96,10 +118,6 @@ export const command = new Command("apptesting:execute <release-binary-file>")
       );
     }
   });
-
-function pluralizeTests(numTests: number) {
-  return `${numTests} test${numTests === 1 ? "" : "s"}`;
-}
 
 async function invokeTests(
   client: AppDistributionClient,

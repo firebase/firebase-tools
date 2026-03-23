@@ -1,15 +1,16 @@
 {
   "name": "firebase-tools",
-  "version": "15.10.0",
+  "version": "15.11.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "15.10.0",
+      "version": "15.11.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.7",
+        "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
         "@google-cloud/cloud-sql-connector": "^1.3.3",
@@ -316,6 +317,12 @@
       "bin": {
         "apphosting-local-build": "dist/bin/localbuild.js"
       }
+    },
+    "node_modules/@apphosting/build/node_modules/@apphosting/common": {
+      "version": "0.0.9",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
+      "license": "Apache-2.0"
     },
     "node_modules/@apphosting/build/node_modules/commander": {
       "version": "11.1.0",
@@ -22475,6 +22482,11 @@
         "ts-node": "^10.9.1"
       },
       "dependencies": {
+        "@apphosting/common": {
+          "version": "0.0.9",
+          "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+          "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
+        },
         "commander": {
           "version": "11.1.0",
           "resolved": "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz",
