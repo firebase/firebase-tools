@@ -1,6 +1,5 @@
 import { spawn, spawnSync } from "child_process";
 import * as utils from "./utils";
-import { logger } from "./logger";
 import * as prompt from "./prompt";
 import { getErrMsg } from "./error";
 
