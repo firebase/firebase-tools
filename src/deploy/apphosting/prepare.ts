@@ -173,9 +173,8 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
-        path.resolve(path.join(options.projectRoot || process.cwd(), cfg.rootDir || "")),
+        options.projectRoot || "./",
         "nextjs",
-        {},
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(
