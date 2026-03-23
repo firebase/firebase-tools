@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { spawn, spawnSync } from "child_process";
+import { spawn } from "child_process";
 import * as semver from "semver";
 
 import { logger } from "../logger";
@@ -13,6 +13,7 @@ import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
 import { FirebaseError } from "../error";
 import * as os from "os";
+import { installAgentSkills } from "../agentSkills";
 
 export interface MigrateOptions {
   project?: string;
@@ -305,38 +306,12 @@ async function injectAntigravityContext(
     nonInteractive: process.env.NODE_ENV === "test",
   });
 
-  logger.info("⏳ Adding Antigravity skills...");
-  try {
-    const args = [
-      "-y",
-      "skills",
-      "add",
-      "firebase/agent-skills",
-      "-a",
-      "gemini-cli",
-      "--skill",
-      "*",
-      "-y",
-    ];
-    if (installLocation === "global") {
-      args.push("-g");
-    }
-
-    const result = spawnSync("npx", args, {
-      cwd: rootPath,
-      stdio: "ignore",
-      shell: process.platform === "win32",
-    });
-    if (result.error) {
-      throw result.error;
-    }
-    if (result.status !== 0) {
-      throw new Error(`npx skills add exited with code ${result.status}`);
-    }
-    logger.info(`✅ Added Antigravity skills`);
-  } catch (err: unknown) {
-    utils.logWarning(`Could not add Antigravity skills, skipping. ${err}`);
-  }
+  await installAgentSkills({
+    cwd: rootPath,
+    global: installLocation === "global",
+    background: false,
+    agentName: "gemini-cli",
+  });
 
   // System Instructions
   const systemInstructionsTemplate = await readTemplate(

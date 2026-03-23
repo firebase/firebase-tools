@@ -15,6 +15,7 @@ import { isEnabled } from "../experiments";
 import { readTemplateSync } from "../templates";
 import { FirebaseError } from "../error";
 import { logBullet } from "../utils";
+import { promptForAgentSkills, installAgentSkills } from "../agentSkills";
 
 const homeDir = os.homedir();
 
@@ -279,6 +280,16 @@ export async function initAction(feature: string, options: Options): Promise<voi
 
   await init(setup, config, options);
   await postInitSaves(setup, config);
+
+  // Prompt for agent skills at the end of init
+  try {
+    const shouldInstall = await promptForAgentSkills();
+    if (shouldInstall) {
+      void installAgentSkills({ background: true, cwd });
+    }
+  } catch (err: unknown) {
+    logger.debug(`Could not prompt for agent skills: ${err}`);
+  }
 
   if (setup.instructions.length) {
     logger.info(`\n${clc.bold("To get started:")}\n`);
