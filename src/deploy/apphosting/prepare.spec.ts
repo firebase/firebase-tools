@@ -8,6 +8,7 @@ import * as devconnect from "../../gcp/devConnect";
 import * as prompt from "../../prompt";
 import { RC } from "../../rc";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as experiments from "../../experiments";
