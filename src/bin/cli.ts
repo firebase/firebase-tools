@@ -34,7 +34,7 @@ export function cli(pkg: any) {
 
   process.env.IS_FIREBASE_CLI = "true";
 
-  const logFilename = useFileLogger();
+  const logFilename = useFileLogger(process.env.FIREBASE_DEBUG_FILE);
 
   logger.debug("-".repeat(70));
   logger.debug("Command:      ", process.argv.join(" "));
@@ -52,7 +52,7 @@ export function cli(pkg: any) {
 
   process.on("exit", (code) => {
     code = typeof process.exitCode === "number" ? process.exitCode : code;
-    if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
+    if (!process.env.DEBUG && code < 2 && logFilename !== "/dev/null" && fsutils.fileExistsSync(logFilename)) {
       fs.unlinkSync(logFilename);
     }
 
