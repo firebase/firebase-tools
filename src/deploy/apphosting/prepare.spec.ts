@@ -11,6 +11,7 @@ import { Context } from "./args";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as experiments from "../../experiments";
+import * as getProjectNumber from "../../getProjectNumber";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -52,7 +53,6 @@ describe("apphosting", () => {
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
-  let getProjectNumberStub: sinon.SinonStub;
   let ensureAppHostingServiceAgentRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
@@ -72,7 +72,7 @@ describe("apphosting", () => {
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
-    getProjectNumberStub = sinon.stub(getProjectNumberStub, "getProjectNumber").resolves("123456789");
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
     ensureAppHostingServiceAgentRolesStub = sinon
       .stub(backend, "ensureAppHostingServiceAgentRoles")
       .resolves();
