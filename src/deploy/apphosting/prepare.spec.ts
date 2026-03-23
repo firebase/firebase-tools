@@ -13,6 +13,7 @@ import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as experiments from "../../experiments";
 import * as getProjectNumber from "../../getProjectNumber";
+import * as resourceManager from "../../gcp/resourceManager";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -54,7 +55,8 @@ describe("apphosting", () => {
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
-  let ensureAppHostingServiceAgentRolesStub: sinon.SinonStub;
+  let addServiceAccountToRolesStub: sinon.SinonStub;
+
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -74,8 +76,8 @@ describe("apphosting", () => {
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
-    ensureAppHostingServiceAgentRolesStub = sinon
-      .stub(backend, "ensureAppHostingServiceAgentRoles")
+    addServiceAccountToRolesStub = sinon
+      .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
   });
 
@@ -135,9 +137,11 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
-      expect(ensureAppHostingServiceAgentRolesStub).to.have.been.calledWith(
+      expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
-        "123456789",
+        apphosting.serviceAgentEmail("123456789"),
+        ["roles/storage.objectViewer"],
+        true,
       );
     });
 
@@ -314,7 +318,7 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
-      expect(ensureAppHostingServiceAgentRolesStub).to.not.have.been.called;
+      expect(addServiceAccountToRolesStub).to.not.have.been.called;
     });
 
     it("should succeed for source deploys even if experiment is disabled", async () => {
