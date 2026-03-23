@@ -645,10 +645,12 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
       dataConnectGraphqlTrigger: {},
     };
   } else if (gcfFunction.labels?.["ailogic-event-type"]) {
+    const triggerType = gcfFunction.labels["ailogic-event-type"];
     const eventType =
-      AI_LOGIC_TRIGGERS_TO_EVENTS[
-        gcfFunction.labels["ailogic-event-type"] as keyof typeof AI_LOGIC_TRIGGERS_TO_EVENTS
-      ];
+      AI_LOGIC_TRIGGERS_TO_EVENTS[triggerType as keyof typeof AI_LOGIC_TRIGGERS_TO_EVENTS];
+    if (!eventType) {
+      throw new FirebaseError(`Unrecognized ailogic-event-type label: ${triggerType}`);
+    }
     trigger = {
       blockingTrigger: {
         eventType,
