@@ -34,7 +34,7 @@ export function cli(pkg: any) {
 
   process.env.IS_FIREBASE_CLI = "true";
 
-  const logFilename = useFileLogger(process.env.FIREBASE_DEBUG_FILE);
+  const logFilename = useFileLogger(process.env.FIREBASE_DEBUG_FILE || undefined);
 
   logger.debug("-".repeat(70));
   logger.debug("Command:      ", process.argv.join(" "));
