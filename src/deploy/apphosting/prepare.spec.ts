@@ -57,7 +57,6 @@ describe("apphosting", () => {
   let assertEnabledStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
 
-
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
     confirmStub = sinon.stub(prompt, "confirm").throws("Unexpected confirm call");
@@ -114,7 +113,6 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
-      sinon.stub(experiments, "assertEnabled").returns();
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
@@ -159,9 +157,7 @@ describe("apphosting", () => {
       };
       const context = initializeContext();
 
-      sinon
-        .stub(experiments, "assertEnabled")
-        .throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
+      assertEnabledStub.throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {

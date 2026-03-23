@@ -13,7 +13,6 @@ import {
   iamOrigin,
   secretManagerOrigin,
 } from "../api";
-import { logger } from "../logger";
 import { Backend, BackendOutputOnlyFields, API_VERSION } from "../gcp/apphosting";
 import { addServiceAccountToRoles } from "../gcp/resourceManager";
 import * as iam from "../gcp/iam";
@@ -684,4 +683,3 @@ export async function getBackend(
   }
   throw new FirebaseError(`No backend named ${backendId} found.`);
 }
-

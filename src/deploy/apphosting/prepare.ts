@@ -5,7 +5,12 @@ import {
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
-import { ensureApiEnabled, listBackends, parseBackendName, serviceAgentEmail } from "../../gcp/apphosting";
+import {
+  ensureApiEnabled,
+  listBackends,
+  parseBackendName,
+  serviceAgentEmail,
+} from "../../gcp/apphosting";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { addServiceAccountToRoles } from "../../gcp/resourceManager";
 
@@ -19,7 +24,6 @@ import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
-
 
 /**
  * Prepares backend targets for deployment.
@@ -76,7 +80,7 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledWarning(
       "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
@@ -130,9 +134,9 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledWarning(
         "apphosting",
         `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-          "then retry deployment.",
+        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+        "then retry deployment.",
       );
       return;
     }
@@ -246,7 +250,7 @@ async function ensureAppHostingServiceAgentRoles(
       /* skipAccountLookup= */ true,
     );
   } catch (err: unknown) {
-    logger.debug(`Failed to grant storage.objectViewer to ${p4saEmail}: ${err}`);
+    logger.debug(`Failed to grant storage.objectViewer to ${p4saEmail}: ${String(err)}`);
     logLabeledWarning(
       "apphosting",
       `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
