@@ -20,7 +20,6 @@ import { FirebaseError } from "../../error";
  * potentially uploaded source code (or linked repository commits) and triggers
  * the App Hosting rollout API. It tracks the progress of the rollouts and reports
  * success or failure to the user.
- *
  * @param context - The deployment context containing backend configs, locations, and storage URIs.
  * @param options - CLI options.
  */
@@ -51,13 +50,7 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        config: {
-          ...context.backendLocalBuilds[backendId]?.buildConfig,
-          env: [
-            ...(context.backendLocalBuilds[backendId]?.buildConfig?.env || []),
-            ...(context.backendLocalBuilds[backendId]?.env || []),
-          ],
-        },
+        config: context.backendLocalBuilds[backendId]?.buildConfig,
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],

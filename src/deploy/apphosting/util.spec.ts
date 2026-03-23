@@ -21,7 +21,7 @@ describe("util", () => {
     tmpDir.removeCallback();
   });
 
-  describe("createTarArchive", () => {
+  describe("createLocalBuildTarArchive", () => {
     it("should include apphosting.yaml from root when archiving a subdirectory", async () => {
       // Setup: Create apphosting.yaml in root and some files in dist
       fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
@@ -33,7 +33,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
@@ -44,8 +44,8 @@ describe("util", () => {
       tar.list({
         file: tarballPath,
         sync: true,
-        onentry: (entry: any) => files.push(entry.path),
-      } as any);
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
 
       expect(files).to.include("dist/index.js");
       expect(files).to.include("apphosting.yaml");
@@ -61,7 +61,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
@@ -72,8 +72,8 @@ describe("util", () => {
       tar.list({
         file: tarballPath,
         sync: true,
-        onentry: (entry: any) => files.push(entry.path),
-      } as any);
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
 
       expect(files).to.include("dist/index.js");
       expect(files).to.not.include("apphosting.yaml");

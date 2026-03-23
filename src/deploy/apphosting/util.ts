@@ -15,13 +15,12 @@ import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
  * This function packages the specified directory into a `.tar.gz` file, respecting
  * ignore patterns (like `.git`, `firebase-debug.log`, etc.). It is used to prepare
  * the code/artifacts for upload to Google Cloud Storage.
- *
  * @param config - The App Hosting backend configuration.
  * @param rootDir - The root directory of the project.
  * @param targetSubDir - Optional subdirectory to simplify (e.g. if we only want to zip 'dist').
- * @returns A promise that resolves to the absolute path of the created temporary tarball.
+ * @return A promise that resolves to the absolute path of the created temporary tarball.
  */
-export async function createTarArchive(
+export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
   targetSubDir?: string,
@@ -29,11 +28,7 @@ export async function createTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  // const ignore = config.ignore || [".git"];
   const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
-  // const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  // ignore.push(...gitIgnorePatterns);
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
     ignore: ignore,
@@ -55,8 +50,8 @@ export async function createTarArchive(
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
     fs.statSync(rootDir);
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
+  } catch (err: unknown) {
+    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
       throw new FirebaseError(`Could not read directory "${rootDir}"`);
     }
     throw err;
@@ -81,7 +76,7 @@ export async function createTarArchive(
  * Locates the source code for a backend and creates an archive to eventually upload to GCS.
  * Based heavily on functions upload logic in src/deploy/functions/prepareFunctionsUpload.ts.
  */
-export async function createArchive(
+export async function createSourceDeployArchive(
   config: AppHostingSingle,
   rootDir: string,
   targetSubDir?: string,
@@ -115,7 +110,7 @@ export async function createArchive(
     await pipeAsync(archive, fileStream);
   } catch (err: unknown) {
     throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
       { original: err as Error, exit: 1 },
     );
   }

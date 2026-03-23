@@ -64,10 +64,12 @@ describe("apphosting", () => {
       .throws("Unexpected getProjectNumber call");
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").throws("Unexpected upsertBucket call");
     uploadObjectStub = sinon.stub(gcs, "uploadObject").throws("Unexpected uploadObject call");
-    createArchiveStub = sinon.stub(util, "createArchive").throws("Unexpected createArchive call");
+    createArchiveStub = sinon
+      .stub(util, "createSourceDeployArchive")
+      .throws("Unexpected createSourceDeployArchive call");
     createTarArchiveStub = sinon
-      .stub(util, "createTarArchive")
-      .throws("Unexpected createTarArchive call");
+      .stub(util, "createLocalBuildTarArchive")
+      .throws("Unexpected createLocalBuildTarArchive call");
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
@@ -153,7 +155,7 @@ describe("apphosting", () => {
         projectId: "my-project",
         req: {
           baseName: "firebaseapphosting-sources-000000000000-us-central1",
-          purposeLabel: `apphosting-source-${location}`,
+          purposeLabel: `apphosting-source-${location.toLowerCase()}`,
           location: "us-central1",
           lifecycle: {
             rule: [
@@ -165,9 +167,25 @@ describe("apphosting", () => {
           },
         },
       });
-      expect(createArchiveStub).to.be.called;
-      expect(createTarArchiveStub).to.be.called;
-      expect(uploadObjectStub).to.be.called;
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["foo"],
+        process.cwd(),
+      );
+      expect(createTarArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.ZIP,
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.TAR,
+      );
     });
 
     it("correctly creates and sets storage URIs", async () => {
@@ -192,6 +210,25 @@ describe("apphosting", () => {
       createReadStreamStub.returns("stream" as any);
 
       await deploy(context, opts);
+      expect(createArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["foo"],
+        process.cwd(),
+      );
+      expect(createTarArchiveStub).to.be.calledWithExactly(
+        context.backendConfigs["fooLocalBuild"],
+        process.cwd(),
+        "./nextjs/standalone",
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.ZIP,
+      );
+      expect(uploadObjectStub).to.be.calledWithMatch(
+        sinon.match.any,
+        "firebaseapphosting-sources-000000000000-us-central1",
+        gcs.ContentType.TAR,
+      );
 
       expect(context.backendStorageUris["foo"]).to.equal(`gs://${bucketName}/foo-1234.zip`);
       expect(context.backendStorageUris["fooLocalBuild"]).to.equal(
@@ -208,7 +245,7 @@ describe("apphosting", () => {
 
       getProjectNumberStub.resolves("000000000000");
       upsertBucketStub.resolves("some-bucket");
-      (experiments.assertEnabled as any).restore();
+      (experiments.assertEnabled as sinon.SinonStub).restore();
       sinon
         .stub(experiments, "assertEnabled")
         .throws(new FirebaseError("App Hosting local builds experiment is not enabled"));

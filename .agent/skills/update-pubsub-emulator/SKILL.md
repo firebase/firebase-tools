@@ -24,9 +24,9 @@ description: How to update the Pub/Sub emulator
 4.  **Upload to Storage**
     Upload the zip file to the Firebase preview bucket:
     ```bash
-    gsutil cp pubsub-emulator-<version>.zip gs://firebase-preview-drop/emulator/
+    gcloud storage cp pubsub-emulator-<version>.zip gs://firebase-preview-drop/emulator/
     ```
-    Make the file publicly readable if necessary (usually the bucket permissions handle this, or use `gsutil acl ch -u AllUsers:R ...`).
+    Make the file publicly readable if necessary (usually the bucket permissions handle this, or use `gcloud storage objects update ... --add-acl-grant=entity=allUsers,role=READER`).
 
     **Note:** For the version 0.8.27 update, this step was already done.
 
