@@ -41,16 +41,17 @@ export default async function (context: Context, options: Options): Promise<void
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
-  const configs = getBackendConfigs(options);
-  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
-    const projectNumber = await getProjectNumber(options);
-    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
-  }
 
   context.backendConfigs = {};
   context.backendLocations = {};
   context.backendStorageUris = {};
   context.backendLocalBuilds = {};
+
+  const configs = getBackendConfigs(options);
+  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
+    const projectNumber = await getProjectNumber(options);
+    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
+  }
 
   const { backends } = await listBackends(projectId, "-");
 
