@@ -12,6 +12,7 @@ import { needProjectId } from "../../projectUtils";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
+import * as experiments from "../../experiments";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 
@@ -152,6 +153,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
+    experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
@@ -169,8 +171,9 @@ export default async function (context: Context, options: Options): Promise<void
         buildConfig,
         annotations,
       };
-    } catch (e) {
-      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${errorMsg}`);
     }
   }
 }
