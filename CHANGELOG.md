@@ -1,0 +1,1 @@
+- Fixed a crash in `setEnqueuer` when deploying Cloud Tasks functions whose IAM policy has no bindings.
