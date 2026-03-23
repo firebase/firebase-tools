@@ -26,15 +26,8 @@ import * as experiments from "../../experiments";
 import { logger } from "../../logger";
 
 /**
- * Prepares backend targets for deployment.
- *
- * This step validates that the necessary APIs are enabled and that the Compute Service Account
- * is set up correctly. It also handles the discovery of backends to deploy (matching `--only` flags),
- * resolves ambiguous backend IDs, and executes local builds if configured (e.g. for Frameworks
- * that support building locally before deploy).
- *
- * @param context - The deployment context to populate with backend configurations and local build results.
- * @param options - CLI options.
+ * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
+ * and that the App Hosting Compute Service Account exists and has the necessary IAM roles.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
