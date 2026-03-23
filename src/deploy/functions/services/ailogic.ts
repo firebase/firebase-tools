@@ -57,7 +57,7 @@ export class AILogicService implements Service {
         return false;
       }
       if (ep.blockingTrigger.eventType !== eventType || ep.id === endpoint.id) {
-        return;
+        return false;
       }
       if (regionalWebhook) {
         return ep.blockingTrigger.options?.regionalWebhook && ep.region === endpoint.region;
