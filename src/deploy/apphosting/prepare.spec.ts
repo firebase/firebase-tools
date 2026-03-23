@@ -72,7 +72,7 @@ describe("apphosting", () => {
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
-    getProjectNumberStub = sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
+    getProjectNumberStub = sinon.stub(getProjectNumberStub, "getProjectNumber").resolves("123456789");
     ensureAppHostingServiceAgentRolesStub = sinon
       .stub(backend, "ensureAppHostingServiceAgentRoles")
       .resolves();

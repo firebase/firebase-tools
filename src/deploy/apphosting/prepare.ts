@@ -7,7 +7,6 @@ import {
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
-import { getAppHostingConfiguration } from "../../apphosting/config";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
@@ -15,7 +14,6 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
-import * as experiments from "../../experiments";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as experiments from "../../experiments";
@@ -48,7 +46,6 @@ export default async function (context: Context, options: Options): Promise<void
   context.backendLocalBuilds = {};
 
   const { backends } = await listBackends(projectId, "-");
-
 
   const foundBackends: AppHostingSingle[] = [];
   const notFoundBackends: AppHostingSingle[] = [];

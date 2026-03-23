@@ -295,7 +295,6 @@ export async function createGitRepoLink(
   await githubConnections.linkGitHubRepository(projectId, location, connectionId);
 }
 
-
 /**
  * Ensures the service account is present the user has permissions to use it by
  * checking the `iam.serviceAccounts.actAs` permission. If the permissions
