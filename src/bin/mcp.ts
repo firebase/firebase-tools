@@ -84,7 +84,7 @@ export async function mcp(): Promise<void> {
   if (earlyExit) return;
 
   setFirebaseMcp(true);
-  useFileLogger();
+  useFileLogger(process.env.FIREBASE_DEBUG_FILE);
   const activeFeatures = (values.only || "")
     .split(",")
     .map((f) => f.trim())
