@@ -15,6 +15,13 @@ import { FirebaseError } from "../../error";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
+ *
+ * This step executes the actual "release" phase of the deployment. It takes the
+ * potentially uploaded source code (or linked repository commits) and triggers
+ * the App Hosting rollout API. It tracks the progress of the rollouts and reports
+ * success or failure to the user.
+ * @param context - The deployment context containing backend configs, locations, and storage URIs.
+ * @param options - CLI options.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   let backendIds = Object.keys(context.backendConfigs);
@@ -30,15 +37,6 @@ export default async function (context: Context, options: Options): Promise<void
     backendIds = backendIds.filter((id) => !missingBackends.includes(id));
   }
 
-  const localBuildBackends = backendIds.filter((id) => context.backendLocalBuilds[id]);
-  if (localBuildBackends.length > 0) {
-    logLabeledWarning(
-      "apphosting",
-      `Skipping backend(s) ${localBuildBackends.join(", ")}. Local Builds are not supported yet.`,
-    );
-    backendIds = backendIds.filter((id) => !localBuildBackends.includes(id));
-  }
-
   if (backendIds.length === 0) {
     return;
   }
@@ -47,16 +45,17 @@ export default async function (context: Context, options: Options): Promise<void
   const rollouts = backendIds.map((backendId) =>
     // TODO(9114): Add run_command
     // TODO(914): Set the buildConfig.
-    // TODO(914): Set locallyBuiltSource.
     orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
+        config: context.backendLocalBuilds[backendId]?.buildConfig,
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
             rootDirectory: context.backendConfigs[backendId].rootDir,
+            locallyBuiltSource: !!context.backendLocalBuilds[backendId],
           },
         },
       },

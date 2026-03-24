@@ -21,6 +21,10 @@
     "dom.iterable",
     "ES2020"
   ],
-  "include": ["src/**/*"],
-  "exclude": ["src/dynamicImport.js"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/dynamicImport.js"
+  ]
 }
