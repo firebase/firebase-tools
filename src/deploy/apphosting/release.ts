@@ -51,13 +51,7 @@ export default async function (context: Context, options: Options): Promise<void
       location: context.backendLocations[backendId],
       buildInput: {
         // TODO: Confirm this config behavior
-        config: {
-          ...context.backendLocalBuilds[backendId]?.buildConfig,
-          env: [
-            ...(context.backendLocalBuilds[backendId]?.buildConfig?.env || []),
-            ...(context.backendLocalBuilds[backendId]?.env || []),
-          ],
-        },
+        config: context.backendLocalBuilds[backendId]?.buildConfig || {},
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],

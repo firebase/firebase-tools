@@ -14,7 +14,6 @@ import * as managementApps from "../../management/apps";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
 import * as projectUtils from "../../getProjectNumber";
-import * as experiments from "../../experiments";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -111,7 +110,6 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
-      sinon.stub(experiments, "assertEnabled").returns();
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
@@ -133,7 +131,6 @@ describe("apphosting", () => {
         buildDir: "./next/standalone",
         buildConfig,
         annotations,
-        env: [],
       });
       expect(backend.ensureAppHostingServiceAgentRoles).to.have.been.called;
     });
@@ -211,9 +208,7 @@ describe("apphosting", () => {
       };
       const context = initializeContext();
 
-      sinon
-        .stub(experiments, "assertEnabled")
-        .throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
+      assertEnabledStub.throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {

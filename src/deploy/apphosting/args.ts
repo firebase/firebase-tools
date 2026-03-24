@@ -1,11 +1,10 @@
 import { AppHostingSingle } from "../../firebaseConfig";
-import { BuildConfig, Env } from "../../gcp/apphosting";
+import { BuildConfig } from "../../gcp/apphosting";
 
 export interface LocalBuild {
   buildConfig: BuildConfig;
   buildDir: string;
   annotations: Record<string, string>;
-  env: Env[];
 }
 
 export interface Context {

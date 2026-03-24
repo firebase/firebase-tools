@@ -196,12 +196,10 @@ export default async function (context: Context, options: Options): Promise<void
           managementApps.AppPlatform.WEB,
         )) as WebConfig;
         const autoinitVars = getAutoinitEnvVars(webappConfig);
-        buildEnv[cfg.backendId] = {
-          ...buildEnv[cfg.backendId],
-          ...Object.fromEntries(
-            Object.entries(autoinitVars).map(([key, value]) => [key, { value }]),
-          ),
-        };
+        // TODO: confirm the correct priority of auto-init variables
+        for (const [key, value] of Object.entries(autoinitVars)) {
+          buildEnv[cfg.backendId][key] = { value };
+        }
       } catch (e) {
         logLabeledWarning(
           "apphosting",
@@ -221,11 +219,12 @@ export default async function (context: Context, options: Options): Promise<void
         );
       }
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
-        buildConfig,
+        buildConfig: {
+          ...buildConfig,
+          env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || []),
+        },
         annotations,
-        env: runtimeEnv[cfg.backendId] || [],
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -267,4 +266,22 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
     return [];
   }
   return backendConfigs.filter((cfg) => backendIds.includes(cfg.backendId));
+}
+
+/**
+ * Merges two lists of environment variables, giving precedence to the values in overrides.
+ */
+function mergeEnvVars(base: Env[], overrides: Env[]): Env[] {
+  const merged = new Map<string, Env>();
+  for (const env of base) {
+    if (env.variable) {
+      merged.set(env.variable, env);
+    }
+  }
+  for (const env of overrides) {
+    if (env.variable) {
+      merged.set(env.variable, env);
+    }
+  }
+  return Array.from(merged.values());
 }
