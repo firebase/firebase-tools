@@ -334,9 +334,9 @@
       }
     },
     "node_modules/@apphosting/common": {
-      "version": "0.0.9",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
-      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ==",
       "license": "Apache-2.0"
     },
     "node_modules/@astrojs/compiler": {
@@ -22495,9 +22495,9 @@
       }
     },
     "@apphosting/common": {
-      "version": "0.0.9",
-      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
-      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
+      "version": "0.0.8",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.8.tgz",
+      "integrity": "sha512-RJu5gXs2HYV7+anxpVPpp04oXeuHbV3qn402AdXVlnuYM/uWo7aceqmngpfp6Bi376UzRqGjfpdwFHxuwsEGXQ=="
     },
     "@astrojs/compiler": {
       "version": "1.3.1",
@@ -26783,7 +26783,7 @@
       "resolved": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
       "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
       "requires": {
-        "ajv": "^8.0.0"
+        "ajv": "^8.17.1"
       }
     },
     "ansi-align": {
