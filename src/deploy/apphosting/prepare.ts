@@ -53,8 +53,8 @@ export default async function (context: Context, options: Options): Promise<void
     let yamlConfig = AppHostingYamlConfig.empty();
     try {
       yamlConfig = await getAppHostingConfiguration(appDir);
-    } catch (e: any) {
-      if (e.message && !e.message.includes("doesn't exist")) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message && !e.message.includes("doesn't exist")) {
         throw e;
       }
     }
