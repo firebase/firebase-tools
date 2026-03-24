@@ -22,36 +22,27 @@ import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
 import { getAutoinitEnvVars } from "../../apphosting/utils";
-import * as experiments from "../../experiments";
 
 /**
- * Prepares backend targets for deployment.
- *
- * This step validates that the necessary APIs are enabled and that the Compute Service Account
- * is set up correctly. It also handles the discovery of backends to deploy (matching `--only` flags),
- * resolves ambiguous backend IDs, and executes local builds if configured (e.g. for Frameworks
- * that support building locally before deploy).
- *
- * @param context - The deployment context to populate with backend configurations and local build results.
- * @param options - CLI options.
+ * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
+ * and that the App Hosting Compute Service Account exists and has the necessary IAM roles.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   const projectId = needProjectId(options);
   await ensureApiEnabled(options);
   await ensureRequiredApisEnabled(projectId);
   await ensureAppHostingComputeServiceAccount(projectId, /* serviceAccount= */ "");
-  const configs = getBackendConfigs(options);
-  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
-    const projectNumber = await getProjectNumber(options);
-    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
-  }
 
   context.backendConfigs = {};
   context.backendLocations = {};
   context.backendStorageUris = {};
   context.backendLocalBuilds = {};
 
-  const { backends } = await listBackends(projectId, "-");
+  const configs = getBackendConfigs(options);
+  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
+    const projectNumber = await getProjectNumber(options);
+    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
+  }
 
   const buildEnv: Record<string, EnvMap> = {};
   const runtimeEnv: Record<string, Env[]> = {};
@@ -73,6 +64,8 @@ export default async function (context: Context, options: Options): Promise<void
     buildEnv[cfg.backendId] = build;
     runtimeEnv[cfg.backendId] = runtime;
   }
+
+  const { backends } = await listBackends(projectId, "-");
 
   const foundBackends: AppHostingSingle[] = [];
   const notFoundBackends: AppHostingSingle[] = [];
@@ -218,7 +211,7 @@ export default async function (context: Context, options: Options): Promise<void
     }
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
-        path.resolve(path.join(options.projectRoot || process.cwd(), cfg.rootDir || "")),
+        options.projectRoot || "./",
         "nextjs",
         buildEnv[cfg.backendId] || {},
       );
