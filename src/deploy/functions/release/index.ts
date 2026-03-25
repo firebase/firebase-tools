@@ -88,6 +88,7 @@ export async function release(
   // This will limit concurrent deploys of run functions to two while zip deploy capacity
   // is low.
   const runThrottlerOptions = {
+    ...throttlerOptions,
     concurrency: 2,
   };
 

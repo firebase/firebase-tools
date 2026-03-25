@@ -87,18 +87,11 @@ export const command = new Command("functions:delete [filters...]")
       maxBackoff: 40000,
     });
 
-    // Note: we don't need the temporary concurrency reduction of 2, because that quota limit is for deploys
-    const runFunctionExecutor: executor.QueueExecutor = new executor.QueueExecutor({
-      retries: 30,
-      backoff: 20000,
-      concurrency: 40,
-      maxBackoff: 40000,
-    });
-
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        runFunctionExecutor,
+        // Note: we don't need the temporary concurrency reduction of 2, because that quota limit is for deploys
+        runFunctionExecutor: functionExecutor,
         appEngineLocation,
         executor: new executor.QueueExecutor({}),
         sources: {},
