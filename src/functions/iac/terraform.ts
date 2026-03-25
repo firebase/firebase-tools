@@ -112,7 +112,8 @@ export function serializeValue(value: Value, indentation = 0): string {
   } else if (value === null || value === undefined) {
     return "null";
   } else if (Array.isArray(value)) {
-    if (value.some((e) => e !== null && typeof e === "object")) {
+    // Use multi-line if there is any Object. But we exclude HCL expressions from "objects".
+    if (value.some((e) => e !== null && typeof e === "object" && (Array.isArray(e) || e["@type"] !== "HCLExpression"))) {
       return `[\n${value.map((v) => "  ".repeat(indentation + 1) + serializeValue(v, indentation + 1)).join(",\n")}\n${"  ".repeat(indentation)}]`;
     }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
@@ -128,10 +129,8 @@ export function serializeValue(value: Value, indentation = 0): string {
   throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
 
-/**
- * Converts a block to a string.
- */
-const META_ARGUMENTS = new Set(["count", "for_each", "provider", "lifecycle", "depends_on"]);
+const PREFIX_ARGUMENTS = new Set(["count", "for_each", "provider"]);
+const SUFFIX_ARGUMENTS = new Set(["lifecycle", "depends_on"]);
 
 const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
   google_cloudfunctions_function: new Set([
@@ -192,22 +191,25 @@ function serializeResourceAttributes(
 ): string {
   const nonBlockParams = NON_BLOCK_PARAMETERS[resourceType] || new Set();
 
-  const metaGroup: string[] = [];
+  const prefixGroup: string[] = [];
   const nonBlockGroup: string[] = [];
   const blockGroup: string[] = [];
+  const suffixGroup: string[] = [];
 
   for (const [k, v] of Object.entries(attributes)) {
     const serialized = `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`;
-    if (META_ARGUMENTS.has(k)) {
-      metaGroup.push(serialized);
+    if (PREFIX_ARGUMENTS.has(k)) {
+      prefixGroup.push(serialized);
     } else if (nonBlockParams.has(k)) {
       nonBlockGroup.push(serialized);
+    } else if (SUFFIX_ARGUMENTS.has(k)) {
+      suffixGroup.push(serialized);
     } else {
       blockGroup.push(serialized);
     }
   }
 
-  const nonemptyGroups = [metaGroup, nonBlockGroup, blockGroup].filter((g) => g.length > 0);
+  const nonemptyGroups = [prefixGroup, nonBlockGroup, blockGroup, suffixGroup].filter((g) => g.length > 0);
   // Within each group, separate attributes with a newline. Separate different groups with an empty line.
   const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
 
@@ -217,13 +219,13 @@ function serializeResourceAttributes(
 /**
  * Converts a block to a string.
  */
-export function blockToString(block: Block): string {
+export function blockToString(block: Block, indentation: number = 0): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
 
   if (block.type === "resource" && block.labels?.length) {
     const resourceType = block.labels[0];
-    return `${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType)}`;
+    return `${"  ".repeat(indentation)}${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType, indentation)}`;
   }
 
-  return `${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes)}`;
+  return `${"  ".repeat(indentation)}${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes, indentation)}`;
 }
