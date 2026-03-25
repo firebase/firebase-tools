@@ -1,5 +1,8 @@
 FROM node:lts-alpine AS app-env
 
+# Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
+RUN npm install -g npm@latest
+
 # Install Python (for Cloud Functions) and Java (for emulators) and pre-cache emulator dependencies.
 RUN apk update && \
     apk add --no-cache python3 openjdk21-jre-headless bash && \
@@ -17,6 +20,7 @@ COPY package-lock.json /usr/local/node_packages/
 
 WORKDIR /usr/local/node_packages/
 RUN npm install && npm update
+RUN chmod -R 755 /usr/local/node_packages /usr/local/lib/node_modules
 ENV PATH="/usr/local/node_packages/node_modules/.bin:${PATH}"
 
 WORKDIR /

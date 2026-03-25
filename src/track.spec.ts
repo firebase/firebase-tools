@@ -4,6 +4,7 @@ import * as nock from "nock";
 import { configstore } from "./configstore";
 import * as track from "./track";
 import * as auth from "./auth";
+import { setFirebaseMcp } from "./env";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const pkg = require("../package.json");
@@ -25,7 +26,7 @@ describe("track", () => {
     sandbox.restore();
     nock.enableNetConnect();
     delete process.env.IS_FIREBASE_CLI;
-    delete process.env.IS_FIREBASE_MCP;
+    setFirebaseMcp(false);
     delete process.env.FIREBASE_CLI_MP_VALIDATE;
     track.GA4_PROPERTIES.cli.currentSession = undefined;
     track.GA4_PROPERTIES.emulator.currentSession = undefined;
@@ -39,8 +40,8 @@ describe("track", () => {
       expect(track.usageEnabled()).to.be.true;
     });
 
-    it("should return true if usage is enabled and IS_FIREBASE_MCP is true", () => {
-      process.env.IS_FIREBASE_MCP = "true";
+    it("should return true if usage is enabled and isFirebaseMcp() is true", () => {
+      setFirebaseMcp(true);
       configstoreGetStub.withArgs("usage").returns(true);
       expect(track.usageEnabled()).to.be.true;
     });
