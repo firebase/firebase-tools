@@ -4,6 +4,7 @@ import * as args from "./args";
 import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
+import * as experiments from "../../experiments";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
@@ -11,7 +12,6 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
-import * as experiments from "../../experiments";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -43,6 +43,7 @@ import {
   normalizeAndValidate,
   ValidatedConfig,
   requireLocal,
+  shouldUseRuntimeConfig,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -68,7 +69,7 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions);
-  context.filters = getEndpointFilters(options); // Parse --only filters for functions.
+  context.filters = getEndpointFilters(options, context.config); // Parse --only filters for functions.
 
   const codebases = targetCodebases(context.config, context.filters);
   if (codebases.length === 0) {
@@ -94,10 +95,11 @@ export async function prepare(
 
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
-  const allowFunctionsConfig = experiments.isEnabled("dangerouslyAllowFunctionsConfig");
 
-  // Load runtime config if experiment allows it and API is enabled
-  if (allowFunctionsConfig && checkAPIsEnabled[1]) {
+  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+
+  // Load runtime config if API is enabled and at least one targeted codebase uses it
+  if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
     runtimeConfig = { ...runtimeConfig, ...(await getFunctionsConfig(projectId)) };
   }
 
@@ -222,13 +224,39 @@ export async function prepare(
       );
     }
 
-    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg);
+    if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {
+      const schPathSet = new Set<string>();
+      for (const e of backend.allEndpoints(wantBackend)) {
+        if (
+          backend.isDataConnectGraphqlTriggered(e) &&
+          e.dataConnectGraphqlTrigger.schemaFilePath
+        ) {
+          schPathSet.add(e.dataConnectGraphqlTrigger.schemaFilePath);
+        }
+      }
+      const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
+        ? "tar.gz"
+        : "zip";
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [...schPathSet],
+        undefined,
+        { exportType },
+      );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
     }
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv1")) {
-      const packagedSource = await prepareFunctionsUpload(sourceDir, localCfg, runtimeConfig);
+      const configForUpload = shouldUseRuntimeConfig(localCfg) ? runtimeConfig : undefined;
+      const packagedSource = await prepareFunctionsUpload(
+        options.config.projectDir,
+        sourceDir,
+        localCfg,
+        [],
+        configForUpload,
+      );
       source.functionsSourceV1 = packagedSource?.pathToSource;
       source.functionsSourceV1Hash = packagedSource?.hash;
     }
@@ -293,6 +321,7 @@ export async function prepare(
    * This must be called after `await validate.secretsAreValid`.
    */
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
+  validate.checkFiltersIntegrity(wantBackends, context.filters);
   applyBackendHashToBackends(wantBackends, context);
 }
 
@@ -476,7 +505,9 @@ export async function loadCodebases(
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
     logger.debug(`Validating ${runtimeDelegate.language} source`);
-    supported.guardVersionSupport(runtimeDelegate.runtime);
+    if (!experiments.isEnabled("bypassfunctionsdeprecationcheck")) {
+      supported.guardVersionSupport(runtimeDelegate.runtime);
+    }
     await runtimeDelegate.validate();
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
@@ -486,7 +517,12 @@ export async function loadCodebases(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
     );
-    const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
+
+    const codebaseRuntimeConfig = shouldUseRuntimeConfig(codebaseConfig)
+      ? runtimeConfig
+      : { firebase: firebaseConfig };
+
+    const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup

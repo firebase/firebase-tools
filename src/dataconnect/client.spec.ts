@@ -124,6 +124,13 @@ describe("client", () => {
       expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main");
     });
 
+    it("getSchema with schemaId", async () => {
+      getStub.resolves({ body: { name: "schema" } });
+      const schema = await client.getSchema("projects/p/locations/l/services/s", "schemaId");
+      expect(schema).to.deep.equal({ name: "schema" });
+      expect(getStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/schemaId");
+    });
+
     it("getSchema returns undefined if not found", async () => {
       getStub.rejects(new FirebaseError("err", { status: 404 }));
       const schema = await client.getSchema("projects/p/locations/l/services/s");
@@ -161,8 +168,8 @@ describe("client", () => {
     it("deleteSchema", async () => {
       deleteStub.resolves({ body: { name: "op-name" } });
       pollOperationStub.resolves();
-      await client.deleteSchema("projects/p/locations/l/services/s");
-      expect(deleteStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main");
+      await client.deleteSchema("projects/p/locations/l/services/s/schemas/s");
+      expect(deleteStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/s");
     });
   });
 

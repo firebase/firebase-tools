@@ -31,7 +31,7 @@ describe("init dataconnect", () => {
       sdkActuateStub = sandbox.stub(sdk, "actuate").resolves();
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
       sandbox.stub(ensureApis, "ensureApis").resolves();
-      sandbox.stub(client, "getSchema").resolves(undefined);
+      sandbox.stub(client, "listSchemas").resolves([]);
     });
 
     afterEach(() => {
@@ -247,7 +247,7 @@ function mockConfig(data: Record<string, any> = {}): Config {
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
-    analyticsFlow: "test",
+    flow: "test",
     appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",

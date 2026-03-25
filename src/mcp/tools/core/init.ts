@@ -4,7 +4,6 @@ import { toContent } from "../../util";
 import { DEFAULT_RULES } from "../../../init/features/database";
 import { actuate, Setup, SetupInfo } from "../../../init/index";
 import { freeTrialTermsLink } from "../../../dataconnect/freeTrial";
-import { requireGeminiToS } from "../../errors";
 import { FirebaseError } from "../../../error";
 import {
   parseAppId,
@@ -15,6 +14,7 @@ import { getFirebaseProject } from "../../../management/projects";
 import { FDC_DEFAULT_REGION } from "../../../init/features/dataconnect";
 
 export const init = tool(
+  "core",
   {
     name: "init",
     description:
@@ -68,12 +68,6 @@ export const init = tool(
           .describe("Provide this object to initialize Cloud Firestore in this project directory."),
         dataconnect: z
           .object({
-            app_description: z
-              .string()
-              .optional()
-              .describe(
-                "Provide a description of the app you are trying to build. If present, Gemini will help generate Data Connect Schema, Connector and seed data",
-              ),
             service_id: z
               .string()
               .optional()
@@ -139,6 +133,52 @@ export const init = tool(
           })
           .optional()
           .describe("Enable Firebase AI Logic feature for existing app"),
+        hosting: z
+          .object({
+            site_id: z
+              .string()
+              .optional()
+              .describe(
+                "The ID of the hosting site to configure. If omitted and there is a default hosting site, that will be used.",
+              ),
+            public_directory: z
+              .string()
+              .optional()
+              .default("public")
+              .describe(
+                "The directory containing public files that will be served. If using a build tool, this likely should be the output directory of that tool.",
+              ),
+            single_page_app: z
+              .boolean()
+              .optional()
+              .default(false)
+              .describe("Configure as a single-page app."),
+          })
+          .optional()
+          .describe(
+            "Provide this object to initialize Firebase Hosting in this project directory.",
+          ),
+        auth: z
+          .object({
+            providers: z.object({
+              emailPassword: z
+                .boolean()
+                .optional()
+                .describe("Enable Email/Password authentication."),
+              anonymous: z.boolean().optional().describe("Enable Anonymous authentication."),
+              googleSignIn: z
+                .object({
+                  oAuthBrandDisplayName: z
+                    .string()
+                    .describe("The display name for the OAuth brand."),
+                  supportEmail: z.string().describe("The support email for the OAuth brand."),
+                })
+                .optional()
+                .describe("Configure Google Sign-In."),
+            }),
+          })
+          .optional()
+          .describe("Provide this object to initialize Firebase Authentication."),
       }),
     }),
     annotations: {
@@ -176,15 +216,11 @@ export const init = tool(
       };
     }
     if (features.dataconnect) {
-      if (features.dataconnect.app_description) {
-        // If app description is provided, ensure the Gemini in Firebase API is enabled.
-        const err = await requireGeminiToS(projectId);
-        if (err) return err;
-      }
       featuresList.push("dataconnect");
+      featureInfo.dataconnectSource = "mcp_init";
       featureInfo.dataconnect = {
-        analyticsFlow: "mcp",
-        appDescription: features.dataconnect.app_description || "",
+        flow: "",
+        appDescription: "",
         serviceId: features.dataconnect.service_id || "",
         locationId: features.dataconnect.location_id || "",
         cloudSqlInstanceId: features.dataconnect.cloudsql_instance_id || "",
@@ -215,6 +251,24 @@ export const init = tool(
       featureInfo.ailogic = {
         appId: features.ailogic.app_id,
         displayName: appData.displayName,
+      };
+    }
+    if (features.hosting) {
+      featuresList.push("hosting");
+      featureInfo.hosting = {
+        newSiteId: features.hosting.site_id,
+        public: features.hosting.public_directory,
+        spa: features.hosting.single_page_app,
+      };
+    }
+    if (features.auth) {
+      featuresList.push("auth");
+      featureInfo.auth = {
+        providers: {
+          anonymous: features.auth.providers.anonymous,
+          emailPassword: features.auth.providers.emailPassword,
+          googleSignIn: features.auth.providers.googleSignIn,
+        },
       };
     }
     const setup: Setup = {

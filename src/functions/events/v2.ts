@@ -33,6 +33,8 @@ export const FIRESTORE_EVENTS = [
 
 export const FIREALERTS_EVENT = "google.firebase.firebasealerts.alerts.v1.published";
 
+export const DATACONNECT_EVENT = "google.firebase.dataconnect.connector.v1.mutationExecuted";
+
 export type Event =
   | typeof PUBSUB_PUBLISH_EVENT
   | (typeof STORAGE_EVENTS)[number]
@@ -41,7 +43,9 @@ export type Event =
   | typeof REMOTE_CONFIG_EVENT
   | typeof TEST_LAB_EVENT
   | (typeof FIRESTORE_EVENTS)[number]
-  | typeof FIREALERTS_EVENT;
+  | typeof FIREALERTS_EVENT
+  | typeof DATACONNECT_EVENT
+  | (typeof AI_LOGIC_EVENTS)[number];
 
 // Why can't auth context be removed? This is map was added to correct a bug where a regex
 // allowed any non-auth type to be converted to any auth type, but we should follow up for why
@@ -56,3 +60,29 @@ export const CONVERTABLE_EVENTS: Partial<Record<Event, Event>> = {
   "google.cloud.firestore.document.v1.written":
     "google.cloud.firestore.document.v1.written.withAuthContext",
 };
+
+export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.beforeGenerateContent" as const;
+export const AI_LOGIC_AFTER_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.afterGenerateContent" as const;
+
+export const AI_LOGIC_EVENTS = [
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+] as const;
+
+export const isAILogicEventType = (
+  eventType: string,
+): eventType is (typeof AI_LOGIC_EVENTS)[number] => {
+  return AI_LOGIC_EVENTS.includes(eventType as (typeof AI_LOGIC_EVENTS)[number]);
+};
+
+export const AI_LOGIC_EVENTS_TO_TRIGGER = {
+  [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
+  [AI_LOGIC_AFTER_GENERATE_CONTENT]: "after-generate-content",
+} as const;
+
+export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
+  "before-generate-content": AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  "after-generate-content": AI_LOGIC_AFTER_GENERATE_CONTENT,
+} as const;

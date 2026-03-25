@@ -3,7 +3,7 @@ import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -35,9 +35,8 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
     default: true,
   },
@@ -57,18 +56,35 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-  dangerouslyAllowFunctionsConfig: {
-    shortDescription: "Allows the use of deprecated functions.config() API",
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
-      "The functions.config() API is deprecated and will be removed on December 31, 2025. " +
-      "This experiment allows continued use of the API during the migration period.",
-    default: true,
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: false,
     public: true,
   },
   runfunctions: {
     shortDescription:
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
+  },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
+    public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
   },
 
   // Emulator experiments
@@ -122,6 +138,17 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  apphostinglocalbuilds: {
+    shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
+    default: false,
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
@@ -152,16 +179,24 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for Data Connect",
+    default: true,
+    public: false,
+  },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
-  ailogic: {
-    shortDescription: "Enable Firebase AI Logic feature for existing apps",
-    fullDescription:
-      "Enables the AI Logic initialization feature that provisions AI Logic for existing Firebase apps.",
-    public: true,
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase Data Connect realtime feature.",
     default: false,
+    public: false,
   },
 });
 

@@ -17,7 +17,7 @@ import {
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
-import { BuildResult, requiresVector } from "../dataconnect/types";
+import { BuildResult, mainSchemaYaml, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
 import { Client, ClientResponse } from "../apiv2";
 import { EmulatorRegistry } from "./registry";
@@ -114,7 +114,8 @@ export class DataConnectEmulator implements EmulatorInstance {
     this.usingExistingEmulator = false;
     if (this.args.autoconnectToPostgres) {
       const info = await load(this.args.projectId, this.args.config, this.args.configDir);
-      const dbId = info.dataConnectYaml.schema.datasource.postgresql?.database || "postgres";
+      const dbId =
+        mainSchemaYaml(info.dataConnectYaml).datasource.postgresql?.database || "postgres";
       const serviceId = info.dataConnectYaml.serviceId;
       const pgPort = this.args.postgresListen?.[0].port;
       const pgHost = this.args.postgresListen?.[0].address;
@@ -332,7 +333,9 @@ export class DataConnectEmulator implements EmulatorInstance {
           connectionString: connectionString.toString(),
           database,
           serviceId,
-          maxOpenConnections: 1, // PGlite only supports a single open connection at a time - otherwise, prepared statements will misbehave.
+          // NOTE: Previously, we set `maxOpenConnections: 1` to get around PGlite's limitation with prepared statements.
+          // Since we switched emulator to avoid prepared statement, multiple connections are OK.
+          // Transactional operations (`mutation @transaction`) actually requires multiple connections.
         });
         this.logger.logLabeled(
           "DEBUG",

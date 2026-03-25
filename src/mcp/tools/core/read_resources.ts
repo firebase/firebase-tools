@@ -5,6 +5,7 @@ import { toContent } from "../../util";
 import { trackGA4 } from "../../../track";
 
 export const read_resources = tool(
+  "core",
   {
     name: "read_resources",
     description:
@@ -44,7 +45,7 @@ export const read_resources = tool(
         continue;
       }
       out.push(
-        `<resource uri="${uri}" title="${resolved.mcp.title || resolved.mcp.name}">\n${resolved.result.contents.map((c) => c.text).join("")}\n</resource>`,
+        `<resource uri="${uri}" title="${resolved.mcp.title || resolved.mcp.name}">\n${resolved.result.contents.map((c) => ("text" in c ? c.text : "")).join("")}\n</resource>`,
       );
     }
 

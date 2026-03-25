@@ -47,7 +47,7 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
 
 export function init(setup: any, config: any) {
   execSync(
-    `npx --yes -p @angular/cli@"${supportedRange}" ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    `npx --yes -p @angular/cli@"${supportedRange}" ng new ${setup.projectId} --directory ${setup.featureInfo.hosting.source} --skip-git`,
     {
       stdio: "inherit",
       cwd: config.projectDir,

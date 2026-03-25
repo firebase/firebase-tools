@@ -589,5 +589,5 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 21;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools will drop support for Java version < 21 soon in firebase-tools@15. " +
+  "firebase-tools no longer supports Java version before 21. " +
   "Please install a JDK at version 21 or above to get a compatible runtime.";

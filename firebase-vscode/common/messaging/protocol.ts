@@ -10,16 +10,23 @@ import { RCData } from "../../../src/rc";
 import { EmulatorsStatus, RunningEmulatorInfo } from "./types";
 import { ExecutionResult } from "graphql";
 import { SerializedError } from "../error";
+import { GraphqlError, GraphqlResponseError } from "../dataconnect/types";
 
-export enum UserMockKind {
+export enum AuthParamsKind {
   ADMIN = "admin",
   UNAUTHENTICATED = "unauthenticated",
   AUTHENTICATED = "authenticated",
 }
-export type UserMock =
-  | { kind: UserMockKind.ADMIN | UserMockKind.UNAUTHENTICATED }
+
+export const EXAMPLE_CLAIMS = `{
+  "email_verified": true,
+  "sub": "exampleUserId"
+}`;
+
+export type AuthParams =
+  | { kind: AuthParamsKind.ADMIN | AuthParamsKind.UNAUTHENTICATED }
   | {
-      kind: UserMockKind.AUTHENTICATED;
+      kind: AuthParamsKind.AUTHENTICATED;
       claims: string;
     };
 
@@ -84,12 +91,12 @@ export interface WebviewToExtensionParamsMap {
 
   selectEmulatorImportFolder: {};
 
-  definedDataConnectArgs: string;
+  /** Execution parameters */
+  defineVariables: string;
+  defineAuthParams: AuthParams;
 
   /** Prompts the user to select a directory in which to place the quickstart */
   chooseQuickstartDir: {};
-
-  notifyAuthUserMockChange: UserMock;
 
   /** Deploy connectors/services to production */
   "fdc.deploy": void;
@@ -130,10 +137,22 @@ export interface WebviewToExtensionParamsMap {
 }
 
 export interface DataConnectResults {
-  query: string;
   displayName: string;
-  results?: ExecutionResult | SerializedError;
-  args?: string;
+  query: string;
+  variables: string;
+  auth: AuthParams;
+  results: ExecutionResults;
+}
+
+// If non-200 status: respErr and errors from `details` is set
+// If 200 status:
+//   - success: only data is set
+//   - request error: only errors is set
+//   - field error: both data and errors are set
+export interface ExecutionResults {
+  data?: any; // data can be any valid JSON value.
+  gqlErrors?: GraphqlError[];
+  respErr: GraphqlResponseError | SerializedError | undefined;
 }
 
 export type ValueOrError<T> =
@@ -185,12 +204,10 @@ export interface ExtensionToWebviewParamsMap {
    */
   notifyPreviewChannelResponse: { id: string };
 
-  // data connect specific
-  notifyDataConnectArgs: string;
-
+  /** Update execution parameters and results panels */
+  notifyVariables: { variables: string, fixes: string[] };
+  notifyAuthParams: AuthParams;
   notifyDataConnectResults: DataConnectResults;
-
-  notifyLastOperation: string;
 
   notifyIsLoadingUser: boolean;
 

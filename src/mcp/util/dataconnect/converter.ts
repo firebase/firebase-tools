@@ -58,11 +58,12 @@ export function graphqlResponseToToolResponse(
 }
 
 export function parseVariables(unparsedVariables?: string): Record<string, any> {
+  let obj: unknown;
   try {
-    const variables = JSON.parse(unparsedVariables || "{}");
-    if (typeof variables !== "object") throw new Error("not an object");
-    return variables;
+    obj = JSON.parse(unparsedVariables || "{}") as unknown;
   } catch (e) {
     throw new Error("Provided variables string `" + unparsedVariables + "` is not valid JSON.");
   }
+  if (typeof obj !== "object" || obj == null) throw new Error("not an object");
+  return obj;
 }

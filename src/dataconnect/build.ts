@@ -1,16 +1,17 @@
 import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { select } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
-import { DeploymentMetadata, GraphqlError } from "./types";
 import { getProjectDefaultAccount } from "../auth";
+import { DeployOptions } from "../deploy";
+import { DeployStats } from "../deploy/dataconnect/context";
+import { DeploymentMetadata, GraphqlError } from "./types";
 
 export async function build(
-  options: Options,
+  options: DeployOptions,
   configDir: string,
-  dryRun?: boolean,
+  deployStats: DeployStats,
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
   const args: DataConnectBuildArgs = { configDir, account };
@@ -19,7 +20,24 @@ export async function build(
   }
   const buildResult = await DataConnectEmulator.build(args);
   if (buildResult?.errors?.length) {
-    await handleBuildErrors(buildResult.errors, options.nonInteractive, options.force, dryRun);
+    buildResult.errors.forEach((e) => {
+      if (e.extensions?.warningLevel) {
+        let key = e.extensions.warningLevel.toLowerCase();
+        const msgSp = e.message.split(": ");
+        if (msgSp.length >= 2) {
+          key += `_${msgSp[0].toLowerCase()}`;
+        }
+        deployStats.numBuildWarnings.set(key, (deployStats.numBuildWarnings.get(key) ?? 0) + 1);
+      } else {
+        deployStats.numBuildErrors += 1;
+      }
+    });
+    await handleBuildErrors(
+      buildResult.errors,
+      options.nonInteractive,
+      options.force,
+      options.dryRun,
+    );
   }
   return buildResult?.metadata ?? {};
 }
