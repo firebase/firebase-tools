@@ -1,7 +1,6 @@
 import { AILogicService } from "./ailogic";
 import * as backend from "../backend";
 import { expect } from "chai";
-import { FirebaseError } from "../../../error";
 import * as ailogicApi from "../../../gcp/ailogic";
 import * as sinon from "sinon";
 
@@ -50,7 +49,7 @@ describe("AILogicService", () => {
       };
 
       expect(() => service.validateTrigger(ep1, backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one regional AI Logic Trigger for ${BEFORE_GENERATE} in region us-central1`
+        `Can only create at most one regional AI Logic Trigger for ${BEFORE_GENERATE} in region us-central1`,
       );
     });
 
@@ -94,7 +93,7 @@ describe("AILogicService", () => {
       };
 
       expect(() => service.validateTrigger(ep1, backend.of(ep1, ep2))).to.throw(
-        `Can only create at most one global AI Logic Trigger for ${BEFORE_GENERATE}`
+        `Can only create at most one global AI Logic Trigger for ${BEFORE_GENERATE}`,
       );
     });
 

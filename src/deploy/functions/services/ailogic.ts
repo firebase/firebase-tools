@@ -1,6 +1,6 @@
 import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
-import { Name, Service, noOpService } from "./index";
+import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
 import { isAILogicEventType } from "../../../functions/events/v2";
 
@@ -13,7 +13,8 @@ export class AILogicService implements Service {
     this.api = "firebasevertexai.googleapis.com";
   }
 
-  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void> = () => Promise.resolve();
+  ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void> = () =>
+    Promise.resolve();
 
   /**
    * Validate that there are no duplicate AI Logic triggers of the same type.
@@ -32,28 +33,30 @@ export class AILogicService implements Service {
     const sameTypeEndpoints = backend
       .allEndpoints(wantBackend)
       .filter(backend.isBlockingTriggered)
-      .filter((ep) => ep.blockingTrigger.eventType === eventType && ep.id !== endpoint.id) as (backend.Endpoint & backend.BlockingTriggered)[];
+      .filter(
+        (ep) =>
+          (ep as backend.Endpoint & backend.BlockingTriggered).blockingTrigger.eventType ===
+            eventType && ep.id !== endpoint.id,
+      ) as (backend.Endpoint & backend.BlockingTriggered)[];
 
     if (regionalWebhook) {
       // Regional: Check if another regional trigger exists in the SAME region
       const duplicate = sameTypeEndpoints.find(
-        (ep) =>
-          ep.region === endpoint.region &&
-          !!ep.blockingTrigger.options?.regionalWebhook
+        (ep) => ep.region === endpoint.region && !!ep.blockingTrigger.options?.regionalWebhook,
       );
       if (duplicate) {
         throw new FirebaseError(
-          `Can only create at most one regional AI Logic Trigger for ${eventType} in region ${endpoint.region}`
+          `Can only create at most one regional AI Logic Trigger for ${eventType} in region ${endpoint.region}`,
         );
       }
     } else {
       // Global: Check if another global trigger exists anywhere
       const duplicate = sameTypeEndpoints.find(
-        (ep) => !ep.blockingTrigger.options?.regionalWebhook
+        (ep) => !ep.blockingTrigger.options?.regionalWebhook,
       );
       if (duplicate) {
         throw new FirebaseError(
-          `Can only create at most one global AI Logic Trigger for ${eventType}`
+          `Can only create at most one global AI Logic Trigger for ${eventType}`,
         );
       }
     }

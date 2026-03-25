@@ -45,7 +45,7 @@ export type Event =
   | (typeof FIRESTORE_EVENTS)[number]
   | typeof FIREALERTS_EVENT
   | typeof DATACONNECT_EVENT
-  | typeof AI_LOGIC_EVENTS[number];
+  | (typeof AI_LOGIC_EVENTS)[number];
 
 // Why can't auth context be removed? This is map was added to correct a bug where a regex
 // allowed any non-auth type to be converted to any auth type, but we should follow up for why
@@ -74,7 +74,7 @@ export const AI_LOGIC_EVENTS = [
 export const isAILogicEventType = (
   eventType: string,
 ): eventType is (typeof AI_LOGIC_EVENTS)[number] => {
-  return AI_LOGIC_EVENTS.includes(eventType as typeof AI_LOGIC_EVENTS[number]);
+  return AI_LOGIC_EVENTS.includes(eventType as (typeof AI_LOGIC_EVENTS)[number]);
 };
 
 export const AI_LOGIC_EVENTS_TO_TRIGGER = {
