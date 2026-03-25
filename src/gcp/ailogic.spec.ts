@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
 import { Endpoint } from "../deploy/functions/backend";
 import {
-  AI_LOGIC_BEFORE_GENERATGE_CONTENT,
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
 } from "../functions/events/v2";
 
@@ -34,7 +34,7 @@ describe("ailogic", () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
       } satisfies Endpoint;
 
@@ -97,7 +97,7 @@ describe("ailogic", () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
       } satisfies Endpoint;
 
@@ -123,7 +123,7 @@ describe("ailogic", () => {
       const endpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
-          eventType: AI_LOGIC_BEFORE_GENERATGE_CONTENT,
+          eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
       } satisfies Endpoint;
 
