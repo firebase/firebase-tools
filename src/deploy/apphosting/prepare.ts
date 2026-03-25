@@ -5,15 +5,25 @@ import {
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
-import { ensureApiEnabled, listBackends, parseBackendName } from "../../gcp/apphosting";
+import {
+  ensureApiEnabled,
+  listBackends,
+  parseBackendName,
+  serviceAgentEmail,
+} from "../../gcp/apphosting";
 import { getGitRepositoryLink, parseGitRepositoryLinkName } from "../../gcp/devConnect";
+import { addServiceAccountToRoles } from "../../gcp/resourceManager";
+
 import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
+import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
+import * as experiments from "../../experiments";
+import { logger } from "../../logger";
 
 /**
  * Prepare backend targets to deploy from source. Checks that all required APIs are enabled,
@@ -31,6 +41,11 @@ export default async function (context: Context, options: Options): Promise<void
   context.backendLocalBuilds = {};
 
   const configs = getBackendConfigs(options);
+  if (configs.some((cfg) => cfg.localBuild) && experiments.isEnabled("apphostinglocalbuilds")) {
+    const projectNumber = await getProjectNumber(options);
+    await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
+  }
+
   const { backends } = await listBackends(projectId, "-");
 
   const foundBackends: AppHostingSingle[] = [];
@@ -152,6 +167,7 @@ export default async function (context: Context, options: Options): Promise<void
     if (!cfg.localBuild) {
       continue;
     }
+    experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
@@ -169,8 +185,9 @@ export default async function (context: Context, options: Options): Promise<void
         buildConfig,
         annotations,
       };
-    } catch (e) {
-      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${e}`);
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${errorMsg}`);
     }
   }
 }
@@ -208,4 +225,29 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
     return [];
   }
   return backendConfigs.filter((cfg) => backendIds.includes(cfg.backendId));
+}
+
+/**
+ * Ensures that the App Hosting service agent has the necessary roles to access
+ * project resources (e.g. storage) for a given project.
+ */
+async function ensureAppHostingServiceAgentRoles(
+  projectId: string,
+  projectNumber: string,
+): Promise<void> {
+  const p4saEmail = serviceAgentEmail(projectNumber);
+  try {
+    await addServiceAccountToRoles(
+      projectId,
+      p4saEmail,
+      ["roles/storage.objectViewer"],
+      /* skipAccountLookup= */ true,
+    );
+  } catch (err: unknown) {
+    logger.debug(`Failed to grant storage.objectViewer to ${p4saEmail}: ${String(err)}`);
+    logLabeledWarning(
+      "apphosting",
+      `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
+    );
+  }
 }
