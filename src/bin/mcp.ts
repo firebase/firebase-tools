@@ -86,9 +86,8 @@ export async function mcp(): Promise<void> {
   if (earlyExit) return;
 
   setFirebaseMcp(true);
-  // Write debug logs to ~/.firebase/ to avoid polluting the user's project directory.
-  // See: https://github.com/firebase/firebase-tools/issues/9982
-  const mcpLogDir = join(homedir(), ".firebase");
+  // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
+  const mcpLogDir = join(homedir(), ".cache", "firebase");
   await mkdir(mcpLogDir, { recursive: true });
   useFileLogger(join(mcpLogDir, "firebase-debug.log"));
   const activeFeatures = (values.only || "")
