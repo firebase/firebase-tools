@@ -338,7 +338,7 @@ describe("apphosting", () => {
       ]);
     });
 
-    it("throws error when no backend ID in firebase.json matches the on provided in --only flag", () => {
+    it("throws error when no backend ID in firebase.json matches the one provided in --only flag", () => {
       expect(() =>
         getBackendConfigs({
           ...BASE_OPTS,
