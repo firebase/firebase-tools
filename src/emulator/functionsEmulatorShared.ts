@@ -571,19 +571,13 @@ export function validateFirestoreTriggerPath(functionKey: string, triggerPath: s
       depth++;
       if (depth > 1) {
         throw new FirebaseError(
-          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
-            `Nested curly brackets are not allowed. ` +
-            `Each path segment wildcard must use a single pair of brackets, ` +
-            `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". Nested curly brackets are not allowed. Each path segment wildcard must use a single pair of brackets, e.g. "collection/{docId}/subcollection/{subDocId}".`,
         );
       }
     } else if (ch === "}") {
       if (depth === 0) {
         throw new FirebaseError(
-          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
-            `Found a closing "}" without a matching opening "{" at position ${i}. ` +
-            `Ensure every wildcard capture is written as "{paramName}", ` +
-            `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". Found a closing "}" without a matching opening "{" at position ${i}. Ensure every wildcard capture is written as "{paramName}", e.g. "collection/{docId}/subcollection/{subDocId}".`,
         );
       }
       depth--;
@@ -591,10 +585,7 @@ export function validateFirestoreTriggerPath(functionKey: string, triggerPath: s
   }
   if (depth !== 0) {
     throw new FirebaseError(
-      `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
-        `Found an opening "{" without a matching closing "}". ` +
-        `Ensure every wildcard capture is written as "{paramName}", ` +
-        `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+      `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". Found an opening "{" without a matching closing "}". Ensure every wildcard capture is written as "{paramName}", e.g. "collection/{docId}/subcollection/{subDocId}".`,
     );
   }
 }
