@@ -232,9 +232,7 @@ describe("crashlytics:sourcemap:upload", () => {
     });
     expect(clientPatchStub).to.be.calledOnce;
     const args = clientPatchStub.firstCall.args;
-    expect(args[0]).to.match(
-      /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
-    );
+    expect(args[0]).to.match(/projects\/test-project\/locations\/global\/mappingFiles\/2906062618/);
     expect(args[1]).to.deep.equal({
       name: "projects/test-project/locations/global/mappingFiles/2906062618",
       appId: "test-app",
