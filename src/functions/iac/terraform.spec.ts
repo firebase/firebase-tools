@@ -136,4 +136,25 @@ describe("terraform iac", () => {
 }`);
     });
   });
+
+  it("should use pretty ordering and spacing for resources", () => {
+    const block: tf.Block = {
+      type: "resource",
+      labels: ["google_cloudfunctions_function", "my_func"],
+      attributes: {
+        name: "test",
+        runtime: "nodejs20",
+        count: tf.expr("other_resource.count"),
+        depends_on: [tf.expr("other_resource")],
+      },
+    };
+    expect(tf.blockToString(block)).to.equal(`resource "google_cloudfunctions_function" "my_func" {
+  count = other_resource.count
+
+  name = "test"
+  runtime = "nodejs20"
+
+  depends_on = [other_resource]
+}`);
+  });
 });
