@@ -637,7 +637,7 @@ export class Fabricator {
       },
     };
 
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         const op = await runV2.createService(
           endpoint.project,
@@ -672,7 +672,7 @@ export class Fabricator {
       },
     };
 
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         const op = await runV2.updateService(service);
         endpoint.uri = op.uri;
@@ -684,7 +684,7 @@ export class Fabricator {
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         try {
           await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
