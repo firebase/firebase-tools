@@ -836,6 +836,7 @@ export function functionTerraform(
         return {
           key: secret.key,
           secret: secret.secret,
+          project: tf.expr("var.project"),
           // TODO: Where does this get resolved normally?
           version: "latest",
         };
@@ -911,21 +912,17 @@ export function functionTerraform(
  * Create a Terraform IAM binding block for a Cloud Function invoker.
  */
 export function invokerTerraform(id: string, endpoint: build.Endpoint): tf.Block | null {
-  let members: string[] = [];
-
   if (!build.isCallableTriggered(endpoint) && !build.isHttpsTriggered(endpoint)) {
     return null;
   }
-  if (build.isHttpsTriggered(endpoint) && endpoint.httpsTrigger.invoker) {
-    const invoker = endpoint.httpsTrigger.invoker;
-    if (invoker.includes("private")) {
-      members = [];
-    } else if (invoker.includes("public")) {
-      members = ["allUsers"];
-    } else if (Array.isArray(invoker)) {
-      members = invoker.map((sa) => `serviceAccount:${tf.serviceAccount(sa)}`);
-    }
-  }
+
+  // NOTE: This logic basically has to be redone in Terraform as an HCL expression as well for variables.
+  // Should I just make that the way all the time?
+  const members = build.isCallableTriggered(endpoint) || !endpoint.httpsTrigger.invoker || endpoint.httpsTrigger.invoker.includes("public")
+    ? ["allUsers"]
+    : endpoint.httpsTrigger.invoker?.includes("private")
+      ? []
+      : endpoint.httpsTrigger.invoker?.map((sa) => `serviceAccount:${tf.serviceAccount(sa)}`);
 
   const resourceName = utils.toLowerSnakeCase(id);
   const attributes: Record<string, tf.Value> = {
