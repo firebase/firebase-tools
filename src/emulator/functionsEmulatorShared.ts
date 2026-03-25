@@ -10,6 +10,7 @@ import * as backend from "../deploy/functions/backend";
 import { Constants } from "./constants";
 import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { ENV_DIRECTORY } from "../extensions/manifest";
+import { FirebaseError } from "../error";
 import { substituteParams } from "../extensions/extensionsHelper";
 import { ExtensionSpec, ExtensionVersion } from "../extensions/types";
 import { replaceConsoleLinks } from "./extensions/postinstall";
@@ -544,4 +545,56 @@ export function toBackendInfo(
         e.predefinedTriggers ?? cf3Triggers.filter((t) => t.codebase === e.codebase),
     }),
   );
+}
+
+/**
+ * Validates that a Firestore trigger path pattern has properly matched curly
+ * brackets. Brackets must not be nested, and every opening bracket must have a
+ * corresponding closing bracket.
+ *
+ * Valid examples:
+ *   "users/{userId}/posts/{postId}"
+ *   "collection/{docId}"
+ *
+ * Invalid examples:
+ *   "users/{userId/posts/{postId}"   (missing closing bracket)
+ *   "users/{{userId}}/posts"         (nested brackets)
+ *   "users/{userId}}/posts"          (extra closing bracket)
+ *
+ * @throws FirebaseError with a descriptive message when the path is invalid.
+ */
+export function validateFirestoreTriggerPath(functionKey: string, triggerPath: string): void {
+  let depth = 0;
+  for (let i = 0; i < triggerPath.length; i++) {
+    const ch = triggerPath[i];
+    if (ch === "{") {
+      depth++;
+      if (depth > 1) {
+        throw new FirebaseError(
+          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
+            `Nested curly brackets are not allowed. ` +
+            `Each path segment wildcard must use a single pair of brackets, ` +
+            `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+        );
+      }
+    } else if (ch === "}") {
+      if (depth === 0) {
+        throw new FirebaseError(
+          `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
+            `Found a closing "}" without a matching opening "{" at position ${i}. ` +
+            `Ensure every wildcard capture is written as "{paramName}", ` +
+            `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+        );
+      }
+      depth--;
+    }
+  }
+  if (depth !== 0) {
+    throw new FirebaseError(
+      `Event function "${functionKey}" has an invalid Firestore trigger path: "${triggerPath}". ` +
+        `Found an opening "{" without a matching closing "}". ` +
+        `Ensure every wildcard capture is written as "{paramName}", ` +
+        `e.g. "collection/{docId}/subcollection/{subDocId}".`,
+    );
+  }
 }

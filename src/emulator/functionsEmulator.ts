@@ -35,6 +35,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  validateFirestoreTriggerPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -1197,6 +1198,18 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!EmulatorRegistry.isRunning(Emulators.FIRESTORE)) {
       return Promise.resolve(false);
     }
+
+    // Validate the trigger path pattern before sending it to the emulator so
+    // that users get a clear error instead of a cryptic "Invalid pattern" from
+    // the Firestore emulator's internal path parser.
+    const triggerPath =
+      eventTrigger.resource ||
+      eventTrigger.eventFilterPathPatterns?.document ||
+      eventTrigger.eventFilters?.document;
+    if (triggerPath) {
+      validateFirestoreTriggerPath(key, triggerPath);
+    }
+
     const { bundle, path } =
       signature === "cloudevent"
         ? this.getV2FirestoreAttributes(projectId, key, eventTrigger)
