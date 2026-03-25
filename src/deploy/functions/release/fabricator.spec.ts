@@ -115,7 +115,6 @@ describe("Fabricator", () => {
   const ctorArgs: fabricator.FabricatorArgs = {
     executor: new executor.InlineExecutor(),
     functionExecutor: new executor.InlineExecutor(),
-    runFunctionExecutor: new executor.InlineExecutor(),
     sources: {
       default: {
         sourceUrl: "https://example.com",

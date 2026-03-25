@@ -90,8 +90,6 @@ export const command = new Command("functions:delete [filters...]")
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        // Note: we don't need the temporary concurrency reduction of 2, because that quota limit is for deploys
-        runFunctionExecutor: functionExecutor,
         appEngineLocation,
         executor: new executor.QueueExecutor({}),
         sources: {},

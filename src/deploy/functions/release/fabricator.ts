@@ -58,7 +58,6 @@ const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
-  runFunctionExecutor: Executor;
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
@@ -75,7 +74,6 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
-  runFunctionExecutor: Executor;
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
@@ -83,7 +81,6 @@ export class Fabricator {
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
-    this.runFunctionExecutor = args.runFunctionExecutor;
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
@@ -637,7 +634,7 @@ export class Fabricator {
       },
     };
 
-    await this.runFunctionExecutor
+    await this.executor
       .run(async () => {
         const op = await runV2.createService(
           endpoint.project,
@@ -672,7 +669,7 @@ export class Fabricator {
       },
     };
 
-    await this.runFunctionExecutor
+    await this.executor
       .run(async () => {
         const op = await runV2.updateService(service);
         endpoint.uri = op.uri;
@@ -684,7 +681,7 @@ export class Fabricator {
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
-    await this.runFunctionExecutor
+    await this.executor
       .run(async () => {
         try {
           await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
