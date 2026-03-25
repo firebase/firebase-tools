@@ -8,12 +8,13 @@ import * as devconnect from "../../gcp/devConnect";
 import * as prompt from "../../prompt";
 import { RC } from "../../rc";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
 import * as experiments from "../../experiments";
-import { FirebaseError } from "../../error";
-import * as projectUtils from "../../getProjectNumber";
+import * as getProjectNumber from "../../getProjectNumber";
+import * as resourceManager from "../../gcp/resourceManager";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -55,6 +56,7 @@ describe("apphosting", () => {
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
   let assertEnabledStub: sinon.SinonStub;
+  let addServiceAccountToRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -75,6 +77,10 @@ describe("apphosting", () => {
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
+    addServiceAccountToRolesStub = sinon
+      .stub(resourceManager, "addServiceAccountToRoles")
+      .resolves();
   });
 
   afterEach(() => {
@@ -132,7 +138,12 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
-      expect(backend.ensureAppHostingServiceAgentRoles).to.have.been.called;
+      expect(addServiceAccountToRolesStub).to.have.been.calledWith(
+        "my-project",
+        apphosting.serviceAgentEmail("123456789"),
+        ["roles/storage.objectViewer"],
+        true,
+      );
     });
 
     it("injects Firebase configuration when appId is present", async () => {
@@ -191,6 +202,12 @@ describe("apphosting", () => {
             }),
           },
         }),
+      );
+      expect(addServiceAccountToRolesStub).to.have.been.calledWith(
+        "my-project",
+        apphosting.serviceAgentEmail("123456789"),
+        ["roles/storage.objectViewer"],
+        true,
       );
     });
 
@@ -365,7 +382,7 @@ describe("apphosting", () => {
         FirebaseError,
         "Cannot perform a local build",
       );
-      expect(backend.ensureAppHostingServiceAgentRoles).to.not.have.been.called;
+      expect(addServiceAccountToRolesStub).to.not.have.been.called;
     });
 
     it("should succeed for source deploys even if experiment is disabled", async () => {
