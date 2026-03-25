@@ -2,12 +2,16 @@ import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
-import { AI_LOGIC_EVENTS_TO_TRIGGER } from "../../../gcp/ailogic";
 
 export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
   "firebase.vertexai.v1beta.beforeGenerateContent" as const;
 export const AI_LOGIC_AFTER_GENERATE_CONTENT =
   "firebase.vertexai.v1beta.afterGenerateContent" as const;
+
+export const AI_LOGIC_EVENTS = [
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+] as const
 
 export type AILogicEventType =
   | "firebase.vertexai.v1beta.beforeGenerateContent"
@@ -26,7 +30,7 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   if (!backend.isBlockingTriggered(endpoint)) {
     return false;
   }
-  return endpoint.blockingTrigger.eventType in AI_LOGIC_EVENTS_TO_TRIGGER;
+  return AI_LOGIC_EVENTS.includes(endpoint.blockingTrigger.eventType as typeof AI_LOGIC_EVENTS[number]);
 }
 
 export class AILogicService implements Service {

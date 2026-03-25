@@ -65,3 +65,29 @@ export const CONVERTABLE_EVENTS: Partial<Record<Event, Event>> = {
   "google.cloud.firestore.document.v1.written":
     "google.cloud.firestore.document.v1.written.withAuthContext",
 };
+
+export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.beforeGenerateContent" as const;
+export const AI_LOGIC_AFTER_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.afterGenerateContent" as const;
+
+export const AI_LOGIC_EVENTS = [
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+] as const;
+
+export const isAILogicEventType = (
+  eventType: string,
+): eventType is (typeof AI_LOGIC_EVENTS)[number] => {
+  return AI_LOGIC_EVENTS.includes(eventType as (typeof AI_LOGIC_EVENTS)[number]);
+};
+
+export const AI_LOGIC_EVENTS_TO_TRIGGER = {
+  [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
+  [AI_LOGIC_AFTER_GENERATE_CONTENT]: "after-generate-content",
+} as const;
+
+export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
+  "before-generate-content": AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  "after-generate-content": AI_LOGIC_AFTER_GENERATE_CONTENT,
+} as const;

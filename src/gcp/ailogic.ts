@@ -1,21 +1,15 @@
 import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
+import { BlockingTriggered, Endpoint } from "../deploy/functions/backend";
+import {
+  AI_LOGIC_EVENTS,
+  AI_LOGIC_EVENTS_TO_TRIGGER,
+  AILogicEndpoint,
+} from "../functions/events/v2";
+import { FirebaseError } from "../error";
 
 export const API_VERSION = "v1beta";
-
-export const AI_LOGIC_EVENTS_TO_TRIGGER = {
-  "firebase.vertexai.v1beta.beforeGenerateContent": "before-generate-content",
-  "firebase.vertexai.v1beta.afterGenerateContent": "after-generate-content",
-} as const;
-
-export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
-  "before-generate-content": "firebase.vertexai.v1beta.beforeGenerateContent",
-  "after-generate-content": "firebase.vertexai.v1beta.afterGenerateContent",
-} as const;
-
-import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
-export type { AILogicEndpoint };
 
 export const client = new Client({
   urlPrefix: aiLogicProxyOrigin(),

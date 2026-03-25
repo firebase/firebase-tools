@@ -277,6 +277,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
     setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
   }
 
+  // Always prompt for agent skills at the end of init
+  setup.features.push("agentSkills");
+
   await init(setup, config, options);
   await postInitSaves(setup, config);
 

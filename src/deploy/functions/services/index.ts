@@ -146,6 +146,9 @@ const dataconnectService: Service = {
   unregisterTrigger: noop,
 };
 
+/** An AI Logic service object */
+const ailogicService = new AILogicService();
+
 /** Mapping from event type string to service object */
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
