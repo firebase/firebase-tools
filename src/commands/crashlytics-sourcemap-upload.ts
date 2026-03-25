@@ -23,6 +23,7 @@ interface CommandOptions extends Options {
 
 interface SourceMap {
   name: string;
+  appId: string;
   version: string;
   obfuscatedFilePath: string;
   fileUri: string;
@@ -251,9 +252,8 @@ async function uploadMap(
   const obfuscatedPath = path.relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath);
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
-  const uid = murmurHashV3(`${appVersion}-${obfuscatedPath}`);
-  const parent = `projects/${projectId}/apps/${options.app}/locations/global/sourceMaps`;
-  const name = `${parent}/${uid}`;
+  const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
+  const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
 
   try {
     const { bucket, object } = await gcs.uploadObject(
@@ -266,8 +266,9 @@ async function uploadMap(
     const fileUri = `gs://${bucket}/${object}`;
     logger.debug(`Uploaded mapping file ${filePath} to ${fileUri}`);
 
-    await registerSourceMap(parent, {
+    await registerSourceMap({
       name,
+      appId: options.app!,
       version: appVersion,
       obfuscatedFilePath: obfuscatedPath,
       fileUri,
@@ -284,7 +285,7 @@ function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
-async function registerSourceMap(parent: string, sourceMap: SourceMap): Promise<void> {
+async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
   const client = new Client({
     // TODO(tonybaroneee): use the real telemetry server url when ready
     urlPrefix: "http://localhost",
@@ -293,13 +294,7 @@ async function registerSourceMap(parent: string, sourceMap: SourceMap): Promise<
   });
 
   try {
-    await client.post(
-      parent,
-      {
-        sourceMap,
-      },
-      { queryParams: { allowMissing: "true" } },
-    );
+    await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
     logger.debug(
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
