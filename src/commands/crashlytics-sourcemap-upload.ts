@@ -254,8 +254,6 @@ async function uploadMap(
   const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
   const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
   const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
-  // const parent = `projects/${projectId}/locations/global/mappingFiles`;
-  // const name = `${parent}/${uid}`;
 
   try {
     const { bucket, object } = await gcs.uploadObject(
