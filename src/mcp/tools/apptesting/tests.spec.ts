@@ -66,7 +66,7 @@ describe("mcp/tools/apptesting/tests", () => {
         displayName: "Test Run",
       };
 
-      uploadStub.resolves(releaseName);
+      uploadStub.resolves({ name: releaseName });
       clientStub.createReleaseTest.resolves(expectedResponse as any);
 
       const result = await run_tests.fn(input, mockContext);
@@ -88,7 +88,7 @@ describe("mcp/tools/apptesting/tests", () => {
         testCase: { steps: [{ goal: "test goal" }] },
       };
 
-      uploadStub.resolves("release-name");
+      uploadStub.resolves({ name: "release-name" });
       clientStub.createReleaseTest.resolves({} as any);
 
       await run_tests.fn(input as any, mockContext);
