@@ -5,6 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
+import * as experiments from "../experiments";
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
 
@@ -27,7 +28,16 @@ export const command = new Command("apphosting:backends:create")
     "--primary-region <primaryRegion>",
     "specify the primary region for the backend. Required with --non-interactive.",
   )
-  .option("--root-dir <rootDir>", "specify the root directory for the backend.")
+  .option("--root-dir <rootDir>", "specify the root directory for the backend.");
+const abiuEnabled = experiments.isEnabled("abiu");
+if (abiuEnabled) {
+  command
+    .option("--runtime [runtime]", "specify the runtime for the backend (e.g., nodejs, nodejs22)")
+    .option("--automatic-base-image-updates", "enable automatic base image updates")
+    .option("--no-automatic-base-image-updates", "disable automatic base image updates");
+}
+
+command
   .before(requireAuth)
   .before(ensureApiEnabled)
   .before(requireTosAcceptance(APPHOSTING_TOS_ID))
@@ -37,7 +47,21 @@ export const command = new Command("apphosting:backends:create")
       throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
     }
 
-    await doSetup(
+    const abiuAllowed = experiments.isEnabled("abiu");
+    if (!abiuAllowed && (options.runtime || options.automaticBaseImageUpdates !== undefined)) {
+      throw new FirebaseError(
+        "The --runtime and --automatic-base-image-updates flags are only available when the 'abiu' experiment is enabled. To enable it, run 'firebase experiments:enable abiu'.",
+      );
+    }
+    // When ABIU is allowed but the user doesn't provide a runtime string, we let doSetup handle it.
+    // We strictly check for string type to avoid boolean true (flag present without value) causing issues.
+    const runtime =
+      abiuAllowed && typeof options.runtime === "string" ? options.runtime : undefined;
+    const automaticBaseImageUpdatesDisabled = abiuAllowed
+      ? options.automaticBaseImageUpdates === false
+      : undefined;
+
+    return doSetup(
       projectId,
       options.nonInteractive,
       options.app as string | undefined,
@@ -45,5 +69,7 @@ export const command = new Command("apphosting:backends:create")
       options.serviceAccount as string | undefined,
       options.primaryRegion as string | undefined,
       options.rootDir as string | undefined,
+      runtime,
+      automaticBaseImageUpdatesDisabled,
     );
   });

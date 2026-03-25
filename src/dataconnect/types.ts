@@ -23,6 +23,10 @@ export interface Schema extends BaseResource {
 export interface Connector extends BaseResource {
   name: string;
   source: Source;
+  client_cache?: {
+    strict_validation_enabled?: boolean;
+    entity_id_included?: boolean;
+  };
 }
 
 export interface Datasource {
@@ -36,6 +40,7 @@ export type SchemaValidation = "STRICT" | "COMPATIBLE";
 export interface PostgreSql {
   ephemeral?: boolean;
   database?: string;
+  schema?: string;
   cloudSql?: CloudSqlInstance;
   schemaValidation?: SchemaValidation | "NONE" | "SQL_SCHEMA_VALIDATION_UNSPECIFIED";
   schemaMigration?: "MIGRATE_COMPATIBLE";
@@ -144,6 +149,7 @@ export interface SchemaYaml {
 export interface DatasourceYaml {
   postgresql?: {
     database: string;
+    schema?: string;
     cloudSql: {
       instanceId: string;
     };
@@ -173,6 +179,20 @@ export interface SupportedFrameworks {
   angular?: boolean;
 }
 
+export interface ClientCacheOptions {
+  /**
+   * The maximum duration for which a client-side cache entry is considered valid.
+   * The format is a string representing a duration, e.g., "60s", "5m", "1h".
+   */
+  maxAge?: string;
+  /**
+   * The maximum size of the client-side cache.
+   * The format is a string representing a size, e.g., "100KB", "50MB", "1GB".
+   */
+  maxSize?: string;
+  storage?: "persistent" | "memory";
+}
+
 export interface AdminNodeSDK {
   outputDir: string;
   package: string;
@@ -183,19 +203,23 @@ export interface JavascriptSDK extends SupportedFrameworks {
   outputDir: string;
   package: string;
   packageJsonDir?: string;
+  clientCache?: ClientCacheOptions;
 }
 
 export interface SwiftSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 export interface KotlinSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 export interface DartSDK {
   outputDir: string;
   package: string;
+  clientCache?: ClientCacheOptions;
 }
 
 // Helper types && converters
@@ -223,6 +247,7 @@ export function toDatasource(
     return {
       postgresql: {
         database: ds.postgresql.database,
+        schema: ds.postgresql.schema,
         cloudSql: {
           instance: `projects/${projectId}/locations/${locationId}/instances/${ds.postgresql.cloudSql.instanceId}`,
         },

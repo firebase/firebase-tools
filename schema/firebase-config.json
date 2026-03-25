@@ -135,6 +135,13 @@
         "FirestoreSingle": {
             "additionalProperties": false,
             "properties": {
+                "dataAccessMode": {
+                    "enum": [
+                        "FIRESTORE_NATIVE",
+                        "MONGODB_COMPATIBLE"
+                    ],
+                    "type": "string"
+                },
                 "database": {
                     "type": "string"
                 },
