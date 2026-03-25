@@ -28,23 +28,36 @@ export async function localBuild(
   // We need to inject the environment variables into the process.env
   // because the build adapter uses them to build the app.
   // We'll restore the original process.env after the build is done.
-  const originalEnv = process.env;
+  const originalEnv = { ...process.env };
   const projectNodeModules = path.join(projectRoot, "node_modules");
-  const newNodePath = originalEnv.NODE_PATH
-    ? `${originalEnv.NODE_PATH}${path.delimiter}${projectNodeModules}`
+  const newNodePath = process.env.NODE_PATH
+    ? `${process.env.NODE_PATH}${path.delimiter}${projectNodeModules}`
     : projectNodeModules;
 
-  process.env = {
-    ...originalEnv,
-    ...toProcessEnv(env),
-    NODE_PATH: newNodePath,
-  };
+  const addedEnv = toProcessEnv(env);
+  for (const [key, value] of Object.entries(addedEnv)) {
+    process.env[key] = value;
+  }
+  const originalNodePath = process.env.NODE_PATH;
+  process.env.NODE_PATH = newNodePath;
 
   let apphostingBuildOutput;
   try {
     apphostingBuildOutput = await localAppHostingBuild(projectRoot, framework);
   } finally {
-    process.env = originalEnv;
+    for (const key in process.env) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    for (const [key, value] of Object.entries(originalEnv)) {
+      process.env[key] = value;
+    }
+    if (originalNodePath !== undefined) {
+      process.env.NODE_PATH = originalNodePath;
+    } else {
+      delete process.env.NODE_PATH;
+    }
   }
 
   const annotations: Record<string, string> = Object.fromEntries(

@@ -205,7 +205,9 @@ export default async function (context: Context, options: Options): Promise<void
         const autoinitVars = getAutoinitEnvVars(webappConfig);
         // TODO: confirm the correct priority of auto-init variables
         for (const [key, value] of Object.entries(autoinitVars)) {
-          buildEnv[cfg.backendId][key] = { value };
+          if (!(key in buildEnv[cfg.backendId])) {
+            buildEnv[cfg.backendId][key] = { value };
+          }
         }
       } catch (e) {
         logLabeledWarning(
