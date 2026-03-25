@@ -1,15 +1,23 @@
 import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import { BlockingTriggered, Endpoint } from "../deploy/functions/backend";
 import {
-  AI_LOGIC_EVENTS,
-  AI_LOGIC_EVENTS_TO_TRIGGER,
-  AILogicEndpoint,
-} from "../functions/events/v2";
-import { FirebaseError } from "../error";
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+  type AILogicEndpoint,
+} from "../deploy/functions/services/ailogic";
 
 export const API_VERSION = "v1beta";
+
+export const AI_LOGIC_EVENTS_TO_TRIGGER = {
+  [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
+  [AI_LOGIC_AFTER_GENERATE_CONTENT]: "after-generate-content",
+} as const;
+
+export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
+  "before-generate-content": AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  "after-generate-content": AI_LOGIC_AFTER_GENERATE_CONTENT,
+} as const;
 
 export const client = new Client({
   urlPrefix: aiLogicProxyOrigin(),

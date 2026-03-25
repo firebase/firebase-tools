@@ -11,15 +11,11 @@ export const AI_LOGIC_AFTER_GENERATE_CONTENT =
 export const AI_LOGIC_EVENTS = [
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
-] as const
-
-export type AILogicEventType =
-  | "firebase.vertexai.v1beta.beforeGenerateContent"
-  | "firebase.vertexai.v1beta.afterGenerateContent";
+] as const;
 
 export type AILogicEndpoint = backend.Endpoint & {
   blockingTrigger: {
-    eventType: AILogicEventType;
+    eventType: (typeof AI_LOGIC_EVENTS)[number];
     options?: {
       regionalWebhook?: boolean;
     };
@@ -30,7 +26,9 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   if (!backend.isBlockingTriggered(endpoint)) {
     return false;
   }
-  return AI_LOGIC_EVENTS.includes(endpoint.blockingTrigger.eventType as typeof AI_LOGIC_EVENTS[number]);
+  return AI_LOGIC_EVENTS.includes(
+    endpoint.blockingTrigger.eventType as (typeof AI_LOGIC_EVENTS)[number],
+  );
 }
 
 export class AILogicService implements Service {

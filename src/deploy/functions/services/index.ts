@@ -146,10 +146,8 @@ const dataconnectService: Service = {
   unregisterTrigger: noop,
 };
 
-/** An AI Logic service object */
-const ailogicService = new AILogicService();
-
 /** Mapping from event type string to service object */
+// TODO: See if there's a way to deduplicate these consts while still ensuring type safety and exhaustion
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
   "google.cloud.storage.object.v1.finalized": storageService,
