@@ -23,6 +23,7 @@ import * as fsutils from "../../../fsutils";
 import * as auth from "../../../auth";
 import * as utils from "../../../utils";
 import * as prompt from "../../../prompt";
+import * as experiments from "../../../experiments";
 
 const expect = chai.expect;
 
@@ -47,6 +48,10 @@ describe("addSdkGenerateToConnectorYaml", () => {
       platform: Platform.WEB,
       frameworks: [],
     };
+  });
+
+  afterEach(() => {
+    sinon.restore();
   });
 
   it("should add javascriptSdk for web platform", () => {
@@ -119,6 +124,35 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
       },
     ]);
+  });
+
+  it("should conditionally inject clientCache if fdcrealtime is enabled", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should NOT overwrite existing clientCache configuration", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
+    connectorYaml.generate = {
+      javascriptSdk: [
+        {
+          outputDir: "../app/src/dataconnect-generated",
+          package: "@dataconnect/generated",
+          packageJsonDir: "../app",
+          react: false,
+          angular: false,
+          clientCache: {
+            type: "memory",
+          } as any,
+        },
+      ],
+    };
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect(connectorYaml.generate?.javascriptSdk).to.have.lengthOf(1);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({
+      type: "memory",
+    });
   });
 });
 

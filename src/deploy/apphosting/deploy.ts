@@ -7,11 +7,20 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
-import { createArchive } from "./util";
+import * as util from "./util";
+import * as experiments from "../../experiments";
 
 /**
- * Zips and uploads App Hosting source code to Google Cloud Storage in preparation for
- * build and deployment. Creates storage buckets if necessary.
+ * Uploads App Hosting source code or local build output to Google Cloud Storage.
+ *
+ * This step ensures that a GCS bucket exists for the target region and then
+ * archives the contents. Source deployments are zipped using the "createArchive"
+ * method, while local build deployments are tar-balled using the "createTarArchive"
+ * method. The resulting archive is uploaded to the bucket, and the URI is stored in
+ * the context for the subsequent release phase.
+ *
+ * @param context - The deployment context containing backend configs and locations.
+ * @param options - CLI options providing project ID and root directory.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   if (Object.entries(context.backendConfigs).length === 0) {
@@ -65,16 +74,22 @@ export default async function (context: Context, options: Options): Promise<void
     Object.values(context.backendConfigs).map(async (cfg) => {
       const rootDir = options.projectRoot ?? process.cwd();
       let builtAppDir;
-      if (cfg.localBuild) {
+      const isLocalBuild = !!cfg.localBuild;
+      if (isLocalBuild) {
+        experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
         builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
         if (!builtAppDir) {
           throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
         }
       }
-      const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
+
+      const zippedSourcePath = isLocalBuild
+        ? await util.createLocalBuildTarArchive(cfg, rootDir, builtAppDir)
+        : await util.createSourceDeployArchive(cfg, rootDir);
+
       logLabeledBullet(
         "apphosting",
-        `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+        `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
       );
 
       const backendLocation = context.backendLocations[cfg.backendId];
@@ -85,7 +100,7 @@ export default async function (context: Context, options: Options): Promise<void
       }
       logLabeledBullet(
         "apphosting",
-        `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+        `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
       );
       const bucketName = bucketsPerLocation[backendLocation]!;
       const { bucket, object } = await gcs.uploadObject(
@@ -94,6 +109,7 @@ export default async function (context: Context, options: Options): Promise<void
           stream: fs.createReadStream(zippedSourcePath),
         },
         bucketName,
+        isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
       );
       logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
       context.backendStorageUris[cfg.backendId] =

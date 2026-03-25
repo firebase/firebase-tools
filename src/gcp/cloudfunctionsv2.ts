@@ -18,6 +18,8 @@ import {
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
 import { captureRuntimeValidationError } from "./cloudfunctions";
+import { AI_LOGIC_EVENTS_TO_TRIGGER, AI_LOGIC_TRIGGERS_TO_EVENTS } from "./ailogic";
+import { isAILogicEvent } from "../deploy/functions/services/ailogic";
 import { mebibytes } from "./k8s";
 
 export const API_VERSION = "v2";
@@ -587,6 +589,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     }
   } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-fdcgraphql": "true" };
+  } else if (isAILogicEvent(endpoint)) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "ailogic-event-type": AI_LOGIC_EVENTS_TO_TRIGGER[endpoint.blockingTrigger.eventType],
+      "ailogic-locality": endpoint.blockingTrigger.options?.regionalWebhook ? "regional" : "global",
+    };
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -635,6 +643,21 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.labels?.["deployment-fdcgraphql"] === "true") {
     trigger = {
       dataConnectGraphqlTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["ailogic-event-type"]) {
+    const triggerType = gcfFunction.labels["ailogic-event-type"];
+    const eventType =
+      AI_LOGIC_TRIGGERS_TO_EVENTS[triggerType as keyof typeof AI_LOGIC_TRIGGERS_TO_EVENTS];
+    if (!eventType) {
+      throw new FirebaseError(`Unrecognized ailogic-event-type label: ${triggerType}`);
+    }
+    trigger = {
+      blockingTrigger: {
+        eventType,
+        options: {
+          regionalWebhook: gcfFunction.labels["ailogic-locality"] === "regional",
+        },
+      },
     };
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     trigger = {
