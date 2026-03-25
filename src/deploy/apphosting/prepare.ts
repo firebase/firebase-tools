@@ -210,5 +210,15 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
   if (backendIds.length === 0) {
     return [];
   }
-  return backendConfigs.filter((cfg) => backendIds.includes(cfg.backendId));
+
+  const filteredConfigs = backendConfigs.filter((cfg) => backendIds.includes(cfg.backendId));
+  const foundIds = filteredConfigs.map((cfg) => cfg.backendId);
+  const missingIds = backendIds.filter((id) => !foundIds.includes(id));
+  if (missingIds.length > 0) {
+    throw new FirebaseError(
+      `App Hosting backend IDs ${missingIds.join(",")} not detected in firebase.json`,
+    );
+  }
+
+  return filteredConfigs;
 }
