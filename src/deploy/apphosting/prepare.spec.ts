@@ -8,9 +8,12 @@ import * as devconnect from "../../gcp/devConnect";
 import * as prompt from "../../prompt";
 import { RC } from "../../rc";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 import prepare, { getBackendConfigs } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as experiments from "../../experiments";
+import * as getProjectNumber from "../../getProjectNumber";
+import * as resourceManager from "../../gcp/resourceManager";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -51,6 +54,8 @@ describe("apphosting", () => {
   let doSetupSourceDeployStub: sinon.SinonStub;
   let listBackendsStub: sinon.SinonStub;
   let getGitRepositoryLinkStub: sinon.SinonStub;
+  let assertEnabledStub: sinon.SinonStub;
+  let addServiceAccountToRolesStub: sinon.SinonStub;
 
   beforeEach(() => {
     sinon.stub(opts.config, "writeProjectFile").returns();
@@ -67,6 +72,12 @@ describe("apphosting", () => {
     getGitRepositoryLinkStub = sinon
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
+    assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
+    sinon.stub(experiments, "isEnabled").returns(true);
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
+    addServiceAccountToRolesStub = sinon
+      .stub(resourceManager, "addServiceAccountToRoles")
+      .resolves();
   });
 
   afterEach(() => {
@@ -102,7 +113,6 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
-      sinon.stub(experiments, "assertEnabled").returns();
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
@@ -125,6 +135,12 @@ describe("apphosting", () => {
         buildConfig,
         annotations,
       });
+      expect(addServiceAccountToRolesStub).to.have.been.calledWith(
+        "my-project",
+        apphosting.serviceAgentEmail("123456789"),
+        ["roles/storage.objectViewer"],
+        true,
+      );
     });
 
     it("should fail if localBuild is specified but experiment is disabled", async () => {
@@ -141,9 +157,7 @@ describe("apphosting", () => {
       };
       const context = initializeContext();
 
-      sinon
-        .stub(experiments, "assertEnabled")
-        .throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
+      assertEnabledStub.throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
       listBackendsStub.onFirstCall().resolves({
         backends: [
           {
@@ -265,6 +279,59 @@ describe("apphosting", () => {
         alwaysDeployFromSource: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.undefined;
+    });
+
+    it("throws an error for localBuild when experiment is not enabled", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+
+      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
+      assertEnabledStub.throws(
+        new FirebaseError(
+          "Cannot perform a local build because the experiment apphostinglocalbuilds is not enabled.",
+        ),
+      );
+
+      const context = initializeContext();
+      listBackendsStub.resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
+        FirebaseError,
+        "Cannot perform a local build",
+      );
+      expect(addServiceAccountToRolesStub).to.not.have.been.called;
+    });
+
+    it("should succeed for source deploys even if experiment is disabled", async () => {
+      const context = initializeContext();
+      listBackendsStub.resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      // No localBuild: true in config
+      (experiments.isEnabled as sinon.SinonStub).withArgs("apphostinglocalbuilds").returns(false);
+      await prepare(context, opts);
+
+      expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
     });
   });
 
