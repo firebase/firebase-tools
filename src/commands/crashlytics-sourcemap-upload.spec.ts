@@ -26,7 +26,7 @@ describe("crashlytics:sourcemap:upload", () => {
   let getProjectNumberMock: sinon.SinonStubbedInstance<typeof getProjectNumber>;
   let execSyncStub: sinon.SinonStub;
   let commandExistsSyncStub: sinon.SinonStub;
-  let clientPostStub: sinon.SinonStub;
+  let clientPatchStub: sinon.SinonStub;
   let logLabeledWarningStub: sinon.SinonStub;
   let logLabeledBulletStub: sinon.SinonStub;
 
@@ -51,7 +51,7 @@ describe("crashlytics:sourcemap:upload", () => {
     // Default to git working
     commandExistsSyncStub.withArgs("git").returns(true);
     execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
-    clientPostStub = sandbox.stub(Client.prototype, "post").resolves({
+    clientPatchStub = sandbox.stub(Client.prototype, "patch").resolves({
       status: 200,
       response: {} as any,
       body: {},
@@ -171,10 +171,10 @@ describe("crashlytics:sourcemap:upload", () => {
       /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
     );
 
-    expect(clientPostStub).to.be.calledTwice;
-    const apiPayloads = clientPostStub
+    expect(clientPatchStub).to.be.calledTwice;
+    const apiPayloads = clientPatchStub
       .getCalls()
-      .map((call) => call.args[1].sourceMap.obfuscatedFilePath)
+      .map((call) => call.args[1].obfuscatedFilePath)
       .sort();
 
     expect(apiPayloads[0]).to.equal("src/test/fixtures/mapping-files-with-js/main.js.map");
@@ -230,13 +230,14 @@ describe("crashlytics:sourcemap:upload", () => {
     await command.runner()(FILE_PATH, {
       app: "test-app",
     });
-    expect(clientPostStub).to.be.calledOnce;
-    const args = clientPostStub.firstCall.args;
+    expect(clientPatchStub).to.be.calledOnce;
+    const args = clientPatchStub.firstCall.args;
     expect(args[0]).to.match(
-      /projects\/test-project\/apps\/test-app\/locations\/global\/sourceMaps/,
+      /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
     );
-    expect(args[1].sourceMap).to.deep.equal({
-      name: "projects/test-project/apps/test-app/locations/global/sourceMaps/759213742",
+    expect(args[1]).to.deep.equal({
+      name: "projects/test-project/locations/global/mappingFiles/2906062618",
+      appId: "test-app",
       version: "a".repeat(40),
       obfuscatedFilePath: "src/test/fixtures/mapping-files/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
@@ -245,11 +246,11 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should warn if registration fails", async () => {
-    clientPostStub.rejects(new Error("Registration failed"));
+    clientPatchStub.rejects(new Error("Registration failed"));
     await command.runner()(FILE_PATH, {
       app: "test-app",
     });
-    expect(clientPostStub).to.be.calledOnce;
+    expect(clientPatchStub).to.be.calledOnce;
     expect(logLabeledWarningStub).to.be.calledOnceWith(
       "crashlytics",
       sinon.match(/Failed to upload mapping file/),
@@ -257,7 +258,7 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should log failed files", async () => {
-    clientPostStub.rejects(new Error("Registration failed"));
+    clientPatchStub.rejects(new Error("Registration failed"));
     await command.runner()(DIR_PATH, { app: "test-app" });
 
     // Should verify that logLabeledBullet is called with the specific failed files
