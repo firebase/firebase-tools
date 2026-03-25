@@ -2,7 +2,6 @@ import * as path from "path";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
-  ensureAppHostingServiceAgentRoles,
   ensureRequiredApisEnabled,
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
