@@ -113,7 +113,14 @@ export function serializeValue(value: Value, indentation = 0): string {
     return "null";
   } else if (Array.isArray(value)) {
     // Use multi-line if there is any Object. But we exclude HCL expressions from "objects".
-    if (value.some((e) => e !== null && typeof e === "object" && (Array.isArray(e) || e["@type"] !== "HCLExpression"))) {
+    if (
+      value.some(
+        (e) =>
+          e !== null &&
+          typeof e === "object" &&
+          (Array.isArray(e) || e["@type"] !== "HCLExpression"),
+      )
+    ) {
       return `[\n${value.map((v) => "  ".repeat(indentation + 1) + serializeValue(v, indentation + 1)).join(",\n")}\n${"  ".repeat(indentation)}]`;
     }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
@@ -209,7 +216,9 @@ function serializeResourceAttributes(
     }
   }
 
-  const nonemptyGroups = [prefixGroup, nonBlockGroup, blockGroup, suffixGroup].filter((g) => g.length > 0);
+  const nonemptyGroups = [prefixGroup, nonBlockGroup, blockGroup, suffixGroup].filter(
+    (g) => g.length > 0,
+  );
   // Within each group, separate attributes with a newline. Separate different groups with an empty line.
   const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
 
