@@ -129,25 +129,28 @@ describe("crashlytics:sourcemap:upload", () => {
 
   it("should find and upload mapping files in the current directory if no path is provided", async () => {
     const originalCwd = process.cwd();
-    process.chdir("src/test");
-    await command.runner()(undefined, { app: "test-app" });
-    const uploadedFiles = gcsMock.uploadObject
-      .getCalls()
-      .map((call) => call.args[0].file)
-      .sort();
-    expect(uploadedFiles[0]).to.match(
-      /test-app-.*-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
-    );
-    expect(uploadedFiles[1]).to.match(
-      /test-app-.*-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
-    );
-    expect(uploadedFiles[2]).to.match(
-      /test-app-.*-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
-    );
-    expect(uploadedFiles[3]).to.match(
-      /test-app-.*-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
-    );
-    process.chdir(originalCwd);
+    try {
+      process.chdir("src/test");
+      await command.runner()(undefined, { app: "test-app" });
+      const uploadedFiles = gcsMock.uploadObject
+        .getCalls()
+        .map((call) => call.args[0].file)
+        .sort();
+      expect(uploadedFiles[0]).to.match(
+        /test-app-.*-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
+      );
+      expect(uploadedFiles[1]).to.match(
+        /test-app-.*-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
+      );
+      expect(uploadedFiles[2]).to.match(
+        /test-app-.*-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
+      );
+      expect(uploadedFiles[3]).to.match(
+        /test-app-.*-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
+      );
+    } finally {
+      process.chdir(originalCwd);
+    }
   });
 
   it("should find obfuscated mapping files linked by sourceMappingURL in a directory", async () => {
