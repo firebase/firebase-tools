@@ -149,11 +149,11 @@ export function serializeValue(value: Value, indentation = 0): string {
   throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
 
-const PREFIX_ARGUMENTS = new Set(["count", "for_each", "provider"]);
-const SUFFIX_ARGUMENTS = new Set(["lifecycle", "depends_on"]);
+const PREFIX_ARGUMENTS = ["count", "for_each", "provider"];
+const SUFFIX_ARGUMENTS = ["lifecycle", "depends_on"];
 
-const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
-  google_cloudfunctions_function: new Set([
+const KNOWN_ATTRIBUTES_FOR_RESOURCE: Record<string, string[]> = {
+  google_cloudfunctions_function: [
     "name",
     "runtime",
     "description",
@@ -170,9 +170,9 @@ const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
     "min_instances",
     "project",
     "region",
-  ]),
-  google_cloudfunctions2_function: new Set(["name", "location", "description", "project"]),
-  google_cloud_scheduler_job: new Set([
+  ],
+  google_cloudfunctions2_function: ["name", "location", "description", "project"],
+  google_cloud_scheduler_job: [
     "name",
     "description",
     "schedule",
@@ -181,17 +181,11 @@ const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
     "attempt_deadline",
     "region",
     "project",
-  ]),
-  google_cloud_tasks_queue: new Set(["name", "location", "desired_state", "project"]),
-  google_eventarc_trigger: new Set(["name", "location", "project", "service_account"]),
-  google_pubsub_topic: new Set([
-    "name",
-    "project",
-    "labels",
-    "kms_key_name",
-    "message_retention_duration",
-  ]),
-  google_pubsub_subscription: new Set([
+  ],
+  google_cloud_tasks_queue: ["name", "location", "desired_state", "project"],
+  google_eventarc_trigger: ["name", "location", "project", "service_account"],
+  google_pubsub_topic: ["name", "project", "labels", "kms_key_name", "message_retention_duration"],
+  google_pubsub_subscription: [
     "name",
     "topic",
     "project",
@@ -201,8 +195,37 @@ const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
     "retain_acked_messages",
     "enable_message_ordering",
     "filter",
-  ]),
+  ],
 };
+
+type Entry = { k: string; v: Value } | { nb: Block };
+const sortByPriority = (list: string[]) => (a: Entry, b: Entry) => {
+  const label = "k" in a ? a.k : a.nb.type;
+  const labelB = "k" in b ? b.k : b.nb.type;
+  if (list.includes(label) && list.includes(labelB)) {
+    return list.indexOf(label) - list.indexOf(labelB);
+  }
+  if (list.includes(label)) {
+    return -1;
+  }
+  if (list.includes(labelB)) {
+    return 1;
+  }
+  return 0;
+};
+
+function renderGroup(group: Entry[], indentation: number): string[] {
+  const keys = group.filter((e) => "k" in e).map((e) => (e as { k: string }).k);
+  const maxKeyLen = Math.max(0, ...keys.map((k) => k.length));
+
+  return group.map((e) => {
+    if ("nb" in e) {
+      return blockToString(e.nb, indentation + 1);
+    } else {
+      return `${"  ".repeat(indentation + 1)}${e.k.padEnd(maxKeyLen)} = ${serializeValue(e.v, indentation + 1)}`;
+    }
+  });
+}
 
 function serializeResourceAttributes(
   attributes: Record<string, Value>,
@@ -210,44 +233,35 @@ function serializeResourceAttributes(
   nestedBlocks?: Block[],
   indentation = 0,
 ): string {
-  const nonBlockParams = NON_BLOCK_PARAMETERS[resourceType] || new Set();
+  const attributePriority = KNOWN_ATTRIBUTES_FOR_RESOURCE[resourceType] || [];
 
-  type Entry = { k: string; v: Value } | { nb: Block };
   const prefixGroup: Entry[] = [];
   const suffixGroup: Entry[] = [];
   const nonBlockGroup: Entry[] = [];
-  const blockGroup: Entry[] = (nestedBlocks || []).map((nb) => ({nb}));
+  const blockGroup: Entry[] = (nestedBlocks || []).map((nb) => ({ nb }));
 
   for (const [k, v] of Object.entries(attributes)) {
     const entry = { k, v };
-    if (PREFIX_ARGUMENTS.has(k)) {
+    if (PREFIX_ARGUMENTS.includes(k)) {
       prefixGroup.push(entry);
-    } else if (SUFFIX_ARGUMENTS.has(k)) {
+    } else if (SUFFIX_ARGUMENTS.includes(k)) {
       suffixGroup.push(entry);
     } else {
       nonBlockGroup.push(entry);
     }
   }
 
-  function renderGroup(group: Entry[]): string[] {
-    const keys = group.filter((e) => "k" in e).map((e) => (e as { k: string }).k);
-    const maxKeyLen = Math.max(0, ...keys.map((k) => k.length));
+  prefixGroup.sort(sortByPriority(PREFIX_ARGUMENTS));
+  suffixGroup.sort(sortByPriority(SUFFIX_ARGUMENTS));
+  nonBlockGroup.sort(sortByPriority(attributePriority));
+  blockGroup.sort(sortByPriority(attributePriority));
 
-    return group.map((e) => {
-      if ("nb" in e) {
-        return blockToString(e.nb, indentation + 1);
-      } else {
-        return `${"  ".repeat(indentation + 1)}${e.k.padEnd(maxKeyLen)} = ${serializeValue(e.v, indentation + 1)}`;
-      }
-    });
-  }
-
-  const renderedGroups = [metaGroup, nonBlockGroup, blockGroup]
-    .map(renderGroup)
+  const renderedGroups = [prefixGroup, nonBlockGroup, blockGroup, suffixGroup]
+    .map((g) => renderGroup(g, indentation))
     .filter((g) => g.length > 0);
 
   // Within each group, separate attributes with a newline. Separate different groups with an empty line.
-  const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
+  const joinedGroups = renderedGroups.map((g) => g.join("\n")).join("\n\n");
 
   return `{\n${joinedGroups}\n${"  ".repeat(indentation)}}`;
 }

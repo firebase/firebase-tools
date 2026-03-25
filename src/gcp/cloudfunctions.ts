@@ -918,11 +918,14 @@ export function invokerTerraform(id: string, endpoint: build.Endpoint): tf.Block
 
   // NOTE: This logic basically has to be redone in Terraform as an HCL expression as well for variables.
   // Should I just make that the way all the time?
-  const members = build.isCallableTriggered(endpoint) || !endpoint.httpsTrigger.invoker || endpoint.httpsTrigger.invoker.includes("public")
-    ? ["allUsers"]
-    : endpoint.httpsTrigger.invoker?.includes("private")
-      ? []
-      : endpoint.httpsTrigger.invoker?.map((sa) => `serviceAccount:${tf.serviceAccount(sa)}`);
+  const members =
+    build.isCallableTriggered(endpoint) ||
+    !endpoint.httpsTrigger.invoker ||
+    endpoint.httpsTrigger.invoker.includes("public")
+      ? ["allUsers"]
+      : endpoint.httpsTrigger.invoker?.includes("private")
+        ? []
+        : endpoint.httpsTrigger.invoker?.map((sa) => `serviceAccount:${tf.serviceAccount(sa)}`);
 
   const resourceName = utils.toLowerSnakeCase(id);
   const attributes: Record<string, tf.Value> = {
