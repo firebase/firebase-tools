@@ -265,6 +265,53 @@ describe("runTags", () => {
       expect(runTags.ensureLatestRevisionTagged);
       expect(runTags.gcTagsForServices).to.have.been.called;
     });
+
+    it("deduplicates multiple rewrites to the same service", async () => {
+      const rewrites: hostingNS.Rewrite[] = [
+        {
+          glob: "/a",
+          run: {
+            serviceId: SERVICE,
+            region: REGION,
+            tag: runTagsNS.TODO_TAG_NAME,
+          },
+        },
+        {
+          glob: "/b",
+          run: {
+            serviceId: SERVICE,
+            region: REGION,
+            tag: runTagsNS.TODO_TAG_NAME,
+          },
+        },
+      ];
+
+      run.getService.withArgs(svcName).resolves(svc);
+      runTags.ensureLatestRevisionTagged.resetBehavior();
+      runTags.ensureLatestRevisionTagged.resolves({ [REGION]: { [SERVICE]: "fh-version" } });
+
+      await runTags.setRewriteTags(rewrites, PROJECT, "version");
+
+      expect(run.getService).to.have.been.calledOnce;
+      expect(rewrites).to.deep.equal([
+        {
+          glob: "/a",
+          run: {
+            serviceId: SERVICE,
+            region: REGION,
+            tag: "fh-version",
+          },
+        },
+        {
+          glob: "/b",
+          run: {
+            serviceId: SERVICE,
+            region: REGION,
+            tag: "fh-version",
+          },
+        },
+      ]);
+    });
   });
 
   describe("ensureLatestRevisionTagged", () => {
