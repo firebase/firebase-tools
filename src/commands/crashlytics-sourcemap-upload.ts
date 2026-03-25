@@ -294,11 +294,7 @@ async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
   });
 
   try {
-    await client.patch(
-      sourceMap.name,
-      sourceMap,
-      { queryParams: { allowMissing: "true" } },
-    );
+    await client.patch(sourceMap.name, sourceMap, { queryParams: { allowMissing: "true" } });
     logger.debug(
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
