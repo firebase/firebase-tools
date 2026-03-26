@@ -14,6 +14,7 @@ import { archiveFile } from "../archiveFile";
 import { execSync } from "node:child_process";
 import { Client } from "../apiv2";
 import { murmurHashV3 } from "murmurhash-es";
+import * as pLimit from "p-limit";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -33,6 +34,17 @@ interface SourceMapMapping {
   mapFilePath: string;
   obfuscatedFilePath: string;
 }
+
+interface UploadRequest {
+  projectId: string;
+  mappingFile: string;
+  obfuscatedFilePath: string;
+  bucketName: string;
+  appVersion: string;
+  options: CommandOptions;
+}
+
+const CONCURRENCY = 25;
 
 export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]")
   .description("upload javascript source maps to de-minify stack traces")
@@ -72,14 +84,14 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     let successCount = 0;
     const failedFiles: string[] = [];
     if (fstat.isFile()) {
-      const success = await uploadMap(
+      const success = await uploadMap({
         projectId,
-        filePath,
-        filePath,
+        mappingFile: filePath,
+        obfuscatedFilePath: filePath,
         bucketName,
         appVersion,
         options,
-      );
+      });
       if (success) {
         successCount++;
       } else {
@@ -95,16 +107,26 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
       const mappings = findSourceMapMappings(files, rootDir);
 
+      const limit = pLimit(CONCURRENCY);
       const results = await Promise.all(
         mappings.map((mapping) =>
-          uploadMap(
-            projectId,
-            mapping.mapFilePath,
-            mapping.obfuscatedFilePath,
-            bucketName,
-            appVersion,
-            options,
-          ),
+          limit(async () => {
+            const request: UploadRequest = {
+              projectId,
+              mappingFile: mapping.mapFilePath,
+              obfuscatedFilePath: mapping.obfuscatedFilePath,
+              bucketName,
+              appVersion,
+              options,
+            };
+            let success = await uploadMap(request, 1);
+            if (!success) {
+              // Wait 5s and retry
+              await new Promise((res) => setTimeout(res, (options.retryDelay as number) || 5000));
+              success = await uploadMap(request);
+            }
+            return success;
+          }),
         ),
       );
 
@@ -240,14 +262,8 @@ async function upsertBucket(
   });
 }
 
-async function uploadMap(
-  projectId: string,
-  mappingFile: string,
-  obfuscatedFilePath: string,
-  bucketName: string,
-  appVersion: string,
-  options: CommandOptions,
-): Promise<boolean> {
+async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0): Promise<boolean> {
+  const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
   const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
   const obfuscatedPath = path.relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath);
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
@@ -273,10 +289,13 @@ async function uploadMap(
       obfuscatedFilePath: obfuscatedPath,
       fileUri,
     });
+    logger.debug(`Registered mapping file ${filePath}`);
 
     return true;
   } catch (e) {
-    logLabeledWarning("crashlytics", `Failed to upload mapping file ${filePath}:\n${e}`);
+    if (attemptsRemaining === 0) {
+      logLabeledWarning("crashlytics", `Failed to upload mapping file ${filePath}:\n${e}`);
+    }
     return false;
   }
 }
@@ -299,6 +318,12 @@ async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
       `Registered source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service`,
     );
   } catch (e) {
+    if (e instanceof FirebaseError) {
+      // Ignore 409 errors, as they indicate the source map was recently uploaded
+      if (e.status === 409) {
+        return;
+      }
+    }
     throw new FirebaseError(
       `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e}`,
     );
