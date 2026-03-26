@@ -28,13 +28,12 @@ describe("cloudfunctions", () => {
     state: "ACTIVE",
   };
 
-  const BUILD_ENDPOINT: build.Endpoint = {
+  const BUILD_ENDPOINT: Omit<build.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     region: ["region"],
     project: "project",
     entryPoint: "function",
     runtime: "nodejs16",
-    httpsTrigger: {},
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
@@ -111,16 +110,14 @@ describe("cloudfunctions", () => {
       expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
   name                  = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
   runtime               = "nodejs16"
-  project               = var.project
+  entry_point           = "function"
   source_archive_bucket = bucket
   source_archive_object = archive
+  project               = var.project
   region                = var.location
-  entry_point           = "function"
+  docker_repository     = "ARTIFACT_REGISTRY"
+  labels                = {}
 
-  docker_repository = "ARTIFACT_REGISTRY"
-  labels            = {
-
-  }
   event_trigger {
     event_type = "google.pubsub.topic.publish"
     resource = "projects/p/topics/t"
@@ -140,19 +137,16 @@ describe("cloudfunctions", () => {
 
       const hcl = actual.map((b) => tf.blockToString(b)).join("\n\n");
       expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
-  name                  = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
-  runtime               = "nodejs16"
-  project               = var.project
-  source_archive_bucket = bucket
-  source_archive_object = archive
-  region                = "europe-west1"
-  entry_point           = "function"
-  trigger_http          = true
-
+  name                         = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime                      = "nodejs16"
+  entry_point                  = "function"
+  source_archive_bucket        = bucket
+  source_archive_object        = archive
+  trigger_http                 = true
+  project                      = var.project
+  region                       = "europe-west1"
   docker_repository            = "ARTIFACT_REGISTRY"
-  labels                       = {
-
-  }
+  labels                       = {}
   https_trigger_security_level = "SECURE_ALWAYS"
 }
 
@@ -248,7 +242,7 @@ resource "google_cloudfunctions_function_iam_binding" "id" {
       expect(() =>
         cloudfunctions.functionTerraform(
           "id",
-          { ...ENDPOINT, scheduleTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, scheduleTrigger: { schedule: "* * * * *" } },
           BUCKET,
           ARCHIVE,
         ),
@@ -257,7 +251,7 @@ resource "google_cloudfunctions_function_iam_binding" "id" {
       expect(() =>
         cloudfunctions.functionTerraform(
           "id",
-          { ...ENDPOINT, taskQueueTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, taskQueueTrigger: {} },
           BUCKET,
           ARCHIVE,
         ),
@@ -266,7 +260,7 @@ resource "google_cloudfunctions_function_iam_binding" "id" {
       expect(() =>
         cloudfunctions.functionTerraform(
           "id",
-          { ...ENDPOINT, blockingTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, blockingTrigger: { eventType: "some.event" } },
           BUCKET,
           ARCHIVE,
         ),
@@ -275,7 +269,7 @@ resource "google_cloudfunctions_function_iam_binding" "id" {
       expect(() =>
         cloudfunctions.functionTerraform(
           "id",
-          { ...ENDPOINT, dataConnectGraphqlTrigger: {} } as unknown as build.Endpoint,
+          { ...BUILD_ENDPOINT, dataConnectGraphqlTrigger: {} },
           BUCKET,
           ARCHIVE,
         ),
@@ -290,7 +284,7 @@ resource "google_cloudfunctions_function_iam_binding" "id" {
       };
       const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
       expect(actual.attributes["secret_environment_variables"]).to.deep.equal([
-        { key: "API_KEY", secret: "MY_SECRET", version: "latest" },
+        { key: "API_KEY", secret: "MY_SECRET", project: tf.expr("var.project"), version: "latest" },
       ]);
     });
   });

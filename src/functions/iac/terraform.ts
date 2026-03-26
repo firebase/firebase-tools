@@ -141,10 +141,15 @@ export function serializeValue(value: Value, indentation = 0): string {
     if (value["@type"] === "HCLExpression") {
       return (value as Expression).value;
     }
-    const entries = Object.entries(value).map(
-      ([k, v]) => `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`,
+    const entries = Object.entries(value);
+    if (entries.length === 0) {
+      return "{}";
+    }
+    const maxKeyLen = Math.max(0, ...entries.map(([k]) => k.length));
+    const lines = entries.map(
+      ([k, v]) => `${"  ".repeat(indentation + 1)}${k}${" ".repeat(maxKeyLen - k.length)} = ${serializeValue(v, indentation + 1)}\n`,
     );
-    return `{\n${entries.join("\n")}\n${"  ".repeat(indentation)}}`;
+    return `{\n${lines.join()}${"  ".repeat(indentation)}}`;
   }
   throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
