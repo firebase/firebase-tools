@@ -147,9 +147,10 @@ export function serializeValue(value: Value, indentation = 0): string {
     }
     const maxKeyLen = Math.max(0, ...entries.map(([k]) => k.length));
     const lines = entries.map(
-      ([k, v]) => `${"  ".repeat(indentation + 1)}${k}${" ".repeat(maxKeyLen - k.length)} = ${serializeValue(v, indentation + 1)}\n`,
+      ([k, v]) =>
+        `${"  ".repeat(indentation + 1)}${k}${" ".repeat(maxKeyLen - k.length)} = ${serializeValue(v, indentation + 1)}\n`,
     );
-    return `{\n${lines.join()}${"  ".repeat(indentation)}}`;
+    return `{\n${lines.join("")}${"  ".repeat(indentation)}}`;
   }
   throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
