@@ -89,6 +89,7 @@ const firebaseAlertsService: Service = {
 
 /** A auth blocking service object */
 const authBlockingService = new AuthBlockingService();
+const aiLogicService = new AILogicService();
 
 /** A database service object */
 const databaseService: Service = {
@@ -145,10 +146,8 @@ const dataconnectService: Service = {
   unregisterTrigger: noop,
 };
 
-/** An AI Logic service object */
-const ailogicService = new AILogicService();
-
 /** Mapping from event type string to service object */
+// TODO: See if there's a way to deduplicate these consts while still ensuring type safety and exhaustion
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
   "google.cloud.storage.object.v1.finalized": storageService,
@@ -175,8 +174,8 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.firestore.document.v1.updated.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.deleted.withAuthContext": firestoreService,
   "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
-  "firebase.vertexai.v1beta.beforeGenerateContent": ailogicService,
-  "firebase.vertexai.v1beta.afterGenerateContent": ailogicService,
+  "firebase.vertexai.v1beta.beforeGenerateContent": aiLogicService,
+  "firebase.vertexai.v1beta.afterGenerateContent": aiLogicService,
 };
 
 /**
