@@ -50,8 +50,7 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        // TODO: Confirm this config behavior
-        config: context.backendLocalBuilds[backendId]?.buildConfig || {},
+        config: context.backendLocalBuilds[backendId]?.buildConfig,
         source: {
           archive: {
             userStorageUri: context.backendStorageUris[backendId],
