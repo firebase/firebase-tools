@@ -483,6 +483,8 @@ env:
 
       const { build, runtime } = config.splitEnvVars(env);
 
+      expect(build["STR"].value).to.equal("string");
+      expect(build["NUM"].value).to.equal("12345");
       expect(build["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
       expect(runtime).to.deep.include({ variable: "STR", value: "string" });
       expect(runtime).to.deep.include({ variable: "NUM", value: "12345" });

@@ -406,7 +406,7 @@ export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: Env[] } {
       envVal.value = String(envVal.value);
     }
 
-    if (val.availability?.includes("BUILD")) {
+    if (val.availability?.includes("BUILD") || !val.availability) {
       build[key] = envVal;
     }
     if (val.availability?.includes("RUNTIME") || !val.availability) {
