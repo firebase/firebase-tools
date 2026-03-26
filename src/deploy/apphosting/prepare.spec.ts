@@ -69,7 +69,6 @@ describe("apphosting", () => {
       .stub(apphosting, "listBackends")
       .throws("Unexpected listBackends call");
     sinon.stub(backend, "ensureAppHostingComputeServiceAccount").resolves();
-    sinon.stub(backend, "ensureAppHostingServiceAgentRoles").resolves();
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
     sinon.stub(apiEnabled, "ensure").resolves();
     getGitRepositoryLinkStub = sinon
