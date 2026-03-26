@@ -294,7 +294,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "enable_output_generated_sdk",
       // Additional flags that CLI shouldn't pass:
       // rpc_retry_count,
-      // resolvers_emulator,
+      "resolvers_emulator",
     ],
     joinArgs: true,
     shell: false,

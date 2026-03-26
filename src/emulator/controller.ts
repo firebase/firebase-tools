@@ -48,6 +48,7 @@ import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
 import { EmulatorListenConfig, PortName, resolveHostAndAssignPorts } from "./portUtils";
 import { Runtime, isRuntime } from "../deploy/functions/runtimes/supported";
+import { secondarySchemaYamls } from "../dataconnect/types";
 
 import { AuthEmulator, SingleProjectMode } from "./auth";
 import { DatabaseEmulator, DatabaseEmulatorArgs } from "./databaseEmulator";
@@ -57,7 +58,7 @@ import { FirestoreEmulator, FirestoreEmulatorArgs } from "./firestoreEmulator";
 import { HostingEmulator } from "./hostingEmulator";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { StorageEmulator } from "./storage";
-import { readFirebaseJson } from "../dataconnect/load";
+import { readDataConnectYaml, readFirebaseJson } from "../dataconnect/load";
 import { TasksEmulator } from "./tasksEmulator";
 import { AppHostingEmulator } from "./apphosting";
 import { sendVSCodeMessage, VSCODE_MESSAGE } from "../dataconnect/webhook";
@@ -856,6 +857,35 @@ export async function startAll(
       );
     }
 
+    let resolversEmulator: string | undefined = undefined;
+    if (listenForEmulator.functions) {
+      const functionsAddr = legacyGetFirstAddr(Emulators.FUNCTIONS);
+      try {
+        const resolvedDir = options.config.path(config[0].source);
+        const dataConnectYaml = await readDataConnectYaml(resolvedDir);
+        // By default dataconnect emulator expects format `resolverId=url,resolverId2=url2` if there are multiple.
+        // Wait, the flag actually supports single URL or `schemaId=host:port`.
+        // The user says "The url actually is something like '/demo-no-project/us-central1/resolver_1/graphql' so you need to get the project number, region, and schema name to construct the url".
+        // Let's build the comma-separated mappings for all schemas.
+        const allSchemas = [
+          ...(dataConnectYaml.schema ? [dataConnectYaml.schema] : []),
+          ...(dataConnectYaml.schemas || []),
+        ];
+        
+        const project = isDemoProject ? `demo-${projectId}` : projectId;
+        const region = "us-central1"; // Custom resolvers default to us-central1 unless changed in functions config, we'll use us-central1 here.
+        
+        const mappings = allSchemas.map(schema => {
+            const resolverId = schema.id || "main"; // Or we use the id or MAIN_SCHEMA_ID
+            return `${resolverId}=http://${functionsAddr.host}:${functionsAddr.port}/${project}/${region}/${resolverId}/graphql`;
+        });
+        
+        resolversEmulator = mappings.join(",");
+      } catch (err) {
+        logger.debug(`Could not construct resolversEmulator argument: ${err}`);
+      }
+    }
+
     const args: DataConnectEmulatorArgs = {
       listen: listenForEmulator.dataconnect,
       projectId,
@@ -868,6 +898,7 @@ export async function startAll(
       enable_output_schema_extensions: true,
       debug: options.debug,
       account,
+      resolversEmulator,
     };
 
     if (exportMetadata.dataconnect) {

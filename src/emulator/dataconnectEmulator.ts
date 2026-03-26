@@ -44,6 +44,7 @@ export interface DataConnectEmulatorArgs {
   debug?: boolean;
   extraEnv?: Record<string, string>;
   account?: Account;
+  resolversEmulator?: string;
 }
 
 export interface DataConnectGenerateArgs {
@@ -107,6 +108,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         config_dir: resolvedConfigDir,
         enable_output_schema_extensions: this.args.enable_output_schema_extensions,
         enable_output_generated_sdk: this.args.enable_output_generated_sdk,
+        resolvers_emulator: this.args.resolversEmulator,
       },
       env,
     );
