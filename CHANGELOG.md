@@ -1,1 +1,2 @@
+- Moved MCP server `firebase-debug.log` to `~/.cache/firebase/firebase-debug.log`. (#9982)
 - Added a prompt to `firebase init` to install Agent Skills for Firebase.
