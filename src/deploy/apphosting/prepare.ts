@@ -80,7 +80,7 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledWarning(
       "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-      "Please delete and recreate any backends that share an ID with another backend.",
+        "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
@@ -134,9 +134,9 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledWarning(
         "apphosting",
         `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-        "then retry deployment.",
+          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+          "then retry deployment.",
       );
       return;
     }
@@ -231,7 +231,10 @@ export async function injectEnvVarsFromApphostingConfig(
     try {
       yamlConfig = await getAppHostingConfiguration(appDir);
     } catch (e: unknown) {
-      logLabeledWarning("apphosting", `Failed to read apphosting.yaml, may be missing environment variables and other configs`);
+      logLabeledWarning(
+        "apphosting",
+        `Failed to read apphosting.yaml, may be missing environment variables and other configs`,
+      );
     }
 
     const { build, runtime } = splitEnvVars(yamlConfig.env);
