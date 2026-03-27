@@ -19,10 +19,7 @@ describe("HubExport", () => {
       sandbox.restore();
     });
 
-    function stubClient(opts: {
-      databases?: Array<{ name: string }>;
-      listError?: Error;
-    }) {
+    function stubClient(opts: { databases?: Array<{ name: string }>; listError?: Error }) {
       postStub = sandbox.stub().resolves({ body: {} });
       getStub = sandbox.stub().resolves({
         body: { databases: opts.databases ?? [] },
@@ -64,7 +61,7 @@ describe("HubExport", () => {
         },
       };
 
-      await exporter['exportFirestore'](metadata);
+      await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(2);
       expect(postStub.firstCall.args[1]).to.deep.include({
@@ -94,7 +91,7 @@ describe("HubExport", () => {
         },
       };
 
-      await exporter['exportFirestore'](metadata);
+      await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(1);
       expect(postStub.firstCall.args[1]).to.deep.include({
@@ -121,7 +118,7 @@ describe("HubExport", () => {
         },
       };
 
-      await exporter['exportFirestore'](metadata);
+      await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(1);
       expect(postStub.firstCall.args[1]).to.deep.include({
@@ -154,7 +151,7 @@ describe("HubExport", () => {
         },
       };
 
-      await exporter['exportFirestore'](metadata);
+      await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(3);
       expect(postStub.thirdCall.args[1]).to.deep.include({
