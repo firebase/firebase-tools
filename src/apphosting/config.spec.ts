@@ -477,8 +477,11 @@ env:
     it("should stringify numeric values", () => {
       const env: AppHostingYamlConfig["env"] = {
         STR: { value: "string" },
-        NUM: { value: 12345 as any },
-        BUILD_AND_RUNTIME_NUM: { value: 67890 as any, availability: ["BUILD", "RUNTIME"] },
+        NUM: { value: 12345 as unknown as string },
+        BUILD_AND_RUNTIME_NUM: {
+          value: 67890 as unknown as string,
+          availability: ["BUILD", "RUNTIME"],
+        },
       };
 
       const { build, runtime } = config.splitEnvVars(env);

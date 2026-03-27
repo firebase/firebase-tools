@@ -69,14 +69,13 @@ describe("apphosting", () => {
       .stub(apphosting, "listBackends")
       .throws("Unexpected listBackends call");
     sinon.stub(backend, "ensureAppHostingComputeServiceAccount").resolves();
-    sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
     sinon.stub(apiEnabled, "ensure").resolves();
     getGitRepositoryLinkStub = sinon
       .stub(devconnect, "getGitRepositoryLink")
       .throws("Unexpected getGitRepositoryLink call");
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
-
+    sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
     addServiceAccountToRolesStub = sinon
       .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
