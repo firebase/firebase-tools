@@ -177,7 +177,7 @@ export class HubExport {
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     const adminClient = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1" });
 
-    let databases: string[];
+    let databases: string[] = [];
     try {
       const res = await adminClient.get<{ databases: Array<{ name: string }> }>(
         `/projects/${this.projectId}/databases`,
@@ -185,7 +185,6 @@ export class HubExport {
       databases = (res.body.databases || []).map((db) => db.name);
     } catch (e) {
       logger.debug(`Failed to list Firestore databases, falling back to default: ${e}`);
-      databases = [`projects/${this.projectId}/databases/(default)`];
     }
 
     if (databases.length === 0) {
