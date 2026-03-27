@@ -52,11 +52,6 @@ export default async function (context: Context, options: Options): Promise<void
     await ensureAppHostingServiceAgentRoles(projectId, projectNumber);
   }
 
-  const buildEnv: Record<string, EnvMap> = {};
-  const runtimeEnv: Record<string, EnvMap> = {};
-
-  await injectEnvVarsFromApphostingConfig(configs, options, buildEnv, runtimeEnv);
-
   const { backends } = await listBackends(projectId, "-");
 
   const foundBackends: AppHostingSingle[] = [];
@@ -174,12 +169,22 @@ export default async function (context: Context, options: Options): Promise<void
     );
   }
 
+  const buildEnv: Record<string, EnvMap> = {};
+  const runtimeEnv: Record<string, EnvMap> = {};
+
   for (const cfg of Object.values(context.backendConfigs)) {
     if (!cfg.localBuild) {
       continue;
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
+
+    await injectEnvVarsFromApphostingConfig(
+      configs.filter((c) => c.backendId === cfg.backendId),
+      options,
+      buildEnv,
+      runtimeEnv,
+    );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     try {
