@@ -489,13 +489,10 @@ env:
       expect(build["STR"].value).to.equal("string");
       expect(build["NUM"].value).to.equal("12345");
       expect(build["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
-      expect(runtime).to.deep.include({ variable: "STR", value: "string" });
-      expect(runtime).to.deep.include({ variable: "NUM", value: "12345" });
-      expect(runtime).to.deep.include({
-        variable: "BUILD_AND_RUNTIME_NUM",
-        value: "67890",
-        availability: ["BUILD", "RUNTIME"],
-      });
+      expect(runtime["STR"].value).to.equal("string");
+      expect(runtime["NUM"].value).to.equal("12345");
+      expect(runtime["BUILD_AND_RUNTIME_NUM"].value).to.equal("67890");
+      expect(runtime["BUILD_AND_RUNTIME_NUM"].availability).to.deep.equal(["BUILD", "RUNTIME"]);
     });
   });
 

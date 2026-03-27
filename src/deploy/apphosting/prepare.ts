@@ -53,7 +53,7 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   const buildEnv: Record<string, EnvMap> = {};
-  const runtimeEnv: Record<string, Env[]> = {};
+  const runtimeEnv: Record<string, EnvMap> = {};
 
   await injectEnvVarsFromApphostingConfig(configs, options, buildEnv, runtimeEnv);
 
@@ -198,7 +198,7 @@ export default async function (context: Context, options: Options): Promise<void
         buildDir: outputFiles[0],
         buildConfig: {
           ...buildConfig,
-          env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || []),
+          env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
         },
         annotations,
       };
@@ -217,7 +217,7 @@ export async function injectEnvVarsFromApphostingConfig(
   configs: AppHostingSingle[],
   options: Options,
   buildEnv: Record<string, EnvMap>,
-  runtimeEnv: Record<string, Env[]>,
+  runtimeEnv: Record<string, EnvMap>,
 ): Promise<void> {
   for (const cfg of configs) {
     const rootDir = options.projectRoot || process.cwd();
@@ -246,7 +246,7 @@ export async function injectAutoInitEnvVars(
   cfg: AppHostingSingle,
   backends: Backend[],
   buildEnv: Record<string, EnvMap>,
-  runtimeEnv: Record<string, Env[]>,
+  runtimeEnv: Record<string, EnvMap>,
 ): Promise<void> {
   const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
   if (backend?.appId) {
@@ -258,13 +258,9 @@ export async function injectAutoInitEnvVars(
 
       // We inject autoinit env vars into the build and runtime env vars.
       const autoinitVars = getAutoinitEnvVars(webappConfig);
-      for (const [key, value] of Object.entries(autoinitVars)) {
-        if (!(key in buildEnv[cfg.backendId])) {
-          buildEnv[cfg.backendId][key] = { value };
-        }
-        if (!runtimeEnv[cfg.backendId].some((e) => e.variable === key)) {
-          runtimeEnv[cfg.backendId].push({ variable: key, value });
-        }
+      for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
+        buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
+        runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
       }
     } catch (e) {
       logLabeledWarning(
@@ -313,18 +309,21 @@ export function getBackendConfigs(options: Options): AppHostingMultiple {
 /**
  * Merges two lists of environment variables, giving precedence to the values in overrides.
  */
-function mergeEnvVars(base: Env[], overrides: Env[]): Env[] {
+function mergeEnvVars(base: Env[], overrides: EnvMap): Env[] {
+  // Use a Map to easily deduplicate variables by name
   const merged = new Map<string, Env>();
   for (const env of base) {
     if (env.variable) {
       merged.set(env.variable, env);
     }
   }
-  for (const env of overrides) {
-    if (env.variable) {
-      merged.set(env.variable, env);
-    }
+
+  // Apply overrides from config files, but the env var name should be set in the "variable" field
+  for (const [envVarName, envVarConfig] of Object.entries(overrides)) {
+    merged.set(envVarName, { ...envVarConfig, variable: envVarName });
   }
+
+  // Convert to Env[] as required
   return Array.from(merged.values());
 }
 
