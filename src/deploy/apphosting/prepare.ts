@@ -209,6 +209,10 @@ export default async function (context: Context, options: Options): Promise<void
   }
 }
 
+/**
+ * Injects environment variables from the user's apphosting.yaml into the build and runtime environment maps.
+ * The order of "configs" determines priority. The last config is the highest priority (it has the last say).
+ */
 export async function injectEnvVarsFromApphostingConfig(
   configs: AppHostingSingle[],
   options: Options,
@@ -234,6 +238,10 @@ export async function injectEnvVarsFromApphostingConfig(
   }
 }
 
+/**
+ * Injects Firebase SDK auto-init environment variables into the build and runtime environment maps.
+ * This prefers existing values. It only auto-injects env vars if they don't already exist.
+ */
 export async function injectAutoInitEnvVars(
   cfg: AppHostingSingle,
   backends: Backend[],
