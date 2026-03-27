@@ -233,8 +233,8 @@ export async function injectEnvVarsFromApphostingConfig(
 
     const { build, runtime } = splitEnvVars(yamlConfig.env);
 
-    buildEnv[cfg.backendId] = build;
-    runtimeEnv[cfg.backendId] = runtime;
+    buildEnv[cfg.backendId] = { ...buildEnv[cfg.backendId], ...build };
+    runtimeEnv[cfg.backendId] = { ...runtimeEnv[cfg.backendId], ...runtime };
   }
 }
 

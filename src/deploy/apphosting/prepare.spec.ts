@@ -9,12 +9,19 @@ import * as prompt from "../../prompt";
 import { RC } from "../../rc";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
-import prepare, { getBackendConfigs } from "./prepare";
+import prepare, {
+  getBackendConfigs,
+  injectEnvVarsFromApphostingConfig,
+  injectAutoInitEnvVars,
+} from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
 import * as experiments from "../../experiments";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as resourceManager from "../../gcp/resourceManager";
+import * as apphostingConfig from "../../apphosting/config";
+import * as apphostingUtils from "../../apphosting/utils";
+import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -469,6 +476,103 @@ describe("apphosting", () => {
           ignore: [],
         },
       ]);
+    });
+  });
+
+  describe("injectEnvVarsFromApphostingConfig", () => {
+    let getAppHostingConfigurationStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getAppHostingConfigurationStub = sinon.stub(apphostingConfig, "getAppHostingConfiguration");
+    });
+
+    it("merges multiple configs for the same backend, preferring the last one", async () => {
+      const configs = [
+        { backendId: "foo", rootDir: "/dir1", ignore: [] },
+        { backendId: "foo", rootDir: "/dir2", ignore: [] },
+      ];
+
+      const yamlConfig1 = AppHostingYamlConfig.empty();
+      yamlConfig1.env = {
+        VAR1: { value: "val1" },
+        VAR2: { value: "original" },
+      };
+
+      const yamlConfig2 = AppHostingYamlConfig.empty();
+      yamlConfig2.env = {
+        VAR2: { value: "override" },
+        VAR3: { value: "val3" },
+      };
+
+      getAppHostingConfigurationStub.withArgs(sinon.match("/dir1")).resolves(yamlConfig1);
+      getAppHostingConfigurationStub.withArgs(sinon.match("/dir2")).resolves(yamlConfig2);
+
+      const buildEnv: Record<string, EnvMap> = {};
+      const runtimeEnv: Record<string, EnvMap> = {};
+
+      await injectEnvVarsFromApphostingConfig(
+        configs as unknown as AppHostingSingle[],
+        opts as unknown as Options,
+        buildEnv,
+        runtimeEnv,
+      );
+
+      // Verify the final map has all three variables, and VAR2 was successfully overridden by dir2
+      expect(buildEnv["foo"]).to.deep.equal({
+        VAR1: { value: "val1" },
+        VAR2: { value: "override" },
+        VAR3: { value: "val3" },
+      });
+      expect(runtimeEnv["foo"]).to.deep.equal({
+        VAR1: { value: "val1" },
+        VAR2: { value: "override" },
+        VAR3: { value: "val3" },
+      });
+    });
+  });
+
+  describe("injectAutoInitEnvVars", () => {
+    beforeEach(() => {
+      sinon.stub(managementApps, "getAppConfig").resolves({
+        appId: "my-app-id",
+        projectId: "my-project",
+      } as unknown as ReturnType<typeof managementApps.getAppConfig>);
+      sinon.stub(apphostingUtils, "getAutoinitEnvVars").returns({
+        AUTO_VAR_1: "auto1",
+        USER_VAR_1: "auto_override",
+      });
+    });
+
+    it("injects auto-init variables but respects existing explicitly defined variables", async () => {
+      const cfg = { backendId: "foo", rootDir: "/", ignore: [] };
+      const backends = [
+        {
+          name: "projects/my-project/locations/us-central1/backends/foo",
+          appId: "my-app-id",
+        } as unknown as Backend,
+      ];
+
+      // Build and runtime envs inherently start with USER_VAR_1 already set
+      const buildEnv: Record<string, EnvMap> = {
+        foo: {
+          USER_VAR_1: { value: "user_defined_value" },
+        },
+      };
+
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          USER_VAR_1: { value: "user_defined_value" },
+        },
+      };
+
+      await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
+
+      // It should NOT overwrite USER_VAR_1, but it SHOULD add AUTO_VAR_1
+      expect(buildEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
+      expect(buildEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+
+      expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
+      expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
     });
   });
 });
