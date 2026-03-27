@@ -6,6 +6,7 @@ import {
 } from "../../apphosting/backend";
 import { AppHostingMultiple, AppHostingSingle } from "../../firebaseConfig";
 import {
+  Backend,
   ensureApiEnabled,
   listBackends,
   parseBackendName,
@@ -54,23 +55,7 @@ export default async function (context: Context, options: Options): Promise<void
   const buildEnv: Record<string, EnvMap> = {};
   const runtimeEnv: Record<string, Env[]> = {};
 
-  for (const cfg of configs) {
-    const rootDir = options.projectRoot || process.cwd();
-    const appDir = path.join(rootDir, cfg.rootDir || "");
-    let yamlConfig = AppHostingYamlConfig.empty();
-    try {
-      yamlConfig = await getAppHostingConfiguration(appDir);
-    } catch (e: unknown) {
-      if (e instanceof Error && e.message && !e.message.includes("doesn't exist")) {
-        throw e;
-      }
-    }
-
-    const { build, runtime } = splitEnvVars(yamlConfig.env);
-
-    buildEnv[cfg.backendId] = build;
-    runtimeEnv[cfg.backendId] = runtime;
-  }
+  await injectEnvVarsFromApphostingConfig(configs, options, buildEnv, runtimeEnv);
 
   const { backends } = await listBackends(projectId, "-");
 
@@ -100,7 +85,7 @@ export default async function (context: Context, options: Options): Promise<void
     logLabeledWarning(
       "apphosting",
       `You have multiple backends with the same ${cfg.backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
 
@@ -154,9 +139,9 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledWarning(
         "apphosting",
         `Skipping deployments of backend(s) ${notFoundBackends.map((cfg) => cfg.backendId).join(", ")}; ` +
-          "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
-          "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
-          "then retry deployment.",
+        "the backend(s) do not exist yet and we cannot create them for you because you must choose primary regions for each one. " +
+        "Please run 'firebase deploy' without the --force flag, or 'firebase apphosting:backends:create' to create the backend, " +
+        "then retry deployment.",
       );
       return;
     }
@@ -195,29 +180,8 @@ export default async function (context: Context, options: Options): Promise<void
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
-    const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
-    if (backend?.appId) {
-      try {
-        const webappConfig = (await managementApps.getAppConfig(
-          backend.appId,
-          managementApps.AppPlatform.WEB,
-        )) as WebConfig;
-        const autoinitVars = getAutoinitEnvVars(webappConfig);
-        for (const [key, value] of Object.entries(autoinitVars)) {
-          if (!(key in buildEnv[cfg.backendId])) {
-            buildEnv[cfg.backendId][key] = { value };
-          }
-          if (!runtimeEnv[cfg.backendId].some((e) => e.variable === key)) {
-            runtimeEnv[cfg.backendId].push({ variable: key, value });
-          }
-        }
-      } catch (e) {
-        logLabeledWarning(
-          "apphosting",
-          `Unable to lookup details for backend ${cfg.backendId}. Firebase SDK autoinit will not be available.`,
-        );
-      }
-    }
+    await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
+
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
         options.projectRoot || "./",
@@ -230,6 +194,7 @@ export default async function (context: Context, options: Options): Promise<void
         );
       }
       context.backendLocalBuilds[cfg.backendId] = {
+        // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
         buildConfig: {
           ...buildConfig,
@@ -240,6 +205,64 @@ export default async function (context: Context, options: Options): Promise<void
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
       throw new FirebaseError(`Local Build for backend ${cfg.backendId} failed: ${errorMsg}`);
+    }
+  }
+}
+
+export async function injectEnvVarsFromApphostingConfig(
+  configs: AppHostingSingle[],
+  options: Options,
+  buildEnv: Record<string, EnvMap>,
+  runtimeEnv: Record<string, Env[]>,
+): Promise<void> {
+  for (const cfg of configs) {
+    const rootDir = options.projectRoot || process.cwd();
+    const appDir = path.join(rootDir, cfg.rootDir || "");
+    let yamlConfig = AppHostingYamlConfig.empty();
+    try {
+      yamlConfig = await getAppHostingConfiguration(appDir);
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message && !e.message.includes("doesn't exist")) {
+        throw e;
+      }
+    }
+
+    const { build, runtime } = splitEnvVars(yamlConfig.env);
+
+    buildEnv[cfg.backendId] = build;
+    runtimeEnv[cfg.backendId] = runtime;
+  }
+}
+
+export async function injectAutoInitEnvVars(
+  cfg: AppHostingSingle,
+  backends: Backend[],
+  buildEnv: Record<string, EnvMap>,
+  runtimeEnv: Record<string, Env[]>,
+): Promise<void> {
+  const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+  if (backend?.appId) {
+    try {
+      const webappConfig = (await managementApps.getAppConfig(
+        backend.appId,
+        managementApps.AppPlatform.WEB,
+      )) as WebConfig;
+
+      // We inject autoinit env vars into the build and runtime env vars.
+      const autoinitVars = getAutoinitEnvVars(webappConfig);
+      for (const [key, value] of Object.entries(autoinitVars)) {
+        if (!(key in buildEnv[cfg.backendId])) {
+          buildEnv[cfg.backendId][key] = { value };
+        }
+        if (!runtimeEnv[cfg.backendId].some((e) => e.variable === key)) {
+          runtimeEnv[cfg.backendId].push({ variable: key, value });
+        }
+      }
+    } catch (e) {
+      logLabeledWarning(
+        "apphosting",
+        `Unable to lookup details for backend ${cfg.backendId}. Firebase SDK autoinit will not be available.`,
+      );
     }
   }
 }
