@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools",
-  "version": "15.11.0",
+  "version": "15.12.0",
   "description": "Command-Line Interface for Firebase",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
@@ -276,6 +276,7 @@
     "node-fetch": {
       "whatwg-url": "^14.0.0"
     },
-    "hono": "^4.11.4"
+    "hono": "^4.11.4",
+    "@tootallnate/once": "^3.0.1"
   }
 }
