@@ -1,2 +1,4 @@
 - Moved MCP server `firebase-debug.log` to `~/.cache/firebase/firebase-debug.log`. (#9982)
 - Added a prompt to `firebase init` to install Agent Skills for Firebase.
+- Updated the Firebase Data Connect local toolkit to v3.3.1, which includes the following changes: (#10190)
+  - [added] Support for configuring client-side caching in connector.yaml / generate section
