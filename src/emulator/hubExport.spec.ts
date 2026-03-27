@@ -10,9 +10,23 @@ describe("HubExport", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;
     let getStub: sinon.SinonStub;
+    let exporter: HubExport;
+    let metadata: ExportMetadata;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
+      exporter = new HubExport("my-project", {
+        path: "/tmp/export",
+        initiatedBy: "test",
+      });
+      metadata = {
+        version: "1.0.0",
+        firestore: {
+          version: "1.0.0",
+          path: "firestore_export",
+          metadata_file: "firestore_export/firestore_export.overall_export_metadata",
+        },
+      };
     });
 
     afterEach(() => {
@@ -47,20 +61,6 @@ describe("HubExport", () => {
         ],
       });
 
-      const exporter = new HubExport("my-project", {
-        path: "/tmp/export",
-        initiatedBy: "test",
-      });
-
-      const metadata: ExportMetadata = {
-        version: "1.0.0",
-        firestore: {
-          version: "1.0.0",
-          path: "firestore_export",
-          metadata_file: "firestore_export/firestore_export.overall_export_metadata",
-        },
-      };
-
       await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(2);
@@ -77,20 +77,6 @@ describe("HubExport", () => {
         listError: new Error("connection refused"),
       });
 
-      const exporter = new HubExport("my-project", {
-        path: "/tmp/export",
-        initiatedBy: "test",
-      });
-
-      const metadata: ExportMetadata = {
-        version: "1.0.0",
-        firestore: {
-          version: "1.0.0",
-          path: "firestore_export",
-          metadata_file: "firestore_export/firestore_export.overall_export_metadata",
-        },
-      };
-
       await exporter["exportFirestore"](metadata);
 
       expect(postStub.callCount).to.equal(1);
@@ -103,20 +89,6 @@ describe("HubExport", () => {
       stubClient({
         databases: [],
       });
-
-      const exporter = new HubExport("my-project", {
-        path: "/tmp/export",
-        initiatedBy: "test",
-      });
-
-      const metadata: ExportMetadata = {
-        version: "1.0.0",
-        firestore: {
-          version: "1.0.0",
-          path: "firestore_export",
-          metadata_file: "firestore_export/firestore_export.overall_export_metadata",
-        },
-      };
 
       await exporter["exportFirestore"](metadata);
 
@@ -136,20 +108,6 @@ describe("HubExport", () => {
       });
 
       postStub.onSecondCall().rejects(new Error("export failed"));
-
-      const exporter = new HubExport("my-project", {
-        path: "/tmp/export",
-        initiatedBy: "test",
-      });
-
-      const metadata: ExportMetadata = {
-        version: "1.0.0",
-        firestore: {
-          version: "1.0.0",
-          path: "firestore_export",
-          metadata_file: "firestore_export/firestore_export.overall_export_metadata",
-        },
-      };
 
       await exporter["exportFirestore"](metadata);
 
