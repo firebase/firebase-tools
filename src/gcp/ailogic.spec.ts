@@ -1,11 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
-import { Endpoint } from "../deploy/functions/backend";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
-} from "../functions/events/v2";
+  AILogicEndpoint,
+} from "../deploy/functions/services/ailogic";
 
 describe("ailogic", () => {
   const mockEndpointBase = {
@@ -31,12 +31,12 @@ describe("ailogic", () => {
     });
 
     it("should create trigger for beforeGenerateContent", async () => {
-      const endpoint = {
+      const endpoint: AILogicEndpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
           eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
-      } satisfies Endpoint;
+      };
 
       postStub.resolves({ body: { name: "trigger-name" } });
 
@@ -60,7 +60,7 @@ describe("ailogic", () => {
     });
 
     it("should update trigger if create fails with 409", async () => {
-      const endpoint = {
+      const endpoint: AILogicEndpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
           eventType: AI_LOGIC_AFTER_GENERATE_CONTENT,
@@ -68,7 +68,7 @@ describe("ailogic", () => {
             regionalWebhook: true,
           },
         },
-      } satisfies Endpoint;
+      };
 
       postStub.rejects({ status: 409 });
       patchStub.resolves({ body: { name: "trigger-name" } });
@@ -94,12 +94,12 @@ describe("ailogic", () => {
     });
 
     it("should throw error if create fails with non-409", async () => {
-      const endpoint = {
+      const endpoint: AILogicEndpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
           eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
-      } satisfies Endpoint;
+      };
 
       postStub.rejects({ status: 500 });
 
@@ -120,12 +120,12 @@ describe("ailogic", () => {
     });
 
     it("should delete trigger", async () => {
-      const endpoint = {
+      const endpoint: AILogicEndpoint = {
         ...mockEndpointBase,
         blockingTrigger: {
           eventType: AI_LOGIC_BEFORE_GENERATE_CONTENT,
         },
-      } satisfies Endpoint;
+      };
 
       deleteStub.resolves({});
 

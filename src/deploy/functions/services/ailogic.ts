@@ -2,7 +2,34 @@ import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
-import { isAILogicEventType } from "../../../functions/events/v2";
+
+export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.beforeGenerateContent" as const;
+export const AI_LOGIC_AFTER_GENERATE_CONTENT =
+  "firebase.vertexai.v1beta.afterGenerateContent" as const;
+
+export const AI_LOGIC_EVENTS = [
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+] as const;
+
+export type AILogicEndpoint = backend.Endpoint & {
+  blockingTrigger: {
+    eventType: (typeof AI_LOGIC_EVENTS)[number];
+    options?: {
+      regionalWebhook?: boolean;
+    };
+  };
+};
+
+export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicEndpoint {
+  if (!backend.isBlockingTriggered(endpoint)) {
+    return false;
+  }
+  return AI_LOGIC_EVENTS.includes(
+    endpoint.blockingTrigger.eventType as (typeof AI_LOGIC_EVENTS)[number],
+  );
+}
 
 export class AILogicService implements Service {
   name: Name;
@@ -21,40 +48,32 @@ export class AILogicService implements Service {
    * Regional triggers are grouped by region; Global triggers are checked globally.
    */
   validateTrigger(endpoint: backend.Endpoint, wantBackend: backend.Backend): void {
-    if (!backend.isBlockingTriggered(endpoint)) {
+    if (!isAILogicEvent(endpoint)) {
       return;
     }
     const eventType = endpoint.blockingTrigger.eventType;
-    if (!isAILogicEventType(eventType)) {
-      return; // Not an AI Logic trigger
-    }
 
     const regionalWebhook = !!endpoint.blockingTrigger.options?.regionalWebhook;
-    const sameTypeEndpoints = backend
-      .allEndpoints(wantBackend)
-      .filter(backend.isBlockingTriggered)
-      .filter(
-        (ep) =>
-          (ep as backend.Endpoint & backend.BlockingTriggered).blockingTrigger.eventType ===
-            eventType && ep.id !== endpoint.id,
-      ) as (backend.Endpoint & backend.BlockingTriggered)[];
+    const conflict = backend.allEndpoints(wantBackend).some((ep) => {
+      if (!isAILogicEvent(ep)) {
+        return false;
+      }
+      if (ep.blockingTrigger.eventType !== eventType || ep.id === endpoint.id) {
+        return false;
+      }
+      if (regionalWebhook) {
+        return ep.blockingTrigger.options?.regionalWebhook && ep.region === endpoint.region;
+      } else {
+        return !ep.blockingTrigger.options?.regionalWebhook;
+      }
+    });
 
-    if (regionalWebhook) {
-      // Regional: Check if another regional trigger exists in the SAME region
-      const duplicate = sameTypeEndpoints.find(
-        (ep) => ep.region === endpoint.region && !!ep.blockingTrigger.options?.regionalWebhook,
-      );
-      if (duplicate) {
+    if (conflict) {
+      if (regionalWebhook) {
         throw new FirebaseError(
           `Can only create at most one regional AI Logic Trigger for ${eventType} in region ${endpoint.region}`,
         );
-      }
-    } else {
-      // Global: Check if another global trigger exists anywhere
-      const duplicate = sameTypeEndpoints.find(
-        (ep) => !ep.blockingTrigger.options?.regionalWebhook,
-      );
-      if (duplicate) {
+      } else {
         throw new FirebaseError(
           `Can only create at most one global AI Logic Trigger for ${eventType}`,
         );
@@ -63,14 +82,14 @@ export class AILogicService implements Service {
   }
 
   async registerTrigger(ep: backend.Endpoint): Promise<void> {
-    if (!backend.isBlockingTriggered(ep)) {
+    if (!isAILogicEvent(ep)) {
       return;
     }
     await ailogicApi.upsertBlockingFunction(ep);
   }
 
   async unregisterTrigger(ep: backend.Endpoint): Promise<void> {
-    if (!backend.isBlockingTriggered(ep)) {
+    if (!isAILogicEvent(ep)) {
       return;
     }
     await ailogicApi.deleteBlockingFunction(ep);

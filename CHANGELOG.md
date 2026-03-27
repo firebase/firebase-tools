@@ -1,1 +1,0 @@
-- Added a prompt to `firebase init` to install Agent Skills for Firebase.
