@@ -112,7 +112,15 @@ export function serializeValue(value: Value, indentation = 0): string {
   } else if (value === null || value === undefined) {
     return "null";
   } else if (Array.isArray(value)) {
-    if (value.some((e) => e !== null && typeof e === "object")) {
+    // Use multi-line if there is any Object. But we exclude HCL expressions from "objects".
+    if (
+      value.some(
+        (e) =>
+          e !== null &&
+          typeof e === "object" &&
+          (Array.isArray(e) || e["@type"] !== "HCLExpression"),
+      )
+    ) {
       return `[\n${value.map((v) => "  ".repeat(indentation + 1) + serializeValue(v, indentation + 1)).join(",\n")}\n${"  ".repeat(indentation)}]`;
     }
     return `[${value.map((v) => serializeValue(v)).join(", ")}]`;
@@ -128,10 +136,105 @@ export function serializeValue(value: Value, indentation = 0): string {
   throw new FirebaseError(`Unsupported terraform value type ${typeof value}`, { exit: 1 });
 }
 
+const PREFIX_ARGUMENTS = new Set(["count", "for_each", "provider"]);
+const SUFFIX_ARGUMENTS = new Set(["lifecycle", "depends_on"]);
+
+const NON_BLOCK_PARAMETERS: Record<string, Set<string>> = {
+  google_cloudfunctions_function: new Set([
+    "name",
+    "runtime",
+    "description",
+    "available_memory_mb",
+    "timeout",
+    "entry_point",
+    "source_archive_bucket",
+    "source_archive_object",
+    "trigger_http",
+    "environment_variables",
+    "vpc_connector",
+    "service_account_email",
+    "max_instances",
+    "min_instances",
+    "project",
+    "region",
+  ]),
+  google_cloudfunctions2_function: new Set(["name", "location", "description", "project"]),
+  google_cloud_scheduler_job: new Set([
+    "name",
+    "description",
+    "schedule",
+    "time_zone",
+    "paused",
+    "attempt_deadline",
+    "region",
+    "project",
+  ]),
+  google_cloud_tasks_queue: new Set(["name", "location", "desired_state", "project"]),
+  google_eventarc_trigger: new Set(["name", "location", "project", "service_account"]),
+  google_pubsub_topic: new Set([
+    "name",
+    "project",
+    "labels",
+    "kms_key_name",
+    "message_retention_duration",
+  ]),
+  google_pubsub_subscription: new Set([
+    "name",
+    "topic",
+    "project",
+    "labels",
+    "ack_deadline_seconds",
+    "message_retention_duration",
+    "retain_acked_messages",
+    "enable_message_ordering",
+    "filter",
+  ]),
+};
+
+function serializeResourceAttributes(
+  attributes: Record<string, Value>,
+  resourceType: string,
+  indentation = 0,
+): string {
+  const nonBlockParams = NON_BLOCK_PARAMETERS[resourceType] || new Set();
+
+  const prefixGroup: string[] = [];
+  const nonBlockGroup: string[] = [];
+  const blockGroup: string[] = [];
+  const suffixGroup: string[] = [];
+
+  for (const [k, v] of Object.entries(attributes)) {
+    const serialized = `${"  ".repeat(indentation + 1)}${k} = ${serializeValue(v, indentation + 1)}`;
+    if (PREFIX_ARGUMENTS.has(k)) {
+      prefixGroup.push(serialized);
+    } else if (nonBlockParams.has(k)) {
+      nonBlockGroup.push(serialized);
+    } else if (SUFFIX_ARGUMENTS.has(k)) {
+      suffixGroup.push(serialized);
+    } else {
+      blockGroup.push(serialized);
+    }
+  }
+
+  const nonemptyGroups = [prefixGroup, nonBlockGroup, blockGroup, suffixGroup].filter(
+    (g) => g.length > 0,
+  );
+  // Within each group, separate attributes with a newline. Separate different groups with an empty line.
+  const joinedGroups = nonemptyGroups.map((g) => g.join("\n")).join("\n\n");
+
+  return `{\n${joinedGroups}\n${"  ".repeat(indentation)}}`;
+}
+
 /**
  * Converts a block to a string.
  */
-export function blockToString(block: Block): string {
+export function blockToString(block: Block, indentation: number = 0): string {
   const labels = (block.labels || []).map((l) => `"${l}"`).join(" ");
-  return `${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes)}`;
+
+  if (block.type === "resource" && block.labels?.length) {
+    const resourceType = block.labels[0];
+    return `${"  ".repeat(indentation)}${block.type} ${labels ? labels + " " : ""}${serializeResourceAttributes(block.attributes, resourceType, indentation)}`;
+  }
+
+  return `${"  ".repeat(indentation)}${block.type} ${labels ? labels + " " : ""}${serializeValue(block.attributes, indentation)}`;
 }
