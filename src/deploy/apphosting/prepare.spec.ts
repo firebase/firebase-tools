@@ -510,12 +510,8 @@ describe("apphosting", () => {
       const buildEnv: Record<string, EnvMap> = {};
       const runtimeEnv: Record<string, EnvMap> = {};
 
-      await injectEnvVarsFromApphostingConfig(
-        configs as unknown as AppHostingSingle[],
-        opts as unknown as Options,
-        buildEnv,
-        runtimeEnv,
-      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
+      await injectEnvVarsFromApphostingConfig(configs as any, opts as any, buildEnv, runtimeEnv);
 
       // Verify the final map has all three variables, and VAR2 was successfully overridden by dir2
       expect(buildEnv["foo"]).to.deep.equal({
@@ -533,10 +529,11 @@ describe("apphosting", () => {
 
   describe("injectAutoInitEnvVars", () => {
     beforeEach(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-explicit-any
       sinon.stub(managementApps, "getAppConfig").resolves({
         appId: "my-app-id",
         projectId: "my-project",
-      } as unknown as ReturnType<typeof managementApps.getAppConfig>);
+      } as any);
       sinon.stub(apphostingUtils, "getAutoinitEnvVars").returns({
         AUTO_VAR_1: "auto1",
         USER_VAR_1: "auto_override",
@@ -549,7 +546,8 @@ describe("apphosting", () => {
         {
           name: "projects/my-project/locations/us-central1/backends/foo",
           appId: "my-app-id",
-        } as unknown as Backend,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any,
       ];
 
       // Build and runtime envs inherently start with USER_VAR_1 already set
@@ -565,6 +563,7 @@ describe("apphosting", () => {
         },
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
       // It should NOT overwrite USER_VAR_1, but it SHOULD add AUTO_VAR_1
