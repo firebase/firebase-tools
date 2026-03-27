@@ -29,17 +29,11 @@ export async function localBuild(
   // because the build adapter uses them to build the app.
   // We'll restore the original process.env after the build is done.
   const originalEnv = { ...process.env };
-  const projectNodeModules = path.join(projectRoot, "node_modules");
-  const newNodePath = process.env.NODE_PATH
-    ? `${process.env.NODE_PATH}${path.delimiter}${projectNodeModules}`
-    : projectNodeModules;
 
   const addedEnv = toProcessEnv(env);
   for (const [key, value] of Object.entries(addedEnv)) {
     process.env[key] = value;
   }
-  const originalNodePath = process.env.NODE_PATH;
-  process.env.NODE_PATH = newNodePath;
 
   let apphostingBuildOutput;
   try {
@@ -52,11 +46,6 @@ export async function localBuild(
     }
     for (const [key, value] of Object.entries(originalEnv)) {
       process.env[key] = value;
-    }
-    if (originalNodePath !== undefined) {
-      process.env.NODE_PATH = originalNodePath;
-    } else {
-      delete process.env.NODE_PATH;
     }
   }
 
