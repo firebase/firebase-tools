@@ -174,16 +174,37 @@ export class HubExport {
       emulator_name: Emulators.FIRESTORE,
     });
 
-    const firestoreExportBody = {
-      database: `projects/${this.projectId}/databases/(default)`,
-      export_directory: this.tmpDir,
-      export_name: metadata.firestore!!.path,
-    };
+    const client = EmulatorRegistry.client(Emulators.FIRESTORE);
+    const adminClient = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1" });
 
-    await EmulatorRegistry.client(Emulators.FIRESTORE).post(
-      `/emulator/v1/projects/${this.projectId}:export`,
-      firestoreExportBody,
-    );
+    let databases: string[];
+    try {
+      const res = await adminClient.get<{ databases: Array<{ name: string }> }>(
+        `/projects/${this.projectId}/databases`,
+      );
+      databases = (res.body.databases || []).map((db) => db.name);
+    } catch (e) {
+      logger.debug(`Failed to list Firestore databases, falling back to default: ${e}`);
+      databases = [`projects/${this.projectId}/databases/(default)`];
+    }
+
+    if (databases.length === 0) {
+      databases = [`projects/${this.projectId}/databases/(default)`];
+    }
+
+    for (const database of databases) {
+      const firestoreExportBody = {
+        database,
+        export_directory: this.tmpDir,
+        export_name: metadata.firestore!.path,
+      };
+
+      try {
+        await client.post(`/emulator/v1/projects/${this.projectId}:export`, firestoreExportBody);
+      } catch (e) {
+        logger.debug(`Failed to export Firestore database ${database}, skipping: ${e}`);
+      }
+    }
   }
 
   private async exportDatabase(metadata: ExportMetadata): Promise<void> {
