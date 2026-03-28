@@ -199,6 +199,7 @@ export class FirebaseMcpServer {
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
     this.logger.debug("detecting active features of Firebase MCP server...");
+    await this.detectProjectRoot();
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
     const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
