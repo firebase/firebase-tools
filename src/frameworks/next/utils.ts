@@ -236,6 +236,14 @@ export async function isUsingImageOptimization(
     }
   }
 
+  // Next.js 15+ may not populate manifests with next/image references;
+  // fall back to scanning project source files in the app directory.
+  if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
+    if (await isNextImageInProjectSource(projectDir)) {
+      isNextImageImported = true;
+    }
+  }
+
   if (isNextImageImported) {
     const imagesManifest = await readJSON<ImagesManifest>(
       join(projectDir, distDir, IMAGES_MANIFEST),
@@ -272,6 +280,38 @@ export async function isUsingNextImageInAppDirectory(
     }
   }
 
+  return false;
+}
+
+/**
+ * Whether next/image is imported in the project source files under the app
+ * directory.  This is a fallback for Next.js 15+ where the build manifests
+ * may not include next/image references even when the component is used.
+ *
+ * @param projectDir path to the project root
+ * @return true if any .tsx/.ts/.jsx/.js file under `app/` imports next/image
+ */
+export async function isNextImageInProjectSource(projectDir: string): Promise<boolean> {
+  const appDir = join(projectDir, "app");
+  if (!existsSync(appDir)) {
+    // Also check src/app for projects using the src directory layout
+    const srcAppDir = join(projectDir, "src", "app");
+    if (!existsSync(srcAppDir)) {
+      return false;
+    }
+    return scanDirForNextImage(srcAppDir);
+  }
+  return scanDirForNextImage(appDir);
+}
+
+async function scanDirForNextImage(dir: string): Promise<boolean> {
+  const files = globSync(join(dir, "**", "*.{tsx,ts,jsx,js}"));
+  for (const filepath of files) {
+    const contents = await readFile(filepath, "utf-8");
+    if (/from\s+['"]next\/image['"]/.test(contents)) {
+      return true;
+    }
+  }
   return false;
 }
 
