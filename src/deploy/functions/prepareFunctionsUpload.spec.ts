@@ -45,4 +45,50 @@ describe("prepareFunctionsUpload", () => {
       expect(prepareFunctionsUpload.convertToSortedKeyValueArray({})).to.deep.equal([]);
     });
   });
+
+  describe("packageSource hash generation", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      // Create a temporary directory with some mock source files
+      const os = require("os");
+      const path = require("path");
+      const fs = require("fs");
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-tools-test-"));
+      fs.writeFileSync(path.join(tmpDir, "index.js"), "console.log('hello world');");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name":"test"}');
+    });
+
+    afterEach(() => {
+      const fs = require("fs");
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("should generate a short SHA1 hash (<= 81 chars) to prevent the 1024-character ObjectName limit error", async () => {
+      const config = {
+        source: ".",
+        codebase: "default",
+        ignore: ["node_modules"],
+      };
+
+      const result = await prepareFunctionsUpload.prepareFunctionsUpload(
+        tmpDir, // projectDir
+        tmpDir, // sourceDir
+        config as any,
+        [] // additionalSources
+      );
+
+      expect(result).to.not.be.undefined;
+      expect(result!.hash).to.be.a("string");
+      
+      // With Merkle Tree hashing, the result should either be a single 40-char SHA1 
+      // or two 40-char SHA1s joined by a period (81 chars max).
+      expect(result!.hash.length).to.be.at.most(81);
+
+      // Clean up the archived zip that prepareFunctionsUpload creates
+      if (result?.pathToSource) {
+        require("fs").rmSync(result.pathToSource, { force: true });
+      }
+    });
+  });
 });
