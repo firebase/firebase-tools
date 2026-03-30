@@ -148,7 +148,7 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading",
   );
-  const sourceHash = crypto.createHash("sha1").update(hashes.join("")).digest("hex");
+  const sourceHash = crypto.createHash("sha1").update(hashes.sort().join("")).digest("hex");
   const hash = configHash ? `${sourceHash}.${configHash}` : sourceHash;
   return { pathToSource: tmpFile, hash };
 }
