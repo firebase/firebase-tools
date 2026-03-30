@@ -1,6 +1,7 @@
 import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
+import { loadSecret } from "./secrets";
 
 /**
  * Triggers a local build of your App Hosting codebase.
@@ -8,14 +9,17 @@ import { EnvMap } from "./yaml";
  * This function orchestrates the build process using the App Hosting build adapter.
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
+ * @param projectId - The project ID to use for resolving secrets.
  * @param projectRoot - The root directory of the project to build.
  * @param framework - The framework to use for the build (e.g., 'nextjs').
+ * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
  *          - `annotations`: Metadata annotations relating to the build.
  *          - `buildConfig`: Configuration derived from the build process (e.g. run commands, environment variables).
  */
 export async function localBuild(
+  projectId: string,
   projectRoot: string,
   framework: string,
   env: EnvMap = {},
@@ -29,7 +33,7 @@ export async function localBuild(
   // We'll restore the original process.env after the build is done.
   const originalEnv = { ...process.env };
 
-  const addedEnv = toProcessEnv(env);
+  const addedEnv = await toProcessEnv(projectId, env);
   for (const [key, value] of Object.entries(addedEnv)) {
     process.env[key] = value;
   }
@@ -71,8 +75,18 @@ export async function localBuild(
   };
 }
 
-function toProcessEnv(env: EnvMap): NodeJS.ProcessEnv {
-  return Object.fromEntries(
-    Object.entries(env).map(([key, value]) => [key, value.value || ""]),
-  ) as NodeJS.ProcessEnv;
+async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
+  const processEnv: Record<string, string> = {};
+  for (const [key, value] of Object.entries(env)) {
+    if (value.availability && !value.availability.includes("BUILD")) {
+      continue;
+    }
+
+    if (value.secret) {
+      processEnv[key] = await loadSecret(projectId, value.secret);
+    } else {
+      processEnv[key] = value.value || "";
+    }
+  }
+  return processEnv as NodeJS.ProcessEnv;
 }
