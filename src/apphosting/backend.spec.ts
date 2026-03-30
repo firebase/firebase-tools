@@ -43,7 +43,6 @@ describe("apphosting setup functions", () => {
   let promptGitHubBranchStub: sinon.SinonStub;
   let getOrCreateWebAppStub: sinon.SinonStub;
   let ensureApiEnabledStub: sinon.SinonStub;
-  let orchestrateRolloutStub: sinon.SinonStub;
 
   beforeEach(() => {
     promptStub = sinon.stub(promptImport);
@@ -89,7 +88,7 @@ describe("apphosting setup functions", () => {
     ensureApiEnabledStub = sinon
       .stub(ensureApiEnabled, "ensure")
       .throws("Unexpected ensureApiEnabled call");
-    orchestrateRolloutStub = sinon
+    sinon
       .stub(rollout, "orchestrateRollout")
       .throws("Unexpected orchestrateRollout call");
   });
