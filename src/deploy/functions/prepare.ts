@@ -500,7 +500,7 @@ export async function loadCodebases(
           `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
           (Object.keys(supported.RUNTIMES) as supported.Runtime[])
             .filter((runtime) => supported.isDecommissioned(runtime) === false)
-            .map((runtime) => `- ${runtime}`)
+            .map((s) => `- ${s}`)
             .join("\n"),
       );
     }
