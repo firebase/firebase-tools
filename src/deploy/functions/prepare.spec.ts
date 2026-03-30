@@ -118,7 +118,7 @@ describe("prepare", () => {
       const firebaseConfig = { projectId: "project" };
       const runtimeConfig = {};
 
-      expect(await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig))
+      await expect(prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig))
         .to.be.rejectedWith(FirebaseError)
         .and.have.property("message")
         .not.contain("nodejs6");
