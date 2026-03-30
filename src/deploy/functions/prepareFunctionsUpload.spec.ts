@@ -1,4 +1,8 @@
 import { expect } from "chai";
+import * as os from "os";
+import * as path from "path";
+import * as fs from "fs";
+import * as projectConfig from "../../functions/projectConfig";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
 
 describe("prepareFunctionsUpload", () => {
@@ -51,16 +55,12 @@ describe("prepareFunctionsUpload", () => {
 
     beforeEach(() => {
       // Create a temporary directory with some mock source files
-      const os = require("os");
-      const path = require("path");
-      const fs = require("fs");
       tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-tools-test-"));
       fs.writeFileSync(path.join(tmpDir, "index.js"), "console.log('hello world');");
       fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name":"test"}');
     });
 
     afterEach(() => {
-      const fs = require("fs");
       fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
@@ -69,25 +69,27 @@ describe("prepareFunctionsUpload", () => {
         source: ".",
         codebase: "default",
         ignore: ["node_modules"],
-      };
+      } as unknown as projectConfig.ValidatedSingle;
 
       const result = await prepareFunctionsUpload.prepareFunctionsUpload(
         tmpDir, // projectDir
         tmpDir, // sourceDir
-        config as any,
-        [] // additionalSources
+        config,
+        [], // additionalSources
       );
 
       expect(result).to.not.be.undefined;
-      expect(result!.hash).to.be.a("string");
-      
-      // With Merkle Tree hashing, the result should either be a single 40-char SHA1 
-      // or two 40-char SHA1s joined by a period (81 chars max).
-      expect(result!.hash.length).to.be.at.most(81);
+      if (result) {
+        expect(result.hash).to.be.a("string");
 
-      // Clean up the archived zip that prepareFunctionsUpload creates
-      if (result?.pathToSource) {
-        require("fs").rmSync(result.pathToSource, { force: true });
+        // With Merkle Tree hashing, the result should either be a single 40-char SHA1
+        // or two 40-char SHA1s joined by a period (81 chars max).
+        expect(result.hash.length).to.be.at.most(81);
+
+        // Clean up the archived zip that prepareFunctionsUpload creates
+        if (result.pathToSource) {
+          fs.rmSync(result.pathToSource, { force: true });
+        }
       }
     });
   });
