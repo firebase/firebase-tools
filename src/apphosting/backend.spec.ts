@@ -86,8 +86,12 @@ describe("apphosting setup functions", () => {
     getOrCreateWebAppStub = sinon
       .stub(webApps, "getOrCreateWebApp")
       .throws("Unexpected getOrCreateWebApp call");
-    ensureApiEnabledStub = sinon.stub(ensureApiEnabled, "ensure").throws("Unexpected ensureApiEnabled call");
-    orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").throws("Unexpected orchestrateRollout call");
+    ensureApiEnabledStub = sinon
+      .stub(ensureApiEnabled, "ensure")
+      .throws("Unexpected ensureApiEnabled call");
+    orchestrateRolloutStub = sinon
+      .stub(rollout, "orchestrateRollout")
+      .throws("Unexpected orchestrateRollout call");
   });
 
   afterEach(() => {
