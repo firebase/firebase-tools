@@ -24,7 +24,10 @@ describe("downloadableEmulators integration constraints", () => {
         });
     `;
 
-    const rootPath = __dirname.substring(0, __dirname.indexOf(path.join("scripts", "emulator-tests")));
+    const rootPath = __dirname.substring(
+      0,
+      __dirname.indexOf(path.join("scripts", "emulator-tests")),
+    );
     const child = spawn("node", ["-e", script], {
       cwd: rootPath,
     });
@@ -42,25 +45,33 @@ describe("downloadableEmulators integration constraints", () => {
 
     let stderrLogs = "";
     child.stderr.on("data", (data) => {
-       stderrLogs += data.toString();
+      stderrLogs += data.toString();
     });
 
     child.on("exit", (code) => {
       // We expect the script to have terminated precisely on an exit 1 via process.exit(1)
-      expect(code).to.equal(1, `Expected child process to exit 1 but got code ${code}. Stderr: ${stderrLogs}`);
-      expect(javaPid).to.be.greaterThan(0, `Child process never returned a JAVA_PID! Stderr: ${stderrLogs}`);
+      expect(code).to.equal(
+        1,
+        `Expected child process to exit 1 but got code ${code}. Stderr: ${stderrLogs}`,
+      );
+      expect(javaPid).to.be.greaterThan(
+        0,
+        `Child process never returned a JAVA_PID! Stderr: ${stderrLogs}`,
+      );
 
       try {
         // Assert native OS PID checks to verify the Java Process doesn't still exist.
-        process.kill(javaPid, 0); 
-        
+        process.kill(javaPid, 0);
+
         // If we reach here without an ESRCH error, the java process is ALIVE, which is a logic FAILURE.
         // We MUST manually kill it so it doesn't leak out of the test environment.
         process.kill(javaPid, "SIGKILL");
-        done(new Error("Java process " + javaPid + " was still alive after parent abruptly exited!"));
-      } catch (e: any) {
+        done(
+          new Error("Java process " + javaPid + " was still alive after parent abruptly exited!"),
+        );
+      } catch (e) {
         // ESRCH directly maps to 'No such process'. This proves our SIGKILL 'on exit' safety net works!
-        expect(e.code).to.equal("ESRCH");
+        expect((e as any).code).to.equal("ESRCH");
         done();
       }
     });
