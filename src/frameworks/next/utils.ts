@@ -239,9 +239,7 @@ export async function isUsingImageOptimization(
   // Next.js 15+ may not populate manifests with next/image references;
   // fall back to scanning project source files in the app directory.
   if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
-    if (await isNextImageInProjectSource(projectDir)) {
-      isNextImageImported = true;
-    }
+    isNextImageImported = await isNextImageInProjectSource(projectDir);
   }
 
   if (isNextImageImported) {
@@ -292,20 +290,23 @@ export async function isUsingNextImageInAppDirectory(
  * @return true if any .tsx/.ts/.jsx/.js file under `app/` imports next/image
  */
 export async function isNextImageInProjectSource(projectDir: string): Promise<boolean> {
-  const appDir = join(projectDir, "app");
-  if (!existsSync(appDir)) {
+  const dirsToScan = [
+    join(projectDir, "app"),
     // Also check src/app for projects using the src directory layout
-    const srcAppDir = join(projectDir, "src", "app");
-    if (!existsSync(srcAppDir)) {
-      return false;
+    join(projectDir, "src", "app"),
+  ];
+
+  for (const dir of dirsToScan) {
+    if (existsSync(dir)) {
+      return scanDirForNextImage(dir);
     }
-    return scanDirForNextImage(srcAppDir);
   }
-  return scanDirForNextImage(appDir);
+
+  return false;
 }
 
 async function scanDirForNextImage(dir: string): Promise<boolean> {
-  const files = globSync(join(dir, "**", "*.{tsx,ts,jsx,js}"));
+  const files = await glob(join(dir, "**", "*.{tsx,ts,jsx,js}"));
   for (const filepath of files) {
     const contents = await readFile(filepath, "utf-8");
     if (/from\s+['"]next\/image['"]/.test(contents)) {
