@@ -340,8 +340,16 @@ export async function promptNewBackendId(projectId: string, location: string): P
   while (true) {
     const backendId = await input({
       default: "my-web-app",
-      message: "Provide a name for your backend [1-30 characters]",
-      validate: (s) => s.length >= 1 && s.length <= 30,
+      message: "Provide a name for your backend [3-30 characters]",
+      validate: (s) => {
+        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
+          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
+        } else if (s.length < 3 || s.length > 30) {
+          return "Must be between 3 and 30 characters";
+        }
+
+        return true;
+      },
     });
     try {
       await apphosting.getBackend(projectId, location, backendId);
