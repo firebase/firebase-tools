@@ -88,9 +88,7 @@ describe("apphosting setup functions", () => {
     ensureApiEnabledStub = sinon
       .stub(ensureApiEnabled, "ensure")
       .throws("Unexpected ensureApiEnabled call");
-    sinon
-      .stub(rollout, "orchestrateRollout")
-      .throws("Unexpected orchestrateRollout call");
+    sinon.stub(rollout, "orchestrateRollout").throws("Unexpected orchestrateRollout call");
   });
 
   afterEach(() => {
