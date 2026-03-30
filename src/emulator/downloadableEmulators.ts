@@ -516,7 +516,19 @@ async function _runBinary(
       void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
+    const exitCleanup = () => {
+      if (emulator.instance) {
+        try {
+          emulator.instance.kill("SIGKILL");
+        } catch (e: any) {
+          // ignore
+        }
+      }
+    };
+    process.on("exit", exitCleanup);
+
     emulator.instance.once("exit", async (code, signal) => {
+      process.removeListener("exit", exitCleanup);
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
@@ -577,8 +589,13 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
         const errorMsg =
-          Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
+          Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + "). Sending SIGKILL...";
         logger.log("DEBUG", errorMsg);
+        try {
+          emulator.instance?.kill("SIGKILL");
+        } catch (e: any) {
+          // ignore
+        }
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
       emulator.instance.once("exit", () => {
