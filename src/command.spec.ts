@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as rc from "./rc";
 import * as nock from "nock";
+import { configstore } from "./configstore";
 
 import { Command, validateProjectId } from "./command";
 import { FirebaseError } from "./error";
@@ -34,7 +35,10 @@ describe("Command", () => {
 
   describe("runner", () => {
     let rcStub: sinon.SinonStub;
+    let configstoreStub: sinon.SinonStub;
+
     beforeEach(() => {
+      configstoreStub = sinon.stub(configstore, "get").returns({});
       rcStub = sinon
         .stub(rc, "loadRC")
         .returns(new rc.RC(undefined, { projects: { default: "default-project" } }));
@@ -42,6 +46,7 @@ describe("Command", () => {
 
     afterEach(() => {
       rcStub.restore();
+      configstoreStub.restore();
       nock.cleanAll();
     });
 
