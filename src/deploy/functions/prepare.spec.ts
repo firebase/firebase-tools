@@ -120,8 +120,14 @@ describe("prepare", () => {
 
       await expect(prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig))
         .to.be.rejectedWith(FirebaseError)
-        .and.have.property("message")
-        .not.contain("nodejs6");
+        .then((error) => {
+          // Should always list latest runtimes
+          expect(error.message).to.include(latest("nodejs"));
+          expect(error.message).to.include(latest("python"));
+
+          // Should never list a decommissioned runtime
+          expect(error.message).to.not.include("nodejs6");
+        });
     });
 
     it("should pass only firebase config when disallowLegacyRuntimeConfig is true", async () => {
