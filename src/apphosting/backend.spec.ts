@@ -42,6 +42,8 @@ describe("apphosting setup functions", () => {
   let linkGitHubRepositoryStub: sinon.SinonStub;
   let promptGitHubBranchStub: sinon.SinonStub;
   let getOrCreateWebAppStub: sinon.SinonStub;
+  let ensureApiEnabledStub: sinon.SinonStub;
+  let orchestrateRolloutStub: sinon.SinonStub;
 
   beforeEach(() => {
     promptStub = sinon.stub(promptImport);
@@ -75,17 +77,17 @@ describe("apphosting setup functions", () => {
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
 
-    linkGitHubRepositoryStub = sinon.stub(githubConnections, "linkGitHubRepository");
-    promptGitHubBranchStub = sinon.stub(githubConnections, "promptGitHubBranch");
-    getOrCreateWebAppStub = sinon.stub(webApps, "getOrCreateWebApp");
-    sinon.stub(ensureApiEnabled, "ensure").resolves();
-    sinon.stub(rollout, "orchestrateRollout");
-
-    // Default return for common setup functions
-    testResourceIamPermissionsStub.resolves();
-    createServiceAccountStub.resolves();
-    addServiceAccountToRolesStub.resolves();
-    listLocationsStub.resolves([{ locationId: location }]);
+    linkGitHubRepositoryStub = sinon
+      .stub(githubConnections, "linkGitHubRepository")
+      .throws("Unexpected linkGitHubRepository call");
+    promptGitHubBranchStub = sinon
+      .stub(githubConnections, "promptGitHubBranch")
+      .throws("Unexpected promptGitHubBranch call");
+    getOrCreateWebAppStub = sinon
+      .stub(webApps, "getOrCreateWebApp")
+      .throws("Unexpected getOrCreateWebApp call");
+    ensureApiEnabledStub = sinon.stub(ensureApiEnabled, "ensure").throws("Unexpected ensureApiEnabled call");
+    orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").throws("Unexpected orchestrateRollout call");
   });
 
   afterEach(() => {
@@ -98,6 +100,10 @@ describe("apphosting setup functions", () => {
       getOrCreateWebAppStub.resolves({ id: "webAppId" });
       createBackendStub.resolves({ name: "backendName", uri: "backendUri" });
       pollOperationStub.resolves({ name: "backendName", uri: "backendUri" });
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
+      ensureApiEnabledStub.resolves();
 
       await doSetup(projectId, false, undefined, backendId, undefined, location);
 
@@ -130,6 +136,10 @@ describe("apphosting setup functions", () => {
       pollOperationStub.resolves({ name: "backendName", uri: "backendUri" });
       updateTrafficStub.resolves({ name: "trafficName", done: true });
       promptStub.confirm.resolves(false); // Do not deploy now
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
+      ensureApiEnabledStub.resolves();
 
       await doSetup(projectId, false, undefined, backendId, undefined, location);
 
