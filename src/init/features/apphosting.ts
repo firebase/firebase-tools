@@ -94,8 +94,8 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
     const experiments = await dynamicImport("./experiments");
     const prompts = await dynamicImport("./apphosting/prompts");
 
-    let runtime = prompts.DEFAULT_RUNTIME;
-    let automaticBaseImageUpdatesDisabled = false;
+    let runtime = experiments.isEnabled("abiu") ? prompts.DEFAULT_RUNTIME : undefined;
+    let automaticBaseImageUpdatesDisabled = experiments.isEnabled("abiu") ? false : undefined;
 
     if (experiments.isEnabled("abiu") && !options.nonInteractive) {
       runtime = await prompts.promptRuntime();
