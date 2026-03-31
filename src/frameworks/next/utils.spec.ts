@@ -353,9 +353,7 @@ describe("Next.js utils", () => {
       sandbox.stub(glob, "sync").returns([]);
 
       // Prerendered HTML contains data-nimg from next/image
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves(
@@ -376,9 +374,7 @@ describe("Next.js utils", () => {
       sandbox.stub(glob, "sync").returns([]);
 
       // Prerendered HTML without next/image usage
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>");
@@ -393,9 +389,7 @@ describe("Next.js utils", () => {
     afterEach(() => sandbox.restore());
 
     it("should return true when prerendered HTML contains data-nimg", async () => {
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves(
@@ -406,9 +400,7 @@ describe("Next.js utils", () => {
     });
 
     it("should return true when data-nimg=fill is used", async () => {
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/page.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/page.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves('<img alt="bg" data-nimg="fill" src="/_next/image?url=bg" />');
@@ -423,9 +415,7 @@ describe("Next.js utils", () => {
     });
 
     it("should return false when HTML has no data-nimg", async () => {
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves("<!DOCTYPE html><html><body><img src='/photo.jpg' /></body></html>");
@@ -451,9 +441,7 @@ describe("Next.js utils", () => {
 
     it("should return true when only client component uses next/image", async () => {
       sandbox.stub(glob, "sync").returns([]);
-      sandbox
-        .stub(glob, "glob")
-        .resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
       sandbox
         .stub(fsPromises, "readFile")
         .resolves('<img alt="test" data-nimg="1" src="/_next/image?url=test" />');
