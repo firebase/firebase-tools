@@ -254,12 +254,10 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   distDir: string,
 ): Promise<boolean> {
-  const [inServerComponent, inClientComponent] = await Promise.all([
-    isUsingNextImageInServerComponent(projectDir, distDir),
-    isUsingNextImageInClientComponent(projectDir, distDir),
-  ]);
-
-  return inServerComponent || inClientComponent;
+  if (await isUsingNextImageInServerComponent(projectDir, distDir)) {
+    return true;
+  }
+  return isUsingNextImageInClientComponent(projectDir, distDir)
 }
 
 export async function isUsingNextImageInServerComponent(
