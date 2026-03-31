@@ -257,7 +257,7 @@ describe("crashlytics:sourcemap:upload", () => {
 
   it("should log failed files", async () => {
     clientPatchStub.rejects(new Error("Registration failed"));
-    await command.runner()(DIR_PATH, { app: "test-app" });
+    await command.runner()(DIR_PATH, { app: "test-app", retryDelay: 10 });
 
     // Should verify that logLabeledBullet is called with the specific failed files
     expect(logLabeledBulletStub).to.be.calledWith(
