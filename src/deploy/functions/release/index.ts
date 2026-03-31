@@ -84,9 +84,18 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  // N.B. THIS IS TEMPORARY
+  // This will limit concurrent deploys of run functions to two while zip deploy capacity
+  // is low.
+  const runThrottlerOptions = {
+    ...throttlerOptions,
+    concurrency: 2,
+  };
+
   const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),

@@ -8,9 +8,11 @@ import * as prompt from "../prompt";
 import * as track from "../track";
 import * as secrets from "../apphosting/secrets";
 import * as utils from "../utils";
+import * as agentSkills from "../agentSkills";
 
 describe("migrate", () => {
   let sandbox: sinon.SinonSandbox;
+  let installSkillsStub: sinon.SinonStub;
   const testRoot = "/test/root";
 
   beforeEach(() => {
@@ -114,6 +116,7 @@ describe("migrate", () => {
         .resolves({ backends: [], unreachable: [] });
 
       commandStub = sandbox.stub(utils, "commandExistsSync").returns(false);
+      commandStub.withArgs("npx").returns(true);
       trackStub = sandbox.stub(track, "trackGA4").resolves();
       confirmStub = sandbox.stub(prompt, "confirm").resolves(true);
       selectStub = sandbox.stub(prompt, "select").resolves("local");
@@ -124,6 +127,7 @@ describe("migrate", () => {
           // No-op for testing
         },
       } as unknown as import("child_process").ChildProcess);
+      installSkillsStub = sandbox.stub(agentSkills, "installAgentSkills").resolves();
     });
 
     it("should fail if the directory does not exist", async () => {
@@ -234,23 +238,13 @@ describe("migrate", () => {
         ),
       ).to.be.true;
 
-      const cp = require("child_process");
       expect(
-        (cp.spawnSync as sinon.SinonStub).calledWith(
-          "npx",
-          [
-            "-y",
-            "skills",
-            "add",
-            "firebase/agent-skills",
-            "-a",
-            "gemini-cli",
-            "--skill",
-            "*",
-            "-y",
-          ],
-          sinon.match.any,
-        ),
+        installSkillsStub.calledWith({
+          cwd: testRoot,
+          global: false,
+          background: false,
+          agentName: "gemini-cli",
+        }),
       ).to.be.true;
     });
 
@@ -395,6 +389,8 @@ describe("migrate", () => {
         throw new Error(`Unexpected readFile: ${pStr}`);
       });
 
+      commandStub.withArgs("npx").returns(false);
+
       await migrate(testRoot);
 
       expect(
@@ -536,24 +532,13 @@ describe("migrate", () => {
 
       await migrate(testRoot);
 
-      const cp = require("child_process");
       expect(
-        (cp.spawnSync as sinon.SinonStub).calledWith(
-          "npx",
-          [
-            "-y",
-            "skills",
-            "add",
-            "firebase/agent-skills",
-            "-a",
-            "gemini-cli",
-            "--skill",
-            "*",
-            "-y",
-            "-g",
-          ],
-          sinon.match.any,
-        ),
+        installSkillsStub.calledWith({
+          cwd: testRoot,
+          global: true,
+          background: false,
+          agentName: "gemini-cli",
+        }),
       ).to.be.true;
     });
 
@@ -739,18 +724,31 @@ describe("migrate", () => {
       expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.true;
     });
 
-    it("should prompt user for Dart MCP server and NOT configure if they decline", async () => {
-      accessStub.withArgs(sinon.match("pubspec.yaml")).resolves();
-      commandStub.withArgs("dart").returns(true);
-      confirmStub
-        .withArgs(sinon.match({ message: sinon.match(/Dart MCP server/) }))
-        .resolves(false);
+    it("should respect non-interactive mode and not prompt", async () => {
+      commandStub.withArgs("agy").returns(true);
+      commandStub.withArgs("npx").returns(true);
 
-      await migrate(testRoot);
+      await migrate(testRoot, { startAntigravity: true, nonInteractive: true });
 
-      const mcpConfigDir = path.join(require("os").homedir(), ".gemini", "antigravity");
-      const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
-      expect(writeFileStub.calledWith(mcpConfigPath, sinon.match(/"dart":/))).to.be.false;
+      // Verify that prompts were called with nonInteractive: true
+      expect(
+        confirmStub.calledWith(
+          sinon.match({ message: sinon.match(/Firebase MCP server/), nonInteractive: true }),
+        ),
+      ).to.be.true;
+      expect(
+        selectStub.calledWith(
+          sinon.match({
+            message: sinon.match(/install Firebase project skills/),
+            nonInteractive: true,
+          }),
+        ),
+      ).to.be.true;
+      expect(
+        confirmStub.calledWith(
+          sinon.match({ message: sinon.match(/open it in Antigravity now/), nonInteractive: true }),
+        ),
+      ).to.be.true;
     });
   });
 
