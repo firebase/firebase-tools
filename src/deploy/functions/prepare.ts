@@ -4,6 +4,7 @@ import * as args from "./args";
 import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
+import * as experiments from "../../experiments";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as functionsConfig from "../../functionsConfig";
 import * as functionsEnv from "../../functions/env";
@@ -497,14 +498,17 @@ export async function loadCodebases(
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
           `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
-          Object.keys(supported.RUNTIMES)
+          (Object.keys(supported.RUNTIMES) as supported.Runtime[])
+            .filter((runtime) => !supported.isDecommissioned(runtime))
             .map((s) => `- ${s}`)
             .join("\n"),
       );
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
     logger.debug(`Validating ${runtimeDelegate.language} source`);
-    supported.guardVersionSupport(runtimeDelegate.runtime);
+    if (!experiments.isEnabled("bypassfunctionsdeprecationcheck")) {
+      supported.guardVersionSupport(runtimeDelegate.runtime);
+    }
     await runtimeDelegate.validate();
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
