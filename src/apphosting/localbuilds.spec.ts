@@ -3,6 +3,7 @@ import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
 import { localBuild } from "./localbuilds";
 import * as secrets from "./secrets";
+import { EnvMap } from "./yaml";
 
 describe("localBuild", () => {
   afterEach(() => {
@@ -69,7 +70,7 @@ describe("localBuild", () => {
     });
     const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
-    const envMap = {
+    const envMap: EnvMap = {
       MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
       MY_RUNTIME_SECRET: { secret: "runtime-only-id", availability: ["RUNTIME"] },
       MY_PLAIN_VAR: { value: "plain-value" },
@@ -103,7 +104,7 @@ describe("localBuild", () => {
     });
     const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
-    const envMap = {
+    const envMap: EnvMap = {
       MY_PLAIN_VAR: { value: "plain-value" },
       ANOTHER_VAR: { value: "another-value" },
     };
