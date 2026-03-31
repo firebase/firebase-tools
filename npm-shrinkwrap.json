@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "15.11.0",
+  "version": "15.12.0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "15.11.0",
+      "version": "15.12.0",
       "license": "MIT",
       "dependencies": {
         "@apphosting/build": "^0.1.7",
@@ -4794,9 +4794,10 @@
       "dev": true
     },
     "node_modules/@tootallnate/once": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz",
-      "integrity": "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==",
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-3.0.1.tgz",
+      "integrity": "sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg==",
+      "license": "MIT",
       "engines": {
         "node": ">= 10"
       }
@@ -24205,7 +24206,7 @@
           "resolved": "https://registry.npmjs.org/http-proxy-agent/-/http-proxy-agent-5.0.0.tgz",
           "integrity": "sha512-n2hY8YdoRE1i7r6M0w9DIw5GgZN0G25P8zLCRQ8rjXtTU3vsNFBI/vWK/UIeE6g5MUUz6avwAPXmL6Fy9D/90w==",
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           },
@@ -25677,9 +25678,9 @@
       }
     },
     "@tootallnate/once": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz",
-      "integrity": "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A=="
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-3.0.1.tgz",
+      "integrity": "sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg=="
     },
     "@tootallnate/quickjs-emscripten": {
       "version": "0.23.0",
@@ -32731,7 +32732,7 @@
           "integrity": "sha512-n2hY8YdoRE1i7r6M0w9DIw5GgZN0G25P8zLCRQ8rjXtTU3vsNFBI/vWK/UIeE6g5MUUz6avwAPXmL6Fy9D/90w==",
           "optional": true,
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           }
@@ -37306,7 +37307,7 @@
           "dev": true,
           "optional": true,
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           }

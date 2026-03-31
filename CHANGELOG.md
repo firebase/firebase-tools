@@ -1,2 +1,1 @@
-- Added a prompt to `firebase init` to install Agent Skills for Firebase.
 - Add validation to check if backendId exists in `firebase.json` when `--only` flag is used. (#10161)
