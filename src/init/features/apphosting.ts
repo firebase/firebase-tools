@@ -122,7 +122,6 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       automaticBaseImageUpdatesDisabled,
     );
 
-
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   }
 
