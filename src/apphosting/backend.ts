@@ -29,9 +29,8 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-import { promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
+import { DEFAULT_RUNTIME, promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
 
-const DEFAULT_RUNTIME = "nodejs";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
