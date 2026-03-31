@@ -31,7 +31,6 @@ import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
 import { DEFAULT_RUNTIME, promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
 
-
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
 const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
@@ -395,7 +394,6 @@ export async function createBackend(
     backendReqBody.runtime = { value: runtime ?? "" };
     backendReqBody.automaticBaseImageUpdatesDisabled = automaticBaseImageUpdatesDisabled;
   }
-
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
