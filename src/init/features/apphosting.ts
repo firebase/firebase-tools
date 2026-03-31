@@ -102,8 +102,6 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
     }
 
-
-
     const createBackendSpinner = ora("Creating your new backend...").start();
     const backend = await createBackend(
       projectId,
