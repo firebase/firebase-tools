@@ -17,7 +17,9 @@ import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled } from "../../gcp/apphosting";
 import { isBillingEnabled } from "../../gcp/cloudbilling";
+import { Options } from "../../options";
 import { input, select } from "../../prompt";
+
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
@@ -27,7 +29,7 @@ const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.ya
 /**
  * Set up an apphosting.yaml file for a new App Hosting project.
  */
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config, options: Options): Promise<void> {
   // Use dynamicImport to bypass Node ESM linkage cycles during mocha test loading.
   const { dynamicImport } = eval("require")("../../dynamicImport");
 
@@ -93,10 +95,18 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
     let automaticBaseImageUpdatesDisabled: boolean | undefined;
 
     const experiments = await dynamicImport("./experiments");
+    const prompts = await dynamicImport("./apphosting/prompts");
+
     if (experiments.isEnabled("abiu")) {
-      const prompts = await dynamicImport("./apphosting/prompts");
-      runtime = await prompts.promptRuntime();
-      automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
+      if (options.nonInteractive) {
+        runtime = prompts.DEFAULT_RUNTIME;
+        automaticBaseImageUpdatesDisabled = false;
+      } else {
+        runtime = await prompts.promptRuntime();
+        automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
+      }
+    } else {
+      runtime = prompts.DEFAULT_RUNTIME;
     }
 
     const createBackendSpinner = ora("Creating your new backend...").start();
@@ -107,10 +117,11 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       /* serviceAccount= */ null,
       /* repository= */ undefined,
       webApp?.id,
-      /* rootDir= */ undefined,
+      /* rootDir= */ "/",
       runtime,
       automaticBaseImageUpdatesDisabled,
     );
+
 
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   }
