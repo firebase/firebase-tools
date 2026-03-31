@@ -388,9 +388,14 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
-    runtime: { value: runtime ?? "" },
-    automaticBaseImageUpdatesDisabled,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+    backendReqBody.automaticBaseImageUpdatesDisabled = automaticBaseImageUpdatesDisabled;
+  }
+
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

@@ -91,23 +91,18 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       utils.logWarning(`Firebase web app not set`);
     }
 
-    let runtime: string | undefined;
-    let automaticBaseImageUpdatesDisabled: boolean | undefined;
-
     const experiments = await dynamicImport("./experiments");
     const prompts = await dynamicImport("./apphosting/prompts");
 
-    if (experiments.isEnabled("abiu")) {
-      if (options.nonInteractive) {
-        runtime = prompts.DEFAULT_RUNTIME;
-        automaticBaseImageUpdatesDisabled = false;
-      } else {
-        runtime = await prompts.promptRuntime();
-        automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
-      }
-    } else {
-      runtime = prompts.DEFAULT_RUNTIME;
+    let runtime = prompts.DEFAULT_RUNTIME;
+    let automaticBaseImageUpdatesDisabled = false;
+
+    if (experiments.isEnabled("abiu") && !options.nonInteractive) {
+      runtime = await prompts.promptRuntime();
+      automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
     }
+
+
 
     const createBackendSpinner = ora("Creating your new backend...").start();
     const backend = await createBackend(
