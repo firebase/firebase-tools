@@ -61,8 +61,18 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
       let abiuStatus = "N/A";
       if (backend.automaticBaseImageUpdatesDisabled !== undefined) {
         abiuStatus = backend.automaticBaseImageUpdatesDisabled ? "Disabled" : "Enabled";
+      } else {
+        // This is a fallback for legacy (pre-ABIU) backends
+        const runtimeValue = backend.runtime?.value ?? "";
+        if (runtimeValue === "" || runtimeValue === "nodejs") {
+          // We know that ABIU is disabled for "" and "nodejs"
+          abiuStatus = "Disabled";
+        } else {
+          abiuStatus = "Enabled";
+        }
       }
       row.push(abiuStatus);
+
       row.push(backend.runtime?.value ?? "N/A");
     }
     row.push(datetimeString(new Date(backend.updateTime)));
