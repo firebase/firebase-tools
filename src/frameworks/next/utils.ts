@@ -257,7 +257,7 @@ export async function isUsingNextImageInAppDirectory(
   if (await isUsingNextImageInServerComponent(projectDir, distDir)) {
     return true;
   }
-  return isUsingNextImageInClientComponent(projectDir, distDir)
+  return isUsingNextImageInClientComponent(projectDir, distDir);
 }
 
 export async function isUsingNextImageInServerComponent(
