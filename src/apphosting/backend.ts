@@ -29,6 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
+import { promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
 
 const DEFAULT_RUNTIME = "nodejs";
 
@@ -134,14 +135,13 @@ export async function doSetup(
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {
-      runtime = await select({
-        message: "Which runtime do you want to use?",
-        choices: [
-          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
-          { name: "Node.js 22", value: "nodejs22" },
-        ],
-        default: DEFAULT_RUNTIME,
-      });
+      runtime = await promptRuntime();
+    }
+  }
+
+  if (automaticBaseImageUpdatesDisabled === undefined && isEnabled("abiu")) {
+    if (!nonInteractive) {
+      automaticBaseImageUpdatesDisabled = !(await promptAutomaticBaseImageUpdates());
     }
   }
 
