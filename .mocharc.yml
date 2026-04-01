@@ -4,7 +4,7 @@ require:
   - src/test/helpers/mocha-bootstrap.ts
 file:
   - src/test/helpers/global-mock-auth.ts
-timeout: 10000
+timeout: 1000
 recursive: true
 node-options:
   - no-experimental-strip-types
