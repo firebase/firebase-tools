@@ -100,6 +100,36 @@ describe("prepare", () => {
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });
 
+    it("should throw and print valid versions in the 'invalid runtime' error message", async () => {
+      const config: ValidatedConfig = [
+        {
+          source: "source",
+          codebase: "codebase",
+          // @ts-expect-error the runtime is intentionally invalid
+          runtime: "does-not-exist",
+        },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await expect(prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig))
+        .to.be.rejectedWith(FirebaseError)
+        .then((error) => {
+          // Should always list latest runtimes
+          expect(error.message).to.include(latest("nodejs"));
+          expect(error.message).to.include(latest("python"));
+
+          // Should never list a decommissioned runtime
+          expect(error.message).to.not.include("nodejs6");
+        });
+    });
+
     it("should pass only firebase config when disallowLegacyRuntimeConfig is true", async () => {
       const config: ValidatedConfig = [
         {
