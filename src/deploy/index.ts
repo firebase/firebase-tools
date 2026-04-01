@@ -21,6 +21,7 @@ import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
+import { Context as FunctionsContext } from "./functions/args";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../utils";
 import { TARGET_PERMISSIONS } from "../commands/deploy";
@@ -198,6 +199,19 @@ export const deploy = async function (
 
   const deployedHosting = includes(targetNames, "hosting");
   logger.info(bold("Project Console:"), consoleUrl(options.project ?? "_", "/overview"));
+
+  // TODO: Remove this temporary Cloud Run link once Dart support lands in the Firebase Console.
+  const fContext = context as FunctionsContext;
+  const hasDartFunctions = Object.values(fContext.codebaseDeployEvents ?? {}).some(
+    (e) => e.runtime && typeof e.runtime === "string" && e.runtime.startsWith("dart"),
+  );
+  if (hasDartFunctions && projectId) {
+    logger.info(
+      bold("Cloud Run services:"),
+      `https://console.cloud.google.com/run/services?project=${projectId}`,
+    );
+  }
+
   if (deployedHosting) {
     each(context.hosting?.deploys, (deploy) => {
       logger.info(bold("Hosting URL:"), addSubdomain(hostingOrigin(), deploy.config.site));
