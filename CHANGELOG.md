@@ -1,0 +1,1 @@
+- Add validation to check if backendId exists in `firebase.json` when `--only` flag is used. (#10161)

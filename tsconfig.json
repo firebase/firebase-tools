@@ -7,6 +7,7 @@
     "outDir": "lib",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
+    "incremental": true,
     "target": "es2020",
     "resolveJsonModule": true,
     "sourceMap": true,
