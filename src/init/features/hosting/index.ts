@@ -1,30 +1,92 @@
 import * as clc from "colorette";
-import { rmSync } from "node:fs";
 import { join } from "path";
-
 import { Client } from "../../../apiv2";
-import { initGitHub } from "./github";
-import { confirm, input, select } from "../../../prompt";
-import { logger } from "../../../logger";
 import { discover, WebFrameworks } from "../../../frameworks";
-import { ALLOWED_SSR_REGIONS, DEFAULT_REGION } from "../../../frameworks/constants";
-import * as experiments from "../../../experiments";
+import * as github from "./github";
+import { confirm, input } from "../../../prompt";
+import { logger } from "../../../logger";
 import { errNoDefaultSite, getDefaultHostingSite } from "../../../getDefaultHostingSite";
 import { Options } from "../../../options";
-import { last, logSuccess } from "../../../utils";
-import { interactiveCreateHostingSite } from "../../../hosting/interactive";
+import { logSuccess } from "../../../utils";
+import { pickHostingSiteName } from "../../../hosting/interactive";
 import { readTemplateSync } from "../../../templates";
+import { FirebaseError } from "../../../error";
+import { Setup } from "../..";
+import { Config } from "../../../config";
+import { createSite } from "../../../hosting/api";
 
 const INDEX_TEMPLATE = readTemplateSync("init/hosting/index.html");
 const MISSING_TEMPLATE = readTemplateSync("init/hosting/404.html");
 const DEFAULT_IGNORES = ["firebase.json", "**/.*", "**/node_modules/**"];
 
-/**
- * Does the setup steps for Firebase Hosting.
- * WARNING: #6527 - `options` may not have all the things you think it does.
- */
-export async function doSetup(setup: any, config: any, options: Options): Promise<void> {
-  setup.hosting = {};
+export interface RequiredInfo {
+  redirectToAppHosting?: boolean;
+  newSiteId?: string;
+  public?: string;
+  spa?: boolean;
+}
+
+// TODO: come up with a better way to type this
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
+  const discoveredFramework = await discover(config.projectDir, false);
+  if (discoveredFramework && discoveredFramework.mayWantBackend) {
+    const frameworkName =
+      WebFrameworks[discoveredFramework.framework]?.name ?? discoveredFramework.framework;
+
+    switch (discoveredFramework.framework) {
+      case "next":
+      case "angular":
+      case "nuxt":
+      case "nuxt2":
+      case "express":
+      // "svelekit" should not be removed unless it's confirmed to not cause breakages.
+      case "svelekit":
+      case "sveltekit":
+        logger.info();
+        const useAppHosting = await confirm({
+          message:
+            `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps. Would ` +
+            `you like to use App Hosting instead? Learn more here: ` +
+            `https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+          default: true,
+        });
+        if (useAppHosting) {
+          setup.featureInfo ||= {};
+          setup.featureInfo.hosting = { redirectToAppHosting: true };
+          setup.features?.unshift("apphosting");
+          return;
+        }
+        break;
+
+      default:
+        logger.info();
+        logger.info(
+          `Detected a ${frameworkName} codebase with SSR features. We can't guarantee that ` +
+            `this site will work on Firebase Hosting, which is optimized for static sites. Another ` +
+            `product, Firebase App Hosting, was designed for SSR web apps.`,
+        );
+        logger.info(
+          `Learn about App Hosting here: https://firebase.google.com/docs/app-hosting/product-comparison#hostings`,
+        );
+        logger.info(
+          `Learn how to deploy frameworks with App Hosting here: https://firebase.blog/posts/2025/06/app-hosting-frameworks/`,
+        );
+        const continueWithHosting = await confirm({
+          message: `Would you like to continue setting up Firebase Hosting?`,
+          default: false,
+        });
+        if (!continueWithHosting) {
+          throw new FirebaseError("Hosting initialization cancelled.", { exit: 1 });
+        }
+        break;
+    }
+  }
+
+  setup.featureInfo = setup.featureInfo || {};
+  setup.featureInfo.hosting = {};
 
   // There's a path where we can set up Hosting without a project, so if
   // if setup.projectId is empty, we don't do any checking for a Hosting site.
@@ -39,155 +101,88 @@ export async function doSetup(setup: any, config: any, options: Options): Promis
       hasHostingSite = false;
     }
 
-    if (!hasHostingSite) {
-      // N.B. During prompt migration this did not pass options object, so there is no support
-      // for force or nonInteractive; there possibly should be.
-      const confirmCreate = await confirm({
+    if (
+      !hasHostingSite &&
+      (await confirm({
         message: "A Firebase Hosting site is required to deploy. Would you like to create one now?",
         default: true,
-      });
-      if (confirmCreate) {
-        const createOptions = {
-          projectId: setup.projectId,
-          nonInteractive: options.nonInteractive,
-        };
-        const newSite = await interactiveCreateHostingSite("", "", createOptions);
-        logger.info();
-        logSuccess(`Firebase Hosting site ${last(newSite.name.split("/"))} created!`);
-        logger.info();
-      }
+      }))
+    ) {
+      const createOptions = {
+        projectId: setup.projectId,
+        nonInteractive: options.nonInteractive,
+      };
+      setup.featureInfo.hosting.newSiteId = await pickHostingSiteName("", createOptions);
     }
   }
 
-  let discoveredFramework = experiments.isEnabled("webframeworks")
-    ? await discover(config.projectDir, false)
-    : undefined;
+  logger.info();
+  logger.info(
+    `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`,
+  );
+  logger.info(
+    `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`,
+  );
+  logger.info("have a build process for your assets, use your build's output directory.");
+  logger.info();
 
-  if (experiments.isEnabled("webframeworks")) {
-    if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework ??= await confirm({
-        message: `Detected an existing ${name} codebase in the current directory, should we use this?`,
-        default: true,
-      });
-    }
-    if (setup.hosting.useDiscoveredFramework) {
-      setup.hosting.source = ".";
-      setup.hosting.useWebFrameworks = true;
-    } else {
-      setup.hosting.useWebFrameworks = await confirm(
-        `Do you want to use a web framework? (${clc.bold("experimental")})`,
-      );
-    }
+  setup.featureInfo.hosting.public ??= await input({
+    message: "What do you want to use as your public directory?",
+    default: "public",
+  });
+  setup.featureInfo.hosting.spa ??= await confirm(
+    "Configure as a single-page app (rewrite all urls to /index.html)?",
+  );
+
+  // GitHub Action set up is still structured as doSetup
+  if (await confirm("Set up automatic builds and deploys with GitHub?")) {
+    return github.initGitHub(setup);
+  }
+}
+
+// TODO: come up with a better way to type this
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function actuate(setup: Setup, config: Config, options: Options): Promise<void> {
+  const hostingInfo = setup.featureInfo?.hosting;
+  if (!hostingInfo) {
+    throw new FirebaseError(
+      "Could not find hosting info in setup.featureInfo.hosting. This should not happen.",
+      { exit: 2 },
+    );
   }
 
-  if (setup.hosting.useWebFrameworks) {
-    setup.hosting.source ??= await input({
-      message: "What folder would you like to use for your web application's root directory?",
-      default: "hosting",
-    });
+  if (hostingInfo.redirectToAppHosting) {
+    return;
+  }
 
-    if (setup.hosting.source !== ".") delete setup.hosting.useDiscoveredFramework;
-    discoveredFramework = await discover(join(config.projectDir, setup.hosting.source));
+  if (hostingInfo.newSiteId && setup.projectId) {
+    await createSite(setup.projectId, hostingInfo.newSiteId);
+    logger.info();
+    logSuccess(`Firebase Hosting site ${hostingInfo.newSiteId} created!`);
+    logger.info();
+  }
 
-    if (discoveredFramework) {
-      const name = WebFrameworks[discoveredFramework.framework].name;
-      setup.hosting.useDiscoveredFramework ??= await confirm({
-        message: `Detected an existing ${name} codebase in ${setup.hosting.source}, should we use this?`,
-        default: true,
-      });
-    }
+  setup.config.hosting = {
+    public: hostingInfo.public,
+    ignore: DEFAULT_IGNORES,
+  };
 
-    if (setup.hosting.useDiscoveredFramework && discoveredFramework) {
-      setup.hosting.webFramework = discoveredFramework.framework;
-    } else {
-      const choices: { name: string; value: string }[] = [];
-      for (const value in WebFrameworks) {
-        if (WebFrameworks[value]) {
-          const { name, init } = WebFrameworks[value];
-          if (init) choices.push({ name, value });
-        }
-      }
-
-      const defaultChoice = choices.find(
-        ({ value }) => value === discoveredFramework?.framework,
-      )?.value;
-
-      setup.hosting.whichFramework =
-        setup.hosting.whichFramework ||
-        (await select({
-          message: "Please choose the framework:",
-          default: defaultChoice,
-          choices,
-        }));
-
-      if (discoveredFramework) rmSync(setup.hosting.source, { recursive: true });
-      await WebFrameworks[setup.hosting.whichFramework].init!(setup, config);
-    }
-
-    setup.hosting.region =
-      setup.hosting.region ||
-      (await select({
-        message: "In which region would you like to host server-side content, if applicable?",
-        default: DEFAULT_REGION,
-        choices: ALLOWED_SSR_REGIONS.filter((region) => region.recommended),
-      }));
-
-    setup.config.hosting = {
-      source: setup.hosting.source,
-      // TODO swap out for framework ignores
-      ignore: DEFAULT_IGNORES,
-      frameworksBackend: {
-        region: setup.hosting.region,
-      },
-    };
+  if (hostingInfo.spa) {
+    setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
   } else {
-    logger.info();
-    logger.info(
-      `Your ${clc.bold("public")} directory is the folder (relative to your project directory) that`,
-    );
-    logger.info(
-      `will contain Hosting assets to be uploaded with ${clc.bold("firebase deploy")}. If you`,
-    );
-    logger.info("have a build process for your assets, use your build's output directory.");
-    logger.info();
-
-    setup.hosting.public =
-      setup.hosting.public ||
-      (await input({
-        message: "What do you want to use as your public directory?",
-        default: "public",
-      }));
-    setup.hosting.spa =
-      setup.hosting.spa ||
-      (await confirm("Configure as a single-page app (rewrite all urls to /index.html)?"));
-
-    setup.config.hosting = {
-      public: setup.hosting.public,
-      ignore: DEFAULT_IGNORES,
-    };
-  }
-
-  setup.hosting.github =
-    setup.hosting.github || (await confirm("Set up automatic builds and deploys with GitHub?"));
-
-  if (!setup.hosting.useWebFrameworks) {
-    if (setup.hosting.spa) {
-      setup.config.hosting.rewrites = [{ source: "**", destination: "/index.html" }];
-    } else {
-      // SPA doesn't need a 404 page since everything is index.html
-      await config.askWriteProjectFile(`${setup.hosting.public}/404.html`, MISSING_TEMPLATE);
-    }
-
-    const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
-    const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
+    // SPA doesn't need a 404 page since everything is index.html
     await config.askWriteProjectFile(
-      `${setup.hosting.public}/index.html`,
-      INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
+      join(hostingInfo.public ?? "public", "404.html"),
+      MISSING_TEMPLATE,
+      !!options.force,
     );
   }
 
-  if (setup.hosting.github) {
-    return initGitHub(setup);
-  }
+  const c = new Client({ urlPrefix: "https://www.gstatic.com", auth: false });
+  const response = await c.get<{ current: { version: string } }>("/firebasejs/releases.json");
+  await config.askWriteProjectFile(
+    join(hostingInfo.public ?? "public", "index.html"),
+    INDEX_TEMPLATE.replace(/{{VERSION}}/g, response.body.current.version),
+    !!options.force,
+  );
 }

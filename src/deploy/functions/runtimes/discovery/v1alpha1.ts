@@ -40,6 +40,7 @@ type WireEventTrigger = build.EventTrigger & {
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
+  Partial<build.DataConnectGraphqlTriggered> &
   Partial<build.CallableTriggered> &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
@@ -55,8 +56,13 @@ export type WireEndpoint = build.Triggered &
     maxInstances?: build.Field<number>;
     minInstances?: build.Field<number>;
     vpc?: {
-      connector: string;
+      connector?: string;
       egressSettings?: build.VpcEgressSetting | null;
+      networkInterfaces?: Array<{
+        network?: string | null;
+        subnetwork?: string | null;
+        tags?: Array<string> | null;
+      }> | null;
     } | null;
     ingressSettings?: build.IngressSetting | null;
     serviceAccount?: build.Field<string>;
@@ -69,6 +75,9 @@ export type WireEndpoint = build.Triggered &
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export type WireExtension = {
@@ -158,22 +167,39 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
+    dataConnectGraphqlTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
+    baseImageUri: "string?",
+    command: "array?",
+    args: "array?",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
-      connector: "string",
+      connector: "string?",
       egressSettings: (setting) => setting === null || build.AllVpcEgressSettings.includes(setting),
+      networkInterfaces: "array?",
     });
-    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+    if (!ep.vpc.connector && !ep.vpc.networkInterfaces) {
+      throw new FirebaseError(
+        `VPC settings on ${id} must specify either 'connector' or 'networkInterfaces'`,
+      );
+    }
+    if (ep.vpc.connector && ep.vpc.networkInterfaces) {
+      throw new FirebaseError(
+        `VPC settings on ${id} cannot specify both 'connector' and 'networkInterfaces'`,
+      );
+    }
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.dataConnectGraphqlTrigger) {
     triggerCount++;
   }
   if (ep.callableTrigger) {
@@ -212,6 +238,11 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
       invoker: "array?",
+    });
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    assertKeyTypes(prefix + ".dataConnectGraphqlTrigger", ep.dataConnectGraphqlTrigger, {
+      invoker: "array?",
+      schemaFilePath: "string?",
     });
   } else if (build.isCallableTriggered(ep)) {
     assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
@@ -311,6 +342,14 @@ function parseEndpointForBuild(
   } else if (build.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    triggered = { dataConnectGraphqlTrigger: {} };
+    copyIfPresent(triggered.dataConnectGraphqlTrigger, ep.dataConnectGraphqlTrigger, "invoker");
+    copyIfPresent(
+      triggered.dataConnectGraphqlTrigger,
+      ep.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
     copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
@@ -432,6 +471,9 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables",
     "serviceAccount",
+    "baseImageUri",
+    "command",
+    "args",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

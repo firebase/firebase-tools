@@ -8,6 +8,7 @@ import { fetchServiceLogs } from "../../../gcp/run";
 import { listEntries } from "../../../gcp/cloudlogging";
 
 export const fetch_logs = tool(
+  "apphosting",
   {
     name: "fetch_logs",
     description:

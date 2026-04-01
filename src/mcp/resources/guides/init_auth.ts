@@ -19,8 +19,25 @@ export const init_auth = resource(
 
 **Permission & Setup:**
 - Request developer permission before implementing sign-up and login features
-- Guide developers to enable authentication providers (Email/Password, Google Sign-in, etc.) in the [Firebase Auth Console](https://console.firebase.google.com/)
-- Ask developers to confirm which authentication method they selected before proceeding
+- Configure authentication providers in \`firebase.json\`:
+  \`\`\`json
+  {
+    "auth": {
+      "providers": {
+        "emailPassword": true,
+        "googleSignIn": {
+          "oAuthBrandDisplayName": "My App",
+          "supportEmail": "support@example.com",
+          "authorizedRedirectUris": [
+            "https://example-website.com",
+            "http://localhost:4000"
+          ]
+        }
+      }
+    }
+  }
+  \`\`\`
+- Run \`firebase deploy --only auth\` to enable the configured providers
 
 **Implementation:**
 - Create sign-up and login pages using Firebase Authentication

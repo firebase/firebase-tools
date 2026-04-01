@@ -8,6 +8,8 @@ import { ensureDatabaseTriggerRegion } from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
 import { ensureFirestoreTriggerRegion } from "./firestore";
+import { ensureDataConnectTriggerRegion } from "./dataconnect";
+import { AILogicService } from "./ailogic";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -25,7 +27,9 @@ export type Name =
   | "database"
   | "remoteconfig"
   | "testlab"
-  | "firestore";
+  | "firestore"
+  | "dataconnect"
+  | "ailogic";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -85,6 +89,7 @@ const firebaseAlertsService: Service = {
 
 /** A auth blocking service object */
 const authBlockingService = new AuthBlockingService();
+const aiLogicService = new AILogicService();
 
 /** A database service object */
 const databaseService: Service = {
@@ -130,7 +135,19 @@ const firestoreService: Service = {
   unregisterTrigger: noop,
 };
 
+/** A Firebase Data Connect service object */
+const dataconnectService: Service = {
+  name: "dataconnect",
+  api: "firebasedataconnect.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureDataConnectTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+};
+
 /** Mapping from event type string to service object */
+// TODO: See if there's a way to deduplicate these consts while still ensuring type safety and exhaustion
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
   "google.cloud.storage.object.v1.finalized": storageService,
@@ -156,6 +173,9 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.firestore.document.v1.created.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.updated.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.deleted.withAuthContext": firestoreService,
+  "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
+  "firebase.vertexai.v1beta.beforeGenerateContent": aiLogicService,
+  "firebase.vertexai.v1beta.afterGenerateContent": aiLogicService,
 };
 
 /**

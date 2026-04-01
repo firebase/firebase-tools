@@ -36,7 +36,7 @@ export function init(setup: any, config: any) {
       `--project-name=${projectName}`,
       "--overwrite",
       "--platforms=web",
-      setup.hosting.source,
+      setup.featureInfo.hosting.source,
     ],
     { stdio: "inherit", cwd: config.projectDir },
   );

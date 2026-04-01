@@ -75,12 +75,14 @@ if [[ $VERSION == "preview" ]]; then
 fi
 echo "Cloned repository."
 
-echo "Making sure there is a changelog..."
-if [ ! -s CHANGELOG.md ]; then
-  echo "CHANGELOG.md is empty. aborting."
-  exit 1
+if [[ $VERSION != "preview" ]]; then
+  echo "Making sure there is a changelog..."
+  if [ ! -s CHANGELOG.md ]; then
+    echo "CHANGELOG.md is empty. aborting."
+    exit 1
+  fi
+  echo "Made sure there is a changelog."
 fi
-echo "Made sure there is a changelog."
 
 echo "Running npm install..."
 npm install
@@ -98,9 +100,16 @@ if [[ $VERSION == "preview" ]]; then
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
+  git diff
+  npm -v
   npm version $VERSION
   NEW_VERSION=$(jq -r ".version" package.json)
   echo "Made a $VERSION version."
+fi
+
+if [[ -d "/workspace" ]]; then
+  echo "Writing version number to /workspace/version_number.txt"
+  echo "$NEW_VERSION" > /workspace/version_number.txt
 fi
 
 echo "Making the release notes..."
@@ -111,14 +120,21 @@ echo "" >> "${RELEASE_NOTES_FILE}"
 cat CHANGELOG.md >> "${RELEASE_NOTES_FILE}"
 echo "Made the release notes."
 
-echo "Publishing to npm..."
-npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
-echo "Published to npm."
+
 
 if [[ $VERSION != "preview" ]]; then
+  echo "Publishing to npm..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh
+  echo "Published to npm."
+
   echo "Updating package-lock.json for Docker image..."
   npm --prefix ./scripts/publish/firebase-docker-image install
   echo "Updated package-lock.json for Docker image."
+
+
+  echo "Updating server.json for MCP registry..."
+  . ./scripts/update-server-json-version.sh $NEW_VERSION
+  echo "Updated server.json for MCP registry."
 
   echo "Cleaning up release notes..."
   rm CHANGELOG.md
@@ -127,10 +143,14 @@ if [[ $VERSION != "preview" ]]; then
   echo "Cleaned up release notes."
 
   echo "Pushing to GitHub..."
-  git push origin master --tags
+  git push origin main --tags
   echo "Pushed to GitHub."
 
-  echo "Publishing release notes..."
-  hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
-  echo "Published release notes."
+  echo "Publishing draft release notes..."
+  hub release create --draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+  echo "Published draft release notes."
+else
+  echo "Publishing preview version to npm..."
+  npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview
+  echo "Published preview version to npm."
 fi

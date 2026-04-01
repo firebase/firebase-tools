@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 import { format } from "sql-formatter";
 
-import { IncompatibleSqlSchemaError, Diff, SCHEMA_ID, SchemaValidation } from "./types";
+import { IncompatibleSqlSchemaError, Diff, MAIN_SCHEMA_ID, SchemaValidation } from "./types";
 import { getSchema, upsertSchema, deleteConnector } from "./client";
 import {
   getIAMUser,
@@ -21,6 +21,7 @@ import { DEFAULT_SCHEMA, firebaseowner } from "../gcp/cloudsql/permissions";
 import { select, confirm } from "../prompt";
 import { logger } from "../logger";
 import { Schema } from "./types";
+import { DeployStats } from "../deploy/dataconnect/context";
 import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
@@ -29,15 +30,17 @@ import * as cloudSqlAdminClient from "../gcp/cloudsql/cloudsqladmin";
 import * as errors from "./errors";
 import { cloudSQLBeingCreated } from "./provisionCloudSql";
 import { requireAuth } from "../requireAuth";
+import { checkBillingEnabled } from "../gcp/cloudbilling";
 
 async function setupSchemaIfNecessary(
   instanceId: string,
   databaseId: string,
+  schemaName: string,
   options: Options,
 ): Promise<SchemaSetupStatus.GreenField | SchemaSetupStatus.BrownField> {
   try {
     await setupIAMUsers(instanceId, options);
-    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, schemaName, options);
     switch (schemaInfo.setupStatus) {
       case SchemaSetupStatus.BrownField:
       case SchemaSetupStatus.GreenField:
@@ -75,12 +78,13 @@ export async function diffSchema(
   setSchemaValidationMode(schema, validationMode);
   displayStartSchemaDiff(validationMode);
 
-  const { serviceName, instanceName, databaseId, instanceId } = getIdentifiers(schema);
+  const { serviceName, instanceName, databaseId, instanceId, schemaName } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
     databaseId,
     /* linkIfNotConnected=*/ false,
+    schemaName,
   );
 
   let incompatible: IncompatibleSqlSchemaError | undefined = undefined;
@@ -150,8 +154,9 @@ export async function migrateSchema(args: {
   /** true for `dataconnect:sql:migrate`, false for `deploy` */
   validateOnly: boolean;
   schemaValidation?: SchemaValidation;
+  stats?: DeployStats;
 }): Promise<Diff[]> {
-  const { options, schema, validateOnly, schemaValidation } = args;
+  const { options, schema, validateOnly, schemaValidation, stats } = args;
 
   // If the schema validation mode is unset, we prompt COMPATIBLE SQL diffs and then STRICT diffs.
   let validationMode: SchemaValidation = schemaValidation ?? "COMPATIBLE";
@@ -159,21 +164,25 @@ export async function migrateSchema(args: {
   displayStartSchemaDiff(validationMode);
 
   const projectId = needProjectId(options);
-  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  const { serviceName, instanceId, instanceName, databaseId, schemaName } = getIdentifiers(schema);
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
     databaseId,
     /* linkIfNotConnected=*/ true,
+    schemaName,
   );
 
   // Check if Cloud SQL instance is still being created.
   const existingInstance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
   if (existingInstance.state === "PENDING_CREATE") {
+    if (stats) {
+      stats.numSchemaSkippedDueToPendingCreate++;
+    }
     const postgresql = schema.datasources.find((d) => d.postgresql)?.postgresql;
     if (!postgresql) {
       throw new FirebaseError(
-        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
+        `Cannot find Postgres datasource in the schema to deploy: ${serviceName}/schemas/${MAIN_SCHEMA_ID}.\nIts datasources: ${JSON.stringify(schema.datasources)}`,
       );
     }
     postgresql.schemaValidation = "NONE";
@@ -190,7 +199,7 @@ export async function migrateSchema(args: {
   }
 
   // Make sure database is setup.
-  await setupSchemaIfNecessary(instanceId, databaseId, options);
+  await setupSchemaIfNecessary(instanceId, databaseId, schemaName, options);
 
   let diffs: Diff[] = [];
   try {
@@ -210,6 +219,14 @@ export async function migrateSchema(args: {
         throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
       }
       throw err;
+    }
+    if (stats) {
+      if (incompatible) {
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
+      }
+      if (invalidConnectors.length) {
+        stats.numSchemaInvalidConnectors += invalidConnectors.length;
+      }
     }
 
     const migrationMode = await promptForSchemaMigration(
@@ -233,6 +250,7 @@ export async function migrateSchema(args: {
         options,
         databaseId,
         instanceId,
+        schemaName,
         incompatibleSchemaError: incompatible,
         choice: migrationMode,
       });
@@ -259,10 +277,12 @@ export async function migrateSchema(args: {
       }
       // Parse and handle failed precondition errors, then retry.
       const incompatible = errors.getIncompatibleSchemaError(err);
-      const invalidConnectors = errors.getInvalidConnectors(err);
-      if (!incompatible && !invalidConnectors.length) {
+      if (!incompatible) {
         // If we got a different type of error, throw it
         throw err;
+      }
+      if (stats && incompatible) {
+        stats.numSchemaSqlDiffs += incompatible.diffs.length;
       }
 
       const migrationMode = await promptForSchemaMigration(
@@ -279,6 +299,7 @@ export async function migrateSchema(args: {
           options,
           databaseId,
           instanceId,
+          schemaName,
           incompatibleSchemaError: incompatible,
           choice: migrationMode,
         });
@@ -289,21 +310,67 @@ export async function migrateSchema(args: {
   return diffs;
 }
 
+/** Upsert a secondary schema, handling invalid connector errors. */
+export async function upsertSecondarySchema(args: {
+  options: Options;
+  schema: Schema;
+  stats?: DeployStats;
+}): Promise<void> {
+  const { options, schema, stats } = args;
+  const serviceName = serviceNameFromSchema(schema);
+  try {
+    await upsertSchema(schema, false);
+  } catch (err: any) {
+    if (err?.status !== 400) {
+      throw err;
+    }
+    const invalidConnectors = errors.getInvalidConnectors(err);
+    if (!invalidConnectors.length) {
+      // If we got a different type of error, throw it
+      const gqlErrs = errors.getGQLErrors(err);
+      if (gqlErrs) {
+        throw new FirebaseError(`There are errors in your schema files:\n${gqlErrs}`);
+      }
+      throw err;
+    }
+    if (stats) {
+      stats.numSchemaInvalidConnectors += invalidConnectors.length;
+    }
+    const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
+      options,
+      serviceName,
+      invalidConnectors,
+      false,
+    );
+    if (shouldDeleteInvalidConnectors) {
+      await deleteInvalidConnectors(invalidConnectors);
+    }
+    // Then, try to upsert schema again. If there still is an error, just throw it now
+    await upsertSchema(schema, false);
+  }
+}
+
 export async function grantRoleToUserInSchema(options: Options, schema: Schema) {
   const role = options.role as string;
   const email = options.email as string;
 
-  const { serviceName, instanceId, instanceName, databaseId } = getIdentifiers(schema);
+  const { serviceName, instanceId, instanceName, databaseId, schemaName } = getIdentifiers(schema);
 
   await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
     databaseId,
     /* linkIfNotConnected=*/ false,
+    schemaName,
   );
 
   // Make sure we have the right setup for the requested role grant.
-  const schemaSetupStatus = await setupSchemaIfNecessary(instanceId, databaseId, options);
+  const schemaSetupStatus = await setupSchemaIfNecessary(
+    instanceId,
+    databaseId,
+    schemaName,
+    options,
+  );
 
   // Edge case: we can't grant firebase owner unless database is greenfield.
   if (schemaSetupStatus !== SchemaSetupStatus.GreenField && role === "owner") {
@@ -313,7 +380,7 @@ export async function grantRoleToUserInSchema(options: Options, schema: Schema) 
   }
 
   // Grant the role to the user.
-  await grantRoleTo(options, instanceId, databaseId, role, email);
+  await grantRoleTo(options, instanceId, databaseId, role, email, schemaName);
 }
 
 function diffsEqual(x: Diff[], y: Diff[]): boolean {
@@ -343,6 +410,7 @@ export function getIdentifiers(schema: Schema): {
   instanceName: string;
   instanceId: string;
   databaseId: string;
+  schemaName: string;
   serviceName: string;
 } {
   const postgresDatasource = schema.datasources.find((d) => d.postgresql);
@@ -359,13 +427,21 @@ export function getIdentifiers(schema: Schema): {
     );
   }
   const instanceId = instanceName.split("/").pop()!;
-  const serviceName = schema.name.replace(`/schemas/${SCHEMA_ID}`, "");
+  const schemaName = postgresDatasource?.postgresql?.schema || DEFAULT_SCHEMA;
+  const serviceName = serviceNameFromSchema(schema);
   return {
     databaseId,
     instanceId,
     instanceName,
+    schemaName,
     serviceName,
   };
+}
+
+/** Extracts the service name from the schema name. */
+export function serviceNameFromSchema(schema: Schema): string {
+  const regex = /\/schemas\/[^/]*$/;
+  return schema.name.replace(regex, "");
 }
 
 function suggestedCommand(serviceName: string, invalidConnectorNames: string[]): string {
@@ -380,9 +456,10 @@ async function handleIncompatibleSchemaError(args: {
   options: Options;
   instanceId: string;
   databaseId: string;
+  schemaName: string;
   choice: "all" | "safe" | "none";
 }): Promise<Diff[]> {
-  const { incompatibleSchemaError, options, instanceId, databaseId, choice } = args;
+  const { incompatibleSchemaError, options, instanceId, databaseId, schemaName, choice } = args;
   const commandsToExecute = incompatibleSchemaError.diffs.filter((d) => {
     switch (choice) {
       case "all":
@@ -405,7 +482,7 @@ async function handleIncompatibleSchemaError(args: {
         ${diffsToString(commandsToExecuteBySuperUser)}`);
     }
 
-    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, schemaName, options);
     if (schemaInfo.setupStatus !== SchemaSetupStatus.GreenField) {
       throw new FirebaseError(
         `Brownfield database are protected from SQL changes by Data Connect.\n` +
@@ -420,7 +497,7 @@ async function handleIncompatibleSchemaError(args: {
         options,
         instanceId,
         databaseId,
-        firebaseowner(databaseId),
+        firebaseowner(databaseId, schemaName),
         (await getIAMUser(options)).user,
       ))
     ) {
@@ -431,7 +508,7 @@ async function handleIncompatibleSchemaError(args: {
       }
       const account = (await requireAuth(options))!;
       logLabeledBullet("dataconnect", `Granting firebaseowner role to myself ${account}...`);
-      await grantRoleTo(options, instanceId, databaseId, "owner", account);
+      await grantRoleTo(options, instanceId, databaseId, "owner", account, schemaName);
     }
 
     if (commandsToExecuteBySuperUser.length) {
@@ -450,7 +527,10 @@ async function handleIncompatibleSchemaError(args: {
         options,
         instanceId,
         databaseId,
-        [`SET ROLE "${firebaseowner(databaseId)}"`, ...commandsToExecuteByOwner.map((d) => d.sql)],
+        [
+          `SET ROLE "${firebaseowner(databaseId, schemaName)}"`,
+          ...commandsToExecuteByOwner.map((d) => d.sql),
+        ],
         /** silent=*/ false,
       );
       return incompatibleSchemaError.diffs;
@@ -583,6 +663,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   instanceName: string,
   databaseId: string,
   linkIfNotConnected: boolean,
+  schemaName?: string,
 ): Promise<void> {
   let currentSchema = await getSchema(serviceName);
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
@@ -597,8 +678,18 @@ export async function ensureServiceIsConnectedToCloudSql(
     // Error out early because if the next `UpdateSchema` request will get queued until Cloud SQL is created.
     const [, , , , , serviceId] = serviceName.split("/");
     const [, projectId, , , , instanceId] = postgresql.cloudSql.instance.split("/");
+    let isFreeTrial = false;
+    let billingEnabled = false;
+    try {
+      const instance = await cloudSqlAdminClient.getInstance(projectId, instanceId);
+      isFreeTrial = instance.settings?.userLabels?.["firebase-data-connect"] === "ft";
+      billingEnabled = await checkBillingEnabled(projectId);
+    } catch (err: any) {
+      // Ignore errors when fetching instance details for the error message
+    }
     throw new FirebaseError(
-      `While checking the service ${serviceId}, ` + cloudSQLBeingCreated(projectId, instanceId),
+      `While checking the service ${serviceId}, ` +
+        cloudSQLBeingCreated(projectId, instanceId, isFreeTrial, billingEnabled),
     );
   }
   if (!currentSchema || !postgresql) {
@@ -611,7 +702,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     logLabeledBullet("dataconnect", `Linking the Cloud SQL instance...`);
     // If no schema has been deployed yet, deploy an empty one to get connectivity.
     currentSchema = {
-      name: `${serviceName}/schemas/${SCHEMA_ID}`,
+      name: `${serviceName}/schemas/${MAIN_SCHEMA_ID}`,
       source: {
         files: [],
       },
@@ -648,6 +739,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   try {
     postgresql.schemaValidation = "STRICT";
     postgresql.database = databaseId;
+    postgresql.schema = schemaName;
     postgresql.cloudSql = { instance: instanceName };
     await upsertSchema(currentSchema, /** validateOnly=*/ false);
   } catch (err: any) {

@@ -132,7 +132,7 @@ export function parseFunctionSelector(
  *
  * We process the input as follows:
  *
- *   "functions:abc": Filter function w/ id "abc" in the default codebase OR all functions in the "func" codebase.
+ *   "functions:abc": Filter function w/ id "abc" in the default codebase OR all functions in the "abc" codebase.
  *   "functions:g1-gfn": Filter function w/ id "gfn" in function group g1 OR all functions in the "g1.gfn" codebase.
  *   "hosting": Ignored.
  *   "functions:python:another-func": Filter function w/ id "another-func" in "python" codebase.
@@ -142,13 +142,14 @@ export function parseFunctionSelector(
  *     2) Grouped functions w/ "abc" prefix in the default codebase?
  *     3) All functions in the "abc" codebase?
  *
- *   Current implementation creates filters that match against all conditions.
+ *   If config is provided and "abc" matches a codebase name, we assume it's a codebase selector.
+ *   Otherwise, we create filters that match against all conditions.
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
 export function getEndpointFilters(
   options: { only?: string },
-  config?: ValidatedConfig,
+  config: ValidatedConfig,
 ): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;

@@ -298,8 +298,7 @@ export async function startAll(
   const deprecationNotices: string[] = [];
   if (targets.some(requiresJava)) {
     if ((await commandUtils.checkJavaMajorVersion()) < MIN_SUPPORTED_JAVA_MAJOR_VERSION) {
-      utils.logLabeledError("emulators", JAVA_DEPRECATION_WARNING, "warn");
-      deprecationNotices.push(JAVA_DEPRECATION_WARNING);
+      throw new FirebaseError(JAVA_DEPRECATION_WARNING);
     }
   }
   if (options.logVerbosity) {
@@ -1136,7 +1135,8 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
 
   utils.logBullet(`Exporting data to: ${exportAbsPath}`);
   try {
-    await hubClient.postExport({ path: exportAbsPath, initiatedBy });
+    const targets = filterEmulatorTargets(options);
+    await hubClient.postExport({ path: exportAbsPath, initiatedBy, targets });
   } catch (e: any) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,

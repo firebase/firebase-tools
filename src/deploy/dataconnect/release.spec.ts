@@ -9,17 +9,20 @@ import * as prompts from "../../dataconnect/prompts";
 import { logger } from "../../logger";
 import * as poller from "../../operation-poller";
 import { dataconnectOrigin } from "../../api";
+import { initDeployStats } from "./context";
 
 describe("dataconnect release", () => {
   let sandbox: sinon.SinonSandbox;
   let migrateSchemaStub: sinon.SinonStub;
   let promptDeleteConnectorStub: sinon.SinonStub;
+  let promptDeleteSchemaStub: sinon.SinonStub;
   let pollOperationStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
     migrateSchemaStub = sandbox.stub(schemaMigration, "migrateSchema").resolves();
     promptDeleteConnectorStub = sandbox.stub(prompts, "promptDeleteConnector").resolves();
+    promptDeleteSchemaStub = sandbox.stub(prompts, "promptDeleteSchema").resolves();
     sandbox.stub(projectUtils, "needProjectId").returns("test-project");
     sandbox.stub(utils, "logLabeledSuccess");
     sandbox
@@ -41,6 +44,9 @@ describe("dataconnect release", () => {
     nock(dataconnectOrigin())
       .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
       .reply(200, { connectors: [] });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, { schemas: [] });
 
     const serviceInfos = [
       {
@@ -49,7 +55,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -58,7 +64,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -66,6 +72,7 @@ describe("dataconnect release", () => {
     expect(migrateSchemaStub.calledOnce).to.be.true;
     expect(pollOperationStub.calledOnce).to.be.true;
     expect(promptDeleteConnectorStub.notCalled).to.be.true;
+    expect(promptDeleteSchemaStub.notCalled).to.be.true;
     expect(nock.isDone()).to.be.true;
   });
 
@@ -79,7 +86,9 @@ describe("dataconnect release", () => {
     nock(dataconnectOrigin())
       .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
       .reply(200, { connectors: [] });
-
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, { schemas: [] });
     const serviceInfos = [
       {
         serviceName: "projects/p/locations/l/services/s1",
@@ -87,7 +96,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -96,7 +105,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -115,6 +124,9 @@ describe("dataconnect release", () => {
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, { schemas: [] });
 
     const serviceInfos = [
       {
@@ -123,7 +135,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -132,7 +144,7 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos } };
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
     const options = {} as any;
 
     await release.default(context as any, options);
@@ -141,6 +153,54 @@ describe("dataconnect release", () => {
       promptDeleteConnectorStub.calledOnceWith(
         options,
         "projects/p/locations/l/services/s1/connectors/unused-connector",
+      ),
+    ).to.be.true;
+    expect(promptDeleteSchemaStub.notCalled).to.be.true;
+    expect(nock.isDone()).to.be.true;
+  });
+
+  it("should prompt to delete unused schemas", async () => {
+    nock(dataconnectOrigin())
+      .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
+      .reply(200, { name: "op-name" });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .reply(200, { connectors: [] });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, {
+        schemas: [
+          { name: "projects/p/locations/l/services/s1/schemas/main" },
+          { name: "projects/p/locations/l/services/s1/schemas/unused-schema" },
+        ],
+      });
+
+    const serviceInfos = [
+      {
+        serviceName: "projects/p/locations/l/services/s1",
+        dataConnectYaml: {
+          serviceId: "s1",
+          schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
+        },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
+        connectorInfo: [
+          {
+            connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
+            connectorYaml: { connectorId: "c1" },
+          },
+        ],
+      },
+    ];
+    const context = { dataconnect: { serviceInfos, deployStats: initDeployStats() } };
+    const options = {} as any;
+
+    await release.default(context as any, options);
+
+    expect(promptDeleteConnectorStub.notCalled).to.be.true;
+    expect(
+      promptDeleteSchemaStub.calledOnceWith(
+        options,
+        "projects/p/locations/l/services/s1/schemas/unused-schema",
       ),
     ).to.be.true;
     expect(nock.isDone()).to.be.true;
@@ -155,6 +215,9 @@ describe("dataconnect release", () => {
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, { schemas: [] });
     const serviceInfos = [
       {
         serviceName: "projects/p/locations/l/services/s1",
@@ -162,7 +225,7 @@ describe("dataconnect release", () => {
           serviceId: "s1",
           schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
         },
-        schema: { name: "my-schema" },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
         connectorInfo: [
           {
             connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
@@ -171,11 +234,56 @@ describe("dataconnect release", () => {
         ],
       },
     ];
-    const context = { dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }] } };
+    const context = {
+      dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }], deployStats: initDeployStats() },
+    };
     const options = {} as any;
 
     await release.default(context as any, options);
 
     expect(promptDeleteConnectorStub.notCalled).to.be.true;
+    expect(promptDeleteSchemaStub.notCalled).to.be.true;
+  });
+
+  it("should not prompt to delete unused schemas with filters", async () => {
+    nock(dataconnectOrigin())
+      .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
+      .reply(200, { name: "op-name" });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .reply(200, { connectors: [] });
+    nock(dataconnectOrigin())
+      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .reply(200, {
+        schemas: [
+          { name: "projects/p/locations/l/services/s1/schemas/main" },
+          { name: "projects/p/locations/l/services/s1/schemas/unused-schema" },
+        ],
+      });
+    const serviceInfos = [
+      {
+        serviceName: "projects/p/locations/l/services/s1",
+        dataConnectYaml: {
+          serviceId: "s1",
+          schema: { datasource: { postgresql: { schemaValidation: "STRICT" } } },
+        },
+        schemas: [{ name: "projects/p/locations/l/services/s1/schemas/main" }],
+        connectorInfo: [
+          {
+            connector: { name: "projects/p/locations/l/services/s1/connectors/c1" },
+            connectorYaml: { connectorId: "c1" },
+          },
+        ],
+      },
+    ];
+    const context = {
+      dataconnect: { serviceInfos, filters: [{ serviceId: "s1" }], deployStats: initDeployStats() },
+    };
+    const options = {} as any;
+
+    await release.default(context as any, options);
+
+    expect(promptDeleteConnectorStub.notCalled).to.be.true;
+    expect(promptDeleteSchemaStub.notCalled).to.be.true;
   });
 });
