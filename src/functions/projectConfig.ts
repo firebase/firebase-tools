@@ -6,7 +6,7 @@ export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
 // Stronger validated variants: local vs remote.
 type FunctionConfigCommon = Omit<
   FunctionConfig,
-  "source" | "remoteSource" | "codebase" | "runtime"
+  "source" | "remoteSource" | "codebase" | "runtime" | "environments"
 >;
 
 export type ValidatedLocalSingle = FunctionConfigCommon & {
@@ -15,6 +15,8 @@ export type ValidatedLocalSingle = FunctionConfigCommon & {
   // runtime optional for local (auto-detected if not provided)
   runtime?: ActiveRuntime;
   remoteSource?: never;
+  environment?: string;
+  environments?: string[];
 };
 
 export type ValidatedRemoteSingle = FunctionConfigCommon & {
@@ -23,6 +25,8 @@ export type ValidatedRemoteSingle = FunctionConfigCommon & {
   runtime: ActiveRuntime;
   codebase: string;
   source?: never;
+  environment?: string;
+  environments?: string[];
 };
 
 export type ValidatedSingle = ValidatedLocalSingle | ValidatedRemoteSingle;
@@ -180,10 +184,25 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
  * Validate functions config.
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
-  const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
-  assertUnique(validated, "codebase");
-  assertUniqueSourcePrefixPair(validated);
-  return validated;
+  const validated: ValidatedSingle[] = [];
+
+  for (const cfg of config) {
+    validated.push(validateSingle(cfg));
+  }
+
+  // Check uniqueness of codebase names
+  const codebases = new Set<string>();
+  for (const v of validated) {
+    if (codebases.has(v.codebase)) {
+      throw new FirebaseError(
+        `functions.codebase must be unique but '${v.codebase}' was used more than once.`,
+      );
+    }
+    codebases.add(v.codebase);
+  }
+
+  assertUniqueSourcePrefixPair(validated as ValidatedConfig);
+  return validated as ValidatedConfig;
 }
 
 /**

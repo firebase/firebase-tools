@@ -486,7 +486,7 @@ export async function listAllFunctions(projectId: string): Promise<ListFunctions
  * and code may have to call this method explicitly.
  */
 export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoint {
-  const [, project, , region, , id] = gcfFunction.name.split("/");
+  const [, project, , region] = gcfFunction.name.split("/");
   let trigger: backend.Triggered;
   let uri: string | undefined;
   let securityLevel: SecurityLevel | undefined;
@@ -545,7 +545,7 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
 
   const endpoint: backend.Endpoint = {
     platform: "gcfv1",
-    id,
+    id: gcfFunction.entryPoint,
     project,
     region,
     ...trigger,
@@ -591,6 +591,10 @@ export function endpointFromFunction(gcfFunction: CloudFunction): backend.Endpoi
     );
   }
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  const env = gcfFunction.labels?.["firebase-functions-environment"];
+  if (env) {
+    endpoint.environment = env;
+  }
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }
@@ -629,8 +633,13 @@ export function functionFromEndpoint(
       { exit: 1 },
     );
   }
+
+  const env = endpoint.environment;
+  const baseId = endpoint.entryPoint || endpoint.id;
+  const resourceId = env ? `ext-${env}-${baseId}` : endpoint.id;
+
   const gcfFunction: Omit<CloudFunction, OutputOnlyFields> = {
-    name: backend.functionName(endpoint),
+    name: `projects/${endpoint.project}/locations/${endpoint.region}/functions/${resourceId}`,
     sourceUploadUrl: sourceUploadUrl,
     entryPoint: endpoint.entryPoint,
     runtime: endpoint.runtime,
@@ -729,6 +738,12 @@ export function functionFromEndpoint(
     };
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
+  if (env) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "firebase-functions-environment": env,
+    };
   }
   if (endpoint.hash) {
     gcfFunction.labels = {

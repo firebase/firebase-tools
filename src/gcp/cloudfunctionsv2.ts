@@ -443,8 +443,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     );
   }
 
+  const baseId = endpoint.entryPoint || endpoint.id;
+  const resourceId = endpoint.environment ? `ext-${endpoint.environment}-${baseId}` : endpoint.id;
+  const name = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${resourceId}`;
+
   const gcfFunction: InputCloudFunction = {
-    name: backend.functionName(endpoint),
+    name,
     buildConfig: {
       runtime: endpoint.runtime,
       entryPoint: endpoint.entryPoint,
@@ -583,13 +587,22 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     };
   }
   const codebase = endpoint.codebase || projectConfig.DEFAULT_CODEBASE;
-  if (codebase !== projectConfig.DEFAULT_CODEBASE) {
+  const baseCodebase = endpoint.environment
+    ? codebase.slice(0, -(endpoint.environment.length + 1))
+    : codebase;
+  if (baseCodebase !== projectConfig.DEFAULT_CODEBASE) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
-      [CODEBASE_LABEL]: codebase,
+      [CODEBASE_LABEL]: baseCodebase,
     };
   } else {
     delete gcfFunction.labels?.[CODEBASE_LABEL];
+  }
+  if (endpoint.environment) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "firebase-functions-environment": endpoint.environment,
+    };
   }
   if (endpoint.hash) {
     gcfFunction.labels = {
@@ -604,7 +617,9 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
  * Generate a versionless Endpoint object from a v2 Cloud Function API object.
  */
 export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.Endpoint {
-  const [, project, , region, , id] = gcfFunction.name.split("/");
+  const [, project, , region] = gcfFunction.name.split("/");
+  const env = gcfFunction.labels?.["firebase-functions-environment"];
+  const id = gcfFunction.buildConfig.entryPoint;
   let trigger: backend.Triggered;
   if (gcfFunction.labels?.["deployment-scheduled"] === "true") {
     trigger = {
@@ -748,6 +763,10 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   }
   proto.renameIfPresent(endpoint, gcfFunction, "uri", "url");
   endpoint.codebase = gcfFunction.labels?.[CODEBASE_LABEL] || projectConfig.DEFAULT_CODEBASE;
+  if (env) {
+    endpoint.environment = env;
+    endpoint.codebase = `${endpoint.codebase}-${env}`;
+  }
   if (gcfFunction.labels?.[HASH_LABEL]) {
     endpoint.hash = gcfFunction.labels[HASH_LABEL];
   }

@@ -223,12 +223,28 @@ function findEnvfiles(
   projectId: string,
   projectAlias?: string,
   isEmulator?: boolean,
+  environment?: string,
 ): string[] {
   const files: string[] = [".env"];
-  files.push(`.env.${projectId}`);
+
+  if (environment) {
+    files.push(`.env.${environment}`);
+  }
+
   if (projectAlias) {
     files.push(`.env.${projectAlias}`);
   }
+
+  files.push(`.env.${projectId}`);
+
+  if (projectAlias && environment) {
+    files.push(`.env.${projectAlias}.${environment}`);
+  }
+
+  if (environment) {
+    files.push(`.env.${projectId}.${environment}`);
+  }
+
   if (isEmulator) {
     files.push(FUNCTIONS_EMULATOR_DOTENV);
   }
@@ -245,6 +261,7 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  environment?: string;
 }
 
 /**
@@ -254,7 +271,10 @@ export interface UserEnvsOpts {
  */
 export function hasUserEnvs(opts: UserEnvsOpts): boolean {
   const configDir = opts.configDir || opts.functionsSource;
-  return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
+  return (
+    findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator, opts.environment)
+      .length > 0
+  );
 }
 
 /**
@@ -271,7 +291,13 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   const configDir = envOpts.configDir || envOpts.functionsSource;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(configDir, projectId, projectAlias, isEmulator);
+  const allEnvFiles = findEnvfiles(
+    configDir,
+    projectId,
+    projectAlias,
+    isEmulator,
+    envOpts.environment,
+  );
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
@@ -364,7 +390,13 @@ function formatUserEnvForWrite(key: string, value: string): string {
  */
 export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
   const configDir = opts.configDir || opts.functionsSource;
-  const envFiles = findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
+  const envFiles = findEnvfiles(
+    configDir,
+    opts.projectId,
+    opts.projectAlias,
+    opts.isEmulator,
+    opts.environment,
+  );
   if (envFiles.length === 0) {
     return {};
   }

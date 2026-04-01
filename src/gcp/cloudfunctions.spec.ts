@@ -20,7 +20,7 @@ describe("cloudfunctions", () => {
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
-    entryPoint: "function",
+    entryPoint: "id",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     state: "ACTIVE",
@@ -28,7 +28,7 @@ describe("cloudfunctions", () => {
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
-    entryPoint: "function",
+    entryPoint: "id",
     runtime: "nodejs16",
     dockerRegistry: "ARTIFACT_REGISTRY",
   };

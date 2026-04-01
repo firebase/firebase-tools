@@ -654,6 +654,34 @@ FOO=foo
       });
     });
 
+    it("loads envs from .env.<environment> file", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad",
+        [`.env.staging`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, environment: "staging" }),
+      ).to.be.deep.equal({
+        FOO: "good",
+      });
+    });
+
+    it("loads envs, preferring ones from .env.<project>.<environment>", () => {
+      createEnvFiles(tmpdir, {
+        ".env": "FOO=bad",
+        [`.env.${projectInfo.projectId}`]: "FOO=bad-project",
+        [`.env.staging`]: "FOO=bad-env",
+        [`.env.${projectInfo.projectId}.staging`]: "FOO=good",
+      });
+
+      expect(
+        env.loadUserEnvs({ ...projectInfo, functionsSource: tmpdir, environment: "staging" }),
+      ).to.be.deep.equal({
+        FOO: "good",
+      });
+    });
+
     it("throws an error if both .env.<project> and .env.<alias> exists", () => {
       createEnvFiles(tmpdir, {
         ".env": "FOO=foo\nBAR=bar",

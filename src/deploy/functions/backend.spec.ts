@@ -19,7 +19,7 @@ describe("Backend", () => {
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv1",
     ...FUNCTION_NAME,
-    entryPoint: "function",
+    entryPoint: "id",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     state: "ACTIVE",
@@ -27,7 +27,7 @@ describe("Backend", () => {
 
   const CLOUD_FUNCTION: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
     name: "projects/project/locations/region/functions/id",
-    entryPoint: "function",
+    entryPoint: "id",
     runtime: "nodejs16",
   };
 
@@ -40,7 +40,7 @@ describe("Backend", () => {
   const CLOUD_FUNCTION_V2: gcfV2.InputCloudFunction = {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
-      entryPoint: "function",
+      entryPoint: "id",
       runtime: "nodejs16",
       source: {
         storageSource: CLOUD_FUNCTION_V2_SOURCE,

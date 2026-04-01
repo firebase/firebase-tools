@@ -98,6 +98,7 @@ export interface EmulatableBackend {
   extensionVersion?: ExtensionVersion; // Only present for published extensions
   extensionSpec?: ExtensionSpec; // Only present for local extensions
   ignore?: string[];
+  environment?: string;
 }
 
 /**
@@ -566,6 +567,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         projectAlias: this.args.projectAlias,
         isEmulator: true,
         configDir: emulatableBackend.configDir,
+        environment: emulatableBackend.environment,
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, environment);

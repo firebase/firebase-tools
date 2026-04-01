@@ -32,6 +32,11 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Use new endpoint to administer realtime database instances",
   },
   // Cloud Functions for Firebase experiments
+  functionsenv: {
+    shortDescription: "Enable multi-environment support for Cloud Functions deployments",
+    public: true,
+    default: false,
+  },
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:

@@ -25,7 +25,7 @@ describe("cloudfunctionsv2", () => {
   const ENDPOINT: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",
     ...FUNCTION_NAME,
-    entryPoint: "function",
+    entryPoint: "id",
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     runServiceId: "service",
@@ -36,7 +36,7 @@ describe("cloudfunctionsv2", () => {
   const CLOUD_FUNCTION_V2: cloudfunctionsv2.InputCloudFunction = {
     name: "projects/project/locations/region/functions/id",
     buildConfig: {
-      entryPoint: "function",
+      entryPoint: "id",
       runtime: "nodejs16",
       source: {
         storageSource: CLOUD_FUNCTION_V2_SOURCE,
@@ -821,10 +821,7 @@ describe("cloudfunctionsv2", () => {
             "LOG_EXECUTION_ID",
             "true",
           );
-          expect(body.serviceConfig.environmentVariables).to.have.property(
-            "FUNCTION_TARGET",
-            "function",
-          );
+          expect(body.serviceConfig.environmentVariables).to.have.property("FUNCTION_TARGET", "id");
           expect(body.buildConfig.environmentVariables).to.have.property(
             "GOOGLE_NODE_RUN_SCRIPTS",
             "",
@@ -847,10 +844,7 @@ describe("cloudfunctionsv2", () => {
             "LOG_EXECUTION_ID",
             "true",
           );
-          expect(body.serviceConfig.environmentVariables).to.have.property(
-            "FUNCTION_TARGET",
-            "function",
-          );
+          expect(body.serviceConfig.environmentVariables).to.have.property("FUNCTION_TARGET", "id");
           expect(body.buildConfig.environmentVariables).to.have.property(
             "GOOGLE_NODE_RUN_SCRIPTS",
             "",

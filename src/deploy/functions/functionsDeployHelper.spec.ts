@@ -214,6 +214,10 @@ describe("functionsDeployHelper", () => {
             codebase: "node",
             idChunks: ["g1", "func"],
           },
+          {
+            codebase: "node",
+            environment: "g1-func",
+          },
         ],
       },
     ];
@@ -278,8 +282,16 @@ describe("functionsDeployHelper", () => {
             idChunks: ["myFunc"],
           },
           {
+            codebase: "my-codebase",
+            environment: "myFunc",
+          },
+          {
             codebase: "another-codebase",
             idChunks: ["anotherFunc"],
+          },
+          {
+            codebase: "another-codebase",
+            environment: "anotherFunc",
           },
         ],
       },
@@ -290,6 +302,10 @@ describe("functionsDeployHelper", () => {
           {
             codebase: "my-codebase",
             idChunks: ["groupA", "myFunc"],
+          },
+          {
+            codebase: "my-codebase",
+            environment: "groupA.myFunc",
           },
         ],
       },

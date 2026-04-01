@@ -99,6 +99,56 @@ describe("prepare", () => {
 
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });
+
+    describe("with functionsenv experiment", () => {
+      let functionsEnvEnabled: boolean;
+      before(() => {
+        functionsEnvEnabled = experiments.isEnabled("functionsenv");
+        experiments.setEnabled("functionsenv", true);
+      });
+      after(() => {
+        experiments.setEnabled("functionsenv", functionsEnvEnabled);
+      });
+
+      it("should generate a single backend for a codebase with environments", async () => {
+        const config: ValidatedConfig = [
+          {
+            source: "source",
+            codebase: "codebase",
+            environments: ["staging", "prod"],
+            runtime: "nodejs22",
+          },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        const wantBuild = build.of({
+          test: {
+            platform: "gcfv2",
+            entryPoint: "test",
+            project: "project",
+            runtime: latest("nodejs"),
+            httpsTrigger: {},
+          },
+        });
+        discoverBuildStub.resolves(wantBuild);
+
+        const wantBuilds = await prepare.loadCodebases(
+          config,
+          options,
+          firebaseConfig,
+          runtimeConfig,
+        );
+
+        expect(Object.keys(wantBuilds)).to.deep.equal(["codebase"]);
+      });
+    });
   });
 
   describe("inferDetailsFromExisting", () => {

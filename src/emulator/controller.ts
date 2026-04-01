@@ -555,6 +555,7 @@ export async function startAll(
         // Ideally, we should handle that case via ExtensionEmulator.
         predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
         ignore: localCfg.ignore,
+        environment: localCfg.environment,
       };
       proto.convertIfPresent(backend, localCfg, "configDir", (cd) => path.join(projectDir, cd));
       emulatableBackends.push(backend);

@@ -48,7 +48,6 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -68,7 +67,7 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions);
-  context.filters = getEndpointFilters(options); // Parse --only filters for functions.
+  context.filters = getEndpointFilters(options, context.config); // Parse --only filters for functions.
 
   const codebases = targetCodebases(context.config, context.filters);
   if (codebases.length === 0) {
@@ -129,79 +128,83 @@ export async function prepare(
     const config = configForCodebase(context.config, codebase);
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
     const localCfg = requireLocal(config, "Remote sources are not supported.");
-    const userEnvOpt: functionsEnv.UserEnvsOpts = {
-      functionsSource: options.config.path(localCfg.source),
-      projectId: projectId,
-      projectAlias: options.projectAlias,
-    };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
-    const envs = { ...userEnvs, ...firebaseEnvs };
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
-      build: wantBuild,
-      firebaseConfig,
-      userEnvs,
-      nonInteractive: options.nonInteractive,
-      isEmulator: false,
-    });
+    const environments =
+      experiments.isEnabled("functionsenv") && config.environments && config.environments.length > 0
+        ? config.environments
+        : [undefined];
 
-    functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    for (const env of environments) {
+      const currentEnv = env || config.environment;
+      const userEnvOpt: functionsEnv.UserEnvsOpts = {
+        functionsSource: options.config.path(localCfg.source),
+        projectId: projectId,
+        projectAlias: options.projectAlias,
+        environment: currentEnv,
+      };
+      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+      const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+      const envs = { ...userEnvs, ...firebaseEnvs };
 
-    let hasEnvsFromParams = false;
-    wantBackend.environmentVariables = envs;
-    for (const envName of Object.keys(resolvedEnvs)) {
-      const isList = resolvedEnvs[envName]?.legalList;
-      const envValue = resolvedEnvs[envName]?.toSDK();
-      if (
-        envValue &&
-        !resolvedEnvs[envName].internal &&
-        (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) || isList)
-      ) {
-        wantBackend.environmentVariables[envName] = envValue;
-        hasEnvsFromParams = true;
+      const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+        build: wantBuild,
+        firebaseConfig,
+        userEnvs,
+        nonInteractive: options.nonInteractive,
+        isEmulator: false,
+      });
+
+      functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+
+      let hasEnvsFromParams = false;
+      wantBackend.environmentVariables = envs;
+      for (const envName of Object.keys(resolvedEnvs)) {
+        const isList = resolvedEnvs[envName]?.legalList;
+        const envValue = resolvedEnvs[envName]?.toSDK();
+        if (
+          envValue &&
+          !resolvedEnvs[envName].internal &&
+          (!Object.prototype.hasOwnProperty.call(wantBackend.environmentVariables, envName) ||
+            isList)
+        ) {
+          wantBackend.environmentVariables[envName] = envValue;
+          hasEnvsFromParams = true;
+        }
       }
-    }
 
-    for (const endpoint of backend.allEndpoints(wantBackend)) {
-      endpoint.environmentVariables = { ...(wantBackend.environmentVariables || {}) };
-      let resource: string;
-      if (endpoint.platform === "gcfv1") {
-        resource = `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`;
-      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
-        // N.B. If GCF starts allowing v1's allowable characters in IDs they're
-        // going to need to have a transform to create a service ID (which has a
-        // more restrictive character set). We'll need to reimplement that here.
-        // BUG BUG BUG. This has happened and we need to fix it.
-        resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+      for (const endpoint of backend.allEndpoints(wantBackend)) {
+        endpoint.environmentVariables = { ...(wantBackend.environmentVariables || {}) };
+        endpoint.codebase = codebase;
+        if (currentEnv) {
+          endpoint.environment = currentEnv;
+        }
+      }
+
+      const backendKey = currentEnv ? `${codebase}-${currentEnv}` : codebase;
+      wantBackends[backendKey] = wantBackend;
+
+      if (currentEnv || functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
+        codebaseUsesEnvs.push(backendKey);
+      }
+
+      context.codebaseDeployEvents[backendKey] = {
+        fn_deploy_num_successes: 0,
+        fn_deploy_num_failures: 0,
+        fn_deploy_num_canceled: 0,
+        fn_deploy_num_skipped: 0,
+      };
+
+      if (wantBuild.params.length > 0) {
+        if (wantBuild.params.every((p) => p.type !== "secret")) {
+          context.codebaseDeployEvents[backendKey].params = "env_only";
+        } else {
+          context.codebaseDeployEvents[backendKey].params = "with_secrets";
+        }
       } else {
-        assertExhaustive(endpoint.platform);
+        context.codebaseDeployEvents[backendKey].params = "none";
       }
-      endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
-      endpoint.codebase = codebase;
+      context.codebaseDeployEvents[backendKey].runtime = wantBuild.runtime;
     }
-    wantBackends[codebase] = wantBackend;
-    if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
-      codebaseUsesEnvs.push(codebase);
-    }
-
-    context.codebaseDeployEvents[codebase] = {
-      fn_deploy_num_successes: 0,
-      fn_deploy_num_failures: 0,
-      fn_deploy_num_canceled: 0,
-      fn_deploy_num_skipped: 0,
-    };
-
-    if (wantBuild.params.length > 0) {
-      if (wantBuild.params.every((p) => p.type !== "secret")) {
-        context.codebaseDeployEvents[codebase].params = "env_only";
-      } else {
-        context.codebaseDeployEvents[codebase].params = "with_secrets";
-      }
-    } else {
-      context.codebaseDeployEvents[codebase].params = "none";
-    }
-    context.codebaseDeployEvents[codebase].runtime = wantBuild.runtime;
   }
 
   // ===Phase 2.5. Before proceeding further, let's make sure that we don't have conflicting function names.

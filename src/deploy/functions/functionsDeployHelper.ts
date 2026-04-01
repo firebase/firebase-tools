@@ -8,6 +8,8 @@ export interface EndpointFilter {
   codebase?: string;
   // If id chunks is undefined, match all function in the said codebase.
   idChunks?: string[];
+  // If environment is undefined, match all environments.
+  environment?: string;
 }
 
 /**
@@ -37,6 +39,12 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
     }
   }
 
+  if (filter.environment) {
+    if (endpoint.environment !== filter.environment) {
+      return false;
+    }
+  }
+
   if (!filter.idChunks) {
     // If idChunks is not provided, we match all functions.
     return true;
@@ -57,28 +65,63 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string): EndpointFilter[] {
+export function parseFunctionSelector(
+  selector: string,
+  config?: ValidatedConfig,
+): EndpointFilter[] {
   const fragments = selector.split(":");
-  if (fragments.length < 2) {
-    // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
-    // This could mean 2 things:
-    //
-    //   1. Only the codebase selector (i.e. "abc" refers to a codebase).
-    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function id in the default codebase).
-    //
-    // We decide here to create filter for both conditions. This sounds sloppy, but it's only troublesome if there is
-    // conflict between a codebase name as function id in the default codebase.
-    return [
-      { codebase: fragments[0] },
-      { codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
-    ];
+  const filters: EndpointFilter[] = [];
+
+  if (fragments.length === 1) {
+    const value = fragments[0];
+    filters.push({ codebase: value });
+    filters.push({ codebase: DEFAULT_CODEBASE, idChunks: value.split(/[-.]/) });
+
+    // "–only functions:environment if there is only one codebase (so this would be the default codebase and one environment)"
+    if (config && config.length === 1) {
+      filters.push({ codebase: config[0].codebase, environment: value });
+    }
+
+    // "–only functions:functionID if there is only one codebase and no environments"
+    if (
+      config &&
+      config.length === 1 &&
+      (!config[0].environments || config[0].environments.length === 0)
+    ) {
+      filters.push({ codebase: config[0].codebase, idChunks: value.split(/[-.]/) });
+    }
   }
-  return [
-    {
+
+  if (fragments.length === 2) {
+    const first = fragments[0];
+    const second = fragments[1];
+
+    // "–only functions:codebase:environment"
+    filters.push({ codebase: first, environment: second });
+
+    // "–only functions:codebase:functionIds across all environments"
+    filters.push({ codebase: first, idChunks: second.split(/[-.]/) });
+
+    // "--only functions:environment:functionIds if there is only one codebase"
+    if (config && config.length === 1) {
+      filters.push({
+        codebase: DEFAULT_CODEBASE,
+        environment: first,
+        idChunks: second.split(/[-.]/),
+      });
+    }
+  }
+
+  if (fragments.length >= 3) {
+    // "–only functions:codebase:environment:functionIds"
+    filters.push({
       codebase: fragments[0],
-      idChunks: fragments[1].split(/[-.]/),
-    },
-  ];
+      environment: fragments[1],
+      idChunks: fragments[2].split(/[-.]/),
+    });
+  }
+
+  return filters;
 }
 
 /**
@@ -103,7 +146,10 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
-export function getEndpointFilters(options: { only?: string }): EndpointFilter[] | undefined {
+export function getEndpointFilters(
+  options: { only?: string },
+  config?: ValidatedConfig,
+): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;
   }
@@ -114,7 +160,7 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector));
+        filters.push(...parseFunctionSelector(selector, config));
       }
     }
   }
