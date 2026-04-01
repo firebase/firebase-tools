@@ -51,7 +51,7 @@ async function tlsReady(url: string): Promise<boolean> {
     // SSL.
     const maybeNodeError = err as { cause: { code: string }; code: string };
     if (
-      (maybeNodeError?.cause?.code).includes("HANDSHAKE_FAILURE") ||
+      /HANDSHAKE_FAILURE/.test(maybeNodeError?.cause?.code) ||
       "EPROTO" === maybeNodeError?.code
     ) {
       return false;
