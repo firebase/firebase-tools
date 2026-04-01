@@ -1,1 +1,2 @@
 - Add validation to check if backendId exists in `firebase.json` when `--only` flag is used. (#10161)
+- Add experimental feature to parameterize the same functions codebase multiple times (#10233)

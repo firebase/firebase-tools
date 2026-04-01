@@ -137,12 +137,11 @@ export async function prepare(
         : [undefined];
 
     for (const env of environments) {
-      const currentEnv = env || config.environment;
       const userEnvOpt: functionsEnv.UserEnvsOpts = {
         functionsSource: options.config.path(localCfg.source),
         projectId: projectId,
         projectAlias: options.projectAlias,
-        environment: currentEnv,
+        environment: env,
       };
       proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
@@ -177,15 +176,15 @@ export async function prepare(
       for (const endpoint of backend.allEndpoints(wantBackend)) {
         endpoint.environmentVariables = { ...(wantBackend.environmentVariables || {}) };
         endpoint.codebase = codebase;
-        if (currentEnv) {
-          endpoint.environment = currentEnv;
+        if (env) {
+          endpoint.environment = env;
         }
       }
 
-      const backendKey = currentEnv ? `${codebase}-${currentEnv}` : codebase;
+      const backendKey = env ? `${codebase}-${env}` : codebase;
       wantBackends[backendKey] = wantBackend;
 
-      if (currentEnv || functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
+      if (env || functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
         codebaseUsesEnvs.push(backendKey);
       }
 

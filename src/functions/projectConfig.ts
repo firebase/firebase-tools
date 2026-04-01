@@ -15,7 +15,6 @@ export type ValidatedLocalSingle = FunctionConfigCommon & {
   // runtime optional for local (auto-detected if not provided)
   runtime?: ActiveRuntime;
   remoteSource?: never;
-  environment?: string;
   environments?: string[];
   disallowLegacyRuntimeConfig?: boolean;
 
@@ -27,7 +26,6 @@ export type ValidatedRemoteSingle = FunctionConfigCommon & {
   runtime: ActiveRuntime;
   codebase: string;
   source?: never;
-  environment?: string;
   environments?: string[];
 };
 
