@@ -1,4 +1,8 @@
 import { expect } from "chai";
+import * as os from "os";
+import * as path from "path";
+import * as fs from "fs";
+import * as projectConfig from "../../functions/projectConfig";
 import * as prepareFunctionsUpload from "./prepareFunctionsUpload";
 
 describe("prepareFunctionsUpload", () => {
@@ -43,6 +47,50 @@ describe("prepareFunctionsUpload", () => {
     });
     it("should return an empty array when config input is an empty object", () => {
       expect(prepareFunctionsUpload.convertToSortedKeyValueArray({})).to.deep.equal([]);
+    });
+  });
+
+  describe("packageSource hash generation", () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      // Create a temporary directory with some mock source files
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-tools-test-"));
+      fs.writeFileSync(path.join(tmpDir, "index.js"), "console.log('hello world');");
+      fs.writeFileSync(path.join(tmpDir, "package.json"), '{"name":"test"}');
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it("should generate a short SHA1 hash (<= 81 chars) to prevent the 1024-character ObjectName limit error", async () => {
+      const config = {
+        source: ".",
+        codebase: "default",
+        ignore: ["node_modules"],
+      } as unknown as projectConfig.ValidatedSingle;
+
+      const result = await prepareFunctionsUpload.prepareFunctionsUpload(
+        tmpDir, // projectDir
+        tmpDir, // sourceDir
+        config,
+        [], // additionalSources
+      );
+
+      expect(result).to.not.be.undefined;
+      if (result) {
+        expect(result.hash).to.be.a("string");
+
+        // With Merkle Tree hashing, the result should either be a single 40-char SHA1
+        // or two 40-char SHA1s joined by a period (81 chars max).
+        expect(result.hash.length).to.be.at.most(81);
+
+        // Clean up the archived zip that prepareFunctionsUpload creates
+        if (result.pathToSource) {
+          fs.rmSync(result.pathToSource, { force: true });
+        }
+      }
     });
   });
 });
