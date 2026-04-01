@@ -98,7 +98,7 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
     let automaticBaseImageUpdatesDisabled = experiments.isEnabled("abiu") ? false : undefined;
 
     if (experiments.isEnabled("abiu") && !options.nonInteractive) {
-      runtime = await prompts.promptRuntime();
+      runtime = await prompts.promptRuntime(projectId, location);
       automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
     }
 

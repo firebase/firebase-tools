@@ -133,7 +133,7 @@ export async function doSetup(
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {
-      runtime = await promptRuntime();
+      runtime = await promptRuntime(projectId, location);
     }
   }
 
