@@ -531,6 +531,18 @@ describe("apphosting", () => {
         },
       ]);
     });
+
+    it("throws error when no backend ID in firebase.json matches the one provided in --only flag", () => {
+      expect(() =>
+        getBackendConfigs({
+          ...BASE_OPTS,
+          only: "apphosting:baz",
+          config: new Config({
+            apphosting: apphostingConfig,
+          }),
+        }),
+      ).to.throw("App Hosting backend IDs baz not detected in firebase.json");
+    });
   });
 
   describe("injectEnvVarsFromApphostingConfig", () => {
