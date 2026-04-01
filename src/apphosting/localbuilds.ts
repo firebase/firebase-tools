@@ -76,17 +76,21 @@ export async function localBuild(
 }
 
 async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
-  const processEnv: Record<string, string> = {};
-  for (const [key, value] of Object.entries(env)) {
-    if (value.availability && !value.availability.includes("BUILD")) {
-      continue;
-    }
+  const entries = await Promise.all(
+    Object.entries(env).map(async ([key, value]) => {
+      if (value.availability && !value.availability.includes("BUILD")) {
+        return null;
+      }
 
-    if (value.secret) {
-      processEnv[key] = await loadSecret(projectId, value.secret);
-    } else {
-      processEnv[key] = value.value || "";
-    }
-  }
-  return processEnv as NodeJS.ProcessEnv;
+      if (value.secret) {
+        const resolvedValue = await loadSecret(projectId, value.secret);
+        return [key, resolvedValue];
+      } else {
+        return [key, value.value || ""];
+      }
+    }),
+  );
+
+  const filteredEntries = entries.filter((entry): entry is [string, string] => entry !== null);
+  return Object.fromEntries(filteredEntries) as NodeJS.ProcessEnv;
 }
