@@ -7,6 +7,7 @@ import * as iam from "../gcp/iam";
 import * as resourceManager from "../gcp/resourceManager";
 import * as poller from "../operation-poller";
 import {
+  doSetup,
   createBackend,
   deleteBackendAndPoll,
   promptLocation,
@@ -17,6 +18,10 @@ import {
   getBackend,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
+import * as githubConnections from "./githubConnections";
+import { webApps } from "./app";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import * as rollout from "./rollout";
 import { FirebaseError } from "../error";
 
 describe("apphosting setup functions", () => {
@@ -34,6 +39,10 @@ describe("apphosting setup functions", () => {
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
   let testResourceIamPermissionsStub: sinon.SinonStub;
+  let linkGitHubRepositoryStub: sinon.SinonStub;
+  let promptGitHubBranchStub: sinon.SinonStub;
+  let getOrCreateWebAppStub: sinon.SinonStub;
+  let ensureApiEnabledStub: sinon.SinonStub;
 
   beforeEach(() => {
     promptStub = sinon.stub(promptImport);
@@ -66,10 +75,100 @@ describe("apphosting setup functions", () => {
     testResourceIamPermissionsStub = sinon
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
+
+    linkGitHubRepositoryStub = sinon
+      .stub(githubConnections, "linkGitHubRepository")
+      .throws("Unexpected linkGitHubRepository call");
+    promptGitHubBranchStub = sinon
+      .stub(githubConnections, "promptGitHubBranch")
+      .throws("Unexpected promptGitHubBranch call");
+    getOrCreateWebAppStub = sinon
+      .stub(webApps, "getOrCreateWebApp")
+      .throws("Unexpected getOrCreateWebApp call");
+    ensureApiEnabledStub = sinon
+      .stub(ensureApiEnabled, "ensure")
+      .throws("Unexpected ensureApiEnabled call");
+    sinon.stub(rollout, "orchestrateRollout").throws("Unexpected orchestrateRollout call");
   });
 
   afterEach(() => {
     sinon.verifyAndRestore();
+  });
+
+  describe("doSetup", () => {
+    it("should set up a backend for source deployment", async () => {
+      promptStub.select.resolves("source");
+      getOrCreateWebAppStub.resolves({ id: "webAppId" });
+      createBackendStub.resolves({ name: "backendName", uri: "backendUri" });
+      pollOperationStub.resolves({ name: "backendName", uri: "backendUri" });
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
+      ensureApiEnabledStub.resolves();
+
+      await doSetup(projectId, false, undefined, backendId, undefined, location);
+
+      expect(promptStub.select).to.have.been.calledWith(
+        sinon.match({
+          message: "How do you want to deploy your app?",
+        }),
+      );
+      expect(promptStub.input).to.not.have.been.called;
+      expect(linkGitHubRepositoryStub).to.not.have.been.called;
+      expect(createBackendStub).to.have.been.calledWith(
+        projectId,
+        location,
+        sinon.match({
+          appId: "webAppId",
+          codebase: undefined,
+        }),
+        backendId,
+      );
+    });
+
+    it("should set up a backend for github deployment", async () => {
+      promptStub.select.resolves("github");
+      promptStub.input.resolves("/");
+      const cloudBuildConnRepo = { name: "repoName" };
+      linkGitHubRepositoryStub.resolves(cloudBuildConnRepo);
+      promptGitHubBranchStub.resolves("main");
+      getOrCreateWebAppStub.resolves({ id: "webAppId" });
+      createBackendStub.resolves({ name: "backendName", uri: "backendUri" });
+      pollOperationStub.resolves({ name: "backendName", uri: "backendUri" });
+      updateTrafficStub.resolves({ name: "trafficName", done: true });
+      promptStub.confirm.resolves(false); // Do not deploy now
+      testResourceIamPermissionsStub.resolves();
+      createServiceAccountStub.resolves();
+      addServiceAccountToRolesStub.resolves();
+      ensureApiEnabledStub.resolves();
+
+      await doSetup(projectId, false, undefined, backendId, undefined, location);
+
+      expect(promptStub.select).to.have.been.calledWith(
+        sinon.match({
+          message: "How do you want to deploy your app?",
+        }),
+      );
+      expect(promptStub.input).to.have.been.calledWith(
+        sinon.match({
+          message: "Specify your app's root directory relative to your repository",
+        }),
+      );
+      expect(linkGitHubRepositoryStub).to.have.been.calledWith(projectId, location);
+      expect(createBackendStub).to.have.been.calledWith(
+        projectId,
+        location,
+        sinon.match({
+          appId: "webAppId",
+          codebase: {
+            repository: "repoName",
+            rootDirectory: "/",
+          },
+        }),
+        backendId,
+      );
+      expect(updateTrafficStub).to.have.been.called;
+    });
   });
 
   describe("createBackend", () => {
