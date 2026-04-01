@@ -872,6 +872,12 @@
                 "configDir": {
                     "type": "string"
                 },
+                "environments": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -978,6 +984,12 @@
                 },
                 "configDir": {
                     "type": "string"
+                },
+                "environments": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "ignore": {
                     "items": {
