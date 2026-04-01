@@ -29,8 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-
-const DEFAULT_RUNTIME = "nodejs";
+import { DEFAULT_RUNTIME, promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -134,26 +133,13 @@ export async function doSetup(
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {
-      const choices: Choice<string>[] = [{ name: "Node.js (default)", value: DEFAULT_RUNTIME }];
-      try {
-        const supportedRuntimes = await apphosting.listSupportedRuntimes(projectId, location);
-        for (const r of supportedRuntimes) {
-          if (r.runtimeId !== DEFAULT_RUNTIME) {
-            choices.push({ name: r.runtimeId, value: r.runtimeId });
-          }
-        }
-      } catch (err) {
-        logWarning("Failed to list supported runtimes. Falling back to hardcoded list.");
-        // We add this hardcoded nodejs22 to unblock testing.
-        // This line will be removed when the ListSupportedRuntime API is stable.
-        choices.push({ name: "nodejs22", value: "nodejs22" });
-      }
+      runtime = await promptRuntime(projectId, location);
+    }
+  }
 
-      runtime = await select({
-        message: "Which runtime do you want to use?",
-        choices: choices,
-        default: DEFAULT_RUNTIME,
-      });
+  if (automaticBaseImageUpdatesDisabled === undefined && isEnabled("abiu")) {
+    if (!nonInteractive) {
+      automaticBaseImageUpdatesDisabled = !(await promptAutomaticBaseImageUpdates());
     }
   }
 
@@ -394,16 +380,20 @@ export async function createBackend(
     servingLocality: "GLOBAL_ACCESS",
     codebase: repository
       ? {
-          repository: `${repository.name}`,
-          rootDirectory: rootDir,
-        }
+        repository: `${repository.name}`,
+        rootDirectory: rootDir,
+      }
       : undefined,
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
-    runtime: { value: runtime ?? "" },
-    automaticBaseImageUpdatesDisabled,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+    backendReqBody.automaticBaseImageUpdatesDisabled = automaticBaseImageUpdatesDisabled;
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
@@ -578,7 +568,7 @@ export async function chooseBackends(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(",")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -636,7 +626,7 @@ export async function getBackendForAmbiguousLocation(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `The following locations are currently unreachable: ${unreachable.join(", ")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   backends = backends.filter(
@@ -681,7 +671,7 @@ export async function getBackend(
     const locations = backends.map((b) => apphosting.parseBackendName(b.name).location);
     throw new FirebaseError(
       `You have multiple backends with the same ${backendId} ID in regions: ${locations.join(", ")}. This is not allowed until we can support more locations. ` +
-        "Please delete and recreate any backends that share an ID with another backend.",
+      "Please delete and recreate any backends that share an ID with another backend.",
     );
   }
   if (backends.length === 1) {
@@ -690,7 +680,7 @@ export async function getBackend(
   if (unreachable && unreachable.length !== 0) {
     logWarning(
       `Backends with the following primary regions are unreachable: ${unreachable.join(", ")}.\n` +
-        "If your backend is in one of these regions, please try again later.",
+      "If your backend is in one of these regions, please try again later.",
     );
   }
   throw new FirebaseError(`No backend named ${backendId} found.`);
