@@ -71,7 +71,7 @@ describe("downloadableEmulators integration constraints", () => {
         );
       } catch (e) {
         // ESRCH directly maps to 'No such process'. This proves our SIGKILL 'on exit' safety net works!
-        expect((e as any).code).to.equal("ESRCH");
+        expect((e as NodeJS.ErrnoException).code).to.equal("ESRCH");
         done();
       }
     });

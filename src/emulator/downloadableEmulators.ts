@@ -456,8 +456,9 @@ async function _runBinary(
         }
       }
       emulator.instance = childProcess.spawn(command.binary, command.args, opts);
-    } catch (e: any) {
-      if (e.code === "EACCES") {
+    } catch (e) {
+      const err = e as NodeJS.ErrnoException;
+      if (err.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
         logger.logLabeled(
@@ -474,7 +475,7 @@ async function _runBinary(
             `softwareupdate --install-rosetta`,
         );
       }
-      _fatal(emulator.name, e);
+      void _fatal(emulator.name, hasMessage(e) ? e.message : String(e));
     }
 
     const description = Constants.description(emulator.name);
