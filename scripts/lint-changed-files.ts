@@ -3,7 +3,7 @@
  * working branch and runs the linter on them.
  */
 
-import { execSync, spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 import { extname, relative, resolve } from "path";
 import * as readline from "readline";
 
@@ -51,9 +51,13 @@ function getChangedFiles(cmpBranch: string): { files: string[]; ignored: string[
   const ignoredFiles: string[] = [];
   const extensionsToCheck = [".js", ".ts"];
 
-  const gitOutput = execSync(`git diff --diff-filter=d --name-only ${cmpBranch}`, { cwd: root })
-    .toString()
-    .trim();
+  const gitDiff = spawnSync("git", ["diff", "--diff-filter=d", "--name-only", cmpBranch], {
+    cwd: root,
+  });
+  if (gitDiff.status !== 0) {
+    throw new Error(`git diff failed: ${gitDiff.stderr.toString()}`);
+  }
+  const gitOutput = gitDiff.stdout.toString().trim();
 
   if (!gitOutput) {
     return { files, ignored: ignoredFiles };
@@ -175,50 +179,52 @@ async function reportStandard(
   }
 }
 
-function reportFiltered(
+async function reportFiltered(
   results: EslintResult[],
+  eslint: EslintInstance,
   changedLinesByFile: Record<string, Set<number>>,
   quiet: boolean,
   maxWarnings: number,
-): void {
-  let errorCount = 0;
-  let warningCount = 0;
-  let filesWithIssues = 0;
+): Promise<void> {
+  const filteredResults: EslintResult[] = results
+    .map((r) => {
+      const relPath = relative(root, r.filePath);
+      const changedLines = changedLinesByFile[relPath] || new Set<number>();
+      const messages = r.messages.filter((msg) => {
+        const lineMatch = changedLines.has(msg.line);
+        const quietMatch = !quiet || msg.severity === 2;
+        return lineMatch && quietMatch;
+      });
+      return {
+        ...r,
+        messages,
+        errorCount: messages.filter((m) => m.severity === 2).length,
+        warningCount: messages.filter((m) => m.severity === 1).length,
+      };
+    })
+    .filter((r) => r.messages.length > 0);
 
-  for (const result of results) {
-    const relPath = relative(root, result.filePath);
-    const changedLines = changedLinesByFile[relPath] || new Set<number>();
-
-    const filteredMessages = result.messages.filter((msg: EslintMessage) => {
-      const lineMatch = changedLines.has(msg.line);
-      const quietMatch = !quiet || msg.severity === 2;
-      return lineMatch && quietMatch;
-    });
-
-    if (filteredMessages.length > 0) {
-      filesWithIssues++;
-      console.log(`\n${relPath}`);
-      for (const msg of filteredMessages) {
-        const severity = msg.severity === 2 ? "error" : "warning";
-        console.log(`  ${msg.line}:${msg.column}  ${severity}  ${msg.message}  ${msg.ruleId}`);
-        if (msg.severity === 2) {
-          errorCount++;
-        } else {
-          warningCount++;
-        }
-      }
-    }
+  const formatter = await eslint.loadFormatter("stylish");
+  const resultText = formatter.format(filteredResults);
+  if (resultText) {
+    console.log(resultText);
   }
 
+  const errorCount = filteredResults.reduce((acc, r) => acc + r.errorCount, 0);
+  const warningCount = filteredResults.reduce((acc, r) => acc + r.warningCount, 0);
+
   if (errorCount > 0) {
-    console.error(`\nFound ${errorCount} errors on changed lines.`);
     throw new LintError("filtered");
-  } else if (maxWarnings >= 0 && warningCount > maxWarnings) {
+  }
+
+  if (maxWarnings >= 0 && warningCount > maxWarnings) {
     console.error(
       `\nFound ${warningCount} warnings on changed lines, which exceeds the max-warnings limit of ${maxWarnings}.`,
     );
     throw new LintError("filtered");
-  } else if (filesWithIssues > 0) {
+  }
+
+  if (filteredResults.length > 0) {
     console.log(`\nNo errors found on changed lines (found ${warningCount} warnings).`);
   } else {
     console.log("\nClean on changed lines.");
@@ -243,7 +249,14 @@ async function main(): Promise<void> {
     } else if (arg === "--quiet") {
       quiet = true;
     } else if (arg === "--max-warnings") {
-      maxWarnings = parseInt(args[++i], 10);
+      const nextArg = args[i + 1];
+      if (nextArg && /^\d+$/.test(nextArg)) {
+        maxWarnings = parseInt(nextArg, 10);
+        i++;
+      } else {
+        console.error("Error: --max-warnings requires a numeric value.");
+        process.exit(1);
+      }
     } else {
       otherArgs.push(arg);
     }
@@ -270,7 +283,7 @@ async function main(): Promise<void> {
 
   if (onlyChangedLines) {
     const changedLines = await getChangedLines(cmpBranch, files);
-    reportFiltered(results, changedLines, quiet, maxWarnings);
+    await reportFiltered(results, eslint, changedLines, quiet, maxWarnings);
   } else {
     await reportStandard(results, eslint, quiet, maxWarnings);
   }
