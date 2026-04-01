@@ -3,8 +3,9 @@
  * working branch and runs the linter on them.
  */
 
-import { execSync } from "child_process";
+import { execSync, spawn } from "child_process";
 import { extname, relative, resolve } from "path";
+import * as readline from "readline";
 
 interface EslintInstance {
   lintFiles(files: string[]): Promise<EslintResult[]>;
@@ -48,21 +49,19 @@ interface EslintResult {
 function getChangedFiles(cmpBranch: string): { files: string[]; ignored: string[] } {
   const files: string[] = [];
   const ignoredFiles: string[] = [];
-  const deletedFileRegex = /^D\s.+$/;
   const extensionsToCheck = [".js", ".ts"];
 
-  const gitOutput = execSync(`git diff --name-status ${cmpBranch}`, { cwd: root })
+  const gitOutput = execSync(`git diff --diff-filter=d --name-only ${cmpBranch}`, { cwd: root })
     .toString()
     .trim();
 
+  if (!gitOutput) {
+    return { files, ignored: ignoredFiles };
+  }
+
   for (const line of gitOutput.split("\n")) {
-    const l = line.trim();
-    if (!l) continue;
-    if (deletedFileRegex.test(l)) {
-      continue;
-    }
-    const entries = l.split(/\s/);
-    const file = entries[entries.length - 1];
+    const file = line.trim();
+    if (!file) continue;
     if (extensionsToCheck.includes(extname(file))) {
       files.push(file);
     } else {
@@ -72,13 +71,28 @@ function getChangedFiles(cmpBranch: string): { files: string[]; ignored: string[
   return { files, ignored: ignoredFiles };
 }
 
-function getChangedLines(cmpBranch: string): Record<string, Set<number>> {
-  const diffOutput = execSync(`git diff -U0 ${cmpBranch}`, { cwd: root }).toString();
+async function getChangedLines(
+  cmpBranch: string,
+  files: string[],
+): Promise<Record<string, Set<number>>> {
+  const args = ["diff", "-U0", cmpBranch];
+  if (files.length > 0) {
+    args.push("--", ...files);
+  }
+
+  const git = spawn("git", args, { cwd: root });
+  const rl = readline.createInterface({
+    input: git.stdout,
+    terminal: false,
+  });
+
   const changedLinesByFile: Record<string, Set<number>> = {};
   let currentFile = "";
 
-  for (const line of diffOutput.split("\n")) {
-    if (line.startsWith("+++ b/")) {
+  for await (const line of rl) {
+    if (line.startsWith("diff --git")) {
+      currentFile = "";
+    } else if (line.startsWith("+++ b/")) {
       currentFile = line.substring(6);
       changedLinesByFile[currentFile] = new Set<number>();
     } else if (line.startsWith("@@ ")) {
@@ -92,7 +106,16 @@ function getChangedLines(cmpBranch: string): Record<string, Set<number>> {
       }
     }
   }
-  return changedLinesByFile;
+
+  return new Promise((resolvePromise, reject) => {
+    git.on("close", (code) => {
+      if (code === 0) {
+        resolvePromise(changedLinesByFile);
+      } else {
+        reject(new Error(`git diff failed with code ${code ?? "unknown"}`));
+      }
+    });
+  });
 }
 
 async function runLint(
@@ -109,13 +132,45 @@ async function runLint(
   return { results, eslint };
 }
 
-async function reportStandard(results: EslintResult[], eslint: EslintInstance): Promise<void> {
+async function reportStandard(
+  results: EslintResult[],
+  eslint: EslintInstance,
+  quiet: boolean,
+  maxWarnings: number,
+): Promise<void> {
+  let processedResults = results;
+  if (quiet) {
+    processedResults = results
+      .map((r) => ({
+        ...r,
+        messages: r.messages.filter((m) => m.severity === 2),
+        errorCount: r.messages.filter((m) => m.severity === 2).length,
+        warningCount: 0,
+      }))
+      .filter((r) => r.messages.length > 0 || r.errorCount > 0);
+  }
+
   const formatter = await eslint.loadFormatter("stylish");
-  const resultText = formatter.format(results);
+  const resultText = formatter.format(processedResults);
   console.log(resultText);
 
-  const errorCount = results.reduce((acc: number, r: EslintResult) => acc + r.errorCount, 0);
+  const errorCount = processedResults.reduce(
+    (acc: number, r: EslintResult) => acc + r.errorCount,
+    0,
+  );
+  const warningCount = processedResults.reduce(
+    (acc: number, r: EslintResult) => acc + r.warningCount,
+    0,
+  );
+
   if (errorCount > 0) {
+    throw new LintError("unfiltered");
+  }
+
+  if (maxWarnings >= 0 && warningCount > maxWarnings) {
+    console.error(
+      `\nFound ${warningCount} warnings, which exceeds the max-warnings limit of ${maxWarnings}.`,
+    );
     throw new LintError("unfiltered");
   }
 }
@@ -123,24 +178,33 @@ async function reportStandard(results: EslintResult[], eslint: EslintInstance): 
 function reportFiltered(
   results: EslintResult[],
   changedLinesByFile: Record<string, Set<number>>,
+  quiet: boolean,
+  maxWarnings: number,
 ): void {
   let errorCount = 0;
+  let warningCount = 0;
+  let filesWithIssues = 0;
 
   for (const result of results) {
     const relPath = relative(root, result.filePath);
     const changedLines = changedLinesByFile[relPath] || new Set<number>();
 
-    const filteredMessages = result.messages.filter((msg: EslintMessage) =>
-      changedLines.has(msg.line),
-    );
+    const filteredMessages = result.messages.filter((msg: EslintMessage) => {
+      const lineMatch = changedLines.has(msg.line);
+      const quietMatch = !quiet || msg.severity === 2;
+      return lineMatch && quietMatch;
+    });
 
     if (filteredMessages.length > 0) {
+      filesWithIssues++;
       console.log(`\n${relPath}`);
       for (const msg of filteredMessages) {
         const severity = msg.severity === 2 ? "error" : "warning";
         console.log(`  ${msg.line}:${msg.column}  ${severity}  ${msg.message}  ${msg.ruleId}`);
         if (msg.severity === 2) {
           errorCount++;
+        } else {
+          warningCount++;
         }
       }
     }
@@ -149,8 +213,15 @@ function reportFiltered(
   if (errorCount > 0) {
     console.error(`\nFound ${errorCount} errors on changed lines.`);
     throw new LintError("filtered");
+  } else if (maxWarnings >= 0 && warningCount > maxWarnings) {
+    console.error(
+      `\nFound ${warningCount} warnings on changed lines, which exceeds the max-warnings limit of ${maxWarnings}.`,
+    );
+    throw new LintError("filtered");
+  } else if (filesWithIssues > 0) {
+    console.log(`\nNo errors found on changed lines (found ${warningCount} warnings).`);
   } else {
-    console.log("\nNo errors found on changed lines.");
+    console.log("\nClean on changed lines.");
   }
 }
 
@@ -160,7 +231,23 @@ function reportFiltered(
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const onlyChangedLines = args.includes("--only-changed-lines");
-  const otherArgs = args.filter((a) => a !== "--only-changed-lines");
+
+  let quiet = false;
+  let maxWarnings = -1;
+  const otherArgs: string[] = [];
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === "--only-changed-lines") {
+      continue;
+    } else if (arg === "--quiet") {
+      quiet = true;
+    } else if (arg === "--max-warnings") {
+      maxWarnings = parseInt(args[++i], 10);
+    } else {
+      otherArgs.push(arg);
+    }
+  }
 
   const cmpBranch = process.env.CI ? "origin/main" : "main";
 
@@ -182,10 +269,10 @@ async function main(): Promise<void> {
   const { results, eslint } = await runLint(files, otherArgs);
 
   if (onlyChangedLines) {
-    const changedLines = getChangedLines(cmpBranch);
-    reportFiltered(results, changedLines);
+    const changedLines = await getChangedLines(cmpBranch, files);
+    reportFiltered(results, changedLines, quiet, maxWarnings);
   } else {
-    await reportStandard(results, eslint);
+    await reportStandard(results, eslint, quiet, maxWarnings);
   }
 }
 
