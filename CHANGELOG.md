@@ -1,2 +1,3 @@
 - Add validation to check if backendId exists in `firebase.json` when `--only` flag is used. (#10161)
 - Updated default Postgres version for Data Connect to 18. (#10234)
+- Update Typescript version to v6 in templates for functions and extensions. (#10232)
