@@ -81,13 +81,9 @@ export const command = new Command("firestore:backups:schedules:create")
       weeklyRecurrence,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(backupSchedule, undefined, 2));
-    } else {
-      logger.info(
-        clc.bold(`Successfully created ${printer.prettyBackupScheduleString(backupSchedule)}`),
-      );
-    }
+    logger.info(
+      clc.bold(`Successfully created ${printer.prettyBackupScheduleString(backupSchedule)}`),
+    );
 
     return backupSchedule;
   });

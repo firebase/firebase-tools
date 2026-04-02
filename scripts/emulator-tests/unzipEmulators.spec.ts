@@ -2,9 +2,10 @@ import { expect } from "chai";
 import * as fs from "fs";
 import * as path from "path";
 import { unzip } from "../../src/unzip";
-import { DownloadDetails } from "../../src/emulator/downloadableEmulators";
+import { getDownloadDetails } from "../../src/emulator/downloadableEmulators";
 import { Client } from "../../src/apiv2";
 import { tmpdir } from "os";
+import { Emulators } from "../../src/emulator/types";
 
 describe("unzipEmulators", () => {
   let tempDir: string;
@@ -14,14 +15,12 @@ describe("unzipEmulators", () => {
   });
 
   after(async () => {
-    await fs.promises.rmdir(tempDir, { recursive: true });
+    await fs.promises.rm(tempDir, { recursive: true, force: true });
   });
 
   it("should unzip a ui emulator zip file", async () => {
-    const [uiVersion, uiRemoteUrl] = [
-      DownloadDetails.ui.version,
-      DownloadDetails.ui.opts.remoteUrl,
-    ];
+    const downloadDetails = getDownloadDetails(Emulators.UI);
+    const [uiVersion, uiRemoteUrl] = [downloadDetails.version, downloadDetails.opts.remoteUrl];
 
     const uiZipPath = path.join(tempDir, `ui-v${uiVersion}.zip`);
 
@@ -41,12 +40,13 @@ describe("unzipEmulators", () => {
 
     const serverFiles = await fs.promises.readdir(path.join(tempDir, "ui", "server"));
     expect(serverFiles).to.include("server.mjs");
-  }).timeout(10000);
+  }).timeout(60000);
 
   it("should unzip a pubsub emulator zip file", async () => {
+    const downloadDetails = getDownloadDetails(Emulators.PUBSUB);
     const [pubsubVersion, pubsubRemoteUrl] = [
-      DownloadDetails.pubsub.version,
-      DownloadDetails.pubsub.opts.remoteUrl,
+      downloadDetails.version,
+      downloadDetails.opts.remoteUrl,
     ];
 
     const pubsubZipPath = path.join(tempDir, `pubsub-emulator-v${pubsubVersion}.zip`);
@@ -73,7 +73,7 @@ describe("unzipEmulators", () => {
       path.join(tempDir, "pubsub", "pubsub-emulator", "bin"),
     );
     expect(binFiles).to.include("cloud-pubsub-emulator");
-  }).timeout(10000);
+  }).timeout(60000);
 });
 
 async function downloadFile(url: string, targetPath: string): Promise<string> {
@@ -97,7 +97,7 @@ async function downloadFile(url: string, targetPath: string): Promise<string> {
       }: ${await res.response.text()}`,
       {
         cause: new Error(
-          `Object DownloadDetails from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`,
+          `Object returned by getDownloadDetails() from src${path.sep}emulator${path.sep}downloadableEmulators.ts contains invalid URL: ${url}`,
         ),
       },
     );

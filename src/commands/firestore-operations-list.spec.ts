@@ -5,6 +5,7 @@ import * as fsi from "../firestore/api";
 import { logger } from "../logger";
 import { PrettyPrint } from "../firestore/pretty-print";
 import { FirebaseError } from "../error";
+import { configstore } from "../configstore";
 
 describe("firestore:operations:list", () => {
   const sandbox = sinon.createSandbox();
@@ -13,6 +14,7 @@ describe("firestore:operations:list", () => {
   let prettyPrintStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sandbox.stub(configstore, "get").returns({});
     firestoreApiStub = sandbox.createStubInstance(fsi.FirestoreApi);
     sandbox.stub(fsi, "FirestoreApi").returns(firestoreApiStub);
     loggerInfoStub = sandbox.stub(logger, "info");
@@ -49,10 +51,8 @@ describe("firestore:operations:list", () => {
     ];
     firestoreApiStub.listOperations.resolves({ operations });
 
-    await command.runner()(options);
-
-    expect(loggerInfoStub).to.be.calledOnceWith(JSON.stringify(operations, undefined, 2));
-    expect(prettyPrintStub).to.not.be.called;
+    const jsonResult = await command.runner()(options);
+    expect(jsonResult).to.eql(operations);
   });
 
   it("should pretty-print operations when --json is not specified", async () => {

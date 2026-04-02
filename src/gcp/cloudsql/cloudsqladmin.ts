@@ -8,6 +8,8 @@ import { Options } from "../../options";
 import { logger } from "../../logger";
 import { testIamPermissions } from "../iam";
 import { FirebaseError } from "../../error";
+import { checkFreeTrialInstanceUsed } from "../../dataconnect/freeTrial";
+
 const API_VERSION = "v1";
 
 const client = new Client({
@@ -59,12 +61,15 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
   return `https://console.cloud.google.com/sql/instances/${instanceId}/overview?project=${projectId}`;
 }
 
+export type DataConnectLabel = "ft" | "nt";
+export const DEFAULT_DATABASE_VERSION = "POSTGRES_18";
+
 export async function createInstance(args: {
   projectId: string;
   location: string;
   instanceId: string;
   enableGoogleMlIntegration: boolean;
-  freeTrial: boolean;
+  freeTrialLabel: DataConnectLabel;
 }): Promise<void> {
   const databaseFlags = [{ name: "cloudsql.iam_authentication", value: "on" }];
   if (args.enableGoogleMlIntegration) {
@@ -74,7 +79,7 @@ export async function createInstance(args: {
     await client.post<Partial<Instance>, Operation>(`projects/${args.projectId}/instances`, {
       name: args.instanceId,
       region: args.location,
-      databaseVersion: "POSTGRES_15",
+      databaseVersion: DEFAULT_DATABASE_VERSION,
       settings: {
         tier: "db-f1-micro",
         edition: "ENTERPRISE",
@@ -84,7 +89,7 @@ export async function createInstance(args: {
         enableGoogleMlIntegration: args.enableGoogleMlIntegration,
         databaseFlags,
         storageAutoResize: false,
-        userLabels: { "firebase-data-connect": args.freeTrial ? "ft" : "nt" },
+        userLabels: { "firebase-data-connect": args.freeTrialLabel },
         insightsConfig: {
           queryInsightsEnabled: true,
           queryPlansPerMinute: 5, // Match the default settings
@@ -94,7 +99,7 @@ export async function createInstance(args: {
     });
     return;
   } catch (err: any) {
-    handleAllowlistError(err, args.location);
+    await handleCreateInstanceError(err, args.location, args.projectId);
     throw err;
   }
 }
@@ -141,10 +146,18 @@ export async function updateInstanceForDataConnect(
   return pollRes;
 }
 
-function handleAllowlistError(err: any, region: string) {
-  if (err.message.includes("Not allowed to set system label: firebase-data-connect")) {
+async function handleCreateInstanceError(err: any, region: string, projectId: string) {
+  if (err?.message?.includes("Not allowed to set system label: firebase-data-connect")) {
     throw new FirebaseError(
       `Cloud SQL free trial instances are not yet available in ${region}. Please check https://firebase.google.com/docs/data-connect/ for a full list of available regions.`,
+    );
+  }
+  if (
+    err?.message?.includes("The billing account is not in good standing") &&
+    (await checkFreeTrialInstanceUsed(projectId))
+  ) {
+    throw new FirebaseError(
+      `You have already used your Cloud SQL free trial. To create more instances, you need to attach a billing account to project ${projectId}.`,
     );
   }
 }

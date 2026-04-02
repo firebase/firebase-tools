@@ -8,7 +8,7 @@ import { FieldHints, LoginCredential, TestDevice } from "./types";
  * file and converts the input into an string[].
  * Value takes precedent over file.
  */
-export function parseIntoStringArray(value: string, file: string): string[] {
+export function parseIntoStringArray(value: string, file = ""): string[] {
   // If there is no value then the file gets parsed into a string to be split
   if (!value && file) {
     ensureFileExists(file);
@@ -61,7 +61,19 @@ export function getAppName(options: any): string {
   if (!options.app) {
     throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
   }
-  const appId = options.app;
+  return toAppName(options.app);
+}
+
+const APP_ID_FORMAT = /^\d+:\d+:(android|ios|web):[a-fA-F0-9]+$/;
+
+function validateAppId(appId: string): void {
+  if (!APP_ID_FORMAT.test(appId)) {
+    throw new FirebaseError(`Invalid Firebase app ID: ${appId}`);
+  }
+}
+
+export function toAppName(appId: string): string {
+  validateAppId(appId);
   return `projects/${appId.split(":")[1]}/apps/${appId}`;
 }
 
@@ -70,7 +82,7 @@ export function getAppName(options: any): string {
  * and converts the input into a string[] of test device strings.
  * Value takes precedent over file.
  */
-export function parseTestDevices(value: string, file: string): TestDevice[] {
+export function parseTestDevices(value: string, file = ""): TestDevice[] {
   // If there is no value then the file gets parsed into a string to be split
   if (!value && file) {
     ensureFileExists(file);

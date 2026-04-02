@@ -4,7 +4,6 @@ import { command } from "./firestore-operations-cancel";
 import * as fsi from "../firestore/api";
 import * as prompt from "../prompt";
 import * as utils from "../utils";
-import { logger } from "../logger";
 
 describe("firestore:operations:cancel", () => {
   const sandbox = sinon.createSandbox();
@@ -12,7 +11,6 @@ describe("firestore:operations:cancel", () => {
   let confirmStub: sinon.SinonStub;
   let logSuccessStub: sinon.SinonStub;
   let logWarningStub: sinon.SinonStub;
-  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     firestoreApiStub = sandbox.createStubInstance(fsi.FirestoreApi);
@@ -20,7 +18,6 @@ describe("firestore:operations:cancel", () => {
     confirmStub = sandbox.stub(prompt, "confirm");
     logSuccessStub = sandbox.stub(utils, "logSuccess");
     logWarningStub = sandbox.stub(utils, "logWarning");
-    loggerInfoStub = sandbox.stub(logger, "info");
   });
 
   afterEach(() => {
@@ -87,10 +84,8 @@ describe("firestore:operations:cancel", () => {
     const status = { success: true };
     firestoreApiStub.cancelOperation.resolves(status);
 
-    await command.runner()(operationName, options);
+    const jsonResult = await command.runner()(operationName, options);
 
-    expect(loggerInfoStub).to.be.calledOnceWith(JSON.stringify(status, undefined, 2));
-    expect(logSuccessStub).to.not.be.called;
-    expect(logWarningStub).to.not.be.called;
+    expect(jsonResult).to.eql(status);
   });
 });

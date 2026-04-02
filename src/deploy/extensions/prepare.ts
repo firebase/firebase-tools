@@ -20,7 +20,9 @@ import {
 } from "../../extensions/runtimes/common";
 import { Build } from "../functions/build";
 import { getEndpointFilters } from "../functions/functionsDeployHelper";
+import { normalizeAndValidate } from "../../functions/projectConfig";
 import { DeployOptions } from "..";
+import { logLabeledError } from "../../utils";
 
 const matchesInstanceId = (dep: planner.InstanceSpec) => (test: planner.InstanceSpec) => {
   return dep.instanceId === test.instanceId;
@@ -166,18 +168,29 @@ export async function prepareDynamicExtensions(
   payload: Payload,
   builds: Record<string, Build>,
 ): Promise<void> {
-  const filters = getEndpointFilters(options);
+  const functionsConfig = normalizeAndValidate(options.config.src.functions);
+  const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
-  await ensureExtensionsApiEnabled(options);
-  await requirePermissions(options, ["firebaseextensions.instances.list"]);
+  let haveExtensions: planner.DeploymentInstanceSpec[] = [];
+  try {
+    await ensureExtensionsApiEnabled(options);
+    await requirePermissions(options, ["firebaseextensions.instances.list"]);
 
-  let haveExtensions = await planner.haveDynamic(projectId);
-  haveExtensions = haveExtensions.filter((e) =>
-    extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
-  );
+    haveExtensions = await planner.haveDynamic(projectId);
+    haveExtensions = haveExtensions.filter((e) =>
+      extensionMatchesAnyFilter(e.labels?.codebase, e.instanceId, filters),
+    );
+  } catch (err) {
+    logLabeledError(
+      "extensions",
+      "Failed to fetch the list of extensions. Assuming for now that there are no existing extensions. " +
+        "If you are trying to install an extension through Firebase Functions this may fail later.",
+    );
+    return;
+  }
 
   if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
     // Nothing defined, and nothing to delete
