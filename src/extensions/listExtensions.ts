@@ -10,9 +10,20 @@ import * as extensionsUtils from "./utils";
 /**
  * Lists the extensions installed under a project
  * @param projectId ID of the project we're querying
- * @return mapping that contains a list of instances under the "instances" key
+ * @return list of listed extensions
  */
-export async function listExtensions(projectId: string): Promise<Record<string, any>[]> {
+export interface ListedExtension {
+  extension: string;
+  publisher: string;
+  instanceId: string;
+  state: string;
+  version?: string;
+  updateTime: string;
+  params: Record<string, string>;
+  systemParams: Record<string, string>;
+}
+
+export async function listExtensions(projectId: string): Promise<ListedExtension[]> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
     logLabeledBullet(
@@ -30,7 +41,7 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
   const sorted = instances.sort(
     (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf(),
   );
-  const formatted: Record<string, any>[] = [];
+  const formatted: ListedExtension[] = [];
   sorted.forEach((instance) => {
     let extension = instance.config.extensionRef || "";
     let publisher;
