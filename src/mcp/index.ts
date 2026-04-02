@@ -456,7 +456,7 @@ export class FirebaseMcpServer {
   }
 
   async mcpListResources(): Promise<ListResourcesResult> {
-    await trackGA4("mcp_read_resource", { resource_name: "__list__" });
+    await this.trackGA4("mcp_list_resources", { resource_name: "__list__" });
     return {
       resources: resources.map((r) => r.mcp),
     };
