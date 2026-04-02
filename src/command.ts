@@ -15,7 +15,7 @@ import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
-import { useConsoleLoggers } from "./logger";
+import { logger, useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
 
 export interface CommandModule {
@@ -245,19 +245,23 @@ export class Command {
             },
             duration,
           );
-          if (!isEmulator) {
-            await withTimeout(5000, trackSuccess);
-          } else {
-            await withTimeout(
-              5000,
-              Promise.all([
-                trackSuccess,
-                trackEmulator("command_success", {
-                  command_name: this.name,
-                  duration,
-                }),
-              ]),
-            );
+          try {
+            if (!isEmulator) {
+              await withTimeout(5000, trackSuccess);
+            } else {
+              await withTimeout(
+                5000,
+                Promise.all([
+                  trackSuccess,
+                  trackEmulator("command_success", {
+                    command_name: this.name,
+                    duration,
+                  }),
+                ]),
+              );
+            }
+          } catch (gaErr) {
+            logger.debug("Analytics tracking failed during success path:", gaErr);
           }
           process.exit();
         })
@@ -278,27 +282,31 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          await withTimeout(
-            5000,
-            Promise.all([
-              trackGA4(
-                "command_execution",
-                {
-                  command_name: this.name,
-                  result: "error",
-                  interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-                },
-                duration,
-              ),
-              isEmulator
-                ? trackEmulator("command_error", {
+          try {
+            await withTimeout(
+              5000,
+              Promise.all([
+                trackGA4(
+                  "command_execution",
+                  {
                     command_name: this.name,
-                    duration,
-                    error_type: err.exit === 1 ? "user" : "unexpected",
-                  })
-                : Promise.resolve(),
-            ]),
-          );
+                    result: "error",
+                    interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+                  },
+                  duration,
+                ),
+                isEmulator
+                  ? trackEmulator("command_error", {
+                      command_name: this.name,
+                      duration,
+                      error_type: err.exit === 1 ? "user" : "unexpected",
+                    })
+                  : Promise.resolve(),
+              ]),
+            );
+          } catch (gaErr) {
+            logger.debug("Analytics tracking failed during error path:", gaErr);
+          }
 
           client.errorOut(err);
         });
