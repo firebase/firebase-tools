@@ -279,27 +279,26 @@ export class Command {
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
           try {
-            await withTimeout(
-              5000,
-              Promise.all([
-                trackGA4(
-                  "command_execution",
-                  {
-                    command_name: this.name,
-                    result: "error",
-                    interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-                  },
-                  duration,
-                ),
-                isEmulator
-                  ? trackEmulator("command_error", {
-                      command_name: this.name,
-                      duration,
-                      error_type: err.exit === 1 ? "user" : "unexpected",
-                    })
-                  : Promise.resolve(),
-              ]),
+            const trackError = trackGA4(
+              "command_execution",
+              {
+                command_name: this.name,
+                result: "error",
+                interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+              },
+              duration,
             );
+            const tracks = [trackError];
+            if (isEmulator) {
+              tracks.push(
+                trackEmulator("command_error", {
+                  command_name: this.name,
+                  duration,
+                  error_type: err.exit === 1 ? "user" : "unexpected",
+                }),
+              );
+            }
+            await withTimeout(5000, Promise.all(tracks));
           } catch (gaErr) {
             logger.debug("Analytics tracking failed during error path:", gaErr);
           }
