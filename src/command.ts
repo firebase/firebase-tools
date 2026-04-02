@@ -236,30 +236,26 @@ export class Command {
             });
           }
           const duration = Math.floor((process.uptime() - start) * 1000);
-          const trackSuccess = trackGA4(
-            "command_execution",
-            {
-              command_name: this.name,
-              result: "success",
-              interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
-            },
-            duration,
-          );
           try {
-            if (!isEmulator) {
-              await withTimeout(5000, trackSuccess);
-            } else {
-              await withTimeout(
-                5000,
-                Promise.all([
-                  trackSuccess,
-                  trackEmulator("command_success", {
-                    command_name: this.name,
-                    duration,
-                  }),
-                ]),
+            const trackSuccess = trackGA4(
+              "command_execution",
+              {
+                command_name: this.name,
+                result: "success",
+                interactive: getInheritedOption(options, "nonInteractive") ? "false" : "true",
+              },
+              duration,
+            );
+            const tracks = [trackSuccess];
+            if (isEmulator) {
+              tracks.push(
+                trackEmulator("command_success", {
+                  command_name: this.name,
+                  duration,
+                }),
               );
             }
+            await withTimeout(5000, Promise.all(tracks));
           } catch (gaErr) {
             logger.debug("Analytics tracking failed during success path:", gaErr);
           }
