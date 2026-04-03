@@ -56,13 +56,36 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
+export async function addFilesToArchive(
+  archive: archiver.Archiver,
+  files: fsAsync.ReaddirRecursiveFile[],
+  sourceDir: string,
+  executablePaths?: string[],
+): Promise<string[]> {
+  const hashes: string[] = [];
+  for (const file of files) {
+    const name = path.relative(sourceDir, file.name);
+    const fileHash = await getSourceHash(file.name);
+    hashes.push(fileHash);
+    let mode = file.mode;
+    if (executablePaths?.includes(name)) {
+      mode = 0o755;
+    }
+    archive.file(file.name, {
+      name,
+      mode,
+    });
+  }
+  return hashes;
+}
+
 async function packageSource(
   projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig: any,
-  options?: { exportType: "zip" | "tar.gz" },
+  options?: { exportType: "zip" | "tar.gz"; executablePaths?: string[] },
 ): Promise<PackagedSourceInfo | undefined> {
   const exportType = options?.exportType || "zip";
   const postfix = `.${exportType}`;
@@ -87,15 +110,7 @@ async function packageSource(
   );
   try {
     const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
-    for (const file of files) {
-      const name = path.relative(sourceDir, file.name);
-      const fileHash = await getSourceHash(file.name);
-      hashes.push(fileHash);
-      archive.file(file.name, {
-        name,
-        mode: file.mode,
-      });
-    }
+    hashes.push(...(await addFilesToArchive(archive, files, sourceDir, options?.executablePaths)));
     for (const name of additionalSources) {
       const absPath = utils.resolveWithin(projectDir, name);
       if (!fs.existsSync(absPath)) {
@@ -159,7 +174,7 @@ export async function prepareFunctionsUpload(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
-  options?: { exportType: "zip" | "tar.gz" },
+  options?: { exportType: "zip" | "tar.gz"; executablePaths?: string[] },
 ): Promise<PackagedSourceInfo | undefined> {
   return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
