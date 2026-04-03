@@ -58,6 +58,7 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
 
 /**
  * Adds files to the archive, forcing executable permissions for specified paths.
+ * @internal
  */
 export async function addFilesToArchive(
   archive: archiver.Archiver,
@@ -68,14 +69,15 @@ export async function addFilesToArchive(
   const hashes: string[] = [];
   for (const file of files) {
     const name = path.relative(sourceDir, file.name);
+    const normalizedName = name.split(path.sep).join("/");
     const fileHash = await getSourceHash(file.name);
     hashes.push(fileHash);
     let mode = file.mode;
-    if (executablePaths?.includes(name)) {
+    if (executablePaths?.includes(normalizedName)) {
       mode = 0o755;
     }
     archive.file(file.name, {
-      name,
+      name: normalizedName,
       mode,
     });
   }
