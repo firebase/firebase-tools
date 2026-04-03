@@ -507,7 +507,11 @@ export class FirebaseMcpServer {
         this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
         try {
           const transport = new SSEServerTransport("/message", res);
-          const sessionId = (transport as any).sessionId; // Typecast if type defs are lagging
+          // SSEServerTransport has sessionId but it might not be in the typings
+          interface SSEServerTransportWithSessionId extends SSEServerTransport {
+            sessionId: string;
+          }
+          const sessionId = (transport as SSEServerTransportWithSessionId).sessionId;
           transports[sessionId] = transport;
 
           this.logger.debug(`[SSE] Connected session ${sessionId}`);
