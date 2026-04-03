@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tool } from "../../tool";
 import { deploy as coreDeploy } from "../../../deploy";
-import { toContent } from "../../util";
+import { toContent, applyAppMeta } from "../../util";
 import { jobTracker } from "../../util/jobs";
 
 export const deploy = tool(
@@ -15,7 +15,7 @@ export const deploy = tool(
         .string()
         .optional()
         .describe(
-          'Comma-separated list of services to deploy. Valid targets are: database, storage, firestore, functions, hosting, remoteconfig, extensions, dataconnect, apphosting, auth.',
+          "Comma-separated list of services to deploy. Valid targets are: database, storage, firestore, functions, hosting, remoteconfig, extensions, dataconnect, apphosting, auth.",
         ),
     }),
     annotations: {
@@ -25,9 +25,6 @@ export const deploy = tool(
     _meta: {
       requiresAuth: true,
       requiresProject: true,
-      ui: {
-        resourceUri: "ui://core/deploy/mcp-app.html",
-      },
     },
   },
   async ({ only }, ctx) => {
@@ -89,10 +86,15 @@ export const deploy = tool(
       }
     })();
 
-    const contentRes = toContent(`Deployment started with Job ID: ${jobId}. Use deploy_status tool to track.`);
-    return {
-      ...contentRes,
-      structuredContent: { jobId, message: "Deployment started" },
-    };
+    const contentRes = toContent(
+      `Deployment started with Job ID: ${jobId}. Use deploy_status tool to track.`,
+    );
+    return applyAppMeta(
+      {
+        ...contentRes,
+        structuredContent: { jobId, message: "Deployment started" },
+      },
+      "ui://core/deploy/mcp-app.html",
+    );
   },
 );
