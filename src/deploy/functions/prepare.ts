@@ -1,5 +1,3 @@
-import * as fs from "fs";
-import * as path from "path";
 import * as clc from "colorette";
 
 import * as args from "./args";
@@ -240,7 +238,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = fs.existsSync(path.join(sourceDir, "pubspec.yaml"));
+      const isDart = backend.someEndpoint(wantBackend, (e) => (e.runtime as string) === "dart");
       const executablePaths = isDart ? ["bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
