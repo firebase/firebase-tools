@@ -462,7 +462,7 @@ export class FirebaseMcpServer {
   }
 
   async mcpListResources(): Promise<ListResourcesResult> {
-    await trackGA4("mcp_read_resource", {});
+    await this.trackGA4("mcp_list_resources", { resource_name: "__list__" });
     return {
       resources: resources.map((r) => r.mcp),
     };
@@ -504,51 +504,51 @@ export class FirebaseMcpServer {
       const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
 
       app.get("/sse", async (req: express.Request, res: express.Response) => {
-        console.error(`[SSE] GET /sse connection attempt from ${req.ip}`);
+        this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
         try {
           const transport = new SSEServerTransport("/message", res);
           const sessionId = (transport as any).sessionId; // Typecast if type defs are lagging
           transports[sessionId] = transport;
           
-          console.error(`[SSE] Connected session ${sessionId}`);
+          this.logger.debug(`[SSE] Connected session ${sessionId}`);
           
           await this.server.connect(transport);
-          console.error(`[SSE] Server connected to transport`);
+          this.logger.debug(`[SSE] Server connected to transport`);
 
           // Keep handler alive
           await new Promise<void>((resolve) => {
             req.on("close", () => {
-              console.error(`[SSE] Session ${sessionId} disconnected`);
+              this.logger.debug(`[SSE] Session ${sessionId} disconnected`);
               delete transports[sessionId];
               resolve();
             });
           });
         } catch (err) {
-          console.error(`[SSE] Connection error:`, err);
+          this.logger.error(`[SSE] Connection error: ${err}`);
         }
       });
 
       app.post("/message", async (req: express.Request, res: express.Response) => {
         const sessionId = req.query.sessionId as string;
-        console.error(`[SSE] POST /message attempt for session ${sessionId}`);
+        this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
         
         const transport = transports[sessionId];
 
         if (transport) {
           try {
             await transport.handlePostMessage(req, res);
-            console.error(`[SSE] Handled message for session ${sessionId}`);
+            this.logger.debug(`[SSE] Handled message for session ${sessionId}`);
           } catch (err) {
-            console.error(`[SSE] Error handling message for session ${sessionId}:`, err);
+            this.logger.error(`[SSE] Error handling message for session ${sessionId}: ${err}`);
           }
         } else {
-          console.error(`[SSE] Rejecting message: No active transport found for session ${sessionId}`);
+          this.logger.error(`[SSE] Rejecting message: No active transport found for session ${sessionId}`);
           res.status(400).send("No active SSE transport connection found for this session");
         }
       });
 
-      app.listen(port, "0.0.0.0", () => {
-        console.error(`MCP Server running on HTTP/SSE mode at http://0.0.0.0:${port}`);
+      app.listen(port, "127.0.0.1", () => {
+        this.logger.info(`MCP Server running on HTTP/SSE mode at http://127.0.0.1:${port}`);
       });
       return;
     }
