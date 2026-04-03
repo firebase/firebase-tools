@@ -1,5 +1,6 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dump } from "js-yaml";
+import * as experiments from "../experiments";
 import { ServerFeature } from "./types";
 import {
   apphostingOrigin,
@@ -43,6 +44,26 @@ export function toContent(
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
     structuredContent: data,
   } as CallToolResult & { structuredContent: any };
+}
+
+/**
+ * Conditionally adds MCP App metadata (_meta.ui.resourceUri) to a CallToolResult.
+ */
+export function applyAppMeta(
+  result: CallToolResult,
+  resourceUri: string,
+): CallToolResult & { _meta?: { ui?: { resourceUri: string } } } {
+  if (experiments.isEnabled("mcpapps")) {
+    return {
+      ...result,
+      _meta: {
+        ui: {
+          resourceUri,
+        },
+      },
+    };
+  }
+  return result;
 }
 
 /**
