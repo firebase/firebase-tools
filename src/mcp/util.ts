@@ -41,7 +41,8 @@ export function toContent(
   const suffix = options?.contentSuffix || "";
   return {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
-  };
+    structuredContent: data,
+  } as any;
 }
 
 /**
