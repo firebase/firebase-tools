@@ -497,7 +497,7 @@ export class FirebaseMcpServer {
   async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
     if (options?.useSSE) {
       const app = express();
-      
+
       app.use(cors());
 
       const port = options.port || 3000;
@@ -509,9 +509,9 @@ export class FirebaseMcpServer {
           const transport = new SSEServerTransport("/message", res);
           const sessionId = (transport as any).sessionId; // Typecast if type defs are lagging
           transports[sessionId] = transport;
-          
+
           this.logger.debug(`[SSE] Connected session ${sessionId}`);
-          
+
           await this.server.connect(transport);
           this.logger.debug(`[SSE] Server connected to transport`);
 
@@ -531,7 +531,7 @@ export class FirebaseMcpServer {
       app.post("/message", async (req: express.Request, res: express.Response) => {
         const sessionId = req.query.sessionId as string;
         this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
-        
+
         const transport = transports[sessionId];
 
         if (transport) {
@@ -542,7 +542,9 @@ export class FirebaseMcpServer {
             this.logger.error(`[SSE] Error handling message for session ${sessionId}: ${err}`);
           }
         } else {
-          this.logger.error(`[SSE] Rejecting message: No active transport found for session ${sessionId}`);
+          this.logger.error(
+            `[SSE] Rejecting message: No active transport found for session ${sessionId}`,
+          );
           res.status(400).send("No active SSE transport connection found for this session");
         }
       });
