@@ -56,6 +56,9 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
+/**
+ * Adds files to the archive, forcing executable permissions for specified paths.
+ */
 export async function addFilesToArchive(
   archive: archiver.Archiver,
   files: fsAsync.ReaddirRecursiveFile[],

@@ -239,7 +239,7 @@ export async function prepare(
       const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
         ? "tar.gz"
         : "zip";
-      
+
       const isDart = fs.existsSync(path.join(sourceDir, "pubspec.yaml"));
       const executablePaths = isDart ? ["bin/server"] : [];
 

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as hashModule from "./cache/hash";
+import * as archiver from "archiver";
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
@@ -100,7 +101,7 @@ describe("prepareFunctionsUpload", () => {
     it("should set mode to 0o755 for executable paths", async () => {
       const archive = {
         file: sinon.stub(),
-      } as unknown as any;
+      } as unknown as archiver.Archiver;
 
       const files = [
         { name: path.join("src", "index.js"), mode: 0o644 },
@@ -109,12 +110,7 @@ describe("prepareFunctionsUpload", () => {
 
       const getSourceHashStub = sinon.stub(hashModule, "getSourceHash").resolves("hash");
 
-      await prepareFunctionsUpload.addFilesToArchive(
-        archive,
-        files as any,
-        "src",
-        ["bin/server"],
-      );
+      await prepareFunctionsUpload.addFilesToArchive(archive, files as any, "src", ["bin/server"]);
 
       expect((archive.file as sinon.SinonStub).calledTwice).to.be.true;
       expect((archive.file as sinon.SinonStub).firstCall.args[1].mode).to.equal(0o644);
