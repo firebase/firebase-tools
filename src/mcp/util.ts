@@ -42,7 +42,7 @@ export function toContent(
   return {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
     structuredContent: data,
-  } as any;
+  } as CallToolResult & { structuredContent: any };
 }
 
 /**
