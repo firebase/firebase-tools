@@ -57,6 +57,7 @@ export function applyAppMeta(
     return {
       ...result,
       _meta: {
+        ...result._meta,
         ui: {
           resourceUri,
         },
