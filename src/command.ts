@@ -294,7 +294,7 @@ export class Command {
                 trackEmulator("command_error", {
                   command_name: this.name,
                   duration,
-                  error_type: err.exit === 1 ? "user" : "unexpected",
+                  error_type: err?.exit === 1 ? "user" : "unexpected",
                 }),
               );
             }
