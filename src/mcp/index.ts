@@ -2,6 +2,7 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import express from "express";
+import cors from "cors";
 import {
   CallToolRequest,
   CallToolRequestSchema,
@@ -495,16 +496,14 @@ export class FirebaseMcpServer {
 
   async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
     if (options?.useSSE) {
-      const express = require("express");
-      const cors = require("cors");
       const app = express();
       
       app.use(cors());
 
       const port = options.port || 3000;
-      const transports: Record<string, any> = {}; // session ID to transport
+      const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
 
-      app.get("/sse", async (req: any, res: any) => {
+      app.get("/sse", async (req: express.Request, res: express.Response) => {
         console.error(`[SSE] GET /sse connection attempt from ${req.ip}`);
         try {
           const transport = new SSEServerTransport("/message", res);
@@ -529,7 +528,7 @@ export class FirebaseMcpServer {
         }
       });
 
-      app.post("/message", async (req: any, res: any) => {
+      app.post("/message", async (req: express.Request, res: express.Response) => {
         const sessionId = req.query.sessionId as string;
         console.error(`[SSE] POST /message attempt for session ${sessionId}`);
         
@@ -563,12 +562,12 @@ export class FirebaseMcpServer {
   private async safeCheckBillingEnabled(projectId: string): Promise<boolean> {
     try {
       return await checkBillingEnabled(projectId);
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.logger.debug(
         "[mcp] Error on billingInfo for " +
           projectId +
           ", failing open (assuming false): " +
-          (e.message || e),
+          (e instanceof Error ? e.message : String(e)),
       );
       return false;
     }
