@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import * as experiments from "../experiments";
 import { cleanSchema, applyAppMeta } from "./util";
 
@@ -490,7 +491,7 @@ describe("applyAppMeta", () => {
 
   it("should add _meta if mcpapps experiment is enabled", () => {
     experimentsStub.withArgs("mcpapps").returns(true);
-    const result = { content: [{ type: "text", text: "hello" }] } as any;
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
     const uri = "ui://test";
     const expected = {
       content: [{ type: "text", text: "hello" }],
@@ -501,7 +502,7 @@ describe("applyAppMeta", () => {
 
   it("should NOT add _meta if mcpapps experiment is disabled", () => {
     experimentsStub.withArgs("mcpapps").returns(false);
-    const result = { content: [{ type: "text", text: "hello" }] } as any;
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
     const uri = "ui://test";
     expect(applyAppMeta(result, uri)).to.deep.equal(result);
   });

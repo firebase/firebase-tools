@@ -24,12 +24,6 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "enables the experiments family of commands",
   },
 
-  mcpapps: {
-    shortDescription: "Enables MCP Apps features",
-    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
-    public: true,
-  },
-
   // Realtime Database experiments
   rtdbrules: {
     shortDescription: "Advanced security rules management",
@@ -188,6 +182,11 @@ export const ALL_EXPERIMENTS = experiments({
   mcpalpha: {
     shortDescription: "Opt-in to early MCP features before they're widely released.",
     default: false,
+    public: true,
+  },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
     public: true,
   },
   fdcift: {
