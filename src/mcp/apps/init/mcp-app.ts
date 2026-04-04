@@ -1,4 +1,9 @@
-import { App, applyDocumentTheme, applyHostStyleVariables, applyHostFonts } from "@modelcontextprotocol/ext-apps";
+import {
+  App,
+  applyDocumentTheme,
+  applyHostStyleVariables,
+  applyHostFonts,
+} from "@modelcontextprotocol/ext-apps";
 
 const app = new App({ name: "firebase-init", version: "1.0.0" });
 
@@ -14,8 +19,13 @@ const googleFields = document.getElementById("google-fields") as HTMLDivElement;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const projectListContainer = document.getElementById("project-list") as HTMLDivElement;
 
-let projects: any[] = [];
-let filteredProjects: any[] = [];
+interface Project {
+  projectId: string;
+  displayName?: string;
+}
+
+let projects: Project[] = [];
+let filteredProjects: Project[] = [];
 let selectedProjectId: string | null = null;
 
 function setStatus(message: string, type: "info" | "success" | "error" = "info") {
@@ -103,7 +113,7 @@ googleCheckbox.addEventListener("change", (e) => {
 
 initBtn.addEventListener("click", async () => {
   const selectedProduct = Array.from(productRadios).find((r) => r.checked)?.value;
-  
+
   if (!selectedProjectId) {
     setStatus("Please select a project first.", "error");
     return;
@@ -130,31 +140,47 @@ initBtn.addEventListener("click", async () => {
     setStatus("Initializing product...", "info");
 
     // 2. Call init
-    const args: any = { features: {} };
+    interface InitArgs {
+      features: {
+        firestore?: { database_id: string; rules_filename: string };
+        auth?: {
+          providers: {
+            emailPassword?: boolean;
+            anonymous?: boolean;
+            googleSignIn?: { oAuthBrandDisplayName: string; supportEmail: string };
+          };
+        };
+      };
+      [key: string]: unknown;
+    }
+    const args: InitArgs = { features: {} };
 
     if (selectedProduct === "firestore") {
       const dbId = (document.getElementById("firestore-db-id") as HTMLInputElement).value;
       const rulesFile = (document.getElementById("firestore-rules-file") as HTMLInputElement).value;
-      
+
       args.features.firestore = {
         database_id: dbId,
         rules_filename: rulesFile,
       };
     } else if (selectedProduct === "auth") {
       const emailEnabled = (document.getElementById("auth-email") as HTMLInputElement).checked;
-      const anonymousEnabled = (document.getElementById("auth-anonymous") as HTMLInputElement).checked;
+      const anonymousEnabled = (document.getElementById("auth-anonymous") as HTMLInputElement)
+        .checked;
       const googleEnabled = googleCheckbox.checked;
-      
+
       args.features.auth = {
         providers: {
           emailPassword: emailEnabled,
           anonymous: anonymousEnabled,
-        }
+        },
       };
 
       if (googleEnabled) {
-        const displayName = (document.getElementById("google-display-name") as HTMLInputElement).value;
-        const supportEmail = (document.getElementById("google-support-email") as HTMLInputElement).value;
+        const displayName = (document.getElementById("google-display-name") as HTMLInputElement)
+          .value;
+        const supportEmail = (document.getElementById("google-support-email") as HTMLInputElement)
+          .value;
         args.features.auth.providers.googleSignIn = {
           oAuthBrandDisplayName: displayName,
           supportEmail: supportEmail,
@@ -172,8 +198,9 @@ initBtn.addEventListener("click", async () => {
     } else {
       setStatus(`Successfully initialized ${selectedProduct}!`, "success");
     }
-  } catch (err: any) {
-    setStatus(`Error: ${err.message}`, "error");
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    setStatus(`Error: ${message}`, "error");
   } finally {
     initBtn.disabled = false;
     initBtn.textContent = "Initialize";
@@ -197,35 +224,51 @@ app.onhostcontextchanged = (ctx) => {
     setStatus("Connecting to server...", "info");
 
     try {
-      const envResult = await app.callServerTool({ name: "firebase_get_environment", arguments: {} });
-      const envData = envResult.structuredContent as any;
+      const envResult = await app.callServerTool({
+        name: "firebase_get_environment",
+        arguments: {},
+      });
+      if (envResult.isError) {
+        throw new Error(`Failed to fetch environment: ${JSON.stringify(envResult.content)}`);
+      }
+      const envData = envResult.structuredContent as { projectDir?: string };
       if (envData) {
         envDirEl.textContent = envData.projectDir || "<NONE>";
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch environment:", err);
       envDirEl.textContent = "Error loading";
     }
 
     // Fetch projects on load
     try {
-      const result = await app.callServerTool({ name: "firebase_list_projects", arguments: { page_size: 10000 } });
-      const data = result.structuredContent as any;
+      const result = await app.callServerTool({
+        name: "firebase_list_projects",
+        arguments: { page_size: 1000 },
+      });
+      if (result.isError) {
+        throw new Error(`Failed to load projects: ${JSON.stringify(result.content)}`);
+      }
+      const data = result.structuredContent as { projects?: Project[] };
 
       if (data && data.projects) {
         projects = data.projects;
         filteredProjects = projects;
         renderProjects();
         setStatus("Projects loaded.", "success");
-        setTimeout(() => { if (statusBox.className === "status success") statusBox.style.display = "none"; }, 2000);
+        setTimeout(() => {
+          if (statusBox.className === "status success") statusBox.style.display = "none";
+        }, 2000);
       } else {
         setStatus("No projects returned from server.", "error");
       }
-    } catch (err: any) {
-      setStatus(`Failed to load projects: ${err.message}`, "error");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setStatus(`Failed to load projects: ${message}`, "error");
     }
-  } catch (err: any) {
-    setStatus(`Failed to connect: ${err.message}`, "error");
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    setStatus(`Failed to connect: ${message}`, "error");
     if (envDirEl) envDirEl.textContent = "Error loading";
   }
 })();
