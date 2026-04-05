@@ -1,0 +1,122 @@
+name: Sync Upstream
+
+# Checks for new upstream firebase-tools releases and creates a sync PR.
+#
+# Runs weekly on Monday mornings, or can be triggered manually with an
+# optional target version and isolate-package version override.
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: "Upstream version to sync to (e.g. v15.13.0). Leave empty for latest."
+        required: false
+        type: string
+      isolate_package_version:
+        description: "isolate-package semver range (e.g. ^1.27.0-4). Leave empty for default."
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history needed for merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/firebase/firebase-tools.git || true
+          git fetch upstream --tags
+
+      - name: Determine target version
+        id: version
+        env:
+          INPUT_TARGET: ${{ inputs.target_version }}
+        run: |
+          if [[ -n "$INPUT_TARGET" ]]; then
+            echo "tag=$INPUT_TARGET" >> "$GITHUB_OUTPUT"
+          else
+            TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check if already synced
+        id: check
+        env:
+          TARGET_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          VERSION_NUMBER="${TARGET_TAG#v}"
+          CURRENT=$(node -e "process.stdout.write(require('./package.json').version)")
+          CURRENT_BASE="${CURRENT%%-*}"
+          if [[ "$CURRENT_BASE" == "$VERSION_NUMBER" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Already synced to $TARGET_TAG"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Will sync from $CURRENT to ${VERSION_NUMBER}-0"
+          fi
+          echo "version_number=$VERSION_NUMBER" >> "$GITHUB_OUTPUT"
+
+      - name: Run sync
+        if: steps.check.outputs.skip != 'true'
+        env:
+          TARGET_TAG: ${{ steps.version.outputs.tag }}
+          INPUT_ISOLATE: ${{ inputs.isolate_package_version }}
+        run: |
+          ARGS=(--no-push)
+
+          [[ -n "$TARGET_TAG" ]] && ARGS+=(--target "$TARGET_TAG")
+          [[ -n "$INPUT_ISOLATE" ]] && ARGS+=(--isolate-version "$INPUT_ISOLATE")
+
+          bash scripts/sync/sync-upstream.sh "${ARGS[@]}"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.skip != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync/${{ steps.version.outputs.tag }}
+          base: master
+          title: "Sync with upstream ${{ steps.version.outputs.tag }}"
+          body: |
+            ## Summary
+
+            Automated sync with upstream [firebase-tools ${{ steps.version.outputs.tag }}](https://github.com/firebase/firebase-tools/releases/tag/${{ steps.version.outputs.tag }}).
+
+            **Fork version:** `${{ steps.check.outputs.version_number }}-0`
+
+            ### What this PR does
+            - Merges all changes from firebase-tools `${{ steps.version.outputs.tag }}`
+            - Re-applies the isolate-package integration on top
+
+            ### Review checklist
+            - [ ] Build passes
+            - [ ] Isolate integration changes look correct
+            - [ ] No unintended file changes
+
+            ---
+            _Created by the [sync-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
+          labels: upstream-sync
+          delete-branch: true

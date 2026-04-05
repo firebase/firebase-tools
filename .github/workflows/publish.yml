@@ -1,0 +1,134 @@
+name: Publish
+
+# Publishes the fork to npm using OIDC trusted publishing (provenance).
+# Requires Node.js 24+ and npm OIDC trust configured for this repository.
+#
+# Run this workflow manually after merging a sync PR.
+# Choose "next" to publish the pre-release version (e.g. 15.13.0-0),
+# or "latest" to strip the pre-release suffix and publish stable (e.g. 15.13.0).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: "npm dist-tag"
+        required: true
+        default: "next"
+        type: choice
+        options:
+          - next
+          - latest
+      dry_run:
+        description: "Dry run — skip publish, push, and release"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    # Authentication is handled via OIDC trusted publishing (id-token),
+    # so no NPM_TOKEN secret is needed.
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Prepare version
+        id: version
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: |
+          NAME=$(node -e "process.stdout.write(require('./package.json').name)")
+          VERSION=$(node -e "process.stdout.write(require('./package.json').version)")
+
+          if [[ "$NAME" != "firebase-tools-with-isolate" ]]; then
+            echo "❌ Package name is '$NAME', expected 'firebase-tools-with-isolate'."
+            echo "   The package.json may not have been patched correctly."
+            exit 1
+          fi
+
+          # For "latest" releases, strip the pre-release suffix (e.g. 15.13.0-0 → 15.13.0)
+          if [[ "$DIST_TAG" == "latest" && "$VERSION" == *-* ]]; then
+            STABLE_VERSION="${VERSION%%-*}"
+            echo "Promoting $VERSION → $STABLE_VERSION (latest)"
+            npm version "$STABLE_VERSION" --git-tag-version true
+            VERSION="$STABLE_VERSION"
+          fi
+
+          TAG="v${VERSION}"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "dist_tag=${DIST_TAG}" >> $GITHUB_OUTPUT
+
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish summary
+        run: |
+          echo "### Publish Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dist tag:** ${{ steps.version.outputs.dist_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prerelease:** ${{ steps.version.outputs.prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run:** ${{ inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+
+      # Publish before push: npm publish is not retryable (same version
+      # can't be published twice), while git push is idempotent. If push
+      # fails after a successful publish, it can simply be retried manually.
+      - name: Publish to npm
+        if: ${{ inputs.dry_run == false }}
+        run: npm publish --provenance --tag ${{ steps.version.outputs.dist_tag }}
+
+      - name: Push version commit
+        if: ${{ inputs.dry_run == false && inputs.dist_tag == 'latest' }}
+        run: git push origin HEAD
+
+      - name: Push version tag
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          git tag "${{ steps.version.outputs.tag }}" 2>/dev/null || true
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create GitHub Release
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "${{ steps.version.outputs.prerelease }}" == "true" ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            $PRERELEASE_FLAG
+        env:
+          GH_TOKEN: ${{ github.token }}

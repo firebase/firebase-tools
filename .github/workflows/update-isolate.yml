@@ -1,0 +1,116 @@
+name: Update isolate-package
+
+# Updates the isolate-package dependency to a new version, bumps the fork's
+# pre-release number, and commits to master.
+#
+# Use this when you've published a pre-release of isolate-package and want to
+# test it within the firebase-tools-with-isolate fork.
+#
+# After this workflow completes, trigger the "Publish" workflow to publish
+# the updated version to npm.
+
+on:
+  workflow_dispatch:
+    inputs:
+      isolate_version:
+        description: "isolate-package version (e.g. 2.0.0-beta.1, or a dist-tag like 'next')"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run — skip push"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  update:
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Resolve isolate-package version
+        id: isolate
+        env:
+          INPUT_VERSION: ${{ inputs.isolate_version }}
+        run: |
+          # If the input is a dist-tag (like "next" or "latest"), resolve it
+          if [[ "$INPUT_VERSION" =~ ^[a-z]+$ ]]; then
+            RESOLVED=$(npm view "isolate-package@$INPUT_VERSION" version)
+            echo "Resolved dist-tag '$INPUT_VERSION' → $RESOLVED"
+            echo "version=$RESOLVED" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$INPUT_VERSION" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update dependency
+        env:
+          ISOLATE_VERSION: ${{ steps.isolate.outputs.version }}
+        run: |
+          echo "Updating isolate-package to $ISOLATE_VERSION"
+          npm pkg set "dependencies.isolate-package=$ISOLATE_VERSION"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Bump pre-release version
+        id: version
+        env:
+          ISOLATE_VERSION: ${{ steps.isolate.outputs.version }}
+        run: |
+          # Stage changes from npm pkg set + npm install so npm version
+          # doesn't fail on a dirty working directory
+          git add package.json npm-shrinkwrap.json
+          git commit -m "Update isolate-package to ${ISOLATE_VERSION}"
+
+          # If the version has no prerelease suffix (e.g. after publishing to
+          # "latest" which strips it), restore the "-0" suffix first. Without
+          # this, npm version prerelease would bump the patch number
+          # (15.13.0 → 15.13.1-0) instead of the prerelease (15.13.0 → 15.13.0-0).
+          CURRENT=$(node -e "process.stdout.write(require('./package.json').version)")
+          if [[ "$CURRENT" != *-* ]]; then
+            npm version "${CURRENT}-0" --git-tag-version true
+          fi
+
+          npm version prerelease --git-tag-version true
+
+          VERSION=$(node -e "process.stdout.write(require('./package.json').version)")
+          TAG="v${VERSION}"
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Summary
+        env:
+          ISOLATE_VERSION: ${{ steps.isolate.outputs.version }}
+        run: |
+          echo "### Update isolate-package" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **isolate-package:** $ISOLATE_VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fork version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag:** ${{ steps.version.outputs.tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry run:** ${{ inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run the **Publish** workflow with dist-tag \`next\` to publish this version." >> $GITHUB_STEP_SUMMARY
+
+      - name: Push version commit and tag
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          git push origin HEAD
+          git push origin "${{ steps.version.outputs.tag }}"

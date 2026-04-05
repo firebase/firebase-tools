@@ -1,0 +1,279 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# sync-upstream.sh — Sync the fork with an upstream firebase-tools release
+#
+# Usage:
+#   ./scripts/sync/sync-upstream.sh [options]
+#
+# Options:
+#   --target, -t VERSION    Upstream version to sync to (e.g. v15.13.0).
+#                           Defaults to the latest upstream release tag.
+#   --isolate-version, -i   isolate-package version (default: ^1.27.0-4)
+#   --branch, -b NAME       Branch name to create. Defaults to auto-generated.
+#   --no-push               Don't push the branch (for local testing).
+#   --no-build              Skip the build verification step.
+#   --help, -h              Show this help message.
+#
+# What it does:
+#   1. Fetches the latest upstream tags
+#   2. Creates a sync branch from master
+#   3. Merges the upstream release tag (preferring upstream for conflicts)
+#   4. Re-applies isolate-package integration changes cleanly
+#   5. Runs npm install + build to verify correctness
+#   6. Commits and pushes the result
+# ---------------------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Defaults
+TARGET_VERSION=""
+ISOLATE_VERSION="^1.27.0-4"
+BRANCH_NAME=""
+PUSH=true
+BUILD=true
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --target|-t)  TARGET_VERSION="$2"; shift 2 ;;
+    --isolate-version|-i) ISOLATE_VERSION="$2"; shift 2 ;;
+    --branch|-b)  BRANCH_NAME="$2"; shift 2 ;;
+    --no-push)    PUSH=false; shift ;;
+    --no-build)   BUILD=false; shift ;;
+    --help|-h)
+      cat <<HELP
+Usage:
+  ./scripts/sync/sync-upstream.sh [options]
+
+Options:
+  --target, -t VERSION    Upstream version to sync to (e.g. v15.13.0).
+                          Defaults to the latest upstream release tag.
+  --isolate-version, -i   isolate-package version (default: ^1.27.0-4)
+  --branch, -b NAME       Branch name to create. Defaults to auto-generated.
+  --no-push               Don't push the branch (for local testing).
+  --no-build              Skip the build verification step.
+  --help, -h              Show this help message.
+HELP
+      exit 0
+      ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+cd "$ROOT_DIR"
+
+# ---------------------------------------------------------------------------
+# Step 1: Fetch upstream
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "📡 Fetching upstream…"
+
+if ! git remote get-url upstream &>/dev/null; then
+  echo "   Adding upstream remote…"
+  git remote add upstream https://github.com/firebase/firebase-tools.git
+fi
+
+git fetch upstream --tags --quiet
+
+# ---------------------------------------------------------------------------
+# Step 2: Determine target version
+# ---------------------------------------------------------------------------
+
+if [[ -z "$TARGET_VERSION" ]]; then
+  # Find the latest vX.Y.Z tag from upstream
+  TARGET_VERSION=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+  echo "   Latest upstream release: $TARGET_VERSION"
+fi
+
+# Ensure the tag exists
+if ! git rev-parse "$TARGET_VERSION" &>/dev/null; then
+  echo "❌ Tag $TARGET_VERSION not found. Did you mean one of these?"
+  git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -5
+  exit 1
+fi
+
+# Strip the 'v' prefix for the version number
+VERSION_NUMBER="${TARGET_VERSION#v}"
+
+echo "   Target version: $TARGET_VERSION ($VERSION_NUMBER)"
+
+# ---------------------------------------------------------------------------
+# Step 3: Check if already synced
+# ---------------------------------------------------------------------------
+
+# Get the current fork version from package.json
+CURRENT_VERSION=$(node -p "require('./package.json').version")
+echo "   Current fork version: $CURRENT_VERSION"
+
+# Match both "X.Y.Z-0" (pre-release) and "X.Y.Z" (after publishing to latest)
+CURRENT_BASE="${CURRENT_VERSION%%-*}"
+if [[ "$CURRENT_BASE" == "$VERSION_NUMBER" ]]; then
+  echo ""
+  echo "✅ Already synced to $TARGET_VERSION — nothing to do."
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# Step 4: Create sync branch
+# ---------------------------------------------------------------------------
+
+DATE_PREFIX=$(date +%m%d)
+if [[ -z "$BRANCH_NAME" ]]; then
+  BRANCH_NAME="thijs/${DATE_PREFIX}-sync-with-${VERSION_NUMBER}"
+fi
+
+echo ""
+echo "🌿 Creating branch: $BRANCH_NAME"
+
+# Make sure we're on master and up to date
+git checkout master --quiet
+if git remote get-url origin &>/dev/null; then
+  git pull origin master --quiet
+fi
+
+git checkout -b "$BRANCH_NAME"
+
+# ---------------------------------------------------------------------------
+# Step 5: Merge upstream tag
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "🔀 Merging $TARGET_VERSION into $BRANCH_NAME…"
+
+# List the files our isolate integration touches. When these conflict during
+# the merge, we take the upstream version and re-apply our changes cleanly
+# via the apply script. Only list files that the apply script actually patches.
+ISOLATE_FILES=(
+  "src/firebaseConfig.ts"
+  "src/deploy/functions/prepareFunctionsUpload.ts"
+  "src/deploy/functions/prepare.ts"
+  "package.json"
+  "README.md"
+  "npm-shrinkwrap.json"
+)
+
+# Attempt the merge. Use -X theirs to prefer upstream for any conflicts.
+# This is safe because we re-apply our isolate changes afterward.
+if ! git merge "$TARGET_VERSION" -X theirs --no-edit -m "Merge upstream $TARGET_VERSION"; then
+  echo ""
+  echo "⚠️  Merge had conflicts even with -X theirs. Resolving…"
+
+  # For isolate-related files, take upstream's version
+  for f in "${ISOLATE_FILES[@]}"; do
+    if git diff --name-only --diff-filter=U | grep -q "^${f}$"; then
+      echo "   Resolving $f → taking upstream version"
+      git checkout --theirs -- "$f" 2>/dev/null || true
+      git add "$f" 2>/dev/null || true
+    fi
+  done
+
+  # Check for any remaining conflicts
+  REMAINING=$(git diff --name-only --diff-filter=U 2>/dev/null || true)
+  if [[ -n "$REMAINING" ]]; then
+    echo ""
+    echo "❌ Unresolved merge conflicts in:"
+    echo "$REMAINING"
+    echo ""
+    echo "Please resolve these manually, then run:"
+    echo "  node scripts/sync/apply-isolate-changes.mjs --version $VERSION_NUMBER --isolate-version '$ISOLATE_VERSION'"
+    echo "  npm install"
+    echo "  npm run build"
+    echo "  git add -A && git commit"
+    exit 1
+  fi
+
+  git commit --no-edit
+fi
+
+echo "   Merge complete."
+
+# ---------------------------------------------------------------------------
+# Step 6: Apply isolate-package changes
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "🔧 Applying isolate-package integration…"
+
+node "$SCRIPT_DIR/apply-isolate-changes.mjs" \
+  --version "$VERSION_NUMBER" \
+  --isolate-version "$ISOLATE_VERSION"
+
+# ---------------------------------------------------------------------------
+# Step 7: Install dependencies
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "📦 Running npm install…"
+npm install --ignore-scripts 2>&1 | tail -5
+
+# ---------------------------------------------------------------------------
+# Step 8: Build verification
+# ---------------------------------------------------------------------------
+
+if [[ "$BUILD" == true ]]; then
+  echo ""
+  echo "🏗️  Building to verify…"
+  BUILD_LOG=$(mktemp)
+  if npm run build >"$BUILD_LOG" 2>&1; then
+    tail -5 "$BUILD_LOG"
+    echo "   Build succeeded."
+  else
+    echo ""
+    tail -20 "$BUILD_LOG"
+    echo ""
+    echo "❌ Build failed. The isolate changes may need updating."
+    echo "   Check the errors above and fix manually."
+    rm -f "$BUILD_LOG"
+    exit 1
+  fi
+  rm -f "$BUILD_LOG"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 9: Commit
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "💾 Committing changes…"
+
+git add -A
+if git diff --cached --quiet; then
+  echo "   No changes to commit after merge."
+else
+  git commit -m "$(cat <<EOF
+Sync with upstream $TARGET_VERSION and apply isolate-package integration
+
+- Merged firebase-tools $TARGET_VERSION
+- Applied isolate-package integration changes
+- Updated fork version to ${VERSION_NUMBER}-0
+EOF
+  )"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 10: Push
+# ---------------------------------------------------------------------------
+
+if [[ "$PUSH" == true ]]; then
+  echo ""
+  echo "🚀 Pushing $BRANCH_NAME…"
+  git push -u origin "$BRANCH_NAME"
+
+  echo ""
+  echo "✅ Done! Create a PR:"
+  echo "   https://github.com/0x80/firebase-tools-with-isolate/compare/master...$BRANCH_NAME"
+else
+  echo ""
+  echo "✅ Done! (--no-push: branch not pushed)"
+fi
+
+echo ""
+echo "Summary:"
+echo "  Branch:  $BRANCH_NAME"
+echo "  Version: ${VERSION_NUMBER}-0"
+echo "  Target:  $TARGET_VERSION"
+echo ""
