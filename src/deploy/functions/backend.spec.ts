@@ -311,7 +311,7 @@ describe("Backend", () => {
       });
 
       it("should read v2 functions from Cloud Run when experiment is enabled", async () => {
-        isEnabled.withArgs("functionsrunapionly").returns(true);
+        isEnabled.withArgs("dartfunctions").returns(true);
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
@@ -347,7 +347,7 @@ describe("Backend", () => {
       });
 
       it("should handle Cloud Run list errors gracefully when experiment is enabled", async () => {
-        isEnabled.withArgs("functionsrunapionly").returns(true);
+        isEnabled.withArgs("dartfunctions").returns(true);
         listAllFunctions.onFirstCall().resolves({
           functions: [],
           unreachable: [],
