@@ -238,7 +238,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
       const executablePaths = isDart ? ["bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
