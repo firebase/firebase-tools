@@ -1,45 +1,27 @@
 import * as clc from "colorette";
-import { DeployOptions } from "..";
+
+import * as args from "./args";
+import * as proto from "../../gcp/proto";
+import * as backend from "./backend";
+import * as build from "./build";
+import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as functionsConfig from "../../functionsConfig";
+import * as functionsEnv from "../../functions/env";
+import * as runtimes from "./runtimes";
+import * as supported from "./runtimes/supported";
+import * as validate from "./validate";
+import * as ensure from "./ensure";
 import {
+  functionsOrigin,
   artifactRegistryDomain,
+  runtimeconfigOrigin,
   cloudRunApiOrigin,
   eventarcOrigin,
-  functionsOrigin,
   pubsubOrigin,
-  runtimeconfigOrigin,
-  secretManagerOrigin,
   storageOrigin,
+  secretManagerOrigin,
 } from "../../api";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
-import { FirebaseError } from "../../error";
-import { assertExhaustive } from "../../functional";
-import * as functionsEnv from "../../functions/env";
-import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
-import {
-  configForCodebase,
-  isLocalConfig,
-  normalizeAndValidate,
-  requireLocal,
-  shouldUseRuntimeConfig,
-  ValidatedConfig,
-} from "../../functions/projectConfig";
-import * as functionsConfig from "../../functionsConfig";
-import * as proto from "../../gcp/proto";
-import { generateServiceIdentity } from "../../gcp/serviceusage";
-import { logger } from "../../logger";
 import { Options } from "../../options";
-import { needProjectId, needProjectNumber } from "../../projectUtils";
-import * as prompt from "../../prompt";
-import { logLabeledBullet } from "../../utils";
-import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
-import { prepareDynamicExtensions } from "../extensions/prepare";
-import * as args from "./args";
-import * as backend from "./backend";
-import { allEndpoints, Backend } from "./backend";
-import * as build from "./build";
-import { applyBackendHashToBackends } from "./cache/applyHash";
-import { ensureGenkitMonitoringRoles, ensureServiceAgentRoles } from "./checkIam";
-import * as ensure from "./ensure";
 import {
   EndpointFilter,
   endpointMatchesAnyFilter,
@@ -47,12 +29,30 @@ import {
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
+import { logLabeledBullet } from "../../utils";
 import { getFunctionsConfig, prepareFunctionsUpload, runIsolate } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
-import * as runtimes from "./runtimes";
-import * as supported from "./runtimes/supported";
+import { needProjectId, needProjectNumber } from "../../projectUtils";
+import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
-import * as validate from "./validate";
+import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
+import { FirebaseError } from "../../error";
+import {
+  configForCodebase,
+  normalizeAndValidate,
+  ValidatedConfig,
+  requireLocal,
+  shouldUseRuntimeConfig,
+} from "../../functions/projectConfig";
+import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
+import { generateServiceIdentity } from "../../gcp/serviceusage";
+import { applyBackendHashToBackends } from "./cache/applyHash";
+import { allEndpoints, Backend } from "./backend";
+import { assertExhaustive } from "../../functional";
+import { prepareDynamicExtensions } from "../extensions/prepare";
+import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
+import { DeployOptions } from "..";
+import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
@@ -95,7 +95,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -221,6 +221,10 @@ export async function prepare(
         "functions",
         `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
+    }
+
+    if (localCfg.isolate === true) {
+      sourceDir = await runIsolate(sourceDirName);
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {
@@ -415,9 +419,7 @@ export function inferBlockingDetails(want: backend.Backend): void {
     .filter(
       (ep) =>
         backend.isBlockingTriggered(ep) &&
-        AUTH_BLOCKING_EVENTS.includes(
-          ep.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number],
-        ),
+        AUTH_BLOCKING_EVENTS.includes(ep.blockingTrigger.eventType as any),
     ) as (backend.Endpoint & backend.BlockingTriggered)[];
 
   if (authBlockingEndpoints.length === 0) {
@@ -529,23 +531,20 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    const prefix = isLocalConfig(codebaseConfig) ? codebaseConfig.prefix ?? "" : "";
-    build.applyPrefix(discoveredBuild, prefix);
+    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
 }
 
-/**
- * Genkit almost always requires an API key, so warn if the customer is about to deploy
- * a function and doesn't have one. To avoid repetitive nagging, only warn on the first
- * deploy of the function.
- */
+// Genkit almost always requires an API key, so warn if the customer is about to deploy
+// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+// deploy of the function.
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
   options: DeployOptions,
-): Promise<void> {
+) {
   if (options.force) {
     return;
   }
@@ -573,10 +572,8 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   }
 }
 
-/**
- * Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
- * require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
- */
+// Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+// require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,

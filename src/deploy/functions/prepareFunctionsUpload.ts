@@ -8,13 +8,13 @@ import * as tmp from "tmp";
 import type { IsolateExports } from "isolate-package";
 import { dynamicImport } from "../../dynamicImport";
 import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
+import { getSourceHash } from "./cache/hash";
+import * as backend from "./backend";
+import * as functionsConfig from "../../functionsConfig";
+import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
-import * as functionsConfig from "../../functionsConfig";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import * as backend from "./backend";
-import { getSourceHash } from "./cache/hash";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -26,9 +26,6 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
-/**
- *
- */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -156,9 +153,6 @@ async function packageSource(
   return { pathToSource: tmpFile, hash };
 }
 
-/**
- *
- */
 export async function prepareFunctionsUpload(
   projectDir: string,
   sourceDir: string,
@@ -172,27 +166,24 @@ export async function prepareFunctionsUpload(
 
 /**
  * Isolate the source directory and return the path to the isolated directory.
- * Config is not used yet, but I think we will use it in the future to support
- * the Firebase recommended monorepo alternative setup.
  */
 export async function runIsolate(sourceDirName: string): Promise<string> {
   try {
-    utils.logLabeledBullet("isolate", `Isolating the source`);
+    utils.logLabeledBullet("isolate", "Isolating the source");
     /**
-     * Use a dynamic import because isolate-package depends on ESM.
-     * A normal "await import()" gets transpiled to require() so we use the
-     * dynamicImport function which seems to have been created to get around
-     * that exact problem. Unfortunately, when using it we loose all type
-     * information so for this IsolateExports was created to be able to cast
-     * the result.
+     * Use a dynamic import because isolate-package depends on ESM. A normal
+     * "await import()" gets transpiled to require() so we use the dynamicImport
+     * function which was created to get around that exact problem. Unfortunately,
+     * when using it we lose all type information so IsolateExports was created to
+     * be able to cast the result.
      */
     const { isolate } = (await dynamicImport("isolate-package")) as IsolateExports;
 
     /**
      * Only set the targetPackagePath if the sourceDirName is not the current
-     * working directory. By default isolate function will use the current working
-     * directory and assume the monorepo root is elsewhere, but the sourceDirName
-     * is given a path if we deploy from the monorepo root.
+     * working directory. By default the isolate function will use the current
+     * working directory and assume the monorepo root is elsewhere, but the
+     * sourceDirName is given a path if we deploy from the monorepo root.
      */
     const isolateDir = await isolate(
       sourceDirName !== "."
@@ -210,9 +201,6 @@ export async function runIsolate(sourceDirName: string): Promise<string> {
   }
 }
 
-/**
- *
- */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 
