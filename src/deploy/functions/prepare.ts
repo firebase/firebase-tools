@@ -237,13 +237,17 @@ export async function prepare(
       const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
         ? "tar.gz"
         : "zip";
+
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
+      const executablePaths = isDart ? ["bin/server"] : [];
+
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
         sourceDir,
         localCfg,
         [...schPathSet],
         undefined,
-        { exportType },
+        { exportType, executablePaths },
       );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
