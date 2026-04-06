@@ -1,4 +1,7 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
+import * as hashModule from "./cache/hash";
+import * as archiver from "archiver";
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";
@@ -91,6 +94,33 @@ describe("prepareFunctionsUpload", () => {
           fs.rmSync(result.pathToSource, { force: true });
         }
       }
+    });
+  });
+
+  describe("addFilesToArchive", () => {
+    it("should set mode to 0o755 for executable paths", async () => {
+      const archive = {
+        file: sinon.stub(),
+      } as unknown as archiver.Archiver;
+
+      const files = [
+        { name: path.join("src", "index.js"), mode: 0o644 },
+        { name: path.join("src", "bin", "server"), mode: 0o644 },
+      ];
+
+      const getSourceHashStub = sinon.stub(hashModule, "getSourceHash").resolves("hash");
+
+      await prepareFunctionsUpload.addFilesToArchive(archive, files, "src", ["bin/server"]);
+
+      expect((archive.file as sinon.SinonStub).calledTwice).to.be.true;
+
+      expect((archive.file as sinon.SinonStub).firstCall.args[1].name).to.equal("index.js");
+      expect((archive.file as sinon.SinonStub).firstCall.args[1].mode).to.equal(0o644);
+
+      expect((archive.file as sinon.SinonStub).secondCall.args[1].name).to.equal("bin/server");
+      expect((archive.file as sinon.SinonStub).secondCall.args[1].mode).to.equal(0o755);
+
+      getSourceHashStub.restore();
     });
   });
 });
