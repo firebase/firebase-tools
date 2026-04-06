@@ -642,20 +642,24 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
+    const configEdition = options.config.src.emulators?.firestore?.databaseEdition;
+    const cliEdition = options.databaseEdition;
+    const edition = cliEdition !== undefined ? cliEdition : configEdition;
+
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       websocket_port: websocketPort,
+      database_edition: edition,
       project_id: projectId,
       auto_download: true,
     };
 
-    const editionOption = options.config.src.emulators?.firestore?.database_edition;
-    let edition = "standard";
-    if (editionOption !== undefined) {
-      edition = editionOption;
-    }
-    args.database_edition = edition;
+    // let edition = "standard";
+    // if (configEdition !== undefined) {
+    //   edition = configEdition;
+    // }
+    // args.database_edition = edition;
 
     if (exportMetadata.firestore) {
       utils.assertIsString(options.import);

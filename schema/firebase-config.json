@@ -1420,6 +1420,9 @@
                         },
                         "websocketPort": {
                             "type": "number"
+                        },
+                        "databaseEdition": {
+                            "type": "string"
                         }
                     },
                     "type": "object"

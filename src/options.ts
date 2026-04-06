@@ -26,6 +26,7 @@ export interface BaseOptions {
   // Emulator specific import/export options
   exportOnExit?: boolean | string;
   import?: string;
+  databaseEdition?: string;
 
   isMCP?: boolean;
 

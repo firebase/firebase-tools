@@ -240,7 +240,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
     websocketPort?: number;
-    database_edition?: string;
+    databaseEdition?: string;
   };
   functions?: {
     host?: string;
