@@ -1,1 +1,2 @@
-- Renamed Data Connect displayed text to SQL Connect
+- Fixed an issue where functions deployments would silently fail (#6989)
+- Renamed Data Connect displayed text to SQL Connect (#10270)
