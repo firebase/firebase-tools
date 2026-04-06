@@ -285,7 +285,7 @@ export class DataConnectEmulator implements EmulatorInstance {
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
-        `Unkown system error when running the SQL Connect toolkit. ` +
+        `Unknown system error when running the SQL Connect toolkit. ` +
           `You may be able to fix this by installing Rosetta: ` +
           `softwareupdate --install-rosetta`,
       );
