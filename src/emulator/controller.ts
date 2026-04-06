@@ -650,6 +650,13 @@ export async function startAll(
       auto_download: true,
     };
 
+    const editionOption = options.config.src.emulators?.firestore?.database_edition;
+    let edition = "standard";
+    if (editionOption !== undefined) {
+      edition = editionOption;
+    }
+    args.database_edition = edition;
+
     if (exportMetadata.firestore) {
       utils.assertIsString(options.import);
       const importDirAbsPath = path.resolve(options.import);
@@ -730,6 +737,11 @@ export async function startAll(
 
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
+    firestoreLogger.logLabeled(
+      "SUCCESS",
+      Emulators.FIRESTORE,
+      `Firestore Emulator is running on ${edition} database edition.`,
+    );
     firestoreLogger.logLabeled(
       "SUCCESS",
       Emulators.FIRESTORE,
