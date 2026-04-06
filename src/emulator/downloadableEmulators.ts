@@ -242,6 +242,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "port",
       "webchannel_port",
       "host",
+      "database_edition",
       "rules",
       "websocket_port",
       "functions_emulator",
