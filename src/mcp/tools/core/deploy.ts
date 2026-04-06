@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "../../tool";
-import { deploy as coreDeploy } from "../../../deploy";
+import { deploy as coreDeploy, TARGETS, DeployOptions } from "../../../deploy";
 import { toContent, applyAppMeta } from "../../util";
 import { jobTracker } from "../../util/jobs";
 
@@ -28,18 +28,7 @@ export const deploy = tool(
     },
   },
   async ({ only }, ctx) => {
-    const validTargets = [
-      "database",
-      "storage",
-      "firestore",
-      "functions",
-      "hosting",
-      "remoteconfig",
-      "extensions",
-      "dataconnect",
-      "apphosting",
-      "auth",
-    ];
+    const validTargets = Object.keys(TARGETS);
     let targets = validTargets;
     if (only) {
       const parts = only.split(",").map((p) => p.trim());
@@ -49,7 +38,7 @@ export const deploy = tool(
     const jobId = Date.now().toString();
     jobTracker.createJob(jobId);
 
-    const options: any = {
+    const options = {
       only: only || "",
       except: "",
       filteredTargets: targets,
@@ -58,7 +47,7 @@ export const deploy = tool(
       rc: ctx.rc,
       config: ctx.config,
       nonInteractive: true,
-      onProgress: (progress: any) => {
+      onProgress: (progress: { phase: string; targets?: string[] }) => {
         const phaseNumbers: Record<string, number> = {
           predeploy: 10,
           prepare: 30,
@@ -70,19 +59,22 @@ export const deploy = tool(
         jobTracker.updateJob(jobId, { progress: percentage });
         jobTracker.addLog(
           jobId,
-          `Deploy [${progress.phase}]: Complete for targets ${progress.targets?.join(",")}`,
+          `Deploy [${progress.phase}]: Complete for targets ${(progress.targets || []).join(",")}`,
         );
       },
     };
 
     // Run in background
-    (async () => {
+    void (async () => {
       try {
-        const typedTargets = targets as any; // Cast or specify exact enum
-        const res = await coreDeploy(typedTargets, options);
+        const res = await coreDeploy(
+          targets as (keyof typeof TARGETS)[],
+          options as unknown as DeployOptions,
+        );
         jobTracker.updateJob(jobId, { status: "success", progress: 100, result: res });
-      } catch (err: any) {
-        jobTracker.updateJob(jobId, { status: "failed", error: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        jobTracker.updateJob(jobId, { status: "failed", error: message });
       }
     })();
 

@@ -33,7 +33,7 @@ import {
   deployStatsParams,
 } from "./dataconnect/context";
 
-const TARGETS = {
+export const TARGETS = {
   hosting: HostingTarget,
   database: DatabaseTarget,
   firestore: FirestoreTarget,
