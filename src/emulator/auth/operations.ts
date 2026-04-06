@@ -559,11 +559,22 @@ function batchGet(
 ): Schemas["GoogleCloudIdentitytoolkitV1DownloadAccountResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   const maxResults = Math.min(Math.floor(ctx.params.query.maxResults) || 20, 1000);
+  const queryTenantId = ctx.params.query.tenantId;
+  let users: UserInfo[];
 
-  const users = state.queryUsers(
-    {},
-    { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
-  );
+  // Get the accounts from the tenant when tenantId is specified in the query.
+  if (queryTenantId && state instanceof AgentProjectState) {
+    const tenant = state.getTenantProject(queryTenantId);
+    users = tenant.queryUsers(
+      {},
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
+    );
+  } else {
+    users = state.queryUsers(
+      {},
+      { sortByField: "localId", order: "ASC", startToken: ctx.params.query.nextPageToken },
+    );
+  }
   let newPageToken: string | undefined = undefined;
 
   // As a non-standard behavior, passing in maxResults=-1 will return all users.
@@ -3330,8 +3341,8 @@ function generateBlockingFunctionJwt(
 
   if (user.lastLoginAt || user.createdAt) {
     jwt.user_record.metadata = {
-      last_sign_in_time: user.lastLoginAt,
-      creation_time: user.createdAt,
+      last_sign_in_time: user.lastLoginAt ? parseInt(user.lastLoginAt) : undefined,
+      creation_time: user.createdAt ? parseInt(user.createdAt) : undefined,
     };
   }
 
@@ -3574,8 +3585,8 @@ export interface BlockingFunctionsJwtPayload {
       enrolled_factors: EnrolledFactor[];
     };
     metadata?: {
-      last_sign_in_time?: string;
-      creation_time?: string;
+      last_sign_in_time?: number;
+      creation_time?: number;
     };
     custom_claims?: Record<string, unknown>;
     tenant_id?: string; // should match top level tenant_id

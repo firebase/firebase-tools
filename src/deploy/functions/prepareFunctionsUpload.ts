@@ -66,13 +66,16 @@ async function packageSource(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig: any,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
+  const exportType = options?.exportType || "zip";
+  const postfix = `.${exportType}`;
+  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
   const hashes: string[] = [];
 
   // We must ignore firebase-debug.log or weird things happen if
@@ -133,7 +136,7 @@ async function packageSource(
       throw err;
     }
     throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
       {
         original: err,
         exit: 1,
@@ -162,8 +165,9 @@ export async function prepareFunctionsUpload(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig);
+  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
 
 /**

@@ -1,1 +1,9 @@
-- Renamed MCP prompts `/firestore:generate_rules` to `/firestore:generate_security_rules` and `/storage:generate_rules` to `/storage:generate_security_rules`.
+- Add support for `dataAccessMode` in Firestore database creation. This allows choosing between `FIRESTORE_NATIVE` and `MONGODB_COMPATIBLE` for Enterprise edition databases.
+- Updated Firestore Emulator to v1.20.4, which includes minor bug fixes for Firestore Native Mode.
+- Added `apptesting:execute` command to run App Testing agent tests from YAML files.
+- Updated Data Connect emulator to v3.3.0:
+  - `firebase dataconnect:sdk:generate` now performs compilation check first before generating SDKs.
+  - Updated the Golang dependency version from 1.24.13 to 1.25.8, which removes support for macOS versions prior to Monterey.
+  - Prevent concurrent execution of operations. https://github.com/firebase/firebase-tools/issues/9866
+  - Support for @skip and @include
+  - Vector similarity search now supports `offset` as well as `limit`

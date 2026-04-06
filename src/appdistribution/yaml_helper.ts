@@ -1,14 +1,15 @@
 import * as jsYaml from "js-yaml";
 import { getErrMsg, FirebaseError } from "../error";
-import { TestCase } from "./types";
+import { TestCase, AiStep } from "./types";
 
-declare interface YamlStep {
+/** An AI test step in YAML format. */
+export declare interface YamlStep {
   goal?: string;
   hint?: string;
-  successCriteria?: string;
+  finalScreenAssertion?: string;
 }
 
-const ALLOWED_YAML_STEP_KEYS = new Set(["goal", "hint", "successCriteria"]);
+const ALLOWED_YAML_STEP_KEYS = new Set(["goal", "hint", "finalScreenAssertion"]);
 
 declare interface YamlTestCase {
   displayName?: string;
@@ -38,13 +39,16 @@ function toYamlTestCases(testCases: TestCase[]): YamlTestCase[] {
     steps: testCase.aiInstructions.steps.map((step) => ({
       goal: step.goal,
       ...(step.hint && { hint: step.hint }),
-      ...(step.successCriteria && { successCriteria: step.successCriteria }),
+      ...(step.successCriteria && {
+        finalScreenAssertion: step.successCriteria,
+      }),
     })),
   }));
 }
 
+/** Converts a list of test cases to YAML format. */
 export function toYaml(testCases: TestCase[]): string {
-  return jsYaml.safeDump(toYamlTestCases(testCases));
+  return jsYaml.safeDump({ tests: toYamlTestCases(testCases) });
 }
 
 function castExists<T>(it: T | null | undefined, thing: string): T {
@@ -62,22 +66,25 @@ function checkAllowedKeys(allowedKeys: Set<string>, o: object) {
   }
 }
 
+/** Converts an AI test step from YAML format. */
+export function fromYamlStep(yamlStep: YamlStep): AiStep {
+  checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
+  return {
+    goal: castExists(yamlStep.goal, "goal"),
+    ...(yamlStep.hint && { hint: yamlStep.hint }),
+    ...(yamlStep.finalScreenAssertion && {
+      successCriteria: yamlStep.finalScreenAssertion,
+    }),
+  };
+}
+
 function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): TestCase[] {
   return yamlTestCases.map((yamlTestCase) => {
     checkAllowedKeys(ALLOWED_YAML_TEST_CASE_KEYS, yamlTestCase);
     return {
       displayName: castExists(yamlTestCase.displayName, "displayName"),
       aiInstructions: {
-        steps: castExists(yamlTestCase.steps, "steps").map((yamlStep) => {
-          checkAllowedKeys(ALLOWED_YAML_STEP_KEYS, yamlStep);
-          return {
-            goal: castExists(yamlStep.goal, "goal"),
-            ...(yamlStep.hint && { hint: yamlStep.hint }),
-            ...(yamlStep.successCriteria && {
-              successCriteria: yamlStep.successCriteria,
-            }),
-          };
-        }),
+        steps: castExists(yamlTestCase.steps, "steps").map((yamlStep) => fromYamlStep(yamlStep)),
       },
       ...(yamlTestCase.id && {
         name: `${appName}/testCases/${yamlTestCase.id}`,
@@ -89,6 +96,7 @@ function fromYamlTestCases(appName: string, yamlTestCases: YamlTestCase[]): Test
   });
 }
 
+/** Converts a list of test cases from YAML format. */
 export function fromYaml(appName: string, yaml: string): TestCase[] {
   let parsedYaml: unknown;
   try {
@@ -96,8 +104,16 @@ export function fromYaml(appName: string, yaml: string): TestCase[] {
   } catch (err: unknown) {
     throw new FirebaseError(`Failed to parse YAML: ${getErrMsg(err)}`);
   }
-  if (!Array.isArray(parsedYaml)) {
-    throw new FirebaseError("YAML file must contain a list of test cases.");
+  if (!parsedYaml || typeof parsedYaml !== "object" || !("tests" in parsedYaml)) {
+    throw new FirebaseError(
+      "YAML file must contain a top-level 'tests' field with a list of test cases.",
+    );
   }
-  return fromYamlTestCases(appName, parsedYaml as YamlTestCase[]);
+  const yamlTestCases = (parsedYaml as any).tests;
+  if (!Array.isArray(yamlTestCases)) {
+    throw new FirebaseError(
+      "The 'tests' field in the YAML file must contain a list of test cases.",
+    );
+  }
+  return fromYamlTestCases(appName, yamlTestCases as YamlTestCase[]);
 }

@@ -36,10 +36,13 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type DataAccessMode = "MONGODB_COMPATIBLE" | "FIRESTORE_NATIVE";
+
 type FirestoreSingle = {
   database?: string;
   location?: string;
   edition?: string;
+  dataAccessMode?: DataAccessMode;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -321,6 +324,18 @@ export type AppHostingMultiple = AppHostingSingle[];
 
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
+export interface AuthConfig {
+  providers?: {
+    anonymous?: boolean;
+    emailPassword?: boolean;
+    googleSignIn?: {
+      oAuthBrandDisplayName?: string;
+      supportEmail?: string;
+      authorizedRedirectUris?: string[];
+    };
+  };
+}
+
 export type FirebaseConfig = {
   $schema?: string;
   database?: DatabaseConfig;
@@ -333,4 +348,5 @@ export type FirebaseConfig = {
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
   apphosting?: AppHostingConfig;
+  auth?: AuthConfig;
 };

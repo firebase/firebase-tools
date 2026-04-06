@@ -16,8 +16,11 @@ export interface FirestoreOptions extends Options {
   recursive?: boolean;
   location?: string;
   type?: types.DatabaseType;
-  deleteProtection?: types.DatabaseDeleteProtectionStateOption;
-  pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
+  deleteProtection?: types.EnablementOption;
+  pointInTimeRecovery?: types.EnablementOption;
+  realtimeUpdates?: types.EnablementOption;
+  firestoreDataAccess?: types.EnablementOption;
+  mongodbCompatibleDataAccess?: types.EnablementOption;
   edition?: string;
 
   // backup schedules

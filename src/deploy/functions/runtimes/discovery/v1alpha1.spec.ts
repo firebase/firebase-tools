@@ -108,6 +108,37 @@ describe("buildFromV1Alpha", () => {
       }
     }); // Top level function keys
 
+    describe("VPC settings", () => {
+      it("throws when both connector and networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                connector: "connector",
+                networkInterfaces: [{ network: "network" }],
+              },
+            },
+          },
+        });
+      });
+
+      it("throws when neither connector nor networkInterfaces are specified", () => {
+        assertParserError({
+          endpoints: {
+            func: {
+              ...MIN_ENDPOINT,
+              httpsTrigger: {},
+              vpc: {
+                egressSettings: "ALL_TRAFFIC",
+              },
+            },
+          },
+        });
+      });
+    });
+
     describe("Event triggers", () => {
       const validTrigger: build.EventTrigger = {
         eventType: "google.pubsub.v1.topic.publish",
@@ -632,6 +663,32 @@ describe("buildFromV1Alpha", () => {
       };
       const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
       const expected: build.Build = build.of({ id: { ...DEFAULTED_ENDPOINT, httpsTrigger: {} } });
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies no-build fields (baseImageUri, command, args)", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            baseImageUri: "gcr.io/base",
+            command: ["cmd"],
+            args: ["arg1", "arg2"],
+            httpsTrigger: {},
+          },
+        },
+      };
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.of({
+        id: {
+          ...DEFAULTED_ENDPOINT,
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg1", "arg2"],
+          httpsTrigger: {},
+        },
+      });
       expect(parsed).to.deep.equal(expected);
     });
 

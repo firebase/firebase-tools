@@ -40,7 +40,7 @@ export const get_report = tool(
   {
     name: "get_report",
     description:
-      `Use this to request numerical reports from Crashlytics. The result aggregates the sum of events and impacted users, grouped by a dimension appropriate for that report. Agents must read the [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports) using the \`firebase_read_resources\` tool before calling to understand criticial prerequisites for requesting reports and how to interpret the results.
+      `Use this to request numerical reports from Crashlytics. The result aggregates the sum of events and impacted users, grouped by a dimension appropriate for that report. Agents must read the [Firebase Crashlytics Reports Guide](firebase://guides/crashlytics/reports) using the \`firebase_read_resources\` tool before calling to understand critical prerequisites for requesting reports and how to interpret the results.
     `.trim(),
     inputSchema: ReportInputSchema,
     annotations: {
