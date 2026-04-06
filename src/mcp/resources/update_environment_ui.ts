@@ -13,7 +13,8 @@ export const update_environment_ui = resource(
     description: "Visual interface for selecting active Firebase project",
     mimeType: RESOURCE_MIME_TYPE,
   },
-  async (uri: string, ctx: McpContext) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async (_uri: string, _ctx: McpContext) => {
     try {
       const htmlPath = path.join(__dirname, "../apps/update_environment/mcp-app.html");
       const html = await fs.readFile(htmlPath, "utf-8");

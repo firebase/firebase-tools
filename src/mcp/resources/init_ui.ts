@@ -13,7 +13,8 @@ export const init_ui = resource(
     description: "Visual interface for Firebase Init",
     mimeType: RESOURCE_MIME_TYPE,
   },
-  async (uri: string, ctx: McpContext) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async (_uri: string, _ctx: McpContext) => {
     try {
       // The built HTML will be in lib/mcp/apps/init/mcp-app.html
       const htmlPath = path.join(__dirname, "../apps/init/mcp-app.html");

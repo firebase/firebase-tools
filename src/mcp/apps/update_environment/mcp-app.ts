@@ -13,7 +13,6 @@ let selectedProjectId: string | null = null;
 
 const envProjectIdEl = document.getElementById("env-project-id") as HTMLSpanElement;
 const envUserEl = document.getElementById("env-user") as HTMLSpanElement;
-const currentEnvBox = document.getElementById("current-env") as HTMLDivElement;
 
 function showStatus(message: string, type: "success" | "error" | "info") {
   statusBox.textContent = message;
@@ -99,7 +98,8 @@ submitBtn.onclick = async () => {
   }
 };
 
-app.ontoolresult = (result) => {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.ontoolresult = (_result) => {
   // We can handle tool results if needed, but we rely on manual triggers for list_projects
 };
 
