@@ -89,6 +89,15 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
+    if (backend.isBlockingTriggered(ep)) {
+      const service = serviceForEndpoint(ep);
+      if (service.name === "noop") {
+        throw new FirebaseError(
+          `Unrecognized blocking trigger type: ${ep.blockingTrigger.eventType}. Please update your CLI with ${clc.bold("npm install -g firebase-tools@latest")}.`,
+          { exit: 1 },
+        );
+      }
+    }
     serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
   }
 
