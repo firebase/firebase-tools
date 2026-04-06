@@ -135,7 +135,7 @@ const firestoreService: Service = {
   unregisterTrigger: noop,
 };
 
-/** A Firebase Data Connect service object */
+/** A Firebase SQL Connect service object */
 const dataconnectService: Service = {
   name: "dataconnect",
   api: "firebasedataconnect.googleapis.com",
