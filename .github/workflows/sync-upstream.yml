@@ -2,13 +2,14 @@ name: Sync Upstream
 
 # Checks for new upstream firebase-tools releases and creates a sync PR.
 #
-# Runs weekly on Monday mornings, or can be triggered manually with an
-# optional target version and isolate-package version override.
+# Runs daily, or can be triggered manually with an optional target version
+# and isolate-package version override. The already-synced check exits
+# immediately when there is no new release, so daily polling is cheap.
 
 on:
   schedule:
-    # Every Monday at 09:00 UTC
-    - cron: "0 9 * * 1"
+    # Every day at 09:00 UTC
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       target_version:
@@ -48,7 +49,7 @@ jobs:
       - name: Add upstream remote
         run: |
           git remote add upstream https://github.com/firebase/firebase-tools.git || true
-          git fetch upstream --tags
+          git fetch upstream --tags --force
 
       - name: Determine target version
         id: version
@@ -92,31 +93,51 @@ jobs:
 
           bash scripts/sync/sync-upstream.sh "${ARGS[@]}"
 
+      - name: Push sync branch
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          BRANCH=$(git branch --show-current)
+          git push -u origin "$BRANCH" --force
+
       - name: Create Pull Request
         if: steps.check.outputs.skip != 'true'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: sync/${{ steps.version.outputs.tag }}
-          base: master
-          title: "Sync with upstream ${{ steps.version.outputs.tag }}"
-          body: |
-            ## Summary
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_TAG: ${{ steps.version.outputs.tag }}
+          VERSION_NUMBER: ${{ steps.check.outputs.version_number }}
+        run: |
+          BRANCH=$(git branch --show-current)
 
-            Automated sync with upstream [firebase-tools ${{ steps.version.outputs.tag }}](https://github.com/firebase/firebase-tools/releases/tag/${{ steps.version.outputs.tag }}).
+          # Close any existing PR for this sync
+          EXISTING=$(gh pr list --base master --head "$BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          if [[ -n "$EXISTING" ]]; then
+            echo "Closing existing PR #$EXISTING"
+            gh pr close "$EXISTING" 2>/dev/null || true
+          fi
 
-            **Fork version:** `${{ steps.check.outputs.version_number }}-0`
+          if ! gh pr create \
+            --base master \
+            --head "$BRANCH" \
+            --title "Sync with upstream $TARGET_TAG" \
+            --body "$(cat <<EOF
+          Automated sync with upstream [firebase-tools ${TARGET_TAG}](https://github.com/firebase/firebase-tools/releases/tag/${TARGET_TAG}).
 
-            ### What this PR does
-            - Merges all changes from firebase-tools `${{ steps.version.outputs.tag }}`
-            - Re-applies the isolate-package integration on top
+          **Fork version:** \`${VERSION_NUMBER}-0\`
 
-            ### Review checklist
-            - [ ] Build passes
-            - [ ] Isolate integration changes look correct
-            - [ ] No unintended file changes
+          ### What this PR does
+          - Merges all changes from firebase-tools \`${TARGET_TAG}\`
+          - Re-applies the isolate-package integration on top
 
-            ---
-            _Created by the [sync-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
-          labels: upstream-sync
-          delete-branch: true
+          ### Review checklist
+          - [ ] Build passes
+          - [ ] Isolate integration changes look correct
+          - [ ] No unintended file changes
+
+          ---
+          _Created by the [sync-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
+          EOF
+          )"; then
+            echo ""
+            echo "::warning::Failed to create PR. The branch was pushed successfully."
+            echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/master...$BRANCH"
+          fi

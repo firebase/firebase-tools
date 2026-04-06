@@ -215,10 +215,17 @@ function patchPrepare() {
   const filePath = "src/deploy/functions/prepare.ts";
   let content = readFile(filePath);
 
-  if (content.includes("runIsolate")) {
+  if (content.includes("runIsolate") && content.includes("localCfg.isolate")) {
     console.log(`⏭️  ${filePath} — already patched`);
     return;
   }
+
+  // Strip any leftover runIsolate references from a bad merge so we can
+  // re-apply cleanly from upstream's version.
+  content = content
+    .replace(/, runIsolate/g, "")
+    .replace(/\n\n? {4}if \(localCfg\.isolate === true\) \{\n.*runIsolate.*\n {4}\}\n/g, "\n")
+    .replace(/\blet sourceDir = options\.config\.path/g, "const sourceDir = options.config.path");
 
   // --- Add runIsolate to the prepareFunctionsUpload import ---
   const importAnchor =
