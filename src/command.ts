@@ -255,7 +255,7 @@ export class Command {
                 }),
               );
             }
-            await withTimeout(5000, Promise.all(tracks));
+            await withTimeout(1000, Promise.all(tracks));
           } catch (gaErr) {
             logger.debug("Analytics tracking failed during success path:", gaErr);
           }
@@ -298,7 +298,7 @@ export class Command {
                 }),
               );
             }
-            await withTimeout(5000, Promise.all(tracks));
+            await withTimeout(1000, Promise.all(tracks));
           } catch (gaErr) {
             logger.debug("Analytics tracking failed during error path:", gaErr);
           }
