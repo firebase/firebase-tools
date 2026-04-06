@@ -115,11 +115,7 @@ jobs:
             gh pr close "$EXISTING" 2>/dev/null || true
           fi
 
-          if ! gh pr create \
-            --base master \
-            --head "$BRANCH" \
-            --title "Sync with upstream $TARGET_TAG" \
-            --body "$(cat <<EOF
+          BODY=$(cat <<EOF
           Automated sync with upstream [firebase-tools ${TARGET_TAG}](https://github.com/firebase/firebase-tools/releases/tag/${TARGET_TAG}).
 
           **Fork version:** \`${VERSION_NUMBER}-0\`
@@ -136,7 +132,16 @@ jobs:
           ---
           _Created by the [sync-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
           EOF
-          )"; then
+          )
+
+          # Use the REST API directly — gh pr create uses GraphQL which can
+          # fail with "Resource not accessible by integration" on forks.
+          if ! gh api repos/${{ github.repository }}/pulls \
+            -f title="Sync with upstream $TARGET_TAG" \
+            -f body="$BODY" \
+            -f head="$BRANCH" \
+            -f base="master" \
+            --jq '.html_url'; then
             echo ""
             echo "::warning::Failed to create PR. The branch was pushed successfully."
             echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/master...$BRANCH"
