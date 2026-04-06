@@ -1,4 +1,5 @@
 import { App } from "@modelcontextprotocol/ext-apps";
+import { Job } from "../../util/jobs";
 
 const app = new App({ name: "firebase-deploy", version: "1.0.0" });
 
@@ -7,7 +8,7 @@ const progressBar = document.getElementById("progress-bar") as HTMLDivElement;
 const progressContainer = document.getElementById("progress-container") as HTMLDivElement;
 const statusList = document.getElementById("status-list") as HTMLDivElement;
 
-function addLog(message: string, type: "info" | "success" | "error" = "info") {
+function addLog(message: string, type: "info" | "success" | "error" = "info"): void {
   const item = document.createElement("div");
   item.className = `status-item ${type}`;
   item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -15,11 +16,12 @@ function addLog(message: string, type: "info" | "success" | "error" = "info") {
   statusList.scrollTop = statusList.scrollHeight; // Auto-scroll
 }
 
-function updateProgress(percentage: number) {
+function updateProgress(percentage: number): void {
   progressBar.style.width = `${percentage}%`;
 }
 
-function pollStatus(jobId: string) {
+function pollStatus(jobId: string): void {
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
   const interval = setInterval(async () => {
     try {
       const statusRes = await app.callServerTool({
@@ -35,7 +37,7 @@ function pollStatus(jobId: string) {
         return;
       }
 
-      const job = statusRes.structuredContent as any;
+      const job = statusRes.structuredContent as unknown as Job;
       if (job) {
         updateProgress(job.progress);
 
@@ -49,14 +51,15 @@ function pollStatus(jobId: string) {
           deployBtn.disabled = false;
           deployBtn.textContent = "Deploy";
         } else if (job.status === "failed") {
-          addLog(`Deployment failed: ${job.error}`, "error");
+          addLog(`Deployment failed: ${job.error || "Unknown error"}`, "error");
           clearInterval(interval);
           deployBtn.disabled = false;
           deployBtn.textContent = "Deploy";
         }
       }
-    } catch (err: any) {
-      addLog(`Error during polling: ${err.message}`, "error");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      addLog(`Error during polling: ${message}`, "error");
       clearInterval(interval);
       deployBtn.disabled = false;
       deployBtn.textContent = "Deploy";
@@ -64,9 +67,11 @@ function pollStatus(jobId: string) {
   }, 2000);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-misused-promises
 deployBtn.addEventListener("click", async () => {
   // 1. Get checked targets
   const targets: string[] = [];
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   const checkboxes = document.querySelectorAll(
     '.checkbox-grid input[type="checkbox"]:checked',
   ) as NodeListOf<HTMLInputElement>;
@@ -101,7 +106,7 @@ deployBtn.addEventListener("click", async () => {
       deployBtn.disabled = false;
       deployBtn.textContent = "Deploy";
     } else {
-      const jobId = (result.structuredContent as any)?.jobId;
+      const jobId = (result.structuredContent as unknown as { jobId: string })?.jobId;
       if (jobId) {
         addLog(`Deployment started with Job ID: ${jobId}. Polling status...`);
         pollStatus(jobId);
@@ -111,19 +116,21 @@ deployBtn.addEventListener("click", async () => {
         deployBtn.textContent = "Deploy";
       }
     }
-  } catch (err: any) {
-    addLog(`Error calling deploy tool: ${err.message}`, "error");
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    addLog(`Error calling deploy tool: ${message}`, "error");
     updateProgress(0);
     deployBtn.disabled = false;
     deployBtn.textContent = "Deploy";
   }
 });
 
-(async () => {
+void (async () => {
   try {
     await app.connect();
     addLog("Connected to host.", "info");
-  } catch (err: any) {
-    console.error("Failed to connect app:", err);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Failed to connect app:", message);
   }
 })();
