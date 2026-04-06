@@ -4,6 +4,7 @@ export interface Job {
   logs: string[];
   result?: any;
   error?: string;
+  [key: string]: unknown;
 }
 
 class JobTracker {

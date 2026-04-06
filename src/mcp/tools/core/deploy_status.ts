@@ -20,7 +20,7 @@ export const deploy_status = tool(
       requiresProject: true,
     },
   },
-  async ({ jobId }, ctx) => {
+  async ({ jobId }) => {
     const job = jobTracker.getJob(jobId);
     if (!job) {
       return mcpError(`Job not found: ${jobId}`);
@@ -31,7 +31,7 @@ export const deploy_status = tool(
     );
     return {
       ...contentRes,
-      structuredContent: job as any,
+      structuredContent: job,
     };
   },
 );
