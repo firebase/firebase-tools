@@ -1,0 +1,1 @@
+- Fixed an issue where functions deployments would silently fail (#6989)
