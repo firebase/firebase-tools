@@ -1,1 +1,2 @@
 - Fixed an issue where functions deployments would silently fail (#6989)
+- Updates the default region for new App Hosting backends to us-east4 (#10271)
