@@ -11,7 +11,7 @@ export const get_security_rules = tool(
     name: "get_security_rules",
     description:
       "Use this to retrieve the security rules for a specified Firebase service. " +
-      "If there are multiple instances of that service in the product, the rules for the defualt instance are returned.",
+      "If there are multiple instances of that service in the product, the rules for the default instance are returned.",
     inputSchema: z.object({
       type: z.enum(["firestore", "rtdb", "storage"]).describe("The service to get rules for."),
       // TODO: Add a resourceID argument that lets you choose non default buckets/dbs.

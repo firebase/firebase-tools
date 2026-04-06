@@ -1,8 +1,7 @@
 import { computed } from "@preact/signals-core";
-import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
 import { globalSignal } from "../../utils/globals";
-import { AuthParams } from "../../messaging/protocol";
+import { AuthParams, ExecutionResults } from "../../messaging/protocol";
 import { ExecutionInput } from "./execution";
 
 export enum ExecutionState {
@@ -21,7 +20,7 @@ export interface ExecutionItem {
   input: ExecutionInput;
   variables: string;
   auth: AuthParams;
-  results: ExecutionResult | Error;
+  results: ExecutionResults;
 }
 
 let executionId = 0;

@@ -777,4 +777,62 @@ describe("validate", () => {
       expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
     });
   });
+
+  describe("checkFiltersIntegrity", () => {
+    const ENDPOINT: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "func",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+      codebase: "default",
+    };
+
+    it("should pass if no filters are provided", () => {
+      expect(() => validate.checkFiltersIntegrity({}, undefined)).to.not.throw();
+      expect(() => validate.checkFiltersIntegrity({}, [])).to.not.throw();
+    });
+
+    it("should pass if filters match endpoints", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should pass if partial id matches", () => {
+      const e = { ...ENDPOINT, id: "group-func" };
+      const b = backend.of(e);
+      const filters = [{ codebase: "default", idChunks: ["group"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should throw if filter does not match any endpoint", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["nonexistent"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
+    });
+
+    it("should throw if codebase does not match", () => {
+      const b = backend.of(ENDPOINT); // codebase: "default"
+      const filters = [{ codebase: "other", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: other:func",
+      );
+    });
+
+    it("should throw if one of multiple filters does not match", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [
+        { codebase: "default", idChunks: ["func"] },
+        { codebase: "default", idChunks: ["nonexistent"] },
+      ];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
+    });
+  });
 });

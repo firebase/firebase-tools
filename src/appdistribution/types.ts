@@ -55,6 +55,11 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface ListReleasesResponse {
+  releases: Release[];
+  nextPageToken?: string;
+}
+
 export interface ListGroupsResponse {
   groups: Group[];
   nextPageToken?: string;
@@ -116,17 +121,8 @@ export interface ReleaseTest {
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
   testCase?: string;
-  aiInstructions?: AIInstruction;
-}
-
-export interface AIInstruction {
-  steps: AIStep[];
-}
-
-export interface AIStep {
-  goal: string;
-  hint?: string;
-  successCriteria?: string;
+  aiInstructions?: AiInstructions;
+  displayName?: string;
 }
 
 export interface AiStep {

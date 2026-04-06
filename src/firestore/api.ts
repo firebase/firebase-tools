@@ -802,6 +802,9 @@ export class FirestoreApi {
       databaseEdition: req.databaseEdition,
       deleteProtectionState: req.deleteProtectionState,
       pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
+      realtimeUpdatesMode: req.realtimeUpdatesMode,
+      firestoreDataAccessMode: req.firestoreDataAccessMode,
+      mongodbCompatibleDataAccessMode: req.mongodbCompatibleDataAccessMode,
       cmekConfig: req.cmekConfig,
     };
     const options = { queryParams: { databaseId: req.databaseId } };

@@ -36,10 +36,13 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type DataAccessMode = "MONGODB_COMPATIBLE" | "FIRESTORE_NATIVE";
+
 type FirestoreSingle = {
   database?: string;
   location?: string;
   edition?: string;
+  dataAccessMode?: DataAccessMode;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -183,7 +186,7 @@ type FunctionConfigBase = {
   // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
   // cannot start or end with a dash; maximum length 30 characters.
   prefix?: string;
-  // Optional: Enable isolate package for monorepo support
+  // Optional: Enable isolate-package for monorepo support
   isolate?: boolean;
 } & Deployable;
 
@@ -321,6 +324,18 @@ export type AppHostingMultiple = AppHostingSingle[];
 
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
+export interface AuthConfig {
+  providers?: {
+    anonymous?: boolean;
+    emailPassword?: boolean;
+    googleSignIn?: {
+      oAuthBrandDisplayName?: string;
+      supportEmail?: string;
+      authorizedRedirectUris?: string[];
+    };
+  };
+}
+
 export type FirebaseConfig = {
   $schema?: string;
   database?: DatabaseConfig;
@@ -333,4 +348,5 @@ export type FirebaseConfig = {
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
   apphosting?: AppHostingConfig;
+  auth?: AuthConfig;
 };

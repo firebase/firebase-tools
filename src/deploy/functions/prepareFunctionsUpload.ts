@@ -8,13 +8,13 @@ import * as tmp from "tmp";
 import type { IsolateExports } from "isolate-package";
 import { dynamicImport } from "../../dynamicImport";
 import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
+import { getSourceHash } from "./cache/hash";
+import * as backend from "./backend";
+import * as functionsConfig from "../../functionsConfig";
+import * as utils from "../../utils";
 import * as fsAsync from "../../fsAsync";
 import * as projectConfig from "../../functions/projectConfig";
-import * as functionsConfig from "../../functionsConfig";
-import { logger } from "../../logger";
-import * as utils from "../../utils";
-import * as backend from "./backend";
-import { getSourceHash } from "./cache/hash";
 
 const CONFIG_DEST_FILE = ".runtimeconfig.json";
 
@@ -26,9 +26,6 @@ interface PackagedSourceInfo {
 type SortedConfig = string | { key: string; value: SortedConfig }[];
 
 // TODO(inlined): move to a file that's not about uploading source code
-/**
- *
- */
 export async function getFunctionsConfig(projectId: string): Promise<Record<string, unknown>> {
   try {
     return await functionsConfig.materializeAll(projectId);
@@ -66,13 +63,16 @@ async function packageSource(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig: any,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix: ".zip" }).name;
+  const exportType = options?.exportType || "zip";
+  const postfix = `.${exportType}`;
+  const tmpFile = tmp.fileSync({ prefix: "firebase-functions-", postfix }).name;
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
   const hashes: string[] = [];
 
   // We must ignore firebase-debug.log or weird things happen if
@@ -133,7 +133,7 @@ async function packageSource(
       throw err;
     }
     throw new FirebaseError(
-      "Could not read source directory. Remove links and shortcuts and try again.",
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
       {
         original: err,
         exit: 1,
@@ -153,42 +153,37 @@ async function packageSource(
   return { pathToSource: tmpFile, hash };
 }
 
-/**
- *
- */
 export async function prepareFunctionsUpload(
   projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
+  options?: { exportType: "zip" | "tar.gz" },
 ): Promise<PackagedSourceInfo | undefined> {
-  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig);
+  return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
 
 /**
  * Isolate the source directory and return the path to the isolated directory.
- * Config is not used yet, but I think we will use it in the future to support
- * the Firebase recommended monorepo alternative setup.
  */
 export async function runIsolate(sourceDirName: string): Promise<string> {
   try {
-    utils.logLabeledBullet("isolate", `Isolating the source`);
+    utils.logLabeledBullet("isolate", "Isolating the source");
     /**
-     * Use a dynamic import because isolate-package depends on ESM.
-     * A normal "await import()" gets transpiled to require() so we use the
-     * dynamicImport function which seems to have been created to get around
-     * that exact problem. Unfortunately, when using it we loose all type
-     * information so for this IsolateExports was created to be able to cast
-     * the result.
+     * Use a dynamic import because isolate-package depends on ESM. A normal
+     * "await import()" gets transpiled to require() so we use the dynamicImport
+     * function which was created to get around that exact problem. Unfortunately,
+     * when using it we lose all type information so IsolateExports was created to
+     * be able to cast the result.
      */
     const { isolate } = (await dynamicImport("isolate-package")) as IsolateExports;
 
     /**
      * Only set the targetPackagePath if the sourceDirName is not the current
-     * working directory. By default isolate function will use the current working
-     * directory and assume the monorepo root is elsewhere, but the sourceDirName
-     * is given a path if we deploy from the monorepo root.
+     * working directory. By default the isolate function will use the current
+     * working directory and assume the monorepo root is elsewhere, but the
+     * sourceDirName is given a path if we deploy from the monorepo root.
      */
     const isolateDir = await isolate(
       sourceDirName !== "."
@@ -206,9 +201,6 @@ export async function runIsolate(sourceDirName: string): Promise<string> {
   }
 }
 
-/**
- *
- */
 export function convertToSortedKeyValueArray(config: any): SortedConfig {
   if (typeof config !== "object" || config === null) return config;
 

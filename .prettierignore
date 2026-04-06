@@ -8,6 +8,7 @@
 /scripts/agent-evals/output/**
 /src/frameworks/docs/**
 /prompts
+/.agent
 
 # Intentionally invalid YAML file:
 /src/test/fixtures/extension-yamls/invalid/extension.yaml
