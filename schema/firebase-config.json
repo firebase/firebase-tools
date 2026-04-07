@@ -1412,6 +1412,9 @@
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {
+                        "edition": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },
@@ -1420,9 +1423,6 @@
                         },
                         "websocketPort": {
                             "type": "number"
-                        },
-                        "edition": {
-                            "type": "string"
                         }
                     },
                     "type": "object"
