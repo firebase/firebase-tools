@@ -642,14 +642,19 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
-    const configEdition = options.config.src.emulators?.firestore?.edition;
-    const cliEdition = options.edition;
-
-    let edition = "standard";
-    if (cliEdition !== undefined) {
-      edition = cliEdition.toLowerCase();
-    } else if (configEdition !== undefined) {
-      edition = configEdition.toLowerCase();
+    if (options.edition !== undefined) {
+      utils.assertIsString(options.edition, "edition");
+    }
+    const edition = (
+      (options.edition as string) ||
+      options.config.src.emulators?.firestore?.edition ||
+      "standard"
+    ).toLowerCase();
+    if (edition !== "standard" && edition !== "enterprise") {
+      throw new FirebaseError(
+        "The Firestore emulator edition must be either 'standard' or 'enterprise'.",
+        { exit: 1 },
+      );
     }
 
     const args: FirestoreEmulatorArgs = {
