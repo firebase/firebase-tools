@@ -2,6 +2,8 @@ import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets";
+import { confirm } from "../prompt";
+import { FirebaseError } from "../error";
 
 /**
  * Triggers a local build of your App Hosting codebase.
@@ -23,11 +25,32 @@ export async function localBuild(
   projectRoot: string,
   framework: string,
   env: EnvMap = {},
+  options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
   outputFiles: string[];
   annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
+  const hasBuildAvailableSecrets = Object.values(env).some(
+    (v) => v.secret && (!v.availability || v.availability.includes("BUILD")),
+  );
+
+  if (hasBuildAvailableSecrets && !options?.allowLocalBuildSecrets) {
+    if (options?.nonInteractive) {
+      throw new FirebaseError(
+        "Using build-available secrets during a local build in non-interactive mode requires the --allow-local-build-secrets flag.",
+      );
+    }
+    const allow = await confirm({
+      message:
+        "Your build includes secrets that are available to the build environment. Using secrets in local builds may leave sensitive values in local artifacts/temporary files. Do you want to continue?",
+      default: false,
+    });
+    if (!allow) {
+      throw new FirebaseError("Cancelled local build due to BUILD-available secrets.");
+    }
+  }
+
   // We need to inject the environment variables into the process.env
   // because the build adapter uses them to build the app.
   // We'll restore the original process.env after the build is done.
