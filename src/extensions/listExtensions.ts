@@ -12,7 +12,7 @@ import * as extensionsUtils from "./utils";
  * @param projectId ID of the project we're querying
  * @return mapping that contains a list of instances under the "instances" key
  */
-export async function listExtensions(projectId: string): Promise<Record<string, string>[]> {
+export async function listExtensions(projectId: string): Promise<Record<string, any>[]> {
   const instances = await listInstances(projectId);
   if (instances.length < 1) {
     logLabeledBullet(
@@ -30,7 +30,7 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
   const sorted = instances.sort(
     (a, b) => new Date(b.createTime).valueOf() - new Date(a.createTime).valueOf(),
   );
-  const formatted: Record<string, string>[] = [];
+  const formatted: Record<string, any>[] = [];
   sorted.forEach((instance) => {
     let extension = instance.config.extensionRef || "";
     let publisher;
@@ -54,6 +54,8 @@ export async function listExtensions(projectId: string): Promise<Record<string, 
       state,
       version,
       updateTime,
+      params: instance.config.params,
+      systemParams: instance.config.systemParams,
     });
   });
 

@@ -4,6 +4,7 @@ import * as filesize from "filesize";
 import * as fs from "fs";
 import * as path from "path";
 import * as tmp from "tmp";
+import * as crypto from "crypto";
 
 import { FirebaseError } from "../../error";
 import { logger } from "../../logger";
@@ -55,13 +56,41 @@ async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream) {
   });
 }
 
+/**
+ * Adds files to the archive, forcing executable permissions for specified paths.
+ * @internal
+ */
+export async function addFilesToArchive(
+  archive: archiver.Archiver,
+  files: fsAsync.ReaddirRecursiveFile[],
+  sourceDir: string,
+  executablePaths?: string[],
+): Promise<string[]> {
+  const hashes: string[] = [];
+  for (const file of files) {
+    const name = path.relative(sourceDir, file.name);
+    const normalizedName = name.split(path.sep).join("/");
+    const fileHash = await getSourceHash(file.name);
+    hashes.push(fileHash);
+    let mode = file.mode;
+    if (executablePaths?.includes(normalizedName)) {
+      mode = 0o755;
+    }
+    archive.file(file.name, {
+      name: normalizedName,
+      mode,
+    });
+  }
+  return hashes;
+}
+
 async function packageSource(
   projectDir: string,
   sourceDir: string,
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig: any,
-  options?: { exportType: "zip" | "tar.gz" },
+  options?: { exportType: "zip" | "tar.gz"; executablePaths?: string[] },
 ): Promise<PackagedSourceInfo | undefined> {
   const exportType = options?.exportType || "zip";
   const postfix = `.${exportType}`;
@@ -72,6 +101,7 @@ async function packageSource(
   });
   const archive = exportType === "tar.gz" ? archiver("tar", { gzip: true }) : archiver("zip");
   const hashes: string[] = [];
+  let configHash = "";
 
   // We must ignore firebase-debug.log or weird things happen if
   // you're in the public dir when you deploy.
@@ -85,15 +115,7 @@ async function packageSource(
   );
   try {
     const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
-    for (const file of files) {
-      const name = path.relative(sourceDir, file.name);
-      const fileHash = await getSourceHash(file.name);
-      hashes.push(fileHash);
-      archive.file(file.name, {
-        name,
-        mode: file.mode,
-      });
-    }
+    hashes.push(...(await addFilesToArchive(archive, files, sourceDir, options?.executablePaths)));
     for (const name of additionalSources) {
       const absPath = utils.resolveWithin(projectDir, name);
       if (!fs.existsSync(absPath)) {
@@ -110,8 +132,7 @@ async function packageSource(
     if (typeof runtimeConfig !== "undefined") {
       // In order for hash to be consistent, configuration object tree must be sorted by key, only possible with arrays.
       const runtimeConfigHashString = JSON.stringify(convertToSortedKeyValueArray(runtimeConfig));
-      hashes.push(runtimeConfigHashString);
-
+      configHash = crypto.createHash("sha1").update(runtimeConfigHashString).digest("hex");
       const runtimeConfigString = JSON.stringify(runtimeConfig, null, 2);
       archive.append(runtimeConfigString, {
         name: CONFIG_DEST_FILE,
@@ -147,7 +168,8 @@ async function packageSource(
       filesize(archive.pointer()) +
       ") for uploading",
   );
-  const hash = hashes.join(".");
+  const sourceHash = crypto.createHash("sha1").update(hashes.sort().join("")).digest("hex");
+  const hash = configHash ? `${sourceHash}.${configHash}` : sourceHash;
   return { pathToSource: tmpFile, hash };
 }
 
@@ -157,7 +179,7 @@ export async function prepareFunctionsUpload(
   config: projectConfig.ValidatedSingle,
   additionalSources: string[],
   runtimeConfig?: backend.RuntimeConfigValues,
-  options?: { exportType: "zip" | "tar.gz" },
+  options?: { exportType: "zip" | "tar.gz"; executablePaths?: string[] },
 ): Promise<PackagedSourceInfo | undefined> {
   return packageSource(projectDir, sourceDir, config, additionalSources, runtimeConfig, options);
 }
