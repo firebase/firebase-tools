@@ -643,7 +643,7 @@ export async function startAll(
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
     const configEdition = options.config.src.emulators?.firestore?.edition;
-    const cliEdition = options.edition
+    const cliEdition = options.edition;
 
     let edition = "standard";
     if (cliEdition !== undefined) {
