@@ -14,7 +14,7 @@ export interface FirestoreEmulatorArgs {
   port?: number;
   host?: string;
   websocket_port?: number;
-  database_edition?: string;
+  "database-edition"?: string;
   project_id?: string;
   rules?: string;
   functions_emulator?: string;

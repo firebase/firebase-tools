@@ -642,24 +642,24 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
-    const configEdition = options.config.src.emulators?.firestore?.databaseEdition;
-    const cliEdition = options.databaseEdition;
-    const edition = cliEdition !== undefined ? cliEdition : configEdition;
+    const configEdition = options.config.src.emulators?.firestore?.edition;
+    const cliEdition = options.edition
+
+    let edition = "standard";
+    if (cliEdition !== undefined) {
+      edition = cliEdition.toLowerCase();
+    } else if (configEdition !== undefined) {
+      edition = configEdition.toLowerCase();
+    }
 
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       websocket_port: websocketPort,
-      database_edition: edition,
+      "database-edition": edition,
       project_id: projectId,
       auto_download: true,
     };
-
-    // let edition = "standard";
-    // if (configEdition !== undefined) {
-    //   edition = configEdition;
-    // }
-    // args.database_edition = edition;
 
     if (exportMetadata.firestore) {
       utils.assertIsString(options.import);
@@ -744,7 +744,7 @@ export async function startAll(
     firestoreLogger.logLabeled(
       "SUCCESS",
       Emulators.FIRESTORE,
-      `Firestore Emulator is running on ${edition} database edition.`,
+      `Firestore Emulator was started in ${edition} edition.`,
     );
     firestoreLogger.logLabeled(
       "SUCCESS",

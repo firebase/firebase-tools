@@ -46,8 +46,8 @@ export const EXPORT_ON_EXIT_USAGE_ERROR =
   `"${FLAG_EXPORT_ON_EXIT_NAME}" must be used with "${FLAG_IMPORT}"` +
   ` or provide a dir directly to "${FLAG_EXPORT_ON_EXIT}"`;
 
-export const FLAG_DATABASE_EDITION = "--databaseEdition [edition]";
-export const DESC_DATABASE_EDITION = "start emulator in either standard or enterprise edition.";
+export const FLAG_EDITION = "--edition [edition]";
+export const DESC_EDITION = "start emulator in either standard or enterprise edition.";
 
 export const EXPORT_ON_EXIT_CWD_DANGER = `"${FLAG_EXPORT_ON_EXIT_NAME}" must not point to the current directory or parents. Please choose a new/dedicated directory for exports.`;
 
