@@ -73,8 +73,8 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Exports functions IaC code",
     public: false,
   },
-  functionsrunapionly: {
-    shortDescription: "Use Cloud Run API to list v2 functions",
+  dartfunctions: {
+    shortDescription: "Enable Dart functions and use Cloud Run API to list v2 functions.",
     public: false,
   },
   bypassfunctionsdeprecationcheck: {
