@@ -412,3 +412,9 @@ export interface SourcePosition {
   line: number;
   column: number;
 }
+
+export interface ContentRange {
+  start: number;
+  end: number;
+  total?: number | "*";
+}

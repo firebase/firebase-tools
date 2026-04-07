@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Emulators } from "../../types";
+import { ContentRange, Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
@@ -13,7 +13,7 @@ import { EmulatorLogger } from "../../emulatorLogger";
 import { GetObjectResponse, ListObjectsResponse } from "../files";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { Upload, UploadNotActiveError } from "../upload";
+import { Upload, UploadNotActiveError, UploadStatus } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import type { Query } from "express-serve-static-core";
@@ -183,15 +183,113 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
     if (!req.query.upload_id) {
-      res.sendStatus(400);
-      return;
+      return res.sendStatus(404);
     }
 
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      uploadService.continueResumableUpload(uploadId, await reqBodyToBuffer(req));
-      upload = uploadService.finalizeResumableUpload(uploadId);
+      upload = uploadService.getResumableUpload(uploadId);
+
+      if (!upload) {
+        return res.status(404).send();
+      }
+
+      const contentLength = req.headers["content-length"];
+      const contentRange = req.headers["content-range"];
+      const parsedRange = contentRange ? parseContentRangeHeader(contentRange) : null;
+
+      // Status check request
+      // @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#status-check
+      if (contentLength === "0") {
+        if (upload.status === UploadStatus.ACTIVE) {
+          if (upload.size === 0) {
+            return res.status(308).send();
+          } else if (upload.size > 0) {
+            res.setHeader("Range", `bytes=0-${upload.size - 1}/${parsedRange?.total || "*"}`);
+            return res.status(308).send();
+          }
+        } else if (upload.status === UploadStatus.FINISHED) {
+          let getObjectResponse: GetObjectResponse;
+          try {
+            getObjectResponse = await adminStorageLayer.getObject({
+              bucketId: upload.bucketId,
+              decodedObjectId: upload.objectId,
+            });
+          } catch (err) {
+            if (err instanceof NotFoundError) {
+              return res.sendStatus(404);
+            }
+            if (err instanceof ForbiddenError) {
+              return res.sendStatus(403);
+            }
+            throw err;
+          }
+          return res.status(200).json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
+        }
+
+        return res.sendStatus(404);
+      }
+
+      if (contentLength && contentLength !== "0") {
+        const data = await reqBodyToBuffer(req);
+
+        // Multiple chunk upload
+        if (contentRange) {
+          const parsedRange = parseContentRangeHeader(contentRange);
+
+          if (!parsedRange) {
+            return res.status(400).send("Failed to parse Content-Range header.");
+          }
+
+          if (parsedRange.start !== upload.size) {
+            const startingOffset = Math.max(parsedRange.start - 1, 0);
+            return res
+              .status(400)
+              .send(
+                `Invalid chunk position. The next chunk should start at offset ${startingOffset}.`,
+              );
+          }
+
+          const expectedChunkSize = parsedRange.end - parsedRange.start + 1;
+
+          if (data.byteLength !== expectedChunkSize) {
+            const startingOffset = Math.max(parsedRange.start - 1, 0);
+            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${startingOffset} and ending at offset ${parsedRange.end}) according to the Content-Range header.`;
+            return res.status(400).send(message);
+          }
+
+          const updatedUpload = uploadService.continueResumableUpload(uploadId, data);
+
+          /**
+           * When the client uses an unknown total (`*` or omitted), we treat a chunk whose
+           * size is not a multiple of 256 KiB as the final chunk. Objects whose size is
+           * an exact multiple of 256 KiB must end with an explicit total in Content-Range.
+           * @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
+           */
+          const isComplete =
+            typeof parsedRange.total === "number"
+              ? updatedUpload.size >= parsedRange.total
+              : data.byteLength % (256 * 1024) !== 0;
+
+          if (isComplete) {
+            const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
+            const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
+            return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+          }
+
+          res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${parsedRange.total || "*"}`);
+          return res.status(308).send();
+        } else {
+          // Single chunk upload
+          uploadService.continueResumableUpload(uploadId, data);
+          const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
+          const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
+          return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+        }
+      } else {
+        return res.status(400).send();
+      }
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
@@ -200,17 +298,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
       throw err;
     }
-
-    let metadata: StoredFileMetadata;
-    try {
-      metadata = await adminStorageLayer.uploadObject(upload);
-    } catch (err) {
-      if (err instanceof ForbiddenError) {
-        return res.sendStatus(403);
-      }
-      throw err;
-    }
-    return res.json(new CloudStorageObjectMetadata(metadata));
   });
 
   gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", async (req, res) => {
@@ -461,4 +548,21 @@ function getIncomingFileNameFromRequest(
 ): string | undefined {
   const name = query?.name?.toString() || metadata?.name;
   return name?.startsWith("/") ? name.slice(1) : name;
+}
+
+function parseContentRangeHeader(contentRange: string): ContentRange | null {
+  let parsedRange: ContentRange | null = null;
+  const match = /^bytes (\d+)-(\d+)(?:\/(\d+|\*))?$/.exec(contentRange);
+
+  if (match) {
+    const start = parseInt(match[1], 10);
+    const end = parseInt(match[2], 10);
+    const total = match[3] && match[3] !== "*" ? parseInt(match[3], 10) : undefined;
+
+    if (end >= start && (total === undefined || total >= end + 1)) {
+      parsedRange = { start, end, total };
+    }
+  }
+
+  return parsedRange;
 }
