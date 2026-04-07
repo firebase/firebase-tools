@@ -1,3 +1,5 @@
+DO NOT MERGE, CLA CHECK ONLY
+
 # Firebase CLI Contributing Guide
 
 ## Overview
