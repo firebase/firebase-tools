@@ -1,2 +1,2 @@
 - Fixed an issue where functions deployments would silently fail (#6989)
-- Fix proxy.js/proxy.ts in Next.js 16 (#9631)
+- Add support for Next.js 16 middleware (`proxy.ts`/`proxy.js`) (#9631)
