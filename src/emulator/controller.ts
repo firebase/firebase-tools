@@ -642,11 +642,7 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
-    if (options.edition !== undefined) {
-      utils.assertIsString(options.edition, "edition");
-    }
     const edition = (
-      (options.edition as string) ||
       options.config.src.emulators?.firestore?.edition ||
       "standard"
     ).toLowerCase();
