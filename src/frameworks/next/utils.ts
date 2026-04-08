@@ -254,10 +254,10 @@ export async function isUsingNextImageInAppDirectory(
   projectDir: string,
   distDir: string,
 ): Promise<boolean> {
-  if (await isUsingNextImageInServerComponent(projectDir, distDir)) {
-    return true;
-  }
-  return isUsingNextImageInClientComponent(projectDir, distDir);
+  return (
+    (await isUsingNextImageInServerComponent(projectDir, distDir)) ||
+    isUsingNextImageInClientComponent(projectDir, distDir)
+  );
 }
 
 export async function isUsingNextImageInServerComponent(
