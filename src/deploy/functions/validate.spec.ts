@@ -464,6 +464,24 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
 
+    it("disallows unrecognized blocking trigger types", () => {
+      const ep: backend.Endpoint = {
+        platform: "gcfv2",
+        id: "id",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: "google.firebase.ailogic.v1.invalidEvent",
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /Unrecognized blocking trigger type: google.firebase.ailogic.v1.invalidEvent. Please update your CLI/,
+      );
+    });
+
     it("errors for scheduled functions with timeout > 1800s", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
