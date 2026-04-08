@@ -642,10 +642,7 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
-    const edition = (
-      options.config.src.emulators?.firestore?.edition ||
-      "standard"
-    ).toLowerCase();
+    const edition = (options.config.src.emulators?.firestore?.edition || "standard").toLowerCase();
     if (edition !== "standard" && edition !== "enterprise") {
       throw new FirebaseError(
         "The Firestore emulator edition must be either 'standard' or 'enterprise'.",
