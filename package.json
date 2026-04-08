@@ -1,6 +1,6 @@
 {
   "name": "firebase-tools-with-isolate",
-  "version": "15.11.0-0",
+  "version": "15.11.0-1",
   "description": "Command-Line Interface for Firebase with monorepo support",
   "main": "./lib/index.js",
   "mcpName": "io.github.firebase/firebase-mcp",
@@ -139,7 +139,7 @@
     "glob": "^10.5.0",
     "google-auth-library": "^9.11.0",
     "ignore": "^7.0.4",
-    "isolate-package": "^1.27.0-4",
+    "isolate-package": "1.29.0-3",
     "js-yaml": "^3.14.2",
     "jsonwebtoken": "^9.0.2",
     "leven": "^3.1.0",
