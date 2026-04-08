@@ -87,7 +87,8 @@ export async function setRewriteTags(
   project: string,
   version: string,
 ): Promise<void> {
-  // Note: Deduplication is necessary to avoid race conditions when there are mutiple
+  // Note: Deduplication is necessary to avoid race conditions when there are multiple
+  // rewrites pointing to the same service.
   const uniqueServices: Record<string, Promise<run.Service>> = {};
   for (const rewrite of rewrites) {
     if (!("run" in rewrite) || rewrite.run.tag !== TODO_TAG_NAME) {
