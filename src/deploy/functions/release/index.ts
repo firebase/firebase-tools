@@ -116,9 +116,14 @@ export async function release(
   printTriggerUrls(wantBackend, projectNumber);
 
   // TODO: Remove once the Firebase console has support.
-  if (backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime!, "dart"))) {
-    utils.logLabeledBullet("functions", "Dart functions may not yet be visible in the Firebase Console. " +
-      `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`);
+  if (
+    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime!, "dart"))
+  ) {
+    utils.logLabeledBullet(
+      "functions",
+      "Dart functions may not yet be visible in the Firebase Console. " +
+        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+    );
   }
 
   await setupArtifactCleanupPolicies(
