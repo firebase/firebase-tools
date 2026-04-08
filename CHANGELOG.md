@@ -1,3 +1,4 @@
 - Fixed an issue where functions deployments would silently fail (#6989)
+- Add support for Next.js 16 middleware (`proxy.ts`/`proxy.js`) (#9631)
 - Updates the default region for new App Hosting backends to us-east4 (#10271)
 - Fix Next.js image optimization detection in client components (#10228)
