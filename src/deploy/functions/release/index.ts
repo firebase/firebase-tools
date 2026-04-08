@@ -117,7 +117,7 @@ export async function release(
 
   // TODO: Remove once the Firebase console has support.
   if (
-    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime!, "dart"))
+    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime, "dart"))
   ) {
     utils.logLabeledBullet(
       "functions",
