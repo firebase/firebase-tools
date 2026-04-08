@@ -97,7 +97,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           BRANCH=$(git branch --show-current)
-          git push -u origin "$BRANCH" --force
+          git push -u origin "$BRANCH" --force-with-lease
 
       - name: Create Pull Request
         if: steps.check.outputs.skip != 'true'
