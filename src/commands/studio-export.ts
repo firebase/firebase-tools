@@ -7,14 +7,17 @@ import { FirebaseError } from "../error";
 import { unzip } from "../unzip";
 import * as fs from "fs";
 
-export const command = new Command("studio:export <path>")
+export const command = new Command("studio:export [path]")
   .description(
     "Bootstrap Firebase Studio apps for migration to Antigravity. Run on the unzipped folder from the Firebase Studio download, or directly on the downloaded zip file.",
   )
   .option("--no-start-antigravity", "skip starting the Antigravity IDE after migration")
   .action(async (exportPath: string, options: Options) => {
     if (!exportPath) {
-      throw new FirebaseError("Must specify a path for migration.", { exit: 1 });
+      throw new FirebaseError(
+        "Must specify the path to the Firebase Studio downloaded zip file or the unzipped folder path.",
+        { exit: 1 },
+      );
     }
 
     let rootPath = path.resolve(exportPath);
@@ -42,6 +45,6 @@ export const command = new Command("studio:export <path>")
       }
     }
 
-    logger.info(`⏳ Exporting Studio apps from ${rootPath} to Antigravity...`);
+    logger.info(`⏳ Exporting Studio app from ${rootPath} to Antigravity...`);
     await migrate(rootPath, options as MigrateOptions);
   });

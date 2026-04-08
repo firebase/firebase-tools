@@ -4,7 +4,7 @@ import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio, detectAIAgent } from "./env";
+import { isFirebaseStudio, detectAIAgent, isFirebaseMcp } from "./env";
 const pkg = require("../package.json");
 
 type cliEventNames =
@@ -31,6 +31,7 @@ type cliEventNames =
   | "mcp_list_prompts"
   | "mcp_get_prompt"
   | "mcp_read_resource"
+  | "mcp_list_resources"
   | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
@@ -66,9 +67,7 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return (
-    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
-  );
+  return (!!process.env.IS_FIREBASE_CLI || isFirebaseMcp()) && !!configstore.get("usage");
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
