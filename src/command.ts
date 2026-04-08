@@ -349,7 +349,6 @@ export class Command {
         .split(/[\s,]+/)
         .filter(Boolean)
         .join(",");
-      console.log(`--- ${options.only}`);
     }
 
     try {
