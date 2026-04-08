@@ -342,10 +342,11 @@ export class Command {
       options.configPath = getInheritedOption(options, "config");
     }
 
-    if (getInheritedOption(options, "only")) {
+    const onlyOption = getInheritedOption(options, "only");
+    if (onlyOption) {
       // Handle cases where PowerShell replaces commas with spaces.
       // see https://github.com/firebase/firebase-tools/issues/7506
-      options.only = getInheritedOption(options, "only")
+      options.only = onlyOption
         .split(/[\s,]+/)
         .filter(Boolean)
         .join(",");
