@@ -1,12 +1,12 @@
 name: Update isolate-package
 
 # Updates the isolate-package dependency to a new version, bumps the fork's
-# pre-release number, and commits to master.
+# pre-release number, and opens a PR to master.
 #
 # Use this when you've published a pre-release of isolate-package and want to
 # test it within the firebase-tools-with-isolate fork.
 #
-# After this workflow completes, trigger the "Publish" workflow to publish
+# After the PR is merged, trigger the "Publish" workflow to publish
 # the updated version to npm.
 
 on:
@@ -28,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -69,6 +70,13 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Create branch
+        env:
+          ISOLATE_VERSION: ${{ steps.isolate.outputs.version }}
+        run: |
+          BRANCH="update-isolate/${ISOLATE_VERSION}"
+          git checkout -b "$BRANCH"
+
       - name: Bump pre-release version
         id: version
         env:
@@ -109,8 +117,50 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run the **Publish** workflow with dist-tag \`next\` to publish this version." >> $GITHUB_STEP_SUMMARY
 
-      - name: Push version commit and tag
+      - name: Push branch and tag
         if: ${{ inputs.dry_run == false }}
         run: |
-          git push origin HEAD
+          BRANCH=$(git branch --show-current)
+          git push -u origin "$BRANCH" --force
           git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Create Pull Request
+        if: ${{ inputs.dry_run == false }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISOLATE_VERSION: ${{ steps.isolate.outputs.version }}
+        run: |
+          BRANCH=$(git branch --show-current)
+
+          # Close any existing PR for this branch
+          EXISTING=$(gh pr list --base master --head "$BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          if [[ -n "$EXISTING" ]]; then
+            echo "Closing existing PR #$EXISTING"
+            gh pr close "$EXISTING" 2>/dev/null || true
+          fi
+
+          BODY=$(cat <<EOF
+          Update [isolate-package](https://www.npmjs.com/package/isolate-package) to \`${ISOLATE_VERSION}\`.
+
+          **Fork version:** \`${{ steps.version.outputs.version }}\`
+          **Tag:** \`${{ steps.version.outputs.tag }}\`
+
+          Run the **Publish** workflow with dist-tag \`next\` to publish this version after merging.
+
+          ---
+          _Created by the [update-isolate](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
+          EOF
+          )
+
+          # Use the REST API directly — gh pr create uses GraphQL which can
+          # fail with "Resource not accessible by integration" on forks.
+          if ! gh api repos/${{ github.repository }}/pulls \
+            -f title="Update isolate-package to ${ISOLATE_VERSION}" \
+            -f body="$BODY" \
+            -f head="$BRANCH" \
+            -f base="master" \
+            --jq '.html_url'; then
+            echo ""
+            echo "::warning::Failed to create PR. The branch was pushed successfully."
+            echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/master...$BRANCH"
+          fi
