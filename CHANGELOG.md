@@ -1,1 +1,1 @@
-- Added a prompt to `firebase init` to install Agent Skills for Firebase.
+- Fixed an issue where functions deployments would silently fail (#6989)
