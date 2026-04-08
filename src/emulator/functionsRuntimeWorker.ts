@@ -9,7 +9,7 @@ import { EmulatorLogger, ExtensionLogInfo } from "./emulatorLogger";
 import { FirebaseError } from "../error";
 import { Serializable } from "child_process";
 import { getFunctionDiscoveryTimeout } from "../deploy/functions/runtimes/discovery";
-import { isLanguageRuntime } from "../deploy/functions/runtimes/supported";
+import { Runtime, runtimeIsLanguage } from "../deploy/functions/runtimes/supported";
 
 type LogListener = (el: EmulatorLog) => any;
 
@@ -297,13 +297,13 @@ export class RuntimeWorkerPool {
 
   constructor(private mode: FunctionsExecutionMode = FunctionsExecutionMode.AUTO) {}
 
-  getKey(triggerId: string | undefined, runtime?: string): string {
+  getKey(triggerId: string | undefined, runtime?: Runtime): string {
     if (this.mode === FunctionsExecutionMode.SEQUENTIAL) {
       return "~shared~";
     }
     // For Dart, use a shared key so all functions in a codebase share the same worker process.
     // Dart loads all functions into a single process and routes based on request path.
-    if (isLanguageRuntime(runtime, "dart")) {
+    if (runtimeIsLanguage(runtime, "dart")) {
       return "~dart-shared~";
     }
     return triggerId || "~diagnostic~";
@@ -350,7 +350,7 @@ export class RuntimeWorkerPool {
    *
    * @param triggerId
    */
-  readyForWork(triggerId: string | undefined, runtime?: string): boolean {
+  readyForWork(triggerId: string | undefined, runtime?: Runtime): boolean {
     const idleWorker = this.getIdleWorker(triggerId, runtime);
     return !!idleWorker;
   }
@@ -371,7 +371,7 @@ export class RuntimeWorkerPool {
     resp: http.ServerResponse,
     body: unknown,
     debug?: FunctionsRuntimeBundle["debug"],
-    runtime?: string,
+    runtime?: Runtime,
   ): Promise<void> {
     this.log(`submitRequest(triggerId=${triggerId})`);
     const worker = this.getIdleWorker(triggerId, runtime);
@@ -386,7 +386,7 @@ export class RuntimeWorkerPool {
     return worker.request(req, resp, body, !!debug);
   }
 
-  getIdleWorker(triggerId: string | undefined, runtime?: string): RuntimeWorker | undefined {
+  getIdleWorker(triggerId: string | undefined, runtime?: Runtime): RuntimeWorker | undefined {
     this.cleanUpWorkers();
     const triggerWorkers = this.getTriggerWorkers(triggerId, runtime);
     if (!triggerWorkers.length) {
@@ -412,7 +412,7 @@ export class RuntimeWorkerPool {
     trigger: EmulatedTriggerDefinition | undefined,
     runtime: FunctionsRuntimeInstance,
     extensionLogInfo: ExtensionLogInfo,
-    runtimeType?: string,
+    runtimeType?: Runtime,
   ): RuntimeWorker {
     const key = this.getKey(trigger?.id, runtimeType);
     this.log(`addWorker(${key})`);
@@ -435,14 +435,14 @@ export class RuntimeWorkerPool {
     return worker;
   }
 
-  getTriggerWorkers(triggerId: string | undefined, runtime?: string): Array<RuntimeWorker> {
+  getTriggerWorkers(triggerId: string | undefined, runtime?: Runtime): Array<RuntimeWorker> {
     return this.workers.get(this.getKey(triggerId, runtime)) || [];
   }
 
   private setTriggerWorkers(
     triggerId: string | undefined,
     workers: Array<RuntimeWorker>,
-    runtime?: string,
+    runtime?: Runtime,
   ) {
     this.workers.set(this.getKey(triggerId, runtime), workers);
   }

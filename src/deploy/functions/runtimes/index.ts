@@ -76,7 +76,7 @@ const factories: Factory[] = [
   node.tryCreateDelegate,
   python.tryCreateDelegate,
   (ctx) =>
-    experiments.isEnabled("dartfunctions")
+    experiments.isEnabled("functionsrunapionly")
       ? dart.tryCreateDelegate(ctx)
       : Promise.resolve(undefined),
 ];

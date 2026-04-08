@@ -178,7 +178,7 @@ async function languageSetup(setup: any): Promise<void> {
       value: "python",
     });
   }
-  if (experiments.isEnabled("dartfunctions")) {
+  if (experiments.isEnabled("functionsrunapionly")) {
     choices.push({
       name: "Dart",
       value: "dart",
