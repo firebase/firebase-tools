@@ -1,1 +1,2 @@
 - Fixed an issue where functions deployments would silently fail (#6989)
+- Add foundation for being smarter about where to place functions when the region is not specified (#10293)
