@@ -346,9 +346,9 @@ function moveEndpointToRegion(
 
 /**
  * Verifies that we don't have a peculiar edge case where we cannot know what region a default endpoint was in.
- * This is only possible in insaine edge cases (esp since you can only have multi-region functions for HTTPS and
+ * This is only possible in insane edge cases (esp since you can only have multi-region functions for HTTPS and
  * regional AI Logic functions) where a customer HAD specified multiple regions in a function and then deleted
- * the regions annotation entirely and we don't know which to delete an which to keep.
+ * the regions annotation entirely and we don't know which to delete and which to keep.
  */
 export function matchRegionsForExisting(want: backend.Backend, have: backend.Backend): void {
   for (const [id, wantE] of Object.entries(want.endpoints[build.REGION_TBD] || {})) {
