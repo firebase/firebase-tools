@@ -144,8 +144,8 @@ describe("functions", () => {
         expect(values).to.not.include("dart");
       });
 
-      it("shows Dart as an option when functionsrunapionly is enabled", async () => {
-        experiments.setEnabled("functionsrunapionly", true);
+      it("shows Dart as an option when dartfunctions is enabled", async () => {
+        experiments.setEnabled("dartfunctions", true);
         const setup = { config: { functions: [] }, rcfile: {} };
         prompt.select.onFirstCall().resolves("javascript");
         prompt.confirm.resolves(false);
@@ -158,7 +158,7 @@ describe("functions", () => {
           const values = choices.map((c: any) => c.value);
           expect(values).to.include("dart");
         } finally {
-          experiments.setEnabled("functionsrunapionly", false);
+          experiments.setEnabled("dartfunctions", false);
         }
       });
     });

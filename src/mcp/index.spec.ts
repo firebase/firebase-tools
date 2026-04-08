@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as mockfs from "mock-fs";
 import * as sinon from "sinon";
 import { FirebaseMcpServer } from "./index";
 import * as requireAuthModule from "../requireAuth";
@@ -59,5 +60,48 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
 
     expect(result).to.be.null;
     expect(requireAuthStub.calledOnce).to.be.true;
+  });
+});
+
+describe("FirebaseMcpServer.detectActiveFeatures", () => {
+  let server: FirebaseMcpServer;
+
+  beforeEach(() => {
+    sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+
+    server = new FirebaseMcpServer({ projectRoot: "/test-dir" });
+    sinon.stub(server, "ready").resolves();
+
+    sinon.stub(server, "getProjectId").resolves("");
+    sinon.stub(server, "getAuthenticatedUser").resolves(null);
+  });
+
+  afterEach(() => {
+    mockfs.restore();
+    sinon.restore();
+  });
+
+  it("detects Crashlytics for a Flutter project without a prior detectProjectRoot call", async () => {
+    mockfs({
+      "/test-dir": {
+        "pubspec.yaml": "dependencies:\n  firebase_crashlytics: ^5.0.0",
+        lib: {
+          "firebase_options.dart":
+            "const FirebaseOptions android = FirebaseOptions(appId: '1:123:android:abc');",
+        },
+        android: {
+          app: {
+            "build.gradle": "plugins { id 'com.google.firebase.crashlytics' }",
+          },
+          src: {
+            main: {},
+          },
+        },
+      },
+    });
+
+    const detectedFeatures = await server.detectActiveFeatures();
+
+    expect(detectedFeatures).to.include("crashlytics");
   });
 });
