@@ -249,11 +249,9 @@ export async function isUsingImageOptimization(
 ): Promise<boolean> {
   let isNextImageImported = await usesNextImage(projectDir, distDir);
 
-  // App directory doesn't use the export marker, look it up manually
+  // App directory doesn't use the export marker, look it up manually.
   if (!isNextImageImported && isUsingAppDirectory(join(projectDir, distDir))) {
-    if (await isUsingNextImageInAppDirectory(projectDir, distDir)) {
-      isNextImageImported = true;
-    }
+    isNextImageImported = await isUsingNextImageInAppDirectory(projectDir, distDir);
   }
 
   if (isNextImageImported) {
@@ -267,9 +265,22 @@ export async function isUsingImageOptimization(
 }
 
 /**
- * Whether next/image is being used in the app directory
+ * Whether next/image is being used in the app directory — checks the
+ * client-reference-manifest (server component imports) first, then falls back
+ * to scanning prerendered HTML for the `data-nimg` attribute that next/image
+ * renders (covers "use client"-only imports since Next.js 11.1).
  */
 export async function isUsingNextImageInAppDirectory(
+  projectDir: string,
+  distDir: string,
+): Promise<boolean> {
+  return (
+    (await isUsingNextImageInServerComponent(projectDir, distDir)) ||
+    isUsingNextImageInClientComponent(projectDir, distDir)
+  );
+}
+
+export async function isUsingNextImageInServerComponent(
   projectDir: string,
   nextDir: string,
 ): Promise<boolean> {
@@ -288,6 +299,22 @@ export async function isUsingNextImageInAppDirectory(
 
     // Return true when the first file containing the next/image component is found
     if (fileContents.includes(nextImageString)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function isUsingNextImageInClientComponent(
+  projectDir: string,
+  distDir: string,
+): Promise<boolean> {
+  const htmlFiles = await glob(join(projectDir, distDir, "server", "app", "**", "*.html"));
+
+  for (const filepath of htmlFiles) {
+    const contents = await readFile(filepath, "utf-8");
+    if (contents.includes('data-nimg="')) {
       return true;
     }
   }
