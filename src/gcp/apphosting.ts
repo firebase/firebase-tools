@@ -142,9 +142,18 @@ export interface BuildConfig {
   runCommand?: string;
 }
 
+export interface LocallyBuiltSource {
+  userStorageUri?: string;
+  rootDirectory?: string;
+  description?: string;
+  runCommand?: string;
+  env?: Env[];
+}
+
 interface BuildSource {
   codebase?: CodebaseSource;
   archive?: ArchiveSource;
+  locallyBuilt?: LocallyBuiltSource;
 }
 
 interface CodebaseSource {
