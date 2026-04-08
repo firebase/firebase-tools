@@ -2,3 +2,6 @@
 - Add support for Next.js 16 middleware (`proxy.ts`/`proxy.js`) (#9631)
 - Updates the default region for new App Hosting backends to us-east4 (#10271)
 - Fix Next.js image optimization detection in client components (#10228)
+- Updates Firebase Data Connect emulator to v3.4.1 (#10290)
+  - Upgraded Go runtime to 1.25.9.
+  - Bug fix: Fixed an issue that caused Angular SDK generation to fail.
