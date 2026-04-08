@@ -1,1 +1,1 @@
-- Support starting the Firestore Emulator in Enterprise Edition via firebase.json.
+- Support starting the Firestore Emulator in Enterprise Edition by adding an `edition` field in firebase.json.
