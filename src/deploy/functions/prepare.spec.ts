@@ -188,7 +188,7 @@ describe("prepare", () => {
       const want = backend.of(ENDPOINT);
       const have = backend.empty();
       prepare.matchRegionsForExisting(want, have);
-      expect(want.endpoints).to.deep.equal(backend.of(ENDPOINT));
+      expect(want).to.deep.equal(backend.of(ENDPOINT));
     });
 
     it("infers region from have backend if unique", () => {
