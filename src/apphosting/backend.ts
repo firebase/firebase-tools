@@ -29,8 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-
-const DEFAULT_RUNTIME = "nodejs";
+import { DEFAULT_RUNTIME, promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -134,14 +133,13 @@ export async function doSetup(
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {
-      runtime = await select({
-        message: "Which runtime do you want to use?",
-        choices: [
-          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
-          { name: "Node.js 22", value: "nodejs22" },
-        ],
-        default: DEFAULT_RUNTIME,
-      });
+      runtime = await promptRuntime(projectId, location);
+    }
+  }
+
+  if (automaticBaseImageUpdatesDisabled === undefined && isEnabled("abiu")) {
+    if (!nonInteractive) {
+      automaticBaseImageUpdatesDisabled = !(await promptAutomaticBaseImageUpdates());
     }
   }
 
@@ -389,9 +387,13 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
-    runtime: { value: runtime ?? "" },
-    automaticBaseImageUpdatesDisabled,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+    backendReqBody.automaticBaseImageUpdatesDisabled = automaticBaseImageUpdatesDisabled;
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

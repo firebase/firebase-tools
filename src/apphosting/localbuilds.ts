@@ -1,5 +1,6 @@
 import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
+import { EnvMap } from "./yaml";
 
 /**
  * Triggers a local build of your App Hosting codebase.
@@ -17,31 +18,61 @@ import { localBuild as localAppHostingBuild } from "@apphosting/build";
 export async function localBuild(
   projectRoot: string,
   framework: string,
+  env: EnvMap = {},
 ): Promise<{
   outputFiles: string[];
   annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
-  const apphostingBuildOutput = await localAppHostingBuild(projectRoot, framework);
+  // We need to inject the environment variables into the process.env
+  // because the build adapter uses them to build the app.
+  // We'll restore the original process.env after the build is done.
+  const originalEnv = { ...process.env };
+
+  const addedEnv = toProcessEnv(env);
+  for (const [key, value] of Object.entries(addedEnv)) {
+    process.env[key] = value;
+  }
+
+  let apphostingBuildOutput;
+  try {
+    apphostingBuildOutput = await localAppHostingBuild(projectRoot, framework);
+  } finally {
+    for (const key in process.env) {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    }
+    for (const [key, value] of Object.entries(originalEnv)) {
+      process.env[key] = value;
+    }
+  }
 
   const annotations: Record<string, string> = Object.fromEntries(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
   );
 
-  const env: Env[] | undefined = apphostingBuildOutput.runConfig.environmentVariables?.map(
-    ({ variable, value, availability }) => ({
-      variable,
-      value,
-      availability,
-    }),
-  );
+  const discoveredEnv: Env[] | undefined =
+    apphostingBuildOutput.runConfig.environmentVariables?.map(
+      ({ variable, value, availability }) => ({
+        variable,
+        value,
+        availability,
+      }),
+    );
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
     annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,
-      env: env ?? [],
+      env: discoveredEnv ?? [],
     },
   };
+}
+
+function toProcessEnv(env: EnvMap): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(env).map(([key, value]) => [key, value.value || ""]),
+  ) as NodeJS.ProcessEnv;
 }
