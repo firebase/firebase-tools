@@ -117,12 +117,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run the **Publish** workflow with dist-tag \`next\` to publish this version." >> $GITHUB_STEP_SUMMARY
 
-      - name: Push branch and tag
+      - name: Push branch
         if: ${{ inputs.dry_run == false }}
         run: |
           BRANCH=$(git branch --show-current)
-          git push -u origin "$BRANCH" --force
-          git push origin "${{ steps.version.outputs.tag }}"
+          git push -u origin "$BRANCH" --force-with-lease
 
       - name: Create Pull Request
         if: ${{ inputs.dry_run == false }}
