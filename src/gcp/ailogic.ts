@@ -1,13 +1,13 @@
 import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import {
-  AI_LOGIC_BEFORE_GENERATE_CONTENT,
-  AI_LOGIC_AFTER_GENERATE_CONTENT,
-  type AILogicEndpoint,
-} from "../deploy/functions/services/ailogic";
+import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
 
 export const API_VERSION = "v1beta";
+
+export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
+  "google.firebase.ailogic.v1.beforeGenerate" as const;
+export const AI_LOGIC_AFTER_GENERATE_CONTENT = "google.firebase.ailogic.v1.afterGenerate" as const;
 
 export const AI_LOGIC_EVENTS_TO_TRIGGER = {
   [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
