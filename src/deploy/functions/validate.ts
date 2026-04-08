@@ -89,8 +89,8 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
+    const service = serviceForEndpoint(ep);
     if (backend.isBlockingTriggered(ep)) {
-      const service = serviceForEndpoint(ep);
       if (service.name === "noop") {
         throw new FirebaseError(
           `Unrecognized blocking trigger type: ${ep.blockingTrigger.eventType}. Please update your CLI with ${clc.bold("npm install -g firebase-tools@latest")}.`,
@@ -98,7 +98,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
         );
       }
     }
-    serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
+    service.validateTrigger(ep, wantBackend);
   }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
