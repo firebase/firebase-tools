@@ -1,1 +1,2 @@
 - Fixed an issue where functions deployments would silently fail (#6989)
+- Fixed issue where the CLI isn't able to correctly parse command arguments on PowerShell (#7506)
