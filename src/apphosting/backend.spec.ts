@@ -347,7 +347,7 @@ describe("apphosting setup functions", () => {
 
   describe("promptLocation", () => {
     const supportedLocations = [
-      { name: "us-central1", locationId: "us-central1" },
+      { name: "us-east4", locationId: "us-east4" },
       { name: "us-west1", locationId: "us-west1" },
     ];
 
@@ -358,16 +358,16 @@ describe("apphosting setup functions", () => {
 
     it("returns a location selection", async () => {
       const location = await promptLocation(projectId, /* prompt= */ "");
-      expect(location).to.be.eq("us-central1");
+      expect(location).to.be.eq("us-east4");
     });
 
     it("uses a default location prompt if none is provided", async () => {
       await promptLocation(projectId);
 
       expect(promptStub.select).to.be.calledWith({
-        default: "us-central1",
+        default: "us-east4",
         message: "Please select a location:",
-        choices: ["us-central1", "us-west1"],
+        choices: ["us-east4", "us-west1"],
       });
     });
 
