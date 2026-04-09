@@ -1,5 +1,4 @@
 import { resource } from "../resource";
-import { McpContext } from "../types";
 import * as path from "path";
 import * as fs from "fs/promises";
 
@@ -13,7 +12,7 @@ export const deploy_ui = resource(
     description: "Visual interface for Firebase Deploy",
     mimeType: RESOURCE_MIME_TYPE,
   },
-  async (uri: string, ctx: McpContext) => {
+  async () => {
     try {
       const htmlPath = path.join(__dirname, "../apps/deploy/mcp-app.html");
       const html = await fs.readFile(htmlPath, "utf-8");
