@@ -99,11 +99,11 @@ submitBtn.onclick = async () => {
   }
 };
 
-app.ontoolresult = (result) => {
+app.ontoolresult = (result: any) => {
   // We can handle tool results if needed, but we rely on manual triggers for list_projects
 };
 
-app.onhostcontextchanged = (ctx) => {
+app.onhostcontextchanged = (ctx: any) => {
   if (ctx.theme) applyDocumentTheme(ctx.theme);
   if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
   if (ctx.styles?.css?.fonts) applyHostFonts(ctx.styles.css.fonts);
