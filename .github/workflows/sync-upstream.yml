@@ -56,7 +56,7 @@ jobs:
         env:
           INPUT_TARGET: ${{ inputs.target_version }}
         run: |
-          if [[ -n "$INPUT_TARGET" ]]; then
+          if [[ -n "$INPUT_TARGET" && "$INPUT_TARGET" != "latest" ]]; then
             echo "tag=$INPUT_TARGET" >> "$GITHUB_OUTPUT"
           else
             TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
