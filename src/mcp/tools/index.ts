@@ -7,12 +7,12 @@ import { authTools } from "./auth/index";
 import { coreTools } from "./core/index";
 import { crashlyticsTools } from "./crashlytics/index";
 import { dataconnectTools } from "./dataconnect/index";
-import { firestoreTools } from "./firestore/index";
 import { functionsTools } from "./functions/index";
 import { messagingTools } from "./messaging/index";
 import { realtimeDatabaseTools } from "./realtime_database/index";
 import { remoteConfigTools } from "./remoteconfig/index";
 import { storageTools } from "./storage/index";
+import { firestoreTools } from "./firestore/index";
 
 function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
   return tools.map((tool) => ({
@@ -41,7 +41,7 @@ const tools: Record<ServerFeature, ServerTool[]> = {
   messaging: addFeaturePrefix("messaging", messagingTools),
   remoteconfig: addFeaturePrefix("remoteconfig", remoteConfigTools),
   storage: addFeaturePrefix("storage", storageTools),
-  // No local tools for developer knowledge
+  // No local tools.
   developerknowledge: [],
 };
 

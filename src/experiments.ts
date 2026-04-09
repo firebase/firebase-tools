@@ -69,9 +69,22 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
   functionsrunapionly: {
     shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
   },
 
   // Emulator experiments
@@ -125,6 +138,17 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  apphostinglocalbuilds: {
+    shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
+    default: false,
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
@@ -157,8 +181,8 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcift: {
     shortDescription: "Enable instrumentless trial for Data Connect",
+    default: true,
     public: false,
-    default: false,
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
@@ -166,7 +190,12 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcwebhooks: {
     shortDescription: "Enable Firebase Data Connect webhooks feature.",
-    default: false,
+    default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase Data Connect realtime feature.",
+    default: true,
     public: false,
   },
 });

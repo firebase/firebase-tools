@@ -36,10 +36,13 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type DataAccessMode = "MONGODB_COMPATIBLE" | "FIRESTORE_NATIVE";
+
 type FirestoreSingle = {
   database?: string;
   location?: string;
   edition?: string;
+  dataAccessMode?: DataAccessMode;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -237,6 +240,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
     websocketPort?: number;
+    edition?: string;
   };
   functions?: {
     host?: string;

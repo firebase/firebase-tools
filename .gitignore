@@ -21,6 +21,7 @@ scripts/emulator-tests/functions/index.js
 yarn.lock
 .npmrc
 .eslintcache
+*.tsbuildinfo
 
 .DS_Store
 .idea

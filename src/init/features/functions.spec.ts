@@ -7,6 +7,7 @@ import { Setup } from "..";
 import { actuate, askQuestions } from "./functions";
 import { Options } from "../../options";
 import { RC } from "../../rc";
+import * as experiments from "../../experiments";
 
 const TEST_SOURCE_DEFAULT = "functions";
 const TEST_CODEBASE_DEFAULT = "default";
@@ -127,6 +128,38 @@ describe("functions", () => {
           `${TEST_SOURCE_DEFAULT}/src/index.ts`,
           `${TEST_SOURCE_DEFAULT}/.gitignore`,
         ]);
+      });
+
+      it("does not show Dart as an option when experiments are disabled", async () => {
+        const setup = { config: { functions: [] }, rcfile: {} };
+        // We just need it to resolve to get past askQuestions
+        prompt.select.onFirstCall().resolves("javascript");
+        prompt.confirm.resolves(false); // don't lint, don't install
+
+        await askQuestions(setup, emptyConfig, options);
+
+        const selectCall = prompt.select.getCall(0);
+        const choices = selectCall.args[0].choices;
+        const values = choices.map((c: any) => c.value);
+        expect(values).to.not.include("dart");
+      });
+
+      it("shows Dart as an option when functionsrunapionly is enabled", async () => {
+        experiments.setEnabled("functionsrunapionly", true);
+        const setup = { config: { functions: [] }, rcfile: {} };
+        prompt.select.onFirstCall().resolves("javascript");
+        prompt.confirm.resolves(false);
+
+        try {
+          await askQuestions(setup, emptyConfig, options);
+
+          const selectCall = prompt.select.getCall(0);
+          const choices = selectCall.args[0].choices;
+          const values = choices.map((c: any) => c.value);
+          expect(values).to.include("dart");
+        } finally {
+          experiments.setEnabled("functionsrunapionly", false);
+        }
       });
     });
 

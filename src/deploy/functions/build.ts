@@ -212,8 +212,13 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 }
 
 export interface VpcSettings {
-  connector: string | Expression<string>;
+  connector?: string | Expression<string> | null;
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
+  networkInterfaces?: Array<{
+    network?: string | Expression<string> | null;
+    subnetwork?: string | Expression<string> | null;
+    tags?: Array<string | Expression<string>> | null;
+  }> | null;
 }
 
 export interface SecretEnvVar {
@@ -244,7 +249,6 @@ export type Endpoint = Triggered & {
   platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
-  // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
   // The services account that this function should run as.
@@ -547,21 +551,32 @@ export function toBackend(
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
       if (bdEndpoint.vpc) {
-        bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
-        if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
-          bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
+        bkEndpoint.vpc = {};
+        if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {
+          const connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
+          bkEndpoint.vpc.connector =
+            connector.includes("/") || connector === ""
+              ? connector
+              : `projects/${bdEndpoint.project}/locations/${region}/connectors/${connector}`;
         }
-
-        bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
         if (bdEndpoint.vpc.egressSettings) {
-          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
-          if (!backend.isValidEgressSetting(egressSettings)) {
-            throw new FirebaseError(
-              `Value "${egressSettings}" is an invalid ` +
-                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
-            );
+          const egress = params.resolveString(bdEndpoint.vpc.egressSettings, paramValues);
+          if (!backend.AllVpcEgressSettings.includes(egress as backend.VpcEgressSettings)) {
+            throw new FirebaseError(`Value "${egress}" is an invalid egress setting.`);
           }
-          bkEndpoint.vpc.egressSettings = egressSettings;
+          bkEndpoint.vpc.egressSettings = egress as backend.VpcEgressSettings;
+        }
+        if (bdEndpoint.vpc.networkInterfaces) {
+          bkEndpoint.vpc.networkInterfaces = bdEndpoint.vpc.networkInterfaces.map((ni) => {
+            const resolved: { network?: string; subnetwork?: string; tags?: string[] } = {};
+            if (ni.network) resolved.network = params.resolveString(ni.network, paramValues);
+            if (ni.subnetwork)
+              resolved.subnetwork = params.resolveString(ni.subnetwork, paramValues);
+            if (ni.tags) {
+              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, paramValues));
+            }
+            return resolved;
+          });
         }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;

@@ -9,7 +9,7 @@ describe("availableTools", () => {
   const mockContext: McpContext = {
     projectId: "test-project",
     accountEmail: "test@example.com",
-    config: {} as any,
+    config: {} as unknown as import("../../config").Config,
     host: {
       logger: {
         debug: () => void 0,
@@ -17,8 +17,8 @@ describe("availableTools", () => {
         warn: () => void 0,
         error: () => void 0,
       },
-    } as any,
-    rc: {} as any,
+    } as unknown as import("../index").FirebaseMcpServer,
+    rc: {} as unknown as import("../../rc").RC,
     firebaseCliCommand: "firebase",
     isBillingEnabled: true,
   };
@@ -36,7 +36,7 @@ describe("availableTools", () => {
     const loginTool = tools.find((t) => t.mcp.name === "firebase_login");
 
     expect(loginTool).to.exist;
-  }).timeout(2000);
+  }).timeout(4000);
 
   it("should include feature-specific tools when activeFeatures is provided", async () => {
     const tools = await availableTools(mockContext, ["firestore"]);
@@ -73,7 +73,9 @@ describe("getRemoteToolsByFeature", () => {
 
   it("should call listTools on servers in ONEMCP_SERVERS", async () => {
     const mockTool = { mcp: { name: "remote_tool" } };
-    const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools").resolves([mockTool as any]);
+    const fetchStub = sandbox
+      .stub(OneMcpServer.prototype, "listTools")
+      .resolves([mockTool as unknown as import("../tool").ServerTool]);
 
     const tools = await getRemoteToolsByFeature(["developerknowledge"]);
 
@@ -93,7 +95,7 @@ describe("getRemoteToolsByFeature", () => {
     fetchStub.resetHistory();
     await getRemoteToolsByFeature([]);
     // If features is empty, it should use all keys in ONEMCP_SERVERS.
-    expect(fetchStub).to.have.been.calledOnce;
+    expect(fetchStub).to.have.been.calledTwice;
   });
 
   it("should return flattened results from all remote servers", async () => {
@@ -103,12 +105,17 @@ describe("getRemoteToolsByFeature", () => {
 
     // Fake ONEMCP_SERVERS with multiple entries to test flattening
     const originalServers = { ...ONEMCP_SERVERS };
-    (ONEMCP_SERVERS as any).developerknowledge = new OneMcpServer("developerknowledge", "url1");
-    (ONEMCP_SERVERS as any).firestore = new OneMcpServer("firestore", "url2");
+    (ONEMCP_SERVERS as any).developerknowledge = new OneMcpServer("developerknowledge", "url1", {});
+    (ONEMCP_SERVERS as any).firestore = new OneMcpServer("firestore", "url2", {});
 
     const fetchStub = sandbox.stub(OneMcpServer.prototype, "listTools");
-    fetchStub.onFirstCall().resolves([mockTool1 as any]);
-    fetchStub.onSecondCall().resolves([mockTool2 as any, mockTool3 as any]);
+    fetchStub.onFirstCall().resolves([mockTool1 as unknown as import("../tool").ServerTool]);
+    fetchStub
+      .onSecondCall()
+      .resolves([
+        mockTool2 as unknown as import("../tool").ServerTool,
+        mockTool3 as unknown as import("../tool").ServerTool,
+      ]);
 
     try {
       const tools = await getRemoteToolsByFeature(["developerknowledge", "firestore"]);

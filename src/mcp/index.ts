@@ -199,9 +199,10 @@ export class FirebaseMcpServer {
   async detectActiveFeatures(): Promise<ServerFeature[]> {
     if (this.detectedFeatures?.length) return this.detectedFeatures; // memoized
     this.logger.debug("detecting active features of Firebase MCP server...");
+    await this.detectProjectRoot();
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
@@ -252,7 +253,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availableTools(ctx, this.activeFeatures, this.detectedFeatures, this.enabledTools);
   }
@@ -266,7 +267,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availablePrompts(ctx, this.activeFeatures, this.detectedFeatures);
   }
@@ -379,7 +380,7 @@ export class FirebaseMcpServer {
       return mcpAuthError(skipAutoAuthForStudio);
     }
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
@@ -434,7 +435,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const promptsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     try {
@@ -456,7 +457,7 @@ export class FirebaseMcpServer {
   }
 
   async mcpListResources(): Promise<ListResourcesResult> {
-    await trackGA4("mcp_read_resource", { resource_name: "__list__" });
+    await this.trackGA4("mcp_list_resources", { resource_name: "__list__" });
     return {
       resources: resources.map((r) => r.mcp),
     };
@@ -475,7 +476,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const resourceCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     const resolved = await resolveResource(req.params.uri, resourceCtx);
@@ -493,6 +494,20 @@ export class FirebaseMcpServer {
       ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
       : new StdioServerTransport();
     await this.server.connect(transport);
+  }
+
+  private async safeCheckBillingEnabled(projectId: string): Promise<boolean> {
+    try {
+      return await checkBillingEnabled(projectId);
+    } catch (e: any) {
+      this.logger.debug(
+        "[mcp] Error on billingInfo for " +
+          projectId +
+          ", failing open (assuming false): " +
+          (e.message || e),
+      );
+      return false;
+    }
   }
 
   get logger() {

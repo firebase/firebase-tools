@@ -68,6 +68,24 @@ describe("parseTestFiles", () => {
       ]);
     });
 
+    it("ignores non-yaml files", async () => {
+      writeFile(
+        "my_test.yaml",
+        stringify({
+          tests: [{ displayName: "my test", steps: [{ goal: "click a button" }] }],
+        }),
+      );
+      writeFile(
+        "my_test.txt",
+        stringify({
+          tests: [{ displayName: "should not be parsed", steps: [{ goal: "do nothing" }] }],
+        }),
+      );
+      const tests = await parseTestFiles(tempdir.name, "http://www.foo.com");
+      expect(tests.length).to.equal(1);
+      expect(tests[0].testCase.displayName).to.equal("my test");
+    });
+
     it("parses the sample test case file", async () => {
       writeFile("smoke_test.yaml", readTemplateSync("init/apptesting/smoke_test.yaml"));
       const tests = await parseTestFiles(tempdir.name, "http://www.foo.com");
@@ -82,7 +100,7 @@ describe("parseTestFiles", () => {
               {
                 goal: "View the provided application",
                 hint: "No additional actions should be necessary",
-                finalScreenAssertion: "The application should load with no obvious errors",
+                successCriteria: "The application should load with no obvious errors",
               },
             ],
           },
@@ -181,27 +199,43 @@ describe("parseTestFiles", () => {
     }
 
     it("returns an empty list if no match", async () => {
-      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
-      writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      writeFile("bbb.yaml", createBasicTest(["bxx", "byy", "bzz"]));
       expect(await getTestCaseNames("yyy")).to.eql([]);
     });
 
     it("filters on filename", async () => {
-      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
-      writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      writeFile("bbb.yaml", createBasicTest(["bxx", "byy", "bzz"]));
       expect(await getTestCaseNames("aaa")).to.eql(["axx", "ayy", "azz"]);
     });
 
     it("filters on test case name", async () => {
-      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
-      writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      writeFile("bbb.yaml", createBasicTest(["bxx", "byy", "bzz"]));
       expect(await getTestCaseNames("", ".xx")).to.eql(["axx", "bxx"]);
     });
 
     it("filters on filename and test case name", async () => {
-      writeFile("aaa", createBasicTest(["axx", "ayy", "azz"]));
-      writeFile("bbb", createBasicTest(["bxx", "byy", "bzz"]));
-      expect(await getTestCaseNames("a$", "xx")).to.eql(["axx"]);
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      writeFile("bbb.yaml", createBasicTest(["bxx", "byy", "bzz"]));
+      expect(await getTestCaseNames("aaa\\.yaml$", "xx")).to.eql(["axx"]);
+    });
+
+    it("throws an error for invalid filename regex", async () => {
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      await expect(getTestCaseNames("*.txt")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid file pattern regex: *.txt",
+      );
+    });
+
+    it("throws an error for invalid test case name regex", async () => {
+      writeFile("aaa.yaml", createBasicTest(["axx", "ayy", "azz"]));
+      await expect(getTestCaseNames("", "*.txt")).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid test name pattern regex: *.txt",
+      );
     });
   });
 
