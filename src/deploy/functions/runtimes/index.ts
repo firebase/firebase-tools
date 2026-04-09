@@ -6,7 +6,6 @@ import * as python from "./python";
 import * as validate from "../validate";
 import { FirebaseError } from "../../../error";
 import * as supported from "./supported";
-import * as experiments from "../../../experiments";
 
 /**
  * RuntimeDelegate is a language-agnostic strategy for managing
