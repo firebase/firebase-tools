@@ -1,4 +1,9 @@
-import { App, applyDocumentTheme, applyHostStyleVariables, applyHostFonts } from "@modelcontextprotocol/ext-apps";
+import {
+  App,
+  applyDocumentTheme,
+  applyHostStyleVariables,
+  applyHostFonts,
+} from "@modelcontextprotocol/ext-apps";
 
 const app = new App({ name: "Update Firebase Environment", version: "1.0.0" });
 
@@ -120,7 +125,10 @@ app.onhostcontextchanged = (ctx) => {
 
     // Fetch current environment
     try {
-      const envResult = await app.callServerTool({ name: "firebase_get_environment", arguments: {} });
+      const envResult = await app.callServerTool({
+        name: "firebase_get_environment",
+        arguments: {},
+      });
       const envData = envResult.structuredContent as any;
       if (envData) {
         envProjectIdEl.textContent = envData.projectId || "<NONE>";
@@ -140,7 +148,9 @@ app.onhostcontextchanged = (ctx) => {
       filteredProjects = projects;
       renderProjects();
       showStatus("Projects loaded successfully.", "success");
-      setTimeout(() => { if (statusBox.className === "status success") statusBox.style.display = "none"; }, 3000);
+      setTimeout(() => {
+        if (statusBox.className === "status success") statusBox.style.display = "none";
+      }, 3000);
     } else {
       showStatus("No projects returned from server.", "error");
     }
