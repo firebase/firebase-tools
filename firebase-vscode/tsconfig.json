@@ -17,7 +17,10 @@
       "node",
       "@wdio/mocha-framework",
       "@wdio/globals/types",
-      "@types/mocha"
+      "@types/mocha",
+      "expect-webdriverio",
+      "expect",
+      "chai"
     ]
   },
   "ts-node": {

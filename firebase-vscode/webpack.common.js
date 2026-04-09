@@ -286,9 +286,9 @@ class WaitForCssTypescriptPlugin {
   apply(compiler) {
     const hooks = ForkTsCheckerWebpackPlugin.getCompilerHooks(compiler);
 
-    hooks.start.tap("WaitForCssTypescriptPlugin", (change) => {
+    hooks.waiting.tap("WaitForCssTypescriptPlugin", () => {
       console.log("Ran WaitForCssTypescriptPlugin");
-      return change;
+      return true;
     });
   }
 }

@@ -18,7 +18,8 @@
       "@wdio/mocha-framework",
       "@wdio/globals/types",
       "@types/mocha",
-      "wdio-vscode-service"
+      "wdio-vscode-service",
+      "expect-webdriverio"
     ]
   },
   "exclude": ["**/*.test.ts"],
