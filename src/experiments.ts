@@ -73,8 +73,8 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Exports functions IaC code",
     public: false,
   },
-  dartfunctions: {
-    shortDescription: "Enable Dart functions and use Cloud Run API to list v2 functions.",
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
   },
   bypassfunctionsdeprecationcheck: {
@@ -195,7 +195,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcrealtime: {
     shortDescription: "Enable Firebase Data Connect realtime feature.",
-    default: false,
+    default: true,
     public: false,
   },
 });
