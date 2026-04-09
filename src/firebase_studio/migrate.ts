@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { spawn, spawnSync } from "child_process";
+import { spawn } from "child_process";
 import * as semver from "semver";
 
 import { logger } from "../logger";
@@ -11,12 +11,14 @@ import { readTemplate } from "../templates";
 import * as track from "../track";
 import { apphostingSecretsSetAction } from "../apphosting/secrets";
 import * as env from "../functions/env";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import * as os from "os";
+import { installAgentSkills } from "../agentSkills";
 
 export interface MigrateOptions {
   project?: string;
   startAntigravity?: boolean;
+  nonInteractive?: boolean;
 }
 
 interface McpServerConfig {
@@ -28,7 +30,11 @@ interface McpConfig {
   mcpServers: Record<string, McpServerConfig>;
 }
 
-async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): Promise<void> {
+async function setupAntigravityMcpServer(
+  rootPath: string,
+  appType?: AppType,
+  nonInteractive?: boolean,
+): Promise<void> {
   const mcpConfigDir = path.join(os.homedir(), ".gemini", "antigravity");
   const mcpConfigPath = path.join(mcpConfigDir, "mcp_config.json");
 
@@ -58,6 +64,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
         const confirmFirebase = await prompt.confirm({
           message: "Would you like to enable the Firebase MCP server for Antigravity?",
           default: true,
+          nonInteractive,
         });
 
         if (confirmFirebase) {
@@ -81,6 +88,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
           const confirmDart = await prompt.confirm({
             message: "Would you like to enable the Dart MCP server for Antigravity?",
             default: true,
+            nonInteractive,
           });
 
           if (confirmDart) {
@@ -105,8 +113,7 @@ async function setupAntigravityMcpServer(rootPath: string, appType?: AppType): P
       await fs.writeFile(mcpConfigPath, JSON.stringify(mcpConfig, null, 2));
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    utils.logWarning(`Could not configure Antigravity MCP server: ${message}`);
+    utils.logWarning(`Could not configure Antigravity MCP server: ${getErrMsg(err)}`);
   }
 }
 
@@ -284,6 +291,7 @@ async function injectAntigravityContext(
   rootPath: string,
   projectId: string | undefined,
   appName: string,
+  nonInteractive?: boolean,
 ): Promise<void> {
   const agentDir = path.join(rootPath, ".agents");
   const rulesDir = path.join(agentDir, "rules");
@@ -302,41 +310,15 @@ async function injectAntigravityContext(
       { name: "Globally for all projects", value: "global" },
     ],
     default: "local",
-    nonInteractive: process.env.NODE_ENV === "test",
+    nonInteractive: nonInteractive || process.env.NODE_ENV === "test",
   });
 
-  logger.info("⏳ Adding Antigravity skills...");
-  try {
-    const args = [
-      "-y",
-      "skills",
-      "add",
-      "firebase/agent-skills",
-      "-a",
-      "gemini-cli",
-      "--skill",
-      "*",
-      "-y",
-    ];
-    if (installLocation === "global") {
-      args.push("-g");
-    }
-
-    const result = spawnSync("npx", args, {
-      cwd: rootPath,
-      stdio: "ignore",
-      shell: process.platform === "win32",
-    });
-    if (result.error) {
-      throw result.error;
-    }
-    if (result.status !== 0) {
-      throw new Error(`npx skills add exited with code ${result.status}`);
-    }
-    logger.info(`✅ Added Antigravity skills`);
-  } catch (err: unknown) {
-    utils.logWarning(`Could not add Antigravity skills, skipping. ${err}`);
-  }
+  await installAgentSkills({
+    cwd: rootPath,
+    global: installLocation === "global",
+    background: false,
+    agentName: "gemini-cli",
+  });
 
   // System Instructions
   const systemInstructionsTemplate = await readTemplate(
@@ -353,8 +335,7 @@ async function injectAntigravityContext(
     await fs.writeFile(path.join(workflowsDir, "cleanup.md"), cleanupWorkflow);
     logger.info("✅ Created Antigravity startup workflow");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not read or write startup workflow: ${message}`);
+    logger.debug(`Could not read or write startup workflow: ${getErrMsg(err)}`);
   }
 }
 
@@ -413,6 +394,7 @@ async function getAgyCommand(startAgy?: boolean): Promise<string | undefined> {
 async function createFirebaseConfigs(
   rootPath: string,
   projectId: string | undefined,
+  nonInteractive?: boolean,
 ): Promise<void> {
   if (!projectId) {
     return;
@@ -453,7 +435,7 @@ async function createFirebaseConfigs(
         const confirmBackend = await prompt.confirm({
           message: `Would you like to use the App Hosting backend "${selectedBackendId}"?`,
           default: true,
-          nonInteractive: process.env.NODE_ENV === "test",
+          nonInteractive: nonInteractive || process.env.NODE_ENV === "test",
         });
 
         if (confirmBackend) {
@@ -479,9 +461,8 @@ async function createFirebaseConfigs(
         utils.logWarning('No App Hosting backends found, using default "studio"');
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       utils.logWarning(
-        `Could not fetch backends from Firebase CLI, using default "studio". ${message}`,
+        `Could not fetch backends from Firebase CLI, using default "studio". ${getErrMsg(err)}`,
       );
     }
 
@@ -545,8 +526,7 @@ async function writeAntigravityConfigs(rootPath: string, framework: AppType): Pr
     const settingsContent = await fs.readFile(settingsPath, "utf8");
     settings = JSON.parse(settingsContent) as Record<string, any>;
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not read ${settingsPath}: ${message}`);
+    logger.debug(`Could not read ${settingsPath}: ${getErrMsg(err)}`);
   }
 
   const cleanSettings: Record<string, any> = {};
@@ -615,8 +595,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
       logger.info("✅ Removed empty docs directory");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not remove ${docsDir}: ${message}`);
+    logger.debug(`Could not remove ${docsDir}: ${getErrMsg(err)}`);
   }
 
   const modifiedPath = path.join(rootPath, ".modified");
@@ -624,8 +603,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(modifiedPath);
     logger.info("✅ Cleaned up .modified");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${modifiedPath}: ${message}`);
+    logger.debug(`Could not delete ${modifiedPath}: ${getErrMsg(err)}`);
   }
 
   const mcpJsonPath = path.join(rootPath, ".idx", "mcp.json");
@@ -633,8 +611,7 @@ async function cleanupUnusedFiles(rootPath: string): Promise<void> {
     await fs.unlink(mcpJsonPath);
     logger.info("✅ Cleaned up .idx/mcp.json");
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not delete ${mcpJsonPath}: ${message}`);
+    logger.debug(`Could not delete ${mcpJsonPath}: ${getErrMsg(err)}`);
   }
 }
 
@@ -681,8 +658,7 @@ async function upgradeGenkitVersion(rootPath: string): Promise<void> {
       logger.info("✅ Upgraded genkit-cli version to 1.29 in package.json");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    logger.debug(`Could not upgrade Genkit version: ${message}`);
+    logger.debug(`Could not upgrade Genkit version: ${getErrMsg(err)}`);
   }
 }
 
@@ -722,8 +698,7 @@ export async function uploadSecrets(
       logger.debug("Skipping GEMINI_API_KEY upload: key is missing or blank in .env");
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${message}`);
+    utils.logWarning(`Failed to upload GEMINI_API_KEY secret: ${getErrMsg(err)}`);
   }
 }
 
@@ -731,6 +706,7 @@ async function askToOpenAntigravity(
   rootPath: string,
   appName: string,
   startAntigravity?: boolean,
+  nonInteractive?: boolean,
 ): Promise<void> {
   const agyCommand = await getAgyCommand(startAntigravity);
 
@@ -755,6 +731,7 @@ async function askToOpenAntigravity(
   const answer = await prompt.confirm({
     message: "Would you like to open it in Antigravity now?",
     default: true,
+    nonInteractive,
   });
 
   if (answer) {
@@ -793,7 +770,7 @@ export async function migrate(
 ): Promise<void> {
   await checkDirectoryExists(rootPath);
   const appType: AppType = await detectAppType(rootPath);
-  void track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
+  await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "started" });
 
   logger.info("🚀 Starting Firebase Studio to Antigravity migration...");
   logger.info("\nFile any bugs at https://github.com/firebase/firebase-tools/issues");
@@ -805,12 +782,12 @@ export async function migrate(
   }
 
   await updateReadme(rootPath, appType);
-  await createFirebaseConfigs(rootPath, projectId);
+  await createFirebaseConfigs(rootPath, projectId, options.nonInteractive);
   await uploadSecrets(rootPath, projectId);
   await upgradeGenkitVersion(rootPath);
-  await injectAntigravityContext(rootPath, projectId, appName);
+  await injectAntigravityContext(rootPath, projectId, appName, options.nonInteractive);
   await writeAntigravityConfigs(rootPath, appType);
-  await setupAntigravityMcpServer(rootPath, appType);
+  await setupAntigravityMcpServer(rootPath, appType, options.nonInteractive);
   await cleanupUnusedFiles(rootPath);
 
   // Suggest renaming if we are in the 'download' folder
@@ -822,5 +799,5 @@ export async function migrate(
   }
 
   await track.trackGA4("firebase_studio_migrate", { app_type: appType, result: "success" });
-  await askToOpenAntigravity(rootPath, appName, options.startAntigravity);
+  await askToOpenAntigravity(rootPath, appName, options.startAntigravity, options.nonInteractive);
 }
