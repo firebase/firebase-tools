@@ -1,5 +1,5 @@
 import * as backend from "../backend";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
 import {
@@ -96,8 +96,11 @@ export class AILogicService implements Service {
     try {
       await ailogicApi.deleteBlockingFunction(ep);
     } catch (err) {
-      if (err && typeof err === "object" && "status" in err && err.status === 404) {
-        logLabeledWarning("functions", `Tried deleting trigger registration for function ${ep.id} but it is not currently registered`);
+      if (getErrStatus(err) === 404) {
+        logLabeledWarning(
+          "functions",
+          `Tried deleting trigger registration for function ${ep.id} but it is not currently registered`,
+        );
       } else {
         throw err;
       }
