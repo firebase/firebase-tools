@@ -1,7 +1,7 @@
 name: Update isolate-package
 
 # Updates the isolate-package dependency to a new version, bumps the fork's
-# pre-release number, and opens a PR to master.
+# pre-release number, and opens a PR to main.
 #
 # Use this when you've published a pre-release of isolate-package and want to
 # test it within the firebase-tools-with-isolate fork.
@@ -24,7 +24,7 @@ on:
 
 jobs:
   update:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -132,7 +132,7 @@ jobs:
           BRANCH=$(git branch --show-current)
 
           # Close any existing PR for this branch
-          EXISTING=$(gh pr list --base master --head "$BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || true)
+          EXISTING=$(gh pr list --base main --head "$BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || true)
           if [[ -n "$EXISTING" ]]; then
             echo "Closing existing PR #$EXISTING"
             gh pr close "$EXISTING" 2>/dev/null || true
@@ -157,9 +157,9 @@ jobs:
             -f title="Update isolate-package to ${ISOLATE_VERSION}" \
             -f body="$BODY" \
             -f head="$BRANCH" \
-            -f base="master" \
+            -f base="main" \
             --jq '.html_url'; then
             echo ""
             echo "::warning::Failed to create PR. The branch was pushed successfully."
-            echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/master...$BRANCH"
+            echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/main...$BRANCH"
           fi

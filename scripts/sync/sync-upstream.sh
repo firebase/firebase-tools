@@ -18,7 +18,7 @@ set -euo pipefail
 #
 # What it does:
 #   1. Fetches the latest upstream tags
-#   2. Creates a sync branch from master
+#   2. Creates a sync branch from main
 #   3. Merges the upstream release tag (preferring upstream for conflicts)
 #   4. Re-applies isolate-package integration changes cleanly
 #   5. Runs npm install + build to verify correctness
@@ -129,10 +129,10 @@ fi
 echo ""
 echo "🌿 Creating branch: $BRANCH_NAME"
 
-# Make sure we're on master and up to date
-git checkout master --quiet
+# Make sure we're on main and up to date
+git checkout main --quiet
 if git remote get-url origin &>/dev/null; then
-  git pull origin master --quiet
+  git pull origin main --quiet
 fi
 
 # Delete existing branch if it exists. Use safe delete (-d) first; only
@@ -341,7 +341,7 @@ if [[ "$PUSH" == true ]]; then
 
   echo ""
   echo "✅ Done! Create a PR:"
-  echo "   https://github.com/0x80/firebase-tools-with-isolate/compare/master...$BRANCH_NAME"
+  echo "   https://github.com/0x80/firebase-tools-with-isolate/compare/main...$BRANCH_NAME"
 else
   echo ""
   echo "✅ Done! (--no-push: branch not pushed)"

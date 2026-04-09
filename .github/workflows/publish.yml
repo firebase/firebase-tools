@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # Authentication is handled via OIDC trusted publishing (id-token),
     # so no NPM_TOKEN secret is needed.

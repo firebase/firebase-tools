@@ -97,7 +97,7 @@ All workflows use Node 24 and npm OIDC trusted publishing (provenance).
 
 - **[`sync-upstream.yml`](.github/workflows/sync-upstream.yml)** — Runs daily (09:00 UTC) and on manual dispatch. Checks for new upstream firebase-tools releases and opens a PR with the synced result. Can target a specific version.
 
-- **[`update-isolate.yml`](.github/workflows/update-isolate.yml)** — Updates the `isolate-package` dependency to a given version, bumps the fork's pre-release number (e.g. `15.13.0-0` → `15.13.0-1`), and commits to master. Follow up with the publish workflow to release to npm.
+- **[`update-isolate.yml`](.github/workflows/update-isolate.yml)** — Updates the `isolate-package` dependency to a given version, bumps the fork's pre-release number (e.g. `15.13.0-0` → `15.13.0-1`), and commits to main. Follow up with the publish workflow to release to npm.
 
 - **[`publish.yml`](.github/workflows/publish.yml)** — Publishes the fork to npm. Choose `next` for pre-release testing or `latest` to promote a stable release (which strips the pre-release suffix, e.g. `15.13.0-0` → `15.13.0`). Creates a git tag and GitHub release.
 
