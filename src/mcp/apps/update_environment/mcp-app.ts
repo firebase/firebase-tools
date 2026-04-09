@@ -1,4 +1,9 @@
-import { App, applyDocumentTheme, applyHostStyleVariables, applyHostFonts } from "@modelcontextprotocol/ext-apps";
+import {
+  App,
+  applyDocumentTheme,
+  applyHostStyleVariables,
+  applyHostFonts,
+} from "@modelcontextprotocol/ext-apps";
 
 const app = new App({ name: "Update Firebase Environment", version: "1.0.0" });
 
@@ -13,7 +18,6 @@ let selectedProjectId: string | null = null;
 
 const envProjectIdEl = document.getElementById("env-project-id") as HTMLSpanElement;
 const envUserEl = document.getElementById("env-user") as HTMLSpanElement;
-const currentEnvBox = document.getElementById("current-env") as HTMLDivElement;
 
 function showStatus(message: string, type: "success" | "error" | "info") {
   statusBox.textContent = message;
@@ -99,10 +103,6 @@ submitBtn.onclick = async () => {
   }
 };
 
-app.ontoolresult = (result: any) => {
-  // We can handle tool results if needed, but we rely on manual triggers for list_projects
-};
-
 app.onhostcontextchanged = (ctx: any) => {
   if (ctx.theme) applyDocumentTheme(ctx.theme);
   if (ctx.styles?.variables) applyHostStyleVariables(ctx.styles.variables);
@@ -120,7 +120,10 @@ app.onhostcontextchanged = (ctx: any) => {
 
     // Fetch current environment
     try {
-      const envResult = await app.callServerTool({ name: "firebase_get_environment", arguments: {} });
+      const envResult = await app.callServerTool({
+        name: "firebase_get_environment",
+        arguments: {},
+      });
       const envData = envResult.structuredContent as any;
       if (envData) {
         envProjectIdEl.textContent = envData.projectId || "<NONE>";
@@ -140,7 +143,9 @@ app.onhostcontextchanged = (ctx: any) => {
       filteredProjects = projects;
       renderProjects();
       showStatus("Projects loaded successfully.", "success");
-      setTimeout(() => { if (statusBox.className === "status success") statusBox.style.display = "none"; }, 3000);
+      setTimeout(() => {
+        if (statusBox.className === "status success") statusBox.style.display = "none";
+      }, 3000);
     } else {
       showStatus("No projects returned from server.", "error");
     }
