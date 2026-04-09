@@ -75,10 +75,7 @@ type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined
 const factories: Factory[] = [
   node.tryCreateDelegate,
   python.tryCreateDelegate,
-  (ctx) =>
-    experiments.isEnabled("functionsrunapionly")
-      ? dart.tryCreateDelegate(ctx)
-      : Promise.resolve(undefined),
+  dart.tryCreateDelegate,
 ];
 
 /**
