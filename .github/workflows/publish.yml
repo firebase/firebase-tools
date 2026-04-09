@@ -3,9 +3,10 @@ name: Publish
 # Publishes the fork to npm using OIDC trusted publishing (provenance).
 # Requires Node.js 24+ and npm OIDC trust configured for this repository.
 #
-# Run this workflow manually after merging a sync PR.
-# Choose "next" to publish the pre-release version (e.g. 15.13.0-0),
-# or "latest" to strip the pre-release suffix and publish stable (e.g. 15.13.0).
+# Called automatically by the sync-upstream workflow after a successful sync,
+# or can be triggered manually. Choose "next" to publish the pre-release
+# version (e.g. 15.13.0-0), or "latest" to strip the pre-release suffix
+# and publish stable (e.g. 15.13.0).
 
 on:
   workflow_dispatch:
@@ -18,6 +19,18 @@ on:
         options:
           - next
           - latest
+      dry_run:
+        description: "Dry run — skip publish, push, and release"
+        required: false
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      dist_tag:
+        description: "npm dist-tag"
+        required: false
+        type: string
+        default: "next"
       dry_run:
         description: "Dry run — skip publish, push, and release"
         required: false
@@ -40,6 +53,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

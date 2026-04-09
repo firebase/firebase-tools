@@ -1,10 +1,12 @@
 name: Sync Upstream
 
-# Checks for new upstream firebase-tools releases and creates a sync PR.
+# Syncs with new upstream firebase-tools releases and publishes to npm.
 #
 # Runs daily, or can be triggered manually with an optional target version
 # and isolate-package version override. The already-synced check exits
 # immediately when there is no new release, so daily polling is cheap.
+# When a new version is found, it merges upstream, pushes to main, and
+# triggers the publish workflow.
 
 on:
   schedule:
@@ -23,11 +25,13 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
+  id-token: write
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.result.outputs.synced }}
 
     steps:
       - name: Checkout fork
@@ -93,56 +97,28 @@ jobs:
 
           bash scripts/sync/sync-upstream.sh "${ARGS[@]}"
 
-      - name: Push sync branch
+      - name: Merge to main
         if: steps.check.outputs.skip != 'true'
         run: |
           BRANCH=$(git branch --show-current)
-          git push -u origin "$BRANCH" --force-with-lease
+          git checkout main
+          git merge "$BRANCH" --ff-only
 
-      - name: Create Pull Request
+      - name: Push to main
         if: steps.check.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TARGET_TAG: ${{ steps.version.outputs.tag }}
-          VERSION_NUMBER: ${{ steps.check.outputs.version_number }}
-        run: |
-          BRANCH=$(git branch --show-current)
+        run: git push origin main
 
-          # Close any existing PR for this sync
-          EXISTING=$(gh pr list --base main --head "$BRANCH" --json number --jq '.[0].number // empty' 2>/dev/null || true)
-          if [[ -n "$EXISTING" ]]; then
-            echo "Closing existing PR #$EXISTING"
-            gh pr close "$EXISTING" 2>/dev/null || true
-          fi
+      - name: Set sync result
+        id: result
+        if: steps.check.outputs.skip != 'true'
+        run: echo "synced=true" >> "$GITHUB_OUTPUT"
 
-          BODY=$(cat <<EOF
-          Automated sync with upstream [firebase-tools ${TARGET_TAG}](https://github.com/firebase/firebase-tools/releases/tag/${TARGET_TAG}).
-
-          **Fork version:** \`${VERSION_NUMBER}-0\`
-
-          ### What this PR does
-          - Merges all changes from firebase-tools \`${TARGET_TAG}\`
-          - Re-applies the isolate-package integration on top
-
-          ### Review checklist
-          - [ ] Build passes
-          - [ ] Isolate integration changes look correct
-          - [ ] No unintended file changes
-
-          ---
-          _Created by the [sync-upstream](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow._
-          EOF
-          )
-
-          # Use the REST API directly — gh pr create uses GraphQL which can
-          # fail with "Resource not accessible by integration" on forks.
-          if ! gh api repos/${{ github.repository }}/pulls \
-            -f title="Sync with upstream $TARGET_TAG" \
-            -f body="$BODY" \
-            -f head="$BRANCH" \
-            -f base="main" \
-            --jq '.html_url'; then
-            echo ""
-            echo "::warning::Failed to create PR. The branch was pushed successfully."
-            echo "Create the PR manually: https://github.com/${{ github.repository }}/compare/main...$BRANCH"
-          fi
+  publish:
+    needs: sync
+    if: needs.sync.outputs.synced == 'true'
+    uses: ./.github/workflows/publish.yml
+    with:
+      dist_tag: latest
+    permissions:
+      contents: write
+      id-token: write
