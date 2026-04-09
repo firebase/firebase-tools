@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { mkdir } from "fs/promises";
+import { homedir } from "os";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
@@ -84,7 +86,10 @@ export async function mcp(): Promise<void> {
   if (earlyExit) return;
 
   setFirebaseMcp(true);
-  useFileLogger();
+  // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
+  const mcpLogDir = join(homedir(), ".cache", "firebase");
+  await mkdir(mcpLogDir, { recursive: true });
+  useFileLogger(join(mcpLogDir, "firebase-debug.log"));
   const activeFeatures = (values.only || "")
     .split(",")
     .map((f) => f.trim())

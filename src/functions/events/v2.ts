@@ -1,3 +1,5 @@
+import { AI_LOGIC_EVENTS } from "../../deploy/functions/services/ailogic";
+
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
 export const STORAGE_EVENTS = [
@@ -44,7 +46,8 @@ export type Event =
   | typeof TEST_LAB_EVENT
   | (typeof FIRESTORE_EVENTS)[number]
   | typeof FIREALERTS_EVENT
-  | typeof DATACONNECT_EVENT;
+  | typeof DATACONNECT_EVENT
+  | (typeof AI_LOGIC_EVENTS)[number];
 
 // Why can't auth context be removed? This is map was added to correct a bug where a regex
 // allowed any non-auth type to be converted to any auth type, but we should follow up for why

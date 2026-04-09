@@ -6,7 +6,7 @@
   "scripts": {
     "fmt": "prettier --write *.js",
     "pkg": "pkg -c package.json firepit.js --out-path dist/ && shx chmod +x dist/firepit-*",
-    "ship": "gsutil -m cp dist/* gs://fir-tools-builds/firepit/ && gsutil iam ch allUsers:objectViewer gs://fir-tools-builds"
+    "ship": "gcloud storage cp dist/* gs://fir-tools-builds/firepit/ && gcloud storage buckets add-iam-policy-binding gs://fir-tools-builds --member=allUsers --role=objectViewer"
   },
   "author": "",
   "license": "MIT",

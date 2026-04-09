@@ -1,15 +1,15 @@
 {
   "name": "firebase-tools-with-isolate",
-  "version": "15.11.0-3",
+  "version": "15.12.0-0",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools-with-isolate",
-      "version": "15.11.0-3",
+      "version": "15.12.0-0",
       "license": "MIT",
       "dependencies": {
-        "@apphosting/build": "^0.1.6",
+        "@apphosting/build": "^0.1.7",
         "@apphosting/common": "^0.0.8",
         "@electric-sql/pglite": "^0.3.3",
         "@electric-sql/pglite-tools": "^0.2.8",
@@ -45,7 +45,7 @@
         "glob": "^10.5.0",
         "google-auth-library": "^9.11.0",
         "ignore": "^7.0.4",
-        "isolate-package": "1.30.0",
+        "isolate-package": "^1.27.0-4",
         "js-yaml": "^3.14.2",
         "jsonwebtoken": "^9.0.2",
         "leven": "^3.1.0",
@@ -73,6 +73,7 @@
         "stream-chain": "^2.2.4",
         "stream-json": "^1.7.3",
         "superstatic": "^10.0.0",
+        "tar": "^7.5.11",
         "tcp-port-used": "^1.0.2",
         "tmp": "^0.2.3",
         "triple-beam": "^1.3.0",
@@ -302,12 +303,12 @@
       }
     },
     "node_modules/@apphosting/build": {
-      "version": "0.1.6",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
-      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
+      "version": "0.1.7",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.7.tgz",
+      "integrity": "sha512-zNgQGiAWDOj6c+4ylv5ej3nLGXzMAVmzCGMqlbSarHe4bvBmZ2C5GfBRdJksedP7C9pqlwTWpxU5+GSzhJ+nKA==",
       "license": "Apache-2.0",
       "dependencies": {
-        "@apphosting/common": "^0.0.8",
+        "@apphosting/common": "^0.0.9",
         "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
@@ -317,6 +318,12 @@
       "bin": {
         "apphosting-local-build": "dist/bin/localbuild.js"
       }
+    },
+    "node_modules/@apphosting/build/node_modules/@apphosting/common": {
+      "version": "0.0.9",
+      "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+      "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw==",
+      "license": "Apache-2.0"
     },
     "node_modules/@apphosting/build/node_modules/commander": {
       "version": "11.1.0",
@@ -7304,9 +7311,10 @@
       "dev": true
     },
     "node_modules/@tootallnate/once": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz",
-      "integrity": "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==",
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-3.0.1.tgz",
+      "integrity": "sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg==",
+      "license": "MIT",
       "engines": {
         "node": ">= 10"
       }
@@ -15262,9 +15270,9 @@
       }
     },
     "node_modules/hono": {
-      "version": "4.11.4",
-      "resolved": "https://registry.npmjs.org/hono/-/hono-4.11.4.tgz",
-      "integrity": "sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==",
+      "version": "4.11.9",
+      "resolved": "https://registry.npmjs.org/hono/-/hono-4.11.9.tgz",
+      "integrity": "sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ==",
       "license": "MIT",
       "peer": true,
       "engines": {
@@ -24956,9 +24964,9 @@
       "dev": true
     },
     "node_modules/tar": {
-      "version": "7.5.13",
-      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.13.tgz",
-      "integrity": "sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==",
+      "version": "7.5.11",
+      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.11.tgz",
+      "integrity": "sha512-ChjMH33/KetonMTAtpYdgUFr0tbz69Fp2v7zWxQfYZX4g5ZN2nOBXm1R2xyA+lMIKrLKIoKAwFj93jE/avX9cQ==",
       "license": "BlueOak-1.0.0",
       "dependencies": {
         "@isaacs/fs-minipass": "^4.0.0",
@@ -27488,11 +27496,11 @@
       }
     },
     "@apphosting/build": {
-      "version": "0.1.6",
-      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.6.tgz",
-      "integrity": "sha512-nXK1wsR1tehaq9uSRDCGQmN+Dp0xbyGohssYd7g4W8ZbzHfUiab+Pabv34pHVTS03VaSVkjdNcR1g9hezi6s8g==",
+      "version": "0.1.7",
+      "resolved": "https://registry.npmjs.org/@apphosting/build/-/build-0.1.7.tgz",
+      "integrity": "sha512-zNgQGiAWDOj6c+4ylv5ej3nLGXzMAVmzCGMqlbSarHe4bvBmZ2C5GfBRdJksedP7C9pqlwTWpxU5+GSzhJ+nKA==",
       "requires": {
-        "@apphosting/common": "^0.0.8",
+        "@apphosting/common": "^0.0.9",
         "@npmcli/promise-spawn": "^3.0.0",
         "colorette": "^2.0.20",
         "commander": "^11.1.0",
@@ -27500,6 +27508,11 @@
         "ts-node": "^10.9.1"
       },
       "dependencies": {
+        "@apphosting/common": {
+          "version": "0.0.9",
+          "resolved": "https://registry.npmjs.org/@apphosting/common/-/common-0.0.9.tgz",
+          "integrity": "sha512-ZbPZDcVhEN+8m0sf90PmQN4xWaKmmySnBSKKPaIOD0JvcDsRr509WenFEFlojP++VSxwFZDGG/TYsHs1FMMqpw=="
+        },
         "commander": {
           "version": "11.1.0",
           "resolved": "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz",
@@ -29223,7 +29236,7 @@
           "resolved": "https://registry.npmjs.org/http-proxy-agent/-/http-proxy-agent-5.0.0.tgz",
           "integrity": "sha512-n2hY8YdoRE1i7r6M0w9DIw5GgZN0G25P8zLCRQ8rjXtTU3vsNFBI/vWK/UIeE6g5MUUz6avwAPXmL6Fy9D/90w==",
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           },
@@ -32271,9 +32284,9 @@
       }
     },
     "@tootallnate/once": {
-      "version": "2.0.0",
-      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-2.0.0.tgz",
-      "integrity": "sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A=="
+      "version": "3.0.1",
+      "resolved": "https://registry.npmjs.org/@tootallnate/once/-/once-3.0.1.tgz",
+      "integrity": "sha512-VyMVKRrpHTT8PnotUeV8L/mDaMwD5DaAKCFLP73zAqAtvF0FCqky+Ki7BYbFCYQmqFyTe9316Ed5zS70QUR9eg=="
     },
     "@tootallnate/quickjs-emscripten": {
       "version": "0.23.0",
@@ -38151,9 +38164,9 @@
       "integrity": "sha512-tzcUFauisWKNHaRkN4Wjl/ZA07gENAjFl3J/c480dprkGTg5EQstgaNFqBfUqCq54kZRIEcreTsAgF/m2quD7A=="
     },
     "hono": {
-      "version": "4.11.4",
-      "resolved": "https://registry.npmjs.org/hono/-/hono-4.11.4.tgz",
-      "integrity": "sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==",
+      "version": "4.11.9",
+      "resolved": "https://registry.npmjs.org/hono/-/hono-4.11.9.tgz",
+      "integrity": "sha512-Eaw2YTGM6WOxA6CXbckaEvslr2Ne4NFsKrvc0v97JD5awbmeBLO5w9Ho9L9kmKonrwF9RJlW6BxT1PVv/agBHQ==",
       "peer": true
     },
     "hosted-git-info": {
@@ -39704,7 +39717,7 @@
           "integrity": "sha512-n2hY8YdoRE1i7r6M0w9DIw5GgZN0G25P8zLCRQ8rjXtTU3vsNFBI/vWK/UIeE6g5MUUz6avwAPXmL6Fy9D/90w==",
           "optional": true,
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           }
@@ -45089,9 +45102,9 @@
       }
     },
     "tar": {
-      "version": "7.5.13",
-      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.13.tgz",
-      "integrity": "sha512-tOG/7GyXpFevhXVh8jOPJrmtRpOTsYqUIkVdVooZYJS/z8WhfQUX8RJILmeuJNinGAMSu1veBr4asSHFt5/hng==",
+      "version": "7.5.11",
+      "resolved": "https://registry.npmjs.org/tar/-/tar-7.5.11.tgz",
+      "integrity": "sha512-ChjMH33/KetonMTAtpYdgUFr0tbz69Fp2v7zWxQfYZX4g5ZN2nOBXm1R2xyA+lMIKrLKIoKAwFj93jE/avX9cQ==",
       "requires": {
         "@isaacs/fs-minipass": "^4.0.0",
         "chownr": "^3.0.0",
@@ -45217,7 +45230,7 @@
           "dev": true,
           "optional": true,
           "requires": {
-            "@tootallnate/once": "2",
+            "@tootallnate/once": "^3.0.1",
             "agent-base": "6",
             "debug": "4"
           }
