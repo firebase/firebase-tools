@@ -4,7 +4,7 @@
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
   "description": "Firebase Data Connect for VSCode",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -234,6 +234,7 @@
     "@vscode/webview-ui-toolkit": "^1.2.1",
     "classnames": "^2.3.2",
     "exponential-backoff": "3.1.1",
+    "firebase-tools": "file:..",
     "graphql-language-service": "file:graphql-language-service-5.4.0.tgz",
     "graphql-language-service-server": "file:graphql-language-service-server-2.14.8.tgz",
     "js-yaml": "^4.1.0",
