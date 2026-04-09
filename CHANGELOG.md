@@ -1,5 +1,6 @@
 - Added Enterprise Edition support to the Firestore emulator. Configure it by setting `firebase.json#firestore.edition` or `firebase.json#emulators.firestore.edition`.
 - Fixed an issue where functions deployments would silently fail (#6989)
+- Fixed issue where the CLI isn't able to correctly parse command arguments on PowerShell (#7506)
 - Add support for Next.js 16 middleware (`proxy.ts`/`proxy.js`) (#9631)
 - Updates the default region for new App Hosting backends to us-east4 (#10271)
 - Fix Next.js image optimization detection in client components (#10228)
