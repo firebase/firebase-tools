@@ -89,7 +89,7 @@ export async function updateTrigger(
   triggerId: string,
   trigger: DeepOmit<Trigger, TriggerOutputOnlyFields>,
   updateMask?: string[],
-  allowMissing = false,
+  allowMissing = true,
   validateOnly = false,
 ): Promise<Trigger> {
   const name = `projects/${projectId}/locations/${location}/triggers/${triggerId}`;
