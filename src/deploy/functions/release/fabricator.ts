@@ -106,18 +106,29 @@ export class Fabricator {
     });
     const createAndUpdateResultsArray = await utils.allSettled(createAndUpdatePromises);
 
-    for (const r of createAndUpdateResultsArray) {
+    createAndUpdateResultsArray.forEach((r, i) => {
       if (r.status === "fulfilled") {
         summary.results.push(...r.value);
       } else {
         logger.debug(
-          "Fabricator.applyChangeset returned an unhandled exception. This should never happen",
+          "Fabricator.applyChangeset returned an unhandled exception.",
           JSON.stringify(r.reason, null, 2),
         );
+        // Map failure back to all endpoints in the changeset so the reporter knows they failed.
+        const changes = changesets[i];
+        const error = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
+        for (const endpoint of changes.endpointsToCreate) {
+          summary.results.push({ endpoint, durationMs: 0, error });
+        }
+        for (const update of changes.endpointsToUpdate) {
+          summary.results.push({ endpoint: update.endpoint, durationMs: 0, error });
+        }
       }
-    }
+    });
 
-    const hasFailures = summary.results.some((r) => r.error);
+    const hasFailures =
+      summary.results.some((r) => r.error) ||
+      createAndUpdateResultsArray.some((r) => r.status === "rejected");
 
     if (hasFailures) {
       utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
@@ -133,7 +144,7 @@ export class Fabricator {
     } else {
       // Phase 2: Deletes
       const deletePromises = changesets.map(async (changes) => {
-        return this.applyChangeset(changes, new SourceTokenScraper(), new SourceTokenScraper(), "deletes");
+        return this.applyChangeset(changes, undefined, undefined, "deletes");
       });
       const deleteResultsArray = await utils.allSettled(deletePromises);
 
@@ -155,8 +166,8 @@ export class Fabricator {
 
   async applyChangeset(
     changes: planner.Changeset,
-    scraperV1: SourceTokenScraper,
-    scraperV2: SourceTokenScraper,
+    scraperV1: SourceTokenScraper | undefined,
+    scraperV2: SourceTokenScraper | undefined,
     phase: "createsAndUpdates" | "deletes",
   ): Promise<Array<reporter.DeployResult>> {
     const ops: Array<Promise<reporter.DeployResult>> = [];
@@ -165,7 +176,7 @@ export class Fabricator {
       for (const endpoint of changes.endpointsToCreate) {
         this.logOpStart("creating", endpoint);
         ops.push(
-          this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
+          this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, scraperV1!, scraperV2!)),
         );
       }
       
@@ -176,7 +187,7 @@ export class Fabricator {
       for (const update of changes.endpointsToUpdate) {
         this.logOpStart("updating", update.endpoint);
         ops.push(
-          this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
+          this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, scraperV1!, scraperV2!)),
         );
       }
     } else if (phase === "deletes") {
