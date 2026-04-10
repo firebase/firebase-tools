@@ -162,6 +162,19 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should error with a specific message if response is a GFE error", async () => {
+      const gfeError = `<!DOCTYPE html>\n<html lang=en>\n<title>Error 404 (Not Found)!!1</title>\n<p><b>404.</b> <ins>That’s an error.</ins>\n<p>The requested URL /v1beta/projects/... was not found on this server.  <ins>That’s all we know.</ins>\n`;
+      nock("https://example.com").get("/path/to/foo").reply(404, gfeError);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, "the service you are calling doesnt exist or is misconfigured");
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should error with a FirebaseError if an error happens", async () => {
       nock("https://example.com").get("/path/to/foo").replyWithError("boom");
 
