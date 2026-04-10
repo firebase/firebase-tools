@@ -171,23 +171,31 @@ export class Fabricator {
     phase: "createsAndUpdates" | "deletes",
   ): Promise<Array<reporter.DeployResult>> {
     const ops: Array<Promise<reporter.DeployResult>> = [];
-    
+
     if (phase === "createsAndUpdates") {
+      if (!scraperV1 || !scraperV2) {
+        throw new FirebaseError("Internal error: scrapers are required for creates and updates", {
+          exit: 1,
+        });
+      }
+      const s1 = scraperV1;
+      const s2 = scraperV2;
+
       for (const endpoint of changes.endpointsToCreate) {
         this.logOpStart("creating", endpoint);
         ops.push(
-          this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, scraperV1!, scraperV2!)),
+          this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, s1, s2)),
         );
       }
-      
+
       for (const endpoint of changes.endpointsToSkip) {
         utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
       }
-      
+
       for (const update of changes.endpointsToUpdate) {
         this.logOpStart("updating", update.endpoint);
         ops.push(
-          this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, scraperV1!, scraperV2!)),
+          this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, s1, s2)),
         );
       }
     } else if (phase === "deletes") {
@@ -196,7 +204,7 @@ export class Fabricator {
         ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
       }
     }
-    
+
     return Promise.all(ops);
   }
 
