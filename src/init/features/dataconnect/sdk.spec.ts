@@ -63,6 +63,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -77,6 +78,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -88,6 +90,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       },
     ]);
   });
@@ -99,6 +102,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
+        clientCache: {},
       },
     ]);
   });
@@ -110,6 +114,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+        clientCache: {},
       },
     ]);
   });
@@ -130,6 +135,12 @@ describe("addSdkGenerateToConnectorYaml", () => {
     sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should NOT inject clientCache if fdcrealtime is disabled", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(false);
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.be.undefined;
   });
 
   it("should NOT overwrite existing clientCache configuration", () => {

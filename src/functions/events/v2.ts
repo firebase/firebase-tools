@@ -1,4 +1,8 @@
-import { AI_LOGIC_EVENTS } from "../../deploy/functions/services/ailogic";
+import {
+  AI_LOGIC_EVENTS,
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+} from "../../deploy/functions/services/ailogic";
 
 export const PUBSUB_PUBLISH_EVENT = "google.cloud.pubsub.topic.v1.messagePublished";
 
@@ -62,3 +66,13 @@ export const CONVERTABLE_EVENTS: Partial<Record<Event, Event>> = {
   "google.cloud.firestore.document.v1.written":
     "google.cloud.firestore.document.v1.written.withAuthContext",
 };
+
+export const AI_LOGIC_EVENTS_TO_TRIGGER = {
+  [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
+  [AI_LOGIC_AFTER_GENERATE_CONTENT]: "after-generate-content",
+} as const;
+
+export const AI_LOGIC_TRIGGERS_TO_EVENTS = {
+  "before-generate-content": AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  "after-generate-content": AI_LOGIC_AFTER_GENERATE_CONTENT,
+} as const;
