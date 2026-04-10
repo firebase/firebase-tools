@@ -9,21 +9,38 @@ This skill guides you through the process of listing images, checking for vulner
 
 ## Workflow
 
-### 1. List Images
+### 1. Publish to Staging
 
-Use `gcloud` to list the images in the repository to find the latest one.
+Run the build on `fir-tools-builds` and publish to the `staging` repository in `firebase-cli` to see the baseline vulnerabilities after the build's own updates.
 
 ```bash
-gcloud artifacts docker images list us-docker.pkg.dev/firebase-cli/us/firebase
+./scripts/publish/firebase-docker-image/run.sh fir-tools-builds staging
 ```
 
 ### 2. Check Vulnerabilities
 
-Check the vulnerability reports for the latest image. You will need the digest of the image from the previous step.
+Check the vulnerability reports for the image just pushed to staging. You will need to find the digest of the image first.
 
 ```bash
-gcloud artifacts vulnerabilities list --resource=us-docker.pkg.dev/firebase-cli/us/firebase@sha256:<DIGEST>
+gcloud artifacts docker images list us-docker.pkg.dev/firebase-cli/staging/firebase
 ```
+
+Then check vulnerabilities using the digest:
+
+```bash
+gcloud artifacts vulnerabilities list us-docker.pkg.dev/firebase-cli/staging/firebase@sha256:<DIGEST>
+```
+
+To investigate which layers and file paths are causing the vulnerabilities, run the command with `--format=json`:
+
+```bash
+gcloud artifacts vulnerabilities list us-docker.pkg.dev/firebase-cli/staging/firebase@sha256:<DIGEST> --format=json
+```
+
+Look for `fileLocation` and `layerDetails` in the output to understand if the vulnerability is in:
+- Project dependencies (e.g., under `/usr/local/node_packages/node_modules`). Recommend updating the package.json and running the build again. You can use overrides as needed here to upgrade transitive dependencies to non-breaking versions.
+- Global tools (e.g., under `/usr/local/lib/node_modules/npm`). Recommend waiting for upstream fixes (which will be pulled in as soon as they are available).
+- External binaries (e.g., emulator JARs under `/root/.cache/firebase/emulators`). Recommend raising these issues to the team owning the emulator.
 
 ### 3. Plan Remediation
 
@@ -36,16 +53,6 @@ For each vulnerable package identified:
 
 Present the proposed plan to the user for approval before making changes.
 
-### 5. Verify and Publish to Staging
+### 5. Apply Fix and Re-Verify
 
-After making changes to the Dockerfile or related files, offer the user to publish a new copy of the image to a staging repo to verify the fix.
-
-Example command to build and push to staging:
-```bash
-docker build -t us-docker.pkg.dev/firebase-cli/us/firebase-staging:latest .
-docker push us-docker.pkg.dev/firebase-cli/us/firebase-staging:latest
-```
-Then you can check vulnerabilities on the staging image:
-```bash
-gcloud artifacts vulnerabilities list --resource=us-docker.pkg.dev/firebase-cli/us/firebase-staging:latest
-```
+After making changes to the Dockerfile or related files, repeat Step 1 and Step 2 to publish a new staged image and verify that the vulnerabilities have been resolved.
