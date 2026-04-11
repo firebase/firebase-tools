@@ -13,7 +13,7 @@ import { EmulatorLogger } from "../../emulatorLogger";
 import { GetObjectResponse, ListObjectsResponse } from "../files";
 import type { Request, Response } from "express";
 import { parseObjectUploadMultipartRequest } from "../multipart";
-import { Upload, UploadNotActiveError, UploadStatus } from "../upload";
+import { NotCancellableError, Upload, UploadNotActiveError, UploadStatus } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
 import type { Query } from "express-serve-static-core";
@@ -191,8 +191,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     try {
       upload = uploadService.getResumableUpload(uploadId);
 
-      if (!upload) {
-        return res.status(404).send();
+      if (upload.status === UploadStatus.CANCELLED) {
+        return res.sendStatus(499);
       }
 
       const contentLength = req.headers["content-length"];
@@ -227,8 +227,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           }
           return res.status(200).json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
         }
-
-        return res.sendStatus(404);
       }
 
       if (contentLength && contentLength !== "0") {
@@ -286,12 +284,13 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
           return res.status(200).json(new CloudStorageObjectMetadata(metadata));
         }
-      } else {
-        return res.status(400).send();
       }
+      return res.status(400).send();
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
+      } else if (err instanceof ForbiddenError) {
+        return res.sendStatus(403);
       } else if (err instanceof UploadNotActiveError) {
         return res.sendStatus(400);
       }
@@ -312,6 +311,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     } catch (err) {
       if (err instanceof NotFoundError) {
         return res.sendStatus(404);
+      } else if (err instanceof NotCancellableError) {
+        return res.sendStatus(405);
       }
       throw err;
     }
