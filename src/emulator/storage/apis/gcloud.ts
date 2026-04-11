@@ -243,11 +243,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           }
 
           if (parsedRange.start !== upload.size) {
-            const startingOffset = Math.max(parsedRange.start - 1, 0);
             return res
               .status(400)
               .send(
-                `Invalid chunk position. The next chunk should start at offset ${startingOffset}.`,
+                `Invalid chunk position. The next chunk should start at offset ${upload.size}.`,
               );
           }
 
@@ -295,6 +294,24 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return res.sendStatus(404);
       } else if (err instanceof UploadNotActiveError) {
         return res.sendStatus(400);
+      }
+      throw err;
+    }
+  });
+
+  gcloudStorageAPI.delete("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
+    if (!req.query.upload_id) {
+      return res.sendStatus(405);
+    }
+
+    const uploadId = req.query.upload_id.toString();
+
+    try {
+      uploadService.cancelResumableUpload(uploadId);
+      return res.sendStatus(499);
+    } catch (err) {
+      if (err instanceof NotFoundError) {
+        return res.sendStatus(404);
       }
       throw err;
     }
