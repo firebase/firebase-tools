@@ -234,8 +234,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
         // Multiple chunk upload
         if (contentRange) {
-          const parsedRange = parseContentRangeHeader(contentRange);
-
           if (!parsedRange) {
             return res.status(400).send("Failed to parse Content-Range header.");
           }
@@ -251,8 +249,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           const expectedChunkSize = parsedRange.end - parsedRange.start + 1;
 
           if (data.byteLength !== expectedChunkSize) {
-            const startingOffset = Math.max(parsedRange.start - 1, 0);
-            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${startingOffset} and ending at offset ${parsedRange.end}) according to the Content-Range header.`;
+            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${parsedRange.start} and ending at offset ${parsedRange.end}) according to the Content-Range header.`;
             return res.status(400).send(message);
           }
 
