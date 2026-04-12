@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ContentRange, Emulators } from "../../types";
+import { Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
   CloudStorageObjectMetadata,
@@ -197,16 +197,27 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
       const contentLength = req.headers["content-length"];
       const contentRange = req.headers["content-range"];
-      const parsedRange = contentRange ? parseContentRangeHeader(contentRange) : null;
 
       // Status check request
       // @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#status-check
       if (contentLength === "0") {
+        // Extract the numeric total from bytes */total or bytes start-end/total forms.
+        const totalMatch = contentRange && /\/(\d+)$/.exec(contentRange);
+        const declaredTotal = totalMatch ? parseInt(totalMatch[1], 10) : undefined;
+
         if (upload.status === UploadStatus.ACTIVE) {
+          // if the declared total matches the bytes received so far, the client is signalling that
+          // the upload is complete (i.e. streaming upload where total size wasn't known upfront).
+          if (declaredTotal !== undefined && upload.size === declaredTotal) {
+            const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
+            const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
+            return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+          }
+
           if (upload.size === 0) {
             return res.status(308).send();
           } else if (upload.size > 0) {
-            res.setHeader("Range", `bytes=0-${upload.size - 1}/${parsedRange?.total || "*"}`);
+            res.setHeader("Range", `bytes=0-${upload.size - 1}/${declaredTotal ?? "*"}`);
             return res.status(308).send();
           }
         } else if (upload.status === UploadStatus.FINISHED) {
@@ -234,11 +245,21 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
         // Multiple chunk upload
         if (contentRange) {
-          if (!parsedRange) {
+          const rangeMatch = /^bytes (\d+)-(\d+)(?:\/(\d+|\*))?$/.exec(contentRange);
+          if (!rangeMatch) {
             return res.status(400).send("Failed to parse Content-Range header.");
           }
 
-          if (parsedRange.start !== upload.size) {
+          const rangeStart = parseInt(rangeMatch[1], 10);
+          const rangeEnd = parseInt(rangeMatch[2], 10);
+          const rangeTotal =
+            rangeMatch[3] && rangeMatch[3] !== "*" ? parseInt(rangeMatch[3], 10) : undefined;
+
+          if (rangeEnd < rangeStart || (rangeTotal !== undefined && rangeTotal < rangeEnd + 1)) {
+            return res.status(400).send("Failed to parse Content-Range header.");
+          }
+
+          if (rangeStart !== upload.size) {
             return res
               .status(400)
               .send(
@@ -246,10 +267,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
               );
           }
 
-          const expectedChunkSize = parsedRange.end - parsedRange.start + 1;
+          const expectedChunkSize = rangeEnd - rangeStart + 1;
 
           if (data.byteLength !== expectedChunkSize) {
-            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${parsedRange.start} and ending at offset ${parsedRange.end}) according to the Content-Range header.`;
+            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${rangeStart} and ending at offset ${rangeEnd}) according to the Content-Range header.`;
             return res.status(400).send(message);
           }
 
@@ -262,8 +283,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
            * @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
            */
           const isComplete =
-            typeof parsedRange.total === "number"
-              ? updatedUpload.size >= parsedRange.total
+            typeof rangeTotal === "number"
+              ? updatedUpload.size >= rangeTotal
               : data.byteLength % (256 * 1024) !== 0;
 
           if (isComplete) {
@@ -272,7 +293,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
             return res.status(200).json(new CloudStorageObjectMetadata(metadata));
           }
 
-          res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${parsedRange.total || "*"}`);
+          res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${rangeTotal ?? "*"}`);
           return res.status(308).send();
         } else {
           // Single chunk upload
@@ -563,21 +584,4 @@ function getIncomingFileNameFromRequest(
 ): string | undefined {
   const name = query?.name?.toString() || metadata?.name;
   return name?.startsWith("/") ? name.slice(1) : name;
-}
-
-function parseContentRangeHeader(contentRange: string): ContentRange | null {
-  let parsedRange: ContentRange | null = null;
-  const match = /^bytes (\d+)-(\d+)(?:\/(\d+|\*))?$/.exec(contentRange);
-
-  if (match) {
-    const start = parseInt(match[1], 10);
-    const end = parseInt(match[2], 10);
-    const total = match[3] && match[3] !== "*" ? parseInt(match[3], 10) : undefined;
-
-    if (end >= start && (total === undefined || total >= end + 1)) {
-      parsedRange = { start, end, total };
-    }
-  }
-
-  return parsedRange;
 }
