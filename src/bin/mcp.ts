@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { mkdir } from "fs/promises";
+import { homedir } from "os";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
+import { setFirebaseMcp } from "../env";
 import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
 import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
@@ -69,7 +72,7 @@ export async function mcp(): Promise<void> {
     earlyExit = true;
   }
   if (values["generate-tool-list"]) {
-    console.log(markdownDocsOfTools());
+    console.log(await markdownDocsOfTools());
     earlyExit = true;
   }
   if (values["generate-prompt-list"]) {
@@ -82,8 +85,11 @@ export async function mcp(): Promise<void> {
   }
   if (earlyExit) return;
 
-  process.env.IS_FIREBASE_MCP = "true";
-  useFileLogger();
+  setFirebaseMcp(true);
+  // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
+  const mcpLogDir = join(homedir(), ".cache", "firebase");
+  await mkdir(mcpLogDir, { recursive: true });
+  useFileLogger(join(mcpLogDir, "firebase-debug.log"));
   const activeFeatures = (values.only || "")
     .split(",")
     .map((f) => f.trim())

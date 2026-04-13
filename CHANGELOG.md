@@ -1,1 +1,2 @@
 - Fixed issue where `firebase init firestore` incorrectly gets rules from different database. (#7981)
+- Updated Pub/Sub emulator to version 0.8.30

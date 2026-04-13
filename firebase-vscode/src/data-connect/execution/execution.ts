@@ -324,7 +324,7 @@ ${schema}
       "Gemini in Firebase",
       {
         modal: !process.env.VSCODE_TEST_MODE,
-        detail: "Gemini in Firebase helps you write Data Connect queries.",
+        detail: "Gemini in Firebase helps you write SQL Connect queries.",
       },
       enable,
       tos,

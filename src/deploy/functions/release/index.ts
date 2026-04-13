@@ -17,6 +17,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
+import { runtimeIsLanguage } from "../runtimes/supported";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -84,9 +85,18 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  // N.B. THIS IS TEMPORARY
+  // This will limit concurrent deploys of run functions to two while zip deploy capacity
+  // is low.
+  const runThrottlerOptions = {
+    ...throttlerOptions,
+    concurrency: 2,
+  };
+
   const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
@@ -104,6 +114,17 @@ export async function release(
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
+
+  // TODO: Remove once the Firebase console has support.
+  if (
+    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime, "dart"))
+  ) {
+    utils.logLabeledBullet(
+      "functions",
+      "Dart functions may not yet be visible in the Firebase Console. " +
+        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+    );
+  }
 
   await setupArtifactCleanupPolicies(
     options,
@@ -145,13 +166,8 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
     if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
       // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for Data Connect
       // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
-      // TODO: The deterministic URL is only available for DNS segments of 63 characters or less;
-      // we should add validation to prevent service names that would exceed this.
-      logger.info(
-        clc.bold("Function URL"),
-        `(${getFunctionLabel(httpsFunc)}):`,
-        `https://${httpsFunc.id.toLowerCase()}-${projectNumber}.${httpsFunc.region}.run.app`,
-      );
+      const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
+      logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
