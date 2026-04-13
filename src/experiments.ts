@@ -86,6 +86,11 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
     default: false,
   },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
