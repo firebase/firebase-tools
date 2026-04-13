@@ -73,8 +73,8 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Exports functions IaC code",
     public: false,
   },
-  dartfunctions: {
-    shortDescription: "Enable Dart functions and use Cloud Run API to list v2 functions.",
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
   },
   bypassfunctionsdeprecationcheck: {
@@ -83,6 +83,11 @@ export const ALL_EXPERIMENTS = experiments({
       "Bypasses the local check for whether a functions runtime is " +
       "decommissioned. This does not, by itself, allow you to deploy a function with a " +
       "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
     public: false,
     default: false,
   },
@@ -195,7 +200,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   fdcrealtime: {
     shortDescription: "Enable Firebase Data Connect realtime feature.",
-    default: false,
+    default: true,
     public: false,
   },
 });

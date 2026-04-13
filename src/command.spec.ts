@@ -170,6 +170,60 @@ describe("Command", () => {
       });
     });
   });
+
+  it("should handle comma separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore,hosting,auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore hosting auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space and commas separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore, hosting,  auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
 });
 
 describe("validateProjectId", () => {

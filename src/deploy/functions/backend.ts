@@ -573,7 +573,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  if (experiments.isEnabled("dartfunctions")) {
+  if (experiments.isEnabled("functionsrunapionly")) {
     try {
       const runServices = await run.listServices(ctx.projectId);
       for (const service of runServices) {

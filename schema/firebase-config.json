@@ -1412,6 +1412,9 @@
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {
+                        "edition": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },
