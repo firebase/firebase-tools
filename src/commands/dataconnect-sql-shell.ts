@@ -86,12 +86,12 @@ type ShellOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:sql:shell")
   .description(
-    "start a shell connected directly to your Data Connect service's linked CloudSQL instance",
+    "start a shell connected directly to your SQL Connect service's linked CloudSQL instance",
   )
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .before(requirePermissions, ["firebasedataconnect.services.list", "cloudsql.instances.connect"])
   .before(requireAuth)
@@ -134,7 +134,7 @@ export const command = new Command("dataconnect:sql:shell")
     await conn.query(`SET search_path TO "${schemaName}"`);
 
     logger.info(`Logged in as ${username}`);
-    logger.info(clc.cyan("Welcome to Data Connect Cloud SQL Shell"));
+    logger.info(clc.cyan("Welcome to SQL Connect Cloud SQL Shell"));
     logger.info(
       clc.gray(
         "Type your your SQL query or '.exit' to quit, queries should end with ';' or add empty line to execute.",

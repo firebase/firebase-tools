@@ -194,7 +194,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     describe("dataConnectGraphqlTriggers", () => {
-      it("invalid value for Data Connect https trigger key invoker", () => {
+      it("invalid value for SQL Connect https trigger key invoker", () => {
         assertParserError({
           endpoints: {
             func: {

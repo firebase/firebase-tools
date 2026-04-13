@@ -105,7 +105,7 @@ export async function createInstance(args: {
 }
 
 /**
- * Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
+ * Update an existing CloudSQL instance to have any required settings for Firebase SQL Connect.
  */
 export async function updateInstanceForDataConnect(
   instance: Instance,

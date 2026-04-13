@@ -31,11 +31,11 @@ export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boo
 }
 
 export function upgradeInstructions(projectId: string, trialUsed: boolean): string {
-  return `To provision a ${trialUsed ? "paid CloudSQL Postgres instance" : "CloudSQL Postgres instance on the Firebase Data Connect no-cost trial"}:
+  return `To provision a ${trialUsed ? "paid CloudSQL Postgres instance" : "CloudSQL Postgres instance on the Firebase SQL Connect no-cost trial"}:
 
   1. Please upgrade to the pay-as-you-go (Blaze) billing plan. Visit the following page:
 
       https://console.firebase.google.com/project/${projectId}/usage/details
 
-  2. Run ${clc.bold("firebase deploy --only dataconnect")} to deploy your Data Connect service.`;
+  2. Run ${clc.bold("firebase deploy --only dataconnect")} to deploy your SQL Connect service.`;
 }
