@@ -1753,7 +1753,7 @@ describe("Fabricator", () => {
 
       // At this point, create should be pending, and delete should NOT have run yet.
       expect(deleteEndpoint).to.not.have.been.called;
-      
+
       // Resolve the create operation
       resolveCreate!();
 

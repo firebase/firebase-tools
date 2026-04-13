@@ -107,24 +107,31 @@ export class Fabricator {
     const createAndUpdateResultsArray = await utils.allSettled(createAndUpdatePromises);
 
     // Process results of Phase 1
-    const upsertResults = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>((acc, r, i) => {
-      if (r.status === "fulfilled") {
-        return [...acc, ...r.value];
-      }
-      // Handle rejection
-      logger.debug(
-        "Fabricator.applyUpserts returned an unhandled exception.",
-        JSON.stringify(r.reason, null, 2),
-      );
-      const changes = changesets[i];
-      const error = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
-      const aborts = [
-        ...changes.endpointsToCreate.map((endpoint) => ({ endpoint, durationMs: 0, error })),
-        ...changes.endpointsToUpdate.map((update) => ({ endpoint: update.endpoint, durationMs: 0, error })),
-      ];
-      return [...acc, ...aborts];
-    }, []);
-    
+    const upsertResults = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>(
+      (acc, r, i) => {
+        if (r.status === "fulfilled") {
+          return [...acc, ...r.value];
+        }
+        // Handle rejection
+        logger.debug(
+          "Fabricator.applyUpserts returned an unhandled exception.",
+          JSON.stringify(r.reason, null, 2),
+        );
+        const changes = changesets[i];
+        const error = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
+        const aborts = [
+          ...changes.endpointsToCreate.map((endpoint) => ({ endpoint, durationMs: 0, error })),
+          ...changes.endpointsToUpdate.map((update) => ({
+            endpoint: update.endpoint,
+            durationMs: 0,
+            error,
+          })),
+        ];
+        return [...acc, ...aborts];
+      },
+      [],
+    );
+
     summary.results.push(...upsertResults);
 
     // Simplify failure check (remove redundant check on createAndUpdateResultsArray)
@@ -132,7 +139,7 @@ export class Fabricator {
 
     if (hasFailures) {
       utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
-      
+
       const aborts = changesets.reduce<reporter.DeployResult[]>((accum, changes) => {
         const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
           endpoint,
@@ -141,7 +148,7 @@ export class Fabricator {
         }));
         return [...accum, ...currentAborts];
       }, []);
-      
+
       summary.results.push(...aborts);
       summary.totalTime = timer.stop();
       return summary; // Early exit!
@@ -178,7 +185,9 @@ export class Fabricator {
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
       ops.push(
-        this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
+        this.wrapOperation("create", endpoint, () =>
+          this.createEndpoint(endpoint, scraperV1, scraperV2),
+        ),
       );
     }
 
@@ -189,7 +198,9 @@ export class Fabricator {
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
       ops.push(
-        this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
+        this.wrapOperation("update", update.endpoint, () =>
+          this.updateEndpoint(update, scraperV1, scraperV2),
+        ),
       );
     }
 
