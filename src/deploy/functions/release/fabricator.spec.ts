@@ -1734,9 +1734,14 @@ describe("Fabricator", () => {
         },
       };
 
+      let resolveCreate: () => void;
+      const createPromise = new Promise<void>((resolve) => {
+        resolveCreate = resolve;
+      });
+
       let createFinished = false;
       const createEndpoint = sinon.stub(fab, "createEndpoint").callsFake(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await createPromise;
         createFinished = true;
       });
 
@@ -1744,7 +1749,15 @@ describe("Fabricator", () => {
         expect(createFinished).to.be.true;
       });
 
-      await fab.applyPlan(plan);
+      const applyPlanPromise = fab.applyPlan(plan);
+
+      // At this point, create should be pending, and delete should NOT have run yet.
+      expect(deleteEndpoint).to.not.have.been.called;
+      
+      // Resolve the create operation
+      resolveCreate!();
+
+      await applyPlanPromise;
 
       expect(createEndpoint).to.have.been.calledOnce;
       expect(deleteEndpoint).to.have.been.calledOnce;

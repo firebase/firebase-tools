@@ -99,110 +99,109 @@ export class Fabricator {
     const changesets = Object.values(plan);
 
     // Phase 1: Creates and Updates
-    const createAndUpdatePromises = changesets.map(async (changes) => {
-      const scraperV1 = new SourceTokenScraper();
-      const scraperV2 = new SourceTokenScraper();
-      return this.applyChangeset(changes, scraperV1, scraperV2, "createsAndUpdates");
+    const scraperV1 = new SourceTokenScraper();
+    const scraperV2 = new SourceTokenScraper();
+    const createAndUpdatePromises = changesets.map((changes) => {
+      return this.applyUpserts(changes, scraperV1, scraperV2);
     });
     const createAndUpdateResultsArray = await utils.allSettled(createAndUpdatePromises);
 
-    createAndUpdateResultsArray.forEach((r, i) => {
+    // Process results of Phase 1
+    const upsertResults = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>((acc, r, i) => {
       if (r.status === "fulfilled") {
-        summary.results.push(...r.value);
-      } else {
-        logger.debug(
-          "Fabricator.applyChangeset returned an unhandled exception.",
-          JSON.stringify(r.reason, null, 2),
-        );
-        // Map failure back to all endpoints in the changeset so the reporter knows they failed.
-        const changes = changesets[i];
-        const error = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
-        for (const endpoint of changes.endpointsToCreate) {
-          summary.results.push({ endpoint, durationMs: 0, error });
-        }
-        for (const update of changes.endpointsToUpdate) {
-          summary.results.push({ endpoint: update.endpoint, durationMs: 0, error });
-        }
+        return [...acc, ...r.value];
       }
-    });
+      // Handle rejection
+      logger.debug(
+        "Fabricator.applyUpserts returned an unhandled exception.",
+        JSON.stringify(r.reason, null, 2),
+      );
+      const changes = changesets[i];
+      const error = r.reason instanceof Error ? r.reason : new Error(String(r.reason));
+      const aborts = [
+        ...changes.endpointsToCreate.map((endpoint) => ({ endpoint, durationMs: 0, error })),
+        ...changes.endpointsToUpdate.map((update) => ({ endpoint: update.endpoint, durationMs: 0, error })),
+      ];
+      return [...acc, ...aborts];
+    }, []);
+    
+    summary.results.push(...upsertResults);
 
-    const hasFailures =
-      summary.results.some((r) => r.error) ||
-      createAndUpdateResultsArray.some((r) => r.status === "rejected");
+    // Simplify failure check (remove redundant check on createAndUpdateResultsArray)
+    const hasFailures = summary.results.some((r) => r.error);
 
     if (hasFailures) {
       utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
-      for (const changes of changesets) {
-        for (const endpoint of changes.endpointsToDelete) {
-          summary.results.push({
-            endpoint,
-            durationMs: 0,
-            error: new reporter.AbortedDeploymentError(endpoint),
-          });
-        }
-      }
-    } else {
-      // Phase 2: Deletes
-      const deletePromises = changesets.map(async (changes) => {
-        return this.applyChangeset(changes, undefined, undefined, "deletes");
-      });
-      const deleteResultsArray = await utils.allSettled(deletePromises);
-
-      for (const r of deleteResultsArray) {
-        if (r.status === "fulfilled") {
-          summary.results.push(...r.value);
-        } else {
-          logger.debug(
-            "Fabricator.applyChangeset returned an unhandled exception. This should never happen",
-            JSON.stringify(r.reason, null, 2),
-          );
-        }
-      }
+      
+      const aborts = changesets.reduce<reporter.DeployResult[]>((accum, changes) => {
+        const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
+          endpoint,
+          durationMs: 0,
+          error: new reporter.AbortedDeploymentError(endpoint),
+        }));
+        return [...accum, ...currentAborts];
+      }, []);
+      
+      summary.results.push(...aborts);
+      summary.totalTime = timer.stop();
+      return summary; // Early exit!
     }
+
+    // Phase 2: Deletes
+    const deletePromises = changesets.map((changes) => this.applyDeletes(changes));
+    const deleteResultsArray = await utils.allSettled(deletePromises);
+
+    const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
+      if (r.status === "fulfilled") {
+        return [...acc, ...r.value];
+      }
+      logger.debug(
+        "Fabricator.applyDeletes returned an unhandled exception. This should never happen",
+        JSON.stringify(r.reason, null, 2),
+      );
+      return acc;
+    }, []);
+
+    summary.results.push(...deleteResults);
 
     summary.totalTime = timer.stop();
     return summary;
   }
 
-  async applyChangeset(
+  async applyUpserts(
     changes: planner.Changeset,
-    scraperV1: SourceTokenScraper | undefined,
-    scraperV2: SourceTokenScraper | undefined,
-    phase: "createsAndUpdates" | "deletes",
+    scraperV1: SourceTokenScraper,
+    scraperV2: SourceTokenScraper,
   ): Promise<Array<reporter.DeployResult>> {
     const ops: Array<Promise<reporter.DeployResult>> = [];
 
-    if (phase === "createsAndUpdates") {
-      if (!scraperV1 || !scraperV2) {
-        throw new FirebaseError("Internal error: scrapers are required for creates and updates", {
-          exit: 1,
-        });
-      }
-      const s1 = scraperV1;
-      const s2 = scraperV2;
+    for (const endpoint of changes.endpointsToCreate) {
+      this.logOpStart("creating", endpoint);
+      ops.push(
+        this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
+      );
+    }
 
-      for (const endpoint of changes.endpointsToCreate) {
-        this.logOpStart("creating", endpoint);
-        ops.push(
-          this.wrapOperation("create", endpoint, () => this.createEndpoint(endpoint, s1, s2)),
-        );
-      }
+    for (const endpoint of changes.endpointsToSkip) {
+      utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
+    }
 
-      for (const endpoint of changes.endpointsToSkip) {
-        utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
-      }
+    for (const update of changes.endpointsToUpdate) {
+      this.logOpStart("updating", update.endpoint);
+      ops.push(
+        this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
+      );
+    }
 
-      for (const update of changes.endpointsToUpdate) {
-        this.logOpStart("updating", update.endpoint);
-        ops.push(
-          this.wrapOperation("update", update.endpoint, () => this.updateEndpoint(update, s1, s2)),
-        );
-      }
-    } else if (phase === "deletes") {
-      for (const endpoint of changes.endpointsToDelete) {
-        this.logOpStart("deleting", endpoint);
-        ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
-      }
+    return Promise.all(ops);
+  }
+
+  async applyDeletes(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
+    const ops: Array<Promise<reporter.DeployResult>> = [];
+
+    for (const endpoint of changes.endpointsToDelete) {
+      this.logOpStart("deleting", endpoint);
+      ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
     }
 
     return Promise.all(ops);
