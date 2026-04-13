@@ -14,7 +14,7 @@ This skill guides you through the process of listing images, checking for vulner
 Run the build on `fir-tools-builds` and publish to the `staging` repository in `firebase-cli` to see the baseline vulnerabilities after the build's own updates.
 
 ```bash
-./scripts/publish/firebase-docker-image/run.sh fir-tools-builds staging
+./scripts/publish/firebase-docker-image/run.sh --build-project fir-tools-builds --repo staging --target firebase-cli
 ```
 
 ### 2. Check Vulnerabilities
