@@ -1,4 +1,4 @@
-name: functions_template
+name: my_function
 description: An app using Dart with Cloud Functions for Firebase
 version: 0.0.1
 publish_to: none
