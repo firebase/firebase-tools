@@ -30,7 +30,8 @@ import {
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { isDartEndpoint, classifyEndpoints } from "./runtimes/dart/triggerSupport";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -292,6 +293,7 @@ export async function prepare(
 
   await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend);
   await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
+  warnIfDartBackendHasUnsupportedTriggers(wantBackend);
 
   // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
@@ -539,6 +541,29 @@ export async function loadCodebases(
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
+}
+
+/**
+ * Warns when a Dart backend contains triggers that are not yet
+ * production-ready. Classification is owned by the shared
+ * `dart/triggerSupport` module.
+ */
+function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
+  const dartEndpoints = backend.allEndpoints(want).filter(isDartEndpoint);
+  if (dartEndpoints.length === 0) {
+    return;
+  }
+
+  const { emulatorOnly, experimental } = classifyEndpoints(dartEndpoints);
+  const unsupported = [...emulatorOnly, ...experimental];
+  if (unsupported.length > 0) {
+    logLabeledWarning(
+      "functions",
+      `The following Dart functions use triggers that are not yet supported for production deployment: ${unsupported.map((ep) => ep.id).join(", ")}. ` +
+        "They will be deployed but may not work as expected. " +
+        "See https://github.com/firebase/firebase-functions-dart#status-alpha-v010 for current trigger support.",
+    );
+  }
 }
 
 // Genkit almost always requires an API key, so warn if the customer is about to deploy
