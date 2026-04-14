@@ -1,5 +1,4 @@
 - Updated Pub/Sub emulator to version 0.8.30
 - Renamed Data Connect displayed text to SQL Connect (#10270)
 - Improved warning messages when deploying or emulating Dart functions
-- Updated the Firebase Data Connect local toolkit to v3.4.5, which includes the following changes:
-  - [fixed] Kotlin codegen missing comma between parameters (https://github.com/firebase/firebase-tools/issues/10336)
+- Updated the SQL Connect emulator to v3.4.5, including a fix for Kotlin codegen missing a comma between parameters (#10336)
