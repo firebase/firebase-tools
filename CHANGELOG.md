@@ -1,2 +1,3 @@
+- Removed usage of shutdown Firebase Dynamic Links service from CLI codebase
 - Updated Pub/Sub emulator to version 0.8.30
 - Renamed Data Connect displayed text to SQL Connect (#10270)
