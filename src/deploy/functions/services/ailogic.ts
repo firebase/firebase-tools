@@ -2,11 +2,11 @@ import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
-
-export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
-  "firebase.vertexai.v1beta.beforeGenerateContent" as const;
-export const AI_LOGIC_AFTER_GENERATE_CONTENT =
-  "firebase.vertexai.v1beta.afterGenerateContent" as const;
+import {
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+} from "../../../gcp/ailogic";
+export { AI_LOGIC_BEFORE_GENERATE_CONTENT, AI_LOGIC_AFTER_GENERATE_CONTENT };
 
 export const AI_LOGIC_EVENTS = [
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
