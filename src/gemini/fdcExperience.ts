@@ -24,7 +24,7 @@ export const PROMPT_GENERATE_SEED_DATA =
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.
  * @param project project identifier.
- * @return graphQL schema for a Firebase Data Connect Project.
+ * @return graphQL schema for a Firebase SQL Connect Project.
  */
 export async function generateSchema(
   prompt: string,
@@ -44,11 +44,11 @@ export async function generateSchema(
 }
 
 /**
- * generateOperation generates an operation based on the users prompt and deployed Firebase Data Connect Service.
+ * generateOperation generates an operation based on the users prompt and deployed Firebase SQL Connect Service.
  * @param prompt description of the operation the user would like to generate.
- * @param service the name or service id of the deployed Firebase Data Connect service.
+ * @param service the name or service id of the deployed Firebase SQL Connect service.
  * @param project project identifier.
- * @return graphQL operation for a deployed Firebase Data Connect Schema.
+ * @return graphQL operation for a deployed Firebase SQL Connect Schema.
  */
 export async function generateOperation(
   prompt: string,

@@ -148,7 +148,7 @@ export async function chooseApp(): Promise<App[]> {
       };
     });
     const pickedApps = await checkbox<App>({
-      message: "Which apps do you want to set up Data Connect SDKs in?",
+      message: "Which apps do you want to set up SQL Connect SDKs in?",
       choices,
       validate: (choices) => {
         if (choices.length === 0) {
@@ -168,7 +168,7 @@ export async function chooseApp(): Promise<App[]> {
 export async function actuate(setup: Setup, config: Config) {
   const sdkInfo = setup.featureInfo?.dataconnectSdk;
   if (!sdkInfo) {
-    throw new Error("Data Connect SDK feature RequiredInfo is not provided");
+    throw new Error("SQL Connect SDK feature RequiredInfo is not provided");
   }
   const startTime = Date.now();
   try {
@@ -234,7 +234,7 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
     // The `firebase_init` MCP tool always pass an empty `apps` list, it should setup all apps detected.
     info.apps = await detectApps(cwd);
     if (!info.apps.length) {
-      logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
+      logLabeledBullet("dataconnect", "No apps to setup SQL Connect Generated SDKs");
       return;
     }
   }
@@ -270,7 +270,7 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       account,
     });
   } catch (e: any) {
-    logLabeledError("dataconnect", `Failed to generate Data Connect SDKs\n${e?.message}`);
+    logLabeledError("dataconnect", `Failed to generate SQL Connect SDKs\n${e?.message}`);
   }
 
   logLabeledSuccess(
@@ -286,12 +286,12 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
   }
   if (apps.some((a) => a.frameworks?.includes(Framework.REACT))) {
     logBullet(
-      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
+      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase SQL Connect",
     );
   }
   if (apps.some((a) => a.frameworks?.includes(Framework.ANGULAR))) {
     logBullet(
-      "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
+      "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase SQL Connect",
     );
   }
 }
@@ -325,7 +325,7 @@ async function chooseExistingConnector(setup: Setup, config: Config): Promise<Co
     .flat();
   if (!choices.length) {
     throw new FirebaseError(
-      `No Firebase Data Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and connector.`,
+      `No Firebase SQL Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and connector.`,
     );
   }
   if (choices.length === 1) {
@@ -460,7 +460,7 @@ export function addSdkGenerateToConnectorYaml(
     }
     default:
       throw new FirebaseError(
-        `Unsupported platform ${app.platform} for Data Connect SDK generation. Supported platforms are: ${Object.values(
+        `Unsupported platform ${app.platform} for SQL Connect SDK generation. Supported platforms are: ${Object.values(
           Platform,
         ).join(", ")}\n${JSON.stringify(app)}`,
       );
