@@ -561,7 +561,7 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
       "functions",
       `The following Dart functions use triggers that are not yet supported for production deployment: ${unsupported.map((ep) => ep.id).join(", ")}. ` +
         "They will be deployed but may not work as expected. " +
-        "See https://github.com/firebase/firebase-functions-dart#status-alpha-v010 for current trigger support.",
+        "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
 }
