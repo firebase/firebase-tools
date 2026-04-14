@@ -89,6 +89,10 @@ export function endpointSupportLevel(ep: backend.Endpoint): DartTriggerSupportLe
 
   // Remaining event triggers — classify by service.
   if (backend.isEventTriggered(ep)) {
+    // Eventarc custom events are identified by the presence of a channel.
+    if (ep.eventTrigger.channel) {
+      return "experimental";
+    }
     const service = ep.eventTrigger.eventType
       ? serviceFromEventType(ep.eventTrigger.eventType)
       : undefined;
@@ -153,6 +157,7 @@ export function triggerTypeLabel(ep: backend.Endpoint): string {
   if (backend.isCallableTriggered(ep)) return "callable";
   if (backend.isHttpsTriggered(ep)) return "https";
   if (backend.isEventTriggered(ep)) {
+    if (ep.eventTrigger.channel) return "eventarc";
     const svc = serviceFromEventType(ep.eventTrigger.eventType);
     return svc ? Constants.getServiceName(svc) : ep.eventTrigger.eventType;
   }
@@ -189,6 +194,7 @@ function serviceFromEventType(eventType: string): string | undefined {
   if (eventType.includes("database")) return Constants.SERVICE_REALTIME_DATABASE;
   if (eventType.includes("pubsub")) return Constants.SERVICE_PUBSUB;
   if (eventType.includes("storage")) return Constants.SERVICE_STORAGE;
+  if (eventType.includes("eventarc")) return Constants.SERVICE_EVENTARC;
   if (eventType.includes("firebasealerts")) return Constants.SERVICE_FIREALERTS;
   if (eventType.includes("auth")) return Constants.SERVICE_AUTH;
   if (eventType.includes("remoteconfig")) return Constants.SERVICE_REMOTE_CONFIG;
