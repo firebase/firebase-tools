@@ -63,6 +63,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: false,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -77,6 +78,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
         packageJsonDir: "../app",
         react: true,
         angular: false,
+        clientCache: {},
       },
     ]);
   });
@@ -88,6 +90,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/lib/dataconnect_generated",
         package: "dataconnect_generated/generated.dart",
+        clientCache: {},
       },
     ]);
   });
@@ -99,6 +102,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../app/src/main/kotlin",
         package: "com.google.firebase.dataconnect.generated",
+        clientCache: {},
       },
     ]);
   });
@@ -110,6 +114,7 @@ describe("addSdkGenerateToConnectorYaml", () => {
       {
         outputDir: "../FirebaseDataConnectGenerated",
         package: "DataConnectGenerated",
+        clientCache: {},
       },
     ]);
   });
@@ -130,6 +135,12 @@ describe("addSdkGenerateToConnectorYaml", () => {
     sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(true);
     addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
     expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.deep.equal({});
+  });
+
+  it("should NOT inject clientCache if fdcrealtime is disabled", () => {
+    sinon.stub(experiments, "isEnabled").withArgs("fdcrealtime").returns(false);
+    addSdkGenerateToConnectorYaml(connectorInfo, connectorYaml, app);
+    expect((connectorYaml.generate?.javascriptSdk as any)[0].clientCache).to.be.undefined;
   });
 
   it("should NOT overwrite existing clientCache configuration", () => {
@@ -416,10 +427,7 @@ describe("actuate", () => {
     await actuate(setup, config);
 
     expect(
-      logLabeledBulletStub.calledWith(
-        "dataconnect",
-        "No apps to setup Data Connect Generated SDKs",
-      ),
+      logLabeledBulletStub.calledWith("dataconnect", "No apps to setup SQL Connect Generated SDKs"),
     ).to.be.true;
     expect(writeProjectFileStub.called).to.be.false;
     expect(generateStub.called).to.be.false;
@@ -531,7 +539,7 @@ describe("actuate", () => {
     expect(
       logLabeledErrorStub.calledWith(
         "dataconnect",
-        "Failed to generate Data Connect SDKs\nSDK generation failed",
+        "Failed to generate SQL Connect SDKs\nSDK generation failed",
       ),
     ).to.be.true;
   });
@@ -568,12 +576,12 @@ describe("actuate", () => {
     ).to.be.true;
     expect(
       logBulletStub.calledWith(
-        "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
+        "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase SQL Connect",
       ),
     ).to.be.true;
     expect(
       logBulletStub.calledWith(
-        "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
+        "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase SQL Connect",
       ),
     ).to.be.true;
   });

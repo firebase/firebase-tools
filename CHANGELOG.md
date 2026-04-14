@@ -1,1 +1,2 @@
-- Fixed an issue where functions deployments would silently fail (#6989)
+- Updated Pub/Sub emulator to version 0.8.30
+- Renamed Data Connect displayed text to SQL Connect (#10270)

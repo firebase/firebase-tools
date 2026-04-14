@@ -60,7 +60,7 @@ import { BlockingFunctionsConfig } from "../gcp/identityPlatform";
 import { resolveBackend } from "../deploy/functions/build";
 import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
-import { isLanguageRuntime, Runtime } from "../deploy/functions/runtimes/supported";
+import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
@@ -424,7 +424,7 @@ export class FunctionsEmulator implements EmulatorInstance {
 
     // For Dart, include the function name in the path so the server can route
     // For other runtimes, use / as they use FUNCTION_TARGET env var
-    const isDart = isLanguageRuntime(record.backend.runtime, "dart");
+    const isDart = runtimeIsLanguage(record.backend.runtime, "dart");
     const path = isDart ? `/${trigger.entryPoint}` : `/`;
 
     return new Promise((resolve, reject) => {
@@ -485,7 +485,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       // First load triggers to discover the runtime type
       await this.loadTriggers(backend, /* force= */ true);
 
-      const isDart = isLanguageRuntime(backend.runtime, "dart");
+      const isDart = runtimeIsLanguage(backend.runtime, "dart");
 
       if (isDart) {
         // For Dart, build_runner watch handles source file watching and rebuilds
@@ -1771,9 +1771,9 @@ export class FunctionsEmulator implements EmulatorInstance {
     const secretEnvs = await this.resolveSecretEnvs(backend, trigger);
 
     let runtime;
-    if (isLanguageRuntime(backend.runtime, "python")) {
+    if (runtimeIsLanguage(backend.runtime, "python")) {
       runtime = await this.startPython(backend, { ...runtimeEnv, ...secretEnvs });
-    } else if (isLanguageRuntime(backend.runtime, "dart")) {
+    } else if (runtimeIsLanguage(backend.runtime, "dart")) {
       runtime = await this.startDart(backend, { ...runtimeEnv, ...secretEnvs });
     } else {
       runtime = await this.startNode(backend, { ...runtimeEnv, ...secretEnvs });
@@ -1884,8 +1884,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     // Use trigger.entryPoint (e.g. "helloworld") which is the actual function name
     // registered in the Dart server, not trigger_name which may include region prefix
     // (e.g. "us-central1-helloworld-0" from background function routes).
-    const isDart = isLanguageRuntime(record.backend.runtime, "dart");
-    if (isDart) {
+    if (runtimeIsLanguage(record.backend.runtime, "dart")) {
       // Background trigger routes (e.g., /functions/projects/.../triggers/...)
       // leave a path artifact (/functions/projects/) after regex replacement.
       // Only append remaining path for HTTP trigger routes where the user may

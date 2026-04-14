@@ -19,7 +19,7 @@ export const init_firestore = resource(
 **Database Setup:**
 - Configure Firestore as the application's primary database.
 - Implement client-side CRUD using the Firebase SDK.
-- Present the app's Firestore data model to the user. Do not confuse Firestore's document model (NoSQL) with Firebase Data Connect's schema.
+- Present the app's Firestore data model to the user. Do not confuse Firestore's document model (NoSQL) with Firebase SQL Connect's schema.
 - Write the default \`firestore.rules\` file (see below) explain what they do, and obtain the user's confirmation before deploying.
 - Run \`firebase deploy --only firestore\` to create the database automatically Do not ask the user to create it in the console.
 - Use production environment directly (avoid emulator for initial setup)

@@ -425,7 +425,7 @@ export class Fabricator {
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
-      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase Data Connect P4SA must always be an invoker.
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase SQL Connect P4SA must always be an invoker.
       const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
       invoker.push(getDataConnectP4SA(this.projectNumber));
       if (!invoker.includes("private")) {
