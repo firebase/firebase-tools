@@ -31,7 +31,7 @@ import {
   targetCodebases,
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
-import { isDartEndpoint, classifyEndpoints } from "./runtimes/dart/triggerSupport";
+import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -554,7 +554,7 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
     return;
   }
 
-  const { emulatorOnly, experimental } = classifyEndpoints(dartEndpoints);
+  const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
   const unsupported = [...emulatorOnly, ...experimental];
   if (unsupported.length > 0) {
     logLabeledWarning(

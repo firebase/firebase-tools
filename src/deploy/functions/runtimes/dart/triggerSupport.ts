@@ -121,7 +121,7 @@ export function isDartEndpoint(ep: backend.Endpoint): boolean {
  * Only non-production endpoints are returned — callers never need to
  * enumerate production-ready functions.
  */
-export function classifyEndpoints(endpoints: backend.Endpoint[]): {
+export function classifyNonProductionEndpoints(endpoints: backend.Endpoint[]): {
   emulatorOnly: backend.Endpoint[];
   experimental: backend.Endpoint[];
 } {

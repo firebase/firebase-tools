@@ -64,7 +64,7 @@ import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/support
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
 import {
   isDartEndpoint,
-  classifyEndpoints,
+  classifyNonProductionEndpoints,
   groupByTriggerLabel,
 } from "../deploy/functions/runtimes/dart/triggerSupport";
 import { ExtensionsEmulator } from "./extensionsEmulator";
@@ -887,7 +887,7 @@ export class FunctionsEmulator implements EmulatorInstance {
       return;
     }
 
-    const { emulatorOnly, experimental } = classifyEndpoints(dartEndpoints);
+    const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
 
     groupByTriggerLabel(emulatorOnly).forEach((ids, label) => {
       this.logger.logLabeled(
