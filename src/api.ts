@@ -56,10 +56,6 @@ export const authManagementOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_MANAGEMENT_URL", "https://identitytoolkit.googleapis.com");
 export const consoleOrigin = () =>
   utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com");
-export const dynamicLinksOrigin = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_URL", "https://firebasedynamiclinks.googleapis.com");
-export const dynamicLinksKey = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_KEY", "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ");
 export const eventarcOrigin = () =>
   utils.envOverride("EVENTARC_URL", "https://eventarc.googleapis.com");
 export const firebaseApiOrigin = () =>

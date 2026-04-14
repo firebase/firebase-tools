@@ -283,6 +283,7 @@ export function registerExecution(
     }
     try {
       const schema = await dataConnectService.schema();
+      // TODO: Update to SQL Connect once backend agent is updated
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
 ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}
 ${
