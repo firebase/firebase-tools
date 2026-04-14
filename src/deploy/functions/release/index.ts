@@ -17,6 +17,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
+import { runtimeIsLanguage } from "../runtimes/supported";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -114,6 +115,17 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
 
+  // TODO: Remove once the Firebase console has support.
+  if (
+    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime, "dart"))
+  ) {
+    utils.logLabeledBullet(
+      "functions",
+      "Dart functions may not yet be visible in the Firebase Console. " +
+        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+    );
+  }
+
   await setupArtifactCleanupPolicies(
     options,
     options.projectId!,
@@ -152,7 +164,7 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
       continue;
     }
     if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
-      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for Data Connect
+      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for SQL Connect
       // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
       const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
       logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);

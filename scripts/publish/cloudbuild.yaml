@@ -121,7 +121,7 @@ steps:
         timeout=300
         elapsed=0
         interval=15
-        until npm view "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+        until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
           if [ $$elapsed -ge $$timeout ]; then
             echo "Timeout waiting for package."
             exit 1
@@ -130,6 +130,8 @@ steps:
           sleep $$interval
           elapsed=$$((elapsed + interval))
         done
+        echo "Sleeping for 60 seconds to ensure propagation..." 
+        sleep 60
         echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
   # Set up the hub credentials for firepit-builder.

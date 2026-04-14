@@ -14,6 +14,7 @@ import { logLabeledBullet } from "../../../../utils";
 import { Build } from "../../build";
 import { EmulatorRegistry } from "../../../../emulator/registry";
 import { Emulators } from "../../../../emulator/types";
+import * as experiments from "../../../../experiments";
 
 /**
  * Create a runtime delegate for the Dart runtime, if applicable.
@@ -29,6 +30,8 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Dart code.");
     return;
   }
+
+  experiments.assertEnabled("dartfunctions", "use Dart functions");
   const runtime = context.runtime ?? supported.latest("dart");
   if (!supported.isRuntime(runtime)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Dart runtime`);

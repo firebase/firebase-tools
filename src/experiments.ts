@@ -73,8 +73,8 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Exports functions IaC code",
     public: false,
   },
-  dartfunctions: {
-    shortDescription: "Enable Dart functions and use Cloud Run API to list v2 functions.",
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
   },
   bypassfunctionsdeprecationcheck: {
@@ -83,6 +83,11 @@ export const ALL_EXPERIMENTS = experiments({
       "Bypasses the local check for whether a functions runtime is " +
       "decommissioned. This does not, by itself, allow you to deploy a function with a " +
       "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
     public: false,
     default: false,
   },
@@ -151,8 +156,8 @@ export const ALL_EXPERIMENTS = experiments({
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -180,7 +185,7 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcift: {
-    shortDescription: "Enable instrumentless trial for Data Connect",
+    shortDescription: "Enable instrumentless trial for SQL Connect",
     default: true,
     public: false,
   },
@@ -189,13 +194,13 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcwebhooks: {
-    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
     default: true,
     public: false,
   },
   fdcrealtime: {
-    shortDescription: "Enable Firebase Data Connect realtime feature.",
-    default: false,
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
     public: false,
   },
 });
