@@ -43,20 +43,23 @@ export default async function (context: Context, options: Options): Promise<void
 
   const projectId = needProjectId(options);
   const rollouts = backendIds.map((backendId) => {
-    const isLocallyBuilt = !!context.backendLocalBuilds[backendId];
-    const source = isLocallyBuilt
+    const localBuild = context.backendLocalBuilds[backendId];
+    const userStorageUri = context.backendStorageUris[backendId];
+    const rootDirectory = context.backendConfigs[backendId].rootDir;
+
+    const source = localBuild
       ? {
           locallyBuilt: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
-            runCommand: context.backendLocalBuilds[backendId]?.buildConfig.runCommand,
-            env: context.backendLocalBuilds[backendId]?.buildConfig.env,
+            userStorageUri,
+            rootDirectory,
+            runCommand: localBuild.buildConfig?.runCommand,
+            env: localBuild.buildConfig?.env,
           },
         }
       : {
           archive: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
+            userStorageUri,
+            rootDirectory,
           },
         };
 
@@ -65,7 +68,7 @@ export default async function (context: Context, options: Options): Promise<void
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        config: context.backendLocalBuilds[backendId]?.buildConfig,
+        config: localBuild?.buildConfig,
         source,
       },
     });
