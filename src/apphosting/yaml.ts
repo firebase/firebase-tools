@@ -95,7 +95,7 @@ export function toEnvMap(envs: Env[]): EnvMap {
     envs.map((env) => {
       const variable = env.variable;
       const tmp = { ...env };
-      delete (env as any).variable;
+      delete (tmp as any).variable;
       return [variable, tmp];
     }),
   );
