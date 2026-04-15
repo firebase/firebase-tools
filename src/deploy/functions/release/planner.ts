@@ -270,7 +270,7 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
     } else if (backend.isDataConnectGraphqlTriggered(e)) {
-      return "a Data Connect HTTPS";
+      return "a SQL Connect HTTPS";
     } else if (backend.isCallableTriggered(e)) {
       return "a callable";
     } else if (backend.isEventTriggered(e)) {

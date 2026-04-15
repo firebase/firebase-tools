@@ -86,6 +86,11 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
     default: false,
   },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -151,8 +156,8 @@ export const ALL_EXPERIMENTS = experiments({
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -180,7 +185,7 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcift: {
-    shortDescription: "Enable instrumentless trial for Data Connect",
+    shortDescription: "Enable instrumentless trial for SQL Connect",
     default: true,
     public: false,
   },
@@ -189,12 +194,12 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcwebhooks: {
-    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
     default: true,
     public: false,
   },
   fdcrealtime: {
-    shortDescription: "Enable Firebase Data Connect realtime feature.",
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
     default: true,
     public: false,
   },

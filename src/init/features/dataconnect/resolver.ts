@@ -37,7 +37,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   const serviceInfos = await loadAll(setup.projectId || "", config);
   if (!serviceInfos.length) {
     throw new Error(
-      `No Firebase Data Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and main schema.`,
+      `No Firebase SQL Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and main schema.`,
     );
   } else if (serviceInfos.length === 1) {
     resolverInfo.serviceInfo = serviceInfos[0];
@@ -91,7 +91,7 @@ export async function actuate(setup: Setup, config: Config) {
   }
   const resolverInfo = setup.featureInfo?.dataconnectResolver;
   if (!resolverInfo) {
-    throw new Error("Data Connect resolver feature ResolverRequiredInfo not provided");
+    throw new Error("SQL Connect resolver feature ResolverRequiredInfo not provided");
   }
   const startTime = Date.now();
   try {

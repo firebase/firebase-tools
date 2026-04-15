@@ -642,10 +642,30 @@ export async function startAll(
     const firestoreAddr = legacyGetFirstAddr(Emulators.FIRESTORE);
     const websocketPort = legacyGetFirstAddr("firestore.websocket").port;
 
+    const prodEdition = options.config.data.firestore?.edition;
+    const emulatorEdition = options.config.src.emulators?.firestore?.edition;
+
+    if (prodEdition !== emulatorEdition) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `The edition configured in your firebase.json#firestore and firebase.json#emulators.firestore do not match. The latter will be used to start up the Firestore emulator.`,
+      );
+    }
+
+    const edition = (emulatorEdition || prodEdition || "standard").toLowerCase();
+    if (edition !== "standard" && edition !== "enterprise") {
+      throw new FirebaseError(
+        "The Firestore emulator edition must be either 'standard' or 'enterprise'.",
+        { exit: 1 },
+      );
+    }
+
     const args: FirestoreEmulatorArgs = {
       host: firestoreAddr.host,
       port: firestoreAddr.port,
       websocket_port: websocketPort,
+      "database-edition": edition,
       project_id: projectId,
       auto_download: true,
     };
@@ -730,6 +750,11 @@ export async function startAll(
 
     const firestoreEmulator = new FirestoreEmulator(args);
     await startEmulator(firestoreEmulator);
+    firestoreLogger.logLabeled(
+      "SUCCESS",
+      Emulators.FIRESTORE,
+      `Firestore Emulator was started in ${edition} edition.`,
+    );
     firestoreLogger.logLabeled(
       "SUCCESS",
       Emulators.FIRESTORE,
@@ -849,10 +874,10 @@ export async function startAll(
   if (listenForEmulator.dataconnect) {
     const config = readFirebaseJson(options.config);
     if (!config.length) {
-      throw new FirebaseError("No Data Connect service found in firebase.json");
+      throw new FirebaseError("No SQL Connect service found in firebase.json");
     } else if (config.length > 1) {
       logger.warn(
-        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+        `TODO: Add support for multiple services in the SQL Connect emulator. Currently emulating first service ${config[0].source}`,
       );
     }
 

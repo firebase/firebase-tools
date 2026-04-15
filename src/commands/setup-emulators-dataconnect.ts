@@ -12,7 +12,7 @@ export const command = new Command(`setup:emulators:${NAME}`)
     await downloadIfNecessary(NAME);
     if (!options.config) {
       logger.info(
-        "Not currently in a Firebase project directory. Run this command from a project directory to configure the Data Connect emulator.",
+        "Not currently in a Firebase project directory. Run this command from a project directory to configure the SQL Connect emulator.",
       );
       return;
     }

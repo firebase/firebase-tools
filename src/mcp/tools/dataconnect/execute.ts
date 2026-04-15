@@ -12,23 +12,23 @@ export const execute = tool(
   {
     name: "execute",
     description:
-      "Use this to execute a GraphQL operation against a Data Connect service or its emulator.",
+      "Use this to execute a GraphQL operation against a SQL Connect service or its emulator.",
     inputSchema: z.object({
-      query: z.string().describe(`A Firebase Data Connect GraphQL query or mutation to execute.
+      query: z.string().describe(`A Firebase SQL Connect GraphQL query or mutation to execute.
 You can use the \`dataconnect_generate_operation\` tool to generate a query.
-Example Data Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
+Example SQL Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.
 `),
       service_id: z
         .string()
         .optional()
         .describe(
-          `Service ID of the Data Connect service to compile. Used to disambiguate when there are multiple Data Connect services in firebase.json.`,
+          `Service ID of the SQL Connect service to compile. Used to disambiguate when there are multiple SQL Connect services in firebase.json.`,
         ),
       location_id: z
         .string()
         .optional()
         .describe(
-          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
+          `SQL Connect Service location ID to disambiguate among multiple SQL Connect services.`,
         ),
       variables_json: z
         .string()
@@ -52,7 +52,7 @@ Example Data Connect schema and example queries can be found in files ending in 
         ),
     }),
     annotations: {
-      title: "Execute Firebase Data Connect Query",
+      title: "Execute Firebase SQL Connect Query",
     },
     _meta: {
       requiresProject: true,

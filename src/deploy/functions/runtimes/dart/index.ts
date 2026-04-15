@@ -14,6 +14,7 @@ import { logLabeledBullet } from "../../../../utils";
 import { Build } from "../../build";
 import { EmulatorRegistry } from "../../../../emulator/registry";
 import { Emulators } from "../../../../emulator/types";
+import * as experiments from "../../../../experiments";
 
 /**
  * Create a runtime delegate for the Dart runtime, if applicable.
@@ -29,6 +30,8 @@ export async function tryCreateDelegate(
     logger.debug("Customer code is not Dart code.");
     return;
   }
+
+  experiments.assertEnabled("dartfunctions", "use Dart functions");
   const runtime = context.runtime ?? supported.latest("dart");
   if (!supported.isRuntime(runtime)) {
     throw new FirebaseError(`Runtime ${runtime as string} is not a valid Dart runtime`);
@@ -46,7 +49,7 @@ export async function tryCreateDelegate(
  * Minimum Dart SDK version required.
  * Dart 3.8+ is needed for cross-compilation flags (--target-os, --target-arch).
  */
-const MIN_DART_SDK_VERSION = "3.8.0";
+const MIN_DART_SDK_VERSION = "3.9.0";
 
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
