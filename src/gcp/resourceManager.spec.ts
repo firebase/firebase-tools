@@ -40,7 +40,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: expectedPolicy,
           updateMask: "bindings",
-        } as any)
+        } as unknown as Record<string, unknown>)
         .reply(200, expectedPolicy);
 
       const result = await addServiceAccountToRoles(
@@ -72,7 +72,9 @@ describe("resourceManager", () => {
       };
 
       nock("https://iam.googleapis.com")
-        .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`)
+        .get(
+          `/v1/projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com`,
+        )
         .reply(200, { name: FULL_SA_NAME });
 
       nock("https://cloudresourcemanager.googleapis.com")
@@ -83,7 +85,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: expectedPolicy,
           updateMask: "bindings",
-        } as any)
+        } as unknown as Record<string, unknown>)
         .reply(200, expectedPolicy);
 
       const result = await addServiceAccountToRoles(
@@ -116,7 +118,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: initialPolicy,
           updateMask: "bindings",
-        } as any)
+        } as unknown as Record<string, unknown>)
         .reply(200, initialPolicy);
 
       const result = await addServiceAccountToRoles(
