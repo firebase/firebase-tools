@@ -1,9 +1,5 @@
-- Added Enterprise Edition support to the Firestore emulator. Configure it by setting `firebase.json#firestore.edition` or `firebase.json#emulators.firestore.edition`.
-- Fixed an issue where functions deployments would silently fail (#6989)
 - Add foundation for being smarter about where to place functions when the region is not specified (#10293)
-- Add support for Next.js 16 middleware (`proxy.ts`/`proxy.js`) (#9631)
-- Updates the default region for new App Hosting backends to us-east4 (#10271)
-- Fix Next.js image optimization detection in client components (#10228)
-- Updates Firebase Data Connect emulator to v3.4.1 (#10290)
-  - Upgraded Go runtime to 1.25.9.
-  - Bug fix: Fixed an issue that caused Angular SDK generation to fail.
+- Updated Pub/Sub emulator to version 0.8.30
+- Renamed Data Connect displayed text to SQL Connect (#10270)
+- Added support for the experimental Cloud Functions for Firebase Dart SDK behind the `dartfunctions` flag
+- Updated the SQL Connect emulator to v3.4.5, including internal bug fixes (#10336)

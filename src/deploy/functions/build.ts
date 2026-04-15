@@ -73,8 +73,8 @@ export interface HttpsTrigger {
 }
 
 export interface DataConnectGraphqlTrigger {
-  // Which service account should be able to trigger this function in addition to the Firebase Data Connect P4SA.
-  // No value means that only the Firebase Data Connect P4SA can trigger this function.
+  // Which service account should be able to trigger this function in addition to the Firebase SQL Connect P4SA.
+  // No value means that only the Firebase SQL Connect P4SA can trigger this function.
   // For more context, see go/cf3-http-access-control
   invoker?: Array<ServiceAccount | Expression<string>> | null;
   // The file path relative to the Firebase project directory where the GraphQL schema is stored.

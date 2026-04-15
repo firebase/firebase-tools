@@ -874,10 +874,10 @@ export async function startAll(
   if (listenForEmulator.dataconnect) {
     const config = readFirebaseJson(options.config);
     if (!config.length) {
-      throw new FirebaseError("No Data Connect service found in firebase.json");
+      throw new FirebaseError("No SQL Connect service found in firebase.json");
     } else if (config.length > 1) {
       logger.warn(
-        `TODO: Add support for multiple services in the Data Connect emulator. Currently emulating first service ${config[0].source}`,
+        `TODO: Add support for multiple services in the SQL Connect emulator. Currently emulating first service ${config[0].source}`,
       );
     }
 
