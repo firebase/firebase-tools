@@ -195,7 +195,7 @@ export default async function (context: Context, options: Options): Promise<void
         buildEnv[cfg.backendId] || {},
         {
           nonInteractive: options.nonInteractive,
-          allowLocalBuildSecrets: options.allowLocalBuildSecrets,
+          allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
         },
       );
       if (outputFiles.length !== 1) {
