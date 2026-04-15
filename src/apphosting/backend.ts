@@ -82,7 +82,6 @@ export async function doSetup(
   primaryRegion?: string,
   rootDir?: string,
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 

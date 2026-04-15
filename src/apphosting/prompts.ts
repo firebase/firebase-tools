@@ -10,7 +10,7 @@ export const DEFAULT_RUNTIME = "nodejs";
 export async function promptRuntime(projectId: string, location: string): Promise<string> {
   const choices: Choice<string>[] = [];
   let nodejsChoice: Choice<string> = { name: "Node.js (default)", value: DEFAULT_RUNTIME };
-  
+
   try {
     const supportedRuntimes = await apphosting.listSupportedRuntimes(projectId, location);
     for (const r of supportedRuntimes) {
@@ -18,7 +18,7 @@ export async function promptRuntime(projectId: string, location: string): Promis
         ? "Enables Automatic Base Image Updates"
         : "No Automatic Base Image Updates";
       const choiceName = `${r.runtimeId} - ${abiuText}`;
-      
+
       if (r.runtimeId === DEFAULT_RUNTIME) {
         nodejsChoice = { name: choiceName, value: r.runtimeId };
       } else {

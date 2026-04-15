@@ -31,8 +31,10 @@ export const command = new Command("apphosting:backends:create")
   .option("--root-dir <rootDir>", "specify the root directory for the backend.");
 const abiuEnabled = experiments.isEnabled("abiu");
 if (abiuEnabled) {
-  command
-    .option("--runtime [runtime]", "specify the runtime for the backend (e.g., nodejs, nodejs22)");
+  command.option(
+    "--runtime [runtime]",
+    "specify the runtime for the backend (e.g., nodejs, nodejs22)",
+  );
 }
 
 command
