@@ -1,4 +1,5 @@
 import { setGracefulCleanup } from "tmp";
+import { FirebaseError } from "../../error";
 import * as clc from "colorette";
 import * as fs from "fs";
 
@@ -12,6 +13,7 @@ import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as backend from "./backend";
 import * as experiments from "../../experiments";
+import * as supported from "./runtimes/supported";
 import { findEndpoint } from "./backend";
 import { deploy as extDeploy } from "../extensions";
 import { getProjectNumber } from "../../getProjectNumber";
@@ -80,8 +82,11 @@ export async function uploadSourceV2(
     ),
   };
 
+  const isDart = v2Endpoints.some((e) => supported.runtimeIsLanguage(e.runtime, "dart"));
+  const useApiOnly = experiments.isEnabled("functionsrunapionly") || (isDart && experiments.isEnabled("dartfunctions"));
+
   if (
-    !experiments.isEnabled("functionsrunapionly") &&
+    !useApiOnly &&
     !v2Endpoints.some((e) => e.platform === "run")
   ) {
     if (process.env.GOOGLE_CLOUD_QUOTA_PROJECT) {
