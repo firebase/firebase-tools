@@ -41,12 +41,13 @@ export async function localBuild(
         "Using build-available secrets during a local build in non-interactive mode requires the --allow-local-build-secrets flag.",
       );
     }
-    const allow = await confirm({
-      message:
-        "Your build includes secrets that are available to the build environment. Using secrets in local builds may leave sensitive values in local artifacts/temporary files. Do you want to continue?",
-      default: false,
-    });
-    if (!allow) {
+    if (
+      !(await confirm({
+        message:
+          "Your build includes secrets that are available to the build environment. Using secrets in local builds may leave sensitive values in local artifacts/temporary files. Do you want to continue?",
+        default: false,
+      }))
+    ) {
       throw new FirebaseError("Cancelled local build due to BUILD-available secrets.");
     }
   }

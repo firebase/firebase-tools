@@ -172,7 +172,7 @@ describe("localBuild", () => {
 
       await expect(
         localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false }),
-      ).to.be.rejectedWith("Cancelled local build due to secrets warning.");
+      ).to.be.rejectedWith("Cancelled local build due to BUILD-available secrets.");
       expect(confirmStub).to.have.been.calledOnce;
     });
 
