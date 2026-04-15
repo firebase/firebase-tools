@@ -76,7 +76,10 @@ describe("localBuild", () => {
       MY_PLAIN_VAR: { value: "plain-value" },
     };
 
-    await localBuild("test-project", "./", "nextjs", envMap);
+    await localBuild("test-project", "./", "nextjs", envMap, {
+      nonInteractive: true,
+      allowLocalBuildSecrets: true,
+    });
 
     expect(loadSecretStub).to.have.been.calledWith("test-project", "my-secret-id");
     // Confirm RUNTIME-only secret was ignored
