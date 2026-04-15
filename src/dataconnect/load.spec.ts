@@ -112,35 +112,24 @@ describe("dataconnect/load", () => {
   describe("readFirebaseJson", () => {
     it("should return empty array if config has no dataconnect key", () => {
       const config = new Config({}, {});
-      sinon.stub(config, "has").returns(false);
-
       const result = readFirebaseJson(config);
       expect(result).to.deep.equal([]);
     });
 
     it("should parse single object dataconnect config", () => {
-      const config = new Config({}, {});
-      sinon.stub(config, "has").returns(true);
-      sinon.stub(config, "get").returns({ source: "dataconnect" });
-
+      const config = new Config({ dataconnect: { source: "dataconnect" } }, {});
       const result = readFirebaseJson(config);
       expect(result).to.deep.equal([{ source: "dataconnect" }]);
     });
 
     it("should parse array dataconnect config", () => {
-      const config = new Config({}, {});
-      sinon.stub(config, "has").returns(true);
-      sinon.stub(config, "get").returns([{ source: "dir1" }, { source: "dir2" }]);
-
+      const config = new Config({ dataconnect: [{ source: "dir1" }, { source: "dir2" }] }, {});
       const result = readFirebaseJson(config);
       expect(result).to.deep.equal([{ source: "dir1" }, { source: "dir2" }]);
     });
 
     it("should throw if source is missing", () => {
-      const config = new Config({}, {});
-      sinon.stub(config, "has").returns(true);
-      sinon.stub(config, "get").returns({ wrong: "key" });
-
+      const config = new Config({ dataconnect: { wrong: "key" } }, {});
       expect(() => readFirebaseJson(config)).to.throw(/requires `source`/);
     });
 
