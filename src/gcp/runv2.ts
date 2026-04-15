@@ -599,7 +599,7 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
   const endpoint: backend.Endpoint = {
     platform:
       service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
-        service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
+      service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
         ? "gcfv2"
         : "run",
     id,

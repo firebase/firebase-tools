@@ -7,7 +7,6 @@ import * as deploy from "./deploy";
 import * as gcs from "../../gcp/storage";
 import * as gcfv2 from "../../gcp/cloudfunctionsv2";
 import * as experiments from "../../experiments";
-import { FirebaseError } from "../../error";
 
 describe("deploy", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
