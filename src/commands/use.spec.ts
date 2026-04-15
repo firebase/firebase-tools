@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { RC } from "../rc";
-import { FirebaseError } from "../error";
+
 import { command } from "./use";
 import * as projects from "../management/projects";
 import * as studio from "../management/studio";
@@ -13,14 +13,8 @@ import * as rcModule from "../rc";
 
 describe("use command", () => {
   let getProjectStub: sinon.SinonStub;
-  let listFirebaseProjectsStub: sinon.SinonStub;
-  let updateStudioFirebaseProjectStub: sinon.SinonStub;
   let makeActiveProjectStub: sinon.SinonStub;
-  let selectStub: sinon.SinonStub;
-  let inputStub: sinon.SinonStub;
-  let requireAuthStub: sinon.SinonStub;
   let detectProjectRootStub: sinon.SinonStub;
-  let loadRCStub: sinon.SinonStub;
 
   beforeEach(() => {
     getProjectStub = sinon.stub(projects, "getProject").resolves({
@@ -28,17 +22,19 @@ describe("use command", () => {
       projectNumber: "123",
       displayName: "My Project",
       resources: {},
-    } as any);
-    listFirebaseProjectsStub = sinon.stub(projects, "listFirebaseProjects").resolves([
-      { projectId: "my-project" },
-    ] as any);
-    updateStudioFirebaseProjectStub = sinon.stub(studio, "updateStudioFirebaseProject").resolves();
+    } as unknown as projects.ProjectInfo);
+    sinon
+      .stub(projects, "listFirebaseProjects")
+      .resolves([{ projectId: "my-project" }] as unknown as projects.ProjectInfo[]);
+    sinon.stub(studio, "updateStudioFirebaseProject").resolves();
     makeActiveProjectStub = sinon.stub(utils, "makeActiveProject").returns();
-    selectStub = sinon.stub(prompt, "select").resolves("my-project");
-    inputStub = sinon.stub(prompt, "input").resolves("staging");
-    requireAuthStub = sinon.stub(auth, "requireAuth").resolves();
+    sinon.stub(prompt, "select").resolves("my-project");
+    sinon.stub(prompt, "input").resolves("staging");
+    sinon.stub(auth, "requireAuth").resolves();
     detectProjectRootStub = sinon.stub(detect, "detectProjectRoot").returns("/path/to/project");
-    loadRCStub = sinon.stub(rcModule, "loadRC").callsFake((options: any) => options.rc || new RC());
+    sinon
+      .stub(rcModule, "loadRC")
+      .callsFake((options: unknown) => (options as Record<string, unknown>).rc || new RC());
   });
 
   afterEach(() => {
@@ -111,7 +107,12 @@ describe("use command", () => {
 
   it("should display generic use info if no arguments passed", async () => {
     const rc = new RC(undefined, { projects: { staging: "my-project" } });
-    const options = { rc, projectRoot: "/path/to/project", projectAlias: "staging", project: "my-project" };
+    const options = {
+      rc,
+      projectRoot: "/path/to/project",
+      projectAlias: "staging",
+      project: "my-project",
+    };
 
     const result = await command.runner()(undefined, options);
 
