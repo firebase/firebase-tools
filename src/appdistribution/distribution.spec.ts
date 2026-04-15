@@ -4,21 +4,16 @@ import * as fs from "fs-extra";
 import { upload, Distribution, awaitTestResults, DistributionFileType } from "./distribution";
 import { AppDistributionClient } from "./client";
 import { UploadReleaseResult, ReleaseTest } from "./types";
-import { FirebaseError } from "../error";
 import * as utils from "../utils";
 
 describe("appdistribution/distribution", () => {
   let mockClient: sinon.SinonStubbedInstance<AppDistributionClient>;
   let statStub: sinon.SinonStub;
-  let readStreamStub: sinon.SinonStub;
-  let logBulletStub: sinon.SinonStub;
   let logSuccessStub: sinon.SinonStub;
 
   beforeEach(() => {
     mockClient = sinon.createStubInstance(AppDistributionClient);
     statStub = sinon.stub(fs, "statSync");
-    readStreamStub = sinon.stub(fs, "createReadStream").returns({} as unknown as fs.ReadStream);
-    logBulletStub = sinon.stub(utils, "logBullet");
     logSuccessStub = sinon.stub(utils, "logSuccess");
   });
 
@@ -76,7 +71,11 @@ describe("appdistribution/distribution", () => {
         release: { displayVersion: "1.0", buildVersion: "1", name: "test-rel" } as unknown as any,
       });
 
-      const res = await upload(mockClient as unknown as AppDistributionClient, "apps/123", distribution);
+      const res = await upload(
+        mockClient as unknown as AppDistributionClient,
+        "apps/123",
+        distribution,
+      );
 
       expect(res.displayVersion).to.equal("1.0");
       expect(logSuccessStub).to.have.been.calledWithMatch(/uploaded new release/);
@@ -87,9 +86,9 @@ describe("appdistribution/distribution", () => {
       error404.status = 404;
       mockClient.uploadRelease.rejects(error404);
 
-      await expect(upload(mockClient as unknown as AppDistributionClient, "apps/123", distribution)).to.be.rejectedWith(
-        /App Distribution could not find your app/,
-      );
+      await expect(
+        upload(mockClient as unknown as AppDistributionClient, "apps/123", distribution),
+      ).to.be.rejectedWith(/App Distribution could not find your app/);
     });
   });
 
