@@ -148,7 +148,7 @@ describe("askQuestions", () => {
       await askQuestions(setup, config, options);
     } catch (err: any) {
       expect(err.message).to.equal(
-        `No Firebase Data Connect workspace found. Run ${clc.bold(
+        `No Firebase SQL Connect workspace found. Run ${clc.bold(
           "firebase init dataconnect",
         )} to set up a service and main schema.`,
       );

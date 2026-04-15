@@ -18,7 +18,7 @@ export const init = tool(
   {
     name: "init",
     description:
-      "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase Data Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
+      "Use this to initialize selected Firebase services in the workspace (Cloud Firestore database, Firebase SQL Connect, Firebase Realtime Database, Firebase AI Logic). All services are optional; specify only the products you want to set up. " +
       "You can initialize new features into an existing project directory, but re-initializing an existing feature may overwrite configuration. " +
       "To deploy the initialized features, run the `firebase deploy` command after `firebase_init` tool.",
     inputSchema: z.object({
@@ -72,38 +72,38 @@ export const init = tool(
               .string()
               .optional()
               .describe(
-                "The Firebase Data Connect service ID to initialize. Default to match the current folder name.",
+                "The Firebase SQL Connect service ID to initialize. Default to match the current folder name.",
               ),
             location_id: z
               .string()
               .optional()
               .default(FDC_DEFAULT_REGION)
-              .describe("The GCP region ID to set up the Firebase Data Connect service."),
+              .describe("The GCP region ID to set up the Firebase SQL Connect service."),
             cloudsql_instance_id: z
               .string()
               .optional()
               .describe(
-                "The GCP Cloud SQL instance ID to use in the Firebase Data Connect service. By default, use <serviceId>-fdc. " +
+                "The GCP Cloud SQL instance ID to use in the Firebase SQL Connect service. By default, use <serviceId>-fdc. " +
                   "\nSet `provision_cloudsql` to true to start Cloud SQL provisioning.",
               ),
             cloudsql_database: z
               .string()
               .optional()
               .default("fdcdb")
-              .describe("The Postgres database ID to use in the Firebase Data Connect service."),
+              .describe("The Postgres database ID to use in the Firebase SQL Connect service."),
             provision_cloudsql: z
               .boolean()
               .optional()
               .default(false)
               .describe(
                 "If true, provision the Cloud SQL instance if `cloudsql_instance_id` does not exist already. " +
-                  `\nThe first Cloud SQL instance in the project will use the Data Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
+                  `\nThe first Cloud SQL instance in the project will use the SQL Connect no-cost trial. See its terms of service: ${freeTrialTermsLink()}.`,
               ),
           })
           .optional()
           .describe(
-            "Provide this object to initialize Firebase Data Connect with Cloud SQL Postgres in this project directory.\n" +
-              "It installs Data Connect Generated SDKs in all detected apps in the folder.",
+            "Provide this object to initialize Firebase SQL Connect with Cloud SQL Postgres in this project directory.\n" +
+              "It installs SQL Connect Generated SDKs in all detected apps in the folder.",
           ),
         storage: z
           .object({
@@ -286,7 +286,7 @@ export const init = tool(
 
     if (featureInfo.dataconnectSdk && !featureInfo.dataconnectSdk.apps.length) {
       setup.instructions.push(
-        `No app is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool with the same input without app_description to add Data Connect SDKs to your apps.
+        `No app is found in the current folder. We recommend you create an app (web, ios, android) first, then re-run the 'firebase_init' MCP tool with the same input without app_description to add SQL Connect SDKs to your apps.
   Consider popular commands like 'npx create-react-app my-app', 'npx create-next-app my-app', 'flutter create my-app', etc`,
       );
     }

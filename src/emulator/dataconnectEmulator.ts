@@ -144,12 +144,12 @@ export class DataConnectEmulator implements EmulatorInstance {
         connStr = `postgres://${connectableHost}:${pgPort}/${dbId}?sslmode=disable`;
         server.on("error", (err: any) => {
           if (err instanceof FirebaseError) {
-            this.logger.logLabeled("ERROR", "Data Connect", `${err}`);
+            this.logger.logLabeled("ERROR", "SQL Connect", `${err}`);
           } else {
             this.logger.logLabeled(
               "ERROR",
               "dataconnect",
-              `Postgres threw an unexpected error, shutting down the Data Connect emulator: ${err}`,
+              `Postgres threw an unexpected error, shutting down the SQL Connect emulator: ${err}`,
             );
           }
           void cleanShutdown();
@@ -172,7 +172,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "ERROR",
         "dataconnect",
-        "Could not connect to Data Connect emulator. Check dataconnect-debug.log for more details.",
+        "Could not connect to SQL Connect emulator. Check dataconnect-debug.log for more details.",
       );
       return Promise.reject();
     }
@@ -184,7 +184,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       this.logger.logLabeled(
         "INFO",
         "dataconnect",
-        "Skipping cleanup of Data Connect emulator, as it was not started by this process.",
+        "Skipping cleanup of SQL Connect emulator, as it was not started by this process.",
       );
       return;
     }
@@ -230,7 +230,7 @@ export class DataConnectEmulator implements EmulatorInstance {
       );
     } else {
       throw new FirebaseError(
-        "The Data Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
+        "The SQL Connect emulator is currently connected to a separate Postgres instance. Export is not supported.",
       );
     }
   }
@@ -263,7 +263,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         if (isIncomaptibleArchError(e)) {
           reject(
             new FirebaseError(
-              `Unknown system error when running the Data Connect toolkit. ` +
+              `Unknown system error when running the SQL Connect toolkit. ` +
                 `You may be able to fix this by installing Rosetta: ` +
                 `softwareupdate --install-rosetta`,
             ),
@@ -285,19 +285,19 @@ export class DataConnectEmulator implements EmulatorInstance {
     const res = childProcess.spawnSync(commandInfo.binary, cmd, { encoding: "utf-8", env });
     if (isIncomaptibleArchError(res.error)) {
       throw new FirebaseError(
-        `Unkown system error when running the Data Connect toolkit. ` +
+        `Unkown system error when running the SQL Connect toolkit. ` +
           `You may be able to fix this by installing Rosetta: ` +
           `softwareupdate --install-rosetta`,
       );
     }
     if (res.error) {
-      throw new FirebaseError(`Error starting up Data Connect build: ${res.error.message}`, {
+      throw new FirebaseError(`Error starting up SQL Connect build: ${res.error.message}`, {
         original: res.error,
       });
     }
     if (res.status !== 0) {
       throw new FirebaseError(
-        `Unable to build your Data Connect schema and connectors (exit code ${res.status}): ${res.stderr}`,
+        `Unable to build your SQL Connect schema and connectors (exit code ${res.status}): ${res.stderr}`,
       );
     }
 
@@ -319,15 +319,15 @@ export class DataConnectEmulator implements EmulatorInstance {
     serviceId?: string,
   ): Promise<boolean> {
     if (!connectionString) {
-      const msg = `No Postgres connection found. The Data Connect emulator will not be able to execute operations.`;
+      const msg = `No Postgres connection found. The SQL Connect emulator will not be able to execute operations.`;
       throw new FirebaseError(msg);
     }
-    // The Data Connect emulator does not immediately start listening after started
+    // The SQL Connect emulator does not immediately start listening after started
     // so we retry this call with a brief backoff.
     const MAX_RETRIES = 3;
     for (let i = 1; i <= MAX_RETRIES; i++) {
       try {
-        this.logger.logLabeled("DEBUG", "Data Connect", `Connecting to ${connectionString}}...`);
+        this.logger.logLabeled("DEBUG", "SQL Connect", `Connecting to ${connectionString}}...`);
         connectionString.toString();
         await this.emulatorClient.configureEmulator({
           connectionString: connectionString.toString(),
@@ -339,7 +339,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         });
         this.logger.logLabeled(
           "DEBUG",
-          "Data Connect",
+          "SQL Connect",
           `Successfully connected to ${connectionString}}`,
         );
         return true;
@@ -349,7 +349,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         }
         this.logger.logLabeled(
           "DEBUG",
-          "Data Connect",
+          "SQL Connect",
           `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${err}`,
         );
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -415,7 +415,7 @@ export class DataConnectEmulatorClient {
       return res;
     } catch (err: any) {
       if (err.status === 500) {
-        throw new FirebaseError(`Data Connect emulator: ${err?.context?.body?.message}`);
+        throw new FirebaseError(`SQL Connect emulator: ${err?.context?.body?.message}`);
       }
       throw err;
     }

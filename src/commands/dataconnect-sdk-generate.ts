@@ -19,14 +19,14 @@ import { EmulatorHub } from "../emulator/hub";
 type GenerateOptions = Options & { watch?: boolean; service?: string; location?: string };
 
 export const command = new Command("dataconnect:sdk:generate")
-  .description("generate typed SDKs to use Data Connect in your apps")
+  .description("generate typed SDKs to use SQL Connect in your apps")
   .option(
     "--service <serviceId>",
-    "the serviceId of the Data Connect service. If not provided, generates SDKs for all services.",
+    "the serviceId of the SQL Connect service. If not provided, generates SDKs for all services.",
   )
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .option(
     "--watch",
