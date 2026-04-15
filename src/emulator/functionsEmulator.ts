@@ -62,6 +62,11 @@ import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
+import {
+  isDartEndpoint,
+  classifyNonProductionEndpoints,
+  groupByTriggerLabel,
+} from "../deploy/functions/runtimes/dart/triggerSupport";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -634,6 +639,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
       }
+
+      // Warn about Dart triggers with limited support.
+      this.logDartTriggerSupportWarnings(endpoints);
+
       return emulatedFunctionsFromEndpoints(endpoints);
     }
   }
@@ -865,6 +874,36 @@ export class FunctionsEmulator implements EmulatorInstance {
         }
       }
     }
+  }
+
+  /**
+   * Logs warnings for Dart endpoints whose trigger types are not yet
+   * production-ready.  Classification is owned by the shared
+   * `dart/triggerSupport` module.
+   */
+  private logDartTriggerSupportWarnings(endpoints: backend.Endpoint[]): void {
+    const dartEndpoints = endpoints.filter(isDartEndpoint);
+    if (dartEndpoints.length === 0) {
+      return;
+    }
+
+    const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
+
+    groupByTriggerLabel(emulatorOnly).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers work in the emulator but cannot be deployed to production yet: ${ids.join(", ")}`,
+      );
+    });
+
+    groupByTriggerLabel(experimental).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers are experimental and not yet fully supported: ${ids.join(", ")}`,
+      );
+    });
   }
 
   // Currently only cleans up eventarc and firealerts triggers

@@ -8,7 +8,7 @@ export const compile = tool(
   {
     name: "build",
     description:
-      "Use this to compile Firebase Data Connect schema, operations, and/or connectors and check for build errors.",
+      "Use this to compile Firebase SQL Connect schema, operations, and/or connectors and check for build errors.",
     inputSchema: z.object({
       error_filter: z
         .enum(["all", "schema", "operations"])
@@ -18,17 +18,17 @@ export const compile = tool(
         .string()
         .optional()
         .describe(
-          `Service ID of the Data Connect service to compile. Used to disambiguate when there are multiple Data Connect services in firebase.json.`,
+          `Service ID of the SQL Connect service to compile. Used to disambiguate when there are multiple SQL Connect services in firebase.json.`,
         ),
       location_id: z
         .string()
         .optional()
         .describe(
-          `Data Connect Service location ID to disambiguate among multiple Data Connect services.`,
+          `SQL Connect Service location ID to disambiguate among multiple SQL Connect services.`,
         ),
     }),
     annotations: {
-      title: "Compile Data Connect",
+      title: "Compile SQL Connect",
       readOnlyHint: true,
     },
     _meta: {
@@ -55,7 +55,7 @@ export const compile = tool(
         content: [
           {
             type: "text",
-            text: `The following errors were encountered while compiling Data Connect:\n\n${errors.join("\n")}`,
+            text: `The following errors were encountered while compiling SQL Connect:\n\n${errors.join("\n")}`,
           },
         ],
         isError: true,

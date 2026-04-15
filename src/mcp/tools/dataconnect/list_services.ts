@@ -29,10 +29,10 @@ export const list_services = tool(
   "dataconnect",
   {
     name: "list_services",
-    description: "Use this to list existing local and backend Firebase Data Connect services",
+    description: "Use this to list existing local and backend Firebase SQL Connect services",
     inputSchema: z.object({}),
     annotations: {
-      title: "List existing Firebase Data Connect services",
+      title: "List existing Firebase SQL Connect services",
       readOnlyHint: true,
     },
     _meta: {
@@ -110,7 +110,7 @@ export const list_services = tool(
     }
 
     if (localServices.length) {
-      output.push(`# Local Data Connect Sources`);
+      output.push(`# Local SQL Connect Sources`);
       for (const s of localServices) {
         const local = s.local!;
         output.push(dump(local.dataConnectYaml));
@@ -128,7 +128,7 @@ export const list_services = tool(
     }
 
     if (remoteOnlyServices.length) {
-      output.push(`# Data Connect Services in project ${projectId}`);
+      output.push(`# SQL Connect Services in project ${projectId}`);
       for (const s of remoteOnlyServices) {
         if (s.deployed) {
           includeDeployedServiceInfo(s.deployed);
@@ -139,14 +139,14 @@ export const list_services = tool(
     output.push(`\n# What's next?`);
     if (!localServices.length) {
       output.push(
-        `- There is no local Data Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
+        `- There is no local SQL Connect service in the local workspace. Consider use the \`firebase_init\` MCP tool to setup one.`,
       );
     }
     output.push(
-      `- You can use the \`dataconnect_compile\` tool to compile all local Data Connect schemas and query sources.`,
+      `- You can use the \`dataconnect_compile\` tool to compile all local SQL Connect schemas and query sources.`,
     );
     output.push(
-      `- You run \`firebase deploy\` in command line to deploy the Data Connect schemas, connector and perform SQL migrations.`,
+      `- You run \`firebase deploy\` in command line to deploy the SQL Connect schemas, connector and perform SQL migrations.`,
     );
     return toContent(output.join("\n"));
   },
