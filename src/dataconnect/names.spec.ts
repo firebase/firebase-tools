@@ -49,7 +49,7 @@ describe("dataconnect/names", () => {
       expect(res.location).to.equal("us-central1");
       expect(res.instanceId).to.equal("my-instance");
       expect(res.toString()).to.equal(
-        "projects/my-project/locations/us-central1/services/my-instance",
+        "projects/my-project/locations/us-central1/instances/my-instance",
       );
     });
 
