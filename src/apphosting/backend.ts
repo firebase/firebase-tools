@@ -29,7 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-import { DEFAULT_RUNTIME, promptRuntime, promptAutomaticBaseImageUpdates } from "./prompts";
+import { DEFAULT_RUNTIME, promptRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -137,12 +137,6 @@ export async function doSetup(
     }
   }
 
-  if (automaticBaseImageUpdatesDisabled === undefined && isEnabled("abiu")) {
-    if (!nonInteractive) {
-      automaticBaseImageUpdatesDisabled = !(await promptAutomaticBaseImageUpdates());
-    }
-  }
-
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
     webAppName ? webAppName : null,
@@ -162,7 +156,6 @@ export async function doSetup(
     webApp?.id,
     rootDir,
     runtime,
-    automaticBaseImageUpdatesDisabled,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -373,7 +366,6 @@ export async function createBackend(
   webAppId: string | undefined,
   rootDir = "/",
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -392,7 +384,6 @@ export async function createBackend(
   // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
   if (isEnabled("abiu")) {
     backendReqBody.runtime = { value: runtime ?? "" };
-    backendReqBody.automaticBaseImageUpdatesDisabled = automaticBaseImageUpdatesDisabled;
   }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
