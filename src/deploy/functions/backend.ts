@@ -43,13 +43,13 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+/** API agnostic version of a Firebase SQL Connect HTTPS trigger. */
 export interface DataConnectGraphqlTrigger {
   invoker?: string[] | null;
   schemaFilePath?: string;
 }
 
-/** Something that has a Data Connect HTTPS trigger */
+/** Something that has a SQL Connect HTTPS trigger */
 export interface DataConnectGraphqlTriggered {
   dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }

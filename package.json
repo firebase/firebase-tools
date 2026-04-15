@@ -145,7 +145,7 @@
     "leven": "^3.1.0",
     "libsodium-wrappers": "^0.7.10",
     "lodash": "^4.18.0",
-    "lsofi": "1.0.0",
+    "lsofi": "^2.0.0",
     "marked": "^13.0.2",
     "marked-terminal": "^7.0.0",
     "mime": "^2.5.2",
@@ -177,7 +177,7 @@
     "winston": "^3.0.0",
     "winston-transport": "^4.4.0",
     "ws": "^7.5.10",
-    "yaml": "^2.4.1",
+    "yaml": "^2.8.3",
     "zod": "^3.24.3",
     "zod-to-json-schema": "^3.24.5"
   },
@@ -277,6 +277,18 @@
       "whatwg-url": "^14.0.0"
     },
     "hono": "^4.11.4",
-    "@tootallnate/once": "^3.0.1"
+    "@tootallnate/once": "^3.0.1",
+    "protobufjs": "^7.4.0",
+    "serialize-javascript": "^7.0.5",
+    "diff": "^8.0.4",
+    "underscore": "^1.13.8",
+    "brace-expansion": "^1.1.14",
+    "@grpc/grpc-js": "^1.14.3",
+    "rollup": "^3.30.0",
+    "picomatch": "^2.3.2",
+    "qs": "^6.14.2",
+    "tar": "^7.5.11",
+    "basic-ftp": "^5.2.2",
+    "@babel/traverse": "^7.23.2"
   }
 }
