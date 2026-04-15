@@ -42,7 +42,7 @@ import { RuntimeWorker, RuntimeWorkerPool } from "./functionsRuntimeWorker";
 import { PubsubEmulator } from "./pubsubEmulator";
 import { FirebaseError } from "../error";
 import { WorkQueue, Work } from "./workQueue";
-import { allSettled, connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
+import { connectableHostname, createDestroyer, debounce, randomInt } from "../utils";
 import {
   AdminSdkConfig,
   constructDefaultAdminSdkConfig,
@@ -1602,7 +1602,7 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         return [s.key, value];
       });
-    const accessResults = await allSettled(accesses);
+    const accessResults = await Promise.allSettled(accesses);
 
     const errs: string[] = [];
     for (const result of accessResults) {
