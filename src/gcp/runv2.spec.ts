@@ -36,6 +36,9 @@ describe("runv2", () => {
       [runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]: `{"functionId":"${FUNCTION_ID}"}`,
     },
     template: {
+      annotations: {
+        "run.googleapis.com/client-name": "cli-firebase",
+      },
       containers: [
         {
           name: "worker",

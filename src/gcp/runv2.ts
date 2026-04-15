@@ -689,6 +689,9 @@ export function serviceFromEndpoint(
   };
 
   const template: RevisionTemplate = {
+    annotations: {
+      "run.googleapis.com/client-name": "cli-firebase",
+    },
     containers: [
       {
         name: "worker",
