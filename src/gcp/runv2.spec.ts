@@ -242,6 +242,7 @@ describe("runv2", () => {
         cpu: 1,
         httpsTrigger: {},
         labels: {
+          "deployment-tool": "cli-firebase",
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
           [runv2.CLIENT_NAME_LABEL]: "firebase-functions",
         },
@@ -296,6 +297,7 @@ describe("runv2", () => {
         cpu: 1,
         httpsTrigger: {},
         labels: {
+          "deployment-tool": "cli-firebase",
           [runv2.RUNTIME_LABEL]: latest("nodejs"),
           [runv2.CLIENT_NAME_LABEL]: "cloud-functions",
         },
@@ -455,7 +457,9 @@ describe("runv2", () => {
         availableMemoryMb: 128,
         cpu: 0.5,
         httpsTrigger: {},
-        labels: {},
+        labels: {
+          "deployment-tool": "cli-firebase",
+        },
         environmentVariables: {},
         secretEnvironmentVariables: [],
         ingressSettings: "ALLOW_ALL",

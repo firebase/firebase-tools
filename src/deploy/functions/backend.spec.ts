@@ -331,6 +331,7 @@ describe("Backend", () => {
             FUNCTION_TARGET: "function",
           },
           labels: {
+            "deployment-tool": "cli-firebase",
             "goog-managed-by": "cloud-functions",
             "goog-cloudfunctions-runtime": "nodejs16",
             "firebase-functions-codebase": "default",
