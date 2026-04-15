@@ -46,6 +46,24 @@ describe("toBackend", () => {
     }
   });
 
+  it("defaults region to REGION_TBD if not specified", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    if (endpointDef) {
+      expect(endpointDef.func.region).to.equal(build.REGION_TBD);
+    }
+  });
+
   it("doesn't populate if omit is set on the build", () => {
     const desiredBuild: build.Build = build.of({
       func: {
