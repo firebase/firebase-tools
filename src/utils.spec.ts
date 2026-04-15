@@ -202,21 +202,6 @@ describe("utils", () => {
     });
   });
 
-  describe("promiseAllSettled", () => {
-    it("should settle all promises", async () => {
-      const result = await utils.promiseAllSettled([
-        Promise.resolve("foo"),
-        Promise.reject("bar"),
-        Promise.resolve("baz"),
-      ]);
-      expect(result).to.deep.equal([
-        { state: "fulfilled", value: "foo" },
-        { state: "rejected", reason: "bar" },
-        { state: "fulfilled", value: "baz" },
-      ]);
-    });
-  });
-
   describe("promiseProps", () => {
     it("should resolve all promises", async () => {
       const o = {

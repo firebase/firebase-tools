@@ -240,9 +240,6 @@ export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
-/** An interface for the result of a successful Promise */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-
 /**
  * Print out an explanatory message if a TTY is detected for how to manage STDIN
  */
@@ -336,33 +333,6 @@ export function getFunctionsEventProvider(eventType: string): string {
   return _.capitalize(eventType.split(".")[1]);
 }
 
-export interface SettledPromiseResolved {
-  state: "fulfilled";
-  value: any;
-}
-
-export interface SettledPromiseRejected {
-  state: "rejected";
-  reason: Error;
-}
-
-export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
-
-/**
- * Returns a single Promise that is resolved when all the given promises have
- * either resolved or rejected.
- */
-export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
-  const wrappedPromises = promises.map(async (p) => {
-    try {
-      const val = await Promise.resolve(p);
-      return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err: any) {
-      return { state: "rejected", reason: err } as SettledPromiseRejected;
-    }
-  });
-  return Promise.all(wrappedPromises);
-}
 
 /**
  * Runs a given function (that returns a Promise) repeatedly while the given
