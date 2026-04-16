@@ -189,6 +189,7 @@ export default async function (context: Context, options: Options): Promise<void
 
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
+        projectId,
         options.projectRoot || "./",
         "nextjs",
         buildEnv[cfg.backendId] || {},
