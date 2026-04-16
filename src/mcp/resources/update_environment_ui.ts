@@ -2,7 +2,7 @@ import { resource } from "../resource";
 import * as path from "path";
 import * as fs from "fs/promises";
 
-export const RESOURCE_MIME_TYPE = "application/vnd.mcp.ext-app+html";
+import { RESOURCE_MIME_TYPE } from "../util";
 const resourceUri = "ui://core/update_environment/mcp-app.html";
 
 export const update_environment_ui = resource(

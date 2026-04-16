@@ -326,3 +326,5 @@ export function cleanSchema(schema: Record<string, any>): Record<string, any> {
   const result = deepClean(schema, true); // Pass true for isRootLevel
   return result === null ? {} : result;
 }
+
+export const RESOURCE_MIME_TYPE = "application/vnd.mcp.ext-app+html";
