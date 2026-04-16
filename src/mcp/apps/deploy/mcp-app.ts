@@ -17,10 +17,11 @@ function addLog(message: string, type: "info" | "success" | "error" = "info"): v
 }
 
 function updateProgress(percentage: number): void {
-  progressBar.style.width = `${percentage}%`;
+  progressBar.value = percentage;
 }
 
 function pollStatus(jobId: string): void {
+  let loggedCount = 0;
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   const interval = setInterval(async () => {
     try {
@@ -41,9 +42,10 @@ function pollStatus(jobId: string): void {
       if (job) {
         updateProgress(job.progress);
 
-        // Clear and redraw logs to avoid duplication if we are reading full history
-        statusList.innerHTML = "";
-        job.logs.forEach((log: string) => addLog(log));
+        // Incrementally draw new logs only
+        const newLogs = job.logs.slice(loggedCount);
+        newLogs.forEach((log: string) => addLog(log));
+        loggedCount = job.logs.length;
 
         if (job.status === "success") {
           addLog("Deployment completed successfully!", "success");
