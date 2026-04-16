@@ -193,6 +193,10 @@ export default async function (context: Context, options: Options): Promise<void
         options.projectRoot || "./",
         "nextjs",
         buildEnv[cfg.backendId] || {},
+        {
+          nonInteractive: options.nonInteractive,
+          allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+        },
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(

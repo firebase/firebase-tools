@@ -76,7 +76,10 @@ describe("localBuild", () => {
       MY_PLAIN_VAR: { value: "plain-value" },
     };
 
-    await localBuild("test-project", "./", "nextjs", envMap);
+    await localBuild("test-project", "./", "nextjs", envMap, {
+      nonInteractive: true,
+      allowLocalBuildSecrets: true,
+    });
 
     expect(loadSecretStub).to.have.been.calledWith("test-project", "my-secret-id");
     // Confirm RUNTIME-only secret was ignored
@@ -116,5 +119,87 @@ describe("localBuild", () => {
     // as localBuild cleans up.
     expect(process.env.MY_PLAIN_VAR).to.be.undefined;
     expect(process.env.ANOTHER_VAR).to.be.undefined;
+  });
+
+  describe("localBuild secret confirmations", () => {
+    let confirmStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      confirmStub = sinon.stub(require("../prompt"), "confirm");
+    });
+
+    it("throws an error in non-interactive mode if build-available secrets are used without the bypass flag", async () => {
+      const envMap: EnvMap = {
+        MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
+      };
+
+      await expect(
+        localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: true }),
+      ).to.be.rejectedWith(
+        "Using build-available secrets during a local build in non-interactive mode requires the --allow-local-build-secrets flag.",
+      );
+    });
+
+    it("allows build-available secrets in non-interactive mode if bypass flag is provided", async () => {
+      const bundleConfig = {
+        version: "v1" as const,
+        runConfig: { runCommand: "npm run build:prod" },
+        metadata: {
+          adapterPackageName: "@apphosting/angular-adapter",
+          adapterVersion: "14.1",
+          framework: "nextjs",
+        },
+        outputFiles: { serverApp: { include: ["./next/standalone"] } },
+      };
+      sinon.stub(localBuildModule, "localBuild").resolves(bundleConfig);
+      sinon.stub(secrets, "loadSecret").resolves("secret-value");
+
+      const envMap: EnvMap = {
+        MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
+      };
+
+      await localBuild("test-project", "./", "nextjs", envMap, {
+        nonInteractive: true,
+        allowLocalBuildSecrets: true,
+      });
+
+      expect(confirmStub).to.not.have.been.called;
+    });
+
+    it("cancels the build if the user declines the secrets confirmation prompt", async () => {
+      confirmStub.resolves(false);
+
+      const envMap: EnvMap = {
+        MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
+      };
+
+      await expect(
+        localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false }),
+      ).to.be.rejectedWith("Cancelled local build due to BUILD-available secrets.");
+      expect(confirmStub).to.have.been.calledOnce;
+    });
+
+    it("proceeds with the build if the user accepts the secrets confirmation prompt", async () => {
+      confirmStub.resolves(true);
+      const bundleConfig = {
+        version: "v1" as const,
+        runConfig: { runCommand: "npm run build:prod" },
+        metadata: {
+          adapterPackageName: "@apphosting/angular-adapter",
+          adapterVersion: "14.1",
+          framework: "nextjs",
+        },
+        outputFiles: { serverApp: { include: ["./next/standalone"] } },
+      };
+      sinon.stub(localBuildModule, "localBuild").resolves(bundleConfig);
+      sinon.stub(secrets, "loadSecret").resolves("secret-value");
+
+      const envMap: EnvMap = {
+        MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
+      };
+
+      await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
+      expect(confirmStub).to.have.been.calledOnce;
+    });
   });
 });
