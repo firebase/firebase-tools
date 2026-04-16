@@ -406,14 +406,16 @@ describe("Fabricator", () => {
       ]);
     });
 
-    it("does not set invoker by default", async () => {
+    it("sets public invoker by default on httpsTrigger update", async () => {
       gcf.updateFunction.resolves({ name: "op", type: "update", done: false });
       poller.pollOperation.resolves();
       gcf.setInvokerUpdate.resolves();
       const ep = endpoint();
 
       await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
-      expect(gcf.setInvokerUpdate).to.not.have.been.called;
+      expect(gcf.setInvokerUpdate).to.have.been.calledWith(ep.project, backend.functionName(ep), [
+        "public",
+      ]);
     });
 
     it("doesn't set invoker on non-http functions", async () => {
@@ -964,14 +966,14 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
-    it("does not set invoker by default", async () => {
+    it("sets public invoker by default on httpsTrigger update", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
       run.setInvokerUpdate.resolves();
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.setInvokerUpdate).to.not.have.been.called;
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
     it("doesn't set invoker on non-http functions", async () => {
