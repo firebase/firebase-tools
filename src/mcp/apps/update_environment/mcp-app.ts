@@ -7,13 +7,19 @@ import {
 
 const app = new App({ name: "Update Firebase Environment", version: "1.0.0" });
 
-const projectListContainer = document.getElementById("project-list") as HTMLDivElement;
+interface FirebaseProject {
+  projectId: string;
+  displayName?: string;
+  projectNumber?: string;
+}
+
+const projectListContainer = document.getElementById("project-list") as HTMLSelectElement;
 const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
 const statusBox = document.getElementById("status-box") as HTMLDivElement;
 
-let projects: any[] = [];
-let filteredProjects: any[] = [];
+let projects: FirebaseProject[] = [];
+let filteredProjects: FirebaseProject[] = [];
 let selectedProjectId: string | null = null;
 
 const envProjectIdEl = document.getElementById("env-project-id") as HTMLSpanElement;
@@ -29,51 +35,45 @@ function renderProjects() {
   projectListContainer.innerHTML = "";
 
   if (filteredProjects.length === 0) {
-    projectListContainer.innerHTML = `
-      <div class="dropdown-item" style="cursor: default;">
-        <div class="item-name">No projects found.</div>
-      </div>
-    `;
+    const opt = document.createElement("option");
+    opt.disabled = true;
+    opt.textContent = "No projects found.";
+    projectListContainer.appendChild(opt);
     return;
   }
 
   filteredProjects.forEach((p) => {
-    const item = document.createElement("div");
-    item.className = "dropdown-item";
+    const opt = document.createElement("option");
+    opt.value = p.projectId;
+    opt.textContent = p.displayName ? `${p.displayName} (${p.projectId})` : p.projectId;
     if (p.projectId === selectedProjectId) {
-      item.classList.add("selected");
+      opt.selected = true;
     }
-
-    const displayName = p.displayName || p.projectId;
-    const projectId = p.projectId;
-
-    item.innerHTML = `
-      <div class="item-name">${displayName}</div>
-      <div class="item-id">${projectId}</div>
-    `;
-
-    item.onclick = () => {
-      selectedProjectId = projectId;
-      submitBtn.disabled = false;
-      renderProjects(); // Re-render to show selection
-    };
-
-    projectListContainer.appendChild(item);
+    projectListContainer.appendChild(opt);
   });
 }
 
+projectListContainer.onchange = () => {
+  selectedProjectId = projectListContainer.value;
+  submitBtn.disabled = false;
+};
+
+let searchTimeout: ReturnType<typeof setTimeout>;
 searchInput.oninput = () => {
-  const query = searchInput.value.toLowerCase().trim();
-  if (query === "") {
-    filteredProjects = projects;
-  } else {
-    filteredProjects = projects.filter((p) => {
-      const name = (p.displayName || p.projectId).toLowerCase();
-      const id = p.projectId.toLowerCase();
-      return name.includes(query) || id.includes(query);
-    });
-  }
-  renderProjects();
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    const query = searchInput.value.toLowerCase().trim();
+    if (query === "") {
+      filteredProjects = projects;
+    } else {
+      filteredProjects = projects.filter((p) => {
+        const name = (p.displayName || p.projectId).toLowerCase();
+        const id = p.projectId.toLowerCase();
+        return name.includes(query) || id.includes(query);
+      });
+    }
+    renderProjects();
+  }, 300);
 };
 
 submitBtn.onclick = async () => {
@@ -88,8 +88,8 @@ submitBtn.onclick = async () => {
       arguments: { active_project: selectedProjectId },
     });
 
-    const textContent = result.content?.find((c: any) => c.type === "text");
-    const text = textContent ? (textContent as any).text : "Update complete.";
+    const textContent = result.content?.find((c) => c.type === "text");
+    const text = textContent ? (textContent as { text: string }).text : "Update complete.";
 
     if (result.isError) {
       showStatus(text, "error");
@@ -97,8 +97,9 @@ submitBtn.onclick = async () => {
     } else {
       showStatus(text, "success");
     }
-  } catch (err: any) {
-    showStatus(`Error updating environment: ${err.message}`, "error");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showStatus(`Error updating environment: ${msg}`, "error");
     submitBtn.disabled = false;
   }
 };
@@ -129,19 +130,23 @@ app.onhostcontextchanged = (ctx) => {
         name: "firebase_get_environment",
         arguments: {},
       });
-      const envData = envResult.structuredContent as any;
+      const envData = envResult.structuredContent as {
+        projectId?: string;
+        authenticatedUser?: string;
+      };
       if (envData) {
         envProjectIdEl.textContent = envData.projectId || "<NONE>";
         envUserEl.textContent = envData.authenticatedUser || "<NONE>";
       }
-    } catch (err: any) {
-      console.error("Failed to fetch environment:", err);
-      showStatus(`Failed to fetch environment: ${err.message}`, "error");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Failed to fetch environment:", msg);
+      showStatus(`Failed to fetch environment: ${msg}`, "error");
     }
 
     // Fetch projects on load
     const result = await app.callServerTool({ name: "firebase_list_projects", arguments: {} });
-    const data = result.structuredContent as any;
+    const data = result.structuredContent as { projects: FirebaseProject[] };
 
     if (data && data.projects) {
       projects = data.projects;
@@ -154,7 +159,8 @@ app.onhostcontextchanged = (ctx) => {
     } else {
       showStatus("No projects returned from server.", "error");
     }
-  } catch (err: any) {
-    showStatus(`Failed to load projects: ${err.message}`, "error");
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    showStatus(`Failed to load projects: ${msg}`, "error");
   }
 })();
