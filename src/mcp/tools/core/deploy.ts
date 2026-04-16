@@ -48,14 +48,15 @@ export const deploy = tool(
       config: ctx.config,
       nonInteractive: true,
       onProgress: (progress: { phase: string; targets?: string[] }) => {
-        const phaseNumbers: Record<string, number> = {
+        type DeployPhase = "predeploy" | "prepare" | "deploy" | "release" | "postdeploy";
+        const phaseNumbers: Record<DeployPhase, number> = {
           predeploy: 10,
           prepare: 30,
           deploy: 60,
           release: 80,
           postdeploy: 100,
         };
-        const percentage = phaseNumbers[progress.phase] || 0;
+        const percentage = phaseNumbers[progress.phase as DeployPhase] || 0;
         jobTracker.updateJob(jobId, { progress: percentage });
         jobTracker.addLog(
           jobId,
