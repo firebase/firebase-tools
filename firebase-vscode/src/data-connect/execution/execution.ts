@@ -26,7 +26,10 @@ import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
-import { getConnectorGQLText, insertQueryAt } from "../file-utils";
+import { getConnectorGQLText, insertQueryAt, findGqlFiles } from "../file-utils";
+import * as fs from "fs";
+import * as path from "path";
+import { dataConnectConfigs } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
@@ -282,17 +285,41 @@ export function registerExecution(
       return;
     }
     try {
-      const schema = await dataConnectService.schema();
-      // TODO: Update to SQL Connect once backend agent is updated
+      const configs = dataConnectConfigs.value?.tryReadValue;
+      const serviceConfig = configs?.findEnclosingServiceForPath(arg.document.fileName);
+      
+      const schemas: any[] = [];
+      
+      if (serviceConfig) {
+          const mainSchemaDir = path.join(serviceConfig.path, serviceConfig.mainSchemaDir);
+          const secondaryDirs = serviceConfig.secondarySchemaDirs.map(dir => path.join(serviceConfig.path, dir));
+          
+          const schemaFiles: string[] = [];
+          schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
+          for (const dir of secondaryDirs) {
+             schemaFiles.push(...(await findGqlFiles(dir)));
+          }
+          
+          const files = await Promise.all(schemaFiles.map(async (file) => {
+             const content = fs.readFileSync(file, "utf-8");
+             return {
+                 path: path.basename(file),
+                 content: content
+             };
+          }));
+          
+          if (files.length > 0) {
+              schemas.push({
+                  source: {
+                      files: files
+                  }
+              });
+          }
+      }
+
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
-${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}
-${
-  schema
-    ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
-${schema}
-\`\`\``
-    : ""
-}`;
+${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}`;
+
       const serviceName = await dataConnectService.servicePath(
         arg.document.fileName,
       );
@@ -305,6 +332,7 @@ ${schema}
         prompt,
         serviceName,
         arg.projectId,
+        schemas.length > 0 ? schemas : undefined
       );
       await insertQueryAt(
         arg.document.uri,
