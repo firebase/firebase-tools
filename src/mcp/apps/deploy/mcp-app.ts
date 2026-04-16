@@ -4,7 +4,7 @@ import { Job } from "../../util/jobs";
 const app = new App({ name: "firebase-deploy", version: "1.0.0" });
 
 const deployBtn = document.getElementById("deploy-btn") as HTMLButtonElement;
-const progressBar = document.getElementById("progress-bar") as HTMLDivElement;
+const progressBar = document.getElementById("progress-bar") as HTMLProgressElement;
 const progressContainer = document.getElementById("progress-container") as HTMLDivElement;
 const statusList = document.getElementById("status-list") as HTMLDivElement;
 
