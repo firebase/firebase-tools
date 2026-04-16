@@ -65,7 +65,7 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run test:unit
         working-directory: firebase-vscode
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         if: matrix.node-version == '20'
 
   # vscode_integration:
@@ -123,7 +123,7 @@ jobs:
   #         name: screenshots
   #         path: firebase-vscode/src/test/screenshots
 
-  #     - uses: codecov/codecov-action@v3
+  #     - uses: codecov/codecov-action@v5
   #       if: matrix.node-version == '20'
 
   agent_evals_build:
@@ -175,7 +175,7 @@ jobs:
       - run: npm ci
       - run: npm test -- -- --forbid-only
 
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         if: matrix.node-version == '20'
 
   integration:
