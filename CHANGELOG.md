@@ -1,0 +1,1 @@
+- Suppress SSR warning for non-SSR Angular projects on init hosting (#10364)
