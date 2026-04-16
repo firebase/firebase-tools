@@ -1,9 +1,11 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
-import { localBuild } from "./localbuilds";
+import { localBuild, runUniversalMaker } from "./localbuilds";
 import * as secrets from "./secrets";
 import { EnvMap } from "./yaml";
+import * as childProcess from "child_process";
+import * as fs from "fs";
 
 describe("localBuild", () => {
   afterEach(() => {
@@ -13,6 +15,7 @@ describe("localBuild", () => {
   it("returns the expected output", async () => {
     const bundleConfig = {
       version: "v1" as const,
+
       runConfig: {
         runCommand: "npm run build:prod",
       },
@@ -200,6 +203,71 @@ describe("localBuild", () => {
 
       await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
+    });
+  });
+
+  describe("runUniversalMaker", () => {
+    it("should successfully execute Universal Maker and parse output", () => {
+      process.env.UNIVERSAL_MAKER_BINARY = "/path/to/universal_maker";
+      const spawnStub = sinon
+        .stub(childProcess, "spawnSync")
+        .returns({} as unknown as childProcess.SpawnSyncReturns<string>);
+      sinon.stub(fs, "existsSync").returns(true);
+      const readFileSyncStub = sinon.stub(fs, "readFileSync").returns(
+        JSON.stringify({
+          command: "npm",
+          args: ["run", "start"],
+          language: "nodejs",
+          runtime: "nodejs22",
+          envVars: { PORT: 3000 },
+        }),
+      );
+
+      const output = runUniversalMaker("./", "nextjs");
+
+      expect(output).to.deep.equal({
+        metadata: {
+          language: "nodejs",
+          runtime: "nodejs22",
+          framework: "nextjs",
+        },
+        runConfig: {
+          runCommand: "npm run start",
+          environmentVariables: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],
+        },
+        outputFiles: {
+          serverApp: {
+            include: [".apphosting"],
+          },
+        },
+      });
+
+      sinon.assert.calledOnce(spawnStub);
+      sinon.assert.calledOnce(readFileSyncStub);
+      delete process.env.UNIVERSAL_MAKER_BINARY;
+    });
+
+    it("should raise clear FirebaseError when UNIVERSAL_MAKER_BINARY is undefined", () => {
+      delete process.env.UNIVERSAL_MAKER_BINARY;
+
+      expect(() => runUniversalMaker("./")).to.throw(
+        "Please specify the path to your Universal Maker binary by establishing the UNIVERSAL_MAKER_BINARY environment variable.",
+      );
+    });
+
+    it("should raise clear FirebaseError on permission errors within child execution", () => {
+      process.env.UNIVERSAL_MAKER_BINARY = "/path/to/universal_maker";
+      sinon.stub(childProcess, "spawnSync").callsFake(() => {
+        const err = new Error("EACCES exception") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+
+        throw err;
+      });
+
+      expect(() => runUniversalMaker("./")).to.throw(
+        "Failed to execute the Universal Maker binary due to permission constraints. Please assure you have set chmod +x on your file.",
+      );
+      delete process.env.UNIVERSAL_MAKER_BINARY;
     });
   });
 });

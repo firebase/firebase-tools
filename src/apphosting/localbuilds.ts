@@ -1,14 +1,115 @@
+import * as childProcess from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 import { BuildConfig, Env } from "../gcp/apphosting";
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
+import * as experiments from "../experiments";
+
+interface UniversalMakerOutput {
+  command: string;
+  args: string[];
+  language: string;
+  runtime: string;
+  envVars?: Record<string, string | number | boolean>;
+}
+
+/**
+ * Runs the Universal Maker binary to build the project.
+ */
+export function runUniversalMaker(projectRoot: string, framework?: string): AppHostingBuildOutput {
+  if (!process.env.UNIVERSAL_MAKER_BINARY) {
+    throw new FirebaseError(
+      "Please specify the path to your Universal Maker binary by establishing the UNIVERSAL_MAKER_BINARY environment variable.",
+    );
+  }
+
+  try {
+    childProcess.spawnSync(
+      process.env.UNIVERSAL_MAKER_BINARY,
+      ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
+      {
+        env: {
+          ...process.env,
+          X_GOOGLE_TARGET_PLATFORM: "fah",
+          FIREBASE_OUTPUT_BUNDLE_DIR: ".apphosting",
+          NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
+        },
+        stdio: "inherit",
+      },
+    );
+  } catch (e) {
+    if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
+      throw new FirebaseError(
+        "Failed to execute the Universal Maker binary due to permission constraints. Please assure you have set chmod +x on your file.",
+      );
+    }
+    throw e;
+  }
+
+  const outputFilePath = path.join(projectRoot, "build_output.json");
+  if (!fs.existsSync(outputFilePath)) {
+    throw new FirebaseError(
+      `Universal Maker did not produce the expected output file at ${outputFilePath}`,
+    );
+  }
+
+  const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
+  let umOutput: UniversalMakerOutput;
+  try {
+    umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
+  } catch (e) {
+    throw new FirebaseError(`Failed to parse build_output.json: ${(e as Error).message}`);
+  }
+
+  return {
+    metadata: {
+      language: umOutput.language,
+      runtime: umOutput.runtime,
+      framework: framework || "nextjs",
+    },
+    runConfig: {
+      runCommand: `${umOutput.command} ${umOutput.args.join(" ")}`,
+      environmentVariables: Object.entries(umOutput.envVars || {}).map(([k, v]) => ({
+        variable: k,
+        value: String(v),
+        availability: ["RUNTIME"],
+      })),
+    },
+    outputFiles: {
+      serverApp: {
+        include: [".apphosting"],
+      },
+    },
+  };
+}
+
+export interface AppHostingBuildOutput {
+  metadata: Record<string, string | number | boolean>;
+
+  runConfig: {
+    runCommand?: string;
+    environmentVariables?: Array<{
+      variable: string;
+      value: string;
+      availability: string[];
+    }>;
+  };
+  outputFiles?: {
+    serverApp: {
+      include: string[];
+    };
+  };
+}
 
 /**
  * Triggers a local build of your App Hosting codebase.
  *
  * This function orchestrates the build process using the App Hosting build adapter.
+ *
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
@@ -62,9 +163,16 @@ export async function localBuild(
     process.env[key] = value;
   }
 
-  let apphostingBuildOutput;
+  let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    apphostingBuildOutput = await localAppHostingBuild(projectRoot, framework);
+    if (experiments.isEnabled("universalMaker")) {
+      apphostingBuildOutput = runUniversalMaker(projectRoot, framework);
+    } else {
+      apphostingBuildOutput = (await localAppHostingBuild(
+        projectRoot,
+        framework,
+      )) as unknown as AppHostingBuildOutput;
+    }
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {
@@ -87,7 +195,7 @@ export async function localBuild(
         value,
         availability,
       }),
-    );
+    ) as unknown as Env[] | undefined;
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
