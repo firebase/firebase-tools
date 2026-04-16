@@ -1,5 +1,0 @@
-- Add foundation for being smarter about where to place functions when the region is not specified (#10293)
-- Updated Pub/Sub emulator to version 0.8.30
-- Renamed Data Connect displayed text to SQL Connect (#10270)
-- Added support for the experimental Cloud Functions for Firebase Dart SDK behind the `dartfunctions` flag
-- Updated the SQL Connect emulator to v3.4.5, including internal bug fixes (#10336)
