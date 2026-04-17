@@ -6,6 +6,7 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+import * as experiments from "../../experiments";
 
 import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 
@@ -54,14 +55,6 @@ export async function createLocalBuildTarArchive(
       if (APPHOSTING_YAML_FILE_REGEX.test(file)) {
         fs.copyFileSync(path.join(rootDir, file), path.join(tempDir, file));
       }
-    }
-    const rootNext = path.join(rootDir, ".next");
-    if (fs.existsSync(rootNext)) {
-      fs.cpSync(rootNext, path.join(tempDir, ".next"), { recursive: true });
-    }
-    const rootNodeModules = path.join(rootDir, "node_modules");
-    if (fs.existsSync(rootNodeModules)) {
-      fs.cpSync(rootNodeModules, path.join(tempDir, "node_modules"), { recursive: true });
     }
 
     const rdrFiles = await fsAsync.readdirRecursive({

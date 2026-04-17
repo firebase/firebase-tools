@@ -10,6 +10,8 @@ import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { logger } from "../logger";
+import { wrappedSafeLoad } from "../utils";
+
 
 interface UniversalMakerOutput {
   command: string;
@@ -86,7 +88,8 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
     try {
       const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
       // Safely parse the YAML string
-      const bundleData = require("yaml").parse(bundleRaw);
+      const bundleData = wrappedSafeLoad(bundleRaw);
+
       if (bundleData?.runConfig?.runCommand) {
         finalRunCommand = bundleData.runConfig.runCommand;
       }
