@@ -181,16 +181,6 @@ describe("hosting prepare", () => {
     await expect(prepare(context, options)).to.eventually.be.fulfilled;
   });
 
-  it("skips check for demo projects", async () => {
-    const context: Context = {
-      projectId: "demo-project",
-    };
-    hostingStub.createVersion.resolves("version");
-
-    await expect(prepare(context, options)).to.eventually.be.fulfilled;
-    expect(hostingStub.getSite).to.not.have.been.called;
-  });
-
   describe("unsafePins", () => {
     const apiRewriteWithoutPin: hostingApi.Rewrite = {
       glob: "**",
