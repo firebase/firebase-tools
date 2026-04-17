@@ -28,28 +28,6 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
     );
   }
 
-  const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
-  let cachedBundleContent: string | null = null;
-  
-  if (!fs.existsSync(path.dirname(bundleYamlPath))) {
-    fs.mkdirSync(path.dirname(bundleYamlPath), { recursive: true });
-  }
-
-  // Watch for the file being created by the Next.js adapter
-  const watcher = fs.watch(path.dirname(bundleYamlPath), (eventType, filename) => {
-    if (filename === "bundle.yaml") {
-      try {
-        if (fs.existsSync(bundleYamlPath)) {
-          const currentText = fs.readFileSync(bundleYamlPath, "utf-8");
-          if (currentText.trim().length > 0) {
-            cachedBundleContent = currentText;
-          }
-        }
-      } catch (e) {
-      }
-    }
-  });
-
   try {
     childProcess.spawnSync(
       process.env.UNIVERSAL_MAKER_BINARY,
@@ -58,22 +36,24 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
         env: {
           ...process.env,
           X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: ".apphosting",
+          FIREBASE_OUTPUT_BUNDLE_DIR: "bundle_output",
           NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
         },
         stdio: "inherit",
       },
     );
 
-    // Close the background watcher safely
-    watcher.close();
-
-    // Restore safely if wiped out in the final seconds
-    if (cachedBundleContent && fs.existsSync(bundleYamlPath)) {
-      const lastText = fs.readFileSync(bundleYamlPath, "utf-8");
-      if (lastText.trim().length === 0) {
-        fs.writeFileSync(bundleYamlPath, cachedBundleContent, "utf-8");
+    const bundleOutput = path.join(projectRoot, "bundle_output");
+    const targetAppHosting = path.join(projectRoot, ".apphosting");
+    if (fs.existsSync(bundleOutput)) {
+      if (!fs.existsSync(targetAppHosting)) {
+        fs.mkdirSync(targetAppHosting, { recursive: true });
       }
+      const files = fs.readdirSync(bundleOutput);
+      for (const file of files) {
+        fs.renameSync(path.join(bundleOutput, file), path.join(targetAppHosting, file));
+      }
+      fs.rmdirSync(bundleOutput);
     }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
@@ -100,6 +80,7 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
   }
 
   let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
+  const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
   if (fs.existsSync(bundleYamlPath)) {
     try {
       const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
