@@ -8,6 +8,7 @@ import { loadSecret } from "./secrets";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
+import { logger } from "../logger";
 
 interface UniversalMakerOutput {
   command: string;
@@ -27,6 +28,28 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
     );
   }
 
+  const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
+  let cachedBundleContent: string | null = null;
+  
+  if (!fs.existsSync(path.dirname(bundleYamlPath))) {
+    fs.mkdirSync(path.dirname(bundleYamlPath), { recursive: true });
+  }
+
+  // Watch for the file being created by the Next.js adapter
+  const watcher = fs.watch(path.dirname(bundleYamlPath), (eventType, filename) => {
+    if (filename === "bundle.yaml") {
+      try {
+        if (fs.existsSync(bundleYamlPath)) {
+          const currentText = fs.readFileSync(bundleYamlPath, "utf-8");
+          if (currentText.trim().length > 0) {
+            cachedBundleContent = currentText;
+          }
+        }
+      } catch (e) {
+      }
+    }
+  });
+
   try {
     childProcess.spawnSync(
       process.env.UNIVERSAL_MAKER_BINARY,
@@ -41,6 +64,17 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
         stdio: "inherit",
       },
     );
+
+    // Close the background watcher safely
+    watcher.close();
+
+    // Restore safely if wiped out in the final seconds
+    if (cachedBundleContent && fs.existsSync(bundleYamlPath)) {
+      const lastText = fs.readFileSync(bundleYamlPath, "utf-8");
+      if (lastText.trim().length === 0) {
+        fs.writeFileSync(bundleYamlPath, cachedBundleContent, "utf-8");
+      }
+    }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
       throw new FirebaseError(
@@ -65,6 +99,20 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
     throw new FirebaseError(`Failed to parse build_output.json: ${(e as Error).message}`);
   }
 
+  let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
+  if (fs.existsSync(bundleYamlPath)) {
+    try {
+      const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
+      // Safely parse the YAML string
+      const bundleData = require("yaml").parse(bundleRaw);
+      if (bundleData?.runConfig?.runCommand) {
+        finalRunCommand = bundleData.runConfig.runCommand;
+      }
+    } catch (e) {
+      // Fall back gracefully if parser fails
+    }
+  }
+
   return {
     metadata: {
       language: umOutput.language,
@@ -72,7 +120,7 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
       framework: framework || "nextjs",
     },
     runConfig: {
-      runCommand: `${umOutput.command} ${umOutput.args.join(" ")}`,
+      runCommand: finalRunCommand,
       environmentVariables: Object.entries(umOutput.envVars || {}).map(([k, v]) => ({
         variable: k,
         value: String(v),
@@ -167,6 +215,9 @@ export async function localBuild(
   try {
     if (experiments.isEnabled("universalMaker")) {
       apphostingBuildOutput = runUniversalMaker(projectRoot, framework);
+      logger.debug(
+        `[apphosting] Universal Maker build outputFiles include: ${JSON.stringify(apphostingBuildOutput.outputFiles?.serverApp?.include ?? [])}`,
+      );
     } else {
       apphostingBuildOutput = (await localAppHostingBuild(
         projectRoot,
