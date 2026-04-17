@@ -13,6 +13,7 @@ import { HostingSource, RunRewrite } from "../../firebaseConfig";
 import * as backend from "../functions/backend";
 import { ensureTargeted } from "../../functions/ensureTargeted";
 import { generateSSRCodebaseId } from "../../frameworks";
+import { Constants } from "../../emulator/constants";
 
 function handlePublicDirectoryFlag(options: HostingOptions & DeployOptions): void {
   // Allow the public directory to be overridden by the --public flag
@@ -116,6 +117,15 @@ export async function prepare(
 
   const versions = await Promise.all(
     configs.map(async (config) => {
+      if (!Constants.isDemoProject(context.projectId)) {
+        const site = await api.getSite(context.projectId, config.site);
+        if (!site.name.startsWith(`projects/${context.projectId}/`)) {
+          throw new FirebaseError(
+            `Site "${config.site}" does not belong to project "${context.projectId}"`,
+            { status: 400 },
+          );
+        }
+      }
       const labels: Record<string, string> = {
         ...deploymentTool.labels(),
       };

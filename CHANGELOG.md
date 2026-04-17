@@ -1,0 +1,1 @@
+- Fixed an issue where hosting deploy allowed publishing to a site in a different project. (#10376)
