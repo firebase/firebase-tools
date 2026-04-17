@@ -183,6 +183,105 @@ describe("prepare", () => {
     });
   });
 
+  describe("matchRegionsForExisting", () => {
+    it("does nothing if no endpoints in REGION_TBD", () => {
+      const want = backend.of(ENDPOINT);
+      const have = backend.empty();
+      prepare.matchRegionsForExisting(want, have);
+      expect(want).to.deep.equal(backend.of(ENDPOINT));
+    });
+
+    it("infers region from have backend if unique", () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+
+      // Choosing a region that is neither an old or new default
+      // for the test
+      const haveE = { ...ENDPOINT, region: "europe-west1" };
+      const have = backend.of(haveE);
+
+      prepare.matchRegionsForExisting(want, have);
+
+      expect(want.endpoints["europe-west1"]?.["id"]).to.exist;
+      expect(want.endpoints["europe-west1"]?.["id"].region).to.equal("europe-west1");
+      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+    });
+
+    it("leaves in REGION_TBD if not found in have", () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      prepare.matchRegionsForExisting(want, have);
+
+      expect(want.endpoints[build.REGION_TBD]?.["id"]).to.exist;
+      expect(want.endpoints["us-central1"]).to.not.exist;
+    });
+
+    it("throws error if ambiguous", () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+
+      const haveE1 = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const haveE2 = { ...ENDPOINT, id: "id", region: "us-west1" };
+      const have = backend.of(haveE1, haveE2);
+
+      expect(() => prepare.matchRegionsForExisting(want, have)).to.throw(
+        FirebaseError,
+        /Cannot resolve default region for function id. It exists in multiple regions. The region must be specified to continue./,
+      );
+    });
+  });
+
+  describe("resolveDefaultRegions", () => {
+    it("does nothing if no endpoints in REGION_TBD", async () => {
+      const want = backend.empty();
+      const have = backend.empty();
+      await prepare.resolveDefaultRegions(want, have);
+      expect(want.endpoints).to.deep.equal({});
+    });
+
+    it("infers region from have backend if unique", async () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+
+      const haveE = { ...ENDPOINT, region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-east1"]?.["id"]).to.exist;
+      expect(want.endpoints["us-east1"]?.["id"].region).to.equal("us-east1");
+      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+    });
+
+    it("throws error if ambiguous", async () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+
+      const haveE1 = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const haveE2 = { ...ENDPOINT, id: "id", region: "us-west1" };
+      const have = backend.of(haveE1, haveE2);
+
+      await expect(prepare.resolveDefaultRegions(want, have)).to.be.rejectedWith(
+        FirebaseError,
+        /Cannot resolve default region for function id. It exists in multiple regions. The region must be specified to continue./,
+      );
+    });
+
+    it("falls back to us-central1 if not found in have", async () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-central1"]?.["id"]).to.exist;
+      expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
+      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+    });
+  });
+
   describe("inferDetailsFromExisting", () => {
     it("merges env vars if .env is not used", () => {
       const oldE = {
