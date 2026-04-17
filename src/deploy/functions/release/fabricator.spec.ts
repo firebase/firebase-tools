@@ -1618,6 +1618,46 @@ describe("Fabricator", () => {
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
     });
+    it("uses different scrapers for different codebases", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { codebase: "codebaseA" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { codebase: "codebaseB" });
+      const plan: planner.DeploymentPlan = {
+        "us-central1": {
+          endpointsToCreate: [ep1],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+        "us-west1": {
+          endpointsToCreate: [ep2],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+      };
+
+      const applyUpsertsSpy = sinon.spy(fab, "applyUpserts");
+
+      sinon.stub(fab, "createEndpoint").resolves();
+      sinon.stub(fab, "updateEndpoint").resolves();
+      sinon.stub(fab, "deleteEndpoint").resolves();
+
+      await fab.applyPlan(plan);
+
+      expect(applyUpsertsSpy.calledTwice).to.be.true;
+
+      const call1 = applyUpsertsSpy.getCall(0);
+      const call2 = applyUpsertsSpy.getCall(1);
+
+      const scraperV1Call1 = call1.args[1];
+      const scraperV2Call1 = call1.args[2];
+
+      const scraperV1Call2 = call2.args[1];
+      const scraperV2Call2 = call2.args[2];
+
+      expect(scraperV1Call1).to.not.equal(scraperV1Call2);
+      expect(scraperV2Call1).to.not.equal(scraperV2Call2);
+    });
   });
 
   describe("getLogSuccessMessage", () => {

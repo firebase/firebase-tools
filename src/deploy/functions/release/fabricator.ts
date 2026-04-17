@@ -99,10 +99,35 @@ export class Fabricator {
     const changesets = Object.values(plan);
 
     // Phase 1: Creates and Updates
-    const scraperV1 = new SourceTokenScraper();
-    const scraperV2 = new SourceTokenScraper();
+    const scrapersV1 = new Map<string, SourceTokenScraper>();
+    const scrapersV2 = new Map<string, SourceTokenScraper>();
+
     const createAndUpdatePromises = changesets.map((changes) => {
-      return this.applyUpserts(changes, scraperV1, scraperV2);
+      // Find codebase from endpoints in changeset
+      let codebase = "default";
+      if (changes.endpointsToCreate.length > 0) {
+        codebase = changes.endpointsToCreate[0].codebase || "default";
+      } else if (changes.endpointsToUpdate.length > 0) {
+        codebase = changes.endpointsToUpdate[0].endpoint.codebase || "default";
+      } else if (changes.endpointsToDelete.length > 0) {
+        codebase = changes.endpointsToDelete[0].codebase || "default";
+      } else if (changes.endpointsToSkip.length > 0) {
+        codebase = changes.endpointsToSkip[0].codebase || "default";
+      }
+
+      let scraperV1 = scrapersV1.get(codebase);
+      if (!scraperV1) {
+        scraperV1 = new SourceTokenScraper();
+        scrapersV1.set(codebase, scraperV1);
+      }
+
+      let scraperV2 = scrapersV2.get(codebase);
+      if (!scraperV2) {
+        scraperV2 = new SourceTokenScraper();
+        scrapersV2.set(codebase, scraperV2);
+      }
+
+      return this.applyUpserts(changes, scraperV1!, scraperV2!);
     });
     const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
 
