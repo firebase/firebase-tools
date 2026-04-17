@@ -1,17 +1,20 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
-import { localBuild, runUniversalMaker } from "./localbuilds";
+import { localBuild, runUniversalMaker } from "./localbuilds.js";
 import * as secrets from "./secrets";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
 import * as fs from "fs";
+import * as experiments from "../experiments";
 
 describe("localBuild", () => {
+  beforeEach(() => {
+    sinon.stub(experiments, "isEnabled").returns(false);
+  });
   afterEach(() => {
     sinon.restore();
   });
-
   it("returns the expected output", async () => {
     const bundleConfig = {
       version: "v1" as const,
@@ -209,10 +212,19 @@ describe("localBuild", () => {
   describe("runUniversalMaker", () => {
     it("should successfully execute Universal Maker and parse output", () => {
       process.env.UNIVERSAL_MAKER_BINARY = "/path/to/universal_maker";
-      const spawnStub = sinon
-        .stub(childProcess, "spawnSync")
-        .returns({} as unknown as childProcess.SpawnSyncReturns<string>);
+      const spawnResult: childProcess.SpawnSyncReturns<string> = {
+        pid: 12345,
+        output: [null, "", ""],
+        stdout: "",
+        stderr: "",
+        status: 0,
+        signal: null,
+      };
+      const spawnStub = sinon.stub(childProcess, "spawnSync").returns(spawnResult);
       sinon.stub(fs, "existsSync").returns(true);
+      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as unknown as any);
+      sinon.stub(fs, "renameSync");
+      sinon.stub(fs, "rmdirSync");
       const readFileSyncStub = sinon.stub(fs, "readFileSync").returns(
         JSON.stringify({
           command: "npm",
@@ -243,7 +255,19 @@ describe("localBuild", () => {
       });
 
       sinon.assert.calledOnce(spawnStub);
+      sinon.assert.calledWith(
+        spawnStub,
+        "/path/to/universal_maker",
+        ["-application_dir", "./", "-output_dir", "./", "-output_format", "json"],
+        sinon.match({
+          env: sinon.match({
+            X_GOOGLE_TARGET_PLATFORM: "fah",
+            FIREBASE_OUTPUT_BUNDLE_DIR: "bundle_output",
+          }),
+        }),
+      );
       sinon.assert.calledOnce(readFileSyncStub);
+
       delete process.env.UNIVERSAL_MAKER_BINARY;
     });
 

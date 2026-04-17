@@ -1,7 +1,8 @@
 import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { BuildConfig, Env } from "../gcp/apphosting";
+import { Availability, BuildConfig, Env } from "../gcp/apphosting";
+
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets";
@@ -200,10 +201,17 @@ export async function localBuild(
         `[apphosting] Universal Maker build outputFiles include: ${JSON.stringify(apphostingBuildOutput.outputFiles?.serverApp?.include ?? [])}`,
       );
     } else {
-      apphostingBuildOutput = (await localAppHostingBuild(
-        projectRoot,
-        framework,
-      )) as unknown as AppHostingBuildOutput;
+      const buildResult = await localAppHostingBuild(projectRoot, framework);
+      apphostingBuildOutput = {
+        metadata: Object.fromEntries(
+          Object.entries(buildResult.metadata || {}).map(([k, v]) => [
+            k,
+            v as string | number | boolean,
+          ]),
+        ),
+        runConfig: buildResult.runConfig,
+        outputFiles: buildResult.outputFiles,
+      };
     }
   } finally {
     for (const key in process.env) {
@@ -222,12 +230,17 @@ export async function localBuild(
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
-      ({ variable, value, availability }) => ({
-        variable,
-        value,
-        availability,
-      }),
-    ) as unknown as Env[] | undefined;
+      ({ variable, value, availability }) => {
+        const validAvail = availability.filter(
+          (a): a is Availability => a === "BUILD" || a === "RUNTIME",
+        );
+        return {
+          variable,
+          value,
+          availability: validAvail,
+        };
+      },
+    );
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
