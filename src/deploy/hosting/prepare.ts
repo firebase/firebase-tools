@@ -118,13 +118,7 @@ export async function prepare(
   const versions = await Promise.all(
     configs.map(async (config) => {
       if (!Constants.isDemoProject(context.projectId)) {
-        const site = await api.getSite(context.projectId, config.site);
-        if (!site.name.startsWith(`projects/${context.projectId}/`)) {
-          throw new FirebaseError(
-            `Site "${config.site}" does not belong to project "${context.projectId}"`,
-            { status: 400 },
-          );
-        }
+        await api.getSite(context.projectId, config.site);
       }
       const labels: Record<string, string> = {
         ...deploymentTool.labels(),

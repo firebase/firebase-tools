@@ -153,20 +153,15 @@ describe("hosting prepare", () => {
     });
   });
 
-  it("throws error if site does not belong to project", async () => {
-    hostingStub.getSite.resolves({
-      name: "projects/other-project/sites/site",
-      defaultUrl: "https://site.web.app",
-      appId: "app-id",
-      labels: {},
-    });
+  it("throws error if site does not exist in project", async () => {
+    hostingStub.getSite.rejects(new Error(`could not find site "site" for project "project"`));
 
     const context: Context = {
       projectId: "project",
     };
 
     await expect(prepare(context, options)).to.eventually.be.rejectedWith(
-      `Site "site" does not belong to project "project"`,
+      `could not find site "site" for project "project"`,
     );
   });
 
