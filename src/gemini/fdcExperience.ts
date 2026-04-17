@@ -6,8 +6,8 @@ import {
 } from "./types";
 
 // Use autopush environment as requested
-const AUTOPUSH_ORIGIN = "https://autopush-firebasedataconnect.sandbox.googleapis.com";
-const apiClient = new Client({ urlPrefix: AUTOPUSH_ORIGIN, auth: true });
+const STAGING_ORIGIN = "https://staging-firebasedataconnect.sandbox.googleapis.com";
+const apiClient = new Client({ urlPrefix: STAGING_ORIGIN, auth: true });
 
 export const PROMPT_GENERATE_CONNECTOR =
   "Create 4 operations for an app using the instance schema with proper authentication.";
