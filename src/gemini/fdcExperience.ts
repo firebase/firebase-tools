@@ -9,6 +9,12 @@ import {
 const AUTOPUSH_ORIGIN = "https://autopush-firebasedataconnect.sandbox.googleapis.com";
 const apiClient = new Client({ urlPrefix: AUTOPUSH_ORIGIN, auth: true });
 
+export const PROMPT_GENERATE_CONNECTOR =
+  "Create 4 operations for an app using the instance schema with proper authentication.";
+
+export const PROMPT_GENERATE_SEED_DATA =
+  "Create a mutation to populate the database with some seed data.";
+
 /**
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.
@@ -102,7 +108,9 @@ async function readStream(stream: NodeJS.ReadableStream): Promise<string> {
     stream.on("end", () => {
       resolve(data);
     });
-    stream.on("error", (reject));
+    stream.on("error", (err) => {
+      reject(err);
+    });
   });
 }
 
