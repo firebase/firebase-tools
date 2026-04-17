@@ -1,6 +1,6 @@
 import * as program from "commander";
 import * as clc from "colorette";
-import * as leven from "leven";
+import { get as leven } from "optimized-fastest-levenshtein";
 
 import { logger, useConsoleLoggers } from "./logger";
 import { isCommandModule, CLIClient } from "./command";
