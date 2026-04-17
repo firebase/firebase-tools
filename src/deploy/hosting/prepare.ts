@@ -118,6 +118,7 @@ export async function prepare(
   const versions = await Promise.all(
     configs.map(async (config) => {
       if (!Constants.isDemoProject(context.projectId)) {
+        // Get the site to confirm that it exists on this project
         await api.getSite(context.projectId, config.site);
       }
       const labels: Record<string, string> = {
