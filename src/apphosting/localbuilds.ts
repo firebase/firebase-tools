@@ -46,6 +46,8 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
       },
     );
 
+    // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
+    // To avoid this, we output to bundle_output first, and then safely move the files over.
     const bundleOutput = path.join(projectRoot, "bundle_output");
     const targetAppHosting = path.join(projectRoot, ".apphosting");
     if (fs.existsSync(bundleOutput)) {
