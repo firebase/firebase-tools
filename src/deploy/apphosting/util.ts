@@ -6,7 +6,6 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
-import * as experiments from "../../experiments";
 
 import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 
@@ -48,6 +47,7 @@ export async function createLocalBuildTarArchive(
     }
   }
 
+  // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
     fs.statSync(rootDir);
   } catch (err: unknown) {
@@ -70,7 +70,6 @@ export async function createLocalBuildTarArchive(
     allFiles,
   );
   return tmpFile;
-
 }
 
 /**

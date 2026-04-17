@@ -108,11 +108,13 @@ export function runUniversalMaker(projectRoot: string, framework?: string): AppH
     },
     runConfig: {
       runCommand: finalRunCommand,
-      environmentVariables: Object.entries(umOutput.envVars || {}).map(([k, v]) => ({
-        variable: k,
-        value: String(v),
-        availability: ["RUNTIME"],
-      })),
+      environmentVariables: Object.entries(umOutput.envVars || {})
+        .filter(([k]) => k !== "FIREBASE_OUTPUT_BUNDLE_DIR")
+        .map(([k, v]) => ({
+          variable: k,
+          value: String(v),
+          availability: ["RUNTIME"],
+        })),
     },
     outputFiles: {
       serverApp: {
