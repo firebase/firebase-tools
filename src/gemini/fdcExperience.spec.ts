@@ -88,7 +88,7 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://autopush-firebasedataconnect.sandbox.googleapis.com")
+      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
           prompt
@@ -124,7 +124,7 @@ describe("fdcExperience", () => {
           statusCalledWith = status;
       };
 
-      nock("https://autopush-firebasedataconnect.sandbox.googleapis.com")
+      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
           prompt
@@ -152,7 +152,7 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://autopush-firebasedataconnect.sandbox.googleapis.com")
+      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
         .post(`/v1/projects/my-project/locations/us-central1/services/my-service:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/my-service`,
           prompt
@@ -178,7 +178,7 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://autopush-firebasedataconnect.sandbox.googleapis.com")
+      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
         .post(`/v1/projects/my-project/locations/us-central1/services/-:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/-`,
           prompt,
