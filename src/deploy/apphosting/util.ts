@@ -42,9 +42,8 @@ export async function createLocalBuildTarArchive(
       return APPHOSTING_YAML_FILE_REGEX.test(file);
     });
     for (const file of defaultFiles) {
-      const relativePath = path.relative(rootDir, path.join(rootDir, file));
-      if (!allFiles.includes(relativePath)) {
-        allFiles.push(relativePath);
+      if (!allFiles.includes(file)) {
+        allFiles.push(file);
       }
     }
   }
