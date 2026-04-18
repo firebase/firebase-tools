@@ -37,7 +37,12 @@ Make sure you have a working installation of [Node.js](http://nodejs.org/) and [
 
 ### Basic Configuration
 
-The Firebase MCP server can work with any MCP client that supports standard I/O (stdio) as the transport medium. When the Firebase MCP server makes tool calls, it uses the same user credentials that authorize the Firebase CLI in the environment where it's running.
+The Firebase MCP server supports two transport modes:
+
+1. **STDIO (Default)**: Uses standard I/O for communication. Suitable for local MCP clients that spawn the server as a subprocess.
+2. **Streamable HTTP**: Uses HTTP POST/GET with Server-Sent Events (SSE) for streaming. Suitable for remote connections, production deployments, and horizontal scaling.
+
+When the Firebase MCP server makes tool calls, it uses the same user credentials that authorize the Firebase CLI in the environment where it's running.
 
 Here are configuration instructions for popular AI-assistive tools:
 
@@ -137,6 +142,56 @@ To configure Firebase Studio to use the Firebase MCP server, edit or create the 
   }
 }
 ```
+
+### HTTP Transport (Streamable HTTP)
+
+For remote connections or production deployments, you can run the Firebase MCP server with Streamable HTTP transport:
+
+```bash
+# Start the server with HTTP transport
+npx firebase-tools mcp --transport streamable-http --port 8000
+
+# With a specific host binding
+npx firebase-tools mcp --transport streamable-http --host 0.0.0.0 --port 8000
+
+# Stateless mode for horizontal scaling (no server-side session tracking)
+npx firebase-tools mcp --transport streamable-http --port 8000 --stateless
+```
+
+#### HTTP Transport Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--transport` | Transport mode: `stdio` or `streamable-http` | `stdio` |
+| `--port` | HTTP server port | `8000` |
+| `--host` | HTTP server host | `127.0.0.1` |
+| `--stateless` | Enable stateless mode for horizontal scaling | `false` |
+
+#### MCP Client Configuration for HTTP Transport
+
+Configure your MCP client to connect via HTTP:
+
+```json
+{
+  "mcpServers": {
+    "firebase": {
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://localhost:8000/mcp"
+      }
+    }
+  }
+}
+```
+
+#### HTTP Endpoints
+
+When running in HTTP mode, the server exposes:
+
+- `POST /mcp` - Main MCP endpoint for JSON-RPC requests
+- `GET /mcp` - SSE endpoint for server-initiated messages
+- `DELETE /mcp` - Session termination (when not in stateless mode)
+- `GET /health` - Health check endpoint
 
 ## Usage
 
