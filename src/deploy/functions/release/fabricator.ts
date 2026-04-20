@@ -754,6 +754,16 @@ export class Fabricator {
           )
           .catch(rethrowAs(endpoint, "set invoker"));
       }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      await this.executor
+        .run(() =>
+          run.setInvokerUpdate(
+            endpoint.project,
+            `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
+            ["public"],
+          ),
+        )
+        .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
 
