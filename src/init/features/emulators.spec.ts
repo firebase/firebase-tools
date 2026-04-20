@@ -5,6 +5,7 @@ import * as prompt from "../../prompt";
 import * as downloadableEmulators from "../../emulator/downloadableEmulators";
 import { Emulators } from "../../emulator/types";
 import { Config } from "../../config";
+import { Setup } from "../index";
 
 describe("init/features/emulators", () => {
   let checkboxStub: sinon.SinonStub;
@@ -25,7 +26,7 @@ describe("init/features/emulators", () => {
 
   it("should do nothing if no emulators are selected", async () => {
     checkboxStub.resolves([]);
-    const setup: any = { config: {} };
+    const setup = { config: {} } as unknown as Setup;
     const config = new Config({}, {});
 
     await doSetup(setup, config);
@@ -40,7 +41,7 @@ describe("init/features/emulators", () => {
     confirmStub.onFirstCall().resolves(false); // UI
     confirmStub.onSecondCall().resolves(false); // Download
 
-    const setup: any = { config: {} };
+    const setup = { config: {} } as unknown as Setup;
     const config = new Config({}, {});
 
     await doSetup(setup, config);
@@ -56,7 +57,7 @@ describe("init/features/emulators", () => {
     numberStub.onSecondCall().resolves(4000); // UI port
     confirmStub.onSecondCall().resolves(false); // Download
 
-    const setup: any = { config: {} };
+    const setup = { config: {} } as unknown as Setup;
     const config = new Config({}, {});
 
     await doSetup(setup, config);
@@ -71,7 +72,7 @@ describe("init/features/emulators", () => {
     confirmStub.onFirstCall().resolves(false); // UI
     confirmStub.onSecondCall().resolves(true); // Download
 
-    const setup: any = { config: {} };
+    const setup = { config: {} } as unknown as Setup;
     const config = new Config({}, {});
 
     await doSetup(setup, config);
