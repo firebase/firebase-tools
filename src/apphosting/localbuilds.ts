@@ -96,7 +96,7 @@ export async function runUniversalMaker(
       if (fs.existsSync(dest)) {
         fs.rmSync(dest, { recursive: true, force: true });
       }
-      fs.renameSync(path.join(bundleOutput, file), dest);
+      fs.moveSync(path.join(bundleOutput, file), dest);
     }
     fs.rmdirSync(bundleOutput);
   }
