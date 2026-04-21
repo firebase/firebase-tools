@@ -449,11 +449,16 @@ export class FunctionsEmulator implements EmulatorInstance {
   }
 
   async start(): Promise<void> {
-    const credentialEnv = await getCredentialsEnvironment(
-      this.args.account,
-      this.logger,
-      "functions",
-    );
+    let credentialEnv: Record<string, string> = {};
+    // Skip fetching credentials for demo projects to avoid hanging on network calls
+    // to the GCP metadata server in local environments without credentials.
+    if (!Constants.isDemoProject(this.args.projectId)) {
+      credentialEnv = await getCredentialsEnvironment(
+        this.args.account,
+        this.logger,
+        "functions",
+      );
+    }
     for (const e of this.staticBackends) {
       e.env = { ...credentialEnv, ...e.env };
     }
