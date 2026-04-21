@@ -1,15 +1,12 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as fs from "fs-extra";
-import * as path from "path";
 import * as downloadUtils from "../downloadUtils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
 
 describe("universalMakerDownload", () => {
   let existsSyncStub: sinon.SinonStub;
-  let ensureDirSyncStub: sinon.SinonStub;
   let copySyncStub: sinon.SinonStub;
-  let chmodSyncStub: sinon.SinonStub;
   let downloadToTmpStub: sinon.SinonStub;
   let validateSizeStub: sinon.SinonStub;
   let validateChecksumStub: sinon.SinonStub;
@@ -24,9 +21,7 @@ describe("universalMakerDownload", () => {
     Object.defineProperty(process, "arch", { value: "x64", configurable: true });
 
     existsSyncStub = sinon.stub(fs, "existsSync");
-    ensureDirSyncStub = sinon.stub(fs, "ensureDirSync");
     copySyncStub = sinon.stub(fs, "copySync");
-    chmodSyncStub = sinon.stub(fs, "chmodSync");
     downloadToTmpStub = sinon.stub(downloadUtils, "downloadToTmp");
     validateSizeStub = sinon.stub(downloadUtils, "validateSize");
     validateChecksumStub = sinon.stub(downloadUtils, "validateChecksum");
