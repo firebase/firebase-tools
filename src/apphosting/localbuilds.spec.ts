@@ -19,7 +19,6 @@ describe("localBuild", () => {
   it("returns the expected output", async () => {
     const bundleConfig = {
       version: "v1" as const,
-
       runConfig: {
         runCommand: "npm run build:prod",
       },

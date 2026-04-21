@@ -82,46 +82,37 @@ export default async function (context: Context, options: Options): Promise<void
         }
       }
 
-      let zippedSource: { file: string; removeCallback: () => void } | undefined;
-      try {
-        zippedSource = isLocalBuild
-          ? await util.createLocalBuildTarArchive(cfg, rootDir, builtAppDir)
-          : await util.createSourceDeployArchive(cfg, rootDir);
+      const zippedSourcePath = isLocalBuild
+        ? await util.createLocalBuildTarArchive(cfg, rootDir, builtAppDir)
+        : await util.createSourceDeployArchive(cfg, rootDir);
 
-        const zippedSourcePath = zippedSource.file;
+      logLabeledBullet(
+        "apphosting",
+        `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+      );
 
-        logLabeledBullet(
-          "apphosting",
-          `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+      const backendLocation = context.backendLocations[cfg.backendId];
+      if (!backendLocation) {
+        throw new FirebaseError(
+          `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
         );
-
-        const backendLocation = context.backendLocations[cfg.backendId];
-        if (!backendLocation) {
-          throw new FirebaseError(
-            `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
-          );
-        }
-        logLabeledBullet(
-          "apphosting",
-          `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
-        );
-        const bucketName = bucketsPerLocation[backendLocation]!;
-        const { bucket, object } = await gcs.uploadObject(
-          {
-            file: zippedSourcePath,
-            stream: fs.createReadStream(zippedSourcePath),
-          },
-          bucketName,
-          isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
-        );
-        logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
-        context.backendStorageUris[cfg.backendId] =
-          `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
-      } finally {
-        if (zippedSource) {
-          zippedSource.removeCallback();
-        }
       }
+      logLabeledBullet(
+        "apphosting",
+        `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+      );
+      const bucketName = bucketsPerLocation[backendLocation]!;
+      const { bucket, object } = await gcs.uploadObject(
+        {
+          file: zippedSourcePath,
+          stream: fs.createReadStream(zippedSourcePath),
+        },
+        bucketName,
+        isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+      );
+      logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
+      context.backendStorageUris[cfg.backendId] =
+        `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
     }),
   );
 }
