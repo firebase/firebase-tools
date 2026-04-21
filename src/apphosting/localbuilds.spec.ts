@@ -259,6 +259,7 @@ describe("localBuild", () => {
       sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as any);
       sinon.stub(fs, "renameSync");
       sinon.stub(fs, "rmSync");
+      sinon.stub(fs, "rmdirSync");
       sinon.stub(fs, "unlinkSync");
       const output = await runUniversalMaker("./", "nextjs");
 
