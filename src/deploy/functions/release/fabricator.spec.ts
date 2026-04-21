@@ -1805,6 +1805,28 @@ describe("Fabricator", () => {
         }),
       );
     });
+
+    it("always sets callable triggers to public on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { callableTrigger: {} },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.have.been.calledWith(
+        ep.project,
+        sinon.match.string,
+        ["public"],
+      );
+    });
   });
 
   describe("updateRunFunction", () => {
