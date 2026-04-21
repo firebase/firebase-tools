@@ -1,0 +1,1 @@
+- Update the valid Python runtimes for functions. Default Python runtime is now Python 3.14.
