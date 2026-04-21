@@ -692,7 +692,20 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
@@ -722,7 +735,13 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
@@ -738,23 +757,6 @@ export class Fabricator {
         }
       })
       .catch(rethrowAs(endpoint, "delete"));
-  }
-
-  async setInvoker(endpoint: backend.Endpoint): Promise<void> {
-    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
-    if (backend.isHttpsTriggered(endpoint)) {
-      const invoker = endpoint.httpsTrigger.invoker || ["public"];
-      if (!invoker.includes("private")) {
-        await this.executor
-          .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
-          .catch(rethrowAs(endpoint, "set invoker"));
-      }
-    } else if (backend.isCallableTriggered(endpoint)) {
-      // Callable functions should always be public
-      await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, ["public"]))
-        .catch(rethrowAs(endpoint, "set invoker"));
-    }
   }
 
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {

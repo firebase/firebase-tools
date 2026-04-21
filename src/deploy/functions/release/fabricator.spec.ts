@@ -1767,7 +1767,7 @@ describe("Fabricator", () => {
   describe("createRunFunction", () => {
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
-      run.setInvokerUpdate.resolves();
+      run.setInvokerCreate.resolves();
 
       const ep = endpoint(
         { httpsTrigger: {} },
