@@ -1,0 +1,3 @@
+- Fixed an issue where hosting deploy allowed publishing to a site in a different project. (#10376)
+- Added 'firebase_deploy' and 'firebase_deploy_status' MCP tools.
+- Added SSE mode support to `firebase mcp`. To use it, run `firebase mcp --mode=sse --port=3000`, and connect your client on `http://localhost:3000`.

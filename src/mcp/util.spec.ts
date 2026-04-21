@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import { cleanSchema } from "./util";
+import * as sinon from "sinon";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import * as experiments from "../experiments";
+import { cleanSchema, applyAppMeta } from "./util";
 
 interface TestCase {
   desc: string;
@@ -472,5 +475,35 @@ describe("cleanSchema", () => {
     it(tc.desc, () => {
       expect(cleanSchema(tc.input)).to.deep.equal(tc.expected);
     });
+  });
+});
+
+describe("applyAppMeta", () => {
+  let experimentsStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    experimentsStub = sinon.stub(experiments, "isEnabled");
+  });
+
+  afterEach(() => {
+    experimentsStub.restore();
+  });
+
+  it("should add _meta if mcpapps experiment is enabled", () => {
+    experimentsStub.withArgs("mcpapps").returns(true);
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
+    const uri = "ui://test";
+    const expected = {
+      content: [{ type: "text", text: "hello" }],
+      _meta: { ui: { resourceUri: uri } },
+    };
+    expect(applyAppMeta(result, uri)).to.deep.equal(expected);
+  });
+
+  it("should NOT add _meta if mcpapps experiment is disabled", () => {
+    experimentsStub.withArgs("mcpapps").returns(false);
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
+    const uri = "ui://test";
+    expect(applyAppMeta(result, uri)).to.deep.equal(result);
   });
 });
