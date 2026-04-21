@@ -80,7 +80,7 @@ export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQ
     throw new FirebaseError(`${cloudSQLInstanceName} is not a valid cloudSQL instance name`);
   }
   const toString = () => {
-    return `projects/${projectId}/locations/${location}/services/${instanceId}`;
+    return `projects/${projectId}/locations/${location}/instances/${instanceId}`;
   };
   return {
     projectId,
