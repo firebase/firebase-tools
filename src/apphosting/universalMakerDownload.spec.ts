@@ -36,7 +36,6 @@ describe("universalMakerDownload", () => {
     sinon.restore();
     Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
     Object.defineProperty(process, "arch", { value: originalArch, configurable: true });
-
   });
 
   it("should return cached binary if valid", async () => {
@@ -57,7 +56,7 @@ describe("universalMakerDownload", () => {
     // Fail on first call (cache check), succeed on second (downloaded file)
     validateSizeStub.onFirstCall().rejects(new Error("Invalid size"));
     validateSizeStub.onSecondCall().resolves();
-    
+
     downloadToTmpStub.resolves("/tmp/downloaded_file");
     validateChecksumStub.resolves(); // For the new file
 
