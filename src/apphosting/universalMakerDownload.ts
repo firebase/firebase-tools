@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
@@ -58,45 +57,6 @@ function getPlatformInfo(): UniversalMakerUpdateDetails {
 }
 
 /**
- * Checks whether the file at `filepath` has the expected size.
- */
-function validateSize(filepath: string, expectedSize: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const stat = fs.statSync(filepath);
-    return stat.size === expectedSize
-      ? resolve()
-      : reject(
-          new FirebaseError(
-            `download failed, expected ${expectedSize} bytes but got ${stat.size}`,
-            { exit: 1 },
-          ),
-        );
-  });
-}
-
-/**
- * Checks whether the file at `filepath` has the expected SHA256 checksum.
- */
-function validateChecksumSHA256(filepath: string, expectedChecksum: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("sha256");
-    const stream = fs.createReadStream(filepath);
-    stream.on("data", (data: any) => hash.update(data));
-    stream.on("end", () => {
-      const checksum = hash.digest("hex");
-      return checksum === expectedChecksum
-        ? resolve()
-        : reject(
-            new FirebaseError(
-              `download failed, expected checksum ${expectedChecksum} but got ${checksum}`,
-              { exit: 1 },
-            ),
-          );
-    });
-  });
-}
-
-/**
  * Gets the path to the Universal Maker binary, downloading it if necessary.
  */
 export async function getOrDownloadUniversalMaker(): Promise<string> {
@@ -129,8 +89,8 @@ export async function getOrDownloadUniversalMaker(): Promise<string> {
     throw new FirebaseError(`Failed to download Universal Maker: ${(err as Error).message}`);
   }
 
-  await validateSize(tmpfile, details.expectedSize);
-  await validateChecksumSHA256(tmpfile, details.expectedChecksumSHA256);
+  await downloadUtils.validateSize(tmpfile, details.expectedSize);
+  await downloadUtils.validateChecksum(tmpfile, details.expectedChecksumSHA256, "sha256");
 
   // Move to cache dir
   fs.copySync(tmpfile, downloadPath);
