@@ -1821,11 +1821,9 @@ describe("Fabricator", () => {
       );
       await fab.createRunFunction(ep);
 
-      expect(run.setInvokerCreate).to.have.been.calledWith(
-        ep.project,
-        sinon.match.string,
-        ["public"],
-      );
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
     });
   });
 
