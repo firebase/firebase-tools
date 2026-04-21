@@ -18,6 +18,7 @@ import * as experiments from "../../experiments";
  * method, while local build deployments are tar-balled using the "createTarArchive"
  * method. The resulting archive is uploaded to the bucket, and the URI is stored in
  * the context for the subsequent release phase.
+ *
  * @param context - The deployment context containing backend configs and locations.
  * @param options - CLI options providing project ID and root directory.
  */

@@ -33,7 +33,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath = await util.createLocalBuildTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
@@ -61,7 +61,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath = await util.createLocalBuildTarArchive(
+      const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
         path.relative(rootDir, distDir),
