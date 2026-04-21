@@ -1,12 +1,13 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
-import { localBuild, runUniversalMaker } from "./localbuilds.js";
+import { localBuild, runUniversalMaker } from "./localbuilds";
 import * as secrets from "./secrets";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
 import * as fs from "fs";
 import * as experiments from "../experiments";
+import * as universalMakerDownload from "./universalMakerDownload";
 
 describe("localBuild", () => {
   beforeEach(() => {
@@ -210,8 +211,15 @@ describe("localBuild", () => {
   });
 
   describe("runUniversalMaker", () => {
-    it("should successfully execute Universal Maker and parse output", () => {
-      process.env.UNIVERSAL_MAKER_BINARY = "/path/to/universal_maker";
+    let downloadStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      downloadStub = sinon
+        .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
+        .resolves("/path/to/universal_maker");
+    });
+
+    it("should successfully execute Universal Maker and parse output", async () => {
       const spawnResult: childProcess.SpawnSyncReturns<string> = {
         pid: 12345,
         output: [null, "", ""],
@@ -235,7 +243,7 @@ describe("localBuild", () => {
         }),
       );
 
-      const output = runUniversalMaker("./", "nextjs");
+      const output = await runUniversalMaker("./", "nextjs");
 
       expect(output).to.deep.equal({
         metadata: {
@@ -266,21 +274,11 @@ describe("localBuild", () => {
           }),
         }),
       );
-      sinon.assert.calledOnce(readFileSyncStub);
-
-      delete process.env.UNIVERSAL_MAKER_BINARY;
+      sinon.assert.calledTwice(readFileSyncStub);
+      sinon.assert.calledOnce(downloadStub);
     });
 
-    it("should raise clear FirebaseError when UNIVERSAL_MAKER_BINARY is undefined", () => {
-      delete process.env.UNIVERSAL_MAKER_BINARY;
-
-      expect(() => runUniversalMaker("./")).to.throw(
-        "Please specify the path to your Universal Maker binary by establishing the UNIVERSAL_MAKER_BINARY environment variable.",
-      );
-    });
-
-    it("should raise clear FirebaseError on permission errors within child execution", () => {
-      process.env.UNIVERSAL_MAKER_BINARY = "/path/to/universal_maker";
+    it("should raise clear FirebaseError on permission errors within child execution", async () => {
       sinon.stub(childProcess, "spawnSync").callsFake(() => {
         const err = new Error("EACCES exception") as NodeJS.ErrnoException;
         err.code = "EACCES";
@@ -288,10 +286,10 @@ describe("localBuild", () => {
         throw err;
       });
 
-      expect(() => runUniversalMaker("./")).to.throw(
+      await expect(runUniversalMaker("./")).to.be.rejectedWith(
         "Failed to execute the Universal Maker binary due to permission constraints. Please assure you have set chmod +x on your file.",
       );
-      delete process.env.UNIVERSAL_MAKER_BINARY;
+      sinon.assert.calledOnce(downloadStub);
     });
   });
 });

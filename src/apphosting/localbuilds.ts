@@ -11,7 +11,7 @@ import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
-
+import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
 
 interface UniversalMakerOutput {
   command: string;
@@ -24,16 +24,15 @@ interface UniversalMakerOutput {
 /**
  * Runs the Universal Maker binary to build the project.
  */
-export function runUniversalMaker(projectRoot: string, framework?: string): AppHostingBuildOutput {
-  if (!process.env.UNIVERSAL_MAKER_BINARY) {
-    throw new FirebaseError(
-      "Please specify the path to your Universal Maker binary by establishing the UNIVERSAL_MAKER_BINARY environment variable.",
-    );
-  }
+export async function runUniversalMaker(
+  projectRoot: string,
+  framework?: string,
+): Promise<AppHostingBuildOutput> {
+  const universalMakerBinary = await getOrDownloadUniversalMaker();
 
   try {
     childProcess.spawnSync(
-      process.env.UNIVERSAL_MAKER_BINARY,
+      universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
         env: {
@@ -203,7 +202,7 @@ export async function localBuild(
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
     if (experiments.isEnabled("universalMaker")) {
-      apphostingBuildOutput = runUniversalMaker(projectRoot, framework);
+      apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
       logger.debug(
         `[apphosting] Universal Maker build outputFiles include: ${JSON.stringify(apphostingBuildOutput.outputFiles?.serverApp?.include ?? [])}`,
       );

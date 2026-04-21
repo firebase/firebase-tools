@@ -1,0 +1,16 @@
+{
+  "darwin_arm64": {
+    "version": "1.0.0",
+    "expectedSize": 16111618,
+    "expectedChecksumSHA256": "4b77d02a5f80f26d9bd1428f388c293c1fb264995d75b51c7d50fec7c87bcf58",
+    "remoteUrl": "https://artifactregistry.googleapis.com/download/v1/projects/serverless-runtimes-qa/locations/us-central1/repositories/universal-maker/files/darwin-arm64%3A1.0.0%3Auniversal_maker:download?alt=media",
+    "downloadPathRelativeToCacheDir": "universal-maker-darwin-arm64-1.0.0"
+  },
+  "linux_x64": {
+    "version": "1.0.0",
+    "expectedSize": 16856277,
+    "expectedChecksumSHA256": "dfc8357b8ce23ef1897e5590d4390f166e27734f241b770f721d68273118845c",
+    "remoteUrl": "https://artifactregistry.googleapis.com/download/v1/projects/serverless-runtimes-qa/locations/us-central1/repositories/universal-maker/files/x86-64%3A1.0.0%3Auniversal_maker:download?alt=media",
+    "downloadPathRelativeToCacheDir": "universal-maker-linux-x64-1.0.0"
+  }
+}
