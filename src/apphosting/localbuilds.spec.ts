@@ -212,38 +212,53 @@ describe("localBuild", () => {
 
   describe("runUniversalMaker", () => {
     let downloadStub: sinon.SinonStub;
+    let readFileSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
       downloadStub = sinon
         .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
         .resolves("/path/to/universal_maker");
+      readFileSyncStub = sinon.stub(fs, "readFileSync").callsFake((pathStr: any) => {
+        if (typeof pathStr === "string" && pathStr.endsWith("bundle.yaml")) {
+          return `
+            runConfig:
+              runCommand: npm run start
+            outputFiles:
+              serverApp:
+                include:
+                  - .next/standalone
+          `;
+        }
+        if (typeof pathStr === "string" && pathStr.endsWith("build_output.json")) {
+          return JSON.stringify({
+            command: "npm",
+            args: ["run", "start"],
+            language: "nodejs",
+            runtime: "nodejs22",
+            envVars: {
+              PORT: "3000",
+            },
+          });
+        }
+        return "";
+      });
     });
 
     it("should successfully execute Universal Maker and parse output", async () => {
-      const spawnResult: childProcess.SpawnSyncReturns<string> = {
-        pid: 12345,
-        output: [null, "", ""],
-        stdout: "",
-        stderr: "",
+      const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
         status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
         signal: null,
-      };
-      const spawnStub = sinon.stub(childProcess, "spawnSync").returns(spawnResult);
+      });
+
       sinon.stub(fs, "existsSync").returns(true);
-      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as unknown as any);
+      sinon.stub(fs, "mkdirSync");
       sinon.stub(fs, "renameSync");
       sinon.stub(fs, "rmSync");
       sinon.stub(fs, "unlinkSync");
-      const readFileSyncStub = sinon.stub(fs, "readFileSync").returns(
-        JSON.stringify({
-          command: "npm",
-          args: ["run", "start"],
-          language: "nodejs",
-          runtime: "nodejs22",
-          envVars: { PORT: 3000 },
-        }),
-      );
-
       const output = await runUniversalMaker("./", "nextjs");
 
       expect(output).to.deep.equal({
@@ -258,7 +273,7 @@ describe("localBuild", () => {
         },
         outputFiles: {
           serverApp: {
-            include: [".apphosting"],
+            include: [".next/standalone"],
           },
         },
       });
@@ -271,7 +286,6 @@ describe("localBuild", () => {
         sinon.match({
           env: sinon.match({
             X_GOOGLE_TARGET_PLATFORM: "fah",
-            FIREBASE_OUTPUT_BUNDLE_DIR: "bundle_output",
           }),
         }),
       );

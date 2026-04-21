@@ -31,6 +31,12 @@ export async function runUniversalMaker(
   const universalMakerBinary = await getOrDownloadUniversalMaker();
 
   try {
+    const bundleOutput = path.join(projectRoot, "bundle_output");
+    if (fs.existsSync(bundleOutput)) {
+      fs.rmSync(bundleOutput, { recursive: true, force: true });
+    }
+    fs.mkdirSync(bundleOutput, { recursive: true });
+    
     const res = childProcess.spawnSync(
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
@@ -38,34 +44,24 @@ export async function runUniversalMaker(
         env: {
           ...process.env,
           X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: "bundle_output",
+          FIREBASE_OUTPUT_BUNDLE_DIR: bundleOutput,
         },
-        stdio: "inherit",
+        stdio: "pipe",
       },
     );
+
+    if (res.stdout) {
+      logger.debug("[Universal Maker stdout]:\n" + res.stdout.toString());
+    }
+    if (res.stderr) {
+      logger.debug("[Universal Maker stderr]:\n" + res.stderr.toString());
+    }
 
     if (res.error) {
       throw res.error;
     }
     if (res.status !== 0) {
-      throw new FirebaseError(`Universal Maker failed with exit code ${res.status}.`);
-    }
-
-    // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
-    // To avoid this, we output to bundle_output first, and then safely move the files over.
-    const bundleOutput = path.join(projectRoot, "bundle_output");
-    const targetAppHosting = path.join(projectRoot, ".apphosting");
-    if (fs.existsSync(bundleOutput)) {
-      if (fs.existsSync(targetAppHosting)) {
-        fs.rmSync(targetAppHosting, { recursive: true, force: true });
-      }
-      fs.mkdirSync(targetAppHosting, { recursive: true });
-
-      const files = fs.readdirSync(bundleOutput);
-      for (const file of files) {
-        fs.renameSync(path.join(bundleOutput, file), path.join(targetAppHosting, file));
-      }
-      fs.rmSync(bundleOutput, { recursive: true, force: true });
+      throw new FirebaseError(`Universal Maker failed with exit code ${res.status ?? "unknown"}.`);
     }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
@@ -82,9 +78,28 @@ export async function runUniversalMaker(
       `Universal Maker did not produce the expected output file at ${outputFilePath}`,
     );
   }
-
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
+
+  const bundleOutput = path.join(projectRoot, "bundle_output");
+  const targetAppHosting = path.join(projectRoot, ".apphosting");
+  
+  // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
+  // To avoid this, we output to bundle_output first, and then safely move the files over.
+  if (fs.existsSync(bundleOutput)) {
+    if (!fs.existsSync(targetAppHosting)) {
+      fs.mkdirSync(targetAppHosting, { recursive: true });
+    }
+    const files = fs.readdirSync(bundleOutput);
+    for (const file of files) {
+      const dest = path.join(targetAppHosting, file);
+      if (fs.existsSync(dest)) {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+      fs.renameSync(path.join(bundleOutput, file), dest);
+    }
+    fs.rmdirSync(bundleOutput);
+  }
 
   let umOutput: UniversalMakerOutput;
   try {
@@ -94,6 +109,7 @@ export async function runUniversalMaker(
   }
 
   let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
+  let finalOutputFiles: string[] = [".apphosting"]; // Fallback
   const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
   if (fs.existsSync(bundleYamlPath)) {
     try {
@@ -103,6 +119,10 @@ export async function runUniversalMaker(
 
       if (bundleData?.runConfig?.runCommand) {
         finalRunCommand = bundleData.runConfig.runCommand;
+      }
+      
+      if (bundleData?.outputFiles?.serverApp?.include) {
+        finalOutputFiles = bundleData.outputFiles.serverApp.include;
       }
     } catch (e) {
       // Fall back gracefully if parser fails
@@ -127,7 +147,7 @@ export async function runUniversalMaker(
     },
     outputFiles: {
       serverApp: {
-        include: [".apphosting"],
+        include: finalOutputFiles,
       },
     },
   };
