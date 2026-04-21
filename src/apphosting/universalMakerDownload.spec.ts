@@ -7,6 +7,7 @@ import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
 describe("universalMakerDownload", () => {
   let existsSyncStub: sinon.SinonStub;
   let copySyncStub: sinon.SinonStub;
+  let chmodSyncStub: sinon.SinonStub;
   let downloadToTmpStub: sinon.SinonStub;
   let validateSizeStub: sinon.SinonStub;
   let validateChecksumStub: sinon.SinonStub;
@@ -22,6 +23,7 @@ describe("universalMakerDownload", () => {
 
     existsSyncStub = sinon.stub(fs, "existsSync");
     copySyncStub = sinon.stub(fs, "copySync");
+    chmodSyncStub = sinon.stub(fs, "chmodSync");
     downloadToTmpStub = sinon.stub(downloadUtils, "downloadToTmp");
     validateSizeStub = sinon.stub(downloadUtils, "validateSize");
     validateChecksumStub = sinon.stub(downloadUtils, "validateChecksum");
@@ -60,6 +62,7 @@ describe("universalMakerDownload", () => {
     expect(validateSizeStub).to.have.been.calledTwice;
     expect(downloadToTmpStub).to.have.been.calledOnce;
     expect(copySyncStub).to.have.been.calledOnce;
+    expect(chmodSyncStub).to.have.been.calledOnce;
     expect(result).to.include("universal-maker-linux-x64");
   });
 
@@ -73,6 +76,7 @@ describe("universalMakerDownload", () => {
     expect(existsSyncStub).to.have.been.calledOnce;
     expect(downloadToTmpStub).to.have.been.calledOnce;
     expect(copySyncStub).to.have.been.calledOnce;
+    expect(chmodSyncStub).to.have.been.calledOnce;
     expect(result).to.include("universal-maker-linux-x64");
   });
 });
