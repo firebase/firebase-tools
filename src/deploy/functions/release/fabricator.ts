@@ -741,28 +741,18 @@ export class Fabricator {
   }
 
   async setInvoker(endpoint: backend.Endpoint): Promise<void> {
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
         await this.executor
-          .run(() =>
-            run.setInvokerUpdate(
-              endpoint.project,
-              `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
-              invoker,
-            ),
-          )
+          .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
       await this.executor
-        .run(() =>
-          run.setInvokerUpdate(
-            endpoint.project,
-            `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
-            ["public"],
-          ),
-        )
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, ["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
