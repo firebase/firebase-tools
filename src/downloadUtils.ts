@@ -13,7 +13,7 @@ import { FirebaseError } from "./error";
  * @param remoteUrl URL to download.
  * @param auth Whether to include an access token in the download request. Defaults to false.
  */
-export async function downloadToTmp(remoteUrl: string, auth: boolean = false): Promise<string> {
+export async function downloadToTmp(remoteUrl: string, auth = false): Promise<string> {
   const u = new URL(remoteUrl);
   const c = new Client({ urlPrefix: u.origin, auth });
   const tmpfile = tmp.fileSync();

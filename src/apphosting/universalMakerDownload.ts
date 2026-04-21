@@ -60,13 +60,6 @@ function getPlatformInfo(): UniversalMakerUpdateDetails {
  * Gets the path to the Universal Maker binary, downloading it if necessary.
  */
 export async function getOrDownloadUniversalMaker(): Promise<string> {
-  if (process.env.UNIVERSAL_MAKER_BINARY) {
-    logger.debug(
-      `[apphosting] Env variable override detected. Using Universal Maker binary at ${process.env.UNIVERSAL_MAKER_BINARY}`,
-    );
-    return process.env.UNIVERSAL_MAKER_BINARY;
-  }
-
   const details = getPlatformInfo();
   const downloadPath = path.join(CACHE_DIR, details.downloadPathRelativeToCacheDir);
 
@@ -74,7 +67,15 @@ export async function getOrDownloadUniversalMaker(): Promise<string> {
 
   if (hasBinary) {
     logger.debug(`[apphosting] Universal Maker binary found at cache: ${downloadPath}`);
-    return downloadPath;
+    try {
+      await downloadUtils.validateSize(downloadPath, details.expectedSize);
+      await downloadUtils.validateChecksum(downloadPath, details.expectedChecksumSHA256, "sha256");
+      return downloadPath;
+    } catch (err) {
+      logger.warn(
+        `[apphosting] Cached Universal Maker binary failed verification: ${(err as Error).message}. Proceeding to redownload...`,
+      );
+    }
   }
 
   logger.info(
