@@ -109,8 +109,14 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
+      createArchiveStub.onFirstCall().resolves({
+        file: "path/to/foo-1234.zip",
+        removeCallback: sinon.stub(),
+      });
+      createTarArchiveStub.onFirstCall().resolves({
+        file: "path/to/foo-local-build-1234.tar.gz",
+        removeCallback: sinon.stub(),
+      });
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,
@@ -194,8 +200,14 @@ describe("apphosting", () => {
       const bucketName = `firebaseapphosting-sources-${projectNumber}-${location}`;
       getProjectNumberStub.resolves(projectNumber);
       upsertBucketStub.resolves(bucketName);
-      createArchiveStub.onFirstCall().resolves("path/to/foo-1234.zip");
-      createTarArchiveStub.onFirstCall().resolves("path/to/foo-local-build-1234.tar.gz");
+      createArchiveStub.onFirstCall().resolves({
+        file: "path/to/foo-1234.zip",
+        removeCallback: sinon.stub(),
+      });
+      createTarArchiveStub.onFirstCall().resolves({
+        file: "path/to/foo-local-build-1234.tar.gz",
+        removeCallback: sinon.stub(),
+      });
 
       uploadObjectStub.onFirstCall().resolves({
         bucket: bucketName,

@@ -24,8 +24,9 @@ export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
   targetSubDir?: string,
-): Promise<string> {
-  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
+): Promise<{ file: string; removeCallback: () => void }> {
+  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" });
+  const tmpFileName = tmpFile.name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
@@ -63,13 +64,13 @@ export async function createLocalBuildTarArchive(
   await tar.create(
     {
       gzip: true,
-      file: tmpFile,
+      file: tmpFileName,
       cwd: rootDir,
       portable: true,
     },
     allFiles,
   );
-  return tmpFile;
+  return { file: tmpFileName, removeCallback: tmpFile.removeCallback };
 }
 
 /**
@@ -80,9 +81,10 @@ export async function createSourceDeployArchive(
   config: AppHostingSingle,
   rootDir: string,
   targetSubDir?: string,
-): Promise<string> {
-  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" }).name;
-  const fileStream = fs.createWriteStream(tmpFile, {
+): Promise<{ file: string; removeCallback: () => void }> {
+  const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".zip" });
+  const tmpFileName = tmpFile.name;
+  const fileStream = fs.createWriteStream(tmpFileName, {
     flags: "w",
     encoding: "binary",
   });
@@ -114,7 +116,7 @@ export async function createSourceDeployArchive(
       { original: err as Error, exit: 1 },
     );
   }
-  return tmpFile;
+  return { file: tmpFileName, removeCallback: tmpFile.removeCallback };
 }
 
 function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {

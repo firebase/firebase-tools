@@ -31,7 +31,7 @@ export async function runUniversalMaker(
   const universalMakerBinary = await getOrDownloadUniversalMaker();
 
   try {
-    childProcess.spawnSync(
+    const res = childProcess.spawnSync(
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
@@ -39,25 +39,33 @@ export async function runUniversalMaker(
           ...process.env,
           X_GOOGLE_TARGET_PLATFORM: "fah",
           FIREBASE_OUTPUT_BUNDLE_DIR: "bundle_output",
-          NPM_CONFIG_REGISTRY: "https://registry.npmjs.org/",
         },
         stdio: "inherit",
       },
     );
+
+    if (res.error) {
+      throw res.error;
+    }
+    if (res.status !== 0) {
+      throw new FirebaseError(`Universal Maker failed with exit code ${res.status}.`);
+    }
 
     // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
     // To avoid this, we output to bundle_output first, and then safely move the files over.
     const bundleOutput = path.join(projectRoot, "bundle_output");
     const targetAppHosting = path.join(projectRoot, ".apphosting");
     if (fs.existsSync(bundleOutput)) {
-      if (!fs.existsSync(targetAppHosting)) {
-        fs.mkdirSync(targetAppHosting, { recursive: true });
+      if (fs.existsSync(targetAppHosting)) {
+        fs.rmSync(targetAppHosting, { recursive: true, force: true });
       }
+      fs.mkdirSync(targetAppHosting, { recursive: true });
+
       const files = fs.readdirSync(bundleOutput);
       for (const file of files) {
         fs.renameSync(path.join(bundleOutput, file), path.join(targetAppHosting, file));
       }
-      fs.rmdirSync(bundleOutput);
+      fs.rmSync(bundleOutput, { recursive: true, force: true });
     }
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
@@ -76,6 +84,8 @@ export async function runUniversalMaker(
   }
 
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
+  fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
+
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
