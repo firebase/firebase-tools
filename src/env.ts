@@ -19,7 +19,7 @@ export function setFirebaseMcp(value: boolean) {
 
 let mcpClientNameFlag: string | undefined;
 
-export function setMcpClientName(name: string) {
+export function setMcpClientName(name?: string) {
   mcpClientNameFlag = name;
 }
 

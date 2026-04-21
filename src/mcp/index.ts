@@ -30,7 +30,7 @@ import { Config } from "../config";
 import { configstore } from "../configstore";
 import { EmulatorHubClient } from "../emulator/hubClient";
 import { Emulators } from "../emulator/types";
-import { isFirebaseStudio, setMcpClientName } from "../env";
+import { isFirebaseStudio, setFirebaseMcp, setMcpClientName } from "../env";
 import { Options } from "../options";
 import { getProjectId } from "../projectUtils";
 import { loadRC } from "../rc";
@@ -128,6 +128,7 @@ export class FirebaseMcpServer {
     this.server.setRequestHandler(ListResourcesRequestSchema, this.mcpListResources.bind(this));
     this.server.setRequestHandler(ReadResourceRequestSchema, this.mcpReadResource.bind(this));
     const onInitialized = (): void => {
+      setFirebaseMcp(true);
       const clientInfo = this.server.getClientVersion();
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {

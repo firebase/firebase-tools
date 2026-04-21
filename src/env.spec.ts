@@ -15,9 +15,7 @@ describe("env", () => {
     delete process.env.OPENCODE;
     
     setFirebaseMcp(false);
-    // We can't easily reset module-level variables if they don't have a reset function,
-    // but passing empty string will make it falsy in detectAIAgent.
-    setMcpClientName("");
+    setMcpClientName(undefined);
   });
 
   afterEach(() => {
