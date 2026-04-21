@@ -124,8 +124,8 @@ export async function runUniversalMaker(
       if (bundleData?.outputFiles?.serverApp?.include) {
         finalOutputFiles = bundleData.outputFiles.serverApp.include;
       }
-    } catch (e) {
-      // Fall back gracefully if parser fails
+    } catch (e: any) {
+      logger.debug(`Failed to parse bundle.yaml: ${e.message}`);
     }
   }
 
