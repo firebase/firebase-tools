@@ -60,7 +60,7 @@ export const command = new Command("dataconnect:sdk:generate")
         },
         instructions: [],
       };
-      await dataconnectInit.askQuestions(setup);
+      await dataconnectInit.askQuestions(setup, config, options);
       await dataconnectInit.actuate(setup, config, options);
       await postInitSaves(setup, config);
       justRanInit = true;
