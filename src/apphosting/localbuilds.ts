@@ -36,7 +36,7 @@ export async function runUniversalMaker(
       fs.rmSync(bundleOutput, { recursive: true, force: true });
     }
     fs.mkdirSync(bundleOutput, { recursive: true });
-    
+
     const res = childProcess.spawnSync(
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
@@ -83,7 +83,7 @@ export async function runUniversalMaker(
 
   const bundleOutput = path.join(projectRoot, "bundle_output");
   const targetAppHosting = path.join(projectRoot, ".apphosting");
-  
+
   // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
   // To avoid this, we output to bundle_output first, and then safely move the files over.
   if (fs.existsSync(bundleOutput)) {
@@ -120,7 +120,7 @@ export async function runUniversalMaker(
       if (bundleData?.runConfig?.runCommand) {
         finalRunCommand = bundleData.runConfig.runCommand;
       }
-      
+
       if (bundleData?.outputFiles?.serverApp?.include) {
         finalOutputFiles = bundleData.outputFiles.serverApp.include;
       }
