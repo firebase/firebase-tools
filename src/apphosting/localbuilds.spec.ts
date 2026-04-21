@@ -256,6 +256,7 @@ describe("localBuild", () => {
 
       sinon.stub(fs, "existsSync").returns(true);
       sinon.stub(fs, "mkdirSync");
+      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as any);
       sinon.stub(fs, "renameSync");
       sinon.stub(fs, "rmSync");
       sinon.stub(fs, "unlinkSync");
