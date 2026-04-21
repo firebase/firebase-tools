@@ -95,11 +95,9 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
     const prompts = await dynamicImport("./apphosting/prompts");
 
     let runtime = experiments.isEnabled("abiu") ? prompts.DEFAULT_RUNTIME : undefined;
-    let automaticBaseImageUpdatesDisabled = experiments.isEnabled("abiu") ? false : undefined;
 
     if (experiments.isEnabled("abiu") && !options.nonInteractive) {
       runtime = await prompts.promptRuntime(projectId, location);
-      automaticBaseImageUpdatesDisabled = !(await prompts.promptAutomaticBaseImageUpdates());
     }
 
     const createBackendSpinner = ora("Creating your new backend...").start();
@@ -112,7 +110,6 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       webApp?.id,
       /* rootDir= */ "/",
       runtime,
-      automaticBaseImageUpdatesDisabled,
     );
 
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
