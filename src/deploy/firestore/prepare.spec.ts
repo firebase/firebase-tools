@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import prepare from "./prepare";
 import { RulesDeploy } from "../../rulesDeploy";
+import prepare, { RulesContext, IndexContext } from "./prepare";
 import { FirestoreApi } from "../../firestore/api";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as fsConfig from "../../firestore/fsConfig";
@@ -12,8 +12,8 @@ interface TestContext {
   firestoreIndexes?: boolean;
   firestoreRules?: boolean;
   firestore?: {
-    rules: any[];
-    indexes: any[];
+    rules: RulesContext[];
+    indexes: IndexContext[];
     rulesDeploy?: RulesDeploy;
   };
 }
@@ -39,7 +39,7 @@ describe("deploy/firestore/prepare", () => {
 
   it("should exit early if no firestore configs are found", async () => {
     const context = { projectId: "my-project" } as TestContext;
-    const options = { only: "" } as Options;
+    const options = { only: "" } as DeployOptions;
 
     await prepare(context, options);
 
@@ -53,7 +53,7 @@ describe("deploy/firestore/prepare", () => {
       only: "firestore",
       config: { data: { firestore: {} }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as Options;
+    } as unknown as DeployOptions;
 
     await prepare(context, options);
 
@@ -68,7 +68,7 @@ describe("deploy/firestore/prepare", () => {
       only: "firestore:rules",
       config: { data: { firestore: {} }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as Options;
+    } as unknown as DeployOptions;
 
     await prepare(context, options);
 
@@ -84,7 +84,7 @@ describe("deploy/firestore/prepare", () => {
     const options = {
       config: { data: { firestore: { database: "(default)" } }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as Options;
+    } as unknown as DeployOptions;
 
     await prepare(context, options);
 
@@ -99,7 +99,7 @@ describe("deploy/firestore/prepare", () => {
     const options = {
       config: { data: { firestore: { edition: "INVALID_EDITION" } }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as Options;
+    } as unknown as DeployOptions;
 
     await expect(prepare(context, options)).to.be.rejectedWith(
       FirebaseError,
