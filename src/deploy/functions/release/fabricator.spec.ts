@@ -1859,6 +1859,44 @@ describe("Fabricator", () => {
         }),
       );
     });
+
+    it("does not update invoker for callable functions", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker to public for HTTPS functions when explicitly null", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: { invoker: null } }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+    });
+
+    it("does not update invoker for HTTPS functions when invoker is omitted (undefined)", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
   });
 
   describe("deleteRunFunction", () => {
