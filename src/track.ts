@@ -72,7 +72,14 @@ export function usageEnabled(): boolean {
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
 // https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference?client_type=firebase#reserved_parameter_names
-function getGa4UserProps() {
+function getGa4UserProps(): {
+  node_platform: { value: string };
+  node_version: { value: string };
+  cli_version: { value: string };
+  firepit_version: { value: string };
+  is_firebase_studio: { value: string };
+  ai_agent: { value: string };
+} {
   return {
     node_platform: {
       value: process.platform,
@@ -81,7 +88,7 @@ function getGa4UserProps() {
       value: process.version,
     },
     cli_version: {
-      value: pkg.version,
+      value: pkg.version as string,
     },
     firepit_version: {
       value: process.env.FIREPIT_VERSION || "none",

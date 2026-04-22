@@ -13,7 +13,7 @@ describe("env", () => {
     delete process.env.CURSOR_AGENT;
     delete process.env.GEMINI_CLI;
     delete process.env.OPENCODE;
-    
+
     setFirebaseMcp(false);
     setMcpClientName(undefined);
   });
