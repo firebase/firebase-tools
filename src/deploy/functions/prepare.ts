@@ -409,7 +409,7 @@ export async function resolveDefaultRegions(
 
     if (backend.isBlockingTriggered(endpoint)) {
       // Set region for blocking functions to us-east1. This includes:
-      // - Auth blocking functions
+      // - Auth blocking functions (beforeCreate, beforeSignIn)
       // - Global AI Logic functions
       const eventType = endpoint.blockingTrigger.eventType;
       if (
@@ -677,11 +677,11 @@ export async function loadCodebases(
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
-          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
-          (Object.keys(supported.RUNTIMES) as supported.Runtime[])
-            .filter((runtime) => !supported.isDecommissioned(runtime))
-            .map((s) => `- ${s}`)
-            .join("\n"),
+        `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
+        (Object.keys(supported.RUNTIMES) as supported.Runtime[])
+          .filter((runtime) => !supported.isDecommissioned(runtime))
+          .map((s) => `- ${s}`)
+          .join("\n"),
       );
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
@@ -734,8 +734,8 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
     logLabeledWarning(
       "functions",
       `The following Dart functions use triggers that are not yet supported for production deployment: ${unsupported.map((ep) => ep.id).join(", ")}. ` +
-        "They will be deployed but may not work as expected. " +
-        "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
+      "They will be deployed but may not work as expected. " +
+      "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
 }
