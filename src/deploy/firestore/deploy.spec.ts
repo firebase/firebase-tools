@@ -23,7 +23,7 @@ describe("firestore deploy", () => {
 
   it("should skip if no rules or indexes in context", async () => {
     const context = {};
-    await deploy(context, {} as unknown as Options);
+    await deploy(context, {} as Options);
     expect(createRulesetsStub).to.not.have.been.called;
     expect(deployIndexesStub).to.not.have.been.called;
   });
@@ -32,11 +32,11 @@ describe("firestore deploy", () => {
     const context = {
       firestoreRules: true,
       firestore: {
-        rulesDeploy: new RulesDeploy({} as unknown as Options, {} as unknown as RulesetServiceType),
+        rulesDeploy: new RulesDeploy({} as Options, RulesetServiceType.CLOUD_FIRESTORE),
       },
     };
 
-    await deploy(context, {} as unknown as Options);
+    await deploy(context, {} as Options);
 
     expect(createRulesetsStub).to.have.been.calledWith(RulesetServiceType.CLOUD_FIRESTORE);
   });
@@ -46,7 +46,7 @@ describe("firestore deploy", () => {
       firestoreRules: true,
     };
 
-    await deploy(context, {} as unknown as Options);
+    await deploy(context, {} as Options);
 
     expect(createRulesetsStub).to.not.have.been.called;
   });
@@ -67,7 +67,7 @@ describe("firestore deploy", () => {
       },
     };
 
-    await deploy(context, {} as unknown as Options);
+    await deploy(context, {} as Options);
 
     expect(deployIndexesStub).to.have.been.calledOnce;
   });
@@ -88,13 +88,12 @@ describe("firestore deploy", () => {
       },
     };
 
-    const notFoundError = new Error("Not found") as unknown as { status: number };
-    notFoundError.status = 404;
+    const notFoundError = Object.assign(new Error("Not found"), { status: 404 });
 
     deployIndexesStub.onFirstCall().rejects(notFoundError);
     deployIndexesStub.onSecondCall().resolves();
 
-    await deploy(context, {} as unknown as Options);
+    await deploy(context, {} as Options);
 
     expect(deployIndexesStub).to.have.been.calledTwice;
     expect(sleepStub).to.have.been.calledOnce;
@@ -116,11 +115,10 @@ describe("firestore deploy", () => {
       },
     };
 
-    const genericError = new Error("Permission denied") as unknown as { status: number };
-    genericError.status = 403;
+    const genericError = Object.assign(new Error("Permission denied"), { status: 403 });
 
     deployIndexesStub.rejects(genericError);
 
-    await expect(deploy(context, {} as unknown as Options)).to.be.rejectedWith("Permission denied");
+    await expect(deploy(context, {} as Options)).to.be.rejectedWith("Permission denied");
   });
 });
