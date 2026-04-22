@@ -158,6 +158,7 @@ export default async function (context: Context, options: Options): Promise<void
           projectId,
           cfg.backendId,
           options.nonInteractive,
+          cfg.rootDir,
         );
         context.backendConfigs[cfg.backendId] = cfg;
         context.backendLocations[cfg.backendId] = location;
