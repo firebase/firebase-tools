@@ -1,11 +1,12 @@
 import * as backend from "../backend";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
 } from "../../../gcp/ailogic";
+import { logLabeledWarning } from "../../../utils";
 export { AI_LOGIC_BEFORE_GENERATE_CONTENT, AI_LOGIC_AFTER_GENERATE_CONTENT };
 
 export const AI_LOGIC_EVENTS = [
@@ -92,6 +93,17 @@ export class AILogicService implements Service {
     if (!isAILogicEvent(ep)) {
       return;
     }
-    await ailogicApi.deleteBlockingFunction(ep);
+    try {
+      await ailogicApi.deleteBlockingFunction(ep);
+    } catch (err) {
+      if (getErrStatus(err) === 404) {
+        logLabeledWarning(
+          "functions",
+          `Tried deleting trigger registration for function ${ep.id} but it is not currently registered`,
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 }
