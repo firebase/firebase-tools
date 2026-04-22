@@ -1,0 +1,1 @@
+- Fix CLI non-interactive mode for dataconnect init (#10401)
