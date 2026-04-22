@@ -214,6 +214,7 @@ export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
   nonInteractive: boolean,
+  rootDir: string = "/",
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,
@@ -236,7 +237,7 @@ export async function doSetupSourceDeploy(
     null,
     undefined,
     webApp?.id,
-    "/",
+    rootDir,
     runtime,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
