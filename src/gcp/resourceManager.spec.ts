@@ -40,7 +40,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: expectedPolicy,
           updateMask: "bindings",
-        } as unknown as Record<string, unknown>)
+        })
         .reply(200, expectedPolicy);
 
       const result = await addServiceAccountToRoles(
@@ -85,7 +85,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: expectedPolicy,
           updateMask: "bindings",
-        } as unknown as Record<string, unknown>)
+        })
         .reply(200, expectedPolicy);
 
       const result = await addServiceAccountToRoles(
@@ -118,7 +118,7 @@ describe("resourceManager", () => {
         .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
           policy: initialPolicy,
           updateMask: "bindings",
-        } as unknown as Record<string, unknown>)
+        })
         .reply(200, initialPolicy);
 
       const result = await addServiceAccountToRoles(
