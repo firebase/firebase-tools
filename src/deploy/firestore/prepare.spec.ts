@@ -53,7 +53,7 @@ describe("deploy/firestore/prepare", () => {
       only: "firestore",
       config: { data: { firestore: {} }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as DeployOptions;
+    } as DeployOptions;
 
     await prepare(context, options);
 
@@ -68,7 +68,7 @@ describe("deploy/firestore/prepare", () => {
       only: "firestore:rules",
       config: { data: { firestore: {} }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as DeployOptions;
+    } as DeployOptions;
 
     await prepare(context, options);
 
@@ -84,7 +84,7 @@ describe("deploy/firestore/prepare", () => {
     const options = {
       config: { data: { firestore: { database: "(default)" } }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as DeployOptions;
+    } as DeployOptions;
 
     await prepare(context, options);
 
@@ -99,7 +99,7 @@ describe("deploy/firestore/prepare", () => {
     const options = {
       config: { data: { firestore: { edition: "INVALID_EDITION" } }, path: () => "path" },
       projectId: "my-project",
-    } as unknown as DeployOptions;
+    } as DeployOptions;
 
     await expect(prepare(context, options)).to.be.rejectedWith(
       FirebaseError,
