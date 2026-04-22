@@ -4,6 +4,9 @@ import * as sinon from "sinon";
 import * as backend from "./backend";
 import * as storage from "../../gcp/storage";
 import * as triggerRegionHelper from "./triggerRegionHelper";
+import * as utils from "../../utils";
+import * as firestore from "../../gcp/firestore";
+import * as firestoreService from "./services/firestore";
 
 const SPEC = {
   region: "us-west1",
@@ -14,9 +17,13 @@ const SPEC = {
 describe("TriggerRegionHelper", () => {
   describe("ensureTriggerRegions", () => {
     let storageStub: sinon.SinonStub;
+    let firestoreStub: sinon.SinonStub;
 
     beforeEach(() => {
       storageStub = sinon.stub(storage, "getBucket").throws("unexpected call to storage.getBucket");
+      firestoreStub = sinon
+        .stub(firestore, "getDatabase")
+        .throws("unexpected call to firestore.getDatabase");
     });
 
     afterEach(() => {
@@ -116,6 +123,61 @@ describe("TriggerRegionHelper", () => {
       await expect(triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn))).to.be.rejectedWith(
         "A function in region europe-west4 cannot listen to a bucket in region us",
       );
+    });
+
+    it("should warn on transatlantic latency hops", async () => {
+      firestoreStub.resolves({ locationId: "europe-west1" });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: { database: "(default)" },
+          retry: false,
+          region: "europe-west1",
+        },
+        ...SPEC,
+        region: "us-central1",
+      };
+
+      const logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
+
+      expect(logLabeledWarningStub).to.have.been.calledOnceWith(
+        "functions",
+        `Function wantFn located in us-central1 uses a trigger located in europe-west1. ` +
+          `To avoid unnecessary cross-region network hops, you should explicitly assign this function to europe-west1.`,
+      );
+
+      logLabeledWarningStub.restore();
+    });
+
+    it("should not warn when regions match", async () => {
+      firestoreStub.resolves({ locationId: "us-central1" });
+      const wantFn: backend.Endpoint = {
+        id: "wantFn",
+        entryPoint: "wantFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: { database: "(default)" },
+          retry: false,
+          region: "us-central1",
+        },
+        ...SPEC,
+        region: "us-central1",
+      };
+
+      const logLabeledWarningStub = sinon.stub(utils, "logLabeledWarning");
+      firestoreService.clearCache();
+
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn));
+
+      expect(logLabeledWarningStub).to.not.have.been.called;
+
+      logLabeledWarningStub.restore();
     });
   });
 });
