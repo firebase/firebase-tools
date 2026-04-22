@@ -748,6 +748,7 @@ async function promptForCloudSQL(
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
         choices,
+        default: "",
         nonInteractive: options.nonInteractive,
       });
       if (info.cloudSqlInstanceId !== "") {
@@ -778,7 +779,7 @@ async function promptForCloudSQL(
     await promptForLocation(setup, info, options);
     info.shouldProvisionCSQL = await confirm({
       message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
-      default: true,
+      default: !options.nonInteractive,
       nonInteractive: options.nonInteractive,
     });
   }
