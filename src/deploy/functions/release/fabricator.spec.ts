@@ -1945,7 +1945,9 @@ describe("Fabricator", () => {
 
       await fab.updateRunFunction(update);
 
-      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, ["private"]);
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "private",
+      ]);
     });
   });
 
