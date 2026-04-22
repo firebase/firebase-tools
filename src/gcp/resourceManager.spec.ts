@@ -37,9 +37,8 @@ describe("resourceManager", () => {
         .reply(200, initialPolicy);
 
       nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
-          policy: expectedPolicy,
-          updateMask: "bindings",
+        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
+          return body.updateMask === "bindings" && JSON.stringify(body.policy) === JSON.stringify(expectedPolicy);
         })
         .reply(200, expectedPolicy);
 
@@ -82,9 +81,8 @@ describe("resourceManager", () => {
         .reply(200, initialPolicy);
 
       nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
-          policy: expectedPolicy,
-          updateMask: "bindings",
+        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
+          return body.updateMask === "bindings" && JSON.stringify(body.policy) === JSON.stringify(expectedPolicy);
         })
         .reply(200, expectedPolicy);
 
@@ -115,9 +113,8 @@ describe("resourceManager", () => {
         .reply(200, initialPolicy);
 
       nock("https://cloudresourcemanager.googleapis.com")
-        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, {
-          policy: initialPolicy,
-          updateMask: "bindings",
+        .post(`/v1/projects/${PROJECT_ID}:setIamPolicy`, (body: any) => {
+          return body.updateMask === "bindings" && JSON.stringify(body.policy) === JSON.stringify(initialPolicy);
         })
         .reply(200, initialPolicy);
 
