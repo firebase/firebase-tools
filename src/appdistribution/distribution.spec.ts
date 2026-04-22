@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 import { upload, Distribution, awaitTestResults, DistributionFileType } from "./distribution";
 import { AppDistributionClient } from "./client";
-import { UploadReleaseResult, ReleaseTest } from "./types";
+import { UploadReleaseResult, ReleaseTest, Release, TestDevice } from "./types";
 import * as utils from "../utils";
 
 describe("appdistribution/distribution", () => {
@@ -68,7 +68,11 @@ describe("appdistribution/distribution", () => {
       mockClient.uploadRelease.resolves("operations/123");
       mockClient.pollUploadStatus.resolves({
         result: UploadReleaseResult.RELEASE_CREATED,
-        release: { displayVersion: "1.0", buildVersion: "1", name: "test-rel" } as unknown as any,
+        release: {
+          displayVersion: "1.0",
+          buildVersion: "1",
+          name: "test-rel",
+        } as unknown as Release,
       });
 
       const res = await upload(
@@ -94,10 +98,12 @@ describe("appdistribution/distribution", () => {
 
   describe("awaitTestResults", () => {
     it("should succeed when all tests pass on first poll", async () => {
-      const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] } as any];
+      const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] }];
       mockClient.getReleaseTest.resolves({
         name: "tests/1",
-        deviceExecutions: [{ state: "PASSED", device: { model: "Pixel" } as unknown as any }],
+        deviceExecutions: [
+          { state: "PASSED", device: { model: "Pixel" } as unknown as TestDevice },
+        ],
       } as unknown as ReleaseTest);
 
       const setTimeoutStub = sinon.stub(global, "setTimeout").callsFake((fn) => fn() as any);
@@ -109,11 +115,15 @@ describe("appdistribution/distribution", () => {
     });
 
     it("should fail immediately when a test execution fails", async () => {
-      const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] } as any];
+      const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] }];
       mockClient.getReleaseTest.resolves({
         name: "tests/1",
         deviceExecutions: [
-          { state: "FAILED", failedReason: "Crash", device: { model: "Pixel" } as any },
+          {
+            state: "FAILED",
+            failedReason: "Crash",
+            device: { model: "Pixel" } as unknown as TestDevice,
+          },
         ],
       } as any);
 
