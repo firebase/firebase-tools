@@ -29,7 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-import { DEFAULT_RUNTIME, promptRuntime } from "./prompts";
+import { resolveRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -128,13 +128,7 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
-  if (runtime === undefined && isEnabled("abiu")) {
-    if (nonInteractive) {
-      runtime = DEFAULT_RUNTIME;
-    } else {
-      runtime = await promptRuntime(projectId, location);
-    }
-  }
+  runtime = await resolveRuntime(projectId, location, nonInteractive, runtime);
 
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
@@ -219,6 +213,7 @@ export async function doSetup(
 export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
+  nonInteractive: boolean,
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,
@@ -231,8 +226,19 @@ export async function doSetupSourceDeploy(
   }
   webAppSpinner.stop();
 
+  const runtime = await resolveRuntime(projectId, location, nonInteractive);
+
   const createBackendSpinner = ora("Creating your new backend...").start();
-  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  const backend = await createBackend(
+    projectId,
+    location,
+    backendId,
+    null,
+    undefined,
+    webApp?.id,
+    "/",
+    runtime,
+  );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   return {
     backend,
