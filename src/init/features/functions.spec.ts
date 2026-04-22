@@ -131,17 +131,23 @@ describe("functions", () => {
       });
 
       it("does not show Dart as an option when experiments are disabled", async () => {
+        const wasEnabled = experiments.isEnabled("dartfunctions");
+        experiments.setEnabled("dartfunctions", false);
         const setup = { config: { functions: [] }, rcfile: {} };
         // We just need it to resolve to get past askQuestions
         prompt.select.onFirstCall().resolves("javascript");
         prompt.confirm.resolves(false); // don't lint, don't install
 
-        await askQuestions(setup, emptyConfig, options);
+        try {
+          await askQuestions(setup, emptyConfig, options);
 
-        const selectCall = prompt.select.getCall(0);
-        const choices = selectCall.args[0].choices;
-        const values = choices.map((c: any) => c.value);
-        expect(values).to.not.include("dart");
+          const selectCall = prompt.select.getCall(0);
+          const choices = selectCall.args[0].choices;
+          const values = choices.map((c: any) => c.value);
+          expect(values).to.not.include("dart");
+        } finally {
+          experiments.setEnabled("dartfunctions", wasEnabled);
+        }
       });
 
       it("shows Dart as an option when dartfunctions is enabled", async () => {
