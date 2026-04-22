@@ -2,6 +2,7 @@ import { firebaseApiOrigin } from "../api";
 import * as apiv2 from "../apiv2";
 import { configstore } from "../configstore";
 import { FirebaseError } from "../error";
+import { getError } from "../error";
 import { logger } from "../logger";
 import { Constants } from "./constants";
 
@@ -75,7 +76,7 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
     throw new FirebaseError(
       `Failed to get Admin SDK for Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",
-      { exit: 2, original: err instanceof Error ? err : new Error(String(err)) },
+      { exit: 2, original: getError(err) },
     );
   }
 }

@@ -11,6 +11,7 @@ import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
+import { getError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
@@ -515,7 +516,7 @@ export async function checkJavaMajorVersion(): Promise<number> {
     } catch (err: unknown) {
       return reject(
         new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, {
-          original: err instanceof Error ? err : new Error(String(err)),
+          original: getError(err),
         }),
       );
     }

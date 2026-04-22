@@ -16,6 +16,7 @@ import {
 } from "./downloadableEmulators";
 import { EmulatorInfo, EmulatorInstance, Emulators, ListenSpec } from "./types";
 import { FirebaseError } from "../error";
+import { getErrMsg, getErrStatus } from "../error";
 import { EmulatorLogger } from "./emulatorLogger";
 import { BuildResult, mainSchemaYaml, requiresVector } from "../dataconnect/types";
 import { listenSpecsToString } from "./portUtils";
@@ -96,8 +97,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.log("DEBUG", `'fdc build' failed with error: ${message}`);
+      this.logger.log("DEBUG", `'fdc build' failed with error: ${getErrMsg(err)}`);
     }
     const env = await DataConnectEmulator.getEnv(this.args.account, this.args.extraEnv);
     await start(
@@ -351,7 +351,7 @@ export class DataConnectEmulator implements EmulatorInstance {
         this.logger.logLabeled(
           "DEBUG",
           "SQL Connect",
-          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${String(err)}`,
+          `Retrying connectToPostgress call (${i} of ${MAX_RETRIES} attempts): ${getErrMsg(err)}`,
         );
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
@@ -415,12 +415,10 @@ export class DataConnectEmulatorClient {
       );
       return res;
     } catch (err: unknown) {
-      if (typeof err === "object" && err !== null && "status" in err) {
-        const status = (err as { status: unknown }).status;
-        if (status === 500) {
-          const message = (err as any)?.context?.body?.message;
-          throw new FirebaseError(`SQL Connect emulator: ${message || String(err)}`);
-        }
+      const status = getErrStatus(err);
+      if (status === 500) {
+        const message = (err as any)?.context?.body?.message;
+        throw new FirebaseError(`SQL Connect emulator: ${message || String(err)}`);
       }
       throw err;
     }

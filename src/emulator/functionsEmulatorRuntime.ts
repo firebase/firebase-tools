@@ -7,6 +7,7 @@ import { pathToFileURL, URL } from "url";
 import * as _ from "lodash";
 
 import { EmulatorLog } from "./types";
+import { getErrMsg, getErrStack } from "../error";
 import { Constants } from "./constants";
 import { findModuleRoot, FunctionsRuntimeBundle, SignatureType } from "./functionsEmulatorShared";
 import { compareVersionStrings, isLocalHost } from "./functionsEmulatorUtils";
@@ -825,11 +826,10 @@ async function main(): Promise<void> {
   try {
     functionModule = await loadTriggers();
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : String(e);
     new EmulatorLog(
       "FATAL",
       "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${message}`,
+      `Failed to initialize and load triggers. This shouldn't happen: ${getErrMsg(e)}`,
     ).log();
     await flushAndExit(1);
   }
@@ -896,13 +896,8 @@ async function main(): Promise<void> {
           await runHTTPS(trigger, [req, res]);
       }
     } catch (err: unknown) {
-      const stack =
-        typeof err === "object" && err !== null && "stack" in err
-          ? (err as { stack: string }).stack
-          : undefined;
-      const message = err instanceof Error ? err.message : String(err);
-      new EmulatorLog("FATAL", "runtime-error", stack ? stack : String(err)).log();
-      res.status(500).send(message);
+      new EmulatorLog("FATAL", "runtime-error", getErrStack(err)).log();
+      res.status(500).send(getErrMsg(err));
     }
   });
   app.listen(process.env.PORT, () => {

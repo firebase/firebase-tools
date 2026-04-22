@@ -20,6 +20,7 @@ import {
 import { Constants, FIND_AVAILBLE_PORT_BY_DEFAULT } from "./constants";
 import { EmulatableBackend, FunctionsEmulator } from "./functionsEmulator";
 import { FirebaseError } from "../error";
+import { getErrMsg, getError } from "../error";
 import { getProjectId, getAliases, needProjectNumber } from "../projectUtils";
 import * as commandUtils from "./commandUtils";
 import { EmulatorHub } from "./hub";
@@ -175,11 +176,10 @@ export function shouldStart(options: Options, name: Emulators): boolean {
       normalizeAndValidate(options.config.src.functions);
       return true;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
         "ERROR",
         "functions",
-        `Failed to start Functions emulator: ${message}`,
+        `Failed to start Functions emulator: ${getErrMsg(err)}`,
       );
       return false;
     }
@@ -783,8 +783,7 @@ export async function startAll(
         options.instance = await getDefaultDatabaseInstance(projectId);
       }
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${message}`);
+      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${getErrMsg(e)}`);
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
@@ -1163,7 +1162,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   } catch (e: unknown) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
-      original: e instanceof Error ? e : new Error(String(e)),
+      original: getError(e),
     });
   }
 
