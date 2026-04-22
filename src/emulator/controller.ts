@@ -174,11 +174,12 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     try {
       normalizeAndValidate(options.config.src.functions);
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       EmulatorLogger.forEmulator(Emulators.FUNCTIONS).logLabeled(
         "ERROR",
         "functions",
-        `Failed to start Functions emulator: ${err.message}`,
+        `Failed to start Functions emulator: ${message}`,
       );
       return false;
     }
@@ -357,7 +358,7 @@ export async function startAll(
     if (!isDemoProject) {
       try {
         projectNumber = await needProjectNumber(options);
-      } catch (err: any) {
+      } catch (err: unknown) {
         EmulatorLogger.forEmulator(Emulators.EXTENSIONS).logLabeled(
           "ERROR",
           Emulators.EXTENSIONS,
@@ -781,11 +782,9 @@ export async function startAll(
       if (!options.instance) {
         options.instance = await getDefaultDatabaseInstance(projectId);
       }
-    } catch (e: any) {
-      databaseLogger.log(
-        "DEBUG",
-        `Failed to retrieve default database instance: ${JSON.stringify(e)}`,
-      );
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      databaseLogger.log("DEBUG", `Failed to retrieve default database instance: ${message}`);
     }
 
     const rc = dbRulesConfig.normalizeRulesConfig(
@@ -1117,7 +1116,7 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   let origin;
   try {
     origin = await hubClient.getStatus();
-  } catch (e: any) {
+  } catch (e: unknown) {
     const filePath = EmulatorHub.getLocatorFilePath(projectId);
     throw new FirebaseError(
       `The emulator hub for ${projectId} did not respond to a status check. If this error continues try shutting down all running emulators and deleting the file ${filePath}`,
@@ -1161,10 +1160,10 @@ export async function exportEmulatorData(exportPath: string, options: any, initi
   try {
     const targets = filterEmulatorTargets(options);
     await hubClient.postExport({ path: exportAbsPath, initiatedBy, targets });
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw new FirebaseError("Export request failed, see emulator logs for more information.", {
       exit: 1,
-      original: e,
+      original: e instanceof Error ? e : new Error(String(e)),
     });
   }
 

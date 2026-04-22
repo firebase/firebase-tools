@@ -43,7 +43,7 @@ export async function getProjectAdminSdkConfigOrCached(
     const config = await getProjectAdminSdkConfig(projectId);
     setCacheAdminSdkConfig(projectId, config);
     return config;
-  } catch (e: any) {
+  } catch (e: unknown) {
     logger.debug(`Failed to get Admin SDK config for ${projectId}, falling back to cache`, e);
     return getCachedAdminSdkConfig(projectId);
   }
@@ -71,11 +71,11 @@ async function getProjectAdminSdkConfig(projectId: string): Promise<AdminSdkConf
   try {
     const res = await apiClient.get<AdminSdkConfig>(`projects/${projectId}/adminSdkConfig`);
     return res.body;
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to get Admin SDK for Firebase project ${projectId}. ` +
         "Please make sure the project exists and your account has permission to access it.",
-      { exit: 2, original: err },
+      { exit: 2, original: err instanceof Error ? err : new Error(String(err)) },
     );
   }
 }

@@ -41,7 +41,7 @@ function requireAsync(moduleName: string, opts?: { paths: string[] }): Promise<a
   return new Promise((res, rej) => {
     try {
       res(require(require.resolve(moduleName, opts))); // eslint-disable-line @typescript-eslint/no-var-requires
-    } catch (e: any) {
+    } catch (e: unknown) {
       rej(e);
     }
   });
@@ -51,7 +51,7 @@ function requireResolveAsync(moduleName: string, opts?: { paths: string[] }): Pr
   return new Promise((res, rej) => {
     try {
       res(require.resolve(moduleName, opts));
-    } catch (e: any) {
+    } catch (e: unknown) {
       rej(e);
     }
   });
@@ -289,7 +289,7 @@ function requirePackageJson(): PackageJSON | undefined {
       devDependencies: pkg.devDependencies || {},
     };
     return developerPkgJSON;
-  } catch (err: any) {
+  } catch (err: unknown) {
     return;
   }
 }
@@ -335,7 +335,7 @@ function initializeNetworkFiltering(): void {
             try {
               new URL(arg);
               return arg;
-            } catch (err: any) {
+            } catch (err: unknown) {
               return;
             }
           } else if (typeof arg === "object") {
@@ -406,7 +406,7 @@ async function initializeFirebaseFunctionsStubs(): Promise<void> {
   let httpsProvider: any;
   try {
     httpsProvider = require(httpsProviderV1Resolution);
-  } catch (e: any) {
+  } catch (e: unknown) {
     httpsProvider = require(httpsProviderResolution);
   }
 
@@ -644,7 +644,7 @@ async function runFunction(func: () => Promise<any>): Promise<any> {
   let caughtErr;
   try {
     await func();
-  } catch (err: any) {
+  } catch (err: unknown) {
     caughtErr = err;
   }
   if (caughtErr) {
@@ -757,10 +757,15 @@ async function loadTriggers(): Promise<any> {
   let triggerModule;
   try {
     triggerModule = require(process.cwd());
-  } catch (err: any) {
-    if (err.code !== "ERR_REQUIRE_ESM") {
-      // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
-      await moduleResolutionDetective(err);
+  } catch (err: unknown) {
+    if (typeof err === "object" && err !== null && "code" in err) {
+      const code = (err as { code: unknown }).code;
+      if (code !== "ERR_REQUIRE_ESM") {
+        // Try to run diagnostics to see what could've gone wrong before rethrowing the error.
+        await moduleResolutionDetective(err as unknown as Error);
+        throw err;
+      }
+    } else {
       throw err;
     }
     const modulePath = require.resolve(process.cwd());
@@ -780,7 +785,7 @@ async function handleMessage(message: string) {
   let debug: FunctionsRuntimeBundle["debug"];
   try {
     debug = JSON.parse(message) as FunctionsRuntimeBundle["debug"];
-  } catch (e: any) {
+  } catch (e: unknown) {
     new EmulatorLog("FATAL", "runtime-error", `Got unexpected message body: ${message}`).log();
     await flushAndExit(1);
     return;
@@ -819,11 +824,12 @@ async function main(): Promise<void> {
   await initializeRuntime();
   try {
     functionModule = await loadTriggers();
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
     new EmulatorLog(
       "FATAL",
       "runtime-status",
-      `Failed to initialize and load triggers. This shouldn't happen: ${e.message}`,
+      `Failed to initialize and load triggers. This shouldn't happen: ${message}`,
     ).log();
     await flushAndExit(1);
   }
@@ -889,9 +895,14 @@ async function main(): Promise<void> {
         case "http":
           await runHTTPS(trigger, [req, res]);
       }
-    } catch (err: any) {
-      new EmulatorLog("FATAL", "runtime-error", err.stack ? err.stack : err).log();
-      res.status(500).send(err.message);
+    } catch (err: unknown) {
+      const stack =
+        typeof err === "object" && err !== null && "stack" in err
+          ? (err as { stack: string }).stack
+          : undefined;
+      const message = err instanceof Error ? err.message : String(err);
+      new EmulatorLog("FATAL", "runtime-error", stack ? stack : String(err)).log();
+      res.status(500).send(message);
     }
   });
   app.listen(process.env.PORT, () => {

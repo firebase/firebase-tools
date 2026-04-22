@@ -172,8 +172,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   ) {
     try {
       await requireAuth(options);
-    } catch (e: any) {
-      logger.debug(e);
+    } catch (e: unknown) {
+      logger.debug(e as any);
       utils.logLabeledWarning(
         "emulators",
         `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
@@ -333,8 +333,8 @@ function processKillSignal(
         }
       }
       res();
-    } catch (e: any) {
-      logger.debug(e);
+    } catch (e: unknown) {
+      logger.debug(e as any);
       rej();
     }
   };
@@ -512,9 +512,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
           stdio: ["inherit", "pipe", "pipe"],
         },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, {
+          original: err instanceof Error ? err : new Error(String(err)),
+        }),
       );
     }
 
