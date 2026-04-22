@@ -49,15 +49,16 @@ export async function promptRuntime(projectId: string, location: string): Promis
 /**
  * Resolves the runtime for the backend.
  * Checks if the 'abiu' experiment is enabled and prompts the user if interactive.
+ * @param runtimeOption The runtime specified in command arguments (--runtime) if any
  */
 export async function resolveRuntime(
   projectId: string,
   location: string,
   nonInteractive: boolean,
-  runtime?: string,
+  runtimeOption?: string,
 ): Promise<string | undefined> {
-  if (runtime !== undefined) {
-    return runtime;
+  if (runtimeOption !== undefined) {
+    return runtimeOption;
   }
   if (!isEnabled("abiu")) {
     return undefined;
