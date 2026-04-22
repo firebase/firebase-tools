@@ -662,6 +662,8 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  // We use createRunFunction and updateRunFunction specifically to deploy Dart functions
+  // directly over to Cloud Run! This avoids cluttering normal Gen 2 Node function hooks.
   async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -736,10 +738,16 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "update"));
 
     const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    // We check for null vs undefined to respect settings people make on the Google Console.
+    // If it's omitted (undefined), we don't touch policies. If it is explicitly null, we make it public.
+    let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    }
+
+    if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
