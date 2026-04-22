@@ -269,16 +269,39 @@ describe("prepare", () => {
       );
     });
 
-    it("falls back to us-central1 if not found in have", async () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
+    it("resolves us-east1 for global resource blocking triggers", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "beforeCreate",
+        region: build.REGION_TBD,
+        blockingTrigger: {
+          eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+        },
+      };
       const want = backend.of(wantE);
       const have = backend.empty();
 
       await prepare.resolveDefaultRegions(want, have);
 
-      expect(want.endpoints["us-central1"]?.["id"]).to.exist;
-      expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
-      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+      expect(want.endpoints["us-east1"]?.["beforeCreate"]).to.exist;
+    });
+
+    it("resolves us-east1 for global event triggers", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onPublish",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-east1"]?.["onPublish"]).to.exist;
     });
 
     it("does not infer region from have backend if it belongs to a different codebase", async () => {

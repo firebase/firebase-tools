@@ -12,6 +12,11 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import * as storage from "../../gcp/storage";
+import { getDatabase } from "./services/firestore";
+import { getDatabaseInstanceDetails } from "../../management/database";
+import { v2 as v2Events } from "../../functions/events";
+import { isGlobalAILogicEndpoint } from "./services/ailogic";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -400,20 +405,103 @@ export async function resolveDefaultRegions(
   matchRegionsForExisting(want, have);
 
   for (const endpoint of Object.values(want.endpoints[build.REGION_TBD] || {})) {
-    // TODO: Start adding dynamic region support per event type to distribute away from us-central1.
-    // Other regions have faster cold start times and will give a better customer experience. Ideas:
-    // 1. NAM5 resources can be put in us-east1 instead.
-    // 2. Regional resources can be placed in that region instead of assuming us-central1 (which is
-    //    the right behavior anyway and only works through legacy support in GCF). E.g. Put the storage
-    //    function in the storage bucket's region. Then we can nudge people to not have us-central1
-    //    be the default.
-    // 3. Functions that have a global resource (e.g. Auth, Test Lab, Pub/Sub, etc.) can be placed in
-    //    a region with higher headroom.
-    // 4. HTTP functions may be defaultable to a different region because it is up to the customer to
-    //    wire up the URL we give them irrespective.
-    // 5. Callable functions could be moved by default, though this will require breaking changes to
-    //    the client SDKs as well.
-    moveEndpointToRegion(want, endpoint, "us-central1");
+    let resolvedRegion = "us-central1";
+
+    if (backend.isBlockingTriggered(endpoint)) {
+      // Set region for blocking functions to us-east1. This includes:
+      // - Auth blocking functions
+      // - Global AI Logic functions
+      const eventType = endpoint.blockingTrigger.eventType;
+      if (
+        eventType === "providers/cloud.auth/eventTypes/user.beforeCreate" ||
+        eventType === "providers/cloud.auth/eventTypes/user.beforeSignIn"
+      ) {
+        resolvedRegion = "us-east1";
+      } else if (isGlobalAILogicEndpoint(endpoint)) {
+        resolvedRegion = "us-east1";
+      }
+    } else if (backend.isEventTriggered(endpoint)) {
+      // Set region for global event triggered functions to us-east1. This includes:
+      // - Pub/Sub publish events
+      // - Auth events
+      // - Test Lab events
+      // - Remote Config events
+      // - Firebase Alerts events
+      const eventTrigger = endpoint.eventTrigger;
+      const eventType = eventTrigger.eventType;
+
+      if (
+        eventType === v2Events.PUBSUB_PUBLISH_EVENT ||
+        eventType.startsWith("providers/cloud.auth/eventTypes/") ||
+        eventType.startsWith("google.firebase.testlab.") ||
+        eventType.startsWith("google.firebase.remoteconfig.") ||
+        eventType.startsWith("google.firebase.firebasealerts.")
+      ) {
+        resolvedRegion = "us-east1";
+      } else if (eventType.startsWith("google.cloud.firestore.")) {
+        // Set region for Firestore events based on database location, or to the
+        // nearest single-region location if the database is multi-regional.
+        try {
+          const databaseId = eventTrigger.eventFilters?.database || "(default)";
+          const db = await getDatabase(endpoint.project, databaseId);
+          const locationId = db.locationId.toLowerCase();
+          if (locationId === "nam5" || locationId === "nam7") {
+            resolvedRegion = "us-central1";
+          } else if (locationId === "eur3") {
+            resolvedRegion = "europe-west1";
+          } else {
+            resolvedRegion = locationId;
+          }
+        } catch (err: any) {
+          logger.debug("Failed to resolve Firestore database location", err);
+        }
+      } else if (eventType.startsWith("google.cloud.storage.")) {
+        // Set region for Cloud Storage events based on bucket location, or to the
+        // nearest single-region location if the bucket is multi-regional.
+        try {
+          const bucketName = eventTrigger.eventFilters?.bucket;
+          if (bucketName) {
+            const bucket = await storage.getBucket(bucketName);
+            const locationId = bucket.location.toLowerCase();
+            if (locationId === "us") {
+              resolvedRegion = "us-east1";
+            } else if (locationId === "eu") {
+              resolvedRegion = "europe-west1";
+            } else if (locationId === "asia") {
+              resolvedRegion = "asia-east1";
+            } else {
+              resolvedRegion = locationId;
+            }
+          }
+        } catch (err: any) {
+          logger.debug("Failed to resolve Cloud Storage bucket location", err);
+        }
+      } else if (eventType.startsWith("google.firebase.database.")) {
+        // Set region for Realtime Database events based on instance location.
+        if (eventTrigger.region) {
+          resolvedRegion = eventTrigger.region;
+        } else {
+          try {
+            const instanceName = eventTrigger.eventFilters?.instance;
+            if (instanceName) {
+              const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+              if (details.location && details.location !== "-") {
+                resolvedRegion = details.location.toLowerCase();
+              }
+            }
+          } catch (err: any) {
+            logger.debug("Failed to resolve Realtime Database instance location", err);
+          }
+        }
+      } else if (eventType.startsWith("google.firebase.dataconnect.")) {
+        // Set region for DataConnect events based on instance location.
+        if (eventTrigger.region) {
+          resolvedRegion = eventTrigger.region;
+        }
+      }
+    }
+
+    moveEndpointToRegion(want, endpoint, resolvedRegion);
   }
 }
 
