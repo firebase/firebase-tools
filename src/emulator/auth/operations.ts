@@ -1642,7 +1642,7 @@ async function signInWithIdp(
         userMatchingProvider,
       ));
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (reqBody.returnIdpCredential && err instanceof BadRequestError) {
       response.errorMessage = err.message;
       return response;

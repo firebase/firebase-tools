@@ -23,7 +23,7 @@ import { timeoutFallback } from "../timeout";
  * Converts data to a CallToolResult.
  */
 export function toContent(
-  data: any,
+  data: unknown,
   options?: { format?: "json" | "yaml"; contentPrefix?: string; contentSuffix?: string },
 ): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
@@ -42,8 +42,8 @@ export function toContent(
   const suffix = options?.contentSuffix || "";
   return {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
-    structuredContent: data,
-  } as CallToolResult & { structuredContent: any };
+    structuredContent: data as { [key: string]: unknown },
+  };
 }
 
 /**
