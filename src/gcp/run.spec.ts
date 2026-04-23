@@ -136,7 +136,7 @@ describe("run", () => {
         apiGetStub.onFirstCall().throws("Error calling get api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
         ).to.be.rejectedWith("Failed to get the IAM Policy on the Service service");
 
         expect(apiGetStub).to.be.called;
@@ -147,7 +147,7 @@ describe("run", () => {
         apiPostStub.throws("Error calling set api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
         ).to.be.rejectedWith("Failed to set the IAM Policy on the Service service");
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
@@ -170,8 +170,8 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["public"], client)).to.not.be
-          .rejected;
+        await expect(run.setInvokerUpdate("project", "service", ["public"], undefined, client)).to
+          .not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -200,8 +200,8 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["private"], client)).to.not.be
-          .rejected;
+        await expect(run.setInvokerUpdate("project", "service", ["private"], undefined, client)).to
+          .not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -228,6 +228,51 @@ describe("run", () => {
               "service-account2@project.iam.gserviceaccount.com",
               "service-account3@",
             ],
+            undefined,
+            client,
+          ),
+        ).to.not.be.rejected;
+        expect(apiGetStub).to.be.calledOnce;
+        expect(apiPostStub).to.be.calledOnce;
+      });
+
+      it("should merge existing invoker members when requested", async () => {
+        apiGetStub.onFirstCall().resolves({
+          body: {
+            bindings: [
+              {
+                role: "roles/run.invoker",
+                members: ["serviceAccount:custom@project.iam.gserviceaccount.com"],
+              },
+              { role: "random-role", members: ["user:pineapple"] },
+            ],
+            etag: "1234",
+            version: 3,
+          },
+        });
+        apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
+          const invokerBinding = json.policy.bindings.find(
+            (binding: any) => binding.role === "roles/run.invoker",
+          );
+          expect(invokerBinding.members.sort()).to.deep.eq([
+            "serviceAccount:custom@project.iam.gserviceaccount.com",
+            "serviceAccount:scheduler@project.iam.gserviceaccount.com",
+          ]);
+          expect(json.policy.bindings).to.deep.include({
+            role: "random-role",
+            members: ["user:pineapple"],
+          });
+          expect(json.policy.etag).to.equal("1234");
+
+          return Promise.resolve();
+        });
+
+        await expect(
+          run.setInvokerUpdate(
+            "project",
+            "service",
+            ["scheduler@"],
+            { mergeExistingMembers: true },
             client,
           ),
         ).to.not.be.rejected;
@@ -262,6 +307,7 @@ describe("run", () => {
               "service-account3@",
               "service-account1@",
             ],
+            undefined,
             client,
           ),
         ).to.not.be.rejected;

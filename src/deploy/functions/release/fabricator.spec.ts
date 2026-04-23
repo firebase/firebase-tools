@@ -820,32 +820,37 @@ describe("Fabricator", () => {
     });
 
     describe("scheduledTrigger", () => {
-      it("sets the default compute service account by default", async () => {
+      it("sets the default compute service account by default and preserves existing invokers", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-        run.setInvokerCreate.resolves();
+        run.setInvokerUpdate.resolves();
         const ep = endpoint(
           { scheduleTrigger: { schedule: "every 5 minutes" } },
           { platform: "gcfv2" },
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
-          await gce.getDefaultServiceAccount(fab.projectNumber),
-        ]);
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          [await gce.getDefaultServiceAccount(fab.projectNumber)],
+          { mergeExistingMembers: true },
+        );
       });
 
       it("sets the an explicit service account", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
         poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-        run.setInvokerCreate.resolves();
+        run.setInvokerUpdate.resolves();
         const ep = endpoint(
           { scheduleTrigger: { schedule: "every 5 minutes" } },
           { platform: "gcfv2", serviceAccount: "sa@" },
         );
 
         await fab.createV2Function(ep, new scraper.SourceTokenScraper());
-        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["sa@"]);
+        expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["sa@"], {
+          mergeExistingMembers: true,
+        });
       });
     });
 
@@ -962,6 +967,21 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
+    });
+
+    it("sets scheduler invoker and preserves existing invokers on scheduled functions", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint(
+        { scheduleTrigger: { schedule: "every 5 minutes" } },
+        { platform: "gcfv2", serviceAccount: "sa@" },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["sa@"], {
+        mergeExistingMembers: true,
+      });
     });
 
     it("does not set invoker by default", async () => {

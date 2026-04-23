@@ -504,7 +504,11 @@ export class Fabricator {
         ? [endpoint.serviceAccount]
         : [await gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
-        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .run(() =>
+          run.setInvokerUpdate(endpoint.project, serviceName, invoker, {
+            mergeExistingMembers: true,
+          }),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -623,8 +627,11 @@ export class Fabricator {
     }
 
     if (invoker) {
+      const invokerOptions = backend.isScheduleTriggered(endpoint)
+        ? { mergeExistingMembers: true }
+        : undefined;
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!, invokerOptions))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }

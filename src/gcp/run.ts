@@ -303,6 +303,10 @@ export async function setInvokerCreate(
   await setIamPolicy(serviceName, policy, httpClient);
 }
 
+export interface InvokerUpdateOptions {
+  mergeExistingMembers?: boolean;
+}
+
 /**
  * Gets the current IAM policy for the run service and overrides the invoker role with the supplied invoker members
  * @param projectId id of the project
@@ -314,17 +318,21 @@ export async function setInvokerUpdate(
   projectId: string,
   serviceName: string,
   invoker: string[],
+  options: InvokerUpdateOptions = {},
   httpClient: Client = client, // for unit testing
 ) {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
   }
-  const invokerMembers = proto.getInvokerMembers(invoker, projectId);
+  const desiredInvokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/run.invoker";
   const currentPolicy = await getIamPolicy(serviceName, httpClient);
   const currentInvokerBinding = currentPolicy.bindings?.find(
     (binding) => binding.role === invokerRole,
   );
+  const invokerMembers = options.mergeExistingMembers
+    ? Array.from(new Set([...(currentInvokerBinding?.members || []), ...desiredInvokerMembers]))
+    : desiredInvokerMembers;
   if (
     currentInvokerBinding &&
     JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
