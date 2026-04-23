@@ -1862,4 +1862,249 @@ describe("Fabricator", () => {
       expect(runv2.deleteService).to.have.been.called;
     });
   });
+
+  describe("preserveExternalChanges wiring", () => {
+    // When preserveExternalChanges is true on the endpoint, invoker writes
+    // must route through setInvokerUpdate with {mergeExistingMembers: true}
+    // so externally-added invoker members survive redeploys. When false or
+    // absent, the original setInvokerCreate (replace) path is preserved —
+    // so users who never opted in keep today's cleanup semantics.
+
+    describe("createV2Function", () => {
+      it("HTTPS: flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { httpsTrigger: {} },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerCreate).to.not.have.been.called;
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["public"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("HTTPS: flag off keeps setInvokerCreate", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.not.have.been.called;
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", ["public"]);
+      });
+
+      it("callable: flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { callableTrigger: {} },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["public"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("task queue: flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { taskQueueTrigger: { invoker: ["custom@"] } },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["custom@"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("blocking (auth): flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          {
+            blockingTrigger: {
+              eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+            },
+          },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["public"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("scheduled: flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { scheduleTrigger: { schedule: "every 5 minutes" } },
+          { platform: "gcfv2", serviceAccount: "sa@", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["sa@"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("dataConnect: flag on routes to setInvokerUpdate with merge", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { dataConnectGraphqlTrigger: { invoker: ["custom@"] } },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.called;
+        const args = run.setInvokerUpdate.firstCall.args;
+        expect(args[3]).to.deep.equal({ mergeExistingMembers: true });
+      });
+    });
+
+    describe("updateV2Function", () => {
+      // N.B. updateV2Function only calls setInvokerUpdate when the endpoint
+      // has an explicit invoker (null or a list). A bare `httpsTrigger: {}`
+      // leaves invoker undefined and skips the IAM update entirely.
+      it("passes mergeExistingMembers:true when flag is on", async () => {
+        gcfv2.updateFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { httpsTrigger: { invoker: ["custom@"] } },
+          { platform: "gcfv2", preserveExternalChanges: true },
+        );
+
+        await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["custom@"],
+          { mergeExistingMembers: true },
+        );
+      });
+
+      it("passes mergeExistingMembers:false when flag is off", async () => {
+        gcfv2.updateFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { httpsTrigger: { invoker: ["custom@"] } },
+          { platform: "gcfv2" },
+        );
+
+        await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          "service",
+          ["custom@"],
+          { mergeExistingMembers: false },
+        );
+      });
+    });
+
+    describe("createV1Function", () => {
+      it("HTTPS: flag on routes to gcf.setInvokerUpdate with merge", async () => {
+        gcf.createFunction.resolves({ name: "op", type: "create", done: false });
+        poller.pollOperation.resolves({ httpsTrigger: { url: "url" } });
+        gcf.setInvokerUpdate.resolves();
+        const ep = endpoint({ httpsTrigger: {} }, { preserveExternalChanges: true });
+
+        await fab.createV1Function(ep, new scraper.SourceTokenScraper());
+
+        expect(gcf.setInvokerCreate).to.not.have.been.called;
+        expect(gcf.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          backend.functionName(ep),
+          ["public"],
+          { mergeExistingMembers: true },
+        );
+      });
+    });
+
+    describe("updateV1Function", () => {
+      it("HTTPS: flag on passes mergeExistingMembers:true", async () => {
+        gcf.updateFunction.resolves({ name: "op", type: "update", done: false });
+        poller.pollOperation.resolves({});
+        gcf.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { httpsTrigger: { invoker: ["custom@"] } },
+          { preserveExternalChanges: true },
+        );
+
+        await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
+
+        expect(gcf.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          backend.functionName(ep),
+          ["custom@"],
+          { mergeExistingMembers: true },
+        );
+      });
+    });
+
+    describe("run-native setInvoker (createRunFunction)", () => {
+      it("flag on routes to setInvokerUpdate with merge", async () => {
+        runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+        run.setInvokerUpdate.resolves();
+        const ep = endpoint(
+          { httpsTrigger: {} },
+          {
+            platform: "run",
+            baseImageUri: "gcr.io/base",
+            preserveExternalChanges: true,
+          },
+        );
+
+        await fab.createRunFunction(ep);
+
+        expect(run.setInvokerUpdate).to.have.been.calledWith(
+          ep.project,
+          `projects/${ep.project}/locations/${ep.region}/services/${ep.id}`,
+          ["public"],
+          { mergeExistingMembers: true },
+        );
+      });
+    });
+  });
 });

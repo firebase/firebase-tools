@@ -246,6 +246,11 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
+  // Defaults to false. If true, deploys honor externally-modified Cloud Run / Cloud
+  // Functions IAM invoker bindings (and potentially other preserve-aware knobs) instead
+  // of overwriting them with the Firebase-managed default on every deploy.
+  preserveExternalChanges?: Field<boolean>;
+
   // Defaults to "gcfv2".
   platform?: "gcfv1" | "gcfv2" | "run";
 
@@ -550,6 +555,18 @@ export function toBackend(
         bdEndpoint,
         "cpu",
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
+      );
+      proto.convertIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "preserveExternalChanges",
+        nullsafeVisitor((v) => {
+          try {
+            return r.resolveBoolean(v);
+          } catch {
+            return false;
+          }
+        }),
       );
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {};

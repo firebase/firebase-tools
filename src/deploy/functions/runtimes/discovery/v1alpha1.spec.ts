@@ -1079,6 +1079,64 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(build.of({ id: expectedBuild }));
     });
 
+    it("copies preserveExternalChanges literal into the build endpoint", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            preserveExternalChanges: true,
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Endpoint = {
+        ...DEFAULTED_ENDPOINT,
+        httpsTrigger: {},
+        preserveExternalChanges: true,
+      };
+      expect(parsed).to.deep.equal(build.of({ id: expected }));
+    });
+
+    it("copies preserveExternalChanges as a CEL Field<boolean> into the build endpoint", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+            preserveExternalChanges: "{{ params.PRESERVE }}",
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Endpoint = {
+        ...DEFAULTED_ENDPOINT,
+        httpsTrigger: {},
+        preserveExternalChanges: "{{ params.PRESERVE }}",
+      };
+      expect(parsed).to.deep.equal(build.of({ id: expected }));
+    });
+
+    it("leaves preserveExternalChanges undefined when absent from the manifest", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {
+          id: {
+            ...MIN_WIRE_ENDPOINT,
+            httpsTrigger: {},
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const endpoint = parsed.endpoints.id;
+      expect(endpoint.preserveExternalChanges).to.equal(undefined);
+    });
+
     it("handles multiple regions", () => {
       const yaml: v1alpha1.WireManifest = {
         specVersion: "v1alpha1",

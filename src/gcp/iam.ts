@@ -246,6 +246,42 @@ export function mergeBindings(policy: Policy, requiredBindings: Binding[]): bool
   return updated;
 }
 
+/**
+ * Reconstructs `bindings` with a single unconditional binding for `role`
+ * whose members come from the declared `members` list. When `options.merge`
+ * is true, the resulting members are the union of the declared members and
+ * any members already present on an existing unconditional binding for that
+ * role — this is how we preserve externally-added invokers when a user has
+ * opted into `preserveExternalChanges`.
+ *
+ * Conditional bindings (those with a `condition` field) for the same role
+ * are left untouched in either mode — Firebase never writes conditional
+ * invoker bindings, so if one is present it was added out-of-band and must
+ * be preserved.
+ */
+export function mergeInvokerBinding(
+  bindings: Binding[],
+  role: string,
+  members: string[],
+  options: { merge: boolean },
+): Binding[] {
+  const result: Binding[] = [];
+  let existingUnconditional: Binding | undefined;
+  for (const b of bindings) {
+    if (b.role === role && !b.condition) {
+      existingUnconditional = b;
+      continue;
+    }
+    result.push(b);
+  }
+  const finalMembers =
+    options.merge && existingUnconditional
+      ? Array.from(new Set([...existingUnconditional.members, ...members]))
+      : [...members];
+  result.push({ role, members: finalMembers });
+  return result;
+}
+
 /** Utility to print the required binding commands */
 export function printManualIamConfig(
   requiredBindings: Binding[],

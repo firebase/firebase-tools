@@ -9,6 +9,7 @@ import * as cli from "./cli";
 import * as proto from "../../src/gcp/proto";
 import * as tasks from "../../src/gcp/cloudtasks";
 import * as scheduler from "../../src/gcp/cloudscheduler";
+import * as run from "../../src/gcp/run";
 import { Endpoint } from "../../src/deploy/functions/backend";
 import { requireAuth } from "../../src/requireAuth";
 
@@ -350,6 +351,77 @@ describe("firebase deploy", function (this) {
         });
       }
     }
+  });
+
+  it("preserves externally-added Cloud Run invoker members when preserveExternalChanges is true", async () => {
+    // Regression test for firebase/firebase-tools#6549.
+    // Covers the scheduled-v2 path which is what the original issue reports.
+    const TEST_INVOKER = `user:test-preserve-${RUN_ID}@example.com`;
+
+    // 1. Deploy with the flag set.
+    const optsOn: Opts = {
+      v1Opts: { preserveExternalChanges: true },
+      v2Opts: { preserveExternalChanges: true },
+      v1TqOpts: {},
+      v2TqOpts: {},
+      v1IdpOpts: {},
+      v2IdpOpts: {},
+      v1ScheduleOpts: {},
+      v2ScheduleOpts: { schedule: "every 30 minutes" },
+    };
+    const firstDeploy = await setOptsAndDeploy(optsOn);
+    expect(firstDeploy.stdout, "first deploy").to.match(/Deploy complete!/);
+
+    const endpoints = await listFns(RUN_ID);
+    const scheduled = Object.values(endpoints).find(
+      (e) => e.platform === "gcfv2" && "scheduleTrigger" in e,
+    );
+    expect(scheduled, "v2scheduled endpoint").to.not.be.undefined;
+
+    // 2. Add an external invoker member directly to the Cloud Run service.
+    const runServiceName = `projects/${FIREBASE_PROJECT}/locations/${scheduled!.region}/services/${scheduled!.runServiceId}`;
+    const beforePolicy = await run.getIamPolicy(runServiceName);
+    const preservedBinding = beforePolicy.bindings?.find(
+      (b) => b.role === "roles/run.invoker" && !b.condition,
+    );
+    const preservedMembers = [...(preservedBinding?.members || []), TEST_INVOKER];
+    await run.setIamPolicy(runServiceName, {
+      bindings: [
+        ...(beforePolicy.bindings || []).filter((b) => b.role !== "roles/run.invoker" || b.condition),
+        { role: "roles/run.invoker", members: preservedMembers },
+      ],
+      etag: beforePolicy.etag || "",
+      version: 3,
+    });
+
+    // 3. Redeploy with the flag still set — the external invoker must survive.
+    const secondDeploy = await setOptsAndDeploy(optsOn);
+    expect(secondDeploy.stdout, "second deploy").to.match(/Deploy complete!|No changes detected/);
+
+    const afterOnPolicy = await run.getIamPolicy(runServiceName);
+    const afterOnBinding = afterOnPolicy.bindings?.find(
+      (b) => b.role === "roles/run.invoker" && !b.condition,
+    );
+    expect(afterOnBinding?.members, "invoker members after preserve-on redeploy").to.include(
+      TEST_INVOKER,
+    );
+
+    // 4. Flip the flag off and redeploy — the external invoker should now be removed.
+    const optsOff: Opts = {
+      ...optsOn,
+      v1Opts: { preserveExternalChanges: false },
+      v2Opts: { preserveExternalChanges: false },
+    };
+    const thirdDeploy = await setOptsAndDeploy(optsOff);
+    expect(thirdDeploy.stdout, "third deploy").to.match(/Deploy complete!|No changes detected/);
+
+    const afterOffPolicy = await run.getIamPolicy(runServiceName);
+    const afterOffBinding = afterOffPolicy.bindings?.find(
+      (b) => b.role === "roles/run.invoker" && !b.condition,
+    );
+    expect(afterOffBinding?.members, "invoker members after preserve-off redeploy").to.not.include(
+      TEST_INVOKER,
+    );
   });
 
   // BUGBUG: Setting options to null SHOULD restore their values to default, but this isn't correctly implemented in

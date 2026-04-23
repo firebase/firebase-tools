@@ -336,8 +336,20 @@ export async function setInvokerCreate(
 }
 
 /**
- * Gets the current IAM policy on function update,
- * overrides the current invoker role with the supplied invoker members
+ * Options for {@link setInvokerUpdate}.
+ * `mergeExistingMembers`: when true, preserve any externally-added members on
+ * the existing unconditional invoker binding instead of replacing them.
+ */
+export interface SetInvokerUpdateOptions {
+  mergeExistingMembers?: boolean;
+}
+
+/**
+ * Gets the current IAM policy on function update and updates the invoker role
+ * with the supplied invoker members. When `options.mergeExistingMembers` is
+ * true the new members are unioned with any existing unconditional members on
+ * the invoker binding (used to honor `preserveExternalChanges`). Conditional
+ * bindings on the same role are always preserved untouched.
  * @param projectId id of the project
  * @param fnName function name
  * @param invoker an array of invoker strings
@@ -347,6 +359,7 @@ export async function setInvokerUpdate(
   projectId: string,
   fnName: string,
   invoker: string[],
+  options?: SetInvokerUpdateOptions,
 ): Promise<void> {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -354,21 +367,27 @@ export async function setInvokerUpdate(
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/cloudfunctions.invoker";
   const currentPolicy = await getIamPolicy(fnName);
-  const currentInvokerBinding = currentPolicy.bindings?.find(
-    (binding) => binding.role === invokerRole,
+  const currentUnconditional = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole && !binding.condition,
   );
+  const desiredMembers =
+    options?.mergeExistingMembers && currentUnconditional
+      ? Array.from(new Set([...currentUnconditional.members, ...invokerMembers]))
+      : invokerMembers;
   if (
-    currentInvokerBinding &&
-    JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
+    currentUnconditional &&
+    JSON.stringify([...currentUnconditional.members].sort()) ===
+      JSON.stringify([...desiredMembers].sort())
   ) {
     return;
   }
 
-  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
-  bindings.push({
-    role: invokerRole,
-    members: invokerMembers,
-  });
+  const bindings = iam.mergeInvokerBinding(
+    currentPolicy.bindings || [],
+    invokerRole,
+    invokerMembers,
+    { merge: !!options?.mergeExistingMembers },
+  );
 
   const policy: iam.Policy = {
     bindings: bindings,

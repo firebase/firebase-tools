@@ -304,12 +304,18 @@ export class Fabricator {
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
     endpoint.uri = resultFunction?.httpsTrigger?.url;
+    const setV1Invoker = (members: string[]): Promise<void> =>
+      endpoint.preserveExternalChanges
+        ? gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), members, {
+            mergeExistingMembers: true,
+          })
+        : gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), members);
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+            await setV1Invoker(invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
@@ -317,7 +323,7 @@ export class Fabricator {
       // Callable functions should always be public
       await this.executor
         .run(async () => {
-          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+          await setV1Invoker(["public"]);
         })
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
@@ -327,7 +333,7 @@ export class Fabricator {
       if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), invoker);
+            await setV1Invoker(invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
@@ -338,7 +344,7 @@ export class Fabricator {
       // Auth Blocking functions should always be public
       await this.executor
         .run(async () => {
-          await gcf.setInvokerCreate(endpoint.project, backend.functionName(endpoint), ["public"]);
+          await setV1Invoker(["public"]);
         })
         .catch(rethrowAs(endpoint, "set invoker"));
     }
@@ -459,11 +465,17 @@ export class Fabricator {
       );
       return;
     }
+    const setV2Invoker = (members: string[]): Promise<void> =>
+      endpoint.preserveExternalChanges
+        ? run.setInvokerUpdate(endpoint.project, serviceName, members, {
+            mergeExistingMembers: true,
+          })
+        : run.setInvokerCreate(endpoint.project, serviceName, members);
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
       if (!invoker.includes("private")) {
         await this.executor
-          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .run(() => setV2Invoker(invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
@@ -472,13 +484,13 @@ export class Fabricator {
       invoker.push(getDataConnectP4SA(this.projectNumber));
       if (!invoker.includes("private")) {
         await this.executor
-          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .run(() => setV2Invoker(invoker))
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isCallableTriggered(endpoint)) {
       // Callable functions should always be public
       await this.executor
-        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .run(() => setV2Invoker(["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       // Like HTTPS triggers, taskQueueTriggers have an invoker, but unlike HTTPS they don't default
@@ -487,7 +499,7 @@ export class Fabricator {
       if (invoker && !invoker.includes("private")) {
         await this.executor
           .run(async () => {
-            await run.setInvokerCreate(endpoint.project, serviceName, invoker);
+            await setV2Invoker(invoker);
           })
           .catch(rethrowAs(endpoint, "set invoker"));
       }
@@ -497,14 +509,14 @@ export class Fabricator {
     ) {
       // Auth Blocking functions should always be public
       await this.executor
-        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .run(() => setV2Invoker(["public"]))
         .catch(rethrowAs(endpoint, "set invoker"));
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
         : [await gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
-        .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+        .run(() => setV2Invoker(invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -544,7 +556,11 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() =>
+          gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!, {
+            mergeExistingMembers: !!endpoint.preserveExternalChanges,
+          }),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -624,7 +640,11 @@ export class Fabricator {
 
     if (invoker) {
       await this.executor
-        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .run(() =>
+          run.setInvokerUpdate(endpoint.project, serviceName, invoker!, {
+            mergeExistingMembers: !!endpoint.preserveExternalChanges,
+          }),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -750,6 +770,7 @@ export class Fabricator {
               endpoint.project,
               `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
               invoker,
+              { mergeExistingMembers: !!endpoint.preserveExternalChanges },
             ),
           )
           .catch(rethrowAs(endpoint, "set invoker"));

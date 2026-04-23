@@ -259,6 +259,58 @@ describe("toBackend", () => {
     }
   });
 
+  it("resolves literal preserveExternalChanges onto the backend endpoint", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        preserveExternalChanges: true,
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    const endpointDef = Object.values(backend.endpoints)[0];
+    expect(endpointDef!.func.preserveExternalChanges).to.equal(true);
+  });
+
+  it("resolves a CEL preserveExternalChanges via a param onto the backend endpoint", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        preserveExternalChanges: "{{ params.PRESERVE }}",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {
+      PRESERVE: new ParamValue("false", false, { boolean: true }),
+    });
+    const endpointDef = Object.values(backend.endpoints)[0];
+    expect(endpointDef!.func.preserveExternalChanges).to.equal(false);
+  });
+
+  it("leaves preserveExternalChanges undefined on the backend endpoint when absent", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    const endpointDef = Object.values(backend.endpoints)[0];
+    expect(endpointDef!.func.preserveExternalChanges).to.equal(undefined);
+  });
+
   it("enforces enum correctness for VPC egress settings", () => {
     const desiredBuild: build.Build = build.of({
       func: {

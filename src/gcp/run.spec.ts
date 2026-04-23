@@ -136,7 +136,7 @@ describe("run", () => {
         apiGetStub.onFirstCall().throws("Error calling get api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
         ).to.be.rejectedWith("Failed to get the IAM Policy on the Service service");
 
         expect(apiGetStub).to.be.called;
@@ -147,7 +147,7 @@ describe("run", () => {
         apiPostStub.throws("Error calling set api.");
 
         await expect(
-          run.setInvokerUpdate("project", "service", ["public"], client),
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
         ).to.be.rejectedWith("Failed to set the IAM Policy on the Service service");
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
@@ -170,8 +170,9 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["public"], client)).to.not.be
-          .rejected;
+        await expect(
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
+        ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -200,8 +201,9 @@ describe("run", () => {
           return Promise.resolve();
         });
 
-        await expect(run.setInvokerUpdate("project", "service", ["private"], client)).to.not.be
-          .rejected;
+        await expect(
+          run.setInvokerUpdate("project", "service", ["private"], undefined, client),
+        ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.be.calledOnce;
       });
@@ -209,8 +211,11 @@ describe("run", () => {
       it("should set the policy with a set of invokers with active policies", async () => {
         apiGetStub.onFirstCall().resolves({ body: {} });
         apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
-          json.policy.bindings[0].members.sort();
-          expect(json.policy.bindings[0].members).to.deep.eq([
+          const invoker = json.policy.bindings.find(
+            (b: any) => b.role === "roles/run.invoker" && !b.condition,
+          );
+          invoker.members.sort();
+          expect(invoker.members).to.deep.eq([
             "serviceAccount:service-account1@project.iam.gserviceaccount.com",
             "serviceAccount:service-account2@project.iam.gserviceaccount.com",
             "serviceAccount:service-account3@project.iam.gserviceaccount.com",
@@ -228,6 +233,7 @@ describe("run", () => {
               "service-account2@project.iam.gserviceaccount.com",
               "service-account3@",
             ],
+            undefined,
             client,
           ),
         ).to.not.be.rejected;
@@ -262,11 +268,125 @@ describe("run", () => {
               "service-account3@",
               "service-account1@",
             ],
+            undefined,
             client,
           ),
         ).to.not.be.rejected;
         expect(apiGetStub).to.be.calledOnce;
         expect(apiPostStub).to.not.be.called;
+      });
+
+      it("merges existing invoker members when mergeExistingMembers is true", async () => {
+        apiGetStub.onFirstCall().resolves({
+          body: {
+            bindings: [
+              {
+                role: "roles/run.invoker",
+                members: ["user:kept@example.com"],
+              },
+              { role: "random-role", members: ["user:other"] },
+            ],
+            etag: "abc",
+            version: 3,
+          },
+        });
+        apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
+          const invoker = json.policy.bindings.find(
+            (b: any) => b.role === "roles/run.invoker" && !b.condition,
+          );
+          expect(invoker.members.sort()).to.deep.equal(
+            ["allUsers", "user:kept@example.com"].sort(),
+          );
+          expect(json.policy.bindings).to.deep.include({
+            role: "random-role",
+            members: ["user:other"],
+          });
+          expect(json.policy.etag).to.equal("abc");
+          return Promise.resolve();
+        });
+
+        await expect(
+          run.setInvokerUpdate(
+            "project",
+            "service",
+            ["public"],
+            { mergeExistingMembers: true },
+            client,
+          ),
+        ).to.not.be.rejected;
+        expect(apiGetStub).to.be.calledOnce;
+        expect(apiPostStub).to.be.calledOnce;
+      });
+
+      it("replaces members (no merge) when mergeExistingMembers is false", async () => {
+        apiGetStub.onFirstCall().resolves({
+          body: {
+            bindings: [
+              {
+                role: "roles/run.invoker",
+                members: ["user:stale@example.com"],
+              },
+            ],
+            etag: "abc",
+            version: 3,
+          },
+        });
+        apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
+          const invoker = json.policy.bindings.find(
+            (b: any) => b.role === "roles/run.invoker" && !b.condition,
+          );
+          expect(invoker.members).to.deep.equal(["allUsers"]);
+          return Promise.resolve();
+        });
+
+        await expect(
+          run.setInvokerUpdate(
+            "project",
+            "service",
+            ["public"],
+            { mergeExistingMembers: false },
+            client,
+          ),
+        ).to.not.be.rejected;
+        expect(apiGetStub).to.be.calledOnce;
+        expect(apiPostStub).to.be.calledOnce;
+      });
+
+      it("preserves conditional invoker bindings when updating", async () => {
+        const conditional = {
+          role: "roles/run.invoker",
+          members: ["serviceAccount:gated@project.iam.gserviceaccount.com"],
+          condition: { expression: "request.time < timestamp('2030-01-01T00:00:00Z')" },
+        };
+        apiGetStub.onFirstCall().resolves({
+          body: {
+            bindings: [
+              conditional,
+              {
+                role: "roles/run.invoker",
+                members: ["user:old@example.com"],
+              },
+            ],
+            etag: "abc",
+            version: 3,
+          },
+        });
+        apiPostStub.onFirstCall().callsFake((path: string, json: any) => {
+          // conditional binding survives
+          expect(json.policy.bindings).to.deep.include(conditional);
+          // unconditional binding was replaced (default behavior)
+          const unconditional = json.policy.bindings.find(
+            (b: any) => b.role === "roles/run.invoker" && !b.condition,
+          );
+          expect(unconditional.members).to.deep.equal(["allUsers"]);
+          return Promise.resolve();
+        });
+
+        await expect(
+          run.setInvokerUpdate("project", "service", ["public"], undefined, client),
+        ).to.not.be.rejected;
+        expect(apiGetStub).to.be.calledOnce;
+        expect(apiPostStub).to.be.calledOnce;
       });
     });
   });

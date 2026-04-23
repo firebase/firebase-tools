@@ -56,6 +56,87 @@ describe("iam", () => {
     });
   });
 
+  describe("mergeInvokerBinding", () => {
+    const role = "roles/run.invoker";
+
+    it("appends an unconditional invoker binding when none exists", () => {
+      const bindings: iam.Binding[] = [{ role: "other", members: ["user:foo"] }];
+      const result = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: true,
+      });
+      expect(result).to.deep.equal([
+        { role: "other", members: ["user:foo"] },
+        { role, members: ["allUsers"] },
+      ]);
+    });
+
+    it("unions existing unconditional members when merge is true", () => {
+      const bindings: iam.Binding[] = [
+        { role, members: ["user:kept@example.com"] },
+        { role: "other", members: ["user:foo"] },
+      ];
+      const result = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: true,
+      });
+      const invoker = result.find((b) => b.role === role && !b.condition);
+      expect(invoker!.members.sort()).to.deep.equal(
+        ["allUsers", "user:kept@example.com"].sort(),
+      );
+    });
+
+    it("replaces unconditional members when merge is false", () => {
+      const bindings: iam.Binding[] = [
+        { role, members: ["user:stale@example.com"] },
+      ];
+      const result = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: false,
+      });
+      const invoker = result.find((b) => b.role === role && !b.condition);
+      expect(invoker!.members).to.deep.equal(["allUsers"]);
+    });
+
+    it("leaves conditional bindings on the same role untouched in both modes", () => {
+      const conditional: iam.Binding = {
+        role,
+        members: ["serviceAccount:gated@project.iam.gserviceaccount.com"],
+        condition: { expression: "resource.name.startsWith('foo')" },
+      };
+      const bindings: iam.Binding[] = [
+        conditional,
+        { role, members: ["user:old@example.com"] },
+      ];
+
+      const merged = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: true,
+      });
+      expect(merged).to.deep.include(conditional);
+      const mergedInvoker = merged.find((b) => b.role === role && !b.condition);
+      expect(mergedInvoker!.members.sort()).to.deep.equal(
+        ["allUsers", "user:old@example.com"].sort(),
+      );
+
+      const replaced = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: false,
+      });
+      expect(replaced).to.deep.include(conditional);
+      const replacedInvoker = replaced.find((b) => b.role === role && !b.condition);
+      expect(replacedInvoker!.members).to.deep.equal(["allUsers"]);
+    });
+
+    it("deduplicates when declared members already exist", () => {
+      const bindings: iam.Binding[] = [
+        { role, members: ["allUsers", "user:other@example.com"] },
+      ];
+      const result = iam.mergeInvokerBinding(bindings, role, ["allUsers"], {
+        merge: true,
+      });
+      const invoker = result.find((b) => b.role === role && !b.condition);
+      expect(invoker!.members.sort()).to.deep.equal(
+        ["allUsers", "user:other@example.com"].sort(),
+      );
+    });
+  });
+
   describe("testIamPermissions", () => {
     const tests: {
       desc: string;
