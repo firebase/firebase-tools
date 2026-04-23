@@ -12,7 +12,6 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
-import * as storage from "../../gcp/storage";
 import { getDatabase } from "./services/firestore";
 import { getBucket } from "./services/storage";
 import { getDatabaseInstanceDetails } from "./services/database";

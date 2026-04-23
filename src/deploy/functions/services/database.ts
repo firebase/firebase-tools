@@ -1,6 +1,9 @@
 import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
-import { getDatabaseInstanceDetails as getDetails, DatabaseInstance } from "../../../management/database";
+import {
+  getDatabaseInstanceDetails as getDetails,
+  DatabaseInstance,
+} from "../../../management/database";
 
 const instanceCache = new Map<string, DatabaseInstance>();
 const instancePromiseCache = new Map<string, Promise<DatabaseInstance>>();
