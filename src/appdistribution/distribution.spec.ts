@@ -3,7 +3,7 @@ import * as sinon from "sinon";
 import * as fs from "fs-extra";
 import { upload, Distribution, awaitTestResults, DistributionFileType } from "./distribution";
 import { AppDistributionClient } from "./client";
-import { UploadReleaseResult, ReleaseTest, Release, TestDevice } from "./types";
+import { UploadReleaseResult, ReleaseTest } from "./types";
 import * as utils from "../utils";
 
 describe("appdistribution/distribution", () => {
@@ -72,7 +72,12 @@ describe("appdistribution/distribution", () => {
           displayVersion: "1.0",
           buildVersion: "1",
           name: "test-rel",
-        } as unknown as Release,
+          releaseNotes: { text: "test-notes" },
+          createTime: new Date(),
+          firebaseConsoleUri: "http://console.firebase.google.com",
+          testingUri: "http://testing.firebase.google.com",
+          binaryDownloadUri: "http://download.firebase.google.com",
+        },
       });
 
       const res = await upload(
@@ -102,9 +107,12 @@ describe("appdistribution/distribution", () => {
       mockClient.getReleaseTest.resolves({
         name: "tests/1",
         deviceExecutions: [
-          { state: "PASSED", device: { model: "Pixel" } as unknown as TestDevice },
+          {
+            state: "PASSED",
+            device: { model: "Pixel", version: "14", locale: "en_US", orientation: "PORTRAIT" },
+          },
         ],
-      } as unknown as ReleaseTest);
+      });
 
       const setTimeoutStub = sinon.stub(global, "setTimeout").callsFake((fn) => fn() as any);
 
@@ -122,7 +130,7 @@ describe("appdistribution/distribution", () => {
           {
             state: "FAILED",
             failedReason: "Crash",
-            device: { model: "Pixel" } as unknown as TestDevice,
+            device: { model: "Pixel", version: "14", locale: "en_US", orientation: "PORTRAIT" },
           },
         ],
       } as any);
