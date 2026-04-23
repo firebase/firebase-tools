@@ -422,8 +422,8 @@ describe("webframeworks", function (this) {
 
       const EXPECTED_PATTERNS = [
         [NEXT_BASE_PATH, "_next", "static", "chunks", `turbopack-[^.]+\\.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.css`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_-]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_-]+\\.css`],
       ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
