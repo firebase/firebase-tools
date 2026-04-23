@@ -474,3 +474,106 @@ export function getFrameworksBuildTarget(purpose: BUILD_TARGET_PURPOSE, validOpt
       );
   }
 }
+
+type NextFn = (err?: unknown) => void;
+type Middleware = (req: unknown, res: unknown, next: NextFn) => void;
+type ParserFactory = (opts?: unknown) => Middleware;
+
+export interface BodyParserExports {
+  json?: ParserFactory;
+  text?: ParserFactory;
+  urlencoded?: ParserFactory;
+  raw?: ParserFactory;
+  __bodyParserPassthroughApplied?: boolean;
+}
+
+/**
+ * Wraps `body-parser` parser factories so strict parse failures call `next()` without an error.
+ * Serialized into generated `server.js`; must not reference other modules from this file.
+ */
+export function patchBodyParser(bodyParserExports: BodyParserExports | null | undefined): void {
+  if (!bodyParserExports || bodyParserExports.__bodyParserPassthroughApplied) return;
+  // Idempotent; non-enumerable so `Object.keys(body-parser)` still looks like stock exports.
+  Object.defineProperty(bodyParserExports, "__bodyParserPassthroughApplied", { value: true, enumerable: false });
+
+  const PARSER_NAMES: Exclude<keyof BodyParserExports, "__bodyParserPassthroughApplied">[] = [
+    "json",
+    "text",
+    "urlencoded",
+    "raw",
+  ];
+  // Same default as body-parser's parse catch: https://github.com/expressjs/body-parser/blob/1.20.3/lib/read.js#L129-L132
+  const PARSE_FAILED_TYPE = "entity.parse.failed";
+
+  for (const parserName of PARSER_NAMES) {
+    const factory = bodyParserExports[parserName];
+    if (typeof factory !== "function") continue;
+    // Stock `body-parser` exposes these as getters without setters, so `exports.json = …` throws.
+    Object.defineProperty(bodyParserExports, parserName, {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: function tolerantFactory(this: unknown, opts: unknown): Middleware {
+        // Preserve original `this` and options so behavior matches stock body-parser.
+        const parse = factory.call(this, opts);
+        return function tolerantMiddleware(req, res, next) {
+          parse(req, res, (err) => {
+            // Only the strict parse-failure path: `verify` has already run, so `req.rawBody` is
+            // still populated when configured. Other errors (size limits, aborted reads, etc.) pass through.
+            if (
+              typeof err === "object" &&
+              err !== null &&
+              (err as Record<string, unknown>).type === PARSE_FAILED_TYPE
+            ) {
+              return next();
+            }
+            next(err);
+          });
+        };
+      },
+    });
+  }
+}
+
+/**
+ * Calls {@link patchBodyParser} for every loaded `body-parser` module and for `require("body-parser")`.
+ * Serialized next to {@link patchBodyParser} in {@link getBodyParserToleranceShim}.
+ */
+export function installBodyParserTolerance(): void {
+  const BODY_PARSER_INDEX_REGEX = /[\\/]node_modules[\\/]body-parser[\\/]index\.js$/;
+
+  // Same semver, multiple disk locations: e.g. user `node_modules` and buildpack
+  // `.../functions-framework/.../node_modules/body-parser` each get their own `require.cache` entry.
+  for (const requireCacheKey of Object.keys(require.cache)) {
+    if (!BODY_PARSER_INDEX_REGEX.test(requireCacheKey)) continue;
+    const cachedModule = require.cache[requireCacheKey];
+    if (cachedModule && cachedModule.exports) {
+      patchBodyParser(cachedModule.exports as BodyParserExports);
+    }
+  }
+
+  try {
+    // Also patch the instance this process would get from a fresh `require()`.
+    patchBodyParser(require("body-parser") as BodyParserExports);
+  } catch {
+    // body-parser is not resolvable from the caller; nothing to do.
+  }
+}
+
+/**
+ * Returns JavaScript prepended to generated framework `server.js` so {@link installBodyParserTolerance}
+ * runs before `firebase-functions` / `firebase-frameworks` load (`frameworks/index.ts`).
+ *
+ * Related issue: https://github.com/firebase/firebase-tools/issues/10404
+ *
+ * Invalid JSON with a JSON `Content-Type` was returning 500 from Hosting while the same route
+ * returned 400 when run locally (for example `next start`). The emitted snippet patches `body-parser`
+ * so the framework receives the request.
+ *
+ * Built from `toString()` on {@link patchBodyParser} and {@link installBodyParserTolerance}, then
+ * `installBodyParserTolerance();`
+ */
+export function getBodyParserToleranceShim(): string {
+  // Function declarations hoist so installBodyParserTolerance can call patchBodyParser without imports.
+  return `${patchBodyParser.toString()}\n${installBodyParserTolerance.toString()}\ninstallBodyParserTolerance();\n`;
+}
