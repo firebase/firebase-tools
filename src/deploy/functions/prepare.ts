@@ -404,105 +404,120 @@ export async function resolveDefaultRegions(
 ): Promise<void> {
   matchRegionsForExisting(want, have);
 
-  for (const endpoint of Object.values(want.endpoints[build.REGION_TBD] || {})) {
-    let resolvedRegion = "us-central1";
+  const endpoints = Object.values(want.endpoints[build.REGION_TBD] || {});
 
-    if (backend.isBlockingTriggered(endpoint)) {
-      // Set region for blocking functions to us-east1. This includes:
-      // - Auth blocking functions (beforeCreate, beforeSignIn)
-      // - Global AI Logic functions
-      const eventType = endpoint.blockingTrigger.eventType;
-      if (
-        eventType === "providers/cloud.auth/eventTypes/user.beforeCreate" ||
-        eventType === "providers/cloud.auth/eventTypes/user.beforeSignIn"
-      ) {
-        resolvedRegion = "us-east1";
-      } else if (isGlobalAILogicEndpoint(endpoint)) {
-        resolvedRegion = "us-east1";
+  const resolvedEndpoints = await Promise.all(
+    endpoints.map(async (endpoint) => {
+      let resolvedRegion = "us-central1";
+
+      try {
+        if (backend.isBlockingTriggered(endpoint)) {
+          resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
+        } else if (backend.isEventTriggered(endpoint)) {
+          resolvedRegion = await resolveRegionForEventTrigger(endpoint);
+        }
+      } catch (err: any) {
+        logger.debug(
+          `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
+          err,
+        );
       }
-    } else if (backend.isEventTriggered(endpoint)) {
-      // Set region for global event triggered functions to us-east1. This includes:
-      // - Pub/Sub publish events
-      // - Auth events
-      // - Test Lab events
-      // - Remote Config events
-      // - Firebase Alerts events
-      const eventTrigger = endpoint.eventTrigger;
-      const eventType = eventTrigger.eventType;
 
-      if (
-        eventType === v2Events.PUBSUB_PUBLISH_EVENT ||
-        eventType.startsWith("providers/cloud.auth/eventTypes/") ||
-        eventType.startsWith("google.firebase.testlab.") ||
-        eventType.startsWith("google.firebase.remoteconfig.") ||
-        eventType.startsWith("google.firebase.firebasealerts.")
-      ) {
-        resolvedRegion = "us-east1";
-      } else if (eventType.startsWith("google.cloud.firestore.")) {
-        // Set region for Firestore events based on database location, or to the
-        // nearest single-region location if the database is multi-regional.
-        try {
-          const databaseId = eventTrigger.eventFilters?.database || "(default)";
-          const db = await getDatabase(endpoint.project, databaseId);
-          const locationId = db.locationId.toLowerCase();
-          if (locationId === "nam5" || locationId === "nam7") {
-            resolvedRegion = "us-central1";
-          } else if (locationId === "eur3") {
-            resolvedRegion = "europe-west1";
-          } else {
-            resolvedRegion = locationId;
-          }
-        } catch (err: any) {
-          logger.debug("Failed to resolve Firestore database location", err);
-        }
-      } else if (eventType.startsWith("google.cloud.storage.")) {
-        // Set region for Cloud Storage events based on bucket location, or to the
-        // nearest single-region location if the bucket is multi-regional.
-        try {
-          const bucketName = eventTrigger.eventFilters?.bucket;
-          if (bucketName) {
-            const bucket = await storage.getBucket(bucketName);
-            const locationId = bucket.location.toLowerCase();
-            if (locationId === "us") {
-              resolvedRegion = "us-east1";
-            } else if (locationId === "eu") {
-              resolvedRegion = "europe-west1";
-            } else if (locationId === "asia") {
-              resolvedRegion = "asia-east1";
-            } else {
-              resolvedRegion = locationId;
-            }
-          }
-        } catch (err: any) {
-          logger.debug("Failed to resolve Cloud Storage bucket location", err);
-        }
-      } else if (eventType.startsWith("google.firebase.database.")) {
-        // Set region for Realtime Database events based on instance location.
-        if (eventTrigger.region) {
-          resolvedRegion = eventTrigger.region;
-        } else {
-          try {
-            const instanceName = eventTrigger.eventFilters?.instance;
-            if (instanceName) {
-              const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
-              if (details.location && details.location !== "-") {
-                resolvedRegion = details.location.toLowerCase();
-              }
-            }
-          } catch (err: any) {
-            logger.debug("Failed to resolve Realtime Database instance location", err);
-          }
-        }
-      } else if (eventType.startsWith("google.firebase.dataconnect.")) {
-        // Set region for DataConnect events based on instance location.
-        if (eventTrigger.region) {
-          resolvedRegion = eventTrigger.region;
-        }
-      }
-    }
+      return { endpoint, resolvedRegion };
+    }),
+  );
 
+  for (const { endpoint, resolvedRegion } of resolvedEndpoints) {
     moveEndpointToRegion(want, endpoint, resolvedRegion);
   }
+}
+
+function resolveRegionForBlockingTrigger(
+  endpoint: backend.Endpoint & backend.BlockingTriggered,
+): string {
+  const eventType = endpoint.blockingTrigger.eventType;
+  if (
+    eventType === "providers/cloud.auth/eventTypes/user.beforeCreate" ||
+    eventType === "providers/cloud.auth/eventTypes/user.beforeSignIn"
+  ) {
+    return "us-east1";
+  }
+
+  if (isGlobalAILogicEndpoint(endpoint)) {
+    return "us-east1";
+  }
+
+  return "us-central1";
+}
+
+async function resolveRegionForEventTrigger(
+  endpoint: backend.Endpoint & backend.EventTriggered,
+): Promise<string> {
+  const eventTrigger = endpoint.eventTrigger;
+  const eventType = eventTrigger.eventType;
+
+  if (
+    eventType === v2Events.PUBSUB_PUBLISH_EVENT ||
+    eventType.startsWith("providers/cloud.auth/eventTypes/") ||
+    eventType.startsWith("google.firebase.testlab.") ||
+    eventType.startsWith("google.firebase.remoteconfig.") ||
+    eventType.startsWith("google.firebase.firebasealerts.")
+  ) {
+    return "us-east1";
+  }
+
+  if (eventType.startsWith("google.cloud.firestore.")) {
+    try {
+      const databaseId = eventTrigger.eventFilters?.database || "(default)";
+      const db = await getDatabase(endpoint.project, databaseId);
+      const locationId = db.locationId.toLowerCase();
+
+      if (locationId === "nam5" || locationId === "nam7") return "us-central1";
+      if (locationId === "eur3") return "europe-west1";
+      return locationId;
+    } catch (err: any) {
+      logger.debug("Failed to resolve Firestore database location", err);
+    }
+  }
+
+  if (eventType.startsWith("google.cloud.storage.")) {
+    try {
+      const bucketName = eventTrigger.eventFilters?.bucket;
+      if (bucketName) {
+        const bucket = await storage.getBucket(bucketName);
+        const locationId = bucket.location.toLowerCase();
+
+        if (locationId === "us") return "us-east1";
+        if (locationId === "eu") return "europe-west1";
+        if (locationId === "asia") return "asia-east1";
+        return locationId;
+      }
+    } catch (err: any) {
+      logger.debug("Failed to resolve Cloud Storage bucket location", err);
+    }
+  }
+
+  if (eventType.startsWith("google.firebase.database.")) {
+    if (eventTrigger.region) return eventTrigger.region;
+
+    try {
+      const instanceName = eventTrigger.eventFilters?.instance;
+      if (instanceName) {
+        const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+        if (details.location && details.location !== "-") {
+          return details.location.toLowerCase();
+        }
+      }
+    } catch (err: any) {
+      logger.debug("Failed to resolve Realtime Database instance location", err);
+    }
+  }
+
+  if (eventType.startsWith("google.firebase.dataconnect.")) {
+    if (eventTrigger.region) return eventTrigger.region;
+  }
+
+  return "us-central1";
 }
 
 /**
