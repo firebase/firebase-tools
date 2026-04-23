@@ -10,6 +10,7 @@ import * as utils from "../utils";
 import * as auth from "../requireAuth";
 import * as detect from "../detectProjectRoot";
 import * as rcModule from "../rc";
+import { FirebaseProjectMetadata } from "../types/project";
 
 describe("use command", () => {
   let getProjectStub: sinon.SinonStub;
@@ -20,12 +21,18 @@ describe("use command", () => {
     getProjectStub = sinon.stub(projects, "getProject").resolves({
       projectId: "my-project",
       projectNumber: "123",
-      displayName: "My Project",
-      resources: {},
-    } as unknown as projects.ProjectInfo);
-    sinon
-      .stub(projects, "listFirebaseProjects")
-      .resolves([{ projectId: "my-project" }] as unknown as projects.ProjectInfo[]);
+      lifecycleState: "ACTIVE",
+      name: "projects/my-project",
+      createTime: "2026-04-23T00:00:00Z",
+      parent: { type: "organization", id: "123" },
+    } as projects.ProjectInfo);
+    sinon.stub(projects, "listFirebaseProjects").resolves([
+      {
+        name: "projects/my-project",
+        projectId: "my-project",
+        projectNumber: "123",
+      },
+    ] as FirebaseProjectMetadata[]);
     sinon.stub(studio, "updateStudioFirebaseProject").resolves();
     makeActiveProjectStub = sinon.stub(utils, "makeActiveProject").returns();
     sinon.stub(prompt, "select").resolves("my-project");
@@ -34,7 +41,7 @@ describe("use command", () => {
     detectProjectRootStub = sinon.stub(detect, "detectProjectRoot").returns("/path/to/project");
     sinon
       .stub(rcModule, "loadRC")
-      .callsFake((options: unknown) => (options as Record<string, unknown>).rc || new RC());
+      .callsFake((options: { [other: string]: any; cwd?: string }) => options.rc || new RC());
   });
 
   afterEach(() => {
