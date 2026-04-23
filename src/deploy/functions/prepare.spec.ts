@@ -5,6 +5,9 @@ import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as firestoreService from "./services/firestore";
+import * as storageService from "./services/storage";
+import * as databaseService from "./services/database";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
 import { RuntimeDelegate } from "./runtimes";
@@ -234,6 +237,22 @@ describe("prepare", () => {
   });
 
   describe("resolveDefaultRegions", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getDatabaseStub: sinon.SinonStub;
+    let getBucketStub: sinon.SinonStub;
+    let getDatabaseInstanceDetailsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getDatabaseStub = sandbox.stub(firestoreService, "getDatabase");
+      getBucketStub = sandbox.stub(storageService, "getBucket");
+      getDatabaseInstanceDetailsStub = sandbox.stub(databaseService, "getDatabaseInstanceDetails");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
     it("does nothing if no endpoints in REGION_TBD", async () => {
       const want = backend.empty();
       const have = backend.empty();
@@ -302,6 +321,69 @@ describe("prepare", () => {
       await prepare.resolveDefaultRegions(want, have);
 
       expect(want.endpoints["us-east1"]?.["onPublish"]).to.exist;
+    });
+
+    it("resolves region for Firestore event triggers based on database location", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onDocumentCreate",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.created",
+          eventFilters: { database: "(default)" },
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      getDatabaseStub.resolves({ locationId: "nam5" });
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-central1"]?.["onDocumentCreate"]).to.exist;
+    });
+
+    it("resolves region for Storage event triggers based on bucket location", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onArchive",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      getBucketStub.resolves({ location: "us" });
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-east1"]?.["onArchive"]).to.exist;
+    });
+
+    it("resolves region for Database event triggers based on instance location", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onWrite",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.firebase.database.ref.v1.written",
+          eventFilters: { instance: "my-instance" },
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      getDatabaseInstanceDetailsStub.resolves({ location: "europe-west1" });
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["europe-west1"]?.["onWrite"]).to.exist;
     });
 
     it("does not infer region from have backend if it belongs to a different codebase", async () => {
