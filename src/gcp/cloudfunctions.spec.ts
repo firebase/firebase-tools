@@ -756,5 +756,107 @@ describe("cloudfunctions", () => {
         ]),
       ).to.not.be.rejected;
     });
+
+    it("merges existing invoker members when mergeExistingMembers is true", async () => {
+      nock(functionsOrigin())
+        .get("/v1/function:getIamPolicy")
+        .reply(200, {
+          bindings: [
+            { role: "roles/cloudfunctions.invoker", members: ["user:kept@example.com"] },
+            { role: "random-role", members: ["user:other"] },
+          ],
+          etag: "abc",
+          version: 3,
+        });
+      let posted: any;
+      nock(functionsOrigin())
+        .post("/v1/function:setIamPolicy", (body) => {
+          posted = body;
+          return true;
+        })
+        .reply(200, {});
+
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"], {
+          mergeExistingMembers: true,
+        }),
+      ).to.not.be.rejected;
+
+      const invoker = posted.policy.bindings.find(
+        (b: any) => b.role === "roles/cloudfunctions.invoker" && !b.condition,
+      );
+      expect(invoker.members.sort()).to.deep.equal(
+        ["allUsers", "user:kept@example.com"].sort(),
+      );
+      expect(posted.policy.bindings).to.deep.include({
+        role: "random-role",
+        members: ["user:other"],
+      });
+    });
+
+    it("replaces members when mergeExistingMembers is false", async () => {
+      nock(functionsOrigin())
+        .get("/v1/function:getIamPolicy")
+        .reply(200, {
+          bindings: [
+            { role: "roles/cloudfunctions.invoker", members: ["user:stale@example.com"] },
+          ],
+          etag: "abc",
+          version: 3,
+        });
+      let posted: any;
+      nock(functionsOrigin())
+        .post("/v1/function:setIamPolicy", (body) => {
+          posted = body;
+          return true;
+        })
+        .reply(200, {});
+
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"], {
+          mergeExistingMembers: false,
+        }),
+      ).to.not.be.rejected;
+
+      const invoker = posted.policy.bindings.find(
+        (b: any) => b.role === "roles/cloudfunctions.invoker" && !b.condition,
+      );
+      expect(invoker.members).to.deep.equal(["allUsers"]);
+    });
+
+    it("preserves conditional invoker bindings when updating", async () => {
+      const conditional = {
+        role: "roles/cloudfunctions.invoker",
+        members: ["serviceAccount:gated@project.iam.gserviceaccount.com"],
+        condition: { expression: "request.time < timestamp('2030-01-01T00:00:00Z')" },
+      };
+      nock(functionsOrigin())
+        .get("/v1/function:getIamPolicy")
+        .reply(200, {
+          bindings: [
+            conditional,
+            { role: "roles/cloudfunctions.invoker", members: ["user:old@example.com"] },
+          ],
+          etag: "abc",
+          version: 3,
+        });
+      let posted: any;
+      nock(functionsOrigin())
+        .post("/v1/function:setIamPolicy", (body) => {
+          posted = body;
+          return true;
+        })
+        .reply(200, {});
+
+      await expect(
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"]),
+      ).to.not.be.rejected;
+
+      expect(posted.policy.bindings).to.deep.include(conditional);
+      const unconditional = posted.policy.bindings.find(
+        (b: any) => b.role === "roles/cloudfunctions.invoker" && !b.condition,
+      );
+      expect(unconditional.members).to.deep.equal(["allUsers"]);
+    });
   });
 });
