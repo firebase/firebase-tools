@@ -556,6 +556,18 @@ export function toBackend(
         "cpu",
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
+      proto.convertIfPresent(
+        bkEndpoint,
+        bdEndpoint,
+        "preserveExternalChanges",
+        nullsafeVisitor((v) => {
+          try {
+            return r.resolveBoolean(v);
+          } catch {
+            return false;
+          }
+        }),
+      );
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {};
         if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {

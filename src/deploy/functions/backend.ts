@@ -316,6 +316,7 @@ export interface ServiceConfiguration {
   } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;
+  preserveExternalChanges?: boolean | null;
 }
 
 export const AllFunctionsPlatforms = ["gcfv1", "gcfv2", "run"] as const;
