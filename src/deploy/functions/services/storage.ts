@@ -7,6 +7,48 @@ import { regionInLocation } from "../../../gcp/location";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
+const bucketCache = new Map<string, { location: string }>();
+const bucketPromiseCache = new Map<string, Promise<{ location: string }>>();
+
+/**
+ * Clear the storage bucket cache. Used for testing.
+ * @internal
+ */
+export function clearCache(): void {
+  bucketCache.clear();
+  bucketPromiseCache.clear();
+}
+
+/**
+ * A memoized version of storage.getBucket that avoids repeated calls to the API.
+ *
+ * @param bucketName the bucket ID
+ */
+export async function getBucket(bucketName: string): Promise<{ location: string }> {
+  if (bucketCache.has(bucketName)) {
+    return bucketCache.get(bucketName)!;
+  }
+
+  if (bucketPromiseCache.has(bucketName)) {
+    return bucketPromiseCache.get(bucketName)!;
+  }
+
+  const bucketPromise = storage
+    .getBucket(bucketName)
+    .then((b) => {
+      bucketCache.set(bucketName, b);
+      bucketPromiseCache.delete(bucketName);
+      return b;
+    })
+    .catch((error) => {
+      bucketPromiseCache.delete(bucketName);
+      throw error;
+    });
+
+  bucketPromiseCache.set(bucketName, bucketPromise);
+  return bucketPromise;
+}
+
 /**
  * Finds the required project level IAM bindings for the Cloud Storage service agent
  * @param projectId project identifier
@@ -45,7 +87,7 @@ export async function ensureStorageTriggerRegion(
       `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`,
     );
     try {
-      const bucket: { location: string } = await storage.getBucket(
+      const bucket: { location: string } = await getBucket(
         eventTrigger.eventFilters.bucket,
       );
       eventTrigger.region = bucket.location.toLowerCase();

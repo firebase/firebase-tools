@@ -14,7 +14,8 @@ import * as validate from "./validate";
 import * as ensure from "./ensure";
 import * as storage from "../../gcp/storage";
 import { getDatabase } from "./services/firestore";
-import { getDatabaseInstanceDetails } from "../../management/database";
+import { getBucket } from "./services/storage";
+import { getDatabaseInstanceDetails } from "./services/database";
 import { v2 as v2Events } from "../../functions/events";
 import { isGlobalAILogicEndpoint } from "./services/ailogic";
 import {
@@ -484,7 +485,7 @@ async function resolveRegionForEventTrigger(
     try {
       const bucketName = eventTrigger.eventFilters?.bucket;
       if (bucketName) {
-        const bucket = await storage.getBucket(bucketName);
+        const bucket = await getBucket(bucketName);
         const locationId = bucket.location.toLowerCase();
 
         if (locationId === "us") return "us-east1";
