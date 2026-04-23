@@ -494,7 +494,10 @@ export interface BodyParserExports {
 export function patchBodyParser(bodyParserExports: BodyParserExports | null | undefined): void {
   if (!bodyParserExports || bodyParserExports.__bodyParserPassthroughApplied) return;
   // Idempotent; non-enumerable so `Object.keys(body-parser)` still looks like stock exports.
-  Object.defineProperty(bodyParserExports, "__bodyParserPassthroughApplied", { value: true, enumerable: false });
+  Object.defineProperty(bodyParserExports, "__bodyParserPassthroughApplied", {
+    value: true,
+    enumerable: false,
+  });
 
   const PARSER_NAMES: Exclude<keyof BodyParserExports, "__bodyParserPassthroughApplied">[] = [
     "json",
