@@ -25,8 +25,9 @@ export const update_environment_ui = resource(
           },
         ],
       };
-    } catch (e: any) {
-      throw new Error(`Failed to load Update Environment UI: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(`Failed to load Update Environment UI: ${message}`);
     }
   },
 );
