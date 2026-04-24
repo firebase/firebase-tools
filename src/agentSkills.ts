@@ -7,7 +7,7 @@ import { Options } from "./options";
 export async function promptForAgentSkills(options?: Options): Promise<boolean> {
   return prompt.confirm({
     message: "Would you like to install agent skills for Firebase?",
-    default: true,
+    default: !options?.nonInteractive,
     nonInteractive: options?.nonInteractive,
   });
 }
