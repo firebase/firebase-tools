@@ -458,7 +458,7 @@ async function resolveRegionForEventTrigger(
   if (
     eventType.startsWith("google.cloud.pubsub.") ||
     eventType.startsWith("providers/cloud.auth/eventTypes/") ||
-    eventType.startsWith("providers/firebase.auth/eventTypes/") || 
+    eventType.startsWith("providers/firebase.auth/eventTypes/") ||
     eventType.startsWith("google.firebase.testlab.") ||
     eventType.startsWith("google.firebase.remoteconfig.") ||
     eventType.startsWith("google.firebase.firebasealerts.")
