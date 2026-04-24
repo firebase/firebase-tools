@@ -177,7 +177,7 @@ export const command = new Command("use [alias_or_project_id]")
   .option("--alias <name>", "create a new alias for the provided project id")
   .option("--unalias <name>", "remove an already created project alias")
   .option("--clear", "clear the active project selection")
-  .before((options: Options) => requireAuth(options))
+  .before(requireAuth)
   .action((newActive, options: UseOptions) => {
     // HACK: Commander.js silently swallows an option called alias >_<
     let aliasOpt: string | undefined;
