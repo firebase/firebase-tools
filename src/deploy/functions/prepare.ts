@@ -15,7 +15,6 @@ import * as ensure from "./ensure";
 import { getDatabase } from "./services/firestore";
 import { getBucket } from "./services/storage";
 import { getDatabaseInstanceDetails } from "./services/database";
-import { v2 as v2Events } from "../../functions/events";
 import { isGlobalAILogicEndpoint } from "./services/ailogic";
 import {
   functionsOrigin,
@@ -457,7 +456,7 @@ async function resolveRegionForEventTrigger(
   const eventType = eventTrigger.eventType;
 
   if (
-    eventType === v2Events.PUBSUB_PUBLISH_EVENT ||
+    eventType.startsWith("google.cloud.pubsub.") ||
     eventType.startsWith("providers/cloud.auth/eventTypes/") ||
     eventType.startsWith("providers/firebase.auth/eventTypes/") || 
     eventType.startsWith("google.firebase.testlab.") ||
