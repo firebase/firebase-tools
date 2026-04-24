@@ -323,46 +323,68 @@ describe("prepare", () => {
       expect(want.endpoints["us-east1"]?.["onPublish"]).to.exist;
     });
 
-    it("resolves region for Firestore event triggers based on database location", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onDocumentCreate",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.cloud.firestore.document.v1.created",
-          eventFilters: { database: "(default)" },
-          retry: false,
-        },
-      };
-      const want = backend.of(wantE);
-      const have = backend.empty();
+    describe("Firestore event triggers", () => {
+      const testCases = [
+        { dbLocation: "nam5", expectedRegion: "us-central1" },
+        { dbLocation: "nam7", expectedRegion: "us-central1" },
+        { dbLocation: "eur3", expectedRegion: "europe-west1" },
+        { dbLocation: "asia-northeast1", expectedRegion: "asia-northeast1" },
+      ];
 
-      getDatabaseStub.resolves({ locationId: "nam5" });
+      testCases.forEach(({ dbLocation, expectedRegion }) => {
+        it(`should resolve ${expectedRegion} when database location is ${dbLocation}`, async () => {
+          const wantE: backend.Endpoint = {
+            ...ENDPOINT_BASE,
+            id: "onDocumentCreate",
+            region: build.REGION_TBD,
+            eventTrigger: {
+              eventType: "google.cloud.firestore.document.v1.created",
+              eventFilters: { database: "(default)" },
+              retry: false,
+            },
+          };
+          const want = backend.of(wantE);
+          const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+          getDatabaseStub.resolves({ locationId: dbLocation });
 
-      expect(want.endpoints["us-central1"]?.["onDocumentCreate"]).to.exist;
+          await prepare.resolveDefaultRegions(want, have);
+
+          expect(want.endpoints[expectedRegion]?.["onDocumentCreate"]).to.exist;
+        });
+      });
     });
 
-    it("resolves region for Storage event triggers based on bucket location", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onArchive",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.archived",
-          eventFilters: { bucket: "my-bucket" },
-          retry: false,
-        },
-      };
-      const want = backend.of(wantE);
-      const have = backend.empty();
+    describe("Storage event triggers", () => {
+      const testCases = [
+        { bucketLocation: "us", expectedRegion: "us-east1" },
+        { bucketLocation: "eu", expectedRegion: "europe-west1" },
+        { bucketLocation: "asia", expectedRegion: "asia-east1" },
+        { bucketLocation: "us-central1", expectedRegion: "us-central1" },
+      ];
 
-      getBucketStub.resolves({ location: "us" });
+      testCases.forEach(({ bucketLocation, expectedRegion }) => {
+        it(`should resolve ${expectedRegion} when bucket location is ${bucketLocation}`, async () => {
+          const wantE: backend.Endpoint = {
+            ...ENDPOINT_BASE,
+            id: "onArchive",
+            region: build.REGION_TBD,
+            eventTrigger: {
+              eventType: "google.cloud.storage.object.v1.archived",
+              eventFilters: { bucket: "my-bucket" },
+              retry: false,
+            },
+          };
+          const want = backend.of(wantE);
+          const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+          getBucketStub.resolves({ location: bucketLocation });
 
-      expect(want.endpoints["us-east1"]?.["onArchive"]).to.exist;
+          await prepare.resolveDefaultRegions(want, have);
+
+          expect(want.endpoints[expectedRegion]?.["onArchive"]).to.exist;
+        });
+      });
     });
 
     it("resolves region for Database event triggers based on instance location", async () => {
