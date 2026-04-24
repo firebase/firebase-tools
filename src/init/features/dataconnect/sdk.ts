@@ -55,7 +55,11 @@ export type SDKInfo = {
   displayIOSWarning: boolean;
 };
 
-export async function askQuestions(setup: Setup, config?: Config, options?: Options): Promise<void> {
+export async function askQuestions(
+  setup: Setup,
+  config?: Config,
+  options?: Options,
+): Promise<void> {
   const info: SdkRequiredInfo = {
     apps: [],
   };
