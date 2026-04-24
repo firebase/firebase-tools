@@ -186,7 +186,7 @@ export async function grantEmailsSecretAccess(
  * If a secret exists, we verify the user is not trying to change the region and verifies a secret
  * is not being used for both functions and app hosting as their garbage collection is incompatible
  * (client vs server-side).
- * @returns true if a secret was created, false if a secret already existed, and null if a user aborts.
+ * @return true if a secret was created, false if a secret already existed, and null if a user aborts.
  */
 export async function upsertSecret(
   project: string,
@@ -233,6 +233,73 @@ export async function upsertSecret(
   // TODO: consider whether we should prompt a user who has an unmanaged secret to enroll in version control.
   // This may not be a great idea until version control is actually implemented.
   return false;
+}
+
+/**
+ * Matches a fully qualified secret or version name, e.g.
+ * projects/my-project/secrets/my-secret/versions/1
+ * projects/my-project/secrets/my-secret/versions/latest
+ * projects/my-project/secrets/my-secret
+ */
+const secretResourceRegex =
+  /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
+
+/**
+ * Matches a shorthand for a project-relative secret, with optional version, e.g.
+ * my-secret
+ * my-secret@1
+ * my-secret@latest
+ */
+const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
+
+/**
+ * Resolves a secret name into its plaintext value using the Secret Manager access API.
+ * Supports both fully qualified resource names and shorthand strings (e.g. `secret@version`).
+ */
+export async function loadSecret(project: string | undefined, name: string): Promise<string> {
+  let projectId: string;
+  let secretId: string;
+  let version: string;
+  const match = secretResourceRegex.exec(name);
+  if (match) {
+    projectId = match[1];
+    secretId = match[2];
+    version = match[3] || "latest";
+  } else {
+    const match = secretShorthandRegex.exec(name);
+    if (!match) {
+      throw new FirebaseError(`Invalid secret name: ${name}`);
+    }
+    if (!project) {
+      throw new FirebaseError(
+        `Cannot load secret ${match[1]} without a project. ` +
+          `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
+      );
+    }
+    projectId = project;
+    secretId = match[1];
+    version = match[2] || "latest";
+  }
+  try {
+    return await gcsm.accessSecretVersion(projectId, secretId, version);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      const original = err.original;
+      if (typeof original === "object" && original !== null) {
+        if (
+          (original as any).code === 403 ||
+          (original as any).context?.response?.statusCode === 403
+        ) {
+          utils.logLabeledError(
+            "apphosting",
+            `Permission denied to access secret ${secretId}. Use ` +
+              `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+          );
+        }
+      }
+    }
+    throw err;
+  }
 }
 
 /**

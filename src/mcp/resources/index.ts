@@ -13,6 +13,10 @@ import { ServerResource, ServerResourceTemplate } from "../resource";
 import { trackGA4 } from "../../track";
 import { crashlytics_issues } from "./guides/crashlytics_issues";
 import { crashlytics_reports } from "./guides/crashlytics_reports";
+// import { login_ui } from "./login_ui";
+import { update_environment_ui } from "./update_environment_ui";
+// import { deploy_ui } from "./deploy_ui";
+// import { init_ui } from "./init_ui";
 
 export const resources = [
   app_id,
@@ -25,6 +29,10 @@ export const resources = [
   init_firestore_rules,
   init_auth,
   init_hosting,
+  // login_ui,
+  update_environment_ui,
+  // deploy_ui,
+  // init_ui,
 ];
 
 export const resourceTemplates = [docs];

@@ -910,6 +910,16 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
     });
 
+    it("sets invoker to private on Node updates when explicitly configured as private", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["private"]);
+    });
+
     it("sets explicit invoker on dataConnectGraphqlTrigger", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -972,6 +982,16 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker to public on Node updates when explicitly null", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: null } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
     it("doesn't set invoker on non-http functions", async () => {
@@ -1767,7 +1787,7 @@ describe("Fabricator", () => {
   describe("createRunFunction", () => {
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
-      run.setInvokerUpdate.resolves();
+      run.setInvokerCreate.resolves();
 
       const ep = endpoint(
         { httpsTrigger: {} },
@@ -1805,6 +1825,44 @@ describe("Fabricator", () => {
         }),
       );
     });
+
+    it("always sets callable triggers to public on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { callableTrigger: {} },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+    });
+
+    it("does not set invoker on creation when HTTPS configuration is private", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { httpsTrigger: { invoker: ["private"] } },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.not.have.been.called;
+    });
   });
 
   describe("updateRunFunction", () => {
@@ -1838,6 +1896,58 @@ describe("Fabricator", () => {
           },
         }),
       );
+    });
+
+    it("does not update invoker for callable functions", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker to public for HTTPS functions when explicitly null", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: { invoker: null } }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+    });
+
+    it("does not update invoker for HTTPS functions when invoker is omitted (undefined)", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker for HTTPS functions to private when explicitly configured as private", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "private",
+      ]);
     });
   });
 

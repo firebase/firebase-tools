@@ -40,7 +40,7 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   let tmpfile: string;
   try {
     tmpfile = await downloadUtils.downloadToTmp(emulator.opts.remoteUrl, !!emulator.opts.auth);
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (overrideVersion && err instanceof FirebaseError && err.status === 404) {
       throw new FirebaseError(
         `env variable ${name.toUpperCase()}_EMULATOR_VERSION set to ${overrideVersion}, 
