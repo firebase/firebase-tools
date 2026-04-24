@@ -133,7 +133,8 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   if (setup.projectId) {
     await ensureApis(setup.projectId);
     await promptForExistingServices(setup, info, options);
-    if (!info.serviceGql) {
+    // In an empty project, firebase init dataconnect in non-interactive mode always setup the static movie app template.
+    if (!info.serviceGql && !options.nonInteractive) {
       // TODO: Consider use Gemini to generate schema for Spark project as well.
       if (!configstore.get("gemini")) {
         logBullet(
@@ -165,7 +166,7 @@ export async function askQuestions(setup: Setup, config: Config, options: Option
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
 
-  await sdk.askQuestions(setup);
+  await sdk.askQuestions(setup, config, options);
 }
 
 // actuate writes product specific files and makes product specifc API calls.
@@ -692,6 +693,7 @@ async function chooseExistingService(
     message:
       "Your project already has existing services. Which would you like to set up local files for?",
     choices,
+    default: choices[0].value,
     nonInteractive: options.nonInteractive,
   });
 }
@@ -748,7 +750,7 @@ async function promptForCloudSQL(
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
         choices,
-        default: "",
+        default: choices[0].value,
         nonInteractive: options.nonInteractive,
       });
       if (info.cloudSqlInstanceId !== "") {
@@ -777,11 +779,13 @@ async function promptForCloudSQL(
 
   if (info.locationId === "") {
     await promptForLocation(setup, info, options);
-    info.shouldProvisionCSQL = await confirm({
-      message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
-      default: !options.nonInteractive,
-      nonInteractive: options.nonInteractive,
-    });
+    info.shouldProvisionCSQL =
+      !options.nonInteractive &&
+      (await confirm({
+        message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
+        default: !options.nonInteractive,
+        nonInteractive: options.nonInteractive,
+      }));
   }
 
   // The Gemini generated schema will override any SQL schema in this Postgres database.

@@ -87,7 +87,7 @@ export const command = new Command("dataconnect:sdk:generate")
         },
         instructions: [],
       };
-      await dataconnectSdkInit.askQuestions(setup);
+      await dataconnectSdkInit.askQuestions(setup, config, options);
       await dataconnectSdkInit.actuate(setup, config);
       justRanInit = true;
       serviceInfosWithSDKs = await loadAllWithSDKs(projectId, config, options);
