@@ -16,7 +16,7 @@ import { crashlytics_reports } from "./guides/crashlytics_reports";
 // import { login_ui } from "./login_ui";
 import { update_environment_ui } from "./update_environment_ui";
 // import { deploy_ui } from "./deploy_ui";
-// import { init_ui } from "./init_ui";
+import { init_ui } from "./init_ui";
 
 export const resources = [
   app_id,
@@ -32,7 +32,7 @@ export const resources = [
   // login_ui,
   update_environment_ui,
   // deploy_ui,
-  // init_ui,
+  init_ui,
 ];
 
 export const resourceTemplates = [docs];
