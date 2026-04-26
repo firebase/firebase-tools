@@ -1,160 +1,156 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import prepare from "./prepare";
+import { RulesDeploy } from "../../rulesDeploy";
+import prepare, { RulesContext, IndexContext } from "./prepare";
+import { DeployOptions } from "..";
 import { FirestoreApi } from "../../firestore/api";
-import * as types from "../../firestore/api-types";
-import { FirebaseError } from "../../error";
-import { Options } from "../../options";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as fsConfig from "../../firestore/fsConfig";
-import * as loadCJSON from "../../loadCJSON";
-import { RulesDeploy } from "../../rulesDeploy";
+import { FirebaseError } from "../../error";
+import { Config } from "../../config";
 
-describe("firestore prepare", () => {
-  let sandbox: sinon.SinonSandbox;
+function mockDeployOptions(overrides: Partial<DeployOptions>): DeployOptions {
+  return {
+    configPath: "configPath",
+    only: "",
+    except: [],
+    filteredTargets: [],
+    force: false,
+    projectId: "my-project",
+    config: new Config({ firestore: {} }, { projectDir: "." }),
+    ...overrides,
+  } as DeployOptions;
+}
+
+interface TestContext {
+  projectId: string;
+  firestoreIndexes?: boolean;
+  firestoreRules?: boolean;
+  firestore?: {
+    rules: RulesContext[];
+    indexes: IndexContext[];
+    rulesDeploy?: RulesDeploy;
+  };
+}
+
+describe("deploy/firestore/prepare", () => {
+  let getFirestoreConfigStub: sinon.SinonStub;
+  let compileStub: sinon.SinonStub;
   let getDatabaseStub: sinon.SinonStub;
   let createDatabaseStub: sinon.SinonStub;
 
   beforeEach(() => {
-    sandbox = sinon.createSandbox();
-    getDatabaseStub = sandbox.stub(FirestoreApi.prototype, "getDatabase");
-    createDatabaseStub = sandbox.stub(FirestoreApi.prototype, "createDatabase");
-    sandbox.stub(ensureApiEnabled, "ensure").resolves();
-    sandbox.stub(loadCJSON, "loadCJSON").returns({});
-    sandbox.stub(RulesDeploy.prototype, "addFile").returns();
-    sandbox.stub(RulesDeploy.prototype, "compile").resolves();
-    sandbox.stub(fsConfig, "getFirestoreConfig").returns([
-      {
-        database: "test-db",
-        rules: "firestore.rules",
-        indexes: "firestore.indexes.json",
-      },
-    ]);
+    sinon.stub(ensureApiEnabled, "ensure").resolves();
+    getFirestoreConfigStub = sinon.stub(fsConfig, "getFirestoreConfig").returns([]);
+    compileStub = sinon.stub(RulesDeploy.prototype, "compile").resolves();
+    sinon.stub(RulesDeploy.prototype, "addFile").returns();
+    getDatabaseStub = sinon.stub(FirestoreApi.prototype, "getDatabase").resolves();
+    createDatabaseStub = sinon.stub(FirestoreApi.prototype, "createDatabase").resolves();
   });
 
   afterEach(() => {
-    sandbox.restore();
+    sinon.restore();
   });
 
-  describe("createDatabase", () => {
-    const projectId = "test-project";
-    const options = {
-      projectId,
-      config: {
-        path: (p: string) => p,
-        data: {
+  it("should exit early if no firestore configs are found", async () => {
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({ only: "" });
+
+    await prepare(context, options);
+
+    expect(context.firestore).to.be.undefined;
+  });
+
+  it("should prepare filtering flags correctly for --only firestore", async () => {
+    getFirestoreConfigStub.returns([{ database: "(default)", rules: "firestore.rules" }]);
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({
+      only: "firestore",
+      config: new Config({ firestore: {} }, { projectDir: "." }),
+      projectId: "my-project",
+    });
+
+    await prepare(context, options);
+
+    expect(context.firestoreRules).to.be.true;
+    expect(context.firestoreIndexes).to.be.true;
+  });
+
+  it("should prepare filtering flags correctly for --only firestore:rules", async () => {
+    getFirestoreConfigStub.returns([{ database: "(default)", rules: "firestore.rules" }]);
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({
+      only: "firestore:rules",
+      config: new Config({ firestore: {} }, { projectDir: "." }),
+      projectId: "my-project",
+    });
+
+    await prepare(context, options);
+
+    expect(context.firestoreRules).to.be.true;
+    expect(context.firestoreIndexes).to.be.false;
+  });
+
+  it("should create a missing database on preparation", async () => {
+    getFirestoreConfigStub.returns([{ database: "(default)", rules: "firestore.rules" }]);
+    getDatabaseStub.rejects(Object.assign(new Error("Not found"), { status: 404 }));
+
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({
+      config: new Config({ firestore: { database: "(default)" } }, { projectDir: "." }),
+      projectId: "my-project",
+    });
+
+    await prepare(context, options);
+
+    expect(createDatabaseStub).to.have.been.calledOnce;
+    expect(createDatabaseStub).to.have.been.calledWith(sinon.match({ databaseId: "(default)" }));
+    expect(compileStub).to.have.been.calledOnce;
+  });
+
+  it("should create database with detailed settings", async () => {
+    getFirestoreConfigStub.returns([{ database: "test-db", rules: "firestore.rules" }]);
+    getDatabaseStub.rejects(Object.assign(new Error("Not found"), { status: 404 }));
+
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({
+      config: new Config(
+        {
           firestore: {
             database: "test-db",
+            edition: "enterprise",
+            dataAccessMode: "FIRESTORE_NATIVE",
           },
         },
-      },
-    } as unknown as Options;
-
-    it("should create a database with default settings when dataAccessMode is missing", async () => {
-      getDatabaseStub.rejects({ status: 404 });
-      createDatabaseStub.resolves();
-
-      // We need to call the default export which calls createDatabase internally
-      await prepare({ projectId }, options);
-
-      expect(createDatabaseStub.calledOnce).to.be.true;
-      const args = createDatabaseStub.firstCall.args[0];
-      expect(args.firestoreDataAccessMode).to.be.undefined;
-      expect(args.mongodbCompatibleDataAccessMode).to.be.undefined;
-      expect(args.databaseEdition).to.equal(types.DatabaseEdition.STANDARD);
+        { projectDir: "." },
+      ),
+      projectId: "my-project",
     });
 
-    it("should create a database with FIRESTORE_NATIVE when specified on enterprise edition", async () => {
-      const enterpriseOptions = {
-        projectId,
-        config: {
-          path: (p: string) => p,
-          data: {
-            firestore: {
-              database: "test-db",
-              edition: "enterprise",
-              dataAccessMode: "FIRESTORE_NATIVE",
-            },
-          },
-        },
-      } as unknown as Options;
-      getDatabaseStub.rejects({ status: 404 });
-      createDatabaseStub.resolves();
+    await prepare(context, options);
 
-      await prepare({ projectId }, enterpriseOptions);
+    expect(createDatabaseStub).to.have.been.calledOnce;
+    expect(createDatabaseStub).to.have.been.calledWith(
+      sinon.match({
+        databaseId: "test-db",
+        databaseEdition: "ENTERPRISE",
+        firestoreDataAccessMode: "DATA_ACCESS_MODE_ENABLED",
+        mongodbCompatibleDataAccessMode: "DATA_ACCESS_MODE_DISABLED",
+      }),
+    );
+  });
 
-      expect(createDatabaseStub.calledOnce).to.be.true;
-      const args = createDatabaseStub.firstCall.args[0];
-      expect(args.firestoreDataAccessMode).to.equal(types.DataAccessMode.ENABLED);
-      expect(args.mongodbCompatibleDataAccessMode).to.equal(types.DataAccessMode.DISABLED);
-      expect(args.databaseEdition).to.equal(types.DatabaseEdition.ENTERPRISE);
+  it("should throw if invalid edition is specified", async () => {
+    getFirestoreConfigStub.returns([{ database: "(default)" }]);
+    const context = { projectId: "my-project" } as TestContext;
+    const options = mockDeployOptions({
+      config: new Config({ firestore: { edition: "INVALID_EDITION" } }, { projectDir: "." }),
+      projectId: "my-project",
     });
 
-    it("should create a database with MONGODB_COMPATIBLE when specified on enterprise edition", async () => {
-      const enterpriseOptions = {
-        projectId,
-        config: {
-          path: (p: string) => p,
-          data: {
-            firestore: {
-              database: "test-db",
-              edition: "enterprise",
-              dataAccessMode: "MONGODB_COMPATIBLE",
-            },
-          },
-        },
-      } as unknown as Options;
-      getDatabaseStub.rejects({ status: 404 });
-      createDatabaseStub.resolves();
-
-      await prepare({ projectId }, enterpriseOptions);
-
-      expect(createDatabaseStub.calledOnce).to.be.true;
-      const args = createDatabaseStub.firstCall.args[0];
-      expect(args.firestoreDataAccessMode).to.equal(types.DataAccessMode.DISABLED);
-      expect(args.mongodbCompatibleDataAccessMode).to.equal(types.DataAccessMode.ENABLED);
-      expect(args.databaseEdition).to.equal(types.DatabaseEdition.ENTERPRISE);
-    });
-
-    it("should throw an error when dataAccessMode is specified on standard edition", async () => {
-      const standardOptions = {
-        projectId,
-        config: {
-          data: {
-            firestore: {
-              database: "test-db",
-              edition: "standard",
-              dataAccessMode: "MONGODB_COMPATIBLE",
-            },
-          },
-        },
-      } as unknown as Options;
-      getDatabaseStub.rejects({ status: 404 });
-
-      await expect(prepare({ projectId }, standardOptions)).to.be.rejectedWith(
-        FirebaseError,
-        "dataAccessMode can only be specified for enterprise edition databases.",
-      );
-    });
-
-    it("should throw an error when dataAccessMode is specified without edition (defaults to standard)", async () => {
-      const defaultOptions = {
-        projectId,
-        config: {
-          data: {
-            firestore: {
-              database: "test-db",
-              dataAccessMode: "MONGODB_COMPATIBLE",
-            },
-          },
-        },
-      } as unknown as Options;
-      getDatabaseStub.rejects({ status: 404 });
-
-      await expect(prepare({ projectId }, defaultOptions)).to.be.rejectedWith(
-        FirebaseError,
-        "dataAccessMode can only be specified for enterprise edition databases.",
-      );
-    });
+    await expect(prepare(context, options)).to.be.rejectedWith(
+      FirebaseError,
+      /Invalid edition specified for database/,
+    );
   });
 });
