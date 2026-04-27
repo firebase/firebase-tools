@@ -193,8 +193,15 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
-  const payload = { source: { files } };
+export async function createRuleset(
+  projectId: string,
+  files: RulesetFile[],
+  attachmentPoint?: string,
+): Promise<string> {
+  const payload: any = { source: { files } };
+  if (attachmentPoint) {
+    payload.attachment_point = attachmentPoint;
+  }
 
   const response = await apiClient.post<unknown, { name: string }>(
     `/projects/${projectId}/rulesets`,

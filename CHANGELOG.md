@@ -4,3 +4,4 @@
 - Added SSE mode support to `firebase mcp`. To use it, run `firebase mcp --mode=sse --port=3000`, and connect your client on `http://localhost:3000`.
 - Update the valid Python runtimes for functions. Default Python runtime is now Python 3.14.
 - Fix CLI non-interactive mode for dataconnect init (#10401)
+- Fixed issue where rules for non-default Firestore databases were not being deployed correctly.
