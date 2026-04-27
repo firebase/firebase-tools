@@ -271,16 +271,19 @@ export async function prepare(
   // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
+  const existingBackend = await backend.existingBackend(context);
+  for (const [, wantBackend] of Object.entries(wantBackends)) {
+    await resolveDefaultRegions(wantBackend, existingBackend);
+  }
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
-    backend.allEndpoints(await backend.existingBackend(context)),
+    backend.allEndpoints(existingBackend),
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    await resolveDefaultRegions(wantBackend, haveBackend);
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
