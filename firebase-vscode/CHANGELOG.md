@@ -1,5 +1,7 @@
 ## NEXT
 
+## 2.3.0
+
 - Rename product from Firebase Data Connect to Firebase SQL Connect.
 
 ## 2.2.3
