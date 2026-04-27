@@ -1,9 +1,12 @@
 name: CI Tests
 
 on:
-  - pull_request
-  - push
-  - merge_group
+  pull_request:
+    branches:
+      - main
+      - next
+  push:
+  merge_group:
 
 env:
   CI: true
@@ -180,7 +183,7 @@ jobs:
 
   integration:
     needs: unit
-    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: ubuntu-22.04
 
     env:
@@ -247,7 +250,7 @@ jobs:
 
   integration-windows:
     needs: unit
-    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: windows-latest
 
     env:

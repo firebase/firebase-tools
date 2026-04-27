@@ -12,7 +12,8 @@
                 "python310",
                 "python311",
                 "python312",
-                "python313"
+                "python313",
+                "python314"
             ],
             "type": "string"
         },
@@ -965,7 +966,8 @@
                         "python310",
                         "python311",
                         "python312",
-                        "python313"
+                        "python313",
+                        "python314"
                     ],
                     "type": "string"
                 },
