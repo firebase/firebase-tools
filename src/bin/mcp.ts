@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { mkdir } from "fs/promises";
+import { homedir } from "os";
 import { parseArgs } from "util";
 import { useFileLogger } from "../logger";
 import { FirebaseMcpServer } from "../mcp/index";
+import { setFirebaseMcp } from "../env";
 import { markdownDocsOfPrompts } from "../mcp/prompts/index.js";
 import { markdownDocsOfResources } from "../mcp/resources/index.js";
 import { markdownDocsOfTools } from "../mcp/tools/index.js";
@@ -46,6 +49,8 @@ Options:
                             If specified, auto-detection is disabled for other features.
   --tools <tools>           Comma-separated list of specific tools to enable. Disables
                             auto-detection entirely.
+  --mode <mode>             Server mode: stdio, sse (defaults to stdio).
+  --port <port>             The port to listen on when running in SSE mode (defaults to 3000).
   -h, --help                Show this help message.
 `;
 
@@ -55,6 +60,8 @@ export async function mcp(): Promise<void> {
       only: { type: "string", default: "" },
       tools: { type: "string", default: "" },
       dir: { type: "string" },
+      mode: { type: "string", default: "stdio" },
+      port: { type: "string", default: "3000" },
       "generate-tool-list": { type: "boolean", default: false },
       "generate-prompt-list": { type: "boolean", default: false },
       "generate-resource-list": { type: "boolean", default: false },
@@ -69,7 +76,7 @@ export async function mcp(): Promise<void> {
     earlyExit = true;
   }
   if (values["generate-tool-list"]) {
-    console.log(markdownDocsOfTools());
+    console.log(await markdownDocsOfTools());
     earlyExit = true;
   }
   if (values["generate-prompt-list"]) {
@@ -82,8 +89,16 @@ export async function mcp(): Promise<void> {
   }
   if (earlyExit) return;
 
-  process.env.IS_FIREBASE_MCP = "true";
-  useFileLogger();
+  if (values.mode !== "stdio" && values.mode !== "sse") {
+    console.error("Error: --mode must be either 'stdio' or 'sse'");
+    process.exit(1);
+  }
+
+  setFirebaseMcp(true);
+  // Write debug logs to ~/.cache/firebase to avoid polluting the user's project directory.
+  const mcpLogDir = join(homedir(), ".cache", "firebase");
+  await mkdir(mcpLogDir, { recursive: true });
+  useFileLogger(join(mcpLogDir, "firebase-debug.log"));
   const activeFeatures = (values.only || "")
     .split(",")
     .map((f) => f.trim())
@@ -97,6 +112,9 @@ export async function mcp(): Promise<void> {
     enabledTools,
     projectRoot: values.dir ? resolve(values.dir) : undefined,
   });
-  await server.start();
+  await server.start({
+    useSSE: values.mode === "sse",
+    port: values.port ? parseInt(values.port, 10) : undefined,
+  });
   if (process.stdin.isTTY) process.stderr.write(STARTUP_MESSAGE);
 }

@@ -28,6 +28,8 @@ import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
+import { isEnabled } from "../experiments";
+import { DEFAULT_RUNTIME, promptRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -79,6 +81,7 @@ export async function doSetup(
   serviceAccount?: string,
   primaryRegion?: string,
   rootDir?: string,
+  runtime?: string,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -125,6 +128,14 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
+  if (runtime === undefined && isEnabled("abiu")) {
+    if (nonInteractive) {
+      runtime = DEFAULT_RUNTIME;
+    } else {
+      runtime = await promptRuntime(projectId, location);
+    }
+  }
+
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
     webAppName ? webAppName : null,
@@ -143,6 +154,7 @@ export async function doSetup(
     gitRepositoryLink,
     webApp?.id,
     rootDir,
+    runtime,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -290,7 +302,7 @@ export async function ensureAppHostingComputeServiceAccount(
       "v1",
       name,
       ["iam.serviceAccounts.actAs"],
-      `projects/${projectId}`,
+      `${projectId}`,
     );
   } catch (err: unknown) {
     if (!(err instanceof FirebaseError)) {
@@ -352,6 +364,7 @@ export async function createBackend(
   repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
+  runtime?: string,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -366,6 +379,11 @@ export async function createBackend(
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

@@ -199,6 +199,8 @@ export function emulatedFunctionsFromEndpoints(
     // process requires it in this form. Need to work in Firestore emulator for a proper fix...
     if (backend.isHttpsTriggered(endpoint)) {
       def.httpsTrigger = endpoint.httpsTrigger;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      def.httpsTrigger = endpoint.dataConnectGraphqlTrigger;
     } else if (backend.isCallableTriggered(endpoint)) {
       def.httpsTrigger = {};
       def.labels = { ...def.labels, "deployment-callable": "true" };
@@ -438,7 +440,7 @@ export function findModuleRoot(moduleName: string, filepath: string): string {
         return chunks.join("/");
       }
       break;
-    } catch (err: any) {
+    } catch (err: unknown) {
       /**/
     }
   }

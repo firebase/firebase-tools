@@ -23,6 +23,9 @@ interface EnvironmentTemplateValues {
   // Whether the user has accepted Gemini in Firebase TOS
   geminiTosAccepted: boolean;
 
+  // Whether billing is enabled for the project
+  isBillingEnabled: boolean;
+
   // The authenticated user identifier
   authenticatedUser?: string;
 
@@ -48,6 +51,7 @@ export function hydrateTemplate(config: EnvironmentTemplateValues): string {
     : "<NONE>";
   const projectConfigPath = config.projectConfigPath || "<NO CONFIG PRESENT>";
   const geminiTosAccepted = config.geminiTosAccepted ? "Accepted" : "<NOT ACCEPTED>";
+  const billingEnabled = config.projectId ? (config.isBillingEnabled ? "Yes" : "No") : "N/A";
   const authenticatedUser = config.authenticatedUser || "<NONE>";
   const detectedApps =
     Object.entries(config.detectedAppIds).length > 0
@@ -67,6 +71,7 @@ Project Directory: ${config.projectDir}
 Project Config Path: ${projectConfigPath}
 Active Project ID: ${activeProject}
 Gemini in Firebase Terms of Service: ${geminiTosAccepted}
+Billing Enabled: ${billingEnabled}
 Authenticated User: ${authenticatedUser}
 Detected App IDs: ${detectedApps}
 Available Project Aliases (format: '[alias]: [projectId]'): ${availableProjects}${hasOtherAccounts ? `\nAvailable Accounts: \n\n${availableAccounts}` : ""}
@@ -95,7 +100,7 @@ export const get_environment = tool(
   {
     name: "get_environment",
     description:
-      "Use this to retrieve the current Firebase **environment** configuration for the Firebase CLI and Firebase MCP server, including current authenticated user, project directory, active Firebase Project, and more.",
+      "Use this to retrieve the current Firebase **environment** configuration for the Firebase CLI and Firebase MCP server, including current authenticated user, project directory, active Firebase Project, and more. All tools require the user to be authenticated, but not all information is required for all tools. Pay attention to the tool requirements for which pieces of information are required.",
     inputSchema: z.object({}),
     annotations: {
       title: "Get Firebase Environment Info",
@@ -106,7 +111,7 @@ export const get_environment = tool(
       requiresProject: false,
     },
   },
-  async (_, { projectId, host, accountEmail, rc, config }) => {
+  async (_, { projectId, host, accountEmail, rc, config, isBillingEnabled }) => {
     const aliases = projectId ? getAliases({ rc }, projectId) : [];
     const geminiTosAccepted = !!configstore.get("gemini");
     const projectFileExists = config.projectFileExists("firebase.json");
@@ -129,6 +134,7 @@ export const get_environment = tool(
       projectDir: host.cachedProjectDir,
       projectConfigPath: projectFileExists ? config.path("firebase.json") : undefined,
       geminiTosAccepted,
+      isBillingEnabled,
       authenticatedUser: accountEmail || undefined,
       projectAliasMap: rc.projects,
       allAccounts,

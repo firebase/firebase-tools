@@ -6,7 +6,6 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
 import { setupSQLPermissions, getSchemaMetadata } from "../gcp/cloudsql/permissionsSetup";
-import { DEFAULT_SCHEMA } from "../gcp/cloudsql/permissions";
 import { getIdentifiers, ensureServiceIsConnectedToCloudSql } from "../dataconnect/schemaMigration";
 import { setupIAMUsers } from "../gcp/cloudsql/connect";
 import { pickOneService } from "../dataconnect/load";
@@ -16,10 +15,10 @@ type SetupOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:sql:setup")
   .description("set up your CloudSQL database")
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
@@ -45,7 +44,7 @@ export const command = new Command("dataconnect:sql:setup")
       );
     }
 
-    const { serviceName, instanceName, databaseId } = getIdentifiers(
+    const { serviceName, instanceName, databaseId, schemaName } = getIdentifiers(
       mainSchema(serviceInfo.schemas),
     );
     await ensureServiceIsConnectedToCloudSql(
@@ -53,11 +52,12 @@ export const command = new Command("dataconnect:sql:setup")
       instanceName,
       databaseId,
       /* linkIfNotConnected=*/ true,
+      schemaName,
     );
 
     // Setup the IAM user for the current identity.
     await setupIAMUsers(instanceId, options);
 
-    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, DEFAULT_SCHEMA, options);
+    const schemaInfo = await getSchemaMetadata(instanceId, databaseId, schemaName, options);
     await setupSQLPermissions(instanceId, databaseId, schemaInfo, options);
   });

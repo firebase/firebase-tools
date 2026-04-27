@@ -75,12 +75,14 @@ if [[ $VERSION == "preview" ]]; then
 fi
 echo "Cloned repository."
 
-echo "Making sure there is a changelog..."
-if [ ! -s CHANGELOG.md ]; then
-  echo "CHANGELOG.md is empty. aborting."
-  exit 1
+if [[ $VERSION != "preview" ]]; then
+  echo "Making sure there is a changelog..."
+  if [ ! -s CHANGELOG.md ]; then
+    echo "CHANGELOG.md is empty. aborting."
+    exit 1
+  fi
+  echo "Made sure there is a changelog."
 fi
-echo "Made sure there is a changelog."
 
 echo "Running npm install..."
 npm install
@@ -98,6 +100,8 @@ if [[ $VERSION == "preview" ]]; then
   echo "Made a preview version."
 else
   echo "Making a $VERSION version..."
+  git diff
+  npm -v
   npm version $VERSION
   NEW_VERSION=$(jq -r ".version" package.json)
   echo "Made a $VERSION version."
@@ -142,9 +146,9 @@ if [[ $VERSION != "preview" ]]; then
   git push origin main --tags
   echo "Pushed to GitHub."
 
-  echo "Publishing release notes..."
-  hub release create --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
-  echo "Published release notes."
+  echo "Publishing draft release notes..."
+  hub release create --draft --file "${RELEASE_NOTES_FILE}" "v${NEW_VERSION}"
+  echo "Published draft release notes."
 else
   echo "Publishing preview version to npm..."
   npx clean-publish@5.0.0 --before-script ./scripts/clean-shrinkwrap.sh -- --tag preview

@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:22
 
 # Install dependencies
 RUN curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
@@ -10,5 +10,5 @@ RUN apt-get update && \
 RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/v2.14.2/hub-linux-amd64-2.14.2.tgz
 RUN tar --strip-components=2 -C /usr/bin -xf hub.tgz hub-linux-amd64-2.14.2/bin/hub
 
-# Upgrade npm to 9.
-RUN npm install --global npm@9.5
+# Upgrade npm to 10.
+RUN npm install --global npm@11.9

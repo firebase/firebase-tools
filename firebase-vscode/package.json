@@ -1,10 +1,10 @@
 {
   "name": "firebase-dataconnect-vscode",
-  "displayName": "Firebase Data Connect",
+  "displayName": "Firebase SQL Connect",
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
-  "description": "Firebase Data Connect for VSCode",
-  "version": "2.0.0",
+  "description": "Firebase SQL Connect for VSCode",
+  "version": "2.3.0",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -36,7 +36,7 @@
       },
       {
         "command": "fdc.deploy",
-        "title": "Firebase Data Connect: Deploy",
+        "title": "Firebase SQL Connect: Deploy",
         "icon": "$(cloud-upload)"
       },
       {
@@ -45,7 +45,7 @@
       },
       {
         "command": "firebase.refresh",
-        "title": "Firebase Data Connect Extension: Refresh"
+        "title": "Firebase SQL Connect Extension: Refresh"
       }
     ],
     "configuration": {
@@ -111,14 +111,14 @@
       "activitybar": [
         {
           "id": "firebase-data-connect",
-          "title": "Firebase Data Connect",
+          "title": "Firebase SQL Connect",
           "icon": "resources/firebase_dataconnect_logo.svg"
         }
       ],
       "panel": [
         {
           "id": "firebase-data-connect-execution-view",
-          "title": "Data Connect Execution",
+          "title": "SQL Connect Execution",
           "icon": "$(gmp-data-connect)"
         }
       ]
@@ -132,7 +132,7 @@
         }
       },
       "gmp-data-connect": {
-        "description": "Data Connect icon",
+        "description": "SQL Connect icon",
         "default": {
           "fontPath": "./resources/GMPIcons.woff2",
           "fontCharacter": "\\gmp_nav20_dataconnect"
@@ -262,7 +262,7 @@
     "eslint-plugin-react": "^7.32.2",
     "fork-ts-checker-webpack-plugin": "^7.3.0",
     "glob": "^8.0.3",
-    "graphql": "^16.7.1",
+    "graphql": "file:graphql-16.12.0.tgz",
     "mini-css-extract-plugin": "^2.6.0",
     "mocha": "^10.1.0",
     "node-loader": "2.0.0",
@@ -277,5 +277,8 @@
     "webpack": "^5.75.0",
     "webpack-cli": "^5.0.1",
     "webpack-merge": "^5.8.0"
+  },
+  "overrides": {
+    "qs": "~6.14.1"
   }
 }

@@ -1,5 +1,45 @@
 ## NEXT
 
+## 2.3.0
+
+- Rename product from Firebase Data Connect to Firebase SQL Connect.
+
+## 2.2.3
+
+- Update internal `firebase-tools` dependency to 15.13.0
+
+## 2.2.2
+
+- Update internal `firebase-tools` dependency to 15.12.0
+
+## 2.2.1
+
+- Update internal `firebase-tools` dependency to 15.10.0
+
+## 2.2.0
+
+- Update internal `firebase-tools` dependency to 15.9.0
+
+## 2.1.2
+
+- Update internal `firebase-tools` dependency to 15.7.0
+
+## 2.1.1
+
+- Update internal `firebase-tools` dependency to 15.5.1
+- Surface Compiler error / warnings at the right diagnosis level (#9805)
+
+## 2.1.0
+
+- Update internal `firebase-tools` dependency to 15.4.0
+- Render GraphQL error debug details and error code in the execution panel nicely. (#9769, #9785)
+- Language server now recognizes multiple schemas. (#9768)
+
+## 2.0.1
+
+- Update internal `firebase-tools` dependency to 15.3.1
+- Fix the data connect emulator discovery bugs.
+
 ## 2.0.0
 
 - Update internal `firebase-tools` dependency to 15.0.0

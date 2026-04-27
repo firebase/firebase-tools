@@ -199,6 +199,9 @@ export class Command {
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
       if (args.length - 1 > cmd._args.length) {
+        if (!getInheritedOption(options, "json") && !options.isMCP) {
+          useConsoleLoggers();
+        }
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
@@ -334,6 +337,16 @@ export class Command {
 
     if (getInheritedOption(options, "config")) {
       options.configPath = getInheritedOption(options, "config");
+    }
+
+    const onlyOption = getInheritedOption(options, "only");
+    if (onlyOption) {
+      // Handle cases where PowerShell replaces commas with spaces.
+      // see https://github.com/firebase/firebase-tools/issues/7506
+      options.only = onlyOption
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .join(",");
     }
 
     try {

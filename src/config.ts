@@ -32,6 +32,7 @@ export class Config {
     "remoteconfig",
     "dataconnect",
     "apphosting",
+    "auth",
   ];
 
   public options: any;
@@ -271,6 +272,7 @@ export class Config {
     const shouldWrite = await confirm({
       message: "File " + clc.underline(path) + " already exists. Overwrite?",
       default: !!confirmByDefault,
+      nonInteractive: this.options.nonInteractive,
     });
     if (!shouldWrite) {
       utils.logBullet("Skipping write of " + clc.bold(path));

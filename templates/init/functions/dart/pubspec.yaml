@@ -1,0 +1,13 @@
+name: my_function
+description: An app using Dart with Cloud Functions for Firebase
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  firebase_functions: ^0.5.0
+
+dev_dependencies:
+  build_runner: ^2.4.0

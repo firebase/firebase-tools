@@ -1,6 +1,5 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../api";
 import * as params from "./params";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
@@ -8,6 +7,8 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+
+export const REGION_TBD = "REGION_TBD";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -69,6 +70,15 @@ export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
   invoker?: Array<ServiceAccount | Expression<string>> | null;
+}
+
+export interface DataConnectGraphqlTrigger {
+  // Which service account should be able to trigger this function in addition to the Firebase SQL Connect P4SA.
+  // No value means that only the Firebase SQL Connect P4SA can trigger this function.
+  // For more context, see go/cf3-http-access-control
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  // The file path relative to the Firebase project directory where the GraphQL schema is stored.
+  schemaFilePath?: string;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
@@ -150,6 +160,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type DataConnectGraphqlTriggered = { dataConnectGraphqlTrigger: DataConnectGraphqlTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -157,6 +168,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -166,6 +178,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -194,8 +213,13 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 }
 
 export interface VpcSettings {
-  connector: string | Expression<string>;
+  connector?: string | Expression<string> | null;
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
+  networkInterfaces?: Array<{
+    network?: string | Expression<string> | null;
+    subnetwork?: string | Expression<string> | null;
+    tags?: Array<string | Expression<string>> | null;
+  }> | null;
 }
 
 export interface SecretEnvVar {
@@ -207,9 +231,8 @@ export interface SecretEnvVar {
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
-// Run is an automatic migration from gcfv2 and is not used on the wire.
-export type FunctionsPlatform = Exclude<backend.FunctionsPlatform, "run">;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export type FunctionsPlatform = backend.FunctionsPlatform;
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
@@ -223,11 +246,10 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
-  // Defaults to "gcfv2". "Run" will be an additional option defined later
-  platform?: "gcfv1" | "gcfv2";
+  // Defaults to "gcfv2".
+  platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
-  // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
   // The services account that this function should run as.
@@ -269,6 +291,11 @@ export type Endpoint = Triggered & {
   environmentVariables?: Record<string, string | Expression<string>> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   labels?: Record<string, string | Expression<string>> | null;
+
+  // Fields for Cloud Run platform (for no-build path)
+  baseImageUri?: string;
+  command?: string[];
+  args?: string[];
 };
 
 type SecretParam = ReturnType<typeof defineSecret>;
@@ -447,7 +474,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion()];
+      regions = [REGION_TBD];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {
@@ -485,6 +512,9 @@ export function toBackend(
         "environmentVariables",
         "labels",
         "secretEnvironmentVariables",
+        "baseImageUri",
+        "command",
+        "args",
       );
       r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
@@ -522,21 +552,32 @@ export function toBackend(
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
       if (bdEndpoint.vpc) {
-        bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
-        if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
-          bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
+        bkEndpoint.vpc = {};
+        if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {
+          const connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
+          bkEndpoint.vpc.connector =
+            connector.includes("/") || connector === ""
+              ? connector
+              : `projects/${bdEndpoint.project}/locations/${region}/connectors/${connector}`;
         }
-
-        bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
         if (bdEndpoint.vpc.egressSettings) {
-          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
-          if (!backend.isValidEgressSetting(egressSettings)) {
-            throw new FirebaseError(
-              `Value "${egressSettings}" is an invalid ` +
-                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
-            );
+          const egress = params.resolveString(bdEndpoint.vpc.egressSettings, paramValues);
+          if (!backend.AllVpcEgressSettings.includes(egress as backend.VpcEgressSettings)) {
+            throw new FirebaseError(`Value "${egress}" is an invalid egress setting.`);
           }
-          bkEndpoint.vpc.egressSettings = egressSettings;
+          bkEndpoint.vpc.egressSettings = egress as backend.VpcEgressSettings;
+        }
+        if (bdEndpoint.vpc.networkInterfaces) {
+          bkEndpoint.vpc.networkInterfaces = bdEndpoint.vpc.networkInterfaces.map((ni) => {
+            const resolved: { network?: string; subnetwork?: string; tags?: string[] } = {};
+            if (ni.network) resolved.network = params.resolveString(ni.network, paramValues);
+            if (ni.subnetwork)
+              resolved.subnetwork = params.resolveString(ni.subnetwork, paramValues);
+            if (ni.tags) {
+              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, paramValues));
+            }
+            return resolved;
+          });
         }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;
@@ -559,6 +600,21 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    const dataConnectGraphqlTrigger: backend.DataConnectGraphqlTrigger = {};
+    if (endpoint.dataConnectGraphqlTrigger.invoker === null) {
+      dataConnectGraphqlTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectGraphqlTrigger.invoker !== "undefined") {
+      dataConnectGraphqlTrigger.invoker = endpoint.dataConnectGraphqlTrigger.invoker.map(
+        r.resolveString,
+      );
+    }
+    proto.copyIfPresent(
+      dataConnectGraphqlTrigger,
+      endpoint.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
+    return { dataConnectGraphqlTrigger };
   } else if (isCallableTriggered(endpoint)) {
     const trigger: CallableTriggered = { callableTrigger: {} };
     proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");

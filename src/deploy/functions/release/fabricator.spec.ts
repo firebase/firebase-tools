@@ -11,6 +11,7 @@ import * as pollerNS from "../../../operation-poller";
 import * as pubsubNS from "../../../gcp/pubsub";
 import * as schedulerNS from "../../../gcp/cloudscheduler";
 import * as runNS from "../../../gcp/run";
+import * as runV2NS from "../../../gcp/runv2";
 import * as cloudtasksNS from "../../../gcp/cloudtasks";
 import * as backend from "../backend";
 import * as scraper from "./sourceTokenScraper";
@@ -32,6 +33,7 @@ describe("Fabricator", () => {
   let pubsub: sinon.SinonStubbedInstance<typeof pubsubNS>;
   let scheduler: sinon.SinonStubbedInstance<typeof schedulerNS>;
   let run: sinon.SinonStubbedInstance<typeof runNS>;
+  let runv2: sinon.SinonStubbedInstance<typeof runV2NS>;
   let tasks: sinon.SinonStubbedInstance<typeof cloudtasksNS>;
   let services: sinon.SinonStubbedInstance<typeof servicesNS>;
   let identityPlatform: sinon.SinonStubbedInstance<typeof identityPlatformNS>;
@@ -44,6 +46,7 @@ describe("Fabricator", () => {
     pubsub = sinon.stub(pubsubNS);
     scheduler = sinon.stub(schedulerNS);
     run = sinon.stub(runNS);
+    runv2 = sinon.stub(runV2NS);
     tasks = sinon.stub(cloudtasksNS);
     services = sinon.stub(servicesNS);
     identityPlatform = sinon.stub(identityPlatformNS);
@@ -53,6 +56,7 @@ describe("Fabricator", () => {
     scheduler.jobFromEndpoint.restore();
     tasks.queueFromEndpoint.restore();
     tasks.queueNameForEndpoint.restore();
+    runv2.serviceFromEndpoint.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
     gcf.deleteFunction.rejects(new Error("unexpected gcf.deleteFunction"));
@@ -74,6 +78,10 @@ describe("Fabricator", () => {
     run.setInvokerUpdate.rejects(new Error("unexpected run.setInvokerUpdate"));
     run.replaceService.rejects(new Error("unexpected run.replaceService"));
     run.updateService.rejects(new Error("Unexpected run.updateService"));
+    runv2.createService.rejects(new Error("unexpected runv2.createService"));
+    runv2.updateService.rejects(new Error("unexpected runv2.updateService"));
+    runv2.deleteService.rejects(new Error("unexpected runv2.deleteService"));
+    runv2.getService.rejects(new Error("unexpected runv2.getService"));
     poller.pollOperation.rejects(new Error("unexpected poller.pollOperation"));
     pubsub.createTopic.rejects(new Error("unexpected pubsub.createTopic"));
     pubsub.deleteTopic.rejects(new Error("unexpected pubsub.deleteTopic"));
@@ -107,6 +115,7 @@ describe("Fabricator", () => {
   const ctorArgs: fabricator.FabricatorArgs = {
     executor: new executor.InlineExecutor(),
     functionExecutor: new executor.InlineExecutor(),
+    runFunctionExecutor: new executor.InlineExecutor(),
     sources: {
       default: {
         sourceUrl: "https://example.com",
@@ -708,6 +717,53 @@ describe("Fabricator", () => {
       });
     });
 
+    describe("dataConnectGraphqlTrigger", () => {
+      it("sets FDC P4SA invoker by default", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint({ dataConnectGraphqlTrigger: {} }, { platform: "gcfv2" });
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+        ]);
+      });
+
+      it("sets explicit invoker", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          {
+            dataConnectGraphqlTrigger: {
+              invoker: ["custom@"],
+            },
+          },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, "service", [
+          "custom@",
+          `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+        ]);
+      });
+
+      it("doesn't set private invoker on create", async () => {
+        gcfv2.createFunction.resolves({ name: "op", done: false });
+        poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+        run.setInvokerCreate.resolves();
+        const ep = endpoint(
+          { dataConnectGraphqlTrigger: { invoker: ["private"] } },
+          { platform: "gcfv2" },
+        );
+
+        await fab.createV2Function(ep, new scraper.SourceTokenScraper());
+        expect(run.setInvokerCreate).to.not.have.been.called;
+      });
+    });
+
     describe("callableTrigger", () => {
       it("always sets invoker to public", async () => {
         gcfv2.createFunction.resolves({ name: "op", done: false });
@@ -854,6 +910,36 @@ describe("Fabricator", () => {
       expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
     });
 
+    it("sets invoker to private on Node updates when explicitly configured as private", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["private"]);
+    });
+
+    it("sets explicit invoker on dataConnectGraphqlTrigger", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint(
+        {
+          dataConnectGraphqlTrigger: {
+            invoker: ["custom@"],
+          },
+        },
+        { platform: "gcfv2" },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", [
+        "custom@",
+        `service-${fab.projectNumber}@gcp-sa-firebasedataconnect.iam.gserviceaccount.com`,
+      ]);
+    });
+
     it("sets explicit invoker on taskQueueTrigger", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -896,6 +982,16 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker to public on Node updates when explicitly null", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: null } }, { platform: "gcfv2" });
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
     });
 
     it("doesn't set invoker on non-http functions", async () => {
@@ -1504,7 +1600,7 @@ describe("Fabricator", () => {
       const updateEndpoint = sinon.stub(fab, "updateEndpoint");
       updateEndpoint.callsFake(fakeUpsert);
 
-      await fab.applyChangeset(changes);
+      await fab.applyPlan({ "us-central1": changes });
     });
 
     it("handles errors and wraps them in results", async () => {
@@ -1517,7 +1613,8 @@ describe("Fabricator", () => {
         endpointsToSkip: [],
       };
 
-      const results = await fab.applyChangeset(changes);
+      const summary = await fab.applyPlan({ "us-central1": changes });
+      const results = summary.results;
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
     });
@@ -1569,7 +1666,8 @@ describe("Fabricator", () => {
       endpointsToSkip: [],
     };
 
-    const results = await fab.applyChangeset(changes);
+    const summary = await fab.applyPlan({ "us-central1": changes });
+    const results = summary.results;
     const result = results.find((r) => r.endpoint.id === deleteEP.id);
     expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
     expect(result?.durationMs).to.equal(0);
@@ -1595,7 +1693,8 @@ describe("Fabricator", () => {
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
 
-    const results = await fab.applyChangeset(changes);
+    const summary = await fab.applyPlan({ "us-central1": changes });
+    const results = summary.results;
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
     expect(deleteEndpoint).to.have.been.calledWith(deleteEP);
@@ -1635,6 +1734,242 @@ describe("Fabricator", () => {
       const ep2Result = summary.results.find((r) => r.endpoint.region === ep2.region);
       expect(ep2Result?.error).to.be.instanceOf(reporter.DeploymentError);
       expect(ep2Result?.error?.message).to.match(/delete function/);
+    });
+
+    it("waits for all creates/updates to complete before doing deletes", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1", id: "A" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1", id: "B" });
+      const plan: planner.DeploymentPlan = {
+        "us-central1": {
+          endpointsToCreate: [ep1],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+        "us-west1": {
+          endpointsToCreate: [],
+          endpointsToUpdate: [],
+          endpointsToDelete: [ep2],
+          endpointsToSkip: [],
+        },
+      };
+
+      let resolveCreate: () => void;
+      const createPromise = new Promise<void>((resolve) => {
+        resolveCreate = resolve;
+      });
+
+      let createFinished = false;
+      const createEndpoint = sinon.stub(fab, "createEndpoint").callsFake(async () => {
+        await createPromise;
+        createFinished = true;
+      });
+
+      const deleteEndpoint = sinon.stub(fab, "deleteEndpoint").callsFake(async () => {
+        expect(createFinished).to.be.true;
+      });
+
+      const applyPlanPromise = fab.applyPlan(plan);
+
+      // At this point, create should be pending, and delete should NOT have run yet.
+      expect(deleteEndpoint).to.not.have.been.called;
+
+      // Resolve the create operation
+      resolveCreate!();
+
+      await applyPlanPromise;
+
+      expect(createEndpoint).to.have.been.calledOnce;
+      expect(deleteEndpoint).to.have.been.calledOnce;
+    });
+  });
+
+  describe("createRunFunction", () => {
+    it("creates a Cloud Run service with correct configuration", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(runv2.createService).to.have.been.calledWith(
+        ep.project,
+        ep.region,
+        ep.id,
+        sinon.match({
+          template: {
+            containers: [
+              sinon.match({
+                image: "scratch",
+                baseImageUri: "gcr.io/base",
+                command: ["cmd"],
+                args: ["arg"],
+                sourceCode: {
+                  cloudStorageSource: {
+                    bucket: "bucket",
+                    object: "object",
+                    generation: "42",
+                  },
+                },
+              }),
+            ],
+          },
+        }),
+      );
+    });
+
+    it("always sets callable triggers to public on creation", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { callableTrigger: {} },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+    });
+
+    it("does not set invoker on creation when HTTPS configuration is private", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+
+      const ep = endpoint(
+        { httpsTrigger: { invoker: ["private"] } },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base",
+          command: ["cmd"],
+          args: ["arg"],
+        },
+      );
+      await fab.createRunFunction(ep);
+
+      expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+  });
+
+  describe("updateRunFunction", () => {
+    it("updates a Cloud Run service with correct configuration", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "run",
+          baseImageUri: "gcr.io/base-v2",
+        },
+      );
+      // Mock update to include the endpoint
+      const update: planner.EndpointUpdate = {
+        endpoint: ep,
+      };
+
+      await fab.updateRunFunction(update);
+
+      expect(runv2.updateService).to.have.been.calledWith(
+        sinon.match({
+          name: `projects/${ep.project}/locations/${ep.region}/services/${ep.id}`,
+          template: {
+            containers: [
+              sinon.match({
+                baseImageUri: "gcr.io/base-v2",
+              }),
+            ],
+          },
+        }),
+      );
+    });
+
+    it("does not update invoker for callable functions", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker to public for HTTPS functions when explicitly null", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: { invoker: null } }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "public",
+      ]);
+    });
+
+    it("does not update invoker for HTTPS functions when invoker is omitted (undefined)", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("updates invoker for HTTPS functions to private when explicitly configured as private", async () => {
+      runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerUpdate.resolves();
+
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } }, { platform: "run" });
+      const update = { endpoint: ep };
+
+      await fab.updateRunFunction(update);
+
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, sinon.match.string, [
+        "private",
+      ]);
+    });
+  });
+
+  describe("deleteRunFunction", () => {
+    it("deletes the Cloud Run service", async () => {
+      runv2.deleteService.resolves();
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+
+      await fab.deleteRunFunction(ep);
+
+      expect(runv2.deleteService).to.have.been.calledWith(ep.project, ep.region, ep.id);
+    });
+
+    it("ignores 404s", async () => {
+      const err = new Error("Not Found");
+      (err as any).status = 404;
+      runv2.deleteService.rejects(err);
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+
+      await fab.deleteRunFunction(ep);
+
+      expect(runv2.deleteService).to.have.been.called;
     });
   });
 });

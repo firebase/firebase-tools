@@ -20,6 +20,7 @@ const ENABLE_FILE_LOGGING = false;
 
 const mocks = getToolMocks();
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
 const originalRequire = Module.prototype.require;
 (Module.prototype as any).require = function (id: string) {
   const requiredModule = originalRequire.apply(this, [id]);

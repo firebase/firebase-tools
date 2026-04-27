@@ -105,15 +105,34 @@ steps:
         if [ "${_VERSION}" == "preview" ]; then
           ./scripts/publish.sh "${_VERSION}" "${_BRANCH}"
         else
-          ./scripts/publish.sh "${_VERSION}"
+          GITHUB_TOKEN=$(cat ~/.config/hub) ./scripts/publish.sh "${_VERSION}"
         fi
     env:
       - "REPOSITORY_ORG=${_REPOSITORY_ORG}"
       - "REPOSITORY_NAME=${_REPOSITORY_NAME}"
 
-  # Wait a bit of time for npm to catch up.
+  # Wait for package to be available on npm.
   - name: "gcr.io/$PROJECT_ID/package-builder"
-    args: ["sleep", "240"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        echo "Waiting for firebase-tools@$(cat /workspace/version_number.txt) to be available on npm..."
+        timeout=300
+        elapsed=0
+        interval=15
+        until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+          if [ $$elapsed -ge $$timeout ]; then
+            echo "Timeout waiting for package."
+            exit 1
+          fi
+          echo "Still waiting..."
+          sleep $$interval
+          elapsed=$$((elapsed + interval))
+        done
+        echo "Sleeping for 60 seconds to ensure propagation..." 
+        sleep 60
+        echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
   # Set up the hub credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
@@ -134,9 +153,31 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          node /usr/src/app/pipeline.js --package=firebase-tools@latest --publish
+          GITHUB_TOKEN=$(cat ~/.config/hub) node /usr/src/app/pipeline.js --package=firebase-tools@$(cat /workspace/version_number.txt) --publish
+          echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
+        fi
+
+  # Tag the previous version of the docker image
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          IMAGE_NAME="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+          TAGS=$(gcloud container images list-tags $${IMAGE_NAME} --filter="tags:latest" --format="value(tags)")
+          echo "Tags for latest: $${TAGS}"
+          PREVIOUS_VERSION=$(echo $${TAGS} | tr ',' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+          echo "Detected previous version: $${PREVIOUS_VERSION}"
+          if [ -n "$${PREVIOUS_VERSION}" ]; then
+            gcloud container images add-tag $${IMAGE_NAME}:latest $${IMAGE_NAME}:no-new-use-public-image-$${PREVIOUS_VERSION} --quiet
+          else
+            echo "Could not detect previous version tag. Skipping tagging."
+          fi
+        else
+          echo "Skipping for preview version."
         fi
 
   # Publish the Firebase docker image

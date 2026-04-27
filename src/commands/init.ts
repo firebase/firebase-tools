@@ -33,7 +33,7 @@ let choices: {
 }[] = [
   {
     value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service",
+    name: "SQL Connect: Set up a Firebase SQL Connect service",
     checked: false,
   },
   {
@@ -90,16 +90,21 @@ let choices: {
   },
   {
     value: "dataconnect:sdk",
-    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    name: "SQL Connect: Set up a generated SDK for your Firebase SQL Connect service",
     checked: false,
     hidden: true,
+  },
+  {
+    value: "auth",
+    name: "Authentication: Set up Firebase Authentication",
+    checked: false,
   },
 ];
 
 if (isEnabled("fdcwebhooks")) {
   choices.push({
     value: "dataconnect:resolver",
-    name: "Data Connect: Set up a custom resolver for your Firebase Data Connect service",
+    name: "SQL Connect: Set up a custom resolver for your Firebase SQL Connect service",
     checked: false,
     hidden: true,
   });
@@ -271,6 +276,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
   if (setup.features.includes("dataconnect") && setup.features.includes("dataconnect:sdk")) {
     setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
   }
+
+  // Always prompt for agent skills at the end of init
+  setup.features.push("agentSkills");
 
   await init(setup, config, options);
   await postInitSaves(setup, config);

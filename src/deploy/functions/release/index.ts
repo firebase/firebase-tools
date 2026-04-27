@@ -17,6 +17,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
+import { runtimeIsLanguage } from "../runtimes/supported";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -84,12 +85,22 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  // N.B. THIS IS TEMPORARY
+  // This will limit concurrent deploys of run functions to two while zip deploy capacity
+  // is low.
+  const runThrottlerOptions = {
+    ...throttlerOptions,
+    concurrency: 2,
+  };
+
+  const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
-    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
+    projectNumber: projectNumber,
   });
 
   const summary = await fab.applyPlan(plan);
@@ -102,7 +113,18 @@ export async function release(
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
-  printTriggerUrls(wantBackend);
+  printTriggerUrls(wantBackend, projectNumber);
+
+  // TODO: Remove once the Firebase console has support.
+  if (
+    backend.someEndpoint(wantBackend, (endpoint) => runtimeIsLanguage(endpoint.runtime, "dart"))
+  ) {
+    utils.logLabeledBullet(
+      "functions",
+      "Dart functions may not yet be visible in the Firebase Console. " +
+        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+    );
+  }
 
   await setupArtifactCleanupPolicies(
     options,
@@ -126,8 +148,10 @@ export async function release(
  * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
-export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+export function printTriggerUrls(results: backend.Backend, projectNumber: string): void {
+  const httpsFunctions = backend
+    .allEndpoints(results)
+    .filter((b) => backend.isHttpsTriggered(b) || backend.isDataConnectGraphqlTriggered(b));
   if (httpsFunctions.length === 0) {
     return;
   }
@@ -137,6 +161,13 @@ export function printTriggerUrls(results: backend.Backend): void {
       logger.debug(
         "Not printing URL for HTTPS function. Typically this means it didn't match a filter or we failed deployment",
       );
+      continue;
+    }
+    if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
+      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for SQL Connect
+      // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
+      const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
+      logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);
       continue;
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);

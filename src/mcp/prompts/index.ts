@@ -4,11 +4,13 @@ import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
 import { apptestingPrompts } from "./apptesting";
+import { firestorePrompts } from "./firestore";
+import { storagePrompts } from "./storage";
 
 const prompts: Record<ServerFeature, ServerPrompt[]> = {
   core: namespacePrompts(corePrompts, "core"),
-  firestore: [],
-  storage: [],
+  firestore: namespacePrompts(firestorePrompts, "firestore"),
+  storage: namespacePrompts(storagePrompts, "storage"),
   dataconnect: namespacePrompts(dataconnectPrompts, "dataconnect"),
   auth: [],
   messaging: [],
@@ -18,6 +20,7 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   apptesting: namespacePrompts(apptestingPrompts, "apptesting"),
   apphosting: [],
   database: [],
+  developerknowledge: [],
 };
 
 function namespacePrompts(
@@ -45,9 +48,13 @@ function namespacePrompts(
 export async function availablePrompts(
   ctx: McpContext,
   activeFeatures?: ServerFeature[],
+  detectedFeatures?: ServerFeature[],
 ): Promise<ServerPrompt[]> {
-  const allPrompts = getAllPrompts(activeFeatures);
+  if (activeFeatures?.length) {
+    return getAllPrompts(activeFeatures);
+  }
 
+  const allPrompts = getAllPrompts(detectedFeatures);
   const availabilities = await Promise.all(
     allPrompts.map((p) => {
       if (p.isAvailable) {

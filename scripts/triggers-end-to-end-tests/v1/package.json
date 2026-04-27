@@ -13,5 +13,8 @@
   "devDependencies": {
     "firebase-functions-test": "^0.2.0"
   },
+  "overrides": {
+    "protobufjs": "7.5.5"
+  },
   "private": true
 }

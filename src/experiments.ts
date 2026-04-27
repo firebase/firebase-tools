@@ -35,11 +35,10 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
-    default: false,
+    default: true,
   },
   deletegcfartifacts: {
     shortDescription: `Add the ${bold(
@@ -55,14 +54,14 @@ export const ALL_EXPERIMENTS = experiments({
       `Registry. The ${bold("functions:deletegcfartifacts")} command ` +
       "will delete all Docker images created by Google Cloud Functions irrespective " +
       "of how that image was created.",
-    public: false,
+    public: true,
   },
   legacyRuntimeConfigCommands: {
     shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
       "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
       "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
-    default: true,
+    default: false,
     public: true,
   },
   runfunctions: {
@@ -70,9 +69,27 @@ export const ALL_EXPERIMENTS = experiments({
       "Functions created using the V2 API target Cloud Run Functions (not production ready)",
     public: false,
   },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
   functionsrunapionly: {
     shortDescription: "Use Cloud Run API to list v2 functions",
     public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: true,
+    default: false,
   },
 
   // Emulator experiments
@@ -126,10 +143,21 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  apphostinglocalbuilds: {
+    shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+  abiu: {
+    shortDescription: "Enable App Hosting ABIU and runtime selection",
+    default: false,
+    public: false,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -156,18 +184,28 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
   fdcift: {
-    shortDescription: "Enable instrumentless trial for Data Connect",
+    shortDescription: "Enable instrumentless trial for SQL Connect",
+    default: true,
     public: false,
-    default: false,
   },
   apptesting: {
     shortDescription: "Adds experimental App Testing feature",
     public: true,
   },
   fdcwebhooks: {
-    shortDescription: "Enable Firebase Data Connect webhooks feature.",
-    default: false,
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
+    default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
     public: false,
   },
 });

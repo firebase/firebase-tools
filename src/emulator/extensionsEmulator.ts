@@ -11,7 +11,6 @@ import { FirebaseError } from "../error";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { toExtensionVersionRef } from "../extensions/refs";
 import { Options } from "../options";
-import { shortenUrl } from "../shortenUrl";
 import { Constants } from "./constants";
 import { downloadExtensionVersion } from "./download";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -320,10 +319,7 @@ export class ExtensionsEmulator implements EmulatorInstance {
         style: { head: ["yellow"] },
       });
       for (const apiToWarn of apisToWarn) {
-        // We use a shortened link here instead of a alias because cli-table behaves poorly with aliased links
-        const enablementUri = await shortenUrl(
-          enableApiURI(this.args.projectId, apiToWarn.apiName),
-        );
+        const enablementUri = enableApiURI(this.args.projectId, apiToWarn.apiName);
         table.push([
           apiToWarn.apiName,
           apiToWarn.instanceIds.join(", "),

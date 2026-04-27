@@ -20,6 +20,7 @@ describe("isCrashlyticsAvailable", () => {
     host: new FirebaseMcpServer({}),
     rc: {} as RC,
     firebaseCliCommand: "firebase",
+    isBillingEnabled: false,
   });
 
   it("should return true for an Android project with Crashlytics in build.gradle", async () => {

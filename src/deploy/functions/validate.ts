@@ -4,7 +4,7 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { getFunctionLabel } from "./functionsDeployHelper";
+import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -89,7 +89,16 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
-    serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
+    const service = serviceForEndpoint(ep);
+    if (backend.isBlockingTriggered(ep)) {
+      if (service.name === "noop") {
+        throw new FirebaseError(
+          `Unrecognized blocking trigger type: ${ep.blockingTrigger.eventType}. Please update your CLI with ${clc.bold("npm install -g firebase-tools@latest")}.`,
+          { exit: 1 },
+        );
+      }
+    }
+    service.validateTrigger(ep, wantBackend);
   }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
@@ -222,7 +231,11 @@ export function validateTimeoutConfig(endpoints: backend.Endpoint[]): void {
       limit = MAX_V2_SCHEDULE_TIMEOUT_SECONDS;
     } else if (backend.isTaskQueueTriggered(ep)) {
       limit = MAX_V2_TASK_QUEUE_TIMEOUT_SECONDS;
-    } else if (backend.isHttpsTriggered(ep) || backend.isCallableTriggered(ep)) {
+    } else if (
+      backend.isHttpsTriggered(ep) ||
+      backend.isCallableTriggered(ep) ||
+      backend.isDataConnectGraphqlTriggered(ep)
+    ) {
       limit = MAX_V2_HTTP_TIMEOUT_SECONDS;
     }
 
@@ -391,6 +404,37 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
       throw new FirebaseError(
         "Secret version is unexpectedly undefined. This should never happen.",
       );
+    }
+  }
+}
+
+/**
+ * Check that all filters match at least one endpoint.
+ */
+export function checkFiltersIntegrity(
+  wantBackends: Record<string, backend.Backend>,
+  filters?: EndpointFilter[],
+): void {
+  if (!filters) {
+    return;
+  }
+  for (const filter of filters) {
+    let matched = false;
+    for (const b of Object.values(wantBackends)) {
+      if (backend.someEndpoint(b, (e) => endpointMatchesFilter(e, filter))) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) {
+      const parts = [];
+      if (filter.codebase) {
+        parts.push(filter.codebase);
+      }
+      if (filter.idChunks) {
+        parts.push(filter.idChunks.join("-"));
+      }
+      throw new FirebaseError(`No function matches the filter: ${parts.join(":")}`);
     }
   }
 }

@@ -4,7 +4,6 @@
  */
 
 import { isIPv4 } from "net";
-import * as clc from "colorette";
 import { checkListenable } from "../portUtils";
 import { detectPackageManager, detectPackageManagerStartCommand } from "./developmentServer";
 import { DEFAULT_HOST, DEFAULT_PORTS } from "../constants";
@@ -16,14 +15,15 @@ import { resolveProjectPath } from "../../projectPath";
 import { EmulatorRegistry } from "../registry";
 import { setEnvVarsForEmulators } from "../env";
 import { FirebaseError } from "../../error";
-import * as secrets from "../../gcp/secretManager";
-import { logLabeledError, logLabeledWarning } from "../../utils";
+import { loadSecret } from "../../apphosting/secrets/index";
+import { logLabeledWarning } from "../../utils";
 import * as apphosting from "../../gcp/apphosting";
 import { Constants } from "../constants";
 import { constructDefaultWebSetup, WebConfig } from "../../fetchWebSetup";
-import { AppPlatform, getAppConfig } from "../../management/apps";
 import { spawnSync } from "child_process";
 import { gte as semverGte } from "semver";
+import { getAutoinitEnvVars } from "../../apphosting/utils";
+import { AppPlatform, getAppConfig } from "../../management/apps";
 
 interface StartOptions {
   projectId?: string;
@@ -31,57 +31,6 @@ interface StartOptions {
   port?: number;
   startCommand?: string;
   rootDirectory?: string;
-}
-
-// Matches a fully qualified secret or version name, e.g.
-// projects/my-project/secrets/my-secret/versions/1
-// projects/my-project/secrets/my-secret/versions/latest
-// projects/my-project/secrets/my-secret
-const secretResourceRegex =
-  /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
-
-// Matches a shorthand for a project-relative secret, with optional version, e.g.
-// my-secret
-// my-secret@1
-// my-secret@latest
-const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
-
-async function loadSecret(project: string | undefined, name: string): Promise<string> {
-  let projectId: string;
-  let secretId: string;
-  let version: string;
-  const match = secretResourceRegex.exec(name);
-  if (match) {
-    projectId = match[1];
-    secretId = match[2];
-    version = match[3] || "latest";
-  } else {
-    const match = secretShorthandRegex.exec(name);
-    if (!match) {
-      throw new FirebaseError(`Invalid secret name: ${name}`);
-    }
-    if (!project) {
-      throw new FirebaseError(
-        `Cannot load secret ${match[1]} without a project. ` +
-          `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
-      );
-    }
-    projectId = project;
-    secretId = match[1];
-    version = match[2] || "latest";
-  }
-  try {
-    return await secrets.accessSecretVersion(projectId, secretId, version);
-  } catch (err: any) {
-    if (err?.original?.code === 403 || err?.original?.context?.response?.statusCode === 403) {
-      logLabeledError(
-        Emulators.APPHOSTING,
-        `Permission denied to access secret ${secretId}. Use ` +
-          `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
-      );
-    }
-    throw err;
-  }
 }
 
 /**
@@ -133,6 +82,16 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     logger.logLabeled("BULLET", Emulators.APPHOSTING, `starting app with: '${startCommand}'`);
   }
 
+  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
+  let autoinitEnvVars: Record<string, string> = {};
+  if (packageManager === "pnpm") {
+    // TODO(jamesdaniels) look into pnpm support for autoinit
+    logLabeledWarning("apphosting", "Firebase JS SDK autoinit does not currently support PNPM.");
+  } else {
+    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
+    autoinitEnvVars = getAutoinitEnvVars(webappConfig);
+  }
+
   const apphostingLocalConfig = await getLocalAppHostingConfiguration(backendRoot);
   const resolveEnv = Object.entries(apphostingLocalConfig.env).map(async ([key, value]) => [
     key,
@@ -141,7 +100,11 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
 
   const environmentVariablesToInject: NodeJS.ProcessEnv = {
     NODE_ENV: process.env.NODE_ENV,
+    // autoinitEnvVars serve as fallback defaults.
+    ...autoinitEnvVars,
+    // Emulator variables take precedence over auto-init.
     ...getEmulatorEnvs(),
+    // User-defined variables from apphosting.<env>.yaml take highest precedence.
     ...Object.fromEntries(await Promise.all(resolveEnv)),
     FIREBASE_APP_HOSTING: "1",
     X_GOOGLE_TARGET_PLATFORM: "fah",
@@ -150,20 +113,7 @@ export async function start(options?: StartOptions): Promise<{ hostname: string;
     PORT: port.toString(),
   };
 
-  const packageManager = await detectPackageManager(backendRoot).catch(() => undefined);
-  if (packageManager === "pnpm") {
-    // TODO(jamesdaniels) look into pnpm support for autoinit
-    logLabeledWarning("apphosting", `Firebase JS SDK autoinit does not currently support PNPM.`);
-  } else {
-    const webappConfig = await getBackendAppConfig(options?.projectId, options?.backendId);
-    if (webappConfig) {
-      environmentVariablesToInject["FIREBASE_WEBAPP_CONFIG"] ||= JSON.stringify(webappConfig);
-      environmentVariablesToInject["FIREBASE_CONFIG"] ||= JSON.stringify({
-        databaseURL: webappConfig.databaseURL,
-        storageBucket: webappConfig.storageBucket,
-        projectId: webappConfig.projectId,
-      });
-    }
+  if (packageManager !== "pnpm") {
     await tripFirebasePostinstall(backendRoot, environmentVariablesToInject);
   }
 
