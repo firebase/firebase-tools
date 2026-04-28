@@ -77,7 +77,7 @@ export function validateChecksum(
   return new Promise((resolve, reject) => {
     const hash = crypto.createHash(algorithm);
     const stream = fs.createReadStream(filepath);
-    stream.on("data", (data: any) => hash.update(data));
+    stream.on("data", (data: Buffer | string) => hash.update(data));
     stream.on("end", () => {
       const checksum = hash.digest("hex");
       return checksum === expectedChecksum

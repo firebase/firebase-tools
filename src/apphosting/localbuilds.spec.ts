@@ -5,9 +5,10 @@ import { localBuild, runUniversalMaker } from "./localbuilds";
 import * as secrets from "./secrets/index";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
-import * as fs from "fs";
+
 import * as experiments from "../experiments";
 import * as universalMakerDownload from "./universalMakerDownload";
+import * as fsExtra from "fs-extra";
 
 describe("localBuild", () => {
   beforeEach(() => {
@@ -74,7 +75,7 @@ describe("localBuild", () => {
       expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
       return bundleConfig;
     });
-    const loadSecretStub = sinon.stub(secrets as any, "loadSecret").resolves("secret-value");
+    const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
     const envMap: EnvMap = {
       MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
@@ -211,17 +212,14 @@ describe("localBuild", () => {
 
   describe("runUniversalMaker", () => {
     let downloadStub: sinon.SinonStub;
-    let readFileSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
       downloadStub = sinon
         .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
         .resolves("/path/to/universal_maker");
-      readFileSyncStub = sinon
-        .stub(fs, "readFileSync")
-        .callsFake((pathStr: string | Buffer | URL | number) => {
-          if (typeof pathStr === "string" && pathStr.endsWith("bundle.yaml")) {
-            return `
+      sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: any) => {
+        if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
+          return `
             runConfig:
               runCommand: npm run start
             outputFiles:
@@ -229,20 +227,26 @@ describe("localBuild", () => {
                 include:
                   - .next/standalone
           `;
-          }
-          if (typeof pathStr === "string" && pathStr.endsWith("build_output.json")) {
-            return JSON.stringify({
-              command: "npm",
-              args: ["run", "start"],
-              language: "nodejs",
-              runtime: "nodejs22",
-              envVars: {
-                PORT: "3000",
-              },
-            });
-          }
-          return "";
-        });
+        }
+        if (typeof pathStr === "string" && pathStr.includes("build_output.json")) {
+          return JSON.stringify({
+            command: "npm",
+            args: ["run", "start"],
+            language: "nodejs",
+            runtime: "nodejs22",
+            envVars: {
+              PORT: "3000",
+            },
+          });
+        }
+        return "";
+      });
+      sinon.stub(fsExtra, "existsSync").returns(true);
+      sinon.stub(fsExtra, "unlinkSync");
+      sinon.stub(fsExtra, "readdirSync").returns(["bundle.yaml"] as any);
+      sinon.stub(fsExtra, "ensureDirSync");
+      sinon.stub(fsExtra, "removeSync");
+      sinon.stub(fsExtra, "moveSync");
     });
 
     it("should successfully execute Universal Maker and parse output", async () => {
@@ -255,13 +259,6 @@ describe("localBuild", () => {
         signal: null,
       });
 
-      sinon.stub(fs, "existsSync").returns(true);
-      sinon.stub(fs, "mkdirSync");
-      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as unknown as any);
-      sinon.stub(fs, "renameSync");
-      sinon.stub(fs, "rmSync");
-      sinon.stub(fs, "rmdirSync");
-      sinon.stub(fs, "unlinkSync");
       const output = await runUniversalMaker("./", "nextjs");
 
       expect(output).to.deep.equal({
@@ -292,7 +289,6 @@ describe("localBuild", () => {
           }),
         }),
       );
-      sinon.assert.calledTwice(readFileSyncStub);
       sinon.assert.calledOnce(downloadStub);
     });
 

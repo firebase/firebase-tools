@@ -1,5 +1,5 @@
 import * as childProcess from "child_process";
-import * as fs from "fs";
+import * as fs from "fs-extra";
 import * as path from "path";
 import { Availability, BuildConfig, Env } from "../gcp/apphosting";
 
@@ -7,7 +7,7 @@ import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
@@ -41,10 +41,8 @@ export async function runUniversalMaker(
 function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: string): void {
   try {
     const bundleOutput = path.join(projectRoot, "bundle_output");
-    if (fs.existsSync(bundleOutput)) {
-      fs.rmSync(bundleOutput, { recursive: true, force: true });
-    }
-    fs.mkdirSync(bundleOutput, { recursive: true });
+    fs.removeSync(bundleOutput);
+    fs.ensureDirSync(bundleOutput);
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
@@ -107,25 +105,23 @@ function processUniversalMakerOutput(
   // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
   // To avoid this, we output to bundle_output first, and then safely move the files over.
   if (fs.existsSync(bundleOutput)) {
-    if (!fs.existsSync(targetAppHosting)) {
-      fs.mkdirSync(targetAppHosting, { recursive: true });
-    }
+    fs.ensureDirSync(targetAppHosting);
     const files = fs.readdirSync(bundleOutput);
     for (const file of files) {
       const dest = path.join(targetAppHosting, file);
       if (fs.existsSync(dest)) {
-        fs.rmSync(dest, { recursive: true, force: true });
+        fs.removeSync(dest);
       }
-      fs.renameSync(path.join(bundleOutput, file), dest);
+      fs.moveSync(path.join(bundleOutput, file), dest);
     }
-    fs.rmdirSync(bundleOutput);
+    fs.removeSync(bundleOutput);
   }
 
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
   } catch (e) {
-    throw new FirebaseError(`Failed to parse build_output.json: ${(e as Error).message}`);
+    throw new FirebaseError(`Failed to parse build_output.json: ${getErrMsg(e)}`);
   }
 
   let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
@@ -148,7 +144,7 @@ function processUniversalMakerOutput(
         finalOutputFiles = bundleData.outputFiles.serverApp.include;
       }
     } catch (e: unknown) {
-      logger.debug(`Failed to parse bundle.yaml: ${(e as Error).message}`);
+      logger.debug(`Failed to parse bundle.yaml: ${getErrMsg(e)}`);
     }
   }
 
