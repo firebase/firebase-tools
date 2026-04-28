@@ -115,7 +115,10 @@ export async function runUniversalMaker(
     try {
       const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
       // Safely parse the YAML string
-      const bundleData = wrappedSafeLoad(bundleRaw);
+      const bundleData = wrappedSafeLoad(bundleRaw) as {
+        runConfig?: { runCommand?: string };
+        outputFiles?: { serverApp?: { include?: string[] } };
+      };
 
       if (bundleData?.runConfig?.runCommand) {
         finalRunCommand = bundleData.runConfig.runCommand;
@@ -124,8 +127,8 @@ export async function runUniversalMaker(
       if (bundleData?.outputFiles?.serverApp?.include) {
         finalOutputFiles = bundleData.outputFiles.serverApp.include;
       }
-    } catch (e: any) {
-      logger.debug(`Failed to parse bundle.yaml: ${e.message}`);
+    } catch (e: unknown) {
+      logger.debug(`Failed to parse bundle.yaml: ${(e as Error).message}`);
     }
   }
 

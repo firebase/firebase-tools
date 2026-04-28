@@ -74,7 +74,7 @@ describe("localBuild", () => {
       expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
       return bundleConfig;
     });
-    const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
+    const loadSecretStub = sinon.stub(secrets as any, "loadSecret").resolves("secret-value");
 
     const envMap: EnvMap = {
       MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
@@ -217,9 +217,11 @@ describe("localBuild", () => {
       downloadStub = sinon
         .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
         .resolves("/path/to/universal_maker");
-      readFileSyncStub = sinon.stub(fs, "readFileSync").callsFake((pathStr: any) => {
-        if (typeof pathStr === "string" && pathStr.endsWith("bundle.yaml")) {
-          return `
+      readFileSyncStub = sinon
+        .stub(fs, "readFileSync")
+        .callsFake((pathStr: string | Buffer | URL | number) => {
+          if (typeof pathStr === "string" && pathStr.endsWith("bundle.yaml")) {
+            return `
             runConfig:
               runCommand: npm run start
             outputFiles:
@@ -227,20 +229,20 @@ describe("localBuild", () => {
                 include:
                   - .next/standalone
           `;
-        }
-        if (typeof pathStr === "string" && pathStr.endsWith("build_output.json")) {
-          return JSON.stringify({
-            command: "npm",
-            args: ["run", "start"],
-            language: "nodejs",
-            runtime: "nodejs22",
-            envVars: {
-              PORT: "3000",
-            },
-          });
-        }
-        return "";
-      });
+          }
+          if (typeof pathStr === "string" && pathStr.endsWith("build_output.json")) {
+            return JSON.stringify({
+              command: "npm",
+              args: ["run", "start"],
+              language: "nodejs",
+              runtime: "nodejs22",
+              envVars: {
+                PORT: "3000",
+              },
+            });
+          }
+          return "";
+        });
     });
 
     it("should successfully execute Universal Maker and parse output", async () => {
@@ -255,7 +257,7 @@ describe("localBuild", () => {
 
       sinon.stub(fs, "existsSync").returns(true);
       sinon.stub(fs, "mkdirSync");
-      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as any);
+      sinon.stub(fs, "readdirSync").returns(["bundle.yaml"] as unknown as any);
       sinon.stub(fs, "renameSync");
       sinon.stub(fs, "rmSync");
       sinon.stub(fs, "rmdirSync");
