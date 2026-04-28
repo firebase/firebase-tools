@@ -292,16 +292,11 @@ export async function localBuild(
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
-      ({ variable, value, availability }) => {
-        const validAvail = availability.filter(
-          (a): a is Availability => a === "BUILD" || a === "RUNTIME",
-        );
-        return {
-          variable,
-          value,
-          availability: validAvail,
-        };
-      },
+      ({ variable, value, availability }) => ({
+        variable,
+        value,
+        availability: availability as Availability[],
+      }),
     );
 
   return {
