@@ -7,9 +7,7 @@ import * as downloadUtils from "../downloadUtils";
 import { logger } from "../logger";
 import * as universalMakerInfo from "./universalMakerInfo.json";
 
-const CACHE_DIR =
-  process.env.FIREBASE_UNIVERSAL_MAKER_PATH ||
-  path.join(os.homedir(), ".cache", "firebase", "universal-maker");
+const CACHE_DIR = path.join(os.homedir(), ".cache", "firebase", "universal-maker");
 
 interface UniversalMakerUpdateDetails {
   version: string;

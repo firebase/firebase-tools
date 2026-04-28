@@ -50,7 +50,7 @@ export async function downloadToTmp(remoteUrl: string, auth = false): Promise<st
 }
 
 /**
- * Checks whether the file at `filepath` has the expected size.
+ * Checks whether the file at `filepath` has the expected size in bytes.
  */
 export function validateSize(filepath: string, expectedSize: number): Promise<void> {
   return new Promise((resolve, reject) => {

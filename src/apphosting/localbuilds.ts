@@ -29,7 +29,16 @@ export async function runUniversalMaker(
   framework?: string,
 ): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
+  executeUniversalMakerBinary(universalMakerBinary, projectRoot);
+  return processUniversalMakerOutput(projectRoot, framework);
+}
 
+/**
+ * Orchestrates the Universal Maker binary execution, including setting up temporary
+ * output directories, injecting FAH-specific environment variables, and handling
+ * binary-level execution errors (e.g., permission issues).
+ */
+function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: string): void {
   try {
     const bundleOutput = path.join(projectRoot, "bundle_output");
     if (fs.existsSync(bundleOutput)) {
@@ -66,12 +75,23 @@ export async function runUniversalMaker(
   } catch (e) {
     if (e && typeof e === "object" && "code" in e && e.code === "EACCES") {
       throw new FirebaseError(
-        "Failed to execute the Universal Maker binary due to permission constraints. Please assure you have set chmod +x on your file.",
+        `Failed to execute the Universal Maker binary at ${universalMakerBinary} due to permission constraints. Please assure you have set execution permissions (e.g., chmod +x) on the file.`,
       );
     }
     throw e;
   }
+}
 
+/**
+ * Parses the metadata and build artifacts produced by Universal Maker.
+ *
+ * This includes resolving the final run command and artifact paths from the
+ * generated bundle.yaml, as well as cleaning up temporary metadata files.
+ */
+function processUniversalMakerOutput(
+  projectRoot: string,
+  framework?: string,
+): AppHostingBuildOutput {
   const outputFilePath = path.join(projectRoot, "build_output.json");
   if (!fs.existsSync(outputFilePath)) {
     throw new FirebaseError(
@@ -109,7 +129,7 @@ export async function runUniversalMaker(
   }
 
   let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
-  let finalOutputFiles: string[] = [".apphosting"]; // Fallback
+  let finalOutputFiles: string[] | undefined;
   const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
   if (fs.existsSync(bundleYamlPath)) {
     try {
@@ -130,6 +150,12 @@ export async function runUniversalMaker(
     } catch (e: unknown) {
       logger.debug(`Failed to parse bundle.yaml: ${(e as Error).message}`);
     }
+  }
+
+  if (!finalOutputFiles) {
+    throw new FirebaseError(
+      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
+    );
   }
 
   return {
@@ -236,9 +262,6 @@ export async function localBuild(
   try {
     if (experiments.isEnabled("universalMaker")) {
       apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
-      logger.debug(
-        `[apphosting] Universal Maker build outputFiles include: ${JSON.stringify(apphostingBuildOutput.outputFiles?.serverApp?.include ?? [])}`,
-      );
     } else {
       const buildResult = await localAppHostingBuild(projectRoot, framework);
       apphostingBuildOutput = {

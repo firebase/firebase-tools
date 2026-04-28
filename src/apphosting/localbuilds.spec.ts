@@ -305,7 +305,7 @@ describe("localBuild", () => {
       });
 
       await expect(runUniversalMaker("./")).to.be.rejectedWith(
-        "Failed to execute the Universal Maker binary due to permission constraints. Please assure you have set chmod +x on your file.",
+        "Failed to execute the Universal Maker binary at /path/to/universal_maker due to permission constraints. Please assure you have set execution permissions (e.g., chmod +x) on the file.",
       );
       sinon.assert.calledOnce(downloadStub);
     });
