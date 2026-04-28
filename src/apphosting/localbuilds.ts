@@ -5,7 +5,7 @@ import { Availability, BuildConfig, Env } from "../gcp/apphosting";
 
 import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
-import { loadSecret } from "./secrets";
+import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";

@@ -2,7 +2,7 @@ import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
 import { localBuild, runUniversalMaker } from "./localbuilds";
-import * as secrets from "./secrets";
+import * as secrets from "./secrets/index";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
 import * as fs from "fs";
