@@ -271,9 +271,15 @@ export async function prepare(
   // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
+  // Resolve default regions for backends we want before grouping endpoints by codebase.
+  // This way, endpoints aren't incorrectly grouped together under the REGION_TBD region if the
+  // region is unresolved for multiple codebases.
   const existingBackend = await backend.existingBackend(context);
-  for (const [, wantBackend] of Object.entries(wantBackends)) {
-    await resolveDefaultRegions(wantBackend, existingBackend);
+  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
+    const relevantEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((e) => e.codebase === codebase || e.codebase === undefined);
+    await resolveDefaultRegions(wantBackend, backend.of(...relevantEndpoints));
   }
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
