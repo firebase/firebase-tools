@@ -198,9 +198,7 @@ describe("RulesDeploy", () => {
       sinon
         .stub(gcp.rules, "createRuleset")
         .rejects(new Error("createRuleset behavior unspecified"));
-      sinon
-        .stub(gcp.rules, "listAllReleases")
-        .resolves([]);
+      sinon.stub(gcp.rules, "listAllReleases").resolves([]);
     });
 
     afterEach(() => {

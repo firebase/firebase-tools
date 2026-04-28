@@ -171,7 +171,6 @@ export class RulesDeploy {
    * @return All the names of the rulesets that were created.
    */
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
-    logger.debug("[rules] createRulesets called for service", service);
     const createdRulesetNames: string[] = [];
     const releases = await gcp.rules.listAllReleases(this.options.project);
 
@@ -180,10 +179,10 @@ export class RulesDeploy {
     const newRulesetsByKey = new Map<string, Promise<string>>();
     for (const entry of this.rulesFiles) {
       const { path: filename, files, databaseId } = entry;
-      
+
       // Normalize databaseId for default database
       const normalizedDatabaseId = databaseId === "(default)" ? undefined : databaseId;
-      
+
       const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
         await this.getCurrentRules(service, releases, normalizedDatabaseId);
 
