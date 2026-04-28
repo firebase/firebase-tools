@@ -12,8 +12,13 @@ const searchInput = document.getElementById("search-input") as HTMLInputElement;
 const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
 const statusBox = document.getElementById("status-box") as HTMLDivElement;
 
-let projects: any[] = [];
-let filteredProjects: any[] = [];
+interface Project {
+  projectId: string;
+  displayName?: string;
+}
+
+let projects: Project[] = [];
+let filteredProjects: Project[] = [];
 let selectedProjectId: string | null = null;
 
 const envProjectIdEl = document.getElementById("env-project-id") as HTMLSpanElement;

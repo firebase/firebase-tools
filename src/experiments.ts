@@ -88,7 +88,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   dartfunctions: {
     shortDescription: "Enable Dart Functions.",
-    public: false,
+    public: true,
     default: false,
   },
 

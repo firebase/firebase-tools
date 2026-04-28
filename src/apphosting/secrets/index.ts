@@ -282,13 +282,21 @@ export async function loadSecret(project: string | undefined, name: string): Pro
   }
   try {
     return await gcsm.accessSecretVersion(projectId, secretId, version);
-  } catch (err: any) {
-    if (err?.original?.code === 403 || err?.original?.context?.response?.statusCode === 403) {
-      utils.logLabeledError(
-        "apphosting",
-        `Permission denied to access secret ${secretId}. Use ` +
-          `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
-      );
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      const original = err.original;
+      if (typeof original === "object" && original !== null) {
+        if (
+          (original as any).code === 403 ||
+          (original as any).context?.response?.statusCode === 403
+        ) {
+          utils.logLabeledError(
+            "apphosting",
+            `Permission denied to access secret ${secretId}. Use ` +
+              `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+          );
+        }
+      }
     }
     throw err;
   }
