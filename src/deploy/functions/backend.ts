@@ -43,13 +43,13 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+/** API agnostic version of a Firebase SQL Connect HTTPS trigger. */
 export interface DataConnectGraphqlTrigger {
   invoker?: string[] | null;
   schemaFilePath?: string;
 }
 
-/** Something that has a Data Connect HTTPS trigger */
+/** Something that has a SQL Connect HTTPS trigger */
 export interface DataConnectGraphqlTriggered {
   dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }
@@ -573,7 +573,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  if (experiments.isEnabled("functionsrunapionly")) {
+  if (experiments.isEnabled("functionsrunapionly") || experiments.isEnabled("dartfunctions")) {
     try {
       const runServices = await run.listServices(ctx.projectId);
       for (const service of runServices) {

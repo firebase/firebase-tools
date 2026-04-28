@@ -31,6 +31,7 @@ type cliEventNames =
   | "mcp_list_prompts"
   | "mcp_get_prompt"
   | "mcp_read_resource"
+  | "mcp_list_resources"
   | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {

@@ -13,7 +13,11 @@ steps:
     entrypoint: "sh"
     args:
       - "-c"
-      - "docker build -t us-docker.pkg.dev/$PROJECT_ID/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/$PROJECT_ID/us/firebase:latest -t us-docker.pkg.dev/$PROJECT_ID/us/firebase:public-image-$(cat /workspace/version_number.txt) -f ./Dockerfile ."
+      - "docker build -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:latest -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:public-image-$(cat /workspace/version_number.txt) -f ./Dockerfile ."
 
 images:
-  - "us-docker.pkg.dev/$PROJECT_ID/us/firebase"
+  - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
+
+substitutions:
+  _REPO_NAME: us
+  _TARGET_PROJECT_ID: firebase-cli

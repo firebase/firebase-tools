@@ -30,7 +30,8 @@ import {
   groupEndpointsByCodebase,
   targetCodebases,
 } from "./functionsDeployHelper";
-import { logLabeledBullet } from "../../utils";
+import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -237,13 +238,17 @@ export async function prepare(
       const exportType = backend.someEndpoint(wantBackend, (e) => e.platform === "run")
         ? "tar.gz"
         : "zip";
+
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
+      const executablePaths = isDart ? ["bin/server"] : [];
+
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
         sourceDir,
         localCfg,
         [...schPathSet],
         undefined,
-        { exportType },
+        { exportType, executablePaths },
       );
       source.functionsSourceV2 = packagedSource?.pathToSource;
       source.functionsSourceV2Hash = packagedSource?.hash;
@@ -275,6 +280,7 @@ export async function prepare(
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+    await resolveDefaultRegions(wantBackend, haveBackend);
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
@@ -288,6 +294,7 @@ export async function prepare(
 
   await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend);
   await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
+  warnIfDartBackendHasUnsupportedTriggers(wantBackend);
 
   // ===Phase 6. Ask for user prompts for things might warrant user attentions.
   // We limit the scope endpoints being deployed.
@@ -323,6 +330,82 @@ export async function prepare(
   updateEndpointTargetedStatus(wantBackends, context.filters || []);
   validate.checkFiltersIntegrity(wantBackends, context.filters);
   applyBackendHashToBackends(wantBackends, context);
+}
+
+function moveEndpointToRegion(
+  backend: backend.Backend,
+  endpoint: backend.Endpoint,
+  region: string,
+) {
+  endpoint.region = region;
+  backend.endpoints[region] = backend.endpoints[region] || {};
+  backend.endpoints[region][endpoint.id] = endpoint;
+  delete backend.endpoints[build.REGION_TBD][endpoint.id];
+  if (Object.keys(backend.endpoints[build.REGION_TBD]).length === 0) {
+    delete backend.endpoints[build.REGION_TBD];
+  }
+}
+
+/**
+ * Verifies that we don't have a peculiar edge case where we cannot know what region a default endpoint was in.
+ * This is only possible in insane edge cases (esp since you can only have multi-region functions for HTTPS and
+ * regional AI Logic functions) where a customer HAD specified multiple regions in a function and then deleted
+ * the regions annotation entirely and we don't know which to delete and which to keep.
+ */
+export function matchRegionsForExisting(want: backend.Backend, have: backend.Backend): void {
+  for (const [id, wantE] of Object.entries(want.endpoints[build.REGION_TBD] || {})) {
+    let matching: backend.Endpoint | undefined;
+    for (const region of Object.keys(have.endpoints)) {
+      if (region === build.REGION_TBD) {
+        continue;
+      }
+      if (have.endpoints[region][id]) {
+        if (matching) {
+          throw new FirebaseError(
+            `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
+          );
+        }
+        matching = have.endpoints[region][id];
+      }
+    }
+
+    if (!matching) {
+      continue;
+    }
+
+    moveEndpointToRegion(want, wantE, matching.region);
+  }
+}
+
+/**
+ * Resolves regions for endpoints that were not specified in the build.
+ * This is an improvement from old logic where everything was hard-coded to us-central1. Now,
+ * we can move defaults to adjust for regional capacity or automaically match the function
+ * to its event source allowing region to be specified less often.
+ */
+// N.B. This is async because it will eventually look up backend info
+export async function resolveDefaultRegions(
+  want: backend.Backend,
+  have: backend.Backend,
+): Promise<void> {
+  matchRegionsForExisting(want, have);
+
+  for (const endpoint of Object.values(want.endpoints[build.REGION_TBD] || {})) {
+    // TODO: Start adding dynamic region support per event type to distribute away from us-central1.
+    // Other regions have faster cold start times and will give a better customer experience. Ideas:
+    // 1. NAM5 resources can be put in us-east1 instead.
+    // 2. Regional resources can be placed in that region instead of assuming us-central1 (which is
+    //    the right behavior anyway and only works through legacy support in GCF). E.g. Put the storage
+    //    function in the storage bucket's region. Then we can nudge people to not have us-central1
+    //    be the default.
+    // 3. Functions that have a global resource (e.g. Auth, Test Lab, Pub/Sub, etc.) can be placed in
+    //    a region with higher headroom.
+    // 4. HTTP functions may be defaultable to a different region because it is up to the customer to
+    //    wire up the URL we give them irrespective.
+    // 5. Callable functions could be moved by default, though this will require breaking changes to
+    //    the client SDKs as well.
+    moveEndpointToRegion(want, endpoint, "us-central1");
+  }
 }
 
 /**
@@ -498,7 +581,8 @@ export async function loadCodebases(
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
           `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
-          Object.keys(supported.RUNTIMES)
+          (Object.keys(supported.RUNTIMES) as supported.Runtime[])
+            .filter((runtime) => !supported.isDecommissioned(runtime))
             .map((s) => `- ${s}`)
             .join("\n"),
       );
@@ -534,6 +618,29 @@ export async function loadCodebases(
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
+}
+
+/**
+ * Warns when a Dart backend contains triggers that are not yet
+ * production-ready. Classification is owned by the shared
+ * `dart/triggerSupport` module.
+ */
+function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
+  const dartEndpoints = backend.allEndpoints(want).filter(isDartEndpoint);
+  if (dartEndpoints.length === 0) {
+    return;
+  }
+
+  const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
+  const unsupported = [...emulatorOnly, ...experimental];
+  if (unsupported.length > 0) {
+    logLabeledWarning(
+      "functions",
+      `The following Dart functions use triggers that are not yet supported for production deployment: ${unsupported.map((ep) => ep.id).join(", ")}. ` +
+        "They will be deployed but may not work as expected. " +
+        "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
+    );
+  }
 }
 
 // Genkit almost always requires an API key, so warn if the customer is about to deploy

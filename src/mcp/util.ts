@@ -1,5 +1,6 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dump } from "js-yaml";
+import * as experiments from "../experiments";
 import { ServerFeature } from "./types";
 import {
   apphostingOrigin,
@@ -22,7 +23,7 @@ import { timeoutFallback } from "../timeout";
  * Converts data to a CallToolResult.
  */
 export function toContent(
-  data: any,
+  data: unknown,
   options?: { format?: "json" | "yaml"; contentPrefix?: string; contentSuffix?: string },
 ): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
@@ -41,7 +42,29 @@ export function toContent(
   const suffix = options?.contentSuffix || "";
   return {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
+    structuredContent: data as { [key: string]: unknown },
   };
+}
+
+/**
+ * Conditionally adds MCP App metadata (_meta.ui.resourceUri) to a CallToolResult.
+ */
+export function applyAppMeta(
+  result: CallToolResult,
+  resourceUri: string,
+): CallToolResult & { _meta?: { ui?: { resourceUri: string } } } {
+  if (experiments.isEnabled("mcpapps")) {
+    return {
+      ...result,
+      _meta: {
+        ...result._meta,
+        ui: {
+          resourceUri,
+        },
+      },
+    };
+  }
+  return result;
 }
 
 /**
@@ -303,3 +326,5 @@ export function cleanSchema(schema: Record<string, any>): Record<string, any> {
   const result = deepClean(schema, true); // Pass true for isRootLevel
   return result === null ? {} : result;
 }
+
+export const RESOURCE_MIME_TYPE = "application/vnd.mcp.ext-app+html";

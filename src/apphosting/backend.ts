@@ -29,8 +29,7 @@ import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-
-const DEFAULT_RUNTIME = "nodejs";
+import { DEFAULT_RUNTIME, promptRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -83,7 +82,6 @@ export async function doSetup(
   primaryRegion?: string,
   rootDir?: string,
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -134,14 +132,7 @@ export async function doSetup(
     if (nonInteractive) {
       runtime = DEFAULT_RUNTIME;
     } else {
-      runtime = await select({
-        message: "Which runtime do you want to use?",
-        choices: [
-          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
-          { name: "Node.js 22", value: "nodejs22" },
-        ],
-        default: DEFAULT_RUNTIME,
-      });
+      runtime = await promptRuntime(projectId, location);
     }
   }
 
@@ -164,7 +155,6 @@ export async function doSetup(
     webApp?.id,
     rootDir,
     runtime,
-    automaticBaseImageUpdatesDisabled,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -375,7 +365,6 @@ export async function createBackend(
   webAppId: string | undefined,
   rootDir = "/",
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -392,6 +381,11 @@ export async function createBackend(
     runtime: { value: runtime ?? "" },
     automaticBaseImageUpdatesDisabled,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

@@ -1,6 +1,5 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../api";
 import * as params from "./params";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
@@ -8,6 +7,8 @@ import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+
+export const REGION_TBD = "REGION_TBD";
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -72,8 +73,8 @@ export interface HttpsTrigger {
 }
 
 export interface DataConnectGraphqlTrigger {
-  // Which service account should be able to trigger this function in addition to the Firebase Data Connect P4SA.
-  // No value means that only the Firebase Data Connect P4SA can trigger this function.
+  // Which service account should be able to trigger this function in addition to the Firebase SQL Connect P4SA.
+  // No value means that only the Firebase SQL Connect P4SA can trigger this function.
   // For more context, see go/cf3-http-access-control
   invoker?: Array<ServiceAccount | Expression<string>> | null;
   // The file path relative to the Firebase project directory where the GraphQL schema is stored.
@@ -473,7 +474,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion()];
+      regions = [REGION_TBD];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {

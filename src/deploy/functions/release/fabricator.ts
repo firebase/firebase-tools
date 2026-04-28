@@ -58,6 +58,7 @@ const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
+  runFunctionExecutor: Executor;
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
@@ -74,6 +75,7 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
+  runFunctionExecutor: Executor;
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
@@ -81,6 +83,7 @@ export class Fabricator {
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
+    this.runFunctionExecutor = args.runFunctionExecutor;
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
@@ -92,87 +95,129 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployChangesets = Object.values(plan).map(async (changes): Promise<void> => {
-      const results = await this.applyChangeset(changes);
-      summary.results.push(...results);
-      return;
-    });
-    const promiseResults = await utils.allSettled(deployChangesets);
 
-    const errs = promiseResults
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as utils.PromiseRejectedResult).reason);
-    if (errs.length) {
+    const changesets = Object.values(plan);
+
+    // Phase 1: Creates and Updates
+    const scraperV1 = new SourceTokenScraper();
+    const scraperV2 = new SourceTokenScraper();
+    const createAndUpdatePromises = changesets.map((changes) => {
+      return this.applyUpserts(changes, scraperV1, scraperV2);
+    });
+    const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
+
+    // Process results of Phase 1
+    summary.results = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
+      if (r.status === "fulfilled") {
+        return [...acc, ...r.value];
+      }
+      // Handle rejection
       logger.debug(
-        "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
-        JSON.stringify(errs, null, 2),
+        "Fabricator.applyUpserts returned an unhandled exception.",
+        JSON.stringify(r.reason, null, 2),
       );
+      return acc;
+    }, []);
+
+    // Simplify failure check (remove redundant check on createAndUpdateResultsArray)
+    const hasFailures = summary.results.some((r) => r.error);
+
+    if (hasFailures) {
+      utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
+
+      summary.results = changesets.reduce<reporter.DeployResult[]>((accum, changes) => {
+        const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
+          endpoint,
+          durationMs: 0,
+          error: new reporter.AbortedDeploymentError(endpoint),
+        }));
+        return [...accum, ...currentAborts];
+      }, summary.results);
+
+      summary.totalTime = timer.stop();
+      return summary;
     }
+
+    // Phase 2: Deletes
+    const deleteResultsArray = await Promise.allSettled(
+      changesets.map((changes) => this.applyDeletes(changes)),
+    );
+
+    const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
+      if (r.status === "fulfilled") {
+        return [...acc, ...r.value];
+      }
+      logger.debug(
+        "Fabricator.applyDeletes returned an unhandled exception. This should never happen",
+        JSON.stringify(r.reason, null, 2),
+      );
+      return acc;
+    }, []);
+
+    summary.results.push(...deleteResults);
 
     summary.totalTime = timer.stop();
     return summary;
   }
 
-  async applyChangeset(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
-    const deployResults: reporter.DeployResult[] = [];
-    const handle = async (
-      op: reporter.OperationType,
-      endpoint: backend.Endpoint,
-      fn: () => Promise<void>,
-    ): Promise<void> => {
-      const timer = new Timer();
-      const result: Partial<reporter.DeployResult> = { endpoint };
-      try {
-        await fn();
-        this.logOpSuccess(op, endpoint);
-      } catch (err: any) {
-        result.error = err as Error;
-      }
-      result.durationMs = timer.stop();
-      deployResults.push(result as reporter.DeployResult);
-    };
+  async applyUpserts(
+    changes: planner.Changeset,
+    scraperV1: SourceTokenScraper,
+    scraperV2: SourceTokenScraper,
+  ): Promise<Array<reporter.DeployResult>> {
+    const ops: Array<Promise<reporter.DeployResult>> = [];
 
-    const upserts: Array<Promise<void>> = [];
-    const scraperV1 = new SourceTokenScraper();
-    const scraperV2 = new SourceTokenScraper();
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
-      upserts.push(
-        handle("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
+      ops.push(
+        this.wrapOperation("create", endpoint, () =>
+          this.createEndpoint(endpoint, scraperV1, scraperV2),
+        ),
       );
     }
+
     for (const endpoint of changes.endpointsToSkip) {
       utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
     }
+
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
-      upserts.push(
-        handle("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
+      ops.push(
+        this.wrapOperation("update", update.endpoint, () =>
+          this.updateEndpoint(update, scraperV1, scraperV2),
+        ),
       );
     }
-    await utils.allSettled(upserts);
 
-    // Note: every promise is generated by handle which records error in results.
-    // We've used hasErrors as a cheater here instead of viewing the results of allSettled
-    if (deployResults.find((r) => r.error)) {
-      for (const endpoint of changes.endpointsToDelete) {
-        deployResults.push({
-          endpoint,
-          durationMs: 0,
-          error: new reporter.AbortedDeploymentError(endpoint),
-        });
-      }
-      return deployResults;
-    }
+    return Promise.all(ops);
+  }
 
-    const deletes: Array<Promise<void>> = [];
+  async applyDeletes(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
+    const ops: Array<Promise<reporter.DeployResult>> = [];
+
     for (const endpoint of changes.endpointsToDelete) {
       this.logOpStart("deleting", endpoint);
-      deletes.push(handle("delete", endpoint, () => this.deleteEndpoint(endpoint)));
+      ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
     }
-    await utils.allSettled(deletes);
 
-    return deployResults;
+    return Promise.all(ops);
+  }
+
+  private async wrapOperation(
+    op: reporter.OperationType,
+    endpoint: backend.Endpoint,
+    fn: () => Promise<void>,
+  ): Promise<reporter.DeployResult> {
+    const timer = new Timer();
+    const result: Partial<reporter.DeployResult> = { endpoint };
+    try {
+      await fn();
+      this.logOpSuccess(op, endpoint);
+    } catch (err: any) {
+      result.error = err as Error;
+    }
+    result.durationMs = timer.stop();
+    return result as reporter.DeployResult;
   }
 
   async createEndpoint(
@@ -422,7 +467,7 @@ export class Fabricator {
           .catch(rethrowAs(endpoint, "set invoker"));
       }
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
-      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase Data Connect P4SA must always be an invoker.
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase SQL Connect P4SA must always be an invoker.
       const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
       invoker.push(getDataConnectP4SA(this.projectNumber));
       if (!invoker.includes("private")) {
@@ -617,6 +662,8 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  // We use createRunFunction and updateRunFunction specifically to deploy Dart functions
+  // directly over to Cloud Run! This avoids cluttering normal Gen 2 Node function hooks.
   async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -634,7 +681,7 @@ export class Fabricator {
       },
     };
 
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         const op = await runV2.createService(
           endpoint.project,
@@ -647,7 +694,20 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
@@ -669,7 +729,7 @@ export class Fabricator {
       },
     };
 
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         const op = await runV2.updateService(service);
         endpoint.uri = op.uri;
@@ -677,11 +737,23 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    // We check for null vs undefined to respect settings people make on the Google Console.
+    // If it's omitted (undefined), we don't touch policies. If it is explicitly null, we make it public.
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    }
+
+    if (invoker) {
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
-    await this.executor
+    await this.runFunctionExecutor
       .run(async () => {
         try {
           await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
@@ -693,23 +765,6 @@ export class Fabricator {
         }
       })
       .catch(rethrowAs(endpoint, "delete"));
-  }
-
-  async setInvoker(endpoint: backend.Endpoint): Promise<void> {
-    if (backend.isHttpsTriggered(endpoint)) {
-      const invoker = endpoint.httpsTrigger.invoker || ["public"];
-      if (!invoker.includes("private")) {
-        await this.executor
-          .run(() =>
-            run.setInvokerUpdate(
-              endpoint.project,
-              `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
-              invoker,
-            ),
-          )
-          .catch(rethrowAs(endpoint, "set invoker"));
-      }
-    }
   }
 
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {

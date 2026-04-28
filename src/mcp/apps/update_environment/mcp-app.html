@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Update Firebase Environment</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --primary-color: #ffca28; /* Firebase Yellow */
+        --primary-hover: #ffb300;
+        --bg-glass: rgba(30, 30, 30, 0.7);
+        --text-main: #ffffff;
+        --text-sub: #b0b0b0;
+        --border-color: rgba(255, 255, 255, 0.1);
+        --transition-speed: 0.2s;
+        --accent-blue: #1976d2;
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: #121212;
+        color: var(--text-main);
+        margin: 0;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 100vh;
+        box-sizing: border-box;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 500px;
+        background: var(--bg-glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      .header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+
+      h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin: 0;
+        background: linear-gradient(135deg, #ffca28 0%, #ff8f00 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      p.subtitle {
+        font-size: 14px;
+        color: var(--text-sub);
+        margin: 0;
+      }
+
+      .search-box {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-sub);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      input[type="text"] {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: var(--text-main);
+        font-size: 14px;
+        transition: border-color var(--transition-speed);
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .dropdown-container {
+        position: relative;
+        width: 100%;
+      }
+
+      .dropdown-list {
+        background: #1e1e1e;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 4px;
+      }
+
+      .dropdown-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        transition: background-color var(--transition-speed);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .dropdown-item:last-child {
+        border-bottom: none;
+      }
+
+      .dropdown-item:hover, .dropdown-item.selected {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .dropdown-item.selected {
+        border-left: 3px solid var(--primary-color);
+      }
+
+      .item-name {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .item-id {
+        font-size: 12px;
+        color: var(--text-sub);
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      button {
+        background: linear-gradient(135deg, #ffca28 0%, #ff9100 100%);
+        color: #000000;
+        border: none;
+        border-radius: 12px;
+        padding: 14px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.1s ease, box-shadow 0.2s ease;
+        box-shadow: 0 4px 12px rgba(255, 179, 0, 0.3);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(255, 179, 0, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        background: #4a4a4a;
+        color: #888888;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      #status-box {
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        display: none;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .status.success {
+        display: block;
+        background: rgba(76, 175, 80, 0.15);
+        border: 1px solid #4caf50;
+        color: #4caf50;
+      }
+
+      .status.error {
+        display: block;
+        background: rgba(244, 67, 54, 0.15);
+        border: 1px solid #f44336;
+        color: #f44336;
+      }
+
+      .status.info {
+        display: block;
+        background: rgba(33, 150, 243, 0.15);
+        border: 1px solid #2196f3;
+        color: #2196f3;
+      }
+
+      /* Custom Scrollbar */
+      .dropdown-list::-webkit-scrollbar {
+        width: 8px;
+      }
+      .dropdown-list::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+      }
+      .dropdown-list::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+      }
+      .dropdown-list::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.4);
+      }
+      .current-env-box {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: var(--border-radius-md, 8px);
+        padding: 16px;
+        margin-bottom: 24px;
+        text-align: left;
+      }
+      .current-env-box h3 {
+        margin-top: 0;
+        margin-bottom: 8px;
+        font-size: var(--font-text-md-size, 14px);
+        color: var(--color-text-secondary, #a1a1aa);
+      }
+      .current-env-box p {
+        margin: 4px 0;
+        font-size: var(--font-text-sm-size, 13px);
+      }
+      .current-env-box span {
+        font-weight: bold;
+        color: var(--color-text, #ffffff);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Choose a Firebase Project</h1>
+        <p class="subtitle">Select an active Firebase project for your workspace.</p>
+      </div>
+
+      <div id="current-env" class="current-env-box">
+        <h3>Current Context</h3>
+        <p>Project ID: <span id="env-project-id">-</span></p>
+        <p>User: <span id="env-user">-</span></p>
+      </div>
+
+      <div class="search-box">
+        <label for="search-input">Search Projects</label>
+        <input type="text" id="search-input" placeholder="Type to filter projects..." />
+      </div>
+
+      <div class="dropdown-container">
+        <label>Available Projects</label>
+        <div id="project-list" class="dropdown-list">
+          <!-- Items will be injected here -->
+          <div class="dropdown-item" style="cursor: default;">
+            <div class="item-name">Loading projects...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="submit-btn" disabled>Set Active Project</button>
+        <div id="status-box"></div>
+      </div>
+    </div>
+    <script type="module" src="mcp-app.ts"></script>
+  </body>
+</html>

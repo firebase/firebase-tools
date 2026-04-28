@@ -1,5 +1,17 @@
 ## NEXT
 
+## 2.3.0
+
+- Rename product from Firebase Data Connect to Firebase SQL Connect.
+
+## 2.2.3
+
+- Update internal `firebase-tools` dependency to 15.13.0
+
+## 2.2.2
+
+- Update internal `firebase-tools` dependency to 15.12.0
+
 ## 2.2.1
 
 - Update internal `firebase-tools` dependency to 15.10.0

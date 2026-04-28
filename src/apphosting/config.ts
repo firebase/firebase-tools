@@ -1,4 +1,4 @@
-import { join, dirname } from "path";
+import { join, dirname, basename } from "path";
 import { writeFileSync } from "fs";
 import * as yaml from "yaml";
 import * as clc from "colorette";
@@ -392,4 +392,28 @@ export async function overrideChosenEnv(
 
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
+}
+
+/**
+ * Split a set of environment variables into build and runtime variables.
+ */
+export function splitEnvVars(env: EnvMap): { build: EnvMap; runtime: EnvMap } {
+  const build: EnvMap = {};
+  const runtime: EnvMap = {};
+
+  for (const [key, val] of Object.entries(env)) {
+    const envVal = { ...val };
+    if (envVal.value !== undefined) {
+      envVal.value = String(envVal.value);
+    }
+
+    if (val.availability?.includes("BUILD") || !val.availability) {
+      build[key] = envVal;
+    }
+    if (val.availability?.includes("RUNTIME") || !val.availability) {
+      runtime[key] = envVal;
+    }
+  }
+
+  return { build, runtime };
 }
