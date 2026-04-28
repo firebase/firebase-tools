@@ -189,9 +189,14 @@ export default async function (context: Context, options: Options): Promise<void
 
     try {
       const { outputFiles, annotations, buildConfig } = await localBuild(
+        projectId,
         options.projectRoot || "./",
         "nextjs",
         buildEnv[cfg.backendId] || {},
+        {
+          nonInteractive: options.nonInteractive,
+          allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+        },
       );
       if (outputFiles.length !== 1) {
         throw new FirebaseError(

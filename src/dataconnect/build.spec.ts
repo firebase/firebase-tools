@@ -144,6 +144,22 @@ describe("handleBuildErrors", () => {
       dryRun: false,
       expectErr: false,
     },
+    {
+      desc: "ALWAYS_REQUIRED error, force=false",
+      graphqlErr: [{ message: "fatal error", extensions: { warningLevel: "ALWAYS_REQUIRED" } }],
+      nonInteractive: false,
+      force: false,
+      dryRun: false,
+      expectErr: true,
+    },
+    {
+      desc: "ALWAYS_REQUIRED error, force=true",
+      graphqlErr: [{ message: "fatal error", extensions: { warningLevel: "ALWAYS_REQUIRED" } }],
+      nonInteractive: false,
+      force: true,
+      dryRun: false,
+      expectErr: true,
+    },
   ];
   for (const c of cases) {
     it(c.desc, async () => {
