@@ -87,7 +87,8 @@ describe("firestore rules", () => {
       };
       await initRules(setup, cfg, info);
 
-      expect(getRulesetNameStub.calledOnceWith("test-project", "cloud.firestore", releases)).to.be.true;
+      expect(getRulesetNameStub.calledOnceWith("test-project", "cloud.firestore", releases)).to.be
+        .true;
       expect(getRulesetContentStub.calledOnceWith("ruleset-name")).to.be.true;
       expect(writeStub.calledOnceWith("firestore.rules", "console rules")).to.be.true;
       expect(info.rules).to.equal("console rules");
