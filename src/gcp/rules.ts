@@ -28,9 +28,9 @@ function _handleErrorResponse(response: any): any {
 export async function getLatestRulesetName(
   projectId: string,
   service: string,
+  releases: Release[],
   resourceName?: string,
 ): Promise<string | null> {
-  const releases = await listAllReleases(projectId);
   let prefix = `projects/${projectId}/releases/${service}`;
   if (resourceName) {
     prefix += `/${resourceName}`;
@@ -198,7 +198,9 @@ export async function createRuleset(
   files: RulesetFile[],
   attachmentPoint?: string,
 ): Promise<string> {
-  const payload: any = { source: { files } };
+  const payload: { source: { files: RulesetFile[] }; attachment_point?: string } = {
+    source: { files },
+  };
   if (attachmentPoint) {
     payload.attachment_point = attachmentPoint;
   }

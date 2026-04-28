@@ -102,11 +102,13 @@ export class RulesDeploy {
    */
   private async getCurrentRules(
     service: RulesetServiceType,
+    releases: Release[],
     databaseId?: string,
   ): Promise<{ latestName: string | null; latestContent: RulesetFile[] | null }> {
     const latestName = await gcp.rules.getLatestRulesetName(
       this.options.project,
       service,
+      releases,
       databaseId,
     );
     let latestContent: RulesetFile[] | null = null;
@@ -171,14 +173,19 @@ export class RulesDeploy {
   async createRulesets(service: RulesetServiceType): Promise<string[]> {
     logger.debug("[rules] createRulesets called for service", service);
     const createdRulesetNames: string[] = [];
+    const releases = await gcp.rules.listAllReleases(this.options.project);
 
     // TODO: Make this into a more useful helper method.
     // Gather the files to be uploaded.
     const newRulesetsByKey = new Map<string, Promise<string>>();
     for (const entry of this.rulesFiles) {
       const { path: filename, files, databaseId } = entry;
+      
+      // Normalize databaseId for default database
+      const normalizedDatabaseId = databaseId === "(default)" ? undefined : databaseId;
+      
       const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
-        await this.getCurrentRules(service, databaseId);
+        await this.getCurrentRules(service, releases, normalizedDatabaseId);
 
       const key =
         this.type === RulesetServiceType.FIREBASE_STORAGE
@@ -200,7 +207,11 @@ export class RulesDeploy {
       utils.logLabeledBullet(RulesetType[this.type], `uploading rules ${bold(filename)}...`);
 
       let attachmentPoint: string | undefined;
-      if (databaseId && databaseId !== "(default)") {
+      if (
+        this.type === RulesetServiceType.CLOUD_FIRESTORE &&
+        databaseId &&
+        databaseId !== "(default)"
+      ) {
         const projectNumber = await getProjectNumber(this.options);
         attachmentPoint = `firestore.googleapis.com/projects/${projectNumber}/databases/${databaseId}`;
       }

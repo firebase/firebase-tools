@@ -198,6 +198,9 @@ describe("RulesDeploy", () => {
       sinon
         .stub(gcp.rules, "createRuleset")
         .rejects(new Error("createRuleset behavior unspecified"));
+      sinon
+        .stub(gcp.rules, "listAllReleases")
+        .resolves([]);
     });
 
     afterEach(() => {
@@ -493,7 +496,7 @@ describe("RulesDeploy", () => {
       describe("and a prompt is made", () => {
         beforeEach(() => {
           sinon.stub(prompt, "confirm").rejects(new Error("behavior unspecified"));
-          sinon.stub(gcp.rules, "listAllReleases").rejects(new Error("listAllReleases failing"));
+          (gcp.rules.listAllReleases as sinon.SinonStub).resolves([]);
           sinon.stub(gcp.rules, "deleteRuleset").rejects(new Error("deleteRuleset failing"));
           sinon.stub(gcp.rules, "getRulesetId").throws(new Error("getRulesetId failing"));
         });
