@@ -180,7 +180,10 @@ export class RulesDeploy {
       const { latestName: latestRulesetName, latestContent: latestRulesetContent } =
         await this.getCurrentRules(service, databaseId);
 
-      const key = `${filename}:${databaseId || ""}`;
+      const key =
+        this.type === RulesetServiceType.FIREBASE_STORAGE
+          ? filename
+          : `${filename}:${databaseId || ""}`;
 
       if (latestRulesetName && _.isEqual(files, latestRulesetContent)) {
         utils.logLabeledBullet(
@@ -265,7 +268,10 @@ export class RulesDeploy {
       throw new FirebaseError(`Cannot release resource type "${resourceName}"`);
     }
 
-    const key = `${filename}:${subResourceName || ""}`;
+    const key =
+      this.type === RulesetServiceType.FIREBASE_STORAGE
+        ? filename
+        : `${filename}:${subResourceName || ""}`;
     const releaseName =
       subResourceName && subResourceName !== "(default)"
         ? `${resourceName}/${subResourceName}`
