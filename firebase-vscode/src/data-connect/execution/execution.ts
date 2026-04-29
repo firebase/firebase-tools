@@ -328,12 +328,24 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           return; // ToS isn't accepted.
         }
       }
-      const res = await gif.generateOperation(
-        prompt,
-        serviceName,
-        arg.projectId,
-        schemas.length > 0 ? schemas : undefined
-      );
+      const res = await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Window,
+        title: "Data Connect: Generating Operation...",
+      }, async (progress) => {
+        return await gif.generateOperation(
+          prompt,
+          serviceName,
+          arg.projectId,
+          schemas.length > 0 ? schemas : undefined,
+          (status: any) => {
+             if (status.message) {
+                 progress.report({ message: status.message });
+             } else if (status.state) {
+                 progress.report({ message: status.state });
+             }
+          }
+        );
+      });
       await insertQueryAt(
         arg.document.uri,
         arg.insertPosition,
