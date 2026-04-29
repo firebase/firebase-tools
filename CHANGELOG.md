@@ -6,3 +6,4 @@
 - Update the valid Python runtimes for functions. Default Python runtime is now Python 3.14.
 - Fix CLI non-interactive mode for dataconnect init (#10401)
 - Fixed issue where rules for non-default Firestore databases were not being deployed correctly.
+- Suppress SSR warning for non-SSR Angular projects on init hosting (#10364)
