@@ -7,3 +7,5 @@
 - Fix CLI non-interactive mode for dataconnect init (#10401)
 - Fixed issue where rules for non-default Firestore databases were not being deployed correctly.
 - Suppress SSR warning for non-SSR Angular projects on init hosting (#10364)
+- Updated the Firebase Data Connect local toolkit to v3.4.6, which includes the following changes:
+  - [fixed] Kotlin codegen missing comma between parameters (https://github.com/firebase/firebase-tools/issues/10336)
