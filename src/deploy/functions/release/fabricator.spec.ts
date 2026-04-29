@@ -1802,12 +1802,12 @@ describe("Fabricator", () => {
       };
 
       const scrapers: scraper.SourceTokenScraper[] = [];
-      const createEndpoint = sinon.stub(fab, "createEndpoint").callsFake(
-        (unused: backend.Endpoint, s: scraper.SourceTokenScraper) => {
+      sinon
+        .stub(fab, "createEndpoint")
+        .callsFake((unused: backend.Endpoint, s: scraper.SourceTokenScraper) => {
           scrapers.push(s);
           return Promise.resolve();
-        },
-      );
+        });
 
       await fab.applyPlan(plan);
       expect(scrapers).to.have.lengthOf(2);
