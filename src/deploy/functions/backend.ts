@@ -618,7 +618,7 @@ async function loadCloudRunServices(
       }
     }
   } catch (err: any) {
-    logger.debug(err.message);
+    logger.debug(`Error loading Cloud Run services: ${err.message}`);
     unreachableRegions.run = ["unknown"];
   }
 }
