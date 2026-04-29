@@ -1,5 +1,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import express from "express";
+import cors from "cors";
 import {
   CallToolRequest,
   CallToolRequestSchema,
@@ -381,6 +384,9 @@ export class FirebaseMcpServer {
 
     const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
+    if (request.params._meta?.progressToken) {
+      toolsCtx.progressToken = request.params._meta.progressToken;
+    }
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -488,7 +494,71 @@ export class FirebaseMcpServer {
     return resolved.result;
   }
 
-  async start(): Promise<void> {
+  async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
+    if (options?.useSSE) {
+      const app = express();
+
+      app.use(cors());
+
+      const port = options.port || 3000;
+      const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
+
+      app.get("/sse", async (req: express.Request, res: express.Response) => {
+        this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
+        try {
+          const transport = new SSEServerTransport("/message", res);
+          // SSEServerTransport has sessionId but it might not be in the typings
+          interface SSEServerTransportWithSessionId extends SSEServerTransport {
+            sessionId: string;
+          }
+          const sessionId = (transport as SSEServerTransportWithSessionId).sessionId;
+          transports[sessionId] = transport;
+
+          this.logger.debug(`[SSE] Connected session ${sessionId}`);
+
+          await this.server.connect(transport);
+          this.logger.debug(`[SSE] Server connected to transport`);
+
+          // Keep handler alive
+          await new Promise<void>((resolve) => {
+            req.on("close", () => {
+              this.logger.debug(`[SSE] Session ${sessionId} disconnected`);
+              delete transports[sessionId];
+              resolve();
+            });
+          });
+        } catch (err) {
+          this.logger.error(`[SSE] Connection error: ${err}`);
+        }
+      });
+
+      app.post("/message", async (req: express.Request, res: express.Response) => {
+        const sessionId = req.query.sessionId as string;
+        this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
+
+        const transport = transports[sessionId];
+
+        if (transport) {
+          try {
+            await transport.handlePostMessage(req, res);
+            this.logger.debug(`[SSE] Handled message for session ${sessionId}`);
+          } catch (err) {
+            this.logger.error(`[SSE] Error handling message for session ${sessionId}: ${err}`);
+          }
+        } else {
+          this.logger.error(
+            `[SSE] Rejecting message: No active transport found for session ${sessionId}`,
+          );
+          res.status(400).send("No active SSE transport connection found for this session");
+        }
+      });
+
+      app.listen(port, "127.0.0.1", () => {
+        this.logger.info(`MCP Server running on HTTP/SSE mode at http://127.0.0.1:${port}`);
+      });
+      return;
+    }
+
     const transport = process.env.FIREBASE_MCP_DEBUG_LOG
       ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
       : new StdioServerTransport();
@@ -498,12 +568,12 @@ export class FirebaseMcpServer {
   private async safeCheckBillingEnabled(projectId: string): Promise<boolean> {
     try {
       return await checkBillingEnabled(projectId);
-    } catch (e: any) {
+    } catch (e: unknown) {
       this.logger.debug(
         "[mcp] Error on billingInfo for " +
           projectId +
           ", failing open (assuming false): " +
-          (e.message || e),
+          (e instanceof Error ? e.message : String(e)),
       );
       return false;
     }
