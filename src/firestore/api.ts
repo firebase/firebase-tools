@@ -30,21 +30,21 @@ export class FirestoreApi {
    */
   public static processIndex(index: Spec.Index): Spec.Index {
     // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
-    // this matches the direction of the last non-name non-vector field in the index.
+    // this matches the direction of the last non-name non-vector/non-search field in the index.
     let fields = index.fields;
     const suffixOrder: types.Order = FirestoreApi.lastIndexFieldOrder(fields);
     const nameSuffix = { fieldPath: "__name__", order: suffixOrder } as types.IndexField;
 
     const lastField = index.fields?.[index.fields.length - 1];
-    if (lastField.vectorConfig) {
-      // lastField is vector field, refer to the second from last field
-      const vectorField = lastField;
+    if (lastField?.searchConfig || lastField?.vectorConfig) {
+      // lastField is search/vector field, refer to the second from last field
+      const specialField = lastField;
       fields = fields.slice(0, -1);
 
       if (fields.length === 0 || fields?.[fields.length - 1].fieldPath !== "__name__") {
         fields.push(nameSuffix);
       }
-      fields.push(vectorField);
+      fields.push(specialField);
       return {
         ...index,
         fields,
@@ -364,7 +364,7 @@ export class FirestoreApi {
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig", "vectorConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "searchConfig", "vectorConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(types.Order));
@@ -377,6 +377,19 @@ export class FirestoreApi {
       if (field.vectorConfig) {
         validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
         validator.assertHas(field.vectorConfig, "flat");
+      }
+
+      if (field.searchConfig) {
+        if (field.searchConfig.textSpec) {
+          validator.assertHas(field.searchConfig.textSpec, "indexSpecs");
+          field.searchConfig.textSpec.indexSpecs.forEach((spec: any) => {
+            validator.assertHas(spec, "indexType");
+            validator.assertEnum(spec, "indexType", Object.keys(types.TextIndexType));
+            validator.assertHas(spec, "matchType");
+            validator.assertEnum(spec, "matchType", Object.keys(types.TextMatchType));
+          });
+        }
+        // all fields under field.searchConfig.geoSpec are optional
       }
     });
   }
@@ -609,8 +622,12 @@ export class FirestoreApi {
         return false;
       }
 
-      // Note: vectorConfig is an object, and using '!==' should not be used.
+      // Note: vectorConfig and searchConfig are objects, and using '!==' should not be used.
       if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
+        return false;
+      }
+
+      if (!utils.deepEqual(iField.searchConfig, sField.searchConfig)) {
         return false;
       }
 
@@ -728,6 +745,8 @@ export class FirestoreApi {
             f.arrayConfig = field.arrayConfig;
           } else if (field.vectorConfig) {
             f.vectorConfig = field.vectorConfig;
+          } else if (field.searchConfig) {
+            f.searchConfig = field.searchConfig;
           } else if (field.mode === types.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = types.ArrayConfig.CONTAINS;
           } else {

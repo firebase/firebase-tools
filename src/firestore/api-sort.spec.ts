@@ -1,5 +1,6 @@
 import { expect } from "chai";
 
+import { TextIndexType, TextMatchType } from "./api-types";
 import { Backup, BackupSchedule, DayOfWeek } from "../gcp/firestore";
 import { durationFromSeconds } from "../gcp/proto";
 import * as sort from "./api-sort";
@@ -74,5 +75,44 @@ describe("compareApiBackupSchedule", () => {
     };
     expect(sort.compareApiBackupSchedule(dailySchedule1, dailySchedule2)).to.lessThanOrEqual(-1);
     expect(sort.compareApiBackup(dailySchedule2, dailySchedule1)).to.greaterThanOrEqual(1);
+  });
+});
+
+describe("compareApiIndex", () => {
+  it("should compare indexes by searchConfig", () => {
+    const indexNoSearch: any = {
+      queryScope: "COLLECTION",
+      fields: [{ fieldPath: "foo", order: "ASCENDING" }],
+    };
+    const indexWithSearch1: any = {
+      queryScope: "COLLECTION",
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                { indexType: TextIndexType.TOKENIZED, matchType: TextMatchType.MATCH_GLOBALLY },
+              ],
+            },
+          },
+        },
+      ],
+    };
+    const indexWithSearch2: any = {
+      queryScope: "COLLECTION",
+      fields: [{ fieldPath: "foo", searchConfig: { geoSpec: { geoJsonIndexingDisabled: true } } }],
+    };
+
+    // Index without searchConfig should come before one with searchConfig
+    expect(sort.compareApiIndex(indexNoSearch, indexWithSearch1)).to.be.lessThan(0);
+    expect(sort.compareApiIndex(indexWithSearch1, indexNoSearch)).to.be.greaterThan(0);
+
+    // Comparing two different searchConfigs (JSON.stringify comparison)
+    // indexWithSearch1 stringified is '{"textSpec":{"indexSpecs":[]}}'
+    // indexWithSearch2 stringified is '{"geoSpec":{"geoJsonIndexingDisabled":true}}'
+    // "geoSpec" < "textSpec"
+    expect(sort.compareApiIndex(indexWithSearch2, indexWithSearch1)).to.be.lessThan(0);
+    expect(sort.compareApiIndex(indexWithSearch1, indexWithSearch2)).to.be.greaterThan(0);
   });
 });
