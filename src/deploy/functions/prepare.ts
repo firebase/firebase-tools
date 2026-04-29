@@ -522,7 +522,7 @@ async function resolveRegionForEventTrigger(
     }
   }
 
-  // DataConnect functions should be deployed to the same region as the service or connector.
+  // DataConnect functions should be deployed to the same region as the service.
   if (eventType.startsWith("google.firebase.dataconnect.")) {
     if (eventTrigger.region) return eventTrigger.region;
 
