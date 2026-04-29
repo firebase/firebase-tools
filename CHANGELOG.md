@@ -1,3 +1,4 @@
+- Updated Firestore Emulator to v1.21.0, which adds support for subqueries and new stages like let(...), as well as allowing setting database-edition per-database.
 - Suppressed the 'punycode' deprecation warning during `firebase deploy` on Node 22. (#10385)
 - Fixed an issue where hosting deploy allowed publishing to a site in a different project. (#10376)
 - Added 'firebase_deploy' and 'firebase_deploy_status' MCP tools.

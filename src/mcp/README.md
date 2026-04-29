@@ -43,10 +43,10 @@ Here are configuration instructions for popular AI-assistive tools:
 
 #### Gemini CLI
 
-Install the [Firebase extension for Gemini CLI](https://github.com/gemini-cli-extensions/firebase/):
+Install the [Firebase extension for Gemini CLI](https://github.com/firebase/agent-skills):
 
 ```bash
-gemini extensions install https://github.com/gemini-cli-extensions/firebase/
+gemini extensions install https://github.com/firebase/agent-skills
 ```
 
 #### Claude Code
