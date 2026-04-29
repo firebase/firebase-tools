@@ -1782,6 +1782,37 @@ describe("Fabricator", () => {
       expect(createEndpoint).to.have.been.calledOnce;
       expect(deleteEndpoint).to.have.been.calledOnce;
     });
+
+    it("isolates source token scrapers across changesets", async () => {
+      const ep1 = endpoint({ httpsTrigger: {} }, { id: "A", region: "us-central1" });
+      const ep2 = endpoint({ httpsTrigger: {} }, { id: "B", region: "us-west1" });
+      const plan: planner.DeploymentPlan = {
+        "us-central1": {
+          endpointsToCreate: [ep1],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+        "us-west1": {
+          endpointsToCreate: [ep2],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [],
+        },
+      };
+
+      const scrapers: scraper.SourceTokenScraper[] = [];
+      const createEndpoint = sinon.stub(fab, "createEndpoint").callsFake(
+        (unused: backend.Endpoint, s: scraper.SourceTokenScraper) => {
+          scrapers.push(s);
+          return Promise.resolve();
+        },
+      );
+
+      await fab.applyPlan(plan);
+      expect(scrapers).to.have.lengthOf(2);
+      expect(scrapers[0]).to.not.equal(scrapers[1]);
+    });
   });
 
   describe("createRunFunction", () => {

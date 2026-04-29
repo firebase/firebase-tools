@@ -99,9 +99,9 @@ export class Fabricator {
     const changesets = Object.values(plan);
 
     // Phase 1: Creates and Updates
-    const scraperV1 = new SourceTokenScraper();
-    const scraperV2 = new SourceTokenScraper();
     const createAndUpdatePromises = changesets.map((changes) => {
+      const scraperV1 = new SourceTokenScraper();
+      const scraperV2 = new SourceTokenScraper();
       return this.applyUpserts(changes, scraperV1, scraperV2);
     });
     const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
