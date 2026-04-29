@@ -17,11 +17,6 @@ export function runtimeIsLanguage<L extends Language>(
   return !!runtime && runtime.startsWith(language);
 }
 
-/** Check if an optional runtime string belongs to a given language. */
-export function isLanguageRuntime(runtime: string | undefined, language: Language): boolean {
-  return !!runtime && runtime.startsWith(language);
-}
-
 /**
  * Find the latest supported Runtime for a Language.
  */

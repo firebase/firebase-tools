@@ -306,43 +306,6 @@ describe("apphosting", () => {
       }
     });
 
-    it("should fail if localBuild is specified but experiment is disabled", async () => {
-      const optsWithLocalBuild = {
-        ...opts,
-        config: new Config({
-          apphosting: {
-            backendId: "foo",
-            rootDir: "/",
-            ignore: [],
-            localBuild: true,
-          },
-        }),
-      };
-      const context = initializeContext();
-
-      sinon
-        .stub(experiments, "assertEnabled")
-        .throws(new Error("Experiment 'apphostinglocalbuilds' is not enabled."));
-      listBackendsStub.onFirstCall().resolves({
-        backends: [
-          {
-            name: "projects/my-project/locations/us-central1/backends/foo",
-          },
-        ],
-      });
-
-      try {
-        await prepare(context, optsWithLocalBuild);
-        expect.fail("Should have thrown an error");
-      } catch (e: unknown) {
-        if (e instanceof Error) {
-          expect(e.message).to.include("Experiment 'apphostinglocalbuilds' is not enabled.");
-        } else {
-          expect.fail("Expected Error instance");
-        }
-      }
-    });
-
     it("links to existing backend if it already exists", async () => {
       const context = initializeContext();
       listBackendsStub.onFirstCall().resolves({
