@@ -17,6 +17,7 @@ import { getDatabase } from "./services/firestore";
 import { getBucket } from "./services/storage";
 import { getDatabaseInstanceDetails } from "./services/database";
 import { isGlobalAILogicEndpoint } from "./services/ailogic";
+import { parseServiceName, parseConnectorName } from "../../dataconnect/names";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -521,9 +522,23 @@ async function resolveRegionForEventTrigger(
     }
   }
 
-  // DataConnect functions should be deployed to the same region as the database.
+  // DataConnect functions should be deployed to the same region as the service or connector.
   if (eventType.startsWith("google.firebase.dataconnect.")) {
     if (eventTrigger.region) return eventTrigger.region;
+
+    try {
+      const service = eventTrigger.eventFilters?.service;
+      if (service) {
+        return parseServiceName(service).location;
+      }
+
+      const connector = eventTrigger.eventFilters?.connector;
+      if (connector) {
+        return parseConnectorName(connector).location;
+      }
+    } catch (err: any) {
+      logger.debug("Failed to resolve DataConnect location", getErrStack(err));
+    }
   }
 
   return DEFAULT_FUNCTION_REGION;

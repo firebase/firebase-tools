@@ -408,6 +408,49 @@ describe("prepare", () => {
       expect(want.endpoints["europe-west1"]?.["onWrite"]).to.exist;
     });
 
+    it("resolves region for DataConnect event triggers based on service location", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onMutationExecuted",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+          eventFilters: {
+            service: "projects/project/locations/europe-west1/services/my-service",
+          },
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["europe-west1"]?.["onMutationExecuted"]).to.exist;
+    });
+
+    it("resolves region for DataConnect event triggers based on connector location", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onMutationExecutedConnector",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+          eventFilters: {
+            connector:
+              "projects/project/locations/europe-west2/services/my-service/connectors/my-connector",
+          },
+          retry: false,
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["europe-west2"]?.["onMutationExecutedConnector"]).to.exist;
+    });
+
     it("does not infer region from have backend if it belongs to a different codebase", async () => {
       const wantE = { ...ENDPOINT, region: build.REGION_TBD, codebase: "codebaseA" };
       const want = backend.of(wantE);
