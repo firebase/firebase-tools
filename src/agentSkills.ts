@@ -2,11 +2,13 @@ import { spawn, spawnSync } from "child_process";
 import * as utils from "./utils";
 import * as prompt from "./prompt";
 import { getErrMsg } from "./error";
+import { Options } from "./options";
 
-export async function promptForAgentSkills(): Promise<boolean> {
+export async function promptForAgentSkills(options?: Options): Promise<boolean> {
   return prompt.confirm({
     message: "Would you like to install agent skills for Firebase?",
-    default: true,
+    default: !options?.nonInteractive,
+    nonInteractive: options?.nonInteractive,
   });
 }
 
