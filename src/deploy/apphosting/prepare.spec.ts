@@ -337,7 +337,7 @@ describe("apphosting", () => {
 
       await prepare(context, opts);
 
-      expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo");
+      expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo", false, "/");
       expect(context.backendLocations["foo"]).to.equal("us-central1");
       expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",

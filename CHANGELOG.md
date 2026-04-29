@@ -8,3 +8,4 @@
 - Fixed issue where rules for non-default Firestore databases were not being deployed correctly.
 - Suppress SSR warning for non-SSR Angular projects on init hosting (#10364)
 - Updated the SQL Connect emulator to v3.4.6, including internal bug fixes (#10434)
+- Fix an issue where deploying multi-codebase functions failed due to a shared source token scraper (#10428)

@@ -1,6 +1,7 @@
 import { select, Choice } from "../prompt";
 import { logWarning, logBullet } from "../utils";
 import * as apphosting from "../gcp/apphosting";
+import { isEnabled } from "../experiments";
 
 export const DEFAULT_RUNTIME = "nodejs";
 
@@ -43,4 +44,27 @@ export async function promptRuntime(projectId: string, location: string): Promis
   }
 
   return selectedRuntime;
+}
+
+/**
+ * Resolves the runtime for the backend.
+ * Checks if the 'abiu' experiment is enabled and prompts the user if interactive.
+ * @param runtimeOption The runtime specified in command arguments (--runtime) if any
+ */
+export async function resolveRuntime(
+  projectId: string,
+  location: string,
+  nonInteractive: boolean,
+  runtimeOption?: string,
+): Promise<string | undefined> {
+  if (runtimeOption !== undefined) {
+    return runtimeOption;
+  }
+  if (!isEnabled("abiu")) {
+    return undefined;
+  }
+  if (nonInteractive) {
+    return DEFAULT_RUNTIME;
+  }
+  return promptRuntime(projectId, location);
 }
