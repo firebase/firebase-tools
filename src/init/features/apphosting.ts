@@ -91,14 +91,8 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
       utils.logWarning(`Firebase web app not set`);
     }
 
-    const experiments = await dynamicImport("./experiments");
     const prompts = await dynamicImport("./apphosting/prompts");
-
-    let runtime = experiments.isEnabled("abiu") ? prompts.DEFAULT_RUNTIME : undefined;
-
-    if (experiments.isEnabled("abiu") && !options.nonInteractive) {
-      runtime = await prompts.promptRuntime(projectId, location);
-    }
+    const runtime = await prompts.resolveRuntime(projectId, location, options.nonInteractive);
 
     const createBackendSpinner = ora("Creating your new backend...").start();
     const backend = await createBackend(
