@@ -31,8 +31,11 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
                 triggerRegionMap.set(ep.id, bucket.location.toLowerCase());
               })
               .catch((err) => {
-                logger.debug(`Failed to resolve trigger region for V1 storage function ${ep.id}:`, err);
-              })
+                logger.debug(
+                  `Failed to resolve trigger region for V1 storage function ${ep.id}:`,
+                  err,
+                );
+              }),
           );
         }
       } else if (eventType.includes("firestore")) {
@@ -43,8 +46,11 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
               triggerRegionMap.set(ep.id, db.locationId.toLowerCase());
             })
             .catch((err) => {
-              logger.debug(`Failed to resolve trigger region for V1 firestore function ${ep.id}:`, err);
-            })
+              logger.debug(
+                `Failed to resolve trigger region for V1 firestore function ${ep.id}:`,
+                err,
+              );
+            }),
         );
       } else if (eventType.includes("database")) {
         const instanceName = extractInstanceName(resource);
@@ -57,8 +63,11 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
                 }
               })
               .catch((err) => {
-                logger.debug(`Failed to resolve trigger region for V1 database function ${ep.id}:`, err);
-              })
+                logger.debug(
+                  `Failed to resolve trigger region for V1 database function ${ep.id}:`,
+                  err,
+                );
+              }),
           );
         }
       }
@@ -126,4 +135,3 @@ function extractInstanceName(resource: string | undefined): string | null {
 function isUSRegion(region: string): boolean {
   return region === "us" || region === "nam5" || region === "nam7" || region.startsWith("us-");
 }
-

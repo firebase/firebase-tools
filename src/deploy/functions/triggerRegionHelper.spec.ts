@@ -29,8 +29,12 @@ describe("TriggerRegionHelper", () => {
       firestoreService.clearCache();
       databaseService.clearCache();
       storageStub = sinon.stub(storage, "getBucket").throws("unexpected call to storage.getBucket");
-      firestoreStub = sinon.stub(firestore, "getDatabase").throws("unexpected call to firestore.getDatabase");
-      databaseStub = sinon.stub(database, "getDatabaseInstanceDetails").throws("unexpected call to database.getDatabaseInstanceDetails");
+      firestoreStub = sinon
+        .stub(firestore, "getDatabase")
+        .throws("unexpected call to firestore.getDatabase");
+      databaseStub = sinon
+        .stub(database, "getDatabaseInstanceDetails")
+        .throws("unexpected call to database.getDatabaseInstanceDetails");
       logWarningSpy = sinon.spy(utils, "logLabeledWarning");
     });
 
@@ -124,13 +128,19 @@ describe("TriggerRegionHelper", () => {
       await triggerRegionHelper.ensureTriggerRegions(backend.of(ep));
 
       expect(logWarningSpy.calledOnce).to.be.true;
-      expect(logWarningSpy.firstCall.args[1]).to.include("The following functions have triggers in different regions than they are located");
-      expect(logWarningSpy.firstCall.args[1]).to.include("- wantFn (us-central1, Trigger: europe-west1)");
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "The following functions have triggers in different regions than they are located",
+      );
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- wantFn (us-central1, Trigger: europe-west1)",
+      );
     });
 
     it("should warn on multiple transatlantic latency hops with a rolled-up log message", async () => {
       firestoreStub.withArgs(sinon.match.any, "(default)").resolves({ locationId: "europe-west1" });
-      firestoreStub.withArgs(sinon.match.any, "my-secondary-db").resolves({ locationId: "asia-northeast1" });
+      firestoreStub
+        .withArgs(sinon.match.any, "my-secondary-db")
+        .resolves({ locationId: "asia-northeast1" });
       const wantFn1: backend.Endpoint = {
         id: "wantFn1",
         entryPoint: "wantFn1",
@@ -162,8 +172,12 @@ describe("TriggerRegionHelper", () => {
       await triggerRegionHelper.ensureTriggerRegions(backend.of(wantFn1, wantFn2));
 
       expect(logWarningSpy.calledOnce).to.be.true;
-      expect(logWarningSpy.firstCall.args[1]).to.include("- wantFn1 (us-central1, Trigger: europe-west1)");
-      expect(logWarningSpy.firstCall.args[1]).to.include("- wantFn2 (us-central1, Trigger: asia-northeast1)");
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- wantFn1 (us-central1, Trigger: europe-west1)",
+      );
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- wantFn2 (us-central1, Trigger: asia-northeast1)",
+      );
     });
 
     it("should be able to suppress warnings with an environment flag for V2", async () => {
@@ -292,7 +306,9 @@ describe("TriggerRegionHelper", () => {
       await triggerRegionHelper.ensureTriggerRegions(backend.of(ep));
 
       expect(logWarningSpy.calledOnce).to.be.true;
-      expect(logWarningSpy.firstCall.args[1]).to.include("- v1fn (us-central1, Trigger: europe-west1)");
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- v1fn (us-central1, Trigger: europe-west1)",
+      );
     });
 
     it("should silently catch and handle failed V1 lookups", async () => {
@@ -335,7 +351,9 @@ describe("TriggerRegionHelper", () => {
       await triggerRegionHelper.ensureTriggerRegions(backend.of(ep));
 
       expect(logWarningSpy.calledOnce).to.be.true;
-      expect(logWarningSpy.firstCall.args[1]).to.include("- v1fs (us-central1, Trigger: europe-west1)");
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- v1fs (us-central1, Trigger: europe-west1)",
+      );
     });
 
     it("should warn for V1 database function if instance location is non-US", async () => {
@@ -357,7 +375,9 @@ describe("TriggerRegionHelper", () => {
       await triggerRegionHelper.ensureTriggerRegions(backend.of(ep));
 
       expect(logWarningSpy.calledOnce).to.be.true;
-      expect(logWarningSpy.firstCall.args[1]).to.include("- v1db (us-central1, Trigger: europe-west1)");
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- v1db (us-central1, Trigger: europe-west1)",
+      );
     });
 
     it("should skip warnings when FIREBASE_SUPPRESS_REGION_WARNING=true for V1", async () => {
