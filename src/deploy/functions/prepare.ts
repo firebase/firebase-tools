@@ -12,6 +12,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import * as events from "../../functions/events/v1";
 import { getDatabase } from "./services/firestore";
 import { getBucket } from "./services/storage";
 import { getDatabaseInstanceDetails } from "./services/database";
@@ -42,7 +43,8 @@ import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStack } from "../../error";
+
 import {
   configForCodebase,
   normalizeAndValidate,
@@ -61,6 +63,7 @@ import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+export const DEFAULT_FUNCTION_REGION = "us-central1";
 
 /**
  * Prepare functions codebases for deploy.
@@ -405,7 +408,7 @@ export async function resolveDefaultRegions(
 
   const endpoints = Object.values(want.endpoints[build.REGION_TBD] || {});
 
-  const resolvedEndpoints = await Promise.all(
+  await Promise.all(
     endpoints.map(async (endpoint) => {
       let resolvedRegion = "us-central1";
 
@@ -418,27 +421,20 @@ export async function resolveDefaultRegions(
       } catch (err: any) {
         logger.debug(
           `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
-          err,
+          getErrStack(err),
         );
       }
 
-      return { endpoint, resolvedRegion };
+      moveEndpointToRegion(want, endpoint, resolvedRegion);
     }),
   );
-
-  for (const { endpoint, resolvedRegion } of resolvedEndpoints) {
-    moveEndpointToRegion(want, endpoint, resolvedRegion);
-  }
 }
 
 function resolveRegionForBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
 ): string {
   const eventType = endpoint.blockingTrigger.eventType;
-  if (
-    eventType === "providers/cloud.auth/eventTypes/user.beforeCreate" ||
-    eventType === "providers/cloud.auth/eventTypes/user.beforeSignIn"
-  ) {
+  if (eventType === events.BEFORE_CREATE_EVENT || eventType === events.BEFORE_SIGN_IN_EVENT) {
     return "us-east1";
   }
 
@@ -446,7 +442,7 @@ function resolveRegionForBlockingTrigger(
     return "us-east1";
   }
 
-  return "us-central1";
+  return DEFAULT_FUNCTION_REGION;
 }
 
 async function resolveRegionForEventTrigger(
@@ -455,6 +451,7 @@ async function resolveRegionForEventTrigger(
   const eventTrigger = endpoint.eventTrigger;
   const eventType = eventTrigger.eventType;
 
+  // Global functions should be deployed to us-east1.
   if (
     eventType.startsWith("google.cloud.pubsub.") ||
     eventType.startsWith("providers/cloud.auth/eventTypes/") ||
@@ -466,6 +463,11 @@ async function resolveRegionForEventTrigger(
     return "us-east1";
   }
 
+  // Firestore functions should be deployed to the same region as the database.
+  // In multi-region locations, we default to:
+  // * nam5 -> us-central1
+  // * nam7 -> us-central1
+  // * eur3 -> europe-west1
   if (eventType.startsWith("google.cloud.firestore.")) {
     try {
       const databaseId = eventTrigger.eventFilters?.database || "(default)";
@@ -476,10 +478,15 @@ async function resolveRegionForEventTrigger(
       if (locationId === "eur3") return "europe-west1";
       return locationId;
     } catch (err: any) {
-      logger.debug("Failed to resolve Firestore database location", err);
+      logger.debug("Failed to resolve Firestore database location", getErrStack(err));
     }
   }
 
+  // Cloud Storage functions should be deployed to the same region as the bucket.
+  // In multi-region locations, we default to:
+  // * us -> us-east1
+  // * eu -> europe-west1
+  // * asia -> asia-east1
   if (eventType.startsWith("google.cloud.storage.")) {
     try {
       const bucketName = eventTrigger.eventFilters?.bucket;
@@ -493,10 +500,11 @@ async function resolveRegionForEventTrigger(
         return locationId;
       }
     } catch (err: any) {
-      logger.debug("Failed to resolve Cloud Storage bucket location", err);
+      logger.debug("Failed to resolve Cloud Storage bucket location", getErrStack(err));
     }
   }
 
+  // Realtime Database functions should be deployed to the same region as the database.
   if (eventType.startsWith("google.firebase.database.")) {
     if (eventTrigger.region) return eventTrigger.region;
 
@@ -509,15 +517,16 @@ async function resolveRegionForEventTrigger(
         }
       }
     } catch (err: any) {
-      logger.debug("Failed to resolve Realtime Database instance location", err);
+      logger.debug("Failed to resolve Realtime Database instance location", getErrStack(err));
     }
   }
 
+  // DataConnect functions should be deployed to the same region as the database.
   if (eventType.startsWith("google.firebase.dataconnect.")) {
     if (eventTrigger.region) return eventTrigger.region;
   }
 
-  return "us-central1";
+  return DEFAULT_FUNCTION_REGION;
 }
 
 /**
