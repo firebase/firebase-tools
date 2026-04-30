@@ -142,9 +142,7 @@ describe("crashlytics:sourcemap:upload", () => {
       expect(uploadedFiles[1]).to.match(
         /test-app-.*-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
       );
-      expect(uploadedFiles[2]).to.match(
-        /test-app-.*-fixtures-mapping-files-with-js-main\.js\.zip/,
-      );
+      expect(uploadedFiles[2]).to.match(/test-app-.*-fixtures-mapping-files-with-js-main\.js\.zip/);
       expect(uploadedFiles[3]).to.match(
         /test-app-.*-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
       );

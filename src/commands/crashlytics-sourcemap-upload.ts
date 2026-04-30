@@ -273,7 +273,7 @@ async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0):
     .split(path.sep)
     .map((p) => (p === ".next" ? "_next" : p))
     // TODO(andrewbrook): add flag to allow uploading dev maps
-    .filter((p) => (p !== "dev"))
+    .filter((p) => p !== "dev")
     .join("/");
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
