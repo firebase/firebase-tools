@@ -24,6 +24,7 @@ export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
   targetSubDir?: string,
+  sizeLimitBytes: number = 250 * 1024 * 1024,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
@@ -69,6 +70,16 @@ export async function createLocalBuildTarArchive(
     },
     allFiles,
   );
+
+  const stats = fs.statSync(tmpFile);
+  if (config.localBuild && stats.size > sizeLimitBytes) {
+    const sizeInMB = stats.size / (1024 * 1024);
+    const limitInMB = sizeLimitBytes / (1024 * 1024);
+    throw new FirebaseError(
+      `The final build artifact is larger than ${limitInMB.toFixed(0)}MB (current size: ${sizeInMB.toFixed(2)}MB). Please reduce the size of your build artifacts.`,
+    );
+  }
+
   return tmpFile;
 }
 

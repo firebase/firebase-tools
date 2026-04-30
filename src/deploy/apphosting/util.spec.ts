@@ -4,6 +4,7 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as tar from "tar";
 import * as util from "./util";
+import { FirebaseError } from "../../error";
 
 describe("util", () => {
   let tmpDir: tmp.DirResult;
@@ -77,6 +78,25 @@ describe("util", () => {
 
       expect(files).to.include("dist/index.js");
       expect(files).to.not.include("apphosting.yaml");
+    });
+
+    it("should throw an error if local build archive size exceeds limit", async () => {
+      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+
+      const config = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: [],
+        localBuild: true,
+      };
+
+      try {
+        await util.createLocalBuildTarArchive(config, rootDir, path.relative(rootDir, distDir), 1);
+        expect.fail("Should have thrown an error");
+      } catch (err: unknown) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect((err as FirebaseError).message).to.match(/The final build artifact is larger than/);
+      }
     });
   });
 });
