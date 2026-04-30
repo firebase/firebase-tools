@@ -44,7 +44,7 @@ export function toContent(
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
   };
   if (typeof data === "object" && data !== null && !Array.isArray(data)) {
-    (result as any).structuredContent = data as Record<string, unknown>;
+    result.structuredContent = data as Record<string, unknown>;
   }
   return result;
 }

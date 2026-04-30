@@ -514,7 +514,7 @@ describe("toContent", () => {
     const result = toContent(data);
     expect(result.content).to.have.lengthOf(1);
     expect(result.content[0].type).to.equal("text");
-    expect((result as any).structuredContent).to.deep.equal(data);
+    expect(result.structuredContent).to.deep.equal(data);
   });
 
   it("should NOT return structuredContent for array data", () => {
@@ -522,7 +522,7 @@ describe("toContent", () => {
     const result = toContent(data);
     expect(result.content).to.have.lengthOf(1);
     expect(result.content[0].type).to.equal("text");
-    expect((result as any).structuredContent).to.be.undefined;
+    expect(result.structuredContent).to.be.undefined;
   });
 
   it("should return content for string data", () => {

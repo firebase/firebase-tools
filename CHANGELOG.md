@@ -2,4 +2,4 @@
 
 ## Unreleased
 
-- Fix MCP server error 'Invalid input: expected record, received array' by wrapping arrays in objects at call sites and adding a safety check in `toContent`.
+- Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
