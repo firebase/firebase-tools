@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import * as experiments from "../experiments";
-import { cleanSchema, applyAppMeta } from "./util";
+import { cleanSchema, applyAppMeta, toContent } from "./util";
 
 interface TestCase {
   desc: string;
@@ -505,5 +505,30 @@ describe("applyAppMeta", () => {
     const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
     const uri = "ui://test";
     expect(applyAppMeta(result, uri)).to.deep.equal(result);
+  });
+});
+
+describe("toContent", () => {
+  it("should return content and structuredContent for object data", () => {
+    const data = { foo: "bar" };
+    const result = toContent(data);
+    expect(result.content).to.have.lengthOf(1);
+    expect(result.content[0].type).to.equal("text");
+    expect(result.structuredContent).to.deep.equal(data);
+  });
+
+  it("should NOT return structuredContent for array data", () => {
+    const data = ["foo", "bar"];
+    const result = toContent(data);
+    expect(result.content).to.have.lengthOf(1);
+    expect(result.content[0].type).to.equal("text");
+    expect(result.structuredContent).to.be.undefined;
+  });
+
+  it("should return content for string data", () => {
+    const data = "hello";
+    const result = toContent(data);
+    expect(result.content).to.deep.equal([{ type: "text", text: "hello" }]);
+    expect((result as any).structuredContent).to.be.undefined;
   });
 });
