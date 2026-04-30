@@ -116,22 +116,28 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
 
 function extractBucketName(resource: string | undefined): string | null {
   if (!resource) return null;
-  const match = resource.match(/buckets\/([^\/]+)/);
-  return match ? match[1] : null;
+  const match = /buckets\/([^/]+)/.exec(resource);
+  if (match) return match[1];
+  if (!resource.includes("/")) return resource;
+  return null;
 }
 
 function extractDatabaseId(resource: string | undefined): string {
   if (!resource) return "(default)";
-  const match = resource.match(/databases\/([^\/]+)/);
-  return match ? match[1] : "(default)";
+  const match = /databases\/([^/]+)/.exec(resource);
+  if (match) return match[1];
+  if (!resource.includes("/")) return resource;
+  return "(default)";
 }
 
 function extractInstanceName(resource: string | undefined): string | null {
   if (!resource) return null;
-  const match = resource.match(/instances\/([^\/]+)/);
-  return match ? match[1] : null;
+  const match = /instances\/([^/]+)/.exec(resource);
+  if (match) return match[1];
+  if (!resource.includes("/")) return resource;
+  return null;
 }
 
 function isUSRegion(region: string): boolean {
-  return region === "us" || region === "nam5" || region === "nam7" || region.startsWith("us-");
+  return region === "us" || region.startsWith("nam") || region.startsWith("us-");
 }
