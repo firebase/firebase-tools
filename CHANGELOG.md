@@ -1,0 +1,1 @@
+- Fixed Functions emulator file watcher silently ignoring changes when the project path contains a dot-prefixed ancestor directory (e.g. `.worktrees/`). (#10187)
