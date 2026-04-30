@@ -15,6 +15,7 @@ import { execSync } from "node:child_process";
 import { Client } from "../apiv2";
 import { murmurHashV3 } from "murmurhash-es";
 import * as pLimit from "p-limit";
+import { requireAuth } from "../requireAuth";
 
 interface CommandOptions extends Options {
   app?: string;
@@ -57,6 +58,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     "--app-version <appVersion>",
     "the version of your Firebase app (defaults to Git commit hash, if available)",
   )
+  .before(requireAuth)
   .action(async (mappingFiles: string | undefined, options: CommandOptions) => {
     checkGoogleAppID(options);
 
@@ -72,7 +74,13 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
     // Find and upload mapping files
     const rootDir = path.resolve(options.projectRoot ?? process.cwd());
-    const filePath = path.relative(rootDir, path.resolve(mappingFiles || ".")) || ".";
+    let filePath = '';
+    if (mappingFiles) {
+      filePath = path.resolve(mappingFiles);
+    } else {
+      filePath = rootDir;
+    }
+
     let fstat: fs.Stats;
     try {
       fstat = statSync(filePath);
@@ -168,7 +176,7 @@ function findSourceMapMappings(files: { name: string }[], rootDir: string): Sour
     if (mapFilePath && mapFilePathsSet.has(mapFilePath)) {
       mappings.push({
         mapFilePath,
-        obfuscatedFilePath: path.relative(rootDir, path.resolve(`${jsFile.name}.map`)),
+        obfuscatedFilePath: path.relative(rootDir, path.resolve(jsFile.name)),
       });
       mapFilesLinkedInJsComment.add(mapFilePath);
     }
@@ -265,7 +273,13 @@ async function upsertBucket(
 async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
   const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
-  const obfuscatedPath = path.relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath);
+  const obfuscatedPath = path
+    .relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath)
+    .split(path.sep)
+    .map((p) => (p === ".next" ? "_next" : p))
+    // TODO(andrewbrook): add flag to allow uploading dev maps
+    .filter((p) => (p !== 'dev'))
+    .join(path.sep);
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
   const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
@@ -286,7 +300,7 @@ async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0):
       name,
       appId: options.app!,
       version: appVersion,
-      obfuscatedFilePath: obfuscatedPath,
+      obfuscatedFilePath: `/${obfuscatedPath}`,
       fileUri,
     });
     logger.debug(`Registered mapping file ${filePath}`);
