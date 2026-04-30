@@ -280,6 +280,28 @@ describe("prepare", () => {
       expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
       expect(want.endpoints[build.REGION_TBD]).to.not.exist;
     });
+
+    it("does not infer region from have backend if it belongs to a different codebase", async () => {
+      const wantE = { ...ENDPOINT, region: build.REGION_TBD, codebase: "codebaseA" };
+      const want = backend.of(wantE);
+
+      // An existing endpoint with the same ID but in codebaseB
+      const haveE = { ...ENDPOINT, region: "europe-west1", codebase: "codebaseB" };
+      const have = backend.of(haveE);
+
+      // Mimic the Phase 4 change: Filter down to relevant endpoints
+      const relevantEndpoints = backend
+        .allEndpoints(have)
+        .filter((e) => e.codebase === wantE.codebase || e.codebase === undefined);
+
+      // Since codebaseB's existing function is filtered out, it won't match.
+      // It should instead correctly fall back to "us-central1".
+      await prepare.resolveDefaultRegions(want, backend.of(...relevantEndpoints));
+
+      expect(want.endpoints["us-central1"]?.["id"]).to.exist;
+      expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
+      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+    });
   });
 
   describe("inferDetailsFromExisting", () => {
