@@ -40,10 +40,13 @@ export function toContent(
   }
   const prefix = options?.contentPrefix || "";
   const suffix = options?.contentSuffix || "";
-  return {
+  const result: CallToolResult = {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
-    structuredContent: data as { [key: string]: unknown },
   };
+  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    result.structuredContent = data as Record<string, unknown>;
+  }
+  return result;
 }
 
 /**
