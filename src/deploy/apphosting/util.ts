@@ -28,7 +28,7 @@ export async function createLocalBuildTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
+  const ignore = resolveIgnorePatterns(config, targetDir);
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
     ignore: ignore,
@@ -90,10 +90,7 @@ export async function createSourceDeployArchive(
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  ignore.push(...gitIgnorePatterns);
+  const ignore = resolveIgnorePatterns(config, targetDir);
   try {
     const files = await fsAsync.readdirRecursive({
       path: targetDir,
@@ -115,6 +112,14 @@ export async function createSourceDeployArchive(
     );
   }
   return tmpFile;
+}
+
+export function resolveIgnorePatterns(config: AppHostingSingle, targetDir: string): string[] {
+  const ignore = config.ignore ? [...config.ignore] : ["node_modules", ".git"];
+  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
+  ignore.push(...gitIgnorePatterns);
+  return ignore;
 }
 
 function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
