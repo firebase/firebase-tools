@@ -6,7 +6,6 @@ import {
 } from "../../../management/database";
 
 const instanceCache = new Map<string, DatabaseInstance>();
-const instancePromiseCache = new Map<string, Promise<DatabaseInstance>>();
 
 /**
  * Clear the database instance cache. Used for testing.
@@ -14,7 +13,6 @@ const instancePromiseCache = new Map<string, Promise<DatabaseInstance>>();
  */
 export function clearCache(): void {
   instanceCache.clear();
-  instancePromiseCache.clear();
 }
 
 /**
@@ -33,23 +31,9 @@ export async function getDatabaseInstanceDetails(
     return instanceCache.get(key)!;
   }
 
-  if (instancePromiseCache.has(key)) {
-    return instancePromiseCache.get(key)!;
-  }
-
-  const instancePromise = getDetails(projectId, instanceName)
-    .then((details) => {
-      instanceCache.set(key, details);
-      instancePromiseCache.delete(key);
-      return details;
-    })
-    .catch((error) => {
-      instancePromiseCache.delete(key);
-      throw error;
-    });
-
-  instancePromiseCache.set(key, instancePromise);
-  return instancePromise;
+  const details = await getDetails(projectId, instanceName);
+  instanceCache.set(key, details);
+  return details;
 }
 
 /**
