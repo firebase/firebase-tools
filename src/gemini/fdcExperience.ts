@@ -1,5 +1,6 @@
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+import { logger } from "../logger";
 import {
   GenerateResponse,
   GenerationStatus,
@@ -15,6 +16,18 @@ export const PROMPT_GENERATE_CONNECTOR =
 export const PROMPT_GENERATE_SEED_DATA =
   "Create a mutation to populate the database with some seed data.";
 
+function logCurl(method: string, path: string, body: any) {
+  const url = `${STAGING_ORIGIN}${path}`;
+  const headers = [
+    '-H "Content-Type: application/json"',
+    '-H "Authorization: Bearer $(gcloud auth print-access-token)"'
+  ].join(" ");
+  
+  const curl = `curl -X ${method} "${url}" ${headers} -d '${JSON.stringify(body)}'`;
+  logger.info(`[fdcExperience] Reusable cURL command:\\n${curl}`);
+}
+
+
 /**
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.
@@ -29,13 +42,17 @@ export async function generateSchema(
   location: string,
   onStatus?: (status: GenerationStatus) => void,
 ): Promise<string> {
+  const path = `/v1/projects/${project}/locations/${location}/services/-:generateSchema`;
+  const body = {
+    name: `projects/${project}/locations/${location}/services/-`,
+    prompt,
+  };
+  logCurl("POST", path, body);
+
   const res = await apiClient.request<any, NodeJS.ReadableStream>({
     method: "POST",
-    path: `/v1/projects/${project}/locations/${location}/services/-:generateSchema`,
-    body: {
-      name: `projects/${project}/locations/${location}/services/-`,
-      prompt,
-    },
+    path,
+    body,
     responseType: "stream",
     resolveOnHTTPError: true,
   });
@@ -79,14 +96,18 @@ export async function generateOperation(
     serviceId = "-";
   }
 
+  const path = `/v1/projects/${project}/locations/${location}/services/${serviceId}:generateQuery`;
+  const body = {
+    name: `projects/${project}/locations/${location}/services/${serviceId}`,
+    prompt,
+    schemas,
+  };
+  logCurl("POST", path, body);
+
   const res = await apiClient.request<any, NodeJS.ReadableStream>({
     method: "POST",
-    path: `/v1/projects/${project}/locations/${location}/services/${serviceId}:generateQuery`,
-    body: {
-      name: `projects/${project}/locations/${location}/services/${serviceId}`,
-      prompt,
-      schemas,
-    },
+    path,
+    body,
     responseType: "stream",
     resolveOnHTTPError: true,
   });
