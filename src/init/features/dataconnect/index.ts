@@ -265,7 +265,7 @@ async function actuateWithInfo(
 
   // Use Gemini to generate schema.
   const schemaGql = await promiseWithSpinner(
-    () => generateSchema(info.appDescription, projectId),
+    () => generateSchema(info.appDescription, projectId, info.locationId),
     "Generating the SQL Connect Schema...",
   );
   const schemaFiles = [{ path: "schema.gql", content: schemaGql }];

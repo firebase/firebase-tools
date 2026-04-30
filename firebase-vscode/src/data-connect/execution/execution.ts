@@ -29,7 +29,7 @@ import { EmulatorsController } from "../../core/emulators";
 import { getConnectorGQLText, insertQueryAt, findGqlFiles } from "../file-utils";
 import * as fs from "fs";
 import * as path from "path";
-import { dataConnectConfigs } from "../config";
+import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
@@ -335,7 +335,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
         return await gif.generateOperation(
           prompt,
           serviceName,
-          arg.projectId,
+          arg.projectId!,
           schemas.length > 0 ? schemas : undefined,
           (status: any) => {
              if (status.message) {
@@ -354,6 +354,54 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       );
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
+    }
+  }
+
+  async function generateSchemaFromComment(arg: { document: vscode.TextDocument, description: string, insertPosition: number }) {
+    const projectId = firebaseRC.value?.tryReadValue?.projects.default;
+    if (!projectId) {
+      vscode.window.showErrorMessage(
+        `Connect a Firebase project to use Gemini in Firebase features.`,
+      );
+      return;
+    }
+
+    try {
+      const serviceConfig = dataConnectConfigs.value?.tryReadValue?.findEnclosingServiceForPath(arg.document.fileName);
+      const location = serviceConfig?.dataConnectLocation || "us-central1";
+
+      if (!(await ensureGIFApiTos(projectId))) {
+        if (!(await showGiFToSModal(projectId))) {
+          return; // ToS isn't accepted.
+        }
+      }
+
+      const res = await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Window,
+        title: "Data Connect: Generating Schema...",
+      }, async (progress) => {
+        return await gif.generateSchema(
+          arg.description,
+          projectId,
+          location,
+          (status: any) => {
+             if (status.message) {
+                 progress.report({ message: status.message });
+             } else if (status.state) {
+                 progress.report({ message: status.state });
+             }
+          }
+        );
+      });
+
+      await insertQueryAt(
+        arg.document.uri,
+        arg.insertPosition,
+        "", // No existing query to replace
+        res,
+      );
+    } catch (e: any) {
+      vscode.window.showErrorMessage(`Failed to generate schema: ${e.message}`);
     }
   }
 
@@ -422,6 +470,12 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       "firebase.dataConnect.generateOperation",
       async (arg: GenerateOperationInput) => {
         await generateOperation(arg);
+      },
+    ),
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.generateSchemaFromComment",
+      async (arg: { document: vscode.TextDocument, description: string, insertPosition: number }) => {
+        await generateSchemaFromComment(arg);
       },
     ),
     vscode.commands.registerCommand(
