@@ -74,12 +74,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
 
     // Find and upload mapping files
     const rootDir = path.resolve(options.projectRoot ?? process.cwd());
-    let filePath = '';
-    if (mappingFiles) {
-      filePath = path.resolve(mappingFiles);
-    } else {
-      filePath = rootDir;
-    }
+    const filePath = mappingFiles ? path.resolve(mappingFiles) : rootDir;
 
     let fstat: fs.Stats;
     try {
@@ -278,8 +273,8 @@ async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0):
     .split(path.sep)
     .map((p) => (p === ".next" ? "_next" : p))
     // TODO(andrewbrook): add flag to allow uploading dev maps
-    .filter((p) => (p !== 'dev'))
-    .join(path.sep);
+    .filter((p) => (p !== "dev"))
+    .join("/");
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
   const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
   const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
