@@ -409,33 +409,31 @@ export async function resolveDefaultRegions(
 
   const endpoints = Object.values(want.endpoints[build.REGION_TBD] || {});
 
-  await Promise.all(
-    endpoints.map(async (endpoint) => {
-      let resolvedRegion = "us-central1";
+  for (const endpoint of endpoints) {
+    let resolvedRegion = "us-central1";
 
-      try {
-        if (backend.isBlockingTriggered(endpoint)) {
-          resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
-        } else if (backend.isEventTriggered(endpoint)) {
-          resolvedRegion = await resolveRegionForEventTrigger(endpoint);
-        }
-      } catch (err: any) {
-        logger.debug(
-          `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
-          getErrStack(err),
-        );
+    try {
+      if (backend.isBlockingTriggered(endpoint)) {
+        resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
+      } else if (backend.isEventTriggered(endpoint)) {
+        resolvedRegion = await resolveRegionForEventTrigger(endpoint);
       }
+    } catch (err: any) {
+      logger.debug(
+        `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
+        getErrStack(err),
+      );
+    }
 
-      moveEndpointToRegion(want, endpoint, resolvedRegion);
-    }),
-  );
+    moveEndpointToRegion(want, endpoint, resolvedRegion);
+  }
 }
 
 function resolveRegionForBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,
 ): string {
   const eventType = endpoint.blockingTrigger.eventType;
-  if (eventType === events.BEFORE_CREATE_EVENT || eventType === events.BEFORE_SIGN_IN_EVENT) {
+  if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
     return "us-east1";
   }
 

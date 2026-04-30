@@ -8,7 +8,6 @@ import { regionInLocation } from "../../../gcp/location";
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
 const bucketCache = new Map<string, { location: string }>();
-const bucketPromiseCache = new Map<string, Promise<{ location: string }>>();
 
 /**
  * Clear the storage bucket cache. Used for testing.
@@ -16,7 +15,6 @@ const bucketPromiseCache = new Map<string, Promise<{ location: string }>>();
  */
 export function clearCache(): void {
   bucketCache.clear();
-  bucketPromiseCache.clear();
 }
 
 /**
@@ -29,24 +27,9 @@ export async function getBucket(bucketName: string): Promise<{ location: string 
     return bucketCache.get(bucketName)!;
   }
 
-  if (bucketPromiseCache.has(bucketName)) {
-    return bucketPromiseCache.get(bucketName)!;
-  }
-
-  const bucketPromise = storage
-    .getBucket(bucketName)
-    .then((b) => {
-      bucketCache.set(bucketName, b);
-      bucketPromiseCache.delete(bucketName);
-      return b;
-    })
-    .catch((error) => {
-      bucketPromiseCache.delete(bucketName);
-      throw error;
-    });
-
-  bucketPromiseCache.set(bucketName, bucketPromise);
-  return bucketPromise;
+  const b = await storage.getBucket(bucketName);
+  bucketCache.set(bucketName, b);
+  return b;
 }
 
 /**
