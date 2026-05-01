@@ -26,5 +26,8 @@ export function detectAIAgent(): string {
   if (process.env.CURSOR_AGENT) return "cursor";
   if (process.env.GEMINI_CLI) return "gemini_cli";
   if (process.env.OPENCODE) return "open_code";
+  if (process.env.ANDROID_STUDIO_AGENT) return "android_studio_agent";
+  if (process.env.KIRO_AGENT_PATH) return "kiro";
+  if 
   return "unknown";
 }
