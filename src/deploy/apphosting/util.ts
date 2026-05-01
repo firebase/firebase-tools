@@ -114,8 +114,16 @@ export async function createSourceDeployArchive(
   return tmpFile;
 }
 
-export function resolveIgnorePatterns(config: AppHostingSingle, targetDir: string, skipDefaultNodeModules = false): string[] {
-  const ignore = config.ignore ? [...config.ignore] : (skipDefaultNodeModules ? [".git"] : ["node_modules", ".git"]);
+export function resolveIgnorePatterns(
+  config: AppHostingSingle,
+  targetDir: string,
+  skipDefaultNodeModules = false,
+): string[] {
+  const ignore = config.ignore
+    ? [...config.ignore]
+    : skipDefaultNodeModules
+      ? [".git"]
+      : ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
   const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
   ignore.push(...gitIgnorePatterns);
