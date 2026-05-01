@@ -24,6 +24,8 @@ import * as apphostingUtils from "../../apphosting/utils";
 import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
 import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
+import * as fs from "fs";
+import * as fsAsync from "../../fsAsync";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -88,6 +90,12 @@ describe("apphosting", () => {
     addServiceAccountToRolesStub = sinon
       .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
+
+    sinon.stub(fs, "existsSync").returns(false);
+    sinon.stub(fs, "mkdirSync").returns(undefined as any);
+    sinon.stub(fs, "rmSync").returns(undefined);
+    sinon.stub(fs, "copyFileSync").returns(undefined);
+    sinon.stub(fsAsync, "readdirRecursive").resolves([]);
   });
 
   afterEach(() => {
