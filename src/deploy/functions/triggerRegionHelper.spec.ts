@@ -311,6 +311,30 @@ describe("TriggerRegionHelper", () => {
       );
     });
 
+    it("should handle short-form bucket resource names for V1 storage", async () => {
+      storageStub.withArgs("my-bucket").resolves({ location: "EUROPE-WEST1" });
+      const ep: backend.Endpoint = {
+        id: "v1fn",
+        entryPoint: "v1Fn",
+        platform: "gcfv1",
+        region: "us-central1",
+        eventTrigger: {
+          eventType: "google.storage.object.create",
+          eventFilters: { resource: "my-bucket" },
+          retry: false,
+        },
+        project: "my-project",
+        runtime: "nodejs14" as const,
+      };
+
+      await triggerRegionHelper.ensureTriggerRegions(backend.of(ep));
+
+      expect(logWarningSpy.calledOnce).to.be.true;
+      expect(logWarningSpy.firstCall.args[1]).to.include(
+        "- v1fn (us-central1, Trigger: europe-west1)",
+      );
+    });
+
     it("should silently catch and handle failed V1 lookups", async () => {
       storageStub.rejects(new Error("Access Denied"));
       const ep: backend.Endpoint = {

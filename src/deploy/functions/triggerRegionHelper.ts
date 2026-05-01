@@ -28,7 +28,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
           regionLookups.push(
             getBucket(bucketName)
               .then((bucket) => {
-                triggerRegionMap.set(ep.id, bucket.location.toLowerCase());
+                triggerRegionMap.set(backend.functionName(ep), bucket.location.toLowerCase());
               })
               .catch((err) => {
                 logger.debug(
@@ -43,7 +43,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
         regionLookups.push(
           getDatabase(ep.project, dbId)
             .then((db) => {
-              triggerRegionMap.set(ep.id, db.locationId.toLowerCase());
+              triggerRegionMap.set(backend.functionName(ep), db.locationId.toLowerCase());
             })
             .catch((err) => {
               logger.debug(
@@ -59,7 +59,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
             getDatabaseInstanceDetails(ep.project, instanceName)
               .then((details) => {
                 if (details.location && details.location !== "-") {
-                  triggerRegionMap.set(ep.id, details.location.toLowerCase());
+                  triggerRegionMap.set(backend.functionName(ep), details.location.toLowerCase());
                 }
               })
               .catch((err) => {
@@ -89,7 +89,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
 
     let triggerRegion: string | undefined = undefined;
     if (ep.platform === "gcfv1") {
-      triggerRegion = triggerRegionMap.get(ep.id);
+      triggerRegion = triggerRegionMap.get(backend.functionName(ep));
     } else {
       triggerRegion = ep.eventTrigger.region;
     }
