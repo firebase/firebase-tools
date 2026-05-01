@@ -573,19 +573,8 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  if (experiments.isEnabled("functionsrunapionly") || experiments.isEnabled("dartfunctions")) {
-    try {
-      const runServices = await run.listServices(ctx.projectId);
-      for (const service of runServices) {
-        const endpoint = run.endpointFromService(service);
-        existingBackend.endpoints[endpoint.region] =
-          existingBackend.endpoints[endpoint.region] || {};
-        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-      }
-    } catch (err: any) {
-      logger.debug(err.message);
-      unreachableRegions.run = ["unknown"];
-    }
+  if (experiments.isEnabled("functionsrunapionly")) {
+    await loadCloudRunServices(ctx, existingBackend, unreachableRegions, false);
   } else {
     const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
@@ -594,11 +583,44 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
     unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+
+    if (experiments.isEnabled("dartfunctions")) {
+      await loadCloudRunServices(ctx, existingBackend, unreachableRegions, true);
+    }
   }
 
   ctx.existingBackend = existingBackend;
   ctx.unreachableRegions = unreachableRegions;
   return ctx.existingBackend;
+}
+
+/**
+ * Loads Cloud Run services into the existing backend.
+ * @param ctx Context from the Command library, used for caching.
+ * @param existingBackend The existing backend to load Cloud Run services into.
+ * @param unreachableRegions Object to track unreachable regions.
+ * @param onlyMissing If true, only loads missing Cloud Run services.
+ */
+async function loadCloudRunServices(
+  ctx: Context,
+  existingBackend: Backend,
+  unreachableRegions: { run: string[] },
+  onlyMissing: boolean,
+): Promise<void> {
+  try {
+    const runServices = await run.listServices(ctx.projectId);
+    for (const service of runServices) {
+      const endpoint = run.endpointFromService(service);
+      if (!onlyMissing || !existingBackend.endpoints[endpoint.region]?.[endpoint.id]) {
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    }
+  } catch (err: any) {
+    logger.debug(`Error loading Cloud Run services: ${err.message}`);
+    unreachableRegions.run = ["unknown"];
+  }
 }
 
 /**

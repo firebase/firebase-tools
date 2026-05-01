@@ -28,9 +28,9 @@ function _handleErrorResponse(response: any): any {
 export async function getLatestRulesetName(
   projectId: string,
   service: string,
+  releases: Release[],
   resourceName?: string,
 ): Promise<string | null> {
-  const releases = await listAllReleases(projectId);
   let prefix = `projects/${projectId}/releases/${service}`;
   if (resourceName) {
     prefix += `/${resourceName}`;
@@ -193,8 +193,17 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
-  const payload = { source: { files } };
+export async function createRuleset(
+  projectId: string,
+  files: RulesetFile[],
+  attachmentPoint?: string,
+): Promise<string> {
+  const payload: { source: { files: RulesetFile[] }; attachment_point?: string } = {
+    source: { files },
+  };
+  if (attachmentPoint) {
+    payload.attachment_point = attachmentPoint;
+  }
 
   const response = await apiClient.post<unknown, { name: string }>(
     `/projects/${projectId}/rulesets`,
