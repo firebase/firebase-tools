@@ -15,7 +15,7 @@ import { crashlytics_issues } from "./guides/crashlytics_issues";
 import { crashlytics_reports } from "./guides/crashlytics_reports";
 // import { login_ui } from "./login_ui";
 import { update_environment_ui } from "./update_environment_ui";
-// import { deploy_ui } from "./deploy_ui";
+import { deploy_ui } from "./deploy_ui";
 import { init_ui } from "./init_ui";
 
 export const resources = [
@@ -31,7 +31,7 @@ export const resources = [
   init_hosting,
   // login_ui,
   update_environment_ui,
-  // deploy_ui,
+  deploy_ui,
   init_ui,
 ];
 
