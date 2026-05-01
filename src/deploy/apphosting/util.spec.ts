@@ -4,6 +4,7 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as tar from "tar";
 import * as util from "./util";
+import { AppHostingSingle } from "../../firebaseConfig";
 
 describe("util", () => {
   let tmpDir: tmp.DirResult;
@@ -112,12 +113,14 @@ describe("util", () => {
       fs.mkdirSync(nodeModulesDir);
       fs.writeFileSync(path.join(nodeModulesDir, "some-file.js"), "console.log('vendor')");
 
-      const configWithoutIgnore = {
+      const configWithoutIgnore: AppHostingSingle = {
         backendId: "test-backend",
         rootDir: "",
-      } as any;
+        ignore: undefined as unknown as string[],
+      };
 
       const tarballPath: string = await util.createLocalBuildTarArchive(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         configWithoutIgnore,
         rootDir,
         path.relative(rootDir, distDir),

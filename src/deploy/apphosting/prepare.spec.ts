@@ -92,7 +92,7 @@ describe("apphosting", () => {
       .resolves();
 
     sinon.stub(fs, "existsSync").returns(false);
-    sinon.stub(fs, "mkdirSync").returns(undefined as any);
+    sinon.stub(fs, "mkdirSync").returns(undefined);
     sinon.stub(fs, "rmSync").returns(undefined);
     sinon.stub(fs, "copyFileSync").returns(undefined);
     sinon.stub(fsAsync, "readdirRecursive").resolves([]);

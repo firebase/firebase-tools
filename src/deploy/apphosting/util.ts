@@ -107,13 +107,17 @@ export async function createSourceDeployArchive(
     await pipeAsync(archive, fileStream);
   } catch (err: unknown) {
     throw new FirebaseError(
-      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${String(err)}`,
       { original: err as Error, exit: 1 },
     );
   }
   return tmpFile;
 }
 
+/**
+ * Resolves the ignore patterns for App Hosting deployments.
+ * Merges config ignores, defaults, and .gitignore patterns.
+ */
 export function resolveIgnorePatterns(
   config: AppHostingSingle,
   targetDir: string,
