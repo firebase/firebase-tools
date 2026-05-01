@@ -897,7 +897,7 @@ async function main(): Promise<void> {
       }
     } catch (err: unknown) {
       new EmulatorLog("FATAL", "runtime-error", getErrStack(err)).log();
-      res.status(500).type("text/plain").send(getErrMsg(err));
+      res.status(500).send(getErrMsg(err));
     }
   });
   app.listen(process.env.PORT, () => {
