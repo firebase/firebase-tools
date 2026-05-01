@@ -18,9 +18,10 @@ import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
 import * as experiments from "../../experiments";
 import * as getProjectNumber from "../../getProjectNumber";
+import * as fs from "fs-extra";
+import * as apphostingUtils from "../../apphosting/utils";
 import * as resourceManager from "../../gcp/resourceManager";
 import * as apphostingConfig from "../../apphosting/config";
-import * as apphostingUtils from "../../apphosting/utils";
 import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
 import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
@@ -85,6 +86,7 @@ describe("apphosting", () => {
     assertEnabledStub = sinon.stub(experiments, "assertEnabled").returns();
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(getProjectNumber, "getProjectNumber").resolves("123456789");
+    sinon.stub(apphostingUtils, "detectFramework").resolves(apphostingUtils.Framework.NEXTJS);
     addServiceAccountToRolesStub = sinon
       .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
@@ -460,6 +462,37 @@ describe("apphosting", () => {
 
       expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
     });
+
+    it("throws an error for localBuild when framework is not Next.js", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+      listBackendsStub.resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      (apphostingUtils.detectFramework as sinon.SinonStub).resolves(
+        apphostingUtils.Framework.ANGULAR,
+      );
+
+      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
+        FirebaseError,
+        "Local builds are only supported for Next.js apps",
+      );
+    });
   });
 
   describe("getBackendConfigs", () => {
@@ -639,6 +672,65 @@ describe("apphosting", () => {
 
       expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
       expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+    });
+  });
+
+  describe("detectFramework", () => {
+    let pathExistsStub: sinon.SinonStub;
+    let readFileStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      pathExistsStub = sinon.stub(fs, "pathExists");
+      readFileStub = sinon.stub(fs, "readFile");
+      // Restore the stub from the outer beforeEach to test the real implementation
+      (apphostingUtils.detectFramework as sinon.SinonStub).restore();
+    });
+
+    it("returns nextjs when next is in dependencies", async () => {
+      pathExistsStub.resolves(true);
+      readFileStub.resolves(JSON.stringify({ dependencies: { next: "13.0.0" } }));
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.equal(apphostingUtils.Framework.NEXTJS);
+    });
+
+    it("returns angular when @angular/core is in dependencies", async () => {
+      pathExistsStub.resolves(true);
+      readFileStub.resolves(JSON.stringify({ dependencies: { "@angular/core": "15.0.0" } }));
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.equal(apphostingUtils.Framework.ANGULAR);
+    });
+
+    it("returns nextjs when next is in devDependencies", async () => {
+      pathExistsStub.resolves(true);
+      readFileStub.resolves(JSON.stringify({ devDependencies: { next: "13.0.0" } }));
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.equal(apphostingUtils.Framework.NEXTJS);
+    });
+
+    it("returns undefined when no framework is detected", async () => {
+      pathExistsStub.resolves(true);
+      readFileStub.resolves(JSON.stringify({ dependencies: { lodash: "4.0.0" } }));
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.be.undefined;
+    });
+
+    it("returns undefined when package.json does not exist", async () => {
+      pathExistsStub.resolves(false);
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.be.undefined;
+    });
+
+    it("returns undefined when package.json is invalid JSON", async () => {
+      pathExistsStub.resolves(true);
+      readFileStub.resolves("invalid json");
+
+      const framework = await apphostingUtils.detectFramework("/");
+      expect(framework).to.be.undefined;
     });
   });
 });

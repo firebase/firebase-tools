@@ -27,7 +27,7 @@ import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
-import { getAutoinitEnvVars } from "../../apphosting/utils";
+import * as apphostingUtils from "../../apphosting/utils";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
 
@@ -184,6 +184,14 @@ export default async function (context: Context, options: Options): Promise<void
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
 
+    const appDir = path.join(options.projectRoot || "", cfg.rootDir || "");
+    const framework = await apphostingUtils.detectFramework(appDir);
+    if (framework !== apphostingUtils.Framework.NEXTJS) {
+      throw new FirebaseError(
+        `Local builds are only supported for Next.js apps. Detected framework: ${framework || "unknown"}`,
+      );
+    }
+
     await injectEnvVarsFromApphostingConfig(
       configs.filter((c) => c.backendId === cfg.backendId),
       options,
@@ -273,7 +281,7 @@ export async function injectAutoInitEnvVars(
       )) as WebConfig;
 
       // We inject autoinit env vars into the build and runtime env vars.
-      const autoinitVars = getAutoinitEnvVars(webappConfig);
+      const autoinitVars = apphostingUtils.getAutoinitEnvVars(webappConfig);
       for (const [envVarName, envVarValue] of Object.entries(autoinitVars)) {
         buildEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
         runtimeEnv[cfg.backendId][envVarName] ??= { value: envVarValue };
