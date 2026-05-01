@@ -157,7 +157,12 @@ export default async function (context: Context, options: Options): Promise<void
       ) as AppHostingSingle[];
       for (const cfg of selectedBackends) {
         logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
-        const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
+        const { location } = await doSetupSourceDeploy(
+          projectId,
+          cfg.backendId,
+          options.nonInteractive,
+          cfg.rootDir,
+        );
         context.backendConfigs[cfg.backendId] = cfg;
         context.backendLocations[cfg.backendId] = location;
       }

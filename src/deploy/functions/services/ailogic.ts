@@ -32,6 +32,13 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   );
 }
 
+export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
+  if (!isAILogicEvent(endpoint)) {
+    return false;
+  }
+  return !endpoint.blockingTrigger.options?.regionalWebhook;
+}
+
 export class AILogicService implements Service {
   name: Name;
   api: string;
