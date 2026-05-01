@@ -2,7 +2,7 @@ export interface Job {
   status: "running" | "success" | "failed";
   progress: number;
   logs: string[];
-  result?: any;
+  result?: unknown;
   error?: string;
   [key: string]: unknown;
 }
