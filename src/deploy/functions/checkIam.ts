@@ -162,24 +162,49 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
 }
 
 /**
- * Finds the required project level IAM bindings for the default compute service agent.
- * Before a user creates an EventArc trigger, this agent must be granted the invoker and event receiver roles.
+ * Finds the required project level IAM bindings for service accounts used by EventArc triggers.
+ * Before EventArc can invoke a function, the function's service account must be granted the invoker and event receiver roles.
+ * See https://cloud.google.com/eventarc/docs/roles-permissions for more details.
+ * 
  * @param projectNumber project number
- * @param existingPolicy the project level IAM policy
+ * @param want backend that we want to deploy
  */
-export async function obtainDefaultComputeServiceAgentBindings(
+export async function obtainEventArcServiceAccountBindings(
   projectNumber: string,
+  want: backend.Backend,
 ): Promise<iam.Binding[]> {
-  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
-  const runInvokerBinding: iam.Binding = {
-    role: RUN_INVOKER_ROLE,
-    members: [defaultComputeServiceAgent],
-  };
-  const eventarcEventReceiverBinding: iam.Binding = {
-    role: EVENTARC_EVENT_RECEIVER_ROLE,
-    members: [defaultComputeServiceAgent],
-  };
-  return [runInvokerBinding, eventarcEventReceiverBinding];
+  // Only v2 event-triggered functions use EventArc (not scheduled functions)
+  const eventTriggeredV2Endpoints = backend.allEndpoints(want).filter((endpoint) => {
+    return endpoint.platform === "gcfv2" && backend.isEventTriggered(endpoint);
+  });
+  
+  // If no event-triggered v2 functions, return empty
+  if (eventTriggeredV2Endpoints.length === 0) {
+    return [];
+  }
+  
+  // Get default service account once (it's cached internally)
+  const defaultServiceAccount = await gce.getDefaultServiceAccount(projectNumber);
+  
+  // Collect all unique service accounts
+  const serviceAccounts = new Set<string>();
+  for (const endpoint of eventTriggeredV2Endpoints) {
+    const sa = endpoint.serviceAccount || defaultServiceAccount;
+    serviceAccounts.add(sa);
+  }
+  
+  // Create bindings for all service accounts
+  const members = Array.from(serviceAccounts).map(sa => `serviceAccount:${sa}`);
+  return [
+    {
+      role: RUN_INVOKER_ROLE,
+      members: members,
+    },
+    {
+      role: EVENTARC_EVENT_RECEIVER_ROLE,
+      members: members,
+    },
+  ];
 }
 
 /**
@@ -262,7 +287,7 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
+    requiredBindings.push(...(await obtainEventArcServiceAccountBindings(projectNumber, want)));
   }
   if (requiredBindings.length === 0) {
     return;

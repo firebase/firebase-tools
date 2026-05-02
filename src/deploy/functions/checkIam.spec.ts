@@ -57,9 +57,41 @@ describe("checkIam", () => {
     });
   });
 
-  describe("obtainDefaultComputeServiceAgentBindings", () => {
-    it("should obtain the bindings", async () => {
-      const bindings = await checkIam.obtainDefaultComputeServiceAgentBindings(projectNumber);
+  describe("obtainEventArcServiceAccountBindings", () => {
+    it("should return empty bindings when no event-triggered v2 functions", async () => {
+      const httpsFn: backend.Endpoint = {
+        id: "httpsfn",
+        entryPoint: "httpsFn",
+        platform: "gcfv2",
+        httpsTrigger: {},
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(httpsFn),
+      );
+
+      expect(bindings).to.deep.equal([]);
+    });
+
+    it("should obtain bindings for default service account", async () => {
+      const eventFn: backend.Endpoint = {
+        id: "eventfn",
+        entryPoint: "eventFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(eventFn),
+      );
 
       expect(bindings.length).to.equal(2);
       expect(bindings).to.include.deep.members([
@@ -72,6 +104,148 @@ describe("checkIam", () => {
           members: [`serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`],
         },
       ]);
+    });
+
+    it("should obtain bindings for custom service account", async () => {
+      const customSA = "custom-sa@my-project.iam.gserviceaccount.com";
+      const eventFn: backend.Endpoint = {
+        id: "eventfn",
+        entryPoint: "eventFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        serviceAccount: customSA,
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(eventFn),
+      );
+
+      expect(bindings.length).to.equal(2);
+      expect(bindings).to.include.deep.members([
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${customSA}`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${customSA}`],
+        },
+      ]);
+    });
+
+    it("should handle multiple service accounts", async () => {
+      const customSA1 = "custom-sa1@my-project.iam.gserviceaccount.com";
+      const customSA2 = "custom-sa2@my-project.iam.gserviceaccount.com";
+      
+      const fn1: backend.Endpoint = {
+        id: "fn1",
+        entryPoint: "fn1",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "bucket1" },
+          retry: false,
+        },
+        serviceAccount: customSA1,
+        ...SPEC,
+      };
+      
+      const fn2: backend.Endpoint = {
+        id: "fn2",
+        entryPoint: "fn2",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          eventFilters: { database: "default" },
+          retry: false,
+        },
+        serviceAccount: customSA2,
+        ...SPEC,
+      };
+      
+      const fn3: backend.Endpoint = {
+        id: "fn3",
+        entryPoint: "fn3",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.database.ref.v1.written",
+          eventFilters: { instance: "default" },
+          retry: false,
+        },
+        // Uses default service account
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(fn1, fn2, fn3),
+      );
+
+      expect(bindings.length).to.equal(2);
+      expect(bindings).to.include.deep.members([
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [
+            `serviceAccount:${customSA1}`,
+            `serviceAccount:${customSA2}`,
+            `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`,
+          ],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [
+            `serviceAccount:${customSA1}`,
+            `serviceAccount:${customSA2}`,
+            `serviceAccount:${projectNumber}-compute@developer.gserviceaccount.com`,
+          ],
+        },
+      ]);
+    });
+
+    it("should ignore scheduled functions", async () => {
+      const scheduledFn: backend.Endpoint = {
+        id: "scheduledfn",
+        entryPoint: "scheduledFn",
+        platform: "gcfv2",
+        scheduleTrigger: {
+          schedule: "every 5 minutes",
+        },
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(scheduledFn),
+      );
+
+      expect(bindings).to.deep.equal([]);
+    });
+
+    it("should ignore v1 functions", async () => {
+      const v1Fn: backend.Endpoint = {
+        id: "v1fn",
+        entryPoint: "v1Fn",
+        platform: "gcfv1",
+        eventTrigger: {
+          eventType: "google.storage.object.create",
+          eventFilters: { resource: "projects/_/buckets/my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      const bindings = await checkIam.obtainEventArcServiceAccountBindings(
+        projectNumber,
+        backend.of(v1Fn),
+      );
+
+      expect(bindings).to.deep.equal([]);
     });
   });
 
