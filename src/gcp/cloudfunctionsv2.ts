@@ -225,6 +225,7 @@ interface GenerateUploadUrlResponse {
  * @param err The error returned from the operation.
  */
 function functionsOpLogReject(func: InputCloudFunction, type: string, err: any): void {
+  const status = err?.context?.response?.statusCode || err?.status;
   // Sniff for runtime validation errors and log a more user-friendly warning.
   if (err?.message?.includes("Runtime validation errors")) {
     const capturedMessage = captureRuntimeValidationError(err.message);
@@ -247,7 +248,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     );
   } else {
     utils.logLabeledWarning("functions", `${err?.message}`);
-    if (err?.context?.response?.statusCode === 429) {
+    if (status === 429) {
       utils.logLabeledWarning(
         "functions",
         `Got "Quota Exceeded" error while trying to ${type} ${func.name}. Waiting to retry...`,
@@ -270,7 +271,7 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
   }
   throw new FirebaseError(`Failed to ${type} function ${func.name}`, {
     original: err,
-    status: err?.context?.response?.statusCode,
+    status,
     context: { function: func.name },
   });
 }
