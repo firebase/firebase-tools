@@ -61,7 +61,7 @@ export default async function (context: Context, options: Options): Promise<void
     const serviceToDeleteList = servicesToDelete.map((s) => " - " + s.name).join("\n");
     if (
       await confirm({
-        force: false, // Don't delete anything in --force.
+        force: options.force,
         nonInteractive: options.nonInteractive,
         message: `The following services exist on ${projectId} but are not listed in your 'firebase.json'\n${serviceToDeleteList}\nWould you like to delete these services?`,
         default: false,
