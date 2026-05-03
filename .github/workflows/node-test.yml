@@ -40,7 +40,7 @@ jobs:
 
       - run: npm i -g npm@9.5
       - run: npm ci
-      - run: npm run lint:changed-files
+      - run: npm run lint:changed-files -- --only-changed-lines
       - run: npm run lint
         working-directory: firebase-vscode
 
