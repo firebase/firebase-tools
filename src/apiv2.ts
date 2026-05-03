@@ -466,6 +466,9 @@ export class Client {
 
           if (options.responseType === "json") {
             const text = await res.text();
+            if (isGfeError(text)) {
+              throw new FirebaseError("the service you are calling doesnt exist or is misconfigured", { status: res.status });
+            }
             // Some responses, such as 204 and occasionally 202s don't have
             // any content. We can't just rely on response code (202 may have conent)
             // and unfortuantely res.length is unreliable (many requests return zero).
@@ -578,6 +581,10 @@ export class Client {
 function isLocalInsecureRequest(urlPrefix: string): boolean {
   const u = new URL(urlPrefix);
   return u.protocol === "http:";
+}
+
+function isGfeError(text: string): boolean {
+  return text.includes("That’s all we know.") && text.includes("<!DOCTYPE html>");
 }
 
 function bodyToString(body: unknown): string {
