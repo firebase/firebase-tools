@@ -1,5 +1,4 @@
 import { size } from "lodash";
-import AbortController from "abort-controller";
 import * as clc from "colorette";
 import * as crypto from "crypto";
 import * as fs from "fs";
