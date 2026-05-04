@@ -81,6 +81,39 @@ function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: 
 }
 
 /**
+ * Parses bundle.yaml to extract the run command and output files.
+ * Throws FirebaseError if parsing fails or necessary fields are missing.
+ */
+function parseBundleYaml(
+  projectRoot: string,
+  defaultRunCommand: string,
+): { runCommand: string; outputFiles: string[] } {
+  const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
+  if (!fs.existsSync(bundleYamlPath)) {
+    throw new FirebaseError(
+      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
+    );
+  }
+
+  const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
+  const bundleData = wrappedSafeLoad(bundleRaw) as {
+    runConfig?: { runCommand?: string };
+    outputFiles?: { serverApp?: { include?: string[] } };
+  };
+
+  const runCommand = bundleData?.runConfig?.runCommand ?? defaultRunCommand;
+  const outputFiles = bundleData?.outputFiles?.serverApp?.include;
+
+  if (!outputFiles) {
+    throw new FirebaseError(
+      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
+    );
+  }
+
+  return { runCommand, outputFiles };
+}
+
+/**
  * Parses the metadata and build artifacts produced by Universal Maker.
  *
  * This includes resolving the final run command and artifact paths from the
@@ -124,35 +157,11 @@ function processUniversalMakerOutput(
     throw new FirebaseError(`Failed to parse build_output.json: ${getErrMsg(e)}`);
   }
 
-  let finalRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
-  let finalOutputFiles: string[] | undefined;
-  const bundleYamlPath = path.join(projectRoot, ".apphosting", "bundle.yaml");
-  if (fs.existsSync(bundleYamlPath)) {
-    try {
-      const bundleRaw = fs.readFileSync(bundleYamlPath, "utf-8");
-      // Safely parse the YAML string
-      const bundleData = wrappedSafeLoad(bundleRaw) as {
-        runConfig?: { runCommand?: string };
-        outputFiles?: { serverApp?: { include?: string[] } };
-      };
-
-      if (bundleData?.runConfig?.runCommand) {
-        finalRunCommand = bundleData.runConfig.runCommand;
-      }
-
-      if (bundleData?.outputFiles?.serverApp?.include) {
-        finalOutputFiles = bundleData.outputFiles.serverApp.include;
-      }
-    } catch (e: unknown) {
-      logger.debug(`Failed to parse bundle.yaml: ${getErrMsg(e)}`);
-    }
-  }
-
-  if (!finalOutputFiles) {
-    throw new FirebaseError(
-      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
-    );
-  }
+  const defaultRunCommand = `${umOutput.command} ${umOutput.args.join(" ")}`;
+  const { runCommand: finalRunCommand, outputFiles: finalOutputFiles } = parseBundleYaml(
+    projectRoot,
+    defaultRunCommand,
+  );
 
   return {
     metadata: {
