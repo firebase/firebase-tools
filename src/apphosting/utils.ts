@@ -1,9 +1,10 @@
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import { WebConfig } from "../fetchWebSetup";
 import * as prompt from "../prompt";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { logger } from "../logger";
 
 /**
  * Returns <environment> given an apphosting.<environment>.yaml file
@@ -77,13 +78,19 @@ export function getAutoinitEnvVars(webappConfig: WebConfig | undefined): Record<
 }
 
 /**
- * Reads the package.json file in the specified directory.
+ * Reads and parses the package.json file in the specified directory.
  */
-async function readPackageJson(packageJsonPath: string): Promise<string | undefined> {
+export async function parsePackageJson(packageJsonPath: string): Promise<PackageJson | undefined> {
   if (!(await fs.pathExists(packageJsonPath))) {
     return undefined;
   }
-  return fs.readFile(packageJsonPath, "utf-8");
+  try {
+    const content = await fs.readFile(packageJsonPath, "utf-8");
+    return JSON.parse(content) as PackageJson;
+  } catch (err: unknown) {
+    logger.debug(`Failed to read or parse package.json at ${packageJsonPath}: ${getErrMsg(err)}`);
+    return undefined;
+  }
 }
 
 export interface PackageJson {
@@ -102,15 +109,8 @@ export enum Framework {
  */
 export async function detectFramework(appDir: string): Promise<Framework | undefined> {
   const packageJsonPath = path.join(appDir, "package.json");
-  const content = await readPackageJson(packageJsonPath);
-  if (!content) {
-    return undefined;
-  }
-
-  let pkg: PackageJson;
-  try {
-    pkg = JSON.parse(content) as PackageJson;
-  } catch (e) {
+  const pkg = await parsePackageJson(packageJsonPath);
+  if (!pkg) {
     return undefined;
   }
 
