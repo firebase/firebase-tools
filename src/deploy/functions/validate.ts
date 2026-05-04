@@ -366,7 +366,7 @@ async function validateSecretVersions(projectId: string, endpoints: backend.Endp
     toResolve.add(s.secret);
   }
 
-  const results = await utils.allSettled(
+  const results = await Promise.allSettled(
     Array.from(toResolve).map(async (secret): Promise<SecretVersion> => {
       // We resolve the secret to its latest version - we do not allow CF3 customers to pin secret versions.
       const sv = await getSecretVersion(projectId, secret, "latest");

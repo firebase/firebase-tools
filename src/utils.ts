@@ -240,61 +240,6 @@ export function reject(message: string, options?: any): Promise<never> {
   return Promise.reject(new FirebaseError(message, options));
 }
 
-/** An interface for the result of a successful Promise */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export interface PromiseFulfilledResult<T = any> {
-  status: "fulfilled";
-  value: T;
-}
-
-export interface PromiseRejectedResult {
-  status: "rejected";
-  reason: unknown;
-}
-
-export type PromiseResult<T> = PromiseFulfilledResult<T> | PromiseRejectedResult;
-
-/**
- * Polyfill for Promise.allSettled
- * TODO: delete once min Node version is 12.9.0 or greater
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function allSettled<T>(promises: Array<Promise<T>>): Promise<Array<PromiseResult<T>>> {
-  if (!promises.length) {
-    return Promise.resolve([]);
-  }
-  return new Promise((resolve) => {
-    let remaining = promises.length;
-    const results: Array<PromiseResult<T>> = [];
-    for (let i = 0; i < promises.length; i++) {
-      // N.B. We use the void operator to silence the linter that we have
-      // a dangling promise (we are, after all, handling all failures).
-      // We resolve the original promise so as not to crash when passed
-      // a non-promise. This is part of the spec.
-      void Promise.resolve(promises[i])
-        .then(
-          (result) => {
-            results[i] = {
-              status: "fulfilled",
-              value: result,
-            };
-          },
-          (err) => {
-            results[i] = {
-              status: "rejected",
-              reason: err,
-            };
-          },
-        )
-        .then(() => {
-          if (!--remaining) {
-            resolve(results);
-          }
-        });
-    }
-  });
-}
-
 /**
  * Print out an explanatory message if a TTY is detected for how to manage STDIN
  */
@@ -388,33 +333,6 @@ export function getFunctionsEventProvider(eventType: string): string {
   return _.capitalize(eventType.split(".")[1]);
 }
 
-export interface SettledPromiseResolved {
-  state: "fulfilled";
-  value: any;
-}
-
-export interface SettledPromiseRejected {
-  state: "rejected";
-  reason: Error;
-}
-
-export type SettledPromise = SettledPromiseResolved | SettledPromiseRejected;
-
-/**
- * Returns a single Promise that is resolved when all the given promises have
- * either resolved or rejected.
- */
-export function promiseAllSettled(promises: Array<Promise<any>>): Promise<SettledPromise[]> {
-  const wrappedPromises = promises.map(async (p) => {
-    try {
-      const val = await Promise.resolve(p);
-      return { state: "fulfilled", value: val } as SettledPromiseResolved;
-    } catch (err: any) {
-      return { state: "rejected", reason: err } as SettledPromiseRejected;
-    }
-  });
-  return Promise.all(wrappedPromises);
-}
 
 /**
  * Runs a given function (that returns a Promise) repeatedly while the given

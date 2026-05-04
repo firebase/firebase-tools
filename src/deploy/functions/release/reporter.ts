@@ -4,7 +4,6 @@ import * as clc from "colorette";
 import * as args from "../args";
 import { logger } from "../../../logger";
 import { trackGA4 } from "../../../track";
-import * as utils from "../../../utils";
 import { getFunctionLabel } from "../functionsDeployHelper";
 
 export interface DeployResult {
@@ -129,7 +128,7 @@ export async function logAndTrackDeployStats(
   logger.debug(`${totalAborts} Function Deployments Aborted`);
   logger.debug(`Average Function Deployment time: ${avgTime}`);
 
-  await utils.allSettled(reports);
+  await Promise.allSettled(reports);
 }
 
 /** Print error messages for failures in summary. */
