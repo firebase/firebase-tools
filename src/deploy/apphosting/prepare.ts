@@ -1,4 +1,7 @@
+import * as fs from "fs";
 import * as path from "path";
+import * as fsAsync from "../../fsAsync";
+import { resolveIgnorePatterns } from "./util";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
@@ -192,10 +195,15 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
+    const rootDir = options.projectRoot || process.cwd();
+    const localBuildDir = path.join(rootDir, "local_build");
+
     try {
+      await prepareLocalBuildDirectory(rootDir, localBuildDir, cfg);
+
       const { outputFiles, annotations, buildConfig } = await localBuild(
         projectId,
-        options.projectRoot || "./",
+        localBuildDir,
         "nextjs",
         buildEnv[cfg.backendId] || {},
         {
@@ -375,5 +383,46 @@ async function ensureAppHostingServiceAgentRoles(
       "apphosting",
       `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
     );
+  }
+}
+
+/**
+ * Prepares the directory for local builds by copying non-ignored files.
+ */
+async function prepareLocalBuildDirectory(
+  rootDir: string,
+  localBuildDir: string,
+  cfg: AppHostingSingle,
+): Promise<void> {
+  // Resolve ignores for local builds, skipping default node_modules ignore
+  const ignore = resolveIgnorePatterns(cfg, rootDir, /* skipDefaultNodeModules= */ true);
+  ignore.push("local_build"); // Always ignore the build directory itself
+
+  // Warn if node_modules is explicitly ignored
+  if (cfg.ignore?.includes("node_modules")) {
+    logLabeledWarning(
+      "apphosting",
+      `You have included 'node_modules' in your ignore list for local builds. This might cause the build to fail if dependencies are missing in the build directory.`,
+    );
+  }
+
+  // Create local_build dir
+  if (fs.existsSync(localBuildDir)) {
+    fs.rmSync(localBuildDir, { recursive: true, force: true });
+  }
+  fs.mkdirSync(localBuildDir, { recursive: true });
+
+  // Copy files respecting ignores
+  const filesToCopy = await fsAsync.readdirRecursive({
+    path: rootDir,
+    ignore: ignore,
+    isGitIgnore: true,
+  });
+
+  for (const file of filesToCopy) {
+    const relativePath = path.relative(rootDir, file.name);
+    const destPath = path.join(localBuildDir, relativePath);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(file.name, destPath);
   }
 }

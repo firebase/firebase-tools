@@ -4,6 +4,7 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as tar from "tar";
 import * as util from "./util";
+import { AppHostingSingle } from "../../firebaseConfig";
 
 describe("util", () => {
   let tmpDir: tmp.DirResult;
@@ -77,6 +78,91 @@ describe("util", () => {
 
       expect(files).to.include("dist/index.js");
       expect(files).to.not.include("apphosting.yaml");
+    });
+
+    it("should respect ignore patterns in config", async () => {
+      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+      fs.writeFileSync(path.join(distDir, "ignored.txt"), "ignore me");
+
+      const config = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: ["**/ignored.txt"],
+      };
+
+      const tarballPath: string = await util.createLocalBuildTarArchive(
+        config,
+        rootDir,
+        path.relative(rootDir, distDir),
+      );
+
+      const files: string[] = [];
+      tar.list({
+        file: tarballPath,
+        sync: true,
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
+
+      expect(files).to.include("dist/index.js");
+      expect(files).to.not.include("dist/ignored.txt");
+    });
+
+    it("should use default ignores when config.ignore is missing", async () => {
+      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+      const nodeModulesDir = path.join(distDir, "node_modules");
+      fs.mkdirSync(nodeModulesDir);
+      fs.writeFileSync(path.join(nodeModulesDir, "some-file.js"), "console.log('vendor')");
+
+      const configWithoutIgnore: AppHostingSingle = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: undefined as unknown as string[],
+      };
+
+      const tarballPath: string = await util.createLocalBuildTarArchive(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        configWithoutIgnore,
+        rootDir,
+        path.relative(rootDir, distDir),
+      );
+
+      const files: string[] = [];
+      tar.list({
+        file: tarballPath,
+        sync: true,
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
+
+      expect(files).to.include("dist/index.js");
+      expect(files).to.not.include("dist/node_modules/some-file.js");
+    });
+
+    it("should respect .gitignore patterns", async () => {
+      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+      fs.writeFileSync(path.join(distDir, "gitignored.txt"), "ignore me");
+      fs.writeFileSync(path.join(distDir, ".gitignore"), "gitignored.txt");
+
+      const config = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: [],
+      };
+
+      const tarballPath: string = await util.createLocalBuildTarArchive(
+        config,
+        rootDir,
+        path.relative(rootDir, distDir),
+      );
+
+      const files: string[] = [];
+      tar.list({
+        file: tarballPath,
+        sync: true,
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
+
+      expect(files).to.include("dist/index.js");
+      expect(files).to.not.include("dist/gitignored.txt");
     });
   });
 });
