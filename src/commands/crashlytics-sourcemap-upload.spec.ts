@@ -31,6 +31,8 @@ describe("crashlytics:sourcemap:upload", () => {
   let logLabeledBulletStub: sinon.SinonStub;
 
   beforeEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
+
     sandbox = sinon.createSandbox();
     gcsMock = sandbox.stub(gcs);
     projectUtilsMock = sandbox.stub(projectUtils);
@@ -142,9 +144,7 @@ describe("crashlytics:sourcemap:upload", () => {
       expect(uploadedFiles[1]).to.match(
         /test-app-.*-fixtures-mapping-files-subdir-subdir_mock_mapping\.js\.map\.zip/,
       );
-      expect(uploadedFiles[2]).to.match(
-        /test-app-.*-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
-      );
+      expect(uploadedFiles[2]).to.match(/test-app-.*-fixtures-mapping-files-with-js-main\.js\.zip/);
       expect(uploadedFiles[3]).to.match(
         /test-app-.*-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
       );
@@ -165,7 +165,7 @@ describe("crashlytics:sourcemap:upload", () => {
 
     // The zip name is based on the obfuscated path, so the first one is the "main.js.map" pretending to be the name
     expect(uploadedFiles[0]).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.map\.zip/,
+      /test-app-.*-src-test-fixtures-mapping-files-with-js-main\.js\.zip/,
     );
     expect(uploadedFiles[1]).to.match(
       /test-app-.*-src-test-fixtures-mapping-files-with-js-other\.js\.map\.zip/,
@@ -177,8 +177,8 @@ describe("crashlytics:sourcemap:upload", () => {
       .map((call) => call.args[1].obfuscatedFilePath)
       .sort();
 
-    expect(apiPayloads[0]).to.equal("src/test/fixtures/mapping-files-with-js/main.js.map");
-    expect(apiPayloads[1]).to.equal("src/test/fixtures/mapping-files-with-js/other.js.map");
+    expect(apiPayloads[0]).to.equal("/src/test/fixtures/mapping-files-with-js/main.js");
+    expect(apiPayloads[1]).to.equal("/src/test/fixtures/mapping-files-with-js/other.js.map");
   });
 
   it("should use the provided app version", async () => {
@@ -237,7 +237,7 @@ describe("crashlytics:sourcemap:upload", () => {
       name: "projects/test-project/locations/global/mappingFiles/2906062618",
       appId: "test-app",
       version: "a".repeat(40),
-      obfuscatedFilePath: "src/test/fixtures/mapping-files/mock_mapping.js.map",
+      obfuscatedFilePath: "/src/test/fixtures/mapping-files/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
     });
     expect(args[2].queryParams).to.deep.equal({ allowMissing: "true" });
