@@ -1,15 +1,22 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
 import * as localBuildModule from "@apphosting/build";
-import { localBuild } from "./localbuilds";
-import * as secrets from "./secrets";
+import { localBuild, runUniversalMaker } from "./localbuilds";
+import * as secrets from "./secrets/index";
 import { EnvMap } from "./yaml";
+import * as childProcess from "child_process";
+
+import * as experiments from "../experiments";
+import * as universalMakerDownload from "./universalMakerDownload";
+import * as fsExtra from "fs-extra";
 
 describe("localBuild", () => {
+  beforeEach(() => {
+    sinon.stub(experiments, "isEnabled").returns(false);
+  });
   afterEach(() => {
     sinon.restore();
   });
-
   it("returns the expected output", async () => {
     const bundleConfig = {
       version: "v1" as const,
@@ -200,6 +207,103 @@ describe("localBuild", () => {
 
       await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
+    });
+  });
+
+  describe("runUniversalMaker", () => {
+    let downloadStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      downloadStub = sinon
+        .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
+        .resolves("/path/to/universal_maker");
+      sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: any) => {
+        if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
+          return `
+            runConfig:
+              runCommand: npm run start
+            outputFiles:
+              serverApp:
+                include:
+                  - .next/standalone
+          `;
+        }
+        if (typeof pathStr === "string" && pathStr.includes("build_output.json")) {
+          return JSON.stringify({
+            command: "npm",
+            args: ["run", "start"],
+            language: "nodejs",
+            runtime: "nodejs22",
+            envVars: {
+              PORT: "3000",
+            },
+          });
+        }
+        return "";
+      });
+      sinon.stub(fsExtra, "existsSync").returns(true);
+      sinon.stub(fsExtra, "unlinkSync");
+      sinon.stub(fsExtra, "readdirSync").returns(["bundle.yaml"] as any);
+      sinon.stub(fsExtra, "ensureDirSync");
+      sinon.stub(fsExtra, "removeSync");
+      sinon.stub(fsExtra, "moveSync");
+    });
+
+    it("should successfully execute Universal Maker and parse output", async () => {
+      const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      });
+
+      const output = await runUniversalMaker("./", "nextjs");
+
+      expect(output).to.deep.equal({
+        metadata: {
+          language: "nodejs",
+          runtime: "nodejs22",
+          framework: "nextjs",
+        },
+        runConfig: {
+          runCommand: "npm run start",
+          environmentVariables: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],
+        },
+        outputFiles: {
+          serverApp: {
+            include: [".next/standalone"],
+          },
+        },
+      });
+
+      sinon.assert.calledOnce(spawnStub);
+      sinon.assert.calledWith(
+        spawnStub,
+        "/path/to/universal_maker",
+        ["-application_dir", "./", "-output_dir", "./", "-output_format", "json"],
+        sinon.match({
+          env: sinon.match({
+            X_GOOGLE_TARGET_PLATFORM: "fah",
+          }),
+        }),
+      );
+      sinon.assert.calledOnce(downloadStub);
+    });
+
+    it("should raise clear FirebaseError on permission errors within child execution", async () => {
+      sinon.stub(childProcess, "spawnSync").callsFake(() => {
+        const err = new Error("EACCES exception") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+
+        throw err;
+      });
+
+      await expect(runUniversalMaker("./")).to.be.rejectedWith(
+        "Failed to execute the Universal Maker binary at /path/to/universal_maker due to permission constraints. Please assure you have set execution permissions (e.g., chmod +x) on the file.",
+      );
+      sinon.assert.calledOnce(downloadStub);
     });
   });
 });
