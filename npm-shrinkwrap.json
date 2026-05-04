@@ -175,7 +175,8 @@
         "ts-node": "^10.4.0",
         "typescript": "^5.3.3",
         "typescript-json-schema": "^0.65.1",
-        "vite": "^4.2.1"
+        "vite": "^4.2.1",
+        "vite-plugin-singlefile": "^0.13.5"
       },
       "engines": {
         "node": ">=20.0.0 || >=22.0.0 || >=24.0.0"
@@ -13852,6 +13853,7 @@
       "resolved": "https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz",
       "integrity": "sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==",
       "dev": true,
+      "license": "MIT",
       "peer": true,
       "dependencies": {
         "js-tokens": "^3.0.0 || ^4.0.0"
@@ -18080,10 +18082,11 @@
       }
     },
     "node_modules/react": {
-      "version": "18.2.0",
-      "resolved": "https://registry.npmjs.org/react/-/react-18.2.0.tgz",
-      "integrity": "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==",
+      "version": "18.3.1",
+      "resolved": "https://registry.npmjs.org/react/-/react-18.3.1.tgz",
+      "integrity": "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==",
       "dev": true,
+      "license": "MIT",
       "peer": true,
       "dependencies": {
         "loose-envify": "^1.1.0"
@@ -18093,17 +18096,18 @@
       }
     },
     "node_modules/react-dom": {
-      "version": "18.2.0",
-      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz",
-      "integrity": "sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==",
+      "version": "18.3.1",
+      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.3.1.tgz",
+      "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
       "dev": true,
+      "license": "MIT",
       "peer": true,
       "dependencies": {
         "loose-envify": "^1.1.0",
-        "scheduler": "^0.23.0"
+        "scheduler": "^0.23.2"
       },
       "peerDependencies": {
-        "react": "^18.2.0"
+        "react": "^18.3.1"
       }
     },
     "node_modules/read-pkg": {
@@ -18789,10 +18793,11 @@
       }
     },
     "node_modules/scheduler": {
-      "version": "0.23.0",
-      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.0.tgz",
-      "integrity": "sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==",
+      "version": "0.23.2",
+      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.2.tgz",
+      "integrity": "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==",
       "dev": true,
+      "license": "MIT",
       "peer": true,
       "dependencies": {
         "loose-envify": "^1.1.0"
@@ -21370,6 +21375,23 @@
         "terser": {
           "optional": true
         }
+      }
+    },
+    "node_modules/vite-plugin-singlefile": {
+      "version": "0.13.5",
+      "resolved": "https://registry.npmjs.org/vite-plugin-singlefile/-/vite-plugin-singlefile-0.13.5.tgz",
+      "integrity": "sha512-y/aRGh8qHmw2f1IhaI/C6PJAaov47ESYDvUv1am1YHMhpY+19B5k5Odp8P+tgs+zhfvak6QB1ykrALQErEAo7g==",
+      "dev": true,
+      "license": "MIT",
+      "dependencies": {
+        "micromatch": "^4.0.5"
+      },
+      "engines": {
+        "node": "^14.18.0 || >=16.0.0"
+      },
+      "peerDependencies": {
+        "rollup": ">=2.79.0",
+        "vite": ">=3.2.0"
       }
     },
     "node_modules/vitefu": {
@@ -35108,9 +35130,9 @@
       }
     },
     "react": {
-      "version": "18.2.0",
-      "resolved": "https://registry.npmjs.org/react/-/react-18.2.0.tgz",
-      "integrity": "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSCUzNln0ZCYbcfTsGbTJrU/kGemdH2IWmB2ioZ+zkxtmq6g09fGQ==",
+      "version": "18.3.1",
+      "resolved": "https://registry.npmjs.org/react/-/react-18.3.1.tgz",
+      "integrity": "sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==",
       "dev": true,
       "peer": true,
       "requires": {
@@ -35118,14 +35140,14 @@
       }
     },
     "react-dom": {
-      "version": "18.2.0",
-      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz",
-      "integrity": "sha512-6IMTriUmvsjHUjNtEDudZfuDQUoWXVxKHhlEGSk81n4YFS+r/Kl99wXiwlVXtPBtJenozv2P+hxDsw9eA7Xo6g==",
+      "version": "18.3.1",
+      "resolved": "https://registry.npmjs.org/react-dom/-/react-dom-18.3.1.tgz",
+      "integrity": "sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==",
       "dev": true,
       "peer": true,
       "requires": {
         "loose-envify": "^1.1.0",
-        "scheduler": "^0.23.0"
+        "scheduler": "^0.23.2"
       }
     },
     "read-pkg": {
@@ -35625,9 +35647,9 @@
       }
     },
     "scheduler": {
-      "version": "0.23.0",
-      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.0.tgz",
-      "integrity": "sha512-CtuThmgHNg7zIZWAXi3AsyIzA3n4xx7aNyjwC2VJldO2LMVDhFK+63xGqq6CsJH4rTAt6/M+N4GhZiDYPx9eUw==",
+      "version": "0.23.2",
+      "resolved": "https://registry.npmjs.org/scheduler/-/scheduler-0.23.2.tgz",
+      "integrity": "sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==",
       "dev": true,
       "peer": true,
       "requires": {
@@ -37533,6 +37555,15 @@
         "postcss": "^8.4.21",
         "resolve": "^1.22.1",
         "rollup": "^3.30.0"
+      }
+    },
+    "vite-plugin-singlefile": {
+      "version": "0.13.5",
+      "resolved": "https://registry.npmjs.org/vite-plugin-singlefile/-/vite-plugin-singlefile-0.13.5.tgz",
+      "integrity": "sha512-y/aRGh8qHmw2f1IhaI/C6PJAaov47ESYDvUv1am1YHMhpY+19B5k5Odp8P+tgs+zhfvak6QB1ykrALQErEAo7g==",
+      "dev": true,
+      "requires": {
+        "micromatch": "^4.0.5"
       }
     },
     "vitefu": {

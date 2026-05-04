@@ -1,8 +1,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import express from "express";
-import cors from "cors";
+import * as express from "express";
+import * as cors from "cors";
 import {
   CallToolRequest,
   CallToolRequestSchema,
@@ -28,6 +28,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import * as crossSpawn from "cross-spawn";
 import { existsSync } from "node:fs";
+import * as experiments from "../experiments";
 import { Command } from "../command";
 import { Config } from "../config";
 import { configstore } from "../configstore";
@@ -341,8 +342,17 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     this.logger.debug(`skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
     const availableTools = await this.getAvailableTools();
+    const isMcpAppsEnabled = experiments.isEnabled("mcpapps");
     return {
-      tools: availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => {
+        if (isMcpAppsEnabled) return t.mcp;
+        if (t.mcp._meta?.ui) {
+          const restMeta = { ...t.mcp._meta };
+          delete restMeta.ui;
+          return { ...t.mcp, _meta: restMeta };
+        }
+        return t.mcp;
+      }),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
