@@ -262,6 +262,10 @@ function compareIndexField(a: API.IndexField, b: API.IndexField): number {
     return compareVectorConfig(a.vectorConfig, b.vectorConfig);
   }
 
+  if (a.searchConfig !== b.searchConfig) {
+    return compareSearchConfig(a.searchConfig, b.searchConfig);
+  }
+
   return 0;
 }
 
@@ -358,6 +362,21 @@ function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number
     return -1;
   }
   return a.dimension - b.dimension;
+}
+
+function compareSearchConfig(a?: API.SearchConfig, b?: API.SearchConfig): number {
+  if (!a) {
+    if (!b) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if (!b) {
+    return -1;
+  }
+
+  // Fall back to string comparison for complex SearchConfig
+  return JSON.stringify(a).localeCompare(JSON.stringify(b));
 }
 
 /**

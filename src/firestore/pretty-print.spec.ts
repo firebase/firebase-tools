@@ -67,6 +67,35 @@ describe("prettyIndexString", () => {
       ),
     ).to.contain("(foo,ASCENDING) (bar,VECTOR<200>) ");
   });
+
+  it("should correctly print a search type Index", () => {
+    expect(
+      printer.prettyIndexString(
+        {
+          name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/a",
+          queryScope: API.QueryScope.COLLECTION,
+          fields: [{ fieldPath: "foo", searchConfig: {} }],
+        },
+        false,
+      ),
+    ).to.contain("(foo,SEARCH) ");
+  });
+
+  it("should correctly print a search type Index with other fields", () => {
+    expect(
+      printer.prettyIndexString(
+        {
+          name: "/projects/project/databases/(default)/collectionGroups/collectionB/indexes/a",
+          queryScope: API.QueryScope.COLLECTION,
+          fields: [
+            { fieldPath: "foo", order: API.Order.ASCENDING },
+            { fieldPath: "bar", searchConfig: {} },
+          ],
+        },
+        false,
+      ),
+    ).to.contain("(foo,ASCENDING) (bar,SEARCH) ");
+  });
 });
 
 describe("firebaseConsoleDatabaseUrl", () => {
