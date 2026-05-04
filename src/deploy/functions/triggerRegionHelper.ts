@@ -87,7 +87,7 @@ export async function ensureTriggerRegions(want: backend.Backend): Promise<void>
       continue;
     }
 
-    let triggerRegion: string | undefined = undefined;
+    let triggerRegion: string | undefined;
     if (ep.platform === "gcfv1") {
       triggerRegion = triggerRegionMap.get(backend.functionName(ep));
     } else {
