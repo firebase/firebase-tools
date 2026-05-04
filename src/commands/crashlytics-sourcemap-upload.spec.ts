@@ -9,7 +9,6 @@ import { FirebaseError } from "../error";
 import * as childProcess from "child_process";
 import * as utils from "../utils";
 import { Client } from "../apiv2";
-import * as requireAuthModule from "../requireAuth";
 
 const expect = chai.expect;
 
@@ -30,16 +29,15 @@ describe("crashlytics:sourcemap:upload", () => {
   let clientPatchStub: sinon.SinonStub;
   let logLabeledWarningStub: sinon.SinonStub;
   let logLabeledBulletStub: sinon.SinonStub;
-  let requireAuthMock: sinon.SinonStubbedInstance<typeof requireAuthModule>;
 
   beforeEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks for unit testing action
+
     sandbox = sinon.createSandbox();
-    requireAuthMock = sandbox.stub(requireAuthModule);
     gcsMock = sandbox.stub(gcs);
     projectUtilsMock = sandbox.stub(projectUtils);
     getProjectNumberMock = sandbox.stub(getProjectNumber);
 
-    requireAuthMock.requireAuth.resolves("a@b.com");
     projectUtilsMock.needProjectId.returns(PROJECT_ID);
     getProjectNumberMock.getProjectNumber.resolves(PROJECT_NUMBER);
     gcsMock.upsertBucket.resolves(BUCKET_NAME);
