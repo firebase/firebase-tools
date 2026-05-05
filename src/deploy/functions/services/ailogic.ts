@@ -1,12 +1,13 @@
 import * as backend from "../backend";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
-
-export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
-  "firebase.vertexai.v1beta.beforeGenerateContent" as const;
-export const AI_LOGIC_AFTER_GENERATE_CONTENT =
-  "firebase.vertexai.v1beta.afterGenerateContent" as const;
+import {
+  AI_LOGIC_BEFORE_GENERATE_CONTENT,
+  AI_LOGIC_AFTER_GENERATE_CONTENT,
+} from "../../../gcp/ailogic";
+import { logLabeledWarning } from "../../../utils";
+export { AI_LOGIC_BEFORE_GENERATE_CONTENT, AI_LOGIC_AFTER_GENERATE_CONTENT };
 
 export const AI_LOGIC_EVENTS = [
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
@@ -29,6 +30,13 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   return AI_LOGIC_EVENTS.includes(
     endpoint.blockingTrigger.eventType as (typeof AI_LOGIC_EVENTS)[number],
   );
+}
+
+export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
+  if (!isAILogicEvent(endpoint)) {
+    return false;
+  }
+  return !endpoint.blockingTrigger.options?.regionalWebhook;
 }
 
 export class AILogicService implements Service {
@@ -92,6 +100,17 @@ export class AILogicService implements Service {
     if (!isAILogicEvent(ep)) {
       return;
     }
-    await ailogicApi.deleteBlockingFunction(ep);
+    try {
+      await ailogicApi.deleteBlockingFunction(ep);
+    } catch (err) {
+      if (getErrStatus(err) === 404) {
+        logLabeledWarning(
+          "functions",
+          `Tried deleting trigger registration for function ${ep.id} but it is not currently registered`,
+        );
+      } else {
+        throw err;
+      }
+    }
   }
 }

@@ -135,7 +135,7 @@ const firestoreService: Service = {
   unregisterTrigger: noop,
 };
 
-/** A Firebase Data Connect service object */
+/** A Firebase SQL Connect service object */
 const dataconnectService: Service = {
   name: "dataconnect",
   api: "firebasedataconnect.googleapis.com",
@@ -174,8 +174,8 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.firestore.document.v1.updated.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.deleted.withAuthContext": firestoreService,
   "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
-  "firebase.vertexai.v1beta.beforeGenerateContent": aiLogicService,
-  "firebase.vertexai.v1beta.afterGenerateContent": aiLogicService,
+  "google.firebase.ailogic.v1.beforeGenerate": aiLogicService,
+  "google.firebase.ailogic.v1.afterGenerate": aiLogicService,
 };
 
 /**

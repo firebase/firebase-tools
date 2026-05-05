@@ -197,6 +197,7 @@ describe("apphosting", () => {
       await prepare(context, optsWithLocalBuild);
 
       expect(localBuildStub).to.be.calledWithMatch(
+        "my-project",
         sinon.match.any,
         "nextjs",
         sinon.match({
@@ -216,6 +217,57 @@ describe("apphosting", () => {
         ["roles/storage.objectViewer"],
         true,
       );
+    });
+
+    it("does not attempt to resolve RUNTIME-only secrets, but passes BUILD-available secrets", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const yamlConfig = AppHostingYamlConfig.empty();
+      yamlConfig.env = {
+        BUILD_VAR: { secret: "build-secret", availability: ["BUILD"] },
+        RUNTIME_VAR: { secret: "runtime-secret", availability: ["RUNTIME"] },
+        SHARED_VAR: { secret: "shared-secret", availability: ["BUILD", "RUNTIME"] },
+      };
+      sinon.stub(apphostingConfig, "getAppHostingConfiguration").resolves(yamlConfig);
+
+      const localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig: { runCommand: "npm run build", env: [] },
+        annotations: {},
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(localBuildStub).to.have.been.calledWithMatch(
+        "my-project",
+        sinon.match.any,
+        "nextjs",
+        sinon.match({
+          BUILD_VAR: { secret: "build-secret", availability: ["BUILD"] },
+          SHARED_VAR: { secret: "shared-secret", availability: ["BUILD", "RUNTIME"] },
+        }),
+      );
+      // RUNTIME_VAR should definitely NOT be present in match
+      expect(localBuildStub.firstCall.args[3]).to.not.have.property("RUNTIME_VAR");
     });
 
     it("should fail if localBuild is specified but experiment is disabled", async () => {
@@ -285,7 +337,7 @@ describe("apphosting", () => {
 
       await prepare(context, opts);
 
-      expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo");
+      expect(doSetupSourceDeployStub).to.be.calledWith("my-project", "foo", false, "/");
       expect(context.backendLocations["foo"]).to.equal("us-central1");
       expect(context.backendConfigs["foo"]).to.deep.equal({
         backendId: "foo",

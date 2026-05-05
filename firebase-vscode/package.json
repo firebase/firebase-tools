@@ -1,10 +1,10 @@
 {
   "name": "firebase-dataconnect-vscode",
-  "displayName": "Firebase Data Connect",
+  "displayName": "Firebase SQL Connect",
   "publisher": "GoogleCloudTools",
   "icon": "./resources/firebase_dataconnect_logo.png",
-  "description": "Firebase Data Connect for VSCode",
-  "version": "2.2.3",
+  "description": "Firebase SQL Connect for VSCode",
+  "version": "2.3.1",
   "engines": {
     "vscode": "^1.69.0"
   },
@@ -36,7 +36,7 @@
       },
       {
         "command": "fdc.deploy",
-        "title": "Firebase Data Connect: Deploy",
+        "title": "Firebase SQL Connect: Deploy",
         "icon": "$(cloud-upload)"
       },
       {
@@ -45,7 +45,7 @@
       },
       {
         "command": "firebase.refresh",
-        "title": "Firebase Data Connect Extension: Refresh"
+        "title": "Firebase SQL Connect Extension: Refresh"
       }
     ],
     "configuration": {
@@ -111,14 +111,14 @@
       "activitybar": [
         {
           "id": "firebase-data-connect",
-          "title": "Firebase Data Connect",
+          "title": "Firebase SQL Connect",
           "icon": "resources/firebase_dataconnect_logo.svg"
         }
       ],
       "panel": [
         {
           "id": "firebase-data-connect-execution-view",
-          "title": "Data Connect Execution",
+          "title": "SQL Connect Execution",
           "icon": "$(gmp-data-connect)"
         }
       ]
@@ -132,7 +132,7 @@
         }
       },
       "gmp-data-connect": {
-        "description": "Data Connect icon",
+        "description": "SQL Connect icon",
         "default": {
           "fontPath": "./resources/GMPIcons.woff2",
           "fontCharacter": "\\gmp_nav20_dataconnect"

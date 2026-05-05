@@ -85,7 +85,7 @@ export class HubExport {
     try {
       mdString = fs.readFileSync(metadataPath, "utf8").toString();
       return JSON.parse(mdString) as ExportMetadata;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // JSON parse errors are unreadable. Throw the original.
       throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString}`);
     }
@@ -350,7 +350,7 @@ export class HubExport {
     const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
     if (!instance) {
       throw new FirebaseError(
-        "Unable to export Data Connect emulator data: the Data Connect emulator is not running.",
+        "Unable to export SQL Connect emulator data: the SQL Connect emulator is not running.",
       );
     }
 
@@ -378,7 +378,7 @@ function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<v
 function shouldExport(e: Emulators): boolean {
   if (e === Emulators.DATACONNECT && dataConnectLocalConnString()) {
     logger.info(
-      "Skipping export for Data Connect because FIREBASE_DATACONNECT_POSTGRESQL_STRING is set.",
+      "Skipping export for SQL Connect because FIREBASE_DATACONNECT_POSTGRESQL_STRING is set.",
     );
     return false;
   }

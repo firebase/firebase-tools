@@ -121,7 +121,7 @@ steps:
         timeout=300
         elapsed=0
         interval=15
-        until npm view "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
+        until npm install --dry-run "firebase-tools@$(cat /workspace/version_number.txt)" > /dev/null 2>&1; do
           if [ $$elapsed -ge $$timeout ]; then
             echo "Timeout waiting for package."
             exit 1
@@ -130,6 +130,8 @@ steps:
           sleep $$interval
           elapsed=$$((elapsed + interval))
         done
+        echo "Sleeping for 60 seconds to ensure propagation..." 
+        sleep 60
         echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
   # Set up the hub credentials for firepit-builder.
@@ -155,6 +157,27 @@ steps:
           echo "Please review the draft release notes at https://github.com/${_REPOSITORY_ORG}/${_REPOSITORY_NAME}/releases. If it looks good, publish it"
         else
           echo "Skipping firepit build for preview version."
+        fi
+
+  # Tag the previous version of the docker image
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          IMAGE_NAME="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+          TAGS=$(gcloud container images list-tags $${IMAGE_NAME} --filter="tags:latest" --format="value(tags)")
+          echo "Tags for latest: $${TAGS}"
+          PREVIOUS_VERSION=$(echo $${TAGS} | tr ',' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+          echo "Detected previous version: $${PREVIOUS_VERSION}"
+          if [ -n "$${PREVIOUS_VERSION}" ]; then
+            gcloud container images add-tag $${IMAGE_NAME}:latest $${IMAGE_NAME}:no-new-use-public-image-$${PREVIOUS_VERSION} --quiet
+          else
+            echo "Could not detect previous version tag. Skipping tagging."
+          fi
+        else
+          echo "Skipping for preview version."
         fi
 
   # Publish the Firebase docker image

@@ -1,9 +1,12 @@
 name: CI Tests
 
 on:
-  - pull_request
-  - push
-  - merge_group
+  pull_request:
+    branches:
+      - main
+      - next
+  push:
+  merge_group:
 
 env:
   CI: true
@@ -65,7 +68,7 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run test:unit
         working-directory: firebase-vscode
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         if: matrix.node-version == '20'
 
   # vscode_integration:
@@ -123,7 +126,7 @@ jobs:
   #         name: screenshots
   #         path: firebase-vscode/src/test/screenshots
 
-  #     - uses: codecov/codecov-action@v3
+  #     - uses: codecov/codecov-action@v5
   #       if: matrix.node-version == '20'
 
   agent_evals_build:
@@ -163,16 +166,24 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
+      - name: Cache ESLint
+        uses: actions/cache@v4
+        with:
+          path: .eslintcache
+          key: eslint-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/*.ts', '**/*.js') }}
+          restore-keys: |
+            eslint-${{ runner.os }}-node${{ matrix.node-version }}-
+
       - run: npm i -g npm@9.5
       - run: npm ci
       - run: npm test -- -- --forbid-only
 
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v5
         if: matrix.node-version == '20'
 
   integration:
     needs: unit
-    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: ubuntu-22.04
 
     env:
@@ -239,7 +250,7 @@ jobs:
 
   integration-windows:
     needs: unit
-    if: contains(fromJSON('["push", "merge_group"]'), github.event_name)
+    if: contains(fromJSON('["push", "merge_group"]'), github.event_name) || (github.event_name == 'pull_request' && github.base_ref == 'next')
     runs-on: windows-latest
 
     env:

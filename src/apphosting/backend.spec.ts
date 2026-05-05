@@ -123,7 +123,6 @@ describe("apphosting setup functions", () => {
         serviceAccount: "custom-service-account",
         appId: webAppId,
         runtime: { value: "" },
-        automaticBaseImageUpdatesDisabled: undefined,
       };
       expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
     });
@@ -155,73 +154,10 @@ describe("apphosting setup functions", () => {
           serviceAccount: "custom-service-account",
           appId: webAppId,
           runtime: { value: runtime ?? "" },
-          automaticBaseImageUpdatesDisabled: undefined,
         };
         expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
       });
     }
-
-    it("should create a new backend with automatic base image updates disabled", async () => {
-      createBackendStub.resolves(op);
-      pollOperationStub.resolves(completeBackend);
-
-      await createBackend(
-        projectId,
-        location,
-        backendId,
-        "custom-service-account",
-        cloudBuildConnRepo,
-        webAppId,
-        "/",
-        undefined,
-        true, // automaticBaseImageUpdatesDisabled
-      );
-
-      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
-        servingLocality: "GLOBAL_ACCESS",
-        codebase: {
-          repository: cloudBuildConnRepo.name,
-          rootDirectory: "/",
-        },
-        labels: deploymentTool.labels(),
-        serviceAccount: "custom-service-account",
-        appId: webAppId,
-        runtime: { value: "" },
-        automaticBaseImageUpdatesDisabled: true,
-      };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
-    });
-
-    it("should create a new backend with automatic base image updates enabled", async () => {
-      createBackendStub.resolves(op);
-      pollOperationStub.resolves(completeBackend);
-
-      await createBackend(
-        projectId,
-        location,
-        backendId,
-        "custom-service-account",
-        cloudBuildConnRepo,
-        webAppId,
-        "/",
-        undefined,
-        false, // automaticBaseImageUpdatesDisabled
-      );
-
-      const backendInput: Omit<apphosting.Backend, apphosting.BackendOutputOnlyFields> = {
-        servingLocality: "GLOBAL_ACCESS",
-        codebase: {
-          repository: cloudBuildConnRepo.name,
-          rootDirectory: "/",
-        },
-        labels: deploymentTool.labels(),
-        serviceAccount: "custom-service-account",
-        appId: webAppId,
-        runtime: { value: "" },
-        automaticBaseImageUpdatesDisabled: false,
-      };
-      expect(createBackendStub).to.be.calledWith(projectId, location, backendInput, backendId);
-    });
 
     it("should set default rollout policy to 100% all at once", async () => {
       const completeTraffic: apphosting.Traffic = {
@@ -347,7 +283,7 @@ describe("apphosting setup functions", () => {
 
   describe("promptLocation", () => {
     const supportedLocations = [
-      { name: "us-central1", locationId: "us-central1" },
+      { name: "us-east4", locationId: "us-east4" },
       { name: "us-west1", locationId: "us-west1" },
     ];
 
@@ -358,16 +294,16 @@ describe("apphosting setup functions", () => {
 
     it("returns a location selection", async () => {
       const location = await promptLocation(projectId, /* prompt= */ "");
-      expect(location).to.be.eq("us-central1");
+      expect(location).to.be.eq("us-east4");
     });
 
     it("uses a default location prompt if none is provided", async () => {
       await promptLocation(projectId);
 
       expect(promptStub.select).to.be.calledWith({
-        default: "us-central1",
+        default: "us-east4",
         message: "Please select a location:",
-        choices: ["us-central1", "us-west1"],
+        choices: ["us-east4", "us-west1"],
       });
     });
 
