@@ -87,25 +87,22 @@ export async function setRewriteTags(
   project: string,
   version: string,
 ): Promise<void> {
-  // Note: this is sub-optimal in the case where there are multiple rewrites
-  // to the same service. Should we deduplicate this?
-  const services: run.Service[] = await Promise.all(
-    rewrites
-      .map((rewrite) => {
-        if (!("run" in rewrite)) {
-          return null;
-        }
-        if (rewrite.run.tag !== TODO_TAG_NAME) {
-          return null;
-        }
+  // Note: Deduplication is necessary to avoid race conditions when there are multiple
+  // rewrites pointing to the same service.
+  const uniqueServices: Record<string, Promise<run.Service>> = {};
+  for (const rewrite of rewrites) {
+    if (!("run" in rewrite) || rewrite.run.tag !== TODO_TAG_NAME) {
+      continue;
+    }
+    const key = `${rewrite.run.region}/${rewrite.run.serviceId}`;
+    if (!(key in uniqueServices)) {
+      uniqueServices[key] = run.getService(
+        `projects/${project}/locations/${rewrite.run.region}/services/${rewrite.run.serviceId}`,
+      );
+    }
+  }
 
-        return run.getService(
-          `projects/${project}/locations/${rewrite.run.region}/services/${rewrite.run.serviceId}`,
-        );
-      })
-      // filter does not drop the null annotation
-      .filter((s) => s !== null) as Array<Promise<run.Service>>,
-  );
+  const services: run.Service[] = await Promise.all(Object.values(uniqueServices));
   // Unnecessary due to functional programming, but creates an observable side effect for tests
   if (!services.length) {
     return;
