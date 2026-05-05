@@ -2,7 +2,6 @@ import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
 import fetch from "node-fetch";
-import AbortController from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,

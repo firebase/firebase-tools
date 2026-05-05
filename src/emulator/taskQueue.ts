@@ -1,4 +1,3 @@
-import AbortController from "abort-controller";
 import { EmulatorLogger } from "./emulatorLogger";
 import { RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 import { Emulators } from "./types";

@@ -1,9 +1,7 @@
-import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
-import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
 
