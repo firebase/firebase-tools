@@ -186,6 +186,104 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return res.sendStatus(404);
     }
 
+    async function handleStatusCheck(upload: Upload, contentRange: string) {
+      // Extract the numeric total from bytes */total or bytes start-end/total forms.
+      const totalMatch = contentRange && /\/(\d+)$/.exec(contentRange);
+      const declaredTotal = totalMatch ? parseInt(totalMatch[1], 10) : undefined;
+
+      if (upload.status === UploadStatus.FINISHED) {
+        let getObjectResponse: GetObjectResponse;
+        try {
+          getObjectResponse = await adminStorageLayer.getObject({
+            bucketId: upload.bucketId,
+            decodedObjectId: upload.objectId,
+          });
+        } catch (err) {
+          if (err instanceof NotFoundError) {
+            return res.sendStatus(404);
+          }
+          if (err instanceof ForbiddenError) {
+            return res.sendStatus(403);
+          }
+          throw err;
+        }
+        return res.status(200).json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
+      }
+
+      if (upload.status !== UploadStatus.ACTIVE) {
+        return res.sendStatus(400);
+      }
+
+      // if the declared total matches the bytes received so far, the client is signalling that
+      // the upload is complete (i.e. streaming upload where total size wasn't known upfront).
+      if (declaredTotal !== undefined && upload.size === declaredTotal) {
+        const metadata = await finalizeUpload(uploadId);
+        return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+      }
+
+      if (upload.size === 0) {
+        return res.status(308).send();
+      }
+
+      res.setHeader("Range", `bytes=0-${upload.size - 1}/${declaredTotal ?? "*"}`);
+      return res.status(308).send();
+    }
+
+    async function handleChunkedUpload(upload: Upload, contentRange: string, data: Buffer) {
+      const rangeMatch = /^bytes (\d+)-(\d+)(?:\/(\d+|\*))?$/.exec(contentRange);
+      if (!rangeMatch) {
+        return res.status(400).send("Failed to parse Content-Range header.");
+      }
+
+      const rangeStart = parseInt(rangeMatch[1], 10);
+      const rangeEnd = parseInt(rangeMatch[2], 10);
+      const rangeTotal =
+        rangeMatch[3] && rangeMatch[3] !== "*" ? parseInt(rangeMatch[3], 10) : undefined;
+
+      if (rangeEnd < rangeStart || (rangeTotal !== undefined && rangeTotal < rangeEnd + 1)) {
+        return res.status(400).send("Failed to parse Content-Range header.");
+      }
+
+      if (rangeStart !== upload.size) {
+        return res
+          .status(400)
+          .send(`Invalid chunk position. The next chunk should start at offset ${upload.size}.`);
+      }
+
+      const expectedChunkSize = rangeEnd - rangeStart + 1;
+
+      if (data.byteLength !== expectedChunkSize) {
+        const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${rangeStart} and ending at offset ${rangeEnd}) according to the Content-Range header.`;
+        return res.status(400).send(message);
+      }
+
+      const updatedUpload = uploadService.continueResumableUpload(uploadId, data);
+
+      /**
+       * When the client uses an unknown total (`*` or omitted), we treat a chunk whose
+       * size is not a multiple of 256 KiB as the final chunk. Objects whose size is
+       * an exact multiple of 256 KiB must end with an explicit total in Content-Range.
+       * @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
+       */
+      const isComplete =
+        typeof rangeTotal === "number"
+          ? updatedUpload.size >= rangeTotal
+          : data.byteLength % (256 * 1024) !== 0;
+
+      if (isComplete) {
+        const metadata = await finalizeUpload(uploadId);
+        return res.status(200).json(new CloudStorageObjectMetadata(metadata));
+      }
+
+      res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${rangeTotal ?? "*"}`);
+      return res.status(308).send();
+    }
+
+    async function finalizeUpload(uploadId: string) {
+      const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
+      return await adminStorageLayer.uploadObject(finalizedUpload);
+    }
+
     const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
@@ -196,48 +294,12 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       }
 
       const contentLength = req.headers["content-length"];
-      const contentRange = req.headers["content-range"];
+      const contentRange = req.headers["content-range"] ?? "";
 
       // Status check request
       // @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#status-check
       if (contentLength === "0") {
-        // Extract the numeric total from bytes */total or bytes start-end/total forms.
-        const totalMatch = contentRange && /\/(\d+)$/.exec(contentRange);
-        const declaredTotal = totalMatch ? parseInt(totalMatch[1], 10) : undefined;
-
-        if (upload.status === UploadStatus.ACTIVE) {
-          // if the declared total matches the bytes received so far, the client is signalling that
-          // the upload is complete (i.e. streaming upload where total size wasn't known upfront).
-          if (declaredTotal !== undefined && upload.size === declaredTotal) {
-            const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
-            const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
-            return res.status(200).json(new CloudStorageObjectMetadata(metadata));
-          }
-
-          if (upload.size === 0) {
-            return res.status(308).send();
-          } else if (upload.size > 0) {
-            res.setHeader("Range", `bytes=0-${upload.size - 1}/${declaredTotal ?? "*"}`);
-            return res.status(308).send();
-          }
-        } else if (upload.status === UploadStatus.FINISHED) {
-          let getObjectResponse: GetObjectResponse;
-          try {
-            getObjectResponse = await adminStorageLayer.getObject({
-              bucketId: upload.bucketId,
-              decodedObjectId: upload.objectId,
-            });
-          } catch (err) {
-            if (err instanceof NotFoundError) {
-              return res.sendStatus(404);
-            }
-            if (err instanceof ForbiddenError) {
-              return res.sendStatus(403);
-            }
-            throw err;
-          }
-          return res.status(200).json(new CloudStorageObjectMetadata(getObjectResponse.metadata));
-        }
+        return await handleStatusCheck(upload, contentRange);
       }
 
       if (contentLength && contentLength !== "0") {
@@ -245,61 +307,11 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
         // Multiple chunk upload
         if (contentRange) {
-          const rangeMatch = /^bytes (\d+)-(\d+)(?:\/(\d+|\*))?$/.exec(contentRange);
-          if (!rangeMatch) {
-            return res.status(400).send("Failed to parse Content-Range header.");
-          }
-
-          const rangeStart = parseInt(rangeMatch[1], 10);
-          const rangeEnd = parseInt(rangeMatch[2], 10);
-          const rangeTotal =
-            rangeMatch[3] && rangeMatch[3] !== "*" ? parseInt(rangeMatch[3], 10) : undefined;
-
-          if (rangeEnd < rangeStart || (rangeTotal !== undefined && rangeTotal < rangeEnd + 1)) {
-            return res.status(400).send("Failed to parse Content-Range header.");
-          }
-
-          if (rangeStart !== upload.size) {
-            return res
-              .status(400)
-              .send(
-                `Invalid chunk position. The next chunk should start at offset ${upload.size}.`,
-              );
-          }
-
-          const expectedChunkSize = rangeEnd - rangeStart + 1;
-
-          if (data.byteLength !== expectedChunkSize) {
-            const message = `Invalid request.  There were ${data.byteLength} byte(s) in the request body.  There should have been ${expectedChunkSize} byte(s) (starting at offset ${rangeStart} and ending at offset ${rangeEnd}) according to the Content-Range header.`;
-            return res.status(400).send(message);
-          }
-
-          const updatedUpload = uploadService.continueResumableUpload(uploadId, data);
-
-          /**
-           * When the client uses an unknown total (`*` or omitted), we treat a chunk whose
-           * size is not a multiple of 256 KiB as the final chunk. Objects whose size is
-           * an exact multiple of 256 KiB must end with an explicit total in Content-Range.
-           * @see https://docs.cloud.google.com/storage/docs/performing-resumable-uploads#chunked-upload
-           */
-          const isComplete =
-            typeof rangeTotal === "number"
-              ? updatedUpload.size >= rangeTotal
-              : data.byteLength % (256 * 1024) !== 0;
-
-          if (isComplete) {
-            const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
-            const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
-            return res.status(200).json(new CloudStorageObjectMetadata(metadata));
-          }
-
-          res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${rangeTotal ?? "*"}`);
-          return res.status(308).send();
+          return await handleChunkedUpload(upload, contentRange, data);
         } else {
           // Single chunk upload
           uploadService.continueResumableUpload(uploadId, data);
-          const finalizedUpload = uploadService.finalizeResumableUpload(uploadId);
-          const metadata = await adminStorageLayer.uploadObject(finalizedUpload);
+          const metadata = await finalizeUpload(uploadId);
           return res.status(200).json(new CloudStorageObjectMetadata(metadata));
         }
       }
