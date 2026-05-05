@@ -225,7 +225,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return res.status(308).send();
       }
 
-      res.setHeader("Range", `bytes=0-${upload.size - 1}/${declaredTotal ?? "*"}`);
+      res.setHeader("Range", `bytes=0-${upload.size - 1}`);
       return res.status(308).send();
     }
 
@@ -257,8 +257,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return res.status(400).send(message);
       }
 
-      const updatedUpload = uploadService.continueResumableUpload(upload.id, data);
-
       /**
        * When the client uses an unknown total (`*` or omitted), we treat a chunk whose
        * size is not a multiple of 256 KiB as the final chunk. Objects whose size is
@@ -267,15 +265,23 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
        */
       const isComplete =
         typeof rangeTotal === "number"
-          ? updatedUpload.size >= rangeTotal
+          ? rangeEnd + 1 === rangeTotal
           : data.byteLength % (256 * 1024) !== 0;
+
+      if (!isComplete && data.byteLength % (256 * 1024) !== 0) {
+        return res
+          .status(400)
+          .send("Chunk size must be a multiple of 256 KiB unless it is the last chunk.");
+      }
+
+      const updatedUpload = uploadService.continueResumableUpload(upload.id, data);
 
       if (isComplete) {
         const metadata = await finalizeUpload(upload.id);
         return res.status(200).json(new CloudStorageObjectMetadata(metadata));
       }
 
-      res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}/${rangeTotal ?? "*"}`);
+      res.setHeader("Range", `bytes=0-${updatedUpload.size - 1}`);
       return res.status(308).send();
     }
 
