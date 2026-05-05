@@ -7,6 +7,7 @@ const cwd = process.cwd();
 import { checkbox, select } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
+import { Options } from "../../../options";
 import { loadAll } from "../../../dataconnect/load";
 import {
   AdminNodeSDK,
@@ -54,12 +55,16 @@ export type SDKInfo = {
   displayIOSWarning: boolean;
 };
 
-export async function askQuestions(setup: Setup): Promise<void> {
+export async function askQuestions(
+  setup: Setup,
+  config?: Config,
+  options?: Options,
+): Promise<void> {
   const info: SdkRequiredInfo = {
     apps: [],
   };
 
-  info.apps = await chooseApp();
+  info.apps = await chooseApp(options);
   if (!info.apps.length) {
     const npxMissingWarning = commandExistsSync("npx")
       ? ""
@@ -77,6 +82,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
         { name: "skip", value: "skip" },
       ],
+      default: "skip",
+      nonInteractive: options?.nonInteractive,
     });
     try {
       switch (choice) {
@@ -102,7 +109,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
   setup.featureInfo.dataconnectSdk = info;
 }
 
-export async function chooseApp(): Promise<App[]> {
+export async function chooseApp(options?: Options): Promise<App[]> {
   let apps = dedupeAppsByPlatformAndDirectory(await detectApps(cwd));
   if (apps.length) {
     logLabeledSuccess(
@@ -147,9 +154,12 @@ export async function chooseApp(): Promise<App[]> {
         checked: a.directory === ".",
       };
     });
+    const defaultApps = choices.filter((c) => c.checked).map((c) => c.value);
     const pickedApps = await checkbox<App>({
       message: "Which apps do you want to set up SQL Connect SDKs in?",
       choices,
+      default: defaultApps.length > 0 ? defaultApps : [choices[0].value],
+      nonInteractive: options?.nonInteractive,
       validate: (choices) => {
         if (choices.length === 0) {
           return "Please choose at least one app.";

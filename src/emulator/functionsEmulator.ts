@@ -866,10 +866,11 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         try {
           await this.startRuntime(emulatableBackend);
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
           this.logger.logLabeled(
             "ERROR",
-            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`,
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${message}`,
           );
         }
       }
@@ -1172,8 +1173,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.DATABASE);
     try {
       await client.post(apiPath, bundle, { headers: { Authorization: "Bearer owner" } });
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding Realtime Database function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding Realtime Database function: " + String(err));
       throw err;
     }
     return true;
@@ -1246,8 +1247,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
       signature === "cloudevent" ? await client.post(path, bundle) : await client.put(path, bundle);
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding firestore function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding firestore function: " + String(err));
       throw err;
     }
     return true;
@@ -1480,7 +1481,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {
         return functionsEnv.loadUserEnvs(projectInfo);
-      } catch (e: any) {
+      } catch (e: unknown) {
         // Ignore - user envs are optional.
         logger.debug("Failed to load local environment variables", e);
       }
@@ -1578,13 +1579,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     try {
       const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
-    } catch (e: any) {
-      if (e.code !== "ENOENT") {
-        this.logger.logLabeled(
-          "ERROR",
-          "functions",
-          `Failed to read local secrets file ${secretPath}: ${e.message}`,
-        );
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && "code" in e) {
+        const code = (e as { code: unknown }).code;
+        if (code !== "ENOENT") {
+          const message = e instanceof Error ? e.message : String(e);
+          this.logger.logLabeled(
+            "ERROR",
+            "functions",
+            `Failed to read local secrets file ${secretPath}: ${message}`,
+          );
+        }
       }
     }
     // Note - if trigger is undefined, we are loading in 'sequential' mode.
@@ -1945,11 +1950,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!pool.readyForWork(trigger.id, record.backend.runtime)) {
       try {
         await this.startRuntime(record.backend, trigger);
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
         this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
         this.logger.logLabeled(
           "ERROR",
-          `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
+          `Failed to start functions in ${record.backend.functionsDir}: ${message}`,
         );
         return;
       }

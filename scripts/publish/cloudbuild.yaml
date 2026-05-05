@@ -159,6 +159,27 @@ steps:
           echo "Skipping firepit build for preview version."
         fi
 
+  # Tag the previous version of the docker image
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk:slim"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "${_VERSION}" != "preview" ]; then
+          IMAGE_NAME="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+          TAGS=$(gcloud container images list-tags $${IMAGE_NAME} --filter="tags:latest" --format="value(tags)")
+          echo "Tags for latest: $${TAGS}"
+          PREVIOUS_VERSION=$(echo $${TAGS} | tr ',' '\n' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$$' | head -n 1)
+          echo "Detected previous version: $${PREVIOUS_VERSION}"
+          if [ -n "$${PREVIOUS_VERSION}" ]; then
+            gcloud container images add-tag $${IMAGE_NAME}:latest $${IMAGE_NAME}:no-new-use-public-image-$${PREVIOUS_VERSION} --quiet
+          else
+            echo "Could not detect previous version tag. Skipping tagging."
+          fi
+        else
+          echo "Skipping for preview version."
+        fi
+
   # Publish the Firebase docker image
   - name: "gcr.io/cloud-builders/docker"
     entrypoint: "bash"

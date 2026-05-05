@@ -14,6 +14,7 @@ import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
 import { createSite } from "../hosting/api";
 import { Options } from "../options";
+import * as experiments from "../experiments";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -101,7 +102,16 @@ export const command = new Command("deploy")
     "--dry-run",
     "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
       "In order to provide better validation, this may still enable APIs on the target project",
-  )
+  );
+
+if (experiments.isEnabled("apphostinglocalbuilds")) {
+  command.option(
+    "--allow-local-build-secrets",
+    "allow the use of build-available secrets in local builds for App Hosting without interactive confirmation",
+  );
+}
+
+command
   .before(requireConfig)
   .before((options: Options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);

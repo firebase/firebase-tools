@@ -1,5 +1,8 @@
 import { expect } from "chai";
-import { cleanSchema } from "./util";
+import * as sinon from "sinon";
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import * as experiments from "../experiments";
+import { cleanSchema, applyAppMeta, toContent } from "./util";
 
 interface TestCase {
   desc: string;
@@ -472,5 +475,60 @@ describe("cleanSchema", () => {
     it(tc.desc, () => {
       expect(cleanSchema(tc.input)).to.deep.equal(tc.expected);
     });
+  });
+});
+
+describe("applyAppMeta", () => {
+  let experimentsStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    experimentsStub = sinon.stub(experiments, "isEnabled");
+  });
+
+  afterEach(() => {
+    experimentsStub.restore();
+  });
+
+  it("should add _meta if mcpapps experiment is enabled", () => {
+    experimentsStub.withArgs("mcpapps").returns(true);
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
+    const uri = "ui://test";
+    const expected = {
+      content: [{ type: "text", text: "hello" }],
+      _meta: { ui: { resourceUri: uri } },
+    };
+    expect(applyAppMeta(result, uri)).to.deep.equal(expected);
+  });
+
+  it("should NOT add _meta if mcpapps experiment is disabled", () => {
+    experimentsStub.withArgs("mcpapps").returns(false);
+    const result: CallToolResult = { content: [{ type: "text", text: "hello" }] };
+    const uri = "ui://test";
+    expect(applyAppMeta(result, uri)).to.deep.equal(result);
+  });
+});
+
+describe("toContent", () => {
+  it("should return content and structuredContent for object data", () => {
+    const data = { foo: "bar" };
+    const result = toContent(data);
+    expect(result.content).to.have.lengthOf(1);
+    expect(result.content[0].type).to.equal("text");
+    expect(result.structuredContent).to.deep.equal(data);
+  });
+
+  it("should NOT return structuredContent for array data", () => {
+    const data = ["foo", "bar"];
+    const result = toContent(data);
+    expect(result.content).to.have.lengthOf(1);
+    expect(result.content[0].type).to.equal("text");
+    expect(result.structuredContent).to.be.undefined;
+  });
+
+  it("should return content for string data", () => {
+    const data = "hello";
+    const result = toContent(data);
+    expect(result.content).to.deep.equal([{ type: "text", text: "hello" }]);
+    expect((result as any).structuredContent).to.be.undefined;
   });
 });
