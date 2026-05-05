@@ -1429,6 +1429,43 @@ describe("Fabricator", () => {
       expect(setTrigger).is.calledAfter(createV2Function);
     });
 
+    it("creates run functions", async () => {
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "run" });
+      const setTrigger = sinon.stub(fab, "setTrigger");
+      setTrigger.resolves();
+      const createRunFunction = sinon.stub(fab, "createRunFunction");
+      createRunFunction.resolves();
+
+      await fab.createEndpoint(
+        ep,
+        new scraper.SourceTokenScraper(),
+        new scraper.SourceTokenScraper(),
+      );
+      expect(createRunFunction).is.calledOnce;
+      expect(setTrigger).is.calledOnce;
+      expect(setTrigger).is.calledAfter(createRunFunction);
+    });
+
+    it("reserves callable URL for Cloud Run functions", async () => {
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const setTrigger = sinon.stub(fab, "setTrigger");
+      setTrigger.resolves();
+      const createRunFunction = sinon.stub(fab, "createRunFunction");
+      createRunFunction.resolves();
+      const reserveCallableUrl = sinon.stub(fab, "reserveCallableUrl");
+      reserveCallableUrl.resolves();
+
+      await fab.createEndpoint(
+        ep,
+        new scraper.SourceTokenScraper(),
+        new scraper.SourceTokenScraper(),
+      );
+      expect(reserveCallableUrl).is.calledOnce;
+      expect(createRunFunction).is.calledOnce;
+      expect(createRunFunction).is.calledAfter(reserveCallableUrl);
+      expect(setTrigger).is.calledOnce;
+    });
+
     it("aborts for failures midway", async () => {
       const ep = endpoint();
       const setTrigger = sinon.stub(fab, "setTrigger");
@@ -2001,6 +2038,49 @@ describe("Fabricator", () => {
       await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.called;
+    });
+  });
+  describe("reserveCallableUrl", () => {
+    it("creates a V2 function with placeholder source", async () => {
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves();
+
+      await fab.reserveCallableUrl(ep);
+
+      expect(gcfv2.createFunction).to.have.been.calledWithMatch({
+        buildConfig: {
+          source: {
+            storageSource: {
+              bucket: "firebase-preview-drop",
+              object: "dart/hello_world.zip",
+            },
+          },
+        },
+      });
+    });
+
+    it("ignores ALREADY_EXISTS errors", async () => {
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const err = new Error("Already exists");
+      (err as any).status = 409;
+      gcfv2.createFunction.rejects(err);
+
+      await fab.reserveCallableUrl(ep);
+
+      expect(gcfv2.createFunction).to.have.been.called;
+    });
+
+    it("rethrows other errors", async () => {
+      const ep = endpoint({ callableTrigger: {} }, { platform: "run" });
+      const err = new Error("Server Error");
+      (err as any).status = 500;
+      gcfv2.createFunction.rejects(err);
+
+      await expect(fab.reserveCallableUrl(ep)).to.be.rejectedWith(
+        reporter.DeploymentError,
+        "reserve URL",
+      );
     });
   });
 });
