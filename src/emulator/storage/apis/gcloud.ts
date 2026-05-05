@@ -217,7 +217,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       // if the declared total matches the bytes received so far, the client is signalling that
       // the upload is complete (i.e. streaming upload where total size wasn't known upfront).
       if (declaredTotal !== undefined && upload.size === declaredTotal) {
-        const metadata = await finalizeUpload(uploadId);
+        const metadata = await finalizeUpload(upload.id);
         return res.status(200).json(new CloudStorageObjectMetadata(metadata));
       }
 
@@ -257,7 +257,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
         return res.status(400).send(message);
       }
 
-      const updatedUpload = uploadService.continueResumableUpload(uploadId, data);
+      const updatedUpload = uploadService.continueResumableUpload(upload.id, data);
 
       /**
        * When the client uses an unknown total (`*` or omitted), we treat a chunk whose
@@ -271,7 +271,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           : data.byteLength % (256 * 1024) !== 0;
 
       if (isComplete) {
-        const metadata = await finalizeUpload(uploadId);
+        const metadata = await finalizeUpload(upload.id);
         return res.status(200).json(new CloudStorageObjectMetadata(metadata));
       }
 
@@ -284,10 +284,9 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return await adminStorageLayer.uploadObject(finalizedUpload);
     }
 
-    const uploadId = req.query.upload_id.toString();
     let upload: Upload;
     try {
-      upload = uploadService.getResumableUpload(uploadId);
+      upload = uploadService.getResumableUpload(req.query.upload_id.toString());
 
       if (upload.status === UploadStatus.CANCELLED) {
         return res.sendStatus(499);
@@ -310,8 +309,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           return await handleChunkedUpload(upload, contentRange, data);
         } else {
           // Single chunk upload
-          uploadService.continueResumableUpload(uploadId, data);
-          const metadata = await finalizeUpload(uploadId);
+          uploadService.continueResumableUpload(upload.id, data);
+          const metadata = await finalizeUpload(upload.id);
           return res.status(200).json(new CloudStorageObjectMetadata(metadata));
         }
       }
@@ -333,10 +332,8 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       return res.sendStatus(405);
     }
 
-    const uploadId = req.query.upload_id.toString();
-
     try {
-      uploadService.cancelResumableUpload(uploadId);
+      uploadService.cancelResumableUpload(req.query.upload_id.toString());
       return res.sendStatus(499);
     } catch (err) {
       if (err instanceof NotFoundError) {
