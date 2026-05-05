@@ -1,1 +1,3 @@
 - Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
+- feat(emulator): resumable upload API now supports multiple chunk uploads
+- feat(emulator): resumable upload API now supports cancelling an upload
