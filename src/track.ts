@@ -72,26 +72,35 @@ export function usageEnabled(): boolean {
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
 // https://developers.google.com/analytics/devguides/collection/protocol/ga4/reference?client_type=firebase#reserved_parameter_names
-const GA4_USER_PROPS = {
-  node_platform: {
-    value: process.platform,
-  },
-  node_version: {
-    value: process.version,
-  },
-  cli_version: {
-    value: pkg.version,
-  },
-  firepit_version: {
-    value: process.env.FIREPIT_VERSION || "none",
-  },
-  is_firebase_studio: {
-    value: isFirebaseStudio().toString(),
-  },
-  ai_agent: {
-    value: detectAIAgent(),
-  },
-};
+function getGa4UserProps(): {
+  node_platform: { value: string };
+  node_version: { value: string };
+  cli_version: { value: string };
+  firepit_version: { value: string };
+  is_firebase_studio: { value: string };
+  ai_agent: { value: string };
+} {
+  return {
+    node_platform: {
+      value: process.platform,
+    },
+    node_version: {
+      value: process.version,
+    },
+    cli_version: {
+      value: pkg.version as string,
+    },
+    firepit_version: {
+      value: process.env.FIREPIT_VERSION || "none",
+    },
+    is_firebase_studio: {
+      value: isFirebaseStudio().toString(),
+    },
+    ai_agent: {
+      value: detectAIAgent(),
+    },
+  };
+}
 
 export interface AnalyticsParams {
   /** The command running right now (param for custom dimension) */
@@ -229,7 +238,7 @@ async function _ga4Track(args: {
     timestamp_micros: `${Date.now()}000`,
     client_id: session.clientId,
     user_properties: {
-      ...GA4_USER_PROPS,
+      ...getGa4UserProps(),
       java_major_version: session.javaMajorVersion
         ? { value: session.javaMajorVersion }
         : undefined,

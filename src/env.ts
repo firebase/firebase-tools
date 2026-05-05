@@ -17,8 +17,17 @@ export function setFirebaseMcp(value: boolean) {
   isFirebaseMcpFlag = value;
 }
 
+let mcpClientNameFlag: string | undefined;
+
+export function setMcpClientName(name?: string) {
+  mcpClientNameFlag = name;
+}
+
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.
 export function detectAIAgent(): string {
+  if (isFirebaseMcp() && mcpClientNameFlag) {
+    return mcpClientNameFlag.toLowerCase().replace(/ /g, "_");
+  }
   if (process.env.ANTIGRAVITY_CLI_ALIAS) return "antigravity";
   if (process.env.CLAUDECODE) return "claude_code";
   if (process.env.CLINE_ACTIVE) return "cline";
