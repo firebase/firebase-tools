@@ -3133,7 +3133,7 @@ async function fetchBlockingFunction(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => {
-    controller.abort();
+    controller.abort(new FirebaseError("Aborted")); 
   }, timeoutMs);
 
   let response: BlockingFunctionResponsePayload;
@@ -3141,11 +3141,7 @@ async function fetchBlockingFunction(
   let status: number;
   let text: string;
   try {
-    const signal = controller.signal as any;
-    signal.reason = "";
-    signal.throwIfAborted = () => {
-      throw new FirebaseError("Aborted");
-    };
+    const signal = controller.signal;
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

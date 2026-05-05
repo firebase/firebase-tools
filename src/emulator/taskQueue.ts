@@ -293,11 +293,7 @@ export class TaskQueue {
         headers["X-CloudTasks-TaskPreviousResponse"] = `${emulatedTask.metadata.previousResponse}`;
       }
       const controller = new AbortController();
-      const signal = controller.signal as any;
-      signal.reason = "";
-      signal.throwIfAborted = () => {
-        throw new FirebaseError("Aborted");
-      };
+      const signal = controller.signal;
       const request = fetch(emulatedTask.task.httpRequest.url, {
         method: "POST",
         headers: headers,
@@ -312,7 +308,7 @@ export class TaskQueue {
 
       const abortId = setTimeout(() => {
         // TODO: Set X-CloudTasks-TaskRetryReason
-        controller.abort();
+        controller.abort(new FirebaseError("Aborted")); 
       }, dispatchDeadlineSeconds * 1000);
 
       const response = await request;
