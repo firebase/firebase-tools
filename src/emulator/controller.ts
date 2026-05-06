@@ -671,8 +671,10 @@ export async function startAll(
     }
 
     const config = options.config;
+    // emulator does not support multiple databases yet
+    // TODO(VicVer09): b/269787702
+    let rulesLocalPath;
     let rulesFileFound;
-    const rules: { database: string; rules: string }[] = [];
     const firestoreConfigs: fsConfig.ParsedFirestoreConfig[] = fsConfig.getFirestoreConfig(
       projectId,
       options,
@@ -683,29 +685,28 @@ export async function startAll(
         "firestore",
         `Cloud Firestore config does not exist in firebase.json.`,
       );
-    } else {
-      for (const firestoreConfig of firestoreConfigs) {
-        if (firestoreConfig.rules) {
-          const rulesLocalPath = firestoreConfig.rules;
-          const rulesAbsolutePath = config.path(rulesLocalPath);
-          rulesFileFound = fs.existsSync(rulesAbsolutePath);
-          if (rulesFileFound) {
-            rules.push({ database: firestoreConfig.database, rules: rulesAbsolutePath });
-          } else {
-            firestoreLogger.logLabeled(
-              "WARN",
-              "firestore",
-              `Cloud Firestore rules file ${clc.bold(
-                rulesAbsolutePath,
-              )} specified in firebase.json does not exist.`,
-            );
-          }
-        }
-      }
+    } else if (firestoreConfigs.length !== 1) {
+      firestoreLogger.logLabeled(
+        "WARN",
+        "firestore",
+        `Cloud Firestore Emulator does not support multiple databases yet.`,
+      );
+    } else if (firestoreConfigs[0].rules) {
+      rulesLocalPath = firestoreConfigs[0].rules;
     }
-    args.rules = rules;
-
-    if (rules.length === 0) {
+    if (rulesLocalPath) {
+      const rules: string = config.path(rulesLocalPath);
+      rulesFileFound = fs.existsSync(rules);
+      if (rulesFileFound) {
+        args.rules = rules;
+      } else {
+        firestoreLogger.logLabeled(
+          "WARN",
+          "firestore",
+          `Cloud Firestore rules file ${clc.bold(rules)} specified in firebase.json does not exist.`,
+        );
+      }
+    } else {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
@@ -713,7 +714,7 @@ export async function startAll(
       );
     }
 
-    if (rules.length === 0) {
+    if (!rulesFileFound) {
       firestoreLogger.logLabeled(
         "WARN",
         "firestore",
