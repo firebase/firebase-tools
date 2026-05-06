@@ -39,6 +39,28 @@ export enum ArrayConfig {
   CONTAINS = "CONTAINS",
 }
 
+export enum TextIndexType {
+  TEXT_INDEX_TYPE_UNSPECIFIED = "TEXT_INDEX_TYPE_UNSPECIFIED",
+  TOKENIZED = "TOKENIZED",
+}
+
+export enum TextMatchType {
+  TEXT_MATCH_TYPE_UNSPECIFIED = "TEXT_MATCH_TYPE_UNSPECIFIED",
+  MATCH_GLOBALLY = "MATCH_GLOBALLY",
+}
+
+export interface SearchConfig {
+  textSpec?: {
+    indexSpecs: {
+      indexType: TextIndexType;
+      matchType: TextMatchType;
+    }[];
+  };
+  geoSpec?: {
+    geoJsonIndexingDisabled?: boolean;
+  };
+}
+
 export interface VectorConfig {
   dimension: number;
   flat?: {};
@@ -57,7 +79,7 @@ export enum StateTtl {
 }
 
 /**
- * An Index as it is represented in the Firestore v1beta2 indexes API.
+ * An Index as it is represented in the Firestore indexes API.
  */
 export interface Index {
   name?: string;
@@ -77,6 +99,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  searchConfig?: SearchConfig;
   vectorConfig?: VectorConfig;
 }
 

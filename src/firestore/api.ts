@@ -24,7 +24,7 @@ export class FirestoreApi {
   /**
    * Process indexes by appending the implicit __name__ fields with default order for STANDARD edition database.
    * No-op if exists __name__ field at the end.
-   * No-op is ENTERPRISE edition databases.
+   * Not called on ENTERPRISE edition databases.
    * @param index Spec index to process
    * @return Processed spec index with potential additional __name__ suffix
    */
@@ -364,7 +364,7 @@ export class FirestoreApi {
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig", "vectorConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "searchConfig", "vectorConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(types.Order));
@@ -377,6 +377,26 @@ export class FirestoreApi {
       if (field.vectorConfig) {
         validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
         validator.assertHas(field.vectorConfig, "flat");
+      }
+
+      if (field.searchConfig) {
+        if (field.searchConfig.textSpec) {
+          validator.assertHas(field.searchConfig.textSpec, "indexSpecs");
+          for (const spec of field.searchConfig.textSpec.indexSpecs as unknown[]) {
+            validator.assertHas(spec, "indexType");
+            validator.assertEnum(spec, "indexType", Object.keys(types.TextIndexType));
+            validator.assertHas(spec, "matchType");
+            validator.assertEnum(spec, "matchType", Object.keys(types.TextMatchType));
+          }
+        }
+        // all fields under field.searchConfig.geoSpec are optional
+        if (field.searchConfig.geoSpec?.geoJsonIndexingDisabled !== undefined) {
+          validator.assertType(
+            "searchConfig.geoSpec.geoJsonIndexingDisabled",
+            field.searchConfig.geoSpec.geoJsonIndexingDisabled,
+            "boolean",
+          );
+        }
       }
     });
   }
@@ -609,8 +629,12 @@ export class FirestoreApi {
         return false;
       }
 
-      // Note: vectorConfig is an object, and using '!==' should not be used.
+      // Note: vectorConfig and searchConfig are objects, and '!==' should not be used.
       if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
+        return false;
+      }
+
+      if (!utils.deepEqual(iField.searchConfig, sField.searchConfig)) {
         return false;
       }
 
@@ -728,6 +752,8 @@ export class FirestoreApi {
             f.arrayConfig = field.arrayConfig;
           } else if (field.vectorConfig) {
             f.vectorConfig = field.vectorConfig;
+          } else if (field.searchConfig) {
+            f.searchConfig = field.searchConfig;
           } else if (field.mode === types.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = types.ArrayConfig.CONTAINS;
           } else {
