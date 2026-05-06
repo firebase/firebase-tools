@@ -1,5 +1,6 @@
 - Added support for creating search indexes for Firestore. (#10431)
 - Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
+- Fixed an issue causing errors when multiple Firestore databases were configured in `firebase.json` (#8114)
 - Updated the Firebase Data Connect local toolkit to v3.4.7, which includes the following changes: (#10461)
   - Fix emulator crash when using `uuidv4()` on operations.
   - Support for `_Data` input types as variables with `@allow(fields, maxCount)` to constraint the input JSON, enabling batch mutations in admin SDK. Client SDK support will come soon.
