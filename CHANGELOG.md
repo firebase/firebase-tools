@@ -1,0 +1,5 @@
+- Updated the Firebase Data Connect local toolkit to v3.4.9, which includes the following changes:
+  - Fix emulator crash when using uuidv4() on operations (https://github.com/firebase/firebase-tools/issues/9852)
+  - Support for `_Data` input types as operation variables, enabling batch mutations.
+  - The `@allow` directive on variable definitions to restrict fields and max item counts for `_Data` variables.
+  - Dart codegen doesn't handle nullable BigInt.
