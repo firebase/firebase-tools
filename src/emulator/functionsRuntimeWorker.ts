@@ -272,11 +272,14 @@ export class RuntimeWorker {
       try {
         await Promise.race([this.isSocketReady(), timeout]);
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Allow us to wait until the server is listening.
-        if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
-          await sleep(100);
-          continue;
+        if (typeof err === "object" && err !== null && "code" in err) {
+          const code = (err as { code: unknown }).code;
+          if (typeof code === "string" && ["ECONNREFUSED", "ENOENT"].includes(code)) {
+            await sleep(100);
+            continue;
+          }
         }
         throw err;
       }
