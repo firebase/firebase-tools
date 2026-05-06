@@ -2,4 +2,3 @@
 - Updated the Firebase Data Connect local toolkit to v3.4.7, which includes the following changes: (#10461)
   - Fix emulator crash when using `uuidv4()` on operations.
   - Support for `_Data` input types as variables with `@allow(fields, maxCount)` to constraint the input JSON, enabling batch mutations in admin SDK. Client SDK support will come soon.
-
