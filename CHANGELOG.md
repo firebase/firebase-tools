@@ -1,0 +1,2 @@
+- Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
+- Increase supported range for Next.js to version 16.0 (#9463)

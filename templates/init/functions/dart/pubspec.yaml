@@ -11,3 +11,4 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.4.0
+  lints: ^6.0.0

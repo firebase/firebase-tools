@@ -3,7 +3,13 @@ import * as utils from "../../../utils";
 
 export async function getRulesFromConsole(projectId: string): Promise<string | null> {
   const defaultBucket = await gcp.storage.getDefaultBucket(projectId);
-  const name = await gcp.rules.getLatestRulesetName(projectId, "firebase.storage", defaultBucket);
+  const releases = await gcp.rules.listAllReleases(projectId);
+  const name = await gcp.rules.getLatestRulesetName(
+    projectId,
+    "firebase.storage",
+    releases,
+    defaultBucket,
+  );
   if (!name) {
     return null;
   }

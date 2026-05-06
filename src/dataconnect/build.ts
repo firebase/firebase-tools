@@ -42,12 +42,25 @@ export async function build(
   return buildResult?.metadata ?? {};
 }
 
+/**
+ * Handles build errors by throwing a FirebaseError if any error cannot be bypassed or acknowledged.
+ */
 export async function handleBuildErrors(
   errors: GraphqlError[],
   nonInteractive: boolean,
   force: boolean,
   dryRun?: boolean,
-) {
+): Promise<void> {
+  const fatalDeploys = errors.filter((w) => w.extensions?.warningLevel === "ALWAYS_REQUIRED");
+  if (fatalDeploys.length) {
+    utils.logLabeledError(
+      "dataconnect",
+      `There are deployment requirements that are always required and cannot be bypassed:\n` +
+        prettifyTable(fatalDeploys),
+    );
+    throw new FirebaseError("Deployment failed due to unbypassable requirements.");
+  }
+
   if (errors.filter((w) => !w.extensions?.warningLevel).length) {
     // Throw immediately if there are any build errors in the GraphQL schema or connectors.
     throw new FirebaseError(

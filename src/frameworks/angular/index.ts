@@ -42,7 +42,12 @@ export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   const version = getAngularVersion(dir);
-  return { mayWantBackend: true, version };
+  const mayWantBackend = !!findDependency("@angular/platform-server", {
+    cwd: dir,
+    depth: 0,
+    omitDev: false,
+  });
+  return { mayWantBackend, version };
 }
 
 export function init(setup: any, config: any) {

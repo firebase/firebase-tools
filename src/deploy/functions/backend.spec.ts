@@ -360,6 +360,48 @@ describe("Backend", () => {
 
         expect(context.unreachableRegions?.run).to.deep.equal(["unknown"]);
       });
+
+      it("should read missing Cloud Run services when dartfunctions experiment is enabled", async () => {
+        isEnabled.withArgs("dartfunctions").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.onFirstCall().resolves([RUN_SERVICE]);
+
+        const have = await backend.existingBackend(newContext());
+
+        const wantEndpoint = {
+          ...ENDPOINT,
+          platform: "gcfv2" as const,
+          concurrency: 80,
+          cpu: 1,
+          httpsTrigger: {},
+          availableMemoryMb: 256 as const,
+          environmentVariables: {
+            FUNCTION_TARGET: "function",
+          },
+          labels: {
+            "deployment-tool": "cli-firebase",
+            "goog-managed-by": "cloud-functions",
+            "goog-cloudfunctions-runtime": "nodejs16",
+            "firebase-functions-codebase": "default",
+          },
+          secretEnvironmentVariables: [],
+          ingressSettings: "ALLOW_ALL" as const,
+          timeoutSeconds: 60,
+          serviceAccount: null,
+        };
+        delete wantEndpoint.state;
+
+        expect(have).to.deep.equal(backend.of(wantEndpoint));
+        expect(listAllFunctionsV2).to.have.been.calledOnce;
+        expect(listServices).to.have.been.calledOnce;
+      });
     });
 
     describe("checkAvailability", () => {

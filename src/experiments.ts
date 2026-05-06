@@ -88,7 +88,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   dartfunctions: {
     shortDescription: "Enable Dart Functions.",
-    public: false,
+    public: true,
     default: false,
   },
 
@@ -182,6 +182,11 @@ export const ALL_EXPERIMENTS = experiments({
   mcpalpha: {
     shortDescription: "Opt-in to early MCP features before they're widely released.",
     default: false,
+    public: true,
+  },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
     public: true,
   },
   fdcift: {

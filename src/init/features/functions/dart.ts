@@ -7,6 +7,7 @@ import { readTemplateSync } from "../../../templates";
 const PUBSPEC_TEMPLATE = readTemplateSync("init/functions/dart/pubspec.yaml");
 const MAIN_TEMPLATE = readTemplateSync("init/functions/dart/server.dart");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/dart/_gitignore");
+const ANALYSIS_OPTIONS_TEMPLATE = readTemplateSync("init/functions/dart/analysis_options.yaml");
 
 /**
  * Create a Dart Firebase Functions project.
@@ -14,6 +15,10 @@ const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/dart/_gitignore");
 export async function setup(setup: any, config: Config): Promise<void> {
   await config.askWriteProjectFile(`${setup.functions.source}/pubspec.yaml`, PUBSPEC_TEMPLATE);
   await config.askWriteProjectFile(`${setup.functions.source}/.gitignore`, GITIGNORE_TEMPLATE);
+  await config.askWriteProjectFile(
+    `${setup.functions.source}/analysis_options.yaml`,
+    ANALYSIS_OPTIONS_TEMPLATE,
+  );
   await config.askWriteProjectFile(`${setup.functions.source}/bin/server.dart`, MAIN_TEMPLATE);
 
   // Write the latest supported runtime version to the config.

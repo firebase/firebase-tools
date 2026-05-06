@@ -70,6 +70,7 @@ export default async function (context: Context, options: Options): Promise<void
     `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  rolloutsSpinner.stop();
   let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
@@ -83,7 +84,6 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledError("apphosting", `${res.reason}`);
     }
   }
-  rolloutsSpinner.stop();
   if (failed) {
     throw new FirebaseError(
       "One or more rollouts failed. Please review the errors above and try again.",

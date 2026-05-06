@@ -189,6 +189,9 @@ export const init = tool(
     _meta: {
       requiresProject: false, // Can start from scratch.
       requiresAuth: false, // Will throw error if the specific feature needs it.
+      ui: {
+        resourceUri: "ui://core/init/mcp-app.html",
+      },
     },
   },
   async ({ features }, { projectId, config, rc }) => {
