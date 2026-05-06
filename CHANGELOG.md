@@ -1,1 +1,5 @@
 - Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
+- Updated the Firebase Data Connect local toolkit to v3.4.7, which includes the following changes:
+  - Fix emulator crash when using `uuidv4()` on operations.
+  - Support for `_Data` input types as operation variables, enabling batch mutations.
+  - The `@allow` directive on variable definitions to restrict fields and max item counts for `_Data` variables.
