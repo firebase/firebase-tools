@@ -30,6 +30,17 @@ interface Codebase {
  */
 export type ServingLocality = "GLOBAL_ACCESS" | "REGIONAL_STRICT";
 
+export type AutomaticBaseImageUpdateState =
+  | "AUTOMATIC_BASE_IMAGE_UPDATE_STATE_UNSPECIFIED"
+  | "UPDATES_ENABLED"
+  | "UPDATES_DISABLED"
+  | "RUNTIME_NOT_SUPPORTED"
+  | "RUNTIME_NOT_SET";
+
+export interface Runtime {
+  value: string;
+}
+
 /** A Backend, the primary resource of Frameworks. */
 export interface Backend {
   name: string;
@@ -43,6 +54,20 @@ export interface Backend {
   serviceAccount?: string;
   appId?: string;
   managedResources?: ManagedResource[];
+  runtime?: Runtime;
+  automaticBaseImageUpdatesDisabled?: boolean;
+}
+
+export interface SupportedRuntime {
+  name: string;
+  runtimeId: string;
+  automaticBaseImageUpdatesSupported: boolean;
+  deprecateTime?: string;
+  decommissionTime?: string;
+}
+
+export interface ListSupportedRuntimesResponse {
+  supportedRuntimes: SupportedRuntime[];
 }
 
 export interface ManagedResource {
@@ -71,6 +96,8 @@ export interface Build {
   createTime: string;
   updateTime: string;
   deleteTime: string;
+  automaticBaseImageUpdateState?: AutomaticBaseImageUpdateState;
+  baseImage?: string;
 }
 
 export interface ListBuildsResponse {
@@ -694,6 +721,18 @@ export async function listLocations(projectId: string): Promise<Location[]> {
     pageToken = response.body.nextPageToken;
   } while (pageToken);
   return locations;
+}
+
+/**
+ * Lists supported runtimes for a given project and location.
+ */
+export async function listSupportedRuntimes(
+  projectId: string,
+  location: string,
+): Promise<SupportedRuntime[]> {
+  const name = `projects/${projectId}/locations/${location}/supportedRuntimes`;
+  const res = await client.get<ListSupportedRuntimesResponse>(name);
+  return res.body.supportedRuntimes || [];
 }
 
 /**

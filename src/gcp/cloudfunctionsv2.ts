@@ -18,6 +18,8 @@ import {
 } from "../functions/constants";
 import { RequireKeys } from "../metaprogramming";
 import { captureRuntimeValidationError } from "./cloudfunctions";
+import { AI_LOGIC_EVENTS_TO_TRIGGER, AI_LOGIC_TRIGGERS_TO_EVENTS } from "./ailogic";
+import { isAILogicEvent } from "../deploy/functions/services/ailogic";
 import { mebibytes } from "./k8s";
 
 export const API_VERSION = "v2";
@@ -32,6 +34,7 @@ const client = new Client({
 });
 
 export type VpcConnectorEgressSettings = "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC";
+export type DirectVpcEgress = `VPC_EGRESS_${"UNSPECIFIED" | VpcConnectorEgressSettings}`;
 export type IngressSettings = "ALLOW_ALL" | "ALLOW_INTERNAL_ONLY" | "ALLOW_INTERNAL_AND_GCLB";
 export type FunctionState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
 
@@ -123,6 +126,12 @@ export interface ServiceConfig {
   maxInstanceRequestConcurrency?: number | null;
   vpcConnector?: string | null;
   vpcConnectorEgressSettings?: VpcConnectorEgressSettings | null;
+  directVpcNetworkInterface?: Array<{
+    network?: string;
+    subnetwork?: string;
+    tags?: string[];
+  }> | null;
+  directVpcEgress?: DirectVpcEgress | null;
   ingressSettings?: IngressSettings | null;
 
   // The service account for default credentials. Defaults to the
@@ -496,16 +505,20 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   });
 
   if (endpoint.vpc) {
-    proto.renameIfPresent(gcfFunction.serviceConfig, endpoint.vpc, "vpcConnector", "connector");
-    proto.renameIfPresent(
-      gcfFunction.serviceConfig,
-      endpoint.vpc,
-      "vpcConnectorEgressSettings",
-      "egressSettings",
-    );
+    if (endpoint.vpc.connector) {
+      gcfFunction.serviceConfig.vpcConnector = endpoint.vpc.connector;
+      gcfFunction.serviceConfig.vpcConnectorEgressSettings = endpoint.vpc.egressSettings || null;
+    } else if (endpoint.vpc.networkInterfaces) {
+      gcfFunction.serviceConfig.directVpcNetworkInterface = endpoint.vpc.networkInterfaces;
+      gcfFunction.serviceConfig.directVpcEgress = endpoint.vpc.egressSettings
+        ? `VPC_EGRESS_${endpoint.vpc.egressSettings}`
+        : null;
+    }
   } else if (endpoint.vpc === null) {
     gcfFunction.serviceConfig.vpcConnector = null;
     gcfFunction.serviceConfig.vpcConnectorEgressSettings = null;
+    gcfFunction.serviceConfig.directVpcNetworkInterface = null;
+    gcfFunction.serviceConfig.directVpcEgress = null;
   }
 
   if (backend.isEventTriggered(endpoint)) {
@@ -576,6 +589,12 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     }
   } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
     gcfFunction.labels = { ...gcfFunction.labels, "deployment-fdcgraphql": "true" };
+  } else if (isAILogicEvent(endpoint)) {
+    gcfFunction.labels = {
+      ...gcfFunction.labels,
+      "ailogic-event-type": AI_LOGIC_EVENTS_TO_TRIGGER[endpoint.blockingTrigger.eventType],
+      "ailogic-locality": endpoint.blockingTrigger.options?.regionalWebhook ? "regional" : "global",
+    };
   } else if (backend.isBlockingTriggered(endpoint)) {
     gcfFunction.labels = {
       ...gcfFunction.labels,
@@ -624,6 +643,21 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
   } else if (gcfFunction.labels?.["deployment-fdcgraphql"] === "true") {
     trigger = {
       dataConnectGraphqlTrigger: {},
+    };
+  } else if (gcfFunction.labels?.["ailogic-event-type"]) {
+    const triggerType = gcfFunction.labels["ailogic-event-type"];
+    const eventType =
+      AI_LOGIC_TRIGGERS_TO_EVENTS[triggerType as keyof typeof AI_LOGIC_TRIGGERS_TO_EVENTS];
+    if (!eventType) {
+      throw new FirebaseError(`Unrecognized ailogic-event-type label: ${triggerType}`);
+    }
+    trigger = {
+      blockingTrigger: {
+        eventType,
+        options: {
+          regionalWebhook: gcfFunction.labels["ailogic-locality"] === "regional",
+        },
+      },
     };
   } else if (gcfFunction.labels?.[BLOCKING_LABEL]) {
     trigger = {
@@ -742,6 +776,20 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
         "egressSettings",
         "vpcConnectorEgressSettings",
       );
+    } else if (gcfFunction.serviceConfig.directVpcNetworkInterface) {
+      endpoint.vpc = { networkInterfaces: gcfFunction.serviceConfig.directVpcNetworkInterface };
+      if (gcfFunction.serviceConfig.directVpcEgress) {
+        if (!gcfFunction.serviceConfig.directVpcEgress.startsWith("VPC_EGRESS_")) {
+          throw new FirebaseError(
+            `Unexpected VPC egress setting: ${gcfFunction.serviceConfig.directVpcEgress}`,
+          );
+        }
+        if (gcfFunction.serviceConfig.directVpcEgress !== "VPC_EGRESS_UNSPECIFIED") {
+          endpoint.vpc.egressSettings = gcfFunction.serviceConfig.directVpcEgress.substring(
+            "VPC_EGRESS_".length,
+          ) as backend.VpcEgressSettings;
+        }
+      }
     }
     const serviceName = gcfFunction.serviceConfig.service;
     if (!serviceName) {

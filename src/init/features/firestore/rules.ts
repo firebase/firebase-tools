@@ -46,7 +46,8 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
 }
 
 async function getRulesFromConsole(projectId: string): Promise<string | null> {
-  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore");
+  const releases = await gcp.rules.listAllReleases(projectId);
+  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore", releases);
   if (!name) {
     return null;
   }

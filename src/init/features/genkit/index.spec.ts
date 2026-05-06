@@ -54,10 +54,10 @@ describe("genkit", () => {
     sandbox.restore();
   });
 
-  describe("doSetup", () => {
+  describe("askQuestions", () => {
     beforeEach(() => {
-      // Mock the behavior of functions.doSetup
-      functionsStub.doSetup.callsFake(async (setup: any) => {
+      // Mock the behavior of functions.askQuestions
+      functionsStub.askQuestions.callsFake(async (setup: any) => {
         setup.functions = {
           source: "functions",
           codebase: "default",
@@ -213,7 +213,8 @@ describe("genkit", () => {
 
       await genkit.doSetup(setup, cfg, options);
 
-      expect(functionsStub.doSetup.notCalled).to.be.true;
+      expect(functionsStub.askQuestions.notCalled).to.be.true;
+      expect(functionsStub.actuate.notCalled).to.be.true;
     });
   });
 });

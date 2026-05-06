@@ -7,6 +7,31 @@ import { regionInLocation } from "../../../gcp/location";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
 
+const bucketCache = new Map<string, { location: string }>();
+
+/**
+ * Clear the storage bucket cache. Used for testing.
+ * @internal
+ */
+export function clearCache(): void {
+  bucketCache.clear();
+}
+
+/**
+ * A memoized version of storage.getBucket that avoids repeated calls to the API.
+ *
+ * @param bucketName the bucket ID
+ */
+export async function getBucket(bucketName: string): Promise<{ location: string }> {
+  if (bucketCache.has(bucketName)) {
+    return bucketCache.get(bucketName)!;
+  }
+
+  const b = await storage.getBucket(bucketName);
+  bucketCache.set(bucketName, b);
+  return b;
+}
+
 /**
  * Finds the required project level IAM bindings for the Cloud Storage service agent
  * @param projectId project identifier
@@ -45,9 +70,7 @@ export async function ensureStorageTriggerRegion(
       `Looking up bucket region for the storage event trigger on bucket ${eventTrigger.eventFilters.bucket}`,
     );
     try {
-      const bucket: { location: string } = await storage.getBucket(
-        eventTrigger.eventFilters.bucket,
-      );
+      const bucket: { location: string } = await getBucket(eventTrigger.eventFilters.bucket);
       eventTrigger.region = bucket.location.toLowerCase();
       logger.debug("Setting the event trigger region to", eventTrigger.region, ".");
     } catch (err: any) {

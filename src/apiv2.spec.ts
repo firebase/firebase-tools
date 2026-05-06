@@ -4,7 +4,7 @@ import * as nock from "nock";
 import AbortController from "abort-controller";
 const proxySetup = require("proxy");
 
-import { Client } from "./apiv2";
+import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
 import { FirebaseError } from "./error";
 import { streamToString, stringToStream } from "./utils";
 
@@ -171,6 +171,23 @@ describe("apiv2", () => {
         path: "/path/to/foo",
       });
       await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request.+/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should intercept CLI OAuth project quota errors and throw a generic error", async () => {
+      nock("https://example.com")
+        .get("/path/to/foo")
+        .replyWithError("quota exceeded for project " + CLI_OAUTH_PROJECT_NUMBER);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(
+        FirebaseError,
+        /An Internal error has occurred/,
+      );
       expect(nock.isDone()).to.be.true;
     });
 

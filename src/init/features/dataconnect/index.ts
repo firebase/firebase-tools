@@ -5,6 +5,7 @@ import * as fs from "fs-extra";
 import { input, select, confirm } from "../../../prompt";
 import { Config } from "../../../config";
 import { Setup } from "../..";
+import { Options } from "../../../options";
 import { setupCloudSql } from "../../../dataconnect/provisionCloudSql";
 import { checkFreeTrialInstanceUsed, upgradeInstructions } from "../../../dataconnect/freeTrial";
 import * as cloudsql from "../../../gcp/cloudsql/cloudsqladmin";
@@ -44,7 +45,7 @@ import { configstore } from "../../../configstore";
 import { trackGA4 } from "../../../track";
 import { isEnabled } from "../../../experiments";
 
-// Default GCP region for Data Connect
+// Default GCP region for SQL Connect
 export const FDC_DEFAULT_REGION = "us-east4";
 
 const DATACONNECT_YAML_TEMPLATE = readTemplateSync("init/dataconnect/dataconnect.yaml");
@@ -117,9 +118,9 @@ const templateServiceInfo: ServiceGQL = {
   seedDataGql: SEED_DATA_TEMPLATE,
 };
 
-// askQuestions prompts the user about the Data Connect service they want to init. Any prompting
+// askQuestions prompts the user about the SQL Connect service they want to init. Any prompting
 // logic should live here, and _no_ actuation logic should live here.
-export async function askQuestions(setup: Setup): Promise<void> {
+export async function askQuestions(setup: Setup, config: Config, options: Options): Promise<void> {
   const info: RequiredInfo = {
     flow: "",
     appDescription: "",
@@ -131,8 +132,9 @@ export async function askQuestions(setup: Setup): Promise<void> {
   };
   if (setup.projectId) {
     await ensureApis(setup.projectId);
-    await promptForExistingServices(setup, info);
-    if (!info.serviceGql) {
+    await promptForExistingServices(setup, info, options);
+    // In an empty project, firebase init dataconnect in non-interactive mode always setup the static movie app template.
+    if (!info.serviceGql && !options.nonInteractive) {
       // TODO: Consider use Gemini to generate schema for Spark project as well.
       if (!configstore.get("gemini")) {
         logBullet(
@@ -142,6 +144,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
       const wantToGenerate = await confirm({
         message: "Do you want to generate schema and queries with Gemini?",
         default: false,
+        nonInteractive: options.nonInteractive,
       });
       if (wantToGenerate) {
         configstore.set("gemini", true);
@@ -154,15 +157,16 @@ export async function askQuestions(setup: Setup): Promise<void> {
             }
             return "Please enter a description for your app idea.";
           },
+          nonInteractive: options.nonInteractive,
         });
       }
     }
-    await promptForCloudSQL(setup, info);
+    await promptForCloudSQL(setup, info, options);
   }
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.dataconnect = info;
 
-  await sdk.askQuestions(setup);
+  await sdk.askQuestions(setup, config, options);
 }
 
 // actuate writes product specific files and makes product specifc API calls.
@@ -175,7 +179,7 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   const info = setup.featureInfo?.dataconnect;
   if (!info) {
-    throw new Error("Data Connect feature RequiredInfo is not provided");
+    throw new Error("SQL Connect feature RequiredInfo is not provided");
   }
   // Populate the default values of required fields.
   info.serviceId = info.serviceId || defaultServiceId();
@@ -210,13 +214,13 @@ export async function actuate(setup: Setup, config: Config, options: any): Promi
 
   if (info.appDescription) {
     setup.instructions.push(
-      `You can visualize the Data Connect Schema in Firebase Console:
+      `You can visualize the SQL Connect Schema in Firebase Console:
 
     https://console.firebase.google.com/project/${setup.projectId!}/dataconnect/locations/${info.locationId}/services/${info.serviceId}/schema`,
     );
   }
   setup.instructions.push(
-    `Install the Data Connect VS Code Extensions. You can explore Data Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
+    `Install the SQL Connect VS Code Extensions. You can explore SQL Connect Query on local pgLite and Cloud SQL Postgres Instance.`,
   );
 }
 
@@ -266,7 +270,7 @@ async function actuateWithInfo(
   // Use Gemini to generate schema.
   const schemaGql = await promiseWithSpinner(
     () => generateSchema(info.appDescription, projectId),
-    "Generating the Data Connect Schema...",
+    "Generating the SQL Connect Schema...",
   );
   const schemaFiles = [{ path: "schema.gql", content: schemaGql }];
 
@@ -278,13 +282,13 @@ async function actuateWithInfo(
     // - MCP tool `firebase_init` may pick an existing service ID, but shouldn't set app_description at the same time.
     logLabeledError(
       "dataconnect",
-      `Data Connect Service ${serviceName} already exists. Skip saving them...`,
+      `SQL Connect Service ${serviceName} already exists. Skip saving them...`,
     );
     info.flow += "_save_gemini_service_already_exists";
     return await writeFiles(config, info, { schemaGql: schemaFiles, connectors: [] }, options);
   }
 
-  // Create the initial Data Connect Service and Schema generated by Gemini.
+  // Create the initial SQL Connect Service and Schema generated by Gemini.
   await promiseWithSpinner(async () => {
     const [saveSchemaGql, waitForCloudSQLProvision] = schemasDeploySequence(
       projectId,
@@ -297,10 +301,10 @@ async function actuateWithInfo(
       // Kicks off the LRO in the background. It will take about 10min. Don't wait for it.
       void upsertSchema(waitForCloudSQLProvision);
     }
-  }, "Saving the Data Connect Schema...");
+  }, "Saving the SQL Connect Schema...");
 
   try {
-    // Generate the example Data Connect Connector and seed_data.gql with Gemini.
+    // Generate the example SQL Connect Connector and seed_data.gql with Gemini.
     // Save them to local file, but don't deploy it because they may have errors.
     const [operationGql, seedDataGql] = await promiseWithSpinner(
       () =>
@@ -308,7 +312,7 @@ async function actuateWithInfo(
           generateOperation(PROMPT_GENERATE_CONNECTOR, serviceName, projectId),
           generateOperation(PROMPT_GENERATE_SEED_DATA, serviceName, projectId),
         ]),
-      "Generating the Data Connect Operations...",
+      "Generating the SQL Connect Operations...",
     );
     const connectors = [
       {
@@ -547,8 +551,12 @@ function subConnectorYamlValues(replacementValues: { connectorId: string }): str
   return replaced;
 }
 
-async function promptForExistingServices(setup: Setup, info: RequiredInfo): Promise<void> {
-  // Check for existing Firebase Data Connect services.
+async function promptForExistingServices(
+  setup: Setup,
+  info: RequiredInfo,
+  options: Options,
+): Promise<void> {
+  // Check for existing Firebase SQL Connect services.
   if (!setup.projectId) {
     return;
   }
@@ -556,7 +564,7 @@ async function promptForExistingServices(setup: Setup, info: RequiredInfo): Prom
   if (!existingServices.length) {
     return;
   }
-  const choice = await chooseExistingService(existingServices);
+  const choice = await chooseExistingService(existingServices, options);
   if (!choice) {
     const existingServiceIds = existingServices.map((s) => s.name.split("/").pop()!);
     info.serviceId = newUniqueId(defaultServiceId(), existingServiceIds);
@@ -648,7 +656,10 @@ async function downloadService(info: RequiredInfo, serviceName: string): Promise
  * `FDC_CONNECTOR` should have the same `<location>/<serviceId>/<connectorId>`.
  * @param existing
  */
-async function chooseExistingService(existing: Service[]): Promise<Service | undefined> {
+async function chooseExistingService(
+  existing: Service[],
+  options: Options,
+): Promise<Service | undefined> {
   const fdcConnector = envOverride("FDC_CONNECTOR", "");
   const fdcService = envOverride("FDC_SERVICE", "");
   const serviceEnvVar = fdcConnector || fdcService;
@@ -682,10 +693,16 @@ async function chooseExistingService(existing: Service[]): Promise<Service | und
     message:
       "Your project already has existing services. Which would you like to set up local files for?",
     choices,
+    default: choices[0].value,
+    nonInteractive: options.nonInteractive,
   });
 }
 
-async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void> {
+async function promptForCloudSQL(
+  setup: Setup,
+  info: RequiredInfo,
+  options: Options,
+): Promise<void> {
   if (!setup.projectId) {
     return;
   }
@@ -733,6 +750,8 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
       info.cloudSqlInstanceId = await select<string>({
         message: `Which CloudSQL instance would you like to use?`,
         choices,
+        default: choices[0].value,
+        nonInteractive: options.nonInteractive,
       });
       if (info.cloudSqlInstanceId !== "") {
         info.flow += "_pick_existing_csql";
@@ -752,17 +771,21 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
             `${defaultServiceId().toLowerCase()}-fdc`,
             instances.map((i) => i.name),
           ),
+          nonInteractive: options.nonInteractive,
         });
       }
     }
   }
 
   if (info.locationId === "") {
-    await promptForLocation(setup, info);
-    info.shouldProvisionCSQL = await confirm({
-      message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
-      default: true,
-    });
+    await promptForLocation(setup, info, options);
+    info.shouldProvisionCSQL =
+      !options.nonInteractive &&
+      (await confirm({
+        message: `Would you like to provision your ${freeTrialAvailable ? "free trial " : ""}Cloud SQL instance and database now?`,
+        default: !options.nonInteractive,
+        nonInteractive: options.nonInteractive,
+      }));
   }
 
   // The Gemini generated schema will override any SQL schema in this Postgres database.
@@ -781,13 +804,18 @@ async function promptForCloudSQL(setup: Setup, info: RequiredInfo): Promise<void
   return;
 }
 
-async function promptForLocation(setup: Setup, info: RequiredInfo): Promise<void> {
+async function promptForLocation(
+  setup: Setup,
+  info: RequiredInfo,
+  options: Options,
+): Promise<void> {
   if (info.locationId === "") {
     const choices = await locationChoices(setup);
     info.locationId = await select<string>({
       message: "What location would you like to use?",
       choices,
       default: FDC_DEFAULT_REGION,
+      nonInteractive: options.nonInteractive,
     });
   }
 }

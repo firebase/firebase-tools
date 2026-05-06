@@ -4,9 +4,9 @@ export const init_data_connect = resource(
   {
     uri: "firebase://guides/init/data_connect",
     name: "data_connect_init_guide",
-    title: "Firebase Data Connect Init Guide",
+    title: "Firebase SQL Connect Init Guide",
     description:
-      "guides the coding agent through configuring Data Connect for PostgreSQL access in the current project",
+      "guides the coding agent through configuring SQL Connect for PostgreSQL access in the current project",
   },
   async (uri) => {
     return {

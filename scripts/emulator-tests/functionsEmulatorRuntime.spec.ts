@@ -205,7 +205,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("http").get("http://example.com", resolve);
+                  const req = require("http").get("http://example.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };
@@ -222,7 +223,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("https").get("https://example.com", resolve);
+                  const req = require("https").get("https://example.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };
@@ -239,7 +241,8 @@ describe("FunctionsEmulator-Runtime", function () {
               .firestore.document("test/test")
               .onCreate(async () => {
                 await new Promise((resolve) => {
-                  require("https").get("https://storage.googleapis.com", resolve);
+                  const req = require("https").get("https://storage.googleapis.com", resolve);
+                  req.on("error", resolve);
                 });
               }),
           };

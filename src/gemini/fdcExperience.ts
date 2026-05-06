@@ -1,7 +1,6 @@
 import { Client } from "../apiv2";
 import { cloudAiCompanionOrigin } from "../api";
 import {
-  ChatExperienceResponse,
   CloudAICompanionMessage,
   CloudAICompanionRequest,
   GenerateOperationResponse,
@@ -11,7 +10,6 @@ import { FirebaseError } from "../error";
 
 const apiClient = new Client({ urlPrefix: cloudAiCompanionOrigin(), auth: true });
 const SCHEMA_GENERATOR_EXPERIENCE = "/appeco/firebase/fdc-schema-generator";
-const GEMINI_IN_FIREBASE_EXPERIENCE = "/appeco/firebase/firebase-chat/free";
 const OPERATION_GENERATION_EXPERIENCE = "/appeco/firebase/fdc-query-generator";
 const FIREBASE_CHAT_REQUEST_CONTEXT_TYPE_NAME =
   "type.googleapis.com/google.cloud.cloudaicompanion.v1main.FirebaseChatRequestContext";
@@ -26,7 +24,7 @@ export const PROMPT_GENERATE_SEED_DATA =
  * generateSchema generates a schema based on the users app design prompt.
  * @param prompt description of the app the user would like to generate.
  * @param project project identifier.
- * @return graphQL schema for a Firebase Data Connect Project.
+ * @return graphQL schema for a Firebase SQL Connect Project.
  */
 export async function generateSchema(
   prompt: string,
@@ -46,34 +44,11 @@ export async function generateSchema(
 }
 
 /**
- * chatWithFirebase interacts with the Gemini in Firebase integration providing deeper knowledge on Firebase.
- * @param prompt the interaction that the user would like to have with the service.
- * @param project project identifier.
- * @return ChatExperienceResponse includes not only the message from the service but also links to the resources used by the service.
- */
-export async function chatWithFirebase(
-  prompt: string,
-  project: string,
-  chatHistory: CloudAICompanionMessage[] = [],
-): Promise<ChatExperienceResponse> {
-  const res = await apiClient.post<CloudAICompanionRequest, ChatExperienceResponse>(
-    `/v1beta/projects/${project}/locations/global/instances/default:completeTask`,
-    {
-      input: { messages: [...chatHistory, { content: prompt, author: "USER" }] },
-      experienceContext: {
-        experience: GEMINI_IN_FIREBASE_EXPERIENCE,
-      },
-    },
-  );
-  return res.body;
-}
-
-/**
- * generateOperation generates an operation based on the users prompt and deployed Firebase Data Connect Service.
+ * generateOperation generates an operation based on the users prompt and deployed Firebase SQL Connect Service.
  * @param prompt description of the operation the user would like to generate.
- * @param service the name or service id of the deployed Firebase Data Connect service.
+ * @param service the name or service id of the deployed Firebase SQL Connect service.
  * @param project project identifier.
- * @return graphQL operation for a deployed Firebase Data Connect Schema.
+ * @return graphQL operation for a deployed Firebase SQL Connect Schema.
  */
 export async function generateOperation(
   prompt: string,

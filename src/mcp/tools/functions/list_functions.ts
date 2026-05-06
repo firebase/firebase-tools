@@ -44,12 +44,15 @@ export const list_functions = tool(
       }));
 
       if (!formattedList.length) {
-        return toContent([], {
-          contentPrefix: "No functions found in this project.\n\n",
-        });
+        return toContent(
+          { functions: [] },
+          {
+            contentPrefix: "No functions found in this project.\n\n",
+          },
+        );
       }
 
-      return toContent(formattedList);
+      return toContent({ functions: formattedList });
     } catch (err) {
       const errMsg = getErrMsg((err as any)?.original || err, "Failed to list functions.");
       return mcpError(errMsg);

@@ -168,8 +168,8 @@ describe("client", () => {
     it("deleteSchema", async () => {
       deleteStub.resolves({ body: { name: "op-name" } });
       pollOperationStub.resolves();
-      await client.deleteSchema("projects/p/locations/l/services/s");
-      expect(deleteStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/main");
+      await client.deleteSchema("projects/p/locations/l/services/s/schemas/s");
+      expect(deleteStub).to.be.calledWith("projects/p/locations/l/services/s/schemas/s");
     });
   });
 

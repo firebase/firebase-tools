@@ -18,7 +18,7 @@ import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
 import * as experiments from "../experiments";
 
-/** Picks exactly one Data Connect service based on flags. */
+/** Picks exactly one SQL Connect service based on flags. */
 export async function pickOneService(
   projectId: string,
   config: Config,
@@ -39,7 +39,7 @@ export async function pickOneService(
   return services[0];
 }
 
-/** Picks Data Connect services based on flags. */
+/** Picks SQL Connect services based on flags. */
 export async function pickServices(
   projectId: string,
   config: Config,
@@ -49,8 +49,8 @@ export async function pickServices(
   const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
-      "No Data Connect services found in firebase.json." +
-        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+      "No SQL Connect services found in firebase.json. " +
+        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a SQL Connect service.`,
     );
   }
 
@@ -71,7 +71,7 @@ export async function pickServices(
 }
 
 /**
- * Loads all Data Connect service configurations from the firebase.json file.
+ * Loads all SQL Connect service configurations from the firebase.json file.
  */
 export async function loadAll(projectId: string, config: Config): Promise<ServiceInfo[]> {
   const serviceCfgs = readFirebaseJson(config);
@@ -109,6 +109,8 @@ export async function load(
       const connectorDir = path.join(resolvedDir, dir);
       const connectorYaml = await readConnectorYaml(connectorDir);
       const connectorGqls = await readGQLFiles(connectorDir);
+      const clientCache = inferClientCache(connectorYaml);
+
       return {
         directory: connectorDir,
         connectorYaml,
@@ -117,6 +119,7 @@ export async function load(
           source: {
             files: connectorGqls,
           },
+          client_cache: clientCache,
         },
       };
     }),
@@ -173,6 +176,34 @@ function validateDataConnectYaml(unvalidated: any): DataConnectYaml {
     throw new FirebaseError("Either 'schema' or 'schemas' is required in dataconnect.yaml");
   }
   return unvalidated as DataConnectYaml;
+}
+
+/**
+ * Infer the client cache settings for a given connector configuration.
+ * If any client SDK enables caching, we'll enable strict validation and entity ID inclusion.
+ */
+export function inferClientCache(
+  connectorYaml: ConnectorYaml,
+): { strict_validation_enabled?: boolean; entity_id_included?: boolean } | undefined {
+  const platforms = [
+    connectorYaml.generate?.javascriptSdk,
+    connectorYaml.generate?.swiftSdk,
+    connectorYaml.generate?.kotlinSdk,
+    connectorYaml.generate?.dartSdk,
+  ];
+
+  for (const sdk of platforms) {
+    if (sdk) {
+      const sdkList = Array.isArray(sdk) ? sdk : [sdk];
+      if (sdkList.some((s) => s.clientCache)) {
+        return {
+          strict_validation_enabled: true,
+          entity_id_included: true,
+        };
+      }
+    }
+  }
+  return undefined;
 }
 
 export async function readConnectorYaml(sourceDirectory: string): Promise<ConnectorYaml> {

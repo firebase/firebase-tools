@@ -141,14 +141,12 @@ export async function upsertSchema(
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
-    masterTimeout: 10000,
+    masterTimeout: 60000,
   });
 }
 
-export async function deleteSchema(serviceName: string): Promise<void> {
-  const op = await dataconnectClient().delete<types.Schema>(
-    `${serviceName}/schemas/${types.MAIN_SCHEMA_ID}`,
-  );
+export async function deleteSchema(name: string): Promise<void> {
+  const op = await dataconnectClient().delete<types.Schema>(name);
   await operationPoller.pollOperation<void>({
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
@@ -205,6 +203,7 @@ export async function upsertConnector(connector: types.Connector) {
     apiOrigin: dataconnectOrigin(),
     apiVersion: DATACONNECT_API_VERSION,
     operationResourceName: op.body.name,
+    masterTimeout: 60000,
   });
   return pollRes;
 }

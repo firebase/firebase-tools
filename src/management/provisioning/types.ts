@@ -61,6 +61,28 @@ export interface ProvisionProjectOptions {
 export interface ProvisionFeatureOptions {
   location?: string;
   firebaseAiLogicInput?: Record<string, unknown>;
+  firebaseAuthInput?: FirebaseAuthInput;
+}
+
+export enum ProviderMode {
+  PROVIDER_MODE_UNSPECIFIED = "PROVIDER_MODE_UNSPECIFIED",
+  PROVIDER_ENABLED = "PROVIDER_ENABLED",
+  PROVIDER_DISABLED = "PROVIDER_DISABLED",
+}
+
+export interface GoogleSigninProviderConfig {
+  publicDisplayName?: string;
+  customerSupportEmail?: string;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
+  oauthRedirectUris?: string[];
+}
+
+export interface FirebaseAuthInput {
+  anonymousAuthProviderMode?: ProviderMode;
+  emailAuthProviderMode?: ProviderMode;
+  googleSigninProviderMode?: ProviderMode;
+  googleSigninProviderConfig?: GoogleSigninProviderConfig;
 }
 
 export interface ProvisionFirebaseAppOptions {
@@ -86,4 +108,5 @@ export interface ProvisionRequest {
   };
   webInput?: {};
   firebaseAiLogicInput?: {};
+  firebaseAuthInput?: FirebaseAuthInput;
 }

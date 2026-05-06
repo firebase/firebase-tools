@@ -43,6 +43,11 @@ export function load(client: CLIClient): CLIClient {
   client.appdistribution.testCases = {};
   client.appdistribution.testCases.export = loadCommand("appdistribution-testcases-export");
   client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
+  client.apptesting = {};
+  client.apptesting.execute = loadCommand("apptesting");
+  if (experiments.isEnabled("apptesting")) {
+    client.apptesting.wata = loadCommand("apptesting-wata");
+  }
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
@@ -146,6 +151,9 @@ export function load(client: CLIClient): CLIClient {
   client.functions.config.set = loadCommand("functions-config-set");
   client.functions.config.unset = loadCommand("functions-config-unset");
   client.functions.delete = loadCommand("functions-delete");
+  if (experiments.isEnabled("functionsiac")) {
+    client.functions.export = loadCommand("functions-export");
+  }
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
@@ -254,17 +262,16 @@ export function load(client: CLIClient): CLIClient {
   client.dataconnect.sql.migrate = loadCommand("dataconnect-sql-migrate");
   client.dataconnect.sql.grant = loadCommand("dataconnect-sql-grant");
   client.dataconnect.sql.shell = loadCommand("dataconnect-sql-shell");
+  client.dataconnect.compile = loadCommand("dataconnect-compile");
   client.dataconnect.sdk = {};
   client.dataconnect.sdk.generate = loadCommand("dataconnect-sdk-generate");
+  client.studio = {};
+  client.studio.export = loadCommand("studio-export");
   client.target = loadCommand("target");
   client.target.apply = loadCommand("target-apply");
   client.target.clear = loadCommand("target-clear");
   client.target.remove = loadCommand("target-remove");
   client.use = loadCommand("use");
-  if (experiments.isEnabled("apptesting")) {
-    client.apptesting = {};
-    client.apptesting.wata = loadCommand("apptesting-wata");
-  }
 
   const t1 = process.hrtime.bigint();
   const diffMS = (t1 - t0) / BigInt(1e6);

@@ -1,5 +1,8 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import * as express from "express";
+import * as cors from "cors";
 import {
   CallToolRequest,
   CallToolRequestSchema,
@@ -25,6 +28,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import * as crossSpawn from "cross-spawn";
 import { existsSync } from "node:fs";
+import * as experiments from "../experiments";
 import { Command } from "../command";
 import { Config } from "../config";
 import { configstore } from "../configstore";
@@ -201,7 +205,7 @@ export class FirebaseMcpServer {
     this.logger.debug("detecting active features of Firebase MCP server...");
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     const detected = await Promise.all(
       SERVER_FEATURES.map(async (f) => {
@@ -252,7 +256,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availableTools(ctx, this.activeFeatures, this.detectedFeatures, this.enabledTools);
   }
@@ -266,7 +270,7 @@ export class FirebaseMcpServer {
     // We need a project ID and user for the context, but it's ok if they're empty.
     const projectId = (await this.getProjectId()) || "";
     const accountEmail = await this.getAuthenticatedUser();
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const ctx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
     return availablePrompts(ctx, this.activeFeatures, this.detectedFeatures);
   }
@@ -338,8 +342,17 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     this.logger.debug(`skip auto-auth in studio environment: ${skipAutoAuthForStudio}`);
     const availableTools = await this.getAvailableTools();
+    const isMcpAppsEnabled = experiments.isEnabled("mcpapps");
     return {
-      tools: availableTools.map((t) => t.mcp),
+      tools: availableTools.map((t) => {
+        if (isMcpAppsEnabled) return t.mcp;
+        if (t.mcp._meta?.ui) {
+          const restMeta = { ...t.mcp._meta };
+          delete restMeta.ui;
+          return { ...t.mcp, _meta: restMeta };
+        }
+        return t.mcp;
+      }),
       _meta: {
         projectRoot: this.cachedProjectDir,
         projectDetected: hasActiveProject,
@@ -379,8 +392,11 @@ export class FirebaseMcpServer {
       return mcpAuthError(skipAutoAuthForStudio);
     }
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const toolsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
+    if (request.params._meta?.progressToken) {
+      toolsCtx.progressToken = request.params._meta.progressToken;
+    }
     try {
       const res = await tool.fn(toolArgs, toolsCtx);
       await this.trackGA4("mcp_tool_call", {
@@ -434,7 +450,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const promptsCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     try {
@@ -456,7 +472,7 @@ export class FirebaseMcpServer {
   }
 
   async mcpListResources(): Promise<ListResourcesResult> {
-    await trackGA4("mcp_read_resource", { resource_name: "__list__" });
+    await this.trackGA4("mcp_list_resources", { resource_name: "__list__" });
     return {
       resources: resources.map((r) => r.mcp),
     };
@@ -475,7 +491,7 @@ export class FirebaseMcpServer {
     const skipAutoAuthForStudio = isFirebaseStudio();
     const accountEmail = await this.getAuthenticatedUser(skipAutoAuthForStudio);
 
-    const isBillingEnabled = projectId ? await checkBillingEnabled(projectId) : false;
+    const isBillingEnabled = projectId ? await this.safeCheckBillingEnabled(projectId) : false;
     const resourceCtx = this._createMcpContext(projectId, accountEmail, isBillingEnabled);
 
     const resolved = await resolveResource(req.params.uri, resourceCtx);
@@ -488,11 +504,89 @@ export class FirebaseMcpServer {
     return resolved.result;
   }
 
-  async start(): Promise<void> {
+  async start(options?: { useSSE?: boolean; port?: number }): Promise<void> {
+    if (options?.useSSE) {
+      const app = express();
+
+      app.use(cors());
+
+      const port = options.port || 3000;
+      const transports: Record<string, SSEServerTransport> = {}; // session ID to transport
+
+      app.get("/sse", async (req: express.Request, res: express.Response) => {
+        this.logger.debug(`[SSE] GET /sse connection attempt from ${req.ip}`);
+        try {
+          const transport = new SSEServerTransport("/message", res);
+          // SSEServerTransport has sessionId but it might not be in the typings
+          interface SSEServerTransportWithSessionId extends SSEServerTransport {
+            sessionId: string;
+          }
+          const sessionId = (transport as SSEServerTransportWithSessionId).sessionId;
+          transports[sessionId] = transport;
+
+          this.logger.debug(`[SSE] Connected session ${sessionId}`);
+
+          await this.server.connect(transport);
+          this.logger.debug(`[SSE] Server connected to transport`);
+
+          // Keep handler alive
+          await new Promise<void>((resolve) => {
+            req.on("close", () => {
+              this.logger.debug(`[SSE] Session ${sessionId} disconnected`);
+              delete transports[sessionId];
+              resolve();
+            });
+          });
+        } catch (err) {
+          this.logger.error(`[SSE] Connection error: ${err}`);
+        }
+      });
+
+      app.post("/message", async (req: express.Request, res: express.Response) => {
+        const sessionId = req.query.sessionId as string;
+        this.logger.debug(`[SSE] POST /message attempt for session ${sessionId}`);
+
+        const transport = transports[sessionId];
+
+        if (transport) {
+          try {
+            await transport.handlePostMessage(req, res);
+            this.logger.debug(`[SSE] Handled message for session ${sessionId}`);
+          } catch (err) {
+            this.logger.error(`[SSE] Error handling message for session ${sessionId}: ${err}`);
+          }
+        } else {
+          this.logger.error(
+            `[SSE] Rejecting message: No active transport found for session ${sessionId}`,
+          );
+          res.status(400).send("No active SSE transport connection found for this session");
+        }
+      });
+
+      app.listen(port, "127.0.0.1", () => {
+        this.logger.info(`MCP Server running on HTTP/SSE mode at http://127.0.0.1:${port}`);
+      });
+      return;
+    }
+
     const transport = process.env.FIREBASE_MCP_DEBUG_LOG
       ? new LoggingStdioServerTransport(process.env.FIREBASE_MCP_DEBUG_LOG)
       : new StdioServerTransport();
     await this.server.connect(transport);
+  }
+
+  private async safeCheckBillingEnabled(projectId: string): Promise<boolean> {
+    try {
+      return await checkBillingEnabled(projectId);
+    } catch (e: unknown) {
+      this.logger.debug(
+        "[mcp] Error on billingInfo for " +
+          projectId +
+          ", failing open (assuming false): " +
+          (e instanceof Error ? e.message : String(e)),
+      );
+      return false;
+    }
   }
 
   get logger() {

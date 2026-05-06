@@ -10,11 +10,14 @@ import * as fs from "node:fs";
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
 import { logger, useFileLogger } from "../logger";
+
+import { enableExperimentsFromCliEnvVariable } from "../experiments";
+enableExperimentsFromCliEnvVariable();
+
 import * as client from "..";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 
-import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
 
 import { isCommandModule } from "../command";
@@ -45,7 +48,6 @@ export function cli(pkg: any) {
   logger.debug("-".repeat(70));
   logger.debug();
 
-  enableExperimentsFromCliEnvVariable();
   fetchMOTD();
 
   process.on("exit", (code) => {

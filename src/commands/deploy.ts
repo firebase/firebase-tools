@@ -14,6 +14,7 @@ import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
 import { createSite } from "../hosting/api";
 import { Options } from "../options";
+import * as experiments from "../experiments";
 
 // in order of least time-consuming to most time-consuming
 export const VALID_DEPLOY_TARGETS = [
@@ -26,6 +27,7 @@ export const VALID_DEPLOY_TARGETS = [
   "extensions",
   "dataconnect",
   "apphosting",
+  "auth",
 ];
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
   database: ["firebasedatabase.instances.update"],
@@ -73,6 +75,8 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
     "firebasedataconnect.schemas.list",
     "firebasedataconnect.schemas.update",
   ],
+  apphosting: [],
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
 };
 
 export const command = new Command("deploy")
@@ -98,7 +102,16 @@ export const command = new Command("deploy")
     "--dry-run",
     "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
       "In order to provide better validation, this may still enable APIs on the target project",
-  )
+  );
+
+if (experiments.isEnabled("apphostinglocalbuilds")) {
+  command.option(
+    "--allow-local-build-secrets",
+    "allow the use of build-available secrets in local builds for App Hosting without interactive confirmation",
+  );
+}
+
+command
   .before(requireConfig)
   .before((options: Options) => {
     options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);

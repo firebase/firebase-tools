@@ -58,7 +58,7 @@ describe("compareApiBackupSchedule", () => {
       retention: durationFromSeconds(60 * 60 * 24 * 7),
     };
     expect(sort.compareApiBackupSchedule(weeklySchedule, dailySchedule)).to.greaterThanOrEqual(1);
-    expect(sort.compareApiBackup(dailySchedule, weeklySchedule)).to.lessThanOrEqual(-1);
+    expect(sort.compareApiBackupSchedule(dailySchedule, weeklySchedule)).to.lessThanOrEqual(-1);
   });
 
   it("should compare schedules with the same recurrence by name", () => {
@@ -73,6 +73,6 @@ describe("compareApiBackupSchedule", () => {
       retention: durationFromSeconds(60 * 60 * 24),
     };
     expect(sort.compareApiBackupSchedule(dailySchedule1, dailySchedule2)).to.lessThanOrEqual(-1);
-    expect(sort.compareApiBackup(dailySchedule2, dailySchedule1)).to.greaterThanOrEqual(1);
+    expect(sort.compareApiBackupSchedule(dailySchedule2, dailySchedule1)).to.greaterThanOrEqual(1);
   });
 });

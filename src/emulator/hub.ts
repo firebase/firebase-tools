@@ -112,11 +112,13 @@ export class EmulatorHub extends ExpressBasedEmulator {
       }
       const path: string = req.body.path;
       const initiatedBy: string = req.body.initiatedBy || "unknown";
+      const targets: string[] = req.body.targets;
       utils.logLabeledBullet("emulators", `Received export request. Exporting data to ${path}.`);
       try {
         await new HubExport(this.args.projectId, {
           path,
           initiatedBy,
+          targets,
         }).exportAll();
         utils.logLabeledSuccess("emulators", "Export complete.");
         res.status(200).send({
@@ -168,14 +170,14 @@ export class EmulatorHub extends ExpressBasedEmulator {
     app.post(EmulatorHub.PATH_CLEAR_DATA_CONNECT, async (req, res) => {
       if (req.headers.origin) {
         res.status(403).json({
-          message: `Clear Data Connect cannot be triggered by external callers.`,
+          message: `Clear SQL Connect cannot be triggered by external callers.`,
         });
       }
-      utils.logLabeledBullet("emulators", `Clearing data from Data Connect data sources.`);
+      utils.logLabeledBullet("emulators", `Clearing data from SQL Connect data sources.`);
 
       const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
       if (!instance) {
-        res.status(400).json({ error: "The Data Connect emulator is not running." });
+        res.status(400).json({ error: "The SQL Connect emulator is not running." });
         return;
       }
 

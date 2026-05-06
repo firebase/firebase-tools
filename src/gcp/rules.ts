@@ -22,14 +22,20 @@ function _handleErrorResponse(response: any): any {
  * Gets the latest ruleset name on the project.
  * @param projectId Project from which you want to get the ruleset.
  * @param service Service for the ruleset (ex: cloud.firestore or firebase.storage).
+ * @param resourceName (Optional) The specific database name or storage bucket(ex: `my-bucket.appspot.com`, `database-name`).
  * @return Name of the latest ruleset.
  */
 export async function getLatestRulesetName(
   projectId: string,
   service: string,
+  releases: Release[],
+  resourceName?: string,
 ): Promise<string | null> {
-  const releases = await listAllReleases(projectId);
-  const prefix = `projects/${projectId}/releases/${service}`;
+  let prefix = `projects/${projectId}/releases/${service}`;
+  if (resourceName) {
+    prefix += `/${resourceName}`;
+  }
+
   const release = releases.find((r) => r.name.startsWith(prefix));
 
   if (!release) {
@@ -187,8 +193,17 @@ export async function deleteRuleset(projectId: string, id: string): Promise<void
  * @param projectId Project on which you want to create the ruleset.
  * @param {Array} files Array of `{name, content}` for the source files.
  */
-export async function createRuleset(projectId: string, files: RulesetFile[]): Promise<string> {
-  const payload = { source: { files } };
+export async function createRuleset(
+  projectId: string,
+  files: RulesetFile[],
+  attachmentPoint?: string,
+): Promise<string> {
+  const payload: { source: { files: RulesetFile[] }; attachment_point?: string } = {
+    source: { files },
+  };
+  if (attachmentPoint) {
+    payload.attachment_point = attachmentPoint;
+  }
 
   const response = await apiClient.post<unknown, { name: string }>(
     `/projects/${projectId}/rulesets`,
