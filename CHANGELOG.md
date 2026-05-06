@@ -1,4 +1,4 @@
 - Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
 - Increase supported range for Next.js to version 16.0 (#9463)
-- Update Cloud Function default resource locations (#10414)
+- Updated Cloud Function default resource locations. This does not affect existing functions. (#10414)
 - Add warning for cross-region event triggers (#10408)
