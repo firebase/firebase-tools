@@ -40,10 +40,13 @@ export function toContent(
   }
   const prefix = options?.contentPrefix || "";
   const suffix = options?.contentSuffix || "";
-  return {
+  const result: CallToolResult = {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
-    structuredContent: data as { [key: string]: unknown },
   };
+  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    result.structuredContent = data as Record<string, unknown>;
+  }
+  return result;
 }
 
 /**
@@ -326,5 +329,3 @@ export function cleanSchema(schema: Record<string, any>): Record<string, any> {
   const result = deepClean(schema, true); // Pass true for isRootLevel
   return result === null ? {} : result;
 }
-
-export const RESOURCE_MIME_TYPE = "application/vnd.mcp.ext-app+html";

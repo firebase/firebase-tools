@@ -19,12 +19,14 @@ export function setFirebaseMcp(value: boolean) {
 
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.
 export function detectAIAgent(): string {
-  if (process.env.ANTIGRAVITY_CLI_ALIAS) return "antigravity";
+  if (process.env.ANTIGRAVITY_AGENT) return "antigravity";
   if (process.env.CLAUDECODE) return "claude_code";
   if (process.env.CLINE_ACTIVE) return "cline";
   if (process.env.CODEX_SANDBOX) return "codex_cli";
   if (process.env.CURSOR_AGENT) return "cursor";
   if (process.env.GEMINI_CLI) return "gemini_cli";
   if (process.env.OPENCODE) return "open_code";
+  if (process.env.ANDROID_STUDIO_AGENT) return "android_studio_agent";
+  if (process.env.KIRO_AGENT_PATH) return "kiro";
   return "unknown";
 }

@@ -83,7 +83,7 @@ export const functionsV2Origin = () =>
   utils.envOverride("FIREBASE_FUNCTIONS_V2_URL", "https://cloudfunctions.googleapis.com");
 export const runOrigin = () => utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com");
 export const functionsDefaultRegion = () =>
-  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1");
+  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "REGION_TBD");
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");

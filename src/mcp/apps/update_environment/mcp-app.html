@@ -280,13 +280,11 @@
       </div>
 
       <div class="dropdown-container">
-        <label>Available Projects</label>
-        <div id="project-list" class="dropdown-list">
+        <label for="project-list">Available Projects</label>
+        <select id="project-list" class="dropdown-list" size="6">
           <!-- Items will be injected here -->
-          <div class="dropdown-item" style="cursor: default;">
-            <div class="item-name">Loading projects...</div>
-          </div>
-        </div>
+          <option disabled>Loading projects...</option>
+        </select>
       </div>
 
       <div class="actions">

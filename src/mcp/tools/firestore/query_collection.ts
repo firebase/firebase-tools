@@ -145,7 +145,7 @@ export const query_collection = tool(
 
     const docs = documents.map(firestoreDocumentToJson);
 
-    const docsContent = toContent(docs);
+    const docsContent = toContent({ documents: docs });
 
     return docsContent;
   },

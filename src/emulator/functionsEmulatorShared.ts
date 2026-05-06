@@ -7,6 +7,7 @@ import * as express from "express";
 import { CloudFunction } from "firebase-functions";
 
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import { Constants } from "./constants";
 import { BackendInfo, EmulatableBackend, InvokeRuntimeOpts } from "./functionsEmulator";
 import { ENV_DIRECTORY } from "../extensions/manifest";
@@ -163,7 +164,7 @@ export function emulatedFunctionsFromEndpoints(
 ): EmulatedTriggerDefinition[] {
   const regionDefinitions: EmulatedTriggerDefinition[] = [];
   for (const endpoint of endpoints) {
-    if (!endpoint.region) {
+    if (!endpoint.region || endpoint.region === build.REGION_TBD) {
       endpoint.region = "us-central1";
     }
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
