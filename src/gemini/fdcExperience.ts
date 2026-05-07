@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 // Use autopush environment as requested
-const STAGING_ORIGIN = "https://staging-firebasedataconnect.sandbox.googleapis.com";
+const STAGING_ORIGIN = "https://firebasedataconnect.googleapis.com";
 const apiClient = new Client({ urlPrefix: STAGING_ORIGIN, auth: true });
 
 export const PROMPT_GENERATE_CONNECTOR =
