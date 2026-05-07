@@ -161,13 +161,34 @@ async function consumeStream(
 
     stream.on("end", () => {
       try {
-        const response = JSON.parse(fullText) as GenerateResponse;
-        if (response.part?.codeChunk?.code) {
-             resolve(response.part.codeChunk.code);
-        } else if (response.part?.textChunk?.text) {
-             resolve(response.part.textChunk.text);
+        const response = JSON.parse(fullText);
+        if (Array.isArray(response)) {
+          let code = "";
+          for (const item of response) {
+            if (item.status && onStatus) {
+              onStatus(item.status);
+            }
+            if (item.part?.textChunk?.text) {
+              code += item.part.textChunk.text;
+            }
+            if (item.part?.codeChunk?.code) {
+              code += item.part.codeChunk.code;
+            }
+          }
+          if (code) {
+            resolve(extractCodeBlock(code));
+          } else {
+            resolve(fullText);
+          }
         } else {
-             resolve(fullText);
+          const resObj = response as GenerateResponse;
+          if (resObj.part?.codeChunk?.code) {
+            resolve(extractCodeBlock(resObj.part.codeChunk.code));
+          } else if (resObj.part?.textChunk?.text) {
+            resolve(extractCodeBlock(resObj.part.textChunk.text));
+          } else {
+            resolve(fullText);
+          }
         }
       } catch (e) {
         const lines = fullText.trim().split("\n");
@@ -180,7 +201,6 @@ async function consumeStream(
                  } else if (obj.part?.textChunk?.text) {
                      code += obj.part.textChunk.text;
                  }
-                 // Also handle status in the final pass if not handled during stream
                  if (obj.status && onStatus) {
                       onStatus(obj.status);
                  }
@@ -188,7 +208,7 @@ async function consumeStream(
              }
         }
         if (code) {
-             resolve(code);
+             resolve(extractCodeBlock(code));
         } else {
              resolve(fullText);
         }
