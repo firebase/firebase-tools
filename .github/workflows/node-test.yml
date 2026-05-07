@@ -180,6 +180,8 @@ jobs:
 
       - uses: codecov/codecov-action@v5
         if: matrix.node-version == '20'
+        with:
+          files: ./.coverage/lcov.info
 
   integration:
     needs: unit
