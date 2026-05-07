@@ -484,7 +484,7 @@ describe("prepare", () => {
           retry: false,
         },
         vpc: {
-          connector: "projects/project/locations/REGION_TBD/connectors/my-connector",
+          connector: `projects/project/locations/${build.REGION_TBD}/connectors/my-connector`,
         },
       };
       const want = backend.of(wantE);
