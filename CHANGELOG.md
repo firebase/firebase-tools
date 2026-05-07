@@ -1,0 +1,1 @@
+- Resolves undefined regions earlier, during the build to backend resolution phase (#10471)
