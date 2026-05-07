@@ -1,0 +1,1 @@
+- Set region for VPC connector to match function region if not specified. (#10469)
