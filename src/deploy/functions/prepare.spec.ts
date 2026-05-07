@@ -203,7 +203,7 @@ describe("prepare", () => {
       sandbox.restore();
     });
 
-    it("does nothing if no endpoints", async () => {
+    it("does nothing if no endpoints or in REGION_TBD", async () => {
       const want = build.empty();
       const have = backend.empty();
       await prepare.resolveDefaultRegionsForBuild(want, have);
@@ -218,6 +218,7 @@ describe("prepare", () => {
           project: "project",
           runtime: latest("nodejs"),
           httpsTrigger: {},
+          region: [build.REGION_TBD],
         },
       });
 
@@ -229,6 +230,35 @@ describe("prepare", () => {
       expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
     });
 
+    it("resolves region to us-east1 and correctly formats VPC connector path with us-east1", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/project/locations/us-east1/connectors/my-connector",
+      );
+    });
+
     it("throws error if ambiguous", async () => {
       const want = build.of({
         id: {
@@ -237,6 +267,7 @@ describe("prepare", () => {
           project: "project",
           runtime: latest("nodejs"),
           httpsTrigger: {},
+          region: [build.REGION_TBD],
         },
       });
 
@@ -280,6 +311,7 @@ describe("prepare", () => {
             eventType: "google.cloud.pubsub.topic.v1.messagePublished",
             retry: false,
           },
+          region: [build.REGION_TBD],
         },
       });
       const have = backend.empty();
@@ -310,6 +342,7 @@ describe("prepare", () => {
                 eventFilters: { database: "(default)" },
                 retry: false,
               },
+              region: [build.REGION_TBD],
             },
           });
           const have = backend.empty();
@@ -344,6 +377,7 @@ describe("prepare", () => {
                 eventFilters: { bucket: "my-bucket" },
                 retry: false,
               },
+              region: [build.REGION_TBD],
             },
           });
           const have = backend.empty();
@@ -369,6 +403,7 @@ describe("prepare", () => {
             eventFilters: { instance: "my-instance" },
             retry: false,
           },
+          region: [build.REGION_TBD],
         },
       });
       const have = backend.empty();
@@ -394,6 +429,7 @@ describe("prepare", () => {
             },
             retry: false,
           },
+          region: [build.REGION_TBD],
         },
       });
       const have = backend.empty();
@@ -418,6 +454,7 @@ describe("prepare", () => {
             },
             retry: false,
           },
+          region: [build.REGION_TBD],
         },
       });
       const have = backend.empty();
@@ -435,6 +472,7 @@ describe("prepare", () => {
           project: "project",
           runtime: latest("nodejs"),
           httpsTrigger: {},
+          region: [build.REGION_TBD],
         },
       });
 

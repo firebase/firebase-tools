@@ -359,10 +359,10 @@ export async function resolveDefaultRegionsForBuild(
   have: backend.Backend,
 ): Promise<void> {
   for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
-    if (!endpoint.region || (Array.isArray(endpoint.region) && endpoint.region.length === 0)) {
-      let resolvedRegion = "us-central1";
+    if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
+      let resolvedRegion = DEFAULT_FUNCTION_REGION;
 
-      // 1. Match existing
+      // Match existing endpoints.
       let matching: backend.Endpoint | undefined;
       for (const region of Object.keys(have.endpoints)) {
         if (have.endpoints[region][id]) {
@@ -378,16 +378,17 @@ export async function resolveDefaultRegionsForBuild(
       if (matching) {
         resolvedRegion = matching.region;
       } else {
-        // 2. Match trigger
+        // Match triggers.
         try {
+          const fullEndpoint = { ...endpoint, id } as any;
           if (build.isBlockingTriggered(endpoint)) {
-            resolvedRegion = resolveRegionForBlockingTrigger(endpoint as any);
+            resolvedRegion = resolveRegionForBlockingTrigger(fullEndpoint);
           } else if (build.isEventTriggered(endpoint)) {
-            resolvedRegion = await resolveRegionForEventTrigger(endpoint as any);
+            resolvedRegion = await resolveRegionForEventTrigger(fullEndpoint);
           }
         } catch (err: any) {
           logger.debug(
-            `Failed to resolve region for endpoint ${id}. Defaulting to us-central1.`,
+            `Failed to resolve region for endpoint ${id}. Defaulting to ${DEFAULT_FUNCTION_REGION}.`,
             getErrStack(err),
           );
         }
