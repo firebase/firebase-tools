@@ -496,7 +496,7 @@ describe("prepare", () => {
 
       expect(want.endpoints["us-east1"]?.["onArchive"]).to.exist;
       expect(want.endpoints["us-east1"]?.["onArchive"].vpc?.connector).to.equal(
-        "projects/project/locations/us-east1/connectors/my-connector"
+        "projects/project/locations/us-east1/connectors/my-connector",
       );
     });
   });
