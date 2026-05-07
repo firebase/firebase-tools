@@ -472,6 +472,33 @@ describe("prepare", () => {
       expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
       expect(want.endpoints[build.REGION_TBD]).to.not.exist;
     });
+
+    it("updates VPC connector region if it contains REGION_TBD placeholder when default region is resolved", async () => {
+      const wantE: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "onArchive",
+        region: build.REGION_TBD,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.archived",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        vpc: {
+          connector: "projects/project/locations/REGION_TBD/connectors/my-connector",
+        },
+      };
+      const want = backend.of(wantE);
+      const have = backend.empty();
+
+      getBucketStub.resolves({ location: "us-east1" });
+
+      await prepare.resolveDefaultRegions(want, have);
+
+      expect(want.endpoints["us-east1"]?.["onArchive"]).to.exist;
+      expect(want.endpoints["us-east1"]?.["onArchive"].vpc?.connector).to.equal(
+        "projects/project/locations/us-east1/connectors/my-connector"
+      );
+    });
   });
 
   describe("inferDetailsFromExisting", () => {

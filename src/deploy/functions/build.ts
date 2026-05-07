@@ -257,8 +257,8 @@ export type Endpoint = Triggered & {
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
   serviceAccount?: ServiceAccount | Expression<string> | null;
 
-  // defaults to ["us-central1"], overridable in firebase-tools with
-  //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
+  // Defaults to REGION_TBD. The deployment region is resolved dynamically at deploy-time
+  // based on event trigger sources or matching existing functions, falling back to "us-central1".
   region?: ListField;
 
   // The Cloud project associated with this endpoint.
