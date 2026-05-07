@@ -72,7 +72,7 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should create the default cloud storage bucket", async () => {
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
     });
     expect(gcsMock.upsertBucket).to.be.calledOnce;
@@ -86,7 +86,7 @@ describe("crashlytics:sourcemap:upload", () => {
       app: "test-app",
       bucketLocation: "a-different-LoCaTiOn",
     };
-    await command.runner()(FILE_PATH, options);
+    await command.runner()(DIR_PATH, options);
     expect(gcsMock.upsertBucket).to.be.calledOnce;
     const args = gcsMock.upsertBucket.firstCall.args;
     expect(args[0].req.baseName).to.equal(
@@ -100,18 +100,15 @@ describe("crashlytics:sourcemap:upload", () => {
       command.runner()("invalid/path", {
         app: "test-app",
       }),
-    ).to.be.rejectedWith(FirebaseError, "provide a valid file path or directory");
+    ).to.be.rejectedWith(FirebaseError, "provide a valid directory to mapping file(s)");
   });
 
-  it("should upload a single mapping file", async () => {
-    await command.runner()(FILE_PATH, {
-      app: "test-app",
-    });
-    expect(gcsMock.uploadObject).to.be.calledOnce;
-    expect(gcsMock.uploadObject).to.be.calledWith(sinon.match.any, BUCKET_NAME);
-    expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
-      /test-app-.*-src-test-fixtures-mapping-files-mock_mapping\.js\.map\.zip/,
-    );
+  it("should throw an error if the mapping file path is not a directory", async () => {
+    expect(
+      command.runner()(FILE_PATH, {
+        app: "test-app",
+      }),
+    ).to.be.rejectedWith(FirebaseError, "provide a valid directory to mapping file(s)");
   });
 
   it("should find and upload mapping files in a directory", async () => {
@@ -182,20 +179,28 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should use the provided app version", async () => {
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
       appVersion: "1.0.0",
     });
-    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+    expect(uploadedFiles[0]).to.eq(
       "test-app-1.0.0-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
   });
 
   it("should fall back to the git commit for app version", async () => {
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    expect(gcsMock.uploadObject.firstCall.args[0].file).to.match(
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+    expect(uploadedFiles[0]).to.match(
       /test-app-a{40}-src-test-fixtures-mapping-files-mock_mapping.js.map.zip/,
     );
   });
@@ -206,10 +211,14 @@ describe("crashlytics:sourcemap:upload", () => {
     commandExistsSyncStub.withArgs("npm").returns(true);
     execSyncStub.withArgs("npm pkg get version").returns(Buffer.from("1.2.3"));
 
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+    expect(uploadedFiles[0]).to.eq(
       "test-app-1.2.3-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
   });
@@ -218,38 +227,49 @@ describe("crashlytics:sourcemap:upload", () => {
     commandExistsSyncStub.withArgs("git").returns(false);
     commandExistsSyncStub.withArgs("npm").returns(false);
 
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    expect(gcsMock.uploadObject.firstCall.args[0].file).to.eq(
+    const uploadedFiles = gcsMock.uploadObject
+      .getCalls()
+      .map((call) => call.args[0].file)
+      .sort();
+    expect(uploadedFiles[0]).to.eq(
       "test-app-unset-src-test-fixtures-mapping-files-mock_mapping.js.map.zip",
     );
   });
 
   it("should register the source map after upload", async () => {
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
     });
-    expect(clientPatchStub).to.be.calledOnce;
-    const args = clientPatchStub.firstCall.args;
-    expect(args[0]).to.match(/projects\/test-project\/locations\/global\/mappingFiles\/2906062618/);
-    expect(args[1]).to.deep.equal({
+    expect(clientPatchStub).to.be.calledTwice;
+    const payloads = clientPatchStub
+      .getCalls()
+      .map((call) => call.args[1])
+      .sort((a, b) => a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath));
+    expect(payloads[0].name).to.match(
+      /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
+    );
+    expect(payloads[0]).to.deep.equal({
       name: "projects/test-project/locations/global/mappingFiles/2906062618",
       appId: "test-app",
       version: "a".repeat(40),
       obfuscatedFilePath: "/src/test/fixtures/mapping-files/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
     });
-    expect(args[2].queryParams).to.deep.equal({ allowMissing: "true" });
+    expect(clientPatchStub.firstCall.args[2].queryParams).to.deep.equal({ allowMissing: "true" });
   });
 
   it("should warn if registration fails", async () => {
     clientPatchStub.rejects(new Error("Registration failed"));
-    await command.runner()(FILE_PATH, {
+    await command.runner()(DIR_PATH, {
       app: "test-app",
+      retryDelay: 10,
     });
-    expect(clientPatchStub).to.be.calledOnce;
-    expect(logLabeledWarningStub).to.be.calledOnceWith(
+    expect(clientPatchStub.callCount).to.equal(4);
+    expect(logLabeledWarningStub).to.be.calledTwice;
+    expect(logLabeledWarningStub).to.be.calledWith(
       "crashlytics",
       sinon.match(/Failed to upload mapping file/),
     );
