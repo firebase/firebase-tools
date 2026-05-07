@@ -363,7 +363,6 @@ function moveEndpointToRegion(
       `locations/${region}/`,
     );
   }
-  }
 
   backend.endpoints[region] = backend.endpoints[region] || {};
   backend.endpoints[region][endpoint.id] = endpoint;
