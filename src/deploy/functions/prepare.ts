@@ -357,11 +357,12 @@ function moveEndpointToRegion(
   endpoint.region = region;
 
   // Update VPC connector region if it was constructed using REGION_TBD
-  if (endpoint.vpc?.connector?.includes("locations/REGION_TBD/")) {
+  if (endpoint.vpc?.connector?.includes(`locations/${build.REGION_TBD}/`)) {
     endpoint.vpc.connector = endpoint.vpc.connector.replace(
-      "locations/REGION_TBD/",
+      `locations/${build.REGION_TBD}/`,
       `locations/${region}/`,
     );
+  }
   }
 
   backend.endpoints[region] = backend.endpoints[region] || {};
