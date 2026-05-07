@@ -7,7 +7,7 @@ environment:
   sdk: ^3.9.0
 
 dependencies:
-  firebase_functions: ^0.5.0
+  firebase_functions: ^0.6.0
 
 dev_dependencies:
   build_runner: ^2.4.0
