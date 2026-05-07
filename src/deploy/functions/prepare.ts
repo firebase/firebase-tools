@@ -350,10 +350,6 @@ export async function prepare(
   applyBackendHashToBackends(wantBackends, context);
 }
 
-
-
-
-
 /**
  * Resolves default regions for endpoints in a Build before it is converted to a Backend.
  * This allows the VPC connector string to be built with the correct region in build.ts.
@@ -401,8 +397,6 @@ export async function resolveDefaultRegionsForBuild(
     }
   }
 }
-
-
 
 function resolveRegionForBlockingTrigger(
   endpoint: backend.Endpoint & backend.BlockingTriggered,

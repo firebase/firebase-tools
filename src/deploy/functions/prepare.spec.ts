@@ -186,8 +186,6 @@ describe("prepare", () => {
     });
   });
 
-
-
   describe("resolveDefaultRegionsForBuild", () => {
     let sandbox: sinon.SinonSandbox;
     let getDatabaseStub: sinon.SinonStub;
