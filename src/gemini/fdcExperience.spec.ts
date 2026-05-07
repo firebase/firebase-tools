@@ -136,6 +136,27 @@ describe("fdcExperience", () => {
       expect(statusCalledWith).to.deep.equal(statusObj.status);
       expect(nock.isDone()).to.be.true;
     });
+
+    it("should handle JSON array response and extract code block", async () => {
+      const prompt = "Create a blog";
+      const project = "my-project";
+      const location = "us-central1";
+      const payload = [
+        { status: { message: "Generating..." } },
+        { part: { textChunk: { text: "```graphql\ntype User @table { id: String }\n```" } } }
+      ];
+
+      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+        .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
+          name: `projects/${project}/locations/${location}/services/-`,
+          prompt
+        })
+        .reply(200, JSON.stringify(payload));
+
+      const result = await generateSchema(prompt, project, location);
+      expect(result).to.equal("type User @table { id: String }");
+      expect(nock.isDone()).to.be.true;
+    });
   });
 
   describe("generateOperation", () => {
