@@ -40,6 +40,9 @@ export function convertInputToValue(
       const root = `projects/${projectId}/databases/${databaseId}/documents`;
       return { referenceValue: `${root}/${inputValue.replace(/^\/+/, "")}` };
     }
+    if (key === "timestamp_value") {
+      return { timestampValue: inputValue };
+    }
     return { stringValue: inputValue };
   } else if (Array.isArray(inputValue)) {
     const arrayValue: { values?: FirestoreValue[] } = {

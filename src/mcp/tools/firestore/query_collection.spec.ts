@@ -109,4 +109,29 @@ describe("query_collection tool", () => {
       });
     });
   });
+
+  describe("timestamp_value filter", () => {
+    it("encodes the value as a Firestore timestampValue", async () => {
+      const iso = "2026-05-09T12:34:56Z";
+      await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "publishedAt",
+              op: "GREATER_THAN",
+              compare_value: { timestamp_value: iso },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+
+      const [, structuredQuery] = queryCollectionStub.firstCall.args;
+      expect(structuredQuery.where.compositeFilter.filters[0].fieldFilter.value).to.deep.equal({
+        timestampValue: iso,
+      });
+    });
+  });
 });
