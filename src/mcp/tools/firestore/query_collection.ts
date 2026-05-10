@@ -111,34 +111,25 @@ export const query_collection = tool(
       from: [{ collectionId: collection_path, allDescendants: false }],
     };
     if (filters) {
+      const fieldFilters = [];
+      for (const f of filters) {
+        const provided = Object.entries(f.compare_value).filter(([, value]) => {
+          return value !== null && value !== undefined;
+        });
+        if (provided.length !== 1) {
+          return mcpError("One and only one value must be specified per filters object.");
+        }
+        const [key, value] = provided[0];
+        fieldFilters.push({
+          fieldFilter: {
+            field: { fieldPath: f.field },
+            op: f.op,
+            value: convertInputToValue(value, key, projectId, database),
+          },
+        });
+      }
       structuredQuery.where = {
-        compositeFilter: {
-          op: "AND",
-          filters: filters.map((f) => {
-            if (
-              f.compare_value.boolean_value &&
-              f.compare_value.double_value &&
-              f.compare_value.integer_value &&
-              f.compare_value.string_array_value &&
-              f.compare_value.string_value &&
-              f.compare_value.reference_value &&
-              f.compare_value.timestamp_value
-            ) {
-              throw mcpError("One and only one value may be specified per filters object.");
-            }
-            const out = Object.entries(f.compare_value).filter(([, value]) => {
-              return value !== null && value !== undefined;
-            });
-            const [key, value] = out[0];
-            return {
-              fieldFilter: {
-                field: { fieldPath: f.field },
-                op: f.op,
-                value: convertInputToValue(value, key, projectId, database),
-              },
-            };
-          }),
-        },
+        compositeFilter: { op: "AND", filters: fieldFilters },
       };
     }
     if (order) {

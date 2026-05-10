@@ -110,6 +110,40 @@ describe("query_collection tool", () => {
     });
   });
 
+  describe("compare_value validation", () => {
+    it("returns an error when no value is provided", async () => {
+      const result = await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [{ field: "author", op: "EQUAL", compare_value: {} }],
+          use_emulator: false,
+        },
+        ctx,
+      );
+      expect(result.isError).to.equal(true);
+      expect(queryCollectionStub).to.not.have.been.called;
+    });
+
+    it("returns an error when more than one value is provided", async () => {
+      const result = await query_collection.fn(
+        {
+          collection_path: "posts",
+          filters: [
+            {
+              field: "author",
+              op: "EQUAL",
+              compare_value: { string_value: "a", integer_value: 1 },
+            },
+          ],
+          use_emulator: false,
+        },
+        ctx,
+      );
+      expect(result.isError).to.equal(true);
+      expect(queryCollectionStub).to.not.have.been.called;
+    });
+  });
+
   describe("timestamp_value filter", () => {
     it("encodes the value as a Firestore timestampValue", async () => {
       const iso = "2026-05-09T12:34:56Z";

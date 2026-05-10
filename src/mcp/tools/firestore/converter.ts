@@ -1,5 +1,6 @@
 import { FirestoreDocument, FirestoreValue } from "../../../gcp/firestore";
 import { logger } from "../../../logger";
+import { mcpError } from "../../util";
 
 /**
  * Takes an arbitrary value from a user and returns a FirestoreValue equivalent.
@@ -35,7 +36,7 @@ export function convertInputToValue(
         return { referenceValue: inputValue };
       }
       if (!projectId) {
-        throw new Error("projectId is required to convert a relative reference_value path.");
+        throw mcpError("projectId is required to convert a relative reference_value path.");
       }
       const root = `projects/${projectId}/databases/${databaseId}/documents`;
       return { referenceValue: `${root}/${inputValue.replace(/^\/+/, "")}` };
