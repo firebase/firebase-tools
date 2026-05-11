@@ -113,10 +113,11 @@ describe("apphosting", () => {
             env: [{ variable: "VAR1", value: "VALUE1" }],
           },
           source: {
-            archive: {
+            locallyBuilt: {
               userStorageUri: "gs://bucket/foo-local-build.tar.gz",
               rootDirectory: "/root",
-              locallyBuiltSource: true,
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
             },
           },
         },
