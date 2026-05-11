@@ -14,6 +14,10 @@ export type ServerToolMeta = {
   requiresAuth?: boolean;
   /** Tools are grouped by feature. --only can configure what tools is available. */
   feature?: string;
+  /** UI metadata for the tool. */
+  ui?: {
+    resourceUri: string;
+  };
 };
 
 export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {

@@ -148,6 +148,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  universalMaker: {
+    shortDescription: "Opt-in to Universal Maker standalone binary local builds",
+    default: false,
+    public: false,
+  },
+
   abiu: {
     shortDescription: "Enable App Hosting ABIU and runtime selection",
     default: false,

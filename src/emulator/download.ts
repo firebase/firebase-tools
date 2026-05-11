@@ -1,4 +1,3 @@
-import * as crypto from "crypto";
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as tmp from "tmp";
@@ -51,8 +50,8 @@ export async function downloadEmulator(name: DownloadableEmulators): Promise<voi
   }
 
   if (!emulator.opts.skipChecksumAndSize) {
-    await validateSize(tmpfile, emulator.opts.expectedSize);
-    await validateChecksum(tmpfile, emulator.opts.expectedChecksum);
+    await downloadUtils.validateSize(tmpfile, emulator.opts.expectedSize);
+    await downloadUtils.validateChecksum(tmpfile, emulator.opts.expectedChecksum, "md5");
   }
   if (emulator.opts.skipCache) {
     removeOldFiles(name, emulator, true);
@@ -131,43 +130,4 @@ function removeOldFiles(
       fs.removeSync(fullFilePath);
     }
   }
-}
-
-/**
- * Checks whether the file at `filepath` has the expected size.
- */
-function validateSize(filepath: string, expectedSize: number): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const stat = fs.statSync(filepath);
-    return stat.size === expectedSize
-      ? resolve()
-      : reject(
-          new FirebaseError(
-            `download failed, expected ${expectedSize} bytes but got ${stat.size}`,
-            { exit: 1 },
-          ),
-        );
-  });
-}
-
-/**
- * Checks whether the file at `filepath` has the expected checksum.
- */
-function validateChecksum(filepath: string, expectedChecksum: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const hash = crypto.createHash("md5");
-    const stream = fs.createReadStream(filepath);
-    stream.on("data", (data: any) => hash.update(data));
-    stream.on("end", () => {
-      const checksum = hash.digest("hex");
-      return checksum === expectedChecksum
-        ? resolve()
-        : reject(
-            new FirebaseError(
-              `download failed, expected checksum ${expectedChecksum} but got ${checksum}`,
-              { exit: 1 },
-            ),
-          );
-    });
-  });
 }
