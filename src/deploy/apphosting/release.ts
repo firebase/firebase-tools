@@ -42,25 +42,37 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   const projectId = needProjectId(options);
-  const rollouts = backendIds.map((backendId) =>
-    // TODO(9114): Add run_command
-    // TODO(914): Set the buildConfig.
-    orchestrateRollout({
+  const rollouts = backendIds.map((backendId) => {
+    const localBuild = context.backendLocalBuilds[backendId];
+    const userStorageUri = context.backendStorageUris[backendId];
+    const rootDirectory = context.backendConfigs[backendId].rootDir;
+
+    const source = localBuild
+      ? {
+          locallyBuilt: {
+            userStorageUri,
+            rootDirectory,
+            runCommand: localBuild.buildConfig?.runCommand,
+            env: localBuild.buildConfig?.env,
+          },
+        }
+      : {
+          archive: {
+            userStorageUri,
+            rootDirectory,
+          },
+        };
+
+    return orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        config: context.backendLocalBuilds[backendId]?.buildConfig,
-        source: {
-          archive: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
-            locallyBuiltSource: !!context.backendLocalBuilds[backendId],
-          },
-        },
+        config: localBuild?.buildConfig,
+        source,
       },
-    }),
-  );
+    });
+  });
 
   logLabeledBullet(
     "apphosting",
