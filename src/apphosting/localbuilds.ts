@@ -12,6 +12,7 @@ import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
+import { detectFramework } from "./utils";
 
 interface UniversalMakerOutput {
   command: string;
@@ -224,7 +225,7 @@ export interface AppHostingBuildOutput {
 export async function localBuild(
   projectId: string,
   projectRoot: string,
-  framework: string,
+  framework?: string,
   env: EnvMap = {},
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
@@ -232,6 +233,13 @@ export async function localBuild(
   annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
+  const detectedFramework = framework || (await detectFramework(projectRoot));
+  if (!detectedFramework) {
+    throw new FirebaseError(
+      `Could not detect framework in ${projectRoot}. Please ensure package.json is present with framework dependencies.`,
+    );
+  }
+
   const hasBuildAvailableSecrets = Object.values(env).some(
     (v) => v.secret && (!v.availability || v.availability.includes("BUILD")),
   );
@@ -266,9 +274,9 @@ export async function localBuild(
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
     if (experiments.isEnabled("universalMaker")) {
-      apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
+      apphostingBuildOutput = await runUniversalMaker(projectRoot, detectedFramework);
     } else {
-      const buildResult = await localAppHostingBuild(projectRoot, framework);
+      const buildResult = await localAppHostingBuild(projectRoot, detectedFramework);
       apphostingBuildOutput = {
         metadata: Object.fromEntries(
           Object.entries(buildResult.metadata || {}).map(([k, v]) => [

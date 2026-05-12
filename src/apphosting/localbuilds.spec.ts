@@ -9,10 +9,12 @@ import * as childProcess from "child_process";
 import * as experiments from "../experiments";
 import * as universalMakerDownload from "./universalMakerDownload";
 import * as fsExtra from "fs-extra";
+import * as utils from "./utils";
 
 describe("localBuild", () => {
   beforeEach(() => {
     sinon.stub(experiments, "isEnabled").returns(false);
+    sinon.stub(utils, "detectFramework").resolves(utils.Framework.NEXTJS);
   });
   afterEach(() => {
     sinon.restore();
@@ -207,6 +209,39 @@ describe("localBuild", () => {
 
       await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
+    });
+  });
+
+  describe("framework detection", () => {
+    it("should dynamically detect framework when not passed explicitly", async () => {
+      const bundleConfig = {
+        version: "v1" as const,
+        runConfig: { runCommand: "npm run build:prod" },
+        metadata: {
+          adapterPackageName: "@apphosting/angular-adapter",
+          adapterVersion: "14.1",
+          framework: "nextjs",
+        },
+        outputFiles: { serverApp: { include: ["./next/standalone"] } },
+      };
+      const localApphostingBuildStub = sinon
+        .stub(localBuildModule, "localBuild")
+        .resolves(bundleConfig);
+
+      const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
+
+      expect(outputFiles).to.deep.equal(["./next/standalone"]);
+      expect(annotations.framework).to.equal("nextjs");
+      sinon.assert.calledWith(localApphostingBuildStub, "./", utils.Framework.NEXTJS);
+    });
+
+    it("should throw a FirebaseError if framework cannot be detected", async () => {
+      const detectFrameworkStub = utils.detectFramework as sinon.SinonStub;
+      detectFrameworkStub.resolves(undefined);
+
+      await expect(localBuild("test-project", "./")).to.be.rejectedWith(
+        "Could not detect framework in ./. Please ensure package.json is present with framework dependencies.",
+      );
     });
   });
 
