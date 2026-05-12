@@ -66,6 +66,22 @@ import * as prompt from "../../prompt";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DEFAULT_FUNCTION_REGION = "us-central1";
 
+interface EventTriggerResolutionTarget {
+  project: string;
+  eventTrigger: {
+    eventType: string;
+    eventFilters?: Record<string, string | build.Expression<string>>;
+    region?: string | build.Expression<string>;
+  };
+}
+
+interface BlockingTriggerResolutionTarget {
+  blockingTrigger: {
+    eventType: string;
+    options?: Record<string, unknown>;
+  };
+}
+
 /**
  * Prepare functions codebases for deploy.
  */
@@ -380,11 +396,10 @@ export async function resolveDefaultRegionsForBuild(
       } else {
         // Match triggers.
         try {
-          const fullEndpoint = { ...endpoint, id } as any;
           if (build.isBlockingTriggered(endpoint)) {
-            resolvedRegion = resolveRegionForBlockingTrigger(fullEndpoint);
+            resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
           } else if (build.isEventTriggered(endpoint)) {
-            resolvedRegion = await resolveRegionForEventTrigger(fullEndpoint);
+            resolvedRegion = await resolveRegionForEventTrigger(endpoint);
           }
         } catch (err: any) {
           logger.debug(
@@ -399,15 +414,13 @@ export async function resolveDefaultRegionsForBuild(
   }
 }
 
-function resolveRegionForBlockingTrigger(
-  endpoint: backend.Endpoint & backend.BlockingTriggered,
-): string {
+function resolveRegionForBlockingTrigger(endpoint: BlockingTriggerResolutionTarget): string {
   const eventType = endpoint.blockingTrigger.eventType;
   if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
     return "us-east1";
   }
 
-  if (isGlobalAILogicEndpoint(endpoint)) {
+  if (isGlobalAILogicEndpoint(endpoint as backend.Endpoint)) {
     return "us-east1";
   }
 
@@ -415,7 +428,7 @@ function resolveRegionForBlockingTrigger(
 }
 
 async function resolveRegionForEventTrigger(
-  endpoint: backend.Endpoint & backend.EventTriggered,
+  endpoint: EventTriggerResolutionTarget,
 ): Promise<string> {
   const eventTrigger = endpoint.eventTrigger;
   const eventType = eventTrigger.eventType;
