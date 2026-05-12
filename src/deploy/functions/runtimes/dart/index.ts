@@ -390,6 +390,9 @@ export class Delegate implements runtimes.RuntimeDelegate {
     const isEmulator = envs.FUNCTIONS_EMULATOR === "true";
     if (!isEmulator) {
       for (const ep of Object.values(discovered.endpoints)) {
+        if (ep.timeoutSeconds === undefined) {
+          ep.timeoutSeconds = 60;
+        }
         if (ep.platform === "gcfv2") {
           (ep as any).platform = "run";
         }
