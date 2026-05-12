@@ -46,11 +46,11 @@ function splitBufferByDelimiter(buffer: Buffer, delimiter: string, maxResults = 
 }
 
 /**
- * Parses a multipart request body buffer into a {@link MultipartRequestBody}.
+ * Splits a multipart request body buffer into its raw parts based on the boundary.
  * @param boundaryId the boundary id of the multipart request
  * @param body multipart request body as a Buffer
  */
-function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
+function splitMultipartIntoParts(boundaryId: string, body: Buffer): Buffer[] {
   // strip additional surrounding single and double quotes, cloud sdks have additional quote here
   const cleanBoundaryId = boundaryId.replace(/^["'](.+(?=["']$))["']$/, "$1");
   const boundaryString = `--${cleanBoundaryId}`;
@@ -59,8 +59,23 @@ function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartR
     return Buffer.from(buf.slice(2));
   });
   // A valid split request body should have two extra Buffers, one at the beginning and end.
+  if (bodyParts.length < 2) {
+    return [];
+  }
+
+  return bodyParts.slice(1, bodyParts.length - 1);
+}
+
+/**
+ * Parses a multipart request body buffer into a {@link MultipartRequestBody}.
+ * @param boundaryId the boundary id of the multipart request
+ * @param body multipart request body as a Buffer
+ */
+function parseMultipartRequestBody(boundaryId: string, body: Buffer): MultipartRequestBody {
+  const rawParts = splitMultipartIntoParts(boundaryId, body);
   const parsedParts: MultipartRequestBodyPart[] = [];
-  for (const bodyPart of bodyParts.slice(1, bodyParts.length - 1)) {
+
+  for (const bodyPart of rawParts) {
     parsedParts.push(parseMultipartRequestBodyPart(bodyPart));
   }
   return parsedParts;
@@ -139,4 +154,117 @@ export function parseObjectUploadMultipartRequest(
     metadataRaw: parsedBody[0].dataRaw.toString(),
     dataRaw: Buffer.from(parsedBody[1].dataRaw),
   };
+}
+
+/**
+ * @param boundaryId the boundary id of the multipart request
+ * @param body a multipart request body part as a Buffer
+ */
+function parseMultipartFormDataBody(boundaryId: string, body: Buffer): MultipartFormDataPart[] {
+  const rawParts = splitMultipartIntoParts(boundaryId, body);
+  const parsedParts: MultipartFormDataPart[] = [];
+
+  for (const bodyPart of rawParts) {
+    parsedParts.push(parseMultipartFormDataBodyPart(bodyPart));
+  }
+  return parsedParts;
+}
+
+/**
+ * Represents a single part of a multipart/form-data request.
+ * Can be a regular field or a file.
+ */
+export type MultipartField = {
+  type: "field";
+  name: string;
+  value: string;
+};
+
+export type MultipartFile = {
+  type: "file";
+  name: string;
+  filename: string;
+  contentType: string;
+  data: Buffer;
+};
+
+export type MultipartFormDataPart = MultipartField | MultipartFile;
+
+export type MultipartFormData = MultipartFormDataPart[];
+
+function parseMultipartFormDataBodyPart(part: Buffer): MultipartFormDataPart {
+  const doubleCRLF = `${LINE_SEPARATOR}${LINE_SEPARATOR}`;
+  const sections = splitBufferByDelimiter(part, doubleCRLF, 2);
+  if (sections.length < 2) {
+    throw new Error("Failed to parse multipart part: Missing header-body separator.");
+  }
+
+  const headerBuffer = sections[0];
+  const bodyBuffer = sections[1];
+
+  const dataRaw = bodyBuffer.slice(0, bodyBuffer.byteLength - LINE_SEPARATOR.length);
+
+  const headers = headerBuffer.toString().split(LINE_SEPARATOR);
+  let name = "";
+  let filename: string | undefined;
+  let contentType: string | undefined;
+
+  for (const h of headers) {
+    const lowerH = h.toLowerCase();
+    if (lowerH.startsWith("content-disposition:")) {
+      const contentDispositionParams = h.split(";").slice(1);
+      for (const param of contentDispositionParams) {
+        const [paramName, ...valueParts] = param.trim().split("=");
+        const value = valueParts.join("=").replace(/^["'](.+(?=["']$))["']$/, "$1");
+        if (paramName === "name") {
+          name = value;
+        } else if (paramName === "filename") {
+          filename = value;
+        }
+      }
+    } else if (lowerH.startsWith("content-type:")) {
+      contentType = h.substring("content-type:".length).trim();
+    }
+  }
+
+  if (!name) {
+    throw new Error(
+      "Failed to parse multipart form-data. Missing 'name' in Content-Disposition header.",
+    );
+  }
+
+  if (filename) {
+    return {
+      type: "file",
+      name,
+      filename,
+      contentType: contentType || "application/octet-stream",
+      data: dataRaw,
+    };
+  } else {
+    return {
+      type: "field",
+      name,
+      value: dataRaw.toString(),
+    };
+  }
+}
+
+/**
+ * @param contentTypeHeader value of ContentType header passed in request.
+ * @param body string value of the body of the multipart request.
+ */
+export function parseFormDataMultipartRequest(
+  contentTypeHeader: string,
+  body: Buffer,
+): MultipartFormData {
+  if (!contentTypeHeader.startsWith("multipart/form-data")) {
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
+  }
+  const boundaryId = contentTypeHeader.split("boundary=")[1];
+  if (!boundaryId) {
+    throw new Error(`Bad content type. ${contentTypeHeader}`);
+  }
+
+  return parseMultipartFormDataBody(boundaryId, body);
 }
