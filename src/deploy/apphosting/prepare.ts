@@ -406,9 +406,11 @@ async function prepareLocalBuildDirectory(
     );
   }
 
-  // Create local_build dir
+  // Check if local_build dir already exists
   if (fs.existsSync(localBuildDir)) {
-    fs.rmSync(localBuildDir, { recursive: true, force: true });
+    throw new FirebaseError(
+      `The local build directory '${localBuildDir}' already exists. Please delete it and try again.`,
+    );
   }
   fs.mkdirSync(localBuildDir, { recursive: true });
 

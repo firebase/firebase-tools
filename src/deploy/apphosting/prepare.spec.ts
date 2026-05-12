@@ -313,6 +313,41 @@ describe("apphosting", () => {
       }
     });
 
+    it("should fail if localBuild is specified and local build directory already exists", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      (fs.existsSync as sinon.SinonStub).callsFake((pathLike: fs.PathLike) => {
+        if (typeof pathLike === "string" && pathLike.endsWith("local_build")) {
+          return true;
+        }
+        return false;
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
+        FirebaseError,
+        "The local build directory",
+      );
+    });
+
     it("links to existing backend if it already exists", async () => {
       const context = initializeContext();
       listBackendsStub.onFirstCall().resolves({
