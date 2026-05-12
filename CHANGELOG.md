@@ -1,1 +1,1 @@
-- Fixed an issue where some MCP tools would error with "Invalid input: expected record, received array". (#10437)
+- Updated Pub/Sub emulator to version 0.8.31

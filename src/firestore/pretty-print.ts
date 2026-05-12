@@ -331,14 +331,17 @@ export class PrettyPrint {
         return;
       }
 
-      // Normal field indexes have an "order", array indexes have an
-      // "arrayConfig", and vector indexes have a "vectorConfig" we want to
-      // display whichever one is present.
+      /* Normal field indexes have an "order", array indexes have an
+      "arrayConfig", search indexes have a "searchConfig"
+      and vector indexes have a "vectorConfig". We want to
+      display whichever one is present. */
       let configString;
       if (field.order) {
         configString = field.order;
       } else if (field.arrayConfig) {
         configString = field.arrayConfig;
+      } else if (field.searchConfig) {
+        configString = "SEARCH";
       } else if (field.vectorConfig) {
         configString = `VECTOR<${field.vectorConfig.dimension}>`;
       }
