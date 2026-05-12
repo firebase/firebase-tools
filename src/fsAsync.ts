@@ -117,7 +117,6 @@ export async function readdirRecursive(
       let ignored = false;
       // Loop in reverse (from deepest subdirectory to root) so that local subdirectory
       // rules take precedence and override any parent directory rules.
-      // Loop using a decrementing index to avoid allocating array copies or reversing in the hot path.
       for (let i = gitIgnoreStack.length - 1; i >= 0; i--) {
         const state = gitIgnoreStack[i];
         const relPath = relative(state.dirPath, targetPath);
