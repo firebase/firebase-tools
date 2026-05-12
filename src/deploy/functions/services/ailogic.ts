@@ -53,10 +53,10 @@ export class AILogicService implements Service {
     Promise.resolve();
 
   /**
-  * The AI logic proxy server uses a service account to invoke functions.
-  * Setting requiredProjectBindings here causes the ensureServiceAgentRoles 
-  * call during prepare phase to upsert the corresponding IAM binding.
-  */
+   * The AI logic proxy server uses a service account to invoke functions.
+   * Setting requiredProjectBindings here causes the ensureServiceAgentRoles
+   * call during prepare phase to upsert the corresponding IAM binding.
+   */
   async requiredProjectBindings(projectNumber: string): Promise<Array<iam.Binding>> {
     return [
       {
