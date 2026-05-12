@@ -81,26 +81,12 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       fstat = statSync(filePath);
     } catch (e) {
       throw new FirebaseError(
-        "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
+        "provide a valid directory to mapping file(s), e.g. app/build/outputs",
       );
     }
     let successCount = 0;
     const failedFiles: string[] = [];
-    if (fstat.isFile()) {
-      const success = await uploadMap({
-        projectId,
-        mappingFile: filePath,
-        obfuscatedFilePath: filePath,
-        bucketName,
-        appVersion,
-        options,
-      });
-      if (success) {
-        successCount++;
-      } else {
-        failedFiles.push(filePath);
-      }
-    } else if (fstat.isDirectory()) {
+    if (fstat.isDirectory()) {
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
       const files = await readdirRecursive({
         path: filePath,
@@ -142,7 +128,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       });
     } else {
       throw new FirebaseError(
-        "provide a valid file path or directory to mapping file(s), e.g. app/build/outputs/app.js.map or app/build/outputs",
+        "provide a valid directory to mapping file(s), e.g. app/build/outputs",
       );
     }
     logLabeledBullet(
