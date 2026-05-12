@@ -1,2 +1,6 @@
 - Updated Pub/Sub emulator to version 0.8.31
 - Resolves undefined regions earlier, during the build to backend resolution phase (#10471)
+- Updated the Firebase Data Connect local toolkit to v3.4.8, which includes the following changes:
+  - Fixed an issue in Dart code generation where nullable BigInt was not handled correctly.
+  - Added support for nested 1:Many relational batch mutations.
+  - Updated the Golang dependency version to 1.25.10.
