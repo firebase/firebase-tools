@@ -66,17 +66,17 @@ import * as prompt from "../../prompt";
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DEFAULT_FUNCTION_REGION = "us-central1";
 
-interface EventTriggerResolutionTarget {
+/**
+ * A subset of the backend.Endpoint interface for the purposes of resolving regions.
+ */
+interface TriggerResolutionTarget {
   project: string;
-  eventTrigger: {
+  eventTrigger?: {
     eventType: string;
     eventFilters?: Record<string, string | build.Expression<string>>;
     region?: string | build.Expression<string>;
   };
-}
-
-interface BlockingTriggerResolutionTarget {
-  blockingTrigger: {
+  blockingTrigger?: {
     eventType: string;
     options?: Record<string, unknown>;
   };
@@ -414,22 +414,26 @@ export async function resolveDefaultRegionsForBuild(
   }
 }
 
-function resolveRegionForBlockingTrigger(endpoint: BlockingTriggerResolutionTarget): string {
+function resolveRegionForBlockingTrigger(endpoint: TriggerResolutionTarget): string {
+  if (!endpoint.blockingTrigger) {
+    return DEFAULT_FUNCTION_REGION;
+  }
   const eventType = endpoint.blockingTrigger.eventType;
   if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
     return "us-east1";
   }
 
-  if (isGlobalAILogicEndpoint(endpoint as backend.Endpoint)) {
+  if (isGlobalAILogicEndpoint(endpoint)) {
     return "us-east1";
   }
 
   return DEFAULT_FUNCTION_REGION;
 }
 
-async function resolveRegionForEventTrigger(
-  endpoint: EventTriggerResolutionTarget,
-): Promise<string> {
+async function resolveRegionForEventTrigger(endpoint: TriggerResolutionTarget): Promise<string> {
+  if (!endpoint.eventTrigger) {
+    return DEFAULT_FUNCTION_REGION;
+  }
   const eventTrigger = endpoint.eventTrigger;
   const eventType = eventTrigger.eventType;
 

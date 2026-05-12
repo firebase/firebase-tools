@@ -14,7 +14,15 @@ export const AI_LOGIC_EVENTS = [
   AI_LOGIC_AFTER_GENERATE_CONTENT,
 ] as const;
 
-export type AILogicEndpoint = backend.Endpoint & {
+export interface AILogicTriggerTarget {
+  blockingTrigger?: {
+    eventType: string;
+    options?: Record<string, unknown>;
+  };
+  project?: string;
+}
+
+export type AILogicTrigger = {
   blockingTrigger: {
     eventType: (typeof AI_LOGIC_EVENTS)[number];
     options?: {
@@ -23,8 +31,15 @@ export type AILogicEndpoint = backend.Endpoint & {
   };
 };
 
-export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicEndpoint {
-  if (!backend.isBlockingTriggered(endpoint)) {
+export type AILogicEndpoint = backend.Endpoint & AILogicTrigger;
+
+/**
+ * Type guard to check if a trigger target is an AI Logic event trigger.
+ */
+export function isAILogicEvent<T extends AILogicTriggerTarget>(
+  endpoint: T,
+): endpoint is T & AILogicTrigger {
+  if (!endpoint.blockingTrigger) {
     return false;
   }
   return AI_LOGIC_EVENTS.includes(
@@ -32,7 +47,10 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   );
 }
 
-export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
+/**
+ * Check if an AI Logic trigger target is global (i.e. not a regional webhook).
+ */
+export function isGlobalAILogicEndpoint(endpoint: AILogicTriggerTarget): boolean {
   if (!isAILogicEvent(endpoint)) {
     return false;
   }
