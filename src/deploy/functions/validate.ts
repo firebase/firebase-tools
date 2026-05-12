@@ -338,7 +338,7 @@ export async function secretsAreValid(projectId: string, wantBackend: backend.Ba
   await validateSecretVersions(projectId, endpoints);
 }
 
-const secretsSupportedPlatforms = ["gcfv1", "gcfv2"];
+const secretsSupportedPlatforms = ["gcfv1", "gcfv2", "run"];
 /**
  * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
  */
