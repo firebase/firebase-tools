@@ -1,3 +1,3 @@
 - Updated Pub/Sub emulator to version 0.8.31
 - Resolves undefined regions earlier, during the build to backend resolution phase (#10471)
-- Default timeout for Dart functions is now 60 seconds when not explicitly set (#10506)
+- Default timeout for Dart functions is now 60 seconds when not explicitly set (#10501)
