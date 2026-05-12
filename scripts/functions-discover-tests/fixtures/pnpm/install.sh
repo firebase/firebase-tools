@@ -2,4 +2,4 @@
 set -euxo pipefail # bash strict mode
 IFS=$'\n\t'
 
-cd functions && pnpm install
+cd functions && pnpm install --ignore-scripts
