@@ -552,6 +552,10 @@ export function inferDetailsFromExisting(
       wantE.cpu = haveE.cpu;
     }
 
+    if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
+      wantE.timeoutSeconds = haveE.timeoutSeconds;
+    }
+
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
     // turn off concurrency.
@@ -646,6 +650,13 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
     if (!e.concurrency) {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
+    }
+
+    // Cloud Run defaults to 300s timeout if not specified. For functions deployed
+    // directly to Cloud Run (like Dart), we want to enforce the same 60s default
+    // that GCF enforces for consistency.
+    if (e.platform === "run" && e.timeoutSeconds === undefined) {
+      e.timeoutSeconds = backend.DEFAULT_TIMEOUT_SECONDS;
     }
   }
 }

@@ -17,7 +17,7 @@ describe("Dart Runtime Delegate", () => {
       sinon.restore();
     });
 
-    it("should set default timeout to 60 if undefined", async () => {
+    it("should not set default timeout", async () => {
       const delegate = new Delegate("project", "sourceDir", supported.latest("dart"));
 
       const mockBuild: build.Build = {
@@ -38,7 +38,7 @@ describe("Dart Runtime Delegate", () => {
 
       const result = await delegate.discoverBuild({}, {});
 
-      expect(result.endpoints.func1.timeoutSeconds).to.equal(60);
+      expect(result.endpoints.func1.timeoutSeconds).to.be.undefined;
       expect(result.endpoints.func1.platform).to.equal("run");
     });
 

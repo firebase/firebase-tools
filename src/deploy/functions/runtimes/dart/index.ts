@@ -54,8 +54,6 @@ const MIN_DART_SDK_VERSION = "3.9.0";
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
 
-/** Default timeout for Dart functions in seconds. */
-export const DEFAULT_TIMEOUT_SECONDS = 60;
 
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
@@ -393,9 +391,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
     const isEmulator = envs.FUNCTIONS_EMULATOR === "true";
     if (!isEmulator) {
       for (const ep of Object.values(discovered.endpoints)) {
-        if (ep.timeoutSeconds === undefined) {
-          ep.timeoutSeconds = DEFAULT_TIMEOUT_SECONDS;
-        }
         if (ep.platform === "gcfv2") {
           (ep as any).platform = "run";
         }
