@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import { Delegate } from "./index";
 import * as discovery from "../discovery";
-import * as backend from "../../backend";
 import * as build from "../../build";
+import * as supported from "../supported";
 
 describe("Dart Runtime Delegate", () => {
   describe("discoverBuild", () => {
@@ -18,15 +18,17 @@ describe("Dart Runtime Delegate", () => {
     });
 
     it("should set default timeout to 60 if undefined", async () => {
-      const delegate = new Delegate("project", "sourceDir", "dart" as any);
-      
+      const delegate = new Delegate("project", "sourceDir", supported.latest("dart"));
+
       const mockBuild: build.Build = {
         endpoints: {
           func1: {
             platform: "gcfv2",
             entryPoint: "func1",
+            project: "project",
+            runtime: supported.latest("dart"),
             httpsTrigger: {},
-          } as any,
+          },
         },
         params: [],
         requiredAPIs: [],
@@ -41,16 +43,18 @@ describe("Dart Runtime Delegate", () => {
     });
 
     it("should preserve user-defined timeout", async () => {
-      const delegate = new Delegate("project", "sourceDir", "dart" as any);
-      
+      const delegate = new Delegate("project", "sourceDir", supported.latest("dart"));
+
       const mockBuild: build.Build = {
         endpoints: {
           func1: {
             platform: "gcfv2",
             entryPoint: "func1",
+            project: "project",
+            runtime: supported.latest("dart"),
             httpsTrigger: {},
             timeoutSeconds: 120,
-          } as any,
+          },
         },
         params: [],
         requiredAPIs: [],
@@ -65,15 +69,17 @@ describe("Dart Runtime Delegate", () => {
     });
 
     it("should not apply default timeout in emulator mode", async () => {
-      const delegate = new Delegate("project", "sourceDir", "dart" as any);
-      
+      const delegate = new Delegate("project", "sourceDir", supported.latest("dart"));
+
       const mockBuild: build.Build = {
         endpoints: {
           func1: {
             platform: "gcfv2",
             entryPoint: "func1",
+            project: "project",
+            runtime: supported.latest("dart"),
             httpsTrigger: {},
-          } as any,
+          },
         },
         params: [],
         requiredAPIs: [],
