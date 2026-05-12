@@ -114,7 +114,7 @@ async function packageSource(
     CONFIG_DEST_FILE /* .runtimeconfig.json */,
   );
   try {
-    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignore: ignore });
+    const files = await fsAsync.readdirRecursive({ path: sourceDir, ignoreStrings: ignore });
     hashes.push(...(await addFilesToArchive(archive, files, sourceDir, options?.executablePaths)));
     for (const name of additionalSources) {
       const absPath = utils.resolveWithin(projectDir, name);
