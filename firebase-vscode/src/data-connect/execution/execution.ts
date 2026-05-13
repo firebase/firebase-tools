@@ -19,6 +19,7 @@ import { batch, effect } from "@preact/signals-core";
 import {
   OperationDefinitionNode,
   OperationTypeNode,
+  parse,
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
@@ -32,6 +33,7 @@ import * as path from "path";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
+import { DataConnectEmulator } from "../../../../src/emulator/dataconnectEmulator";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
@@ -315,6 +317,21 @@ export function registerExecution(
                   }
               });
           }
+
+          // Verify that the schema compiles before generating queries
+          try {
+              const buildResult = await DataConnectEmulator.build({
+                  configDir: serviceConfig.path,
+                  projectId: arg.projectId,
+              });
+              if (buildResult.errors?.length) {
+                  vscode.window.showErrorMessage("Ensure schema compiles before generating queries");
+                  return;
+              }
+          } catch (e: any) {
+              vscode.window.showErrorMessage("Ensure schema compiles before generating queries");
+              return;
+          }
       }
 
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
@@ -346,6 +363,14 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           }
         );
       });
+      
+      try {
+          parse(res);
+      } catch (e: any) {
+          vscode.window.showInformationMessage(`Generated response is not valid GraphQL: ${res}`);
+          return;
+      }
+
       await insertQueryAt(
         arg.document.uri,
         arg.insertPosition,
@@ -393,6 +418,13 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           }
         );
       });
+
+      try {
+          parse(res);
+      } catch (e: any) {
+          vscode.window.showInformationMessage(`Generated response is not valid GraphQL: ${res}`);
+          return;
+      }
 
       await insertQueryAt(
         arg.document.uri,
