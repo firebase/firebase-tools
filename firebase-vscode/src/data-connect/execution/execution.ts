@@ -23,6 +23,7 @@ import {
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
+import { GraphqlError } from "../../../../src/dataconnect/types";
 import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
@@ -325,7 +326,8 @@ export function registerExecution(
                   projectId: arg.projectId,
               });
               if (buildResult.errors?.length) {
-                  vscode.window.showErrorMessage("Ensure schema compiles before generating queries");
+                  // Handle compilation errors and provide navigation to the file
+                  await handleCompilationError(buildResult.errors[0], serviceConfig.path);
                   return;
               }
           } catch (e: any) {
@@ -523,6 +525,34 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       },
     ),
   );
+}
+
+/**
+ * Handles compilation errors by showing an error message and providing an option to open the file.
+ * @param error The GraphQL error object.
+ * @param servicePath The path to the service directory.
+ */
+async function handleCompilationError(error: GraphqlError, servicePath: string): Promise<void> {
+  const message = `Schema compilation failed: ${error.message}`;
+  const file = error.extensions?.file;
+  const location = error.locations?.[0];
+
+  if (file) {
+    const fullPath = path.resolve(servicePath, file);
+    const selection = await vscode.window.showErrorMessage(message, "Open File");
+    if (selection === "Open File") {
+      const uri = vscode.Uri.file(fullPath);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(doc);
+      if (location) {
+        const pos = new vscode.Position(location.line - 1, location.column - 1);
+        editor.revealRange(new vscode.Range(pos, pos));
+        editor.selection = new vscode.Selection(pos, pos);
+      }
+    }
+  } else {
+    vscode.window.showErrorMessage(message);
+  }
 }
 
 function executionError(message: string, error?: string) {
