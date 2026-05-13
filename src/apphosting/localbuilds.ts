@@ -3,12 +3,10 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import { Availability, BuildConfig, Env } from "../gcp/apphosting";
 
-import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
-import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
@@ -265,21 +263,7 @@ export async function localBuild(
 
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    if (experiments.isEnabled("universalMaker")) {
-      apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
-    } else {
-      const buildResult = await localAppHostingBuild(projectRoot, framework);
-      apphostingBuildOutput = {
-        metadata: Object.fromEntries(
-          Object.entries(buildResult.metadata || {}).map(([k, v]) => [
-            k,
-            v as string | number | boolean,
-          ]),
-        ),
-        runConfig: buildResult.runConfig,
-        outputFiles: buildResult.outputFiles,
-      };
-    }
+    apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {
