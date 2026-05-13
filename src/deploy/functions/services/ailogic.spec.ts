@@ -30,6 +30,20 @@ describe("AILogicService", () => {
     sinon.restore();
   });
 
+  describe("requiredProjectBindings", () => {
+    it("should bind the AI logic service account with the Cloud Run invoker role", async () => {
+      const bindings = await service.requiredProjectBindings("123456789");
+      expect(bindings).to.deep.equal([
+        {
+          role: "roles/run.invoker",
+          members: [
+            "serviceAccount:service-123456789@gcp-sa-firebasevertexai.iam.gserviceaccount.com",
+          ],
+        },
+      ]);
+    });
+  });
+
   describe("validateTrigger", () => {
     it("should throw if two regional triggers of same type in same region", () => {
       const ep1: backend.Endpoint = {
