@@ -665,7 +665,7 @@ describe("prepare", () => {
         httpsTrigger: {},
       };
 
-      prepare.resolveCpuAndConcurrency(backend.of(want));
+      prepare.resolveDefaultTimeout(backend.of(want));
       expect(want.timeoutSeconds).to.equal(60);
     });
 
@@ -676,7 +676,7 @@ describe("prepare", () => {
         httpsTrigger: {},
       };
 
-      prepare.resolveCpuAndConcurrency(backend.of(want));
+      prepare.resolveDefaultTimeout(backend.of(want));
       expect(want.timeoutSeconds).to.be.undefined;
     });
   });

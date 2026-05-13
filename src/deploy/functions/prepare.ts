@@ -302,6 +302,7 @@ export async function prepare(
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
+    resolveDefaultTimeout(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -651,10 +652,15 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
     if (!e.concurrency) {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
     }
+  }
+}
 
-    // Cloud Run defaults to 300s timeout if not specified. For functions deployed
-    // directly to Cloud Run (like Dart), we want to enforce the same 60s default
-    // that GCF enforces for consistency.
+/**
+ * Assigns the default timeout to a function if it is deployed to Cloud Run
+ * and no timeout was specified.
+ */
+export function resolveDefaultTimeout(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
     if (e.platform === "run" && e.timeoutSeconds === undefined) {
       e.timeoutSeconds = backend.DEFAULT_TIMEOUT_SECONDS;
     }

@@ -54,7 +54,6 @@ const MIN_DART_SDK_VERSION = "3.9.0";
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
 
-
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
   public readonly bin = "dart";
