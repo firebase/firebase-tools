@@ -5,3 +5,4 @@
   - Added support for nested 1:Many relational batch mutations.
   - Updated the Golang dependency version to 1.25.10.
 - Default timeout for Dart functions is now 60 seconds when not explicitly set (#10501)
+- Now upserts the required IAM bindings to invoke AI Logic functions upon deployment (#10503)
