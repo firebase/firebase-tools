@@ -78,7 +78,7 @@ async function zipDirectory(
   try {
     files = await fsAsync.readdirRecursive({
       path: sourceDirectory,
-      ignore: options.ignore,
+      ignoreStrings: options.ignore,
       ignoreSymlinks: true,
     });
   } catch (err: any) {
