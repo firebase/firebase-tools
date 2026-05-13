@@ -31,8 +31,8 @@ export async function createLocalBuildTarArchive(
   const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
-    ignore: ignore,
-    isGitIgnore: true,
+    ignoreStrings: ignore,
+    supportGitIgnore: true,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
 
@@ -92,13 +92,11 @@ export async function createSourceDeployArchive(
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
   const ignore = config.ignore || ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  ignore.push(...gitIgnorePatterns);
   try {
     const files = await fsAsync.readdirRecursive({
       path: targetDir,
-      ignore: ignore,
-      isGitIgnore: true,
+      ignoreStrings: ignore,
+      supportGitIgnore: true,
     });
     for (const file of files) {
       const name = path.relative(rootDir, file.name);
@@ -115,20 +113,6 @@ export async function createSourceDeployArchive(
     );
   }
   return tmpFile;
-}
-
-function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
-  const absoluteFilePath = path.resolve(projectRoot, gitIgnorePath);
-  if (!fs.existsSync(absoluteFilePath)) {
-    return [];
-  }
-  const lines = fs
-    .readFileSync(absoluteFilePath)
-    .toString() // Buffer -> string
-    .split("\n") // split into lines
-    .map((line) => line.trim())
-    .filter((line) => !line.startsWith("#") && !(line === "")); // remove comments and empty lines
-  return lines;
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
