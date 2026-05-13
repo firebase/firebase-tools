@@ -593,6 +593,18 @@ describe("prepare", () => {
       expect(want.availableMemoryMb).to.equal(512);
     });
 
+    it("fills in timeout from last deploy", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      const have: backend.Endpoint = JSON.parse(JSON.stringify(want));
+      have.timeoutSeconds = 120;
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.timeoutSeconds).to.equal(120);
+    });
+
     it("downgrades concurrency if necessary (explicit)", () => {
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,
@@ -644,6 +656,28 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
       prepare.resolveCpuAndConcurrency(backend.of(want));
       expect(want.concurrency).to.equal(1);
+    });
+
+    it("defaults timeout to 60 for run platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "run",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.equal(60);
+    });
+
+    it("does not default timeout for gcfv2 platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.be.undefined;
     });
   });
 

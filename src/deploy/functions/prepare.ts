@@ -302,6 +302,7 @@ export async function prepare(
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
+    resolveDefaultTimeout(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -552,6 +553,10 @@ export function inferDetailsFromExisting(
       wantE.cpu = haveE.cpu;
     }
 
+    if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
+      wantE.timeoutSeconds = haveE.timeoutSeconds;
+    }
+
     // N.B. concurrency has different defaults based on CPU. If the customer
     // only specifies CPU and they change that specification to < 1, we should
     // turn off concurrency.
@@ -646,6 +651,18 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
     if (!e.concurrency) {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
+    }
+  }
+}
+
+/**
+ * Assigns the default timeout to a function if it is deployed to Cloud Run
+ * and no timeout was specified.
+ */
+export function resolveDefaultTimeout(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
+    if (e.platform === "run" && e.timeoutSeconds === undefined) {
+      e.timeoutSeconds = backend.DEFAULT_TIMEOUT_SECONDS;
     }
   }
 }
