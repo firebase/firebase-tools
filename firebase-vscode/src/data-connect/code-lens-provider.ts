@@ -209,6 +209,8 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     // TODO: replace w/ online-parser to work with malformed documents
     const documentNode = parse(documentText);
 
+    const tableStartLines = new Set<number>();
+
     for (const x of documentNode.definitions) {
       if (x.kind === Kind.OBJECT_TYPE_DEFINITION && x.loc) {
         const line = x.loc.startToken.line - 1;
@@ -219,6 +221,7 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
         const isView = x.directives?.some((d) => d.name.value === "view");
 
         if (isTable) {
+          tableStartLines.add(line);
           codeLenses.push(
             new vscode.CodeLens(range, {
               title: `$(database) Add data`,
@@ -244,6 +247,15 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
 
     const comments = findCommentsBlocks(documentText, []);
     for (const c of comments) {
+      const lineText = document.lineAt(c.startLine).text;
+      if (!lineText.startsWith('#')) {
+        continue;
+      }
+
+      if (tableStartLines.has(c.endLine + 1)) {
+        continue;
+      }
+
       const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
       codeLenses.push(
         new vscode.CodeLens(range, {
