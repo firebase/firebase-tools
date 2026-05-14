@@ -398,13 +398,6 @@ async function prepareLocalBuildDirectory(
   const ignore = resolveIgnorePatterns(cfg, /* skipDefaultNodeModules= */ true);
   ignore.push("local_build"); // Always ignore the build directory itself
 
-  // Warn if node_modules is explicitly ignored
-  if (cfg.ignore?.includes("node_modules")) {
-    logLabeledWarning(
-      "apphosting",
-      `You have included 'node_modules' in your ignore list for local builds. This might cause the build to fail if dependencies are missing in the build directory.`,
-    );
-  }
 
   // Check if local_build dir already exists
   if (fs.existsSync(localBuildDir)) {
