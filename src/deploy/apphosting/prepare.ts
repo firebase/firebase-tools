@@ -27,6 +27,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -196,7 +197,7 @@ export default async function (context: Context, options: Options): Promise<void
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     const rootDir = options.projectRoot || process.cwd();
-    const localBuildDir = path.join(rootDir, "local_build");
+    const localBuildDir = path.join(rootDir, LOCAL_BUILD_DIR_NAME);
 
     try {
       await prepareLocalBuildDirectory(rootDir, localBuildDir, cfg);
@@ -396,7 +397,7 @@ async function prepareLocalBuildDirectory(
 ): Promise<void> {
   // Resolve ignores for local builds, skipping default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg, /* skipDefaultNodeModules= */ true);
-  ignore.push("local_build"); // Always ignore the build directory itself
+  ignore.push(LOCAL_BUILD_DIR_NAME); // Always ignore the build directory itself
 
   // Check if local_build dir already exists
   if (fs.existsSync(localBuildDir)) {

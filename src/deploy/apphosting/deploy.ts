@@ -10,6 +10,7 @@ import { Context } from "./args";
 import * as util from "./util";
 import * as experiments from "../../experiments";
 import { logger } from "../../logger";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 /**
  * Uploads App Hosting source code or local build output to Google Cloud Storage.
@@ -19,7 +20,6 @@ import { logger } from "../../logger";
  * method, while local build deployments are tar-balled using the "createTarArchive"
  * method. The resulting archive is uploaded to the bucket, and the URI is stored in
  * the context for the subsequent release phase.
- *
  * @param context - The deployment context containing backend configs and locations.
  * @param options - CLI options providing project ID and root directory.
  */
@@ -88,7 +88,7 @@ export default async function (context: Context, options: Options): Promise<void
         const zippedSourcePath = isLocalBuild
           ? await util.createLocalBuildTarArchive(
               cfg,
-              path.join(rootDir, "local_build"),
+              path.join(rootDir, LOCAL_BUILD_DIR_NAME),
               builtAppDir,
             )
           : await util.createSourceDeployArchive(cfg, rootDir);
@@ -127,7 +127,7 @@ export default async function (context: Context, options: Options): Promise<void
     const rootDir = options.projectRoot || process.cwd();
     for (const cfg of Object.values(context.backendConfigs)) {
       if (cfg.localBuild) {
-        const localBuildDir = path.join(rootDir, "local_build");
+        const localBuildDir = path.join(rootDir, LOCAL_BUILD_DIR_NAME);
         if (fs.existsSync(localBuildDir)) {
           try {
             fs.rmSync(localBuildDir, { recursive: true, force: true });
