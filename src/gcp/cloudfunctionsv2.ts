@@ -469,6 +469,10 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
     "timeoutSeconds",
   );
 
+  // endpoint.serviceAccount is one user-facing option, but the v2 API splits it
+  // across buildConfig.serviceAccount (resource name) and serviceConfig.serviceAccountEmail
+  // (email only). convertIfPresent handles one destination field at a time, which
+  // would duplicate the presence check, null handling, and email formatting.
   if (Object.prototype.hasOwnProperty.call(endpoint, "serviceAccount")) {
     const serviceAccount = endpoint.serviceAccount;
     if (!serviceAccount) {
