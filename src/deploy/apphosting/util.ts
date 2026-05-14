@@ -45,6 +45,10 @@ export async function createLocalBuildTarArchive(
         allFiles.push(file);
       }
     }
+    const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
+    if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
+      allFiles.push(bundleYamlPath);
+    }
   }
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
