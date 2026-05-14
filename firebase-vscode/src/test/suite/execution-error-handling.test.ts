@@ -83,8 +83,7 @@ firebaseSuite("generateOperation Error Handling", () => {
     assert.equal(showErrorMessageStub.getCall(0).args[0], "Ensure schema compiles before generating queries");
   });
 
-  firebaseTest("should show notification when response is not valid GraphQL", async function(this: any) {
-    this.timeout(10000);
+  firebaseTest("should show notification when response is not valid GraphQL", async () => {
     buildStub.resolves({ errors: [] });
     
     const scope = nock("https://firebasedataconnect.googleapis.com")
