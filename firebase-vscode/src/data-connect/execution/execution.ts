@@ -325,9 +325,25 @@ export function registerExecution(
                   configDir: serviceConfig.path,
                   projectId: arg.projectId,
               });
-              if (buildResult.errors?.length) {
+              const schemaErrors = buildResult.errors?.filter(e => {
+                  // Ignore warnings
+                  const isHardError = !e.extensions?.warningLevel;
+                  const file = e.extensions?.file;
+                  if (!file) return isHardError;
+                  
+                  // Ignore operation (connector) errors, only keep schema errors
+                  const isSchemaFile = !serviceConfig.connectorDirs.some(dir => {
+                      const absConnectorDir = path.resolve(serviceConfig.path, dir);
+                      const absFile = path.resolve(serviceConfig.path, file);
+                      return absFile.startsWith(absConnectorDir);
+                  });
+                  
+                  return isHardError && isSchemaFile;
+              });
+
+              if (schemaErrors?.length) {
                   // Handle compilation errors and provide navigation to the file
-                  await handleCompilationError(buildResult.errors[0], serviceConfig.path);
+                  await handleCompilationError(schemaErrors[0], serviceConfig.path);
                   return;
               }
           } catch (e: any) {
@@ -348,7 +364,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
         }
       }
       const res = await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Window,
+        location: vscode.ProgressLocation.Notification,
         title: "Data Connect: Generating Operation...",
       }, async (progress) => {
         return await gif.generateOperation(
@@ -379,6 +395,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
         arg.existingQuery,
         res,
       );
+      vscode.window.showInformationMessage("SQL Connect generation completed");
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
@@ -404,7 +421,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       }
 
       const res = await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Window,
+        location: vscode.ProgressLocation.Notification,
         title: "Data Connect: Generating Schema...",
       }, async (progress) => {
         return await gif.generateSchema(
@@ -434,6 +451,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
         "", // No existing query to replace
         res,
       );
+      vscode.window.showInformationMessage("SQL Connect generation completed");
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate schema: ${e.message}`);
     }
