@@ -373,10 +373,15 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           arg.projectId!,
           schemas.length > 0 ? schemas : undefined,
           (status: any) => {
+             let message = "";
+             if (status.state) {
+                 message += `[${status.state}] `;
+             }
              if (status.message) {
-                 progress.report({ message: status.message });
-             } else if (status.state) {
-                 progress.report({ message: status.state });
+                 message += status.message;
+             }
+             if (message) {
+                 progress.report({ message });
              }
           }
         );
@@ -429,10 +434,15 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           projectId,
           location,
           (status: any) => {
+             let message = "";
+             if (status.state) {
+                 message += `[${status.state}] `;
+             }
              if (status.message) {
-                 progress.report({ message: status.message });
-             } else if (status.state) {
-                 progress.report({ message: status.state });
+                 message += status.message;
+             }
+             if (message) {
+                 progress.report({ message });
              }
           }
         );
