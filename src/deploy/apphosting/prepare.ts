@@ -395,7 +395,7 @@ async function prepareLocalBuildDirectory(
   cfg: AppHostingSingle,
 ): Promise<void> {
   // Resolve ignores for local builds, skipping default node_modules ignore
-  const ignore = resolveIgnorePatterns(cfg, rootDir, /* skipDefaultNodeModules= */ true);
+  const ignore = resolveIgnorePatterns(cfg, /* skipDefaultNodeModules= */ true);
   ignore.push("local_build"); // Always ignore the build directory itself
 
   // Warn if node_modules is explicitly ignored
@@ -417,8 +417,8 @@ async function prepareLocalBuildDirectory(
   // Copy files respecting ignores
   const filesToCopy = await fsAsync.readdirRecursive({
     path: rootDir,
-    ignore: ignore,
-    isGitIgnore: true,
+    ignoreStrings: ignore,
+    supportGitIgnore: true,
   });
 
   for (const file of filesToCopy) {

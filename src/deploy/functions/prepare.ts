@@ -124,6 +124,8 @@ export async function prepare(
     context.filters,
   );
 
+  const existingBackend = await backend.existingBackend(context);
+
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
@@ -148,6 +150,11 @@ export async function prepare(
     proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
+
+    const relevantEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((e) => e.codebase === codebase || e.codebase === undefined);
+    await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
@@ -282,13 +289,7 @@ export async function prepare(
   // Resolve default regions for backends we want before grouping endpoints by codebase.
   // This way, endpoints aren't incorrectly grouped together under the REGION_TBD region if the
   // region is unresolved for multiple codebases.
-  const existingBackend = await backend.existingBackend(context);
-  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const relevantEndpoints = backend
-      .allEndpoints(existingBackend)
-      .filter((e) => e.codebase === codebase || e.codebase === undefined);
-    await resolveDefaultRegions(wantBackend, backend.of(...relevantEndpoints));
-  }
+
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
     backend.allEndpoints(existingBackend),
@@ -349,83 +350,52 @@ export async function prepare(
   applyBackendHashToBackends(wantBackends, context);
 }
 
-function moveEndpointToRegion(
-  backend: backend.Backend,
-  endpoint: backend.Endpoint,
-  region: string,
-) {
-  endpoint.region = region;
-  backend.endpoints[region] = backend.endpoints[region] || {};
-  backend.endpoints[region][endpoint.id] = endpoint;
-  delete backend.endpoints[build.REGION_TBD][endpoint.id];
-  if (Object.keys(backend.endpoints[build.REGION_TBD]).length === 0) {
-    delete backend.endpoints[build.REGION_TBD];
-  }
-}
-
 /**
- * Verifies that we don't have a peculiar edge case where we cannot know what region a default endpoint was in.
- * This is only possible in insane edge cases (esp since you can only have multi-region functions for HTTPS and
- * regional AI Logic functions) where a customer HAD specified multiple regions in a function and then deleted
- * the regions annotation entirely and we don't know which to delete and which to keep.
+ * Resolves default regions for endpoints in a Build before it is converted to a Backend.
+ * This allows the VPC connector string to be built with the correct region in build.ts.
  */
-export function matchRegionsForExisting(want: backend.Backend, have: backend.Backend): void {
-  for (const [id, wantE] of Object.entries(want.endpoints[build.REGION_TBD] || {})) {
-    let matching: backend.Endpoint | undefined;
-    for (const region of Object.keys(have.endpoints)) {
-      if (region === build.REGION_TBD) {
-        continue;
-      }
-      if (have.endpoints[region][id]) {
-        if (matching) {
-          throw new FirebaseError(
-            `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
-          );
-        }
-        matching = have.endpoints[region][id];
-      }
-    }
-
-    if (!matching) {
-      continue;
-    }
-
-    moveEndpointToRegion(want, wantE, matching.region);
-  }
-}
-
-/**
- * Resolves regions for endpoints that were not specified in the build.
- * This is an improvement from old logic where everything was hard-coded to us-central1. Now,
- * we can move defaults to adjust for regional capacity or automaically match the function
- * to its event source allowing region to be specified less often.
- */
-// N.B. This is async because it will eventually look up backend info
-export async function resolveDefaultRegions(
-  want: backend.Backend,
+export async function resolveDefaultRegionsForBuild(
+  buildObj: build.Build,
   have: backend.Backend,
 ): Promise<void> {
-  matchRegionsForExisting(want, have);
+  for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
+    if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
+      let resolvedRegion = DEFAULT_FUNCTION_REGION;
 
-  const endpoints = Object.values(want.endpoints[build.REGION_TBD] || {});
-
-  for (const endpoint of endpoints) {
-    let resolvedRegion = "us-central1";
-
-    try {
-      if (backend.isBlockingTriggered(endpoint)) {
-        resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
-      } else if (backend.isEventTriggered(endpoint)) {
-        resolvedRegion = await resolveRegionForEventTrigger(endpoint);
+      // Match existing endpoints.
+      let matching: backend.Endpoint | undefined;
+      for (const region of Object.keys(have.endpoints)) {
+        if (have.endpoints[region][id]) {
+          if (matching) {
+            throw new FirebaseError(
+              `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
+            );
+          }
+          matching = have.endpoints[region][id];
+        }
       }
-    } catch (err: any) {
-      logger.debug(
-        `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
-        getErrStack(err),
-      );
-    }
 
-    moveEndpointToRegion(want, endpoint, resolvedRegion);
+      if (matching) {
+        resolvedRegion = matching.region;
+      } else {
+        // Match triggers.
+        try {
+          const fullEndpoint = { ...endpoint, id } as any;
+          if (build.isBlockingTriggered(endpoint)) {
+            resolvedRegion = resolveRegionForBlockingTrigger(fullEndpoint);
+          } else if (build.isEventTriggered(endpoint)) {
+            resolvedRegion = await resolveRegionForEventTrigger(fullEndpoint);
+          }
+        } catch (err: any) {
+          logger.debug(
+            `Failed to resolve region for endpoint ${id}. Defaulting to ${DEFAULT_FUNCTION_REGION}.`,
+            getErrStack(err),
+          );
+        }
+      }
+
+      endpoint.region = [resolvedRegion];
+    }
   }
 }
 

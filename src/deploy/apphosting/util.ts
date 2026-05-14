@@ -28,11 +28,11 @@ export async function createLocalBuildTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = resolveIgnorePatterns(config, targetDir);
+  const ignore = resolveIgnorePatterns(config);
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
-    ignore: ignore,
-    isGitIgnore: true,
+    ignoreStrings: ignore,
+    supportGitIgnore: true,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
 
@@ -90,12 +90,12 @@ export async function createSourceDeployArchive(
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  const ignore = resolveIgnorePatterns(config, targetDir);
+  const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
       path: targetDir,
-      ignore: ignore,
-      isGitIgnore: true,
+      ignoreStrings: ignore,
+      supportGitIgnore: true,
     });
     for (const file of files) {
       const name = path.relative(rootDir, file.name);
@@ -116,11 +116,10 @@ export async function createSourceDeployArchive(
 
 /**
  * Resolves the ignore patterns for App Hosting deployments.
- * Merges config ignores, defaults, and .gitignore patterns.
+ * Merges config ignores and defaults. (.gitignore patterns are handled dynamically by fsAsync.readdirRecursive).
  */
 export function resolveIgnorePatterns(
   config: AppHostingSingle,
-  targetDir: string,
   skipDefaultNodeModules = false,
 ): string[] {
   const ignore = config.ignore
@@ -129,25 +128,8 @@ export function resolveIgnorePatterns(
       ? [".git"]
       : ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  ignore.push(...gitIgnorePatterns);
   return ignore;
 }
-
-function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
-  const absoluteFilePath = path.resolve(projectRoot, gitIgnorePath);
-  if (!fs.existsSync(absoluteFilePath)) {
-    return [];
-  }
-  const lines = fs
-    .readFileSync(absoluteFilePath)
-    .toString() // Buffer -> string
-    .split("\n") // split into lines
-    .map((line) => line.trim())
-    .filter((line) => !line.startsWith("#") && !(line === "")); // remove comments and empty lines
-  return lines;
-}
-
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();
