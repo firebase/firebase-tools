@@ -398,7 +398,6 @@ async function prepareLocalBuildDirectory(
   const ignore = resolveIgnorePatterns(cfg, /* skipDefaultNodeModules= */ true);
   ignore.push("local_build"); // Always ignore the build directory itself
 
-
   // Check if local_build dir already exists
   if (fs.existsSync(localBuildDir)) {
     throw new FirebaseError(
