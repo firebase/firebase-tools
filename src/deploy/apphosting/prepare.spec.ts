@@ -244,7 +244,9 @@ describe("apphosting", () => {
         path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
       );
 
-      expect(context.backendLocalBuilds["backend-prod"].buildDir).to.equal("./next/standalone-prod");
+      expect(context.backendLocalBuilds["backend-prod"].buildDir).to.equal(
+        "./next/standalone-prod",
+      );
       expect(context.backendLocalBuilds["backend-staging"].buildDir).to.equal(
         "./next/standalone-staging",
       );
