@@ -44,6 +44,7 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         buildDir: "./nextjs/standalone",
+        localBuildDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         buildConfig: {},
         annotations: {},
       },
@@ -174,7 +175,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(process.cwd(), LOCAL_BUILD_DIR_NAME),
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         "./nextjs/standalone",
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
@@ -217,7 +218,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(process.cwd(), LOCAL_BUILD_DIR_NAME),
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         "./nextjs/standalone",
       );
       expect(uploadObjectStub).to.be.calledWithMatch(

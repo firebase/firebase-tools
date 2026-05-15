@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as path from "path";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
@@ -151,6 +152,7 @@ describe("apphosting", () => {
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
         buildDir: "./next/standalone",
+        localBuildDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
         buildConfig,
         annotations,
       });
@@ -159,6 +161,92 @@ describe("apphosting", () => {
         apphosting.serviceAgentEmail("123456789"),
         ["roles/storage.objectViewer"],
         true,
+      );
+    });
+
+    it("supports multiple parallel local builds without directory clobbering", async () => {
+      const optsWithMultipleLocalBuilds = {
+        ...opts,
+        config: new Config({
+          apphosting: [
+            {
+              backendId: "backend-prod",
+              rootDir: "/",
+              ignore: [],
+              localBuild: true,
+            },
+            {
+              backendId: "backend-staging",
+              rootDir: "/",
+              ignore: [],
+              localBuild: true,
+            },
+          ],
+        }),
+      };
+      const context = initializeContext();
+      context.backendConfigs = {
+        "backend-prod": {
+          backendId: "backend-prod",
+          rootDir: "/",
+          ignore: [],
+          localBuild: true,
+        },
+        "backend-staging": {
+          backendId: "backend-staging",
+          rootDir: "/",
+          ignore: [],
+          localBuild: true,
+        },
+      };
+      context.backendLocations = {
+        "backend-prod": "us-central1",
+        "backend-staging": "us-central1",
+      };
+
+      const localBuildStub = sinon.stub(localbuilds, "localBuild");
+      localBuildStub
+        .withArgs(
+          sinon.match.any,
+          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-prod`)),
+          sinon.match.any,
+        )
+        .resolves({
+          outputFiles: ["./next/standalone-prod"],
+          buildConfig: { runCommand: "npm run build:prod", env: [] },
+          annotations: { framework: "nextjs" },
+        });
+      localBuildStub
+        .withArgs(
+          sinon.match.any,
+          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-staging`)),
+          sinon.match.any,
+        )
+        .resolves({
+          outputFiles: ["./next/standalone-staging"],
+          buildConfig: { runCommand: "npm run build:staging", env: [] },
+          annotations: { framework: "nextjs" },
+        });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          { name: "projects/my-project/locations/us-central1/backends/backend-prod" },
+          { name: "projects/my-project/locations/us-central1/backends/backend-staging" },
+        ],
+      });
+
+      await prepare(context, optsWithMultipleLocalBuilds);
+
+      expect(context.backendLocalBuilds["backend-prod"].localBuildDir).to.equal(
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-prod`),
+      );
+      expect(context.backendLocalBuilds["backend-staging"].localBuildDir).to.equal(
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
+      );
+
+      expect(context.backendLocalBuilds["backend-prod"].buildDir).to.equal("./next/standalone-prod");
+      expect(context.backendLocalBuilds["backend-staging"].buildDir).to.equal(
+        "./next/standalone-staging",
       );
     });
 
@@ -329,7 +417,7 @@ describe("apphosting", () => {
       const context = initializeContext();
 
       (fs.existsSync as sinon.SinonStub).callsFake((pathLike: fs.PathLike) => {
-        if (typeof pathLike === "string" && pathLike.endsWith(LOCAL_BUILD_DIR_NAME)) {
+        if (typeof pathLike === "string" && pathLike.endsWith(`${LOCAL_BUILD_DIR_NAME}_foo`)) {
           return true;
         }
         return false;

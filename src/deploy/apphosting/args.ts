@@ -5,6 +5,7 @@ export interface LocalBuild {
   buildConfig: BuildConfig;
   buildDir: string;
   annotations: Record<string, string>;
+  localBuildDir: string;
 }
 
 export interface Context {

@@ -197,7 +197,7 @@ export default async function (context: Context, options: Options): Promise<void
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     const rootDir = options.projectRoot || process.cwd();
-    const localBuildDir = path.join(rootDir, LOCAL_BUILD_DIR_NAME);
+    const localBuildDir = path.join(rootDir, `${LOCAL_BUILD_DIR_NAME}_${cfg.backendId}`);
 
     try {
       await prepareLocalBuildDirectory(rootDir, localBuildDir, cfg);
@@ -220,6 +220,7 @@ export default async function (context: Context, options: Options): Promise<void
       context.backendLocalBuilds[cfg.backendId] = {
         // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
+        localBuildDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
@@ -401,9 +402,9 @@ async function prepareLocalBuildDirectory(
   localBuildDir: string,
   cfg: AppHostingSingle,
 ): Promise<void> {
-  // Resolve ignores for local builds, skipping default node_modules ignore
-  const ignore = resolveIgnorePatterns(cfg, /* skipDefaultNodeModules= */ true);
-  ignore.push(LOCAL_BUILD_DIR_NAME); // Always ignore the build directory itself
+  // Resolve ignores for local builds, including default node_modules ignore
+  const ignore = resolveIgnorePatterns(cfg);
+  ignore.push(path.basename(localBuildDir)); // Always ignore the build directory itself
 
   // Check if local_build dir already exists
   if (fs.existsSync(localBuildDir)) {
