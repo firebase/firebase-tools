@@ -111,7 +111,7 @@ describe("util", () => {
       expect(files).to.not.include("apphosting.yaml");
     });
 
-    it("should respect ignore patterns in config", async () => {
+    it("should NOT respect ignore patterns in config for local builds", async () => {
       fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
       fs.writeFileSync(path.join(distDir, "ignored.txt"), "ignore me");
 
@@ -135,10 +135,10 @@ describe("util", () => {
       });
 
       expect(files).to.include("dist/index.js");
-      expect(files).to.not.include("dist/ignored.txt");
+      expect(files).to.include("dist/ignored.txt");
     });
 
-    it("should use default ignores when config.ignore is missing", async () => {
+    it("should NOT use default node_modules ignore for local builds", async () => {
       fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
       const nodeModulesDir = path.join(distDir, "node_modules");
       fs.mkdirSync(nodeModulesDir);
@@ -165,10 +165,10 @@ describe("util", () => {
       });
 
       expect(files).to.include("dist/index.js");
-      expect(files).to.not.include("dist/node_modules/some-file.js");
+      expect(files).to.include("dist/node_modules/some-file.js");
     });
 
-    it("should respect .gitignore patterns", async () => {
+    it("should NOT respect .gitignore patterns for local builds", async () => {
       fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
       fs.writeFileSync(path.join(distDir, "gitignored.txt"), "ignore me");
       fs.writeFileSync(path.join(distDir, ".gitignore"), "gitignored.txt");
@@ -193,7 +193,7 @@ describe("util", () => {
       });
 
       expect(files).to.include("dist/index.js");
-      expect(files).to.not.include("dist/gitignored.txt");
+      expect(files).to.include("dist/gitignored.txt");
     });
   });
 });

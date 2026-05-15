@@ -26,6 +26,7 @@ import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -328,7 +329,7 @@ describe("apphosting", () => {
       const context = initializeContext();
 
       (fs.existsSync as sinon.SinonStub).callsFake((pathLike: fs.PathLike) => {
-        if (typeof pathLike === "string" && pathLike.endsWith("local_build")) {
+        if (typeof pathLike === "string" && pathLike.endsWith(LOCAL_BUILD_DIR_NAME)) {
           return true;
         }
         return false;

@@ -46,6 +46,7 @@ function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: 
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
+        cwd: projectRoot,
         env: {
           ...process.env,
           X_GOOGLE_TARGET_PLATFORM: "fah",

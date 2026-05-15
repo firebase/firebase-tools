@@ -28,11 +28,13 @@ export async function createLocalBuildTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = resolveIgnorePatterns(config);
+  // Config ignore patterns and .gitignore files are bypassed here because they were already applied
+  // before the build when setting up the .local_build directory. Bypassing them ensures standalone
+  // node_modules and build output files are fully preserved.
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
-    ignoreStrings: ignore,
-    supportGitIgnore: true,
+    ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+    supportGitIgnore: false,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
 
