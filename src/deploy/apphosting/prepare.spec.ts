@@ -152,7 +152,7 @@ describe("apphosting", () => {
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
         buildDir: "./next/standalone",
-        localBuildDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
+        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
         buildConfig,
         annotations,
       });
@@ -237,10 +237,10 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithMultipleLocalBuilds);
 
-      expect(context.backendLocalBuilds["backend-prod"].localBuildDir).to.equal(
+      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
         path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-prod`),
       );
-      expect(context.backendLocalBuilds["backend-staging"].localBuildDir).to.equal(
+      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
         path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
       );
 
@@ -433,7 +433,7 @@ describe("apphosting", () => {
 
       await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
         FirebaseError,
-        "The local build directory",
+        "The local build scratch directory",
       );
     });
 

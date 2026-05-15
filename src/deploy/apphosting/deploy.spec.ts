@@ -44,7 +44,7 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         buildDir: "./nextjs/standalone",
-        localBuildDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
+        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         buildConfig: {},
         annotations: {},
       },

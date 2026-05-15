@@ -197,14 +197,14 @@ export default async function (context: Context, options: Options): Promise<void
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     const rootDir = options.projectRoot || process.cwd();
-    const localBuildDir = path.join(rootDir, `${LOCAL_BUILD_DIR_NAME}_${cfg.backendId}`);
+    const localBuildScratchDir = path.join(rootDir, `${LOCAL_BUILD_DIR_NAME}_${cfg.backendId}`);
 
     try {
-      await prepareLocalBuildDirectory(rootDir, localBuildDir, cfg);
+      await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
 
       const { outputFiles, annotations, buildConfig } = await localBuild(
         projectId,
-        localBuildDir,
+        localBuildScratchDir,
         "nextjs",
         buildEnv[cfg.backendId] || {},
         {
@@ -220,7 +220,7 @@ export default async function (context: Context, options: Options): Promise<void
       context.backendLocalBuilds[cfg.backendId] = {
         // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
-        localBuildDir,
+        localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
@@ -389,30 +389,30 @@ async function ensureAppHostingServiceAgentRoles(
 }
 
 /**
- * Prepares the directory for local builds by copying non-ignored files.
+ * Prepares the scratch directory for local builds by copying non-ignored files.
  *
  * NOTE ON FILE FILTERING:
  * For local builds, we apply all ignore filtering (user firebase.json ignores and .gitignore)
  * BEFORE the build runs, right here during the directory copying phase. This creates a clean,
- * isolated workspace in the `.local_build` folder that contains exactly the same source files
- * that would be uploaded to Cloud Build.
+ * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
+ * source files that would be uploaded to Cloud Build.
  */
-async function prepareLocalBuildDirectory(
+async function prepareLocalBuildScratchDirectory(
   rootDir: string,
-  localBuildDir: string,
+  localBuildScratchDir: string,
   cfg: AppHostingSingle,
 ): Promise<void> {
   // Resolve ignores for local builds, including default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg);
-  ignore.push(path.basename(localBuildDir)); // Always ignore the build directory itself
+  ignore.push(path.basename(localBuildScratchDir)); // Always ignore the build directory itself
 
-  // Check if local_build dir already exists
-  if (fs.existsSync(localBuildDir)) {
+  // Check if local build scratch dir already exists
+  if (fs.existsSync(localBuildScratchDir)) {
     throw new FirebaseError(
-      `The local build directory '${localBuildDir}' already exists. Please delete it and try again.`,
+      `The local build scratch directory '${localBuildScratchDir}' already exists. Please delete it and try again.`,
     );
   }
-  fs.mkdirSync(localBuildDir, { recursive: true });
+  fs.mkdirSync(localBuildScratchDir, { recursive: true });
 
   // Copy files respecting ignores
   const filesToCopy = await fsAsync.readdirRecursive({
@@ -423,7 +423,7 @@ async function prepareLocalBuildDirectory(
 
   for (const file of filesToCopy) {
     const relativePath = path.relative(rootDir, file.name);
-    const destPath = path.join(localBuildDir, relativePath);
+    const destPath = path.join(localBuildScratchDir, relativePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(file.name, destPath);
   }

@@ -82,7 +82,7 @@ describe("apphosting", () => {
         backendLocalBuilds: {
           fooLocalBuild: {
             buildDir: "./dist",
-            localBuildDir: "/root/.local_build_fooLocalBuild",
+            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
             buildConfig: {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],

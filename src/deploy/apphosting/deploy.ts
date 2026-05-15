@@ -74,7 +74,7 @@ export default async function (context: Context, options: Options): Promise<void
   await Promise.all(
     Object.values(context.backendConfigs).map(async (cfg) => {
         const rootDir = options.projectRoot ?? process.cwd();
-        let localBuildDir: string | undefined;
+        let localBuildScratchDir: string | undefined;
         try {
           const isLocalBuild = cfg.localBuild;
           let builtAppDir: string | undefined;
@@ -82,8 +82,8 @@ export default async function (context: Context, options: Options): Promise<void
             experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
             const localBuild = context.backendLocalBuilds[cfg.backendId];
             builtAppDir = localBuild?.buildDir;
-            localBuildDir = localBuild?.localBuildDir;
-            if (!builtAppDir || !localBuildDir) {
+            localBuildScratchDir = localBuild?.localBuildScratchDir;
+            if (!builtAppDir || !localBuildScratchDir) {
               throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
             }
           }
@@ -91,7 +91,7 @@ export default async function (context: Context, options: Options): Promise<void
           const zippedSourcePath = isLocalBuild
             ? await util.createLocalBuildTarArchive(
                 cfg,
-                localBuildDir!,
+                localBuildScratchDir!,
                 builtAppDir,
               )
             : await util.createSourceDeployArchive(cfg, rootDir);
@@ -124,11 +124,11 @@ export default async function (context: Context, options: Options): Promise<void
           context.backendStorageUris[cfg.backendId] =
             `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
         } finally {
-          if (localBuildDir && fs.existsSync(localBuildDir)) {
+          if (localBuildScratchDir && fs.existsSync(localBuildScratchDir)) {
             try {
-              fs.rmSync(localBuildDir, { recursive: true, force: true });
+              fs.rmSync(localBuildScratchDir, { recursive: true, force: true });
             } catch (err) {
-              logger.debug(`Failed to clean up local build directory ${localBuildDir}: ${err}`);
+              logger.debug(`Failed to clean up local build directory ${localBuildScratchDir}: ${err}`);
             }
           }
         }
