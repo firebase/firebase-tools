@@ -6,7 +6,6 @@ import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
 
-import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
@@ -273,21 +272,7 @@ export async function localBuild(
 
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    if (experiments.isEnabled("universalMaker")) {
-      apphostingBuildOutput = await runUniversalMaker(projectRoot, detectedFramework);
-    } else {
-      const buildResult = await localAppHostingBuild(projectRoot, detectedFramework);
-      apphostingBuildOutput = {
-        metadata: Object.fromEntries(
-          Object.entries(buildResult.metadata || {}).map(([k, v]) => [
-            k,
-            v as string | number | boolean,
-          ]),
-        ),
-        runConfig: buildResult.runConfig,
-        outputFiles: buildResult.outputFiles,
-      };
-    }
+    apphostingBuildOutput = await runUniversalMaker(projectRoot, detectedFramework);
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {
