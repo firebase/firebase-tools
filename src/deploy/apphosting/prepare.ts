@@ -404,7 +404,6 @@ async function prepareLocalBuildScratchDirectory(
 ): Promise<void> {
   // Resolve ignores for local builds, including default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg);
-  ignore.push(path.basename(localBuildScratchDir)); // Always ignore the build directory itself
 
   // Check if local build scratch dir already exists
   if (fs.existsSync(localBuildScratchDir)) {
