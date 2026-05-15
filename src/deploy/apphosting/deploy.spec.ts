@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as path from "path";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -10,6 +11,7 @@ import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -42,6 +44,7 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         buildDir: "./nextjs/standalone",
+        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         buildConfig: {},
         annotations: {},
       },
@@ -172,7 +175,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         "./nextjs/standalone",
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
@@ -215,7 +218,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         "./nextjs/standalone",
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
