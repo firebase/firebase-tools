@@ -26,7 +26,6 @@ import * as apphostingConfig from "../../apphosting/config";
 import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
 import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
-import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
 import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
