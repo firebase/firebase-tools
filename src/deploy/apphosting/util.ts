@@ -134,6 +134,7 @@ export function resolveIgnorePatterns(
       ? [".git"]
       : ["node_modules", ".git"];
   ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  ignore.push("**/.local_build_*");
   return ignore;
 }
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
