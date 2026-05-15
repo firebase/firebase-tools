@@ -234,7 +234,7 @@ describe("localBuild", () => {
         signal: null,
       });
 
-      const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
+      const { outputFiles, annotations } = await localBuild("test-project", "./");
 
       expect(outputFiles).to.deep.equal([".next/standalone"]);
       expect(annotations.framework).to.equal("nextjs");

@@ -2,7 +2,6 @@ import * as childProcess from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { Availability, BuildConfig, Env } from "../gcp/apphosting";
-import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
 
