@@ -25,6 +25,7 @@ import {
   findDependency,
   conjoinOptions,
   frameworksCallToAction,
+  getBodyParserToleranceShim,
   getFrameworksBuildTarget,
 } from "./utils";
 import {
@@ -539,25 +540,35 @@ ${
 
       // TODO move to templates
 
+      // Prepends getBodyParserToleranceShim() before framework imports; see
+      // https://github.com/firebase/firebase-tools/issues/10404
+      // ESM needs createRequire first: the shim uses require() and require.cache. Same shim string
+      // for both branches; only import/export wrapping differs.
+      const bodyParserToleranceShim = getBodyParserToleranceShim();
+
       if (packageJson.type === "module") {
         await writeFile(
           join(functionsDist, "server.js"),
-          `import { onRequest } from 'firebase-functions/v2/https';
-  const server = import('firebase-frameworks');
-  export const ${functionId} = onRequest(${JSON.stringify(
-    frameworksBackend || {},
-  )}, (req, res) => server.then(it => it.handle(req, res)));
-  `,
+          `import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+${bodyParserToleranceShim}
+const { onRequest } = require('firebase-functions/v2/https');
+const server = import('firebase-frameworks');
+export const ${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {},
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+`,
         );
       } else {
         await writeFile(
           join(functionsDist, "server.js"),
-          `const { onRequest } = require('firebase-functions/v2/https');
-  const server = import('firebase-frameworks');
-  exports.${functionId} = onRequest(${JSON.stringify(
-    frameworksBackend || {},
-  )}, (req, res) => server.then(it => it.handle(req, res)));
-  `,
+          `${bodyParserToleranceShim}
+const { onRequest } = require('firebase-functions/v2/https');
+const server = import('firebase-frameworks');
+exports.${functionId} = onRequest(${JSON.stringify(
+            frameworksBackend || {},
+          )}, (req, res) => server.then(it => it.handle(req, res)));
+`,
         );
       }
     } else {
