@@ -457,8 +457,9 @@ async function _runBinary(
         }
       }
       emulator.instance = childProcess.spawn(command.binary, command.args, opts);
-    } catch (e: any) {
-      if (e.code === "EACCES") {
+    } catch (e) {
+      const err = e as NodeJS.ErrnoException;
+      if (err.code === "EACCES") {
         // Known issue when WSL users don't have java
         // https://github.com/Microsoft/WSL/issues/3886
         logger.logLabeled(
@@ -475,7 +476,7 @@ async function _runBinary(
             `softwareupdate --install-rosetta`,
         );
       }
-      _fatal(emulator.name, e);
+      void _fatal(emulator.name, hasMessage(e) ? e.message : String(e));
     }
 
     const description = Constants.description(emulator.name);
@@ -517,11 +518,23 @@ async function _runBinary(
       void handleEmulatorProcessError(emulator.name, err, command.port);
     });
 
-    emulator.instance.once("exit", async (code, signal) => {
+    const exitCleanup = () => {
+      if (emulator.instance) {
+        try {
+          emulator.instance.kill("SIGKILL");
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+    process.on("exit", exitCleanup);
+
+    emulator.instance.once("exit", (code, signal) => {
+      process.removeListener("exit", exitCleanup);
       if (signal) {
         utils.logWarning(`${description} has exited upon receiving signal: ${signal}`);
       } else if (code && code !== 0 && code !== /* SIGINT */ 130) {
-        await _fatal(emulator.name, `${description} has exited with code: ${code}`);
+        void _fatal(emulator.name, `${description} has exited with code: ${code}`);
       }
     });
     resolve();
@@ -577,9 +590,13 @@ export async function stop(targetName: DownloadableEmulators): Promise<void> {
     if (emulator.instance && emulator.instance.kill(0)) {
       const killTimeout = setTimeout(() => {
         const pid = emulator.instance ? emulator.instance.pid : -1;
-        const errorMsg =
-          Constants.description(emulator.name) + ": Unable to terminate process (PID=" + pid + ")";
+        const errorMsg = `${Constants.description(emulator.name)}: Unable to terminate process (PID=${pid}). Sending SIGKILL...`;
         logger.log("DEBUG", errorMsg);
+        try {
+          emulator.instance?.kill("SIGKILL");
+        } catch (e) {
+          // ignore
+        }
         reject(new FirebaseError(emulator.name + ": " + errorMsg));
       }, EMULATOR_INSTANCE_KILL_TIMEOUT);
       emulator.instance.once("exit", () => {
