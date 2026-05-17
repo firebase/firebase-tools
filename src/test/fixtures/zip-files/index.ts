@@ -10,6 +10,7 @@ export const ZIP_CASES = [
   { name: "compressed-standard" },
   { name: "uncompressed" },
   { name: "zip-slip", wantErr: "a path outside of" },
+  { name: "zip-slip-prefix", wantErr: "a path outside of" },
   { name: "zip64" },
 ].map(({ name, wantErr }) => ({
   name,
