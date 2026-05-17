@@ -25,6 +25,7 @@ import {
   getBuildConfig,
   getContext,
   getServerConfig,
+  maybeWarnAngular22SsrSecurity,
 } from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
 import { FirebaseError } from "../../error";
@@ -70,6 +71,7 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     ssr,
   } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  await maybeWarnAngular22SsrSecurity(dir, configuration, ssr);
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
