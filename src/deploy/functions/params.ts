@@ -295,15 +295,33 @@ export class ParamValue {
   }
 
   asList(): string[] {
-    // Handle something like "['a', 'b', 'c']"
-    if (this.rawValue.includes("[")) {
-      // Convert quotes to apostrophes
-      const unquoted = this.rawValue.replace(/'/g, '"');
-      return JSON.parse(unquoted);
+    let modifiedValue = this.rawValue;
+
+    // Handle something like "["a", "b", "c"]"
+    if (modifiedValue.startsWith("[") && modifiedValue.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(modifiedValue);
+        if (Array.isArray(parsed)) {
+          // The return type is string[], so we must convert all elements to strings.
+          return parsed.map((elem: any) => {
+            if (typeof elem === "object") {
+              // String(obj) is "[object Object]", JSON.stringify is more useful.
+              // Avoid inserting spaces after commas for objects/arrays
+              return JSON.stringify(elem);
+            }
+            return String(elem);
+          });
+        }
+        // It's valid JSON but not an array (e.g. a string literal "foo,bar").
+        // Fall through to splitting by delimiter.
+      } catch (e) {
+        // Malformed JSON, e.g. "[a, b, c]". Remove brackets and fall through.
+        modifiedValue = modifiedValue.slice(1, -1);
+      }
     }
 
     // Continue to handle something like "a,b,c"
-    return this.rawValue.split(this.delimiter);
+    return modifiedValue.split(this.delimiter);
   }
 
   asNumber(): number {

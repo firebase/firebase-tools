@@ -327,3 +327,140 @@ describe("resolveParams", () => {
     getSecretMetadataStub.restore();
   });
 });
+
+describe("ParamValue.asList()", () => {
+  describe("basic usage", () => {
+    it("should parse JSON-style array with double quotes", () => {
+      const paramValue = new params.ParamValue('["1", "2", "3"]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["1", "2", "3"]);
+    });
+
+    it("should split comma-separated values", () => {
+      const paramValue = new params.ParamValue("a,b,c", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["a", "b", "c"]);
+    });
+
+    it("should handle empty array", () => {
+      const paramValue = new params.ParamValue("[]", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal([]);
+    });
+
+    it("should handle a single value", () => {
+      const paramValue = new params.ParamValue("foo", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["foo"]);
+    });
+
+    it("should handle whitespace around values", () => {
+      const paramValue = new params.ParamValue(" a , b , c ", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal([" a ", " b ", " c "]);
+    });
+  });
+
+  describe("delimiter handling", () => {
+    it("should use custom delimiter", () => {
+      const paramValue = new params.ParamValue("a;b;c", false, { list: true });
+      paramValue.setDelimiter(";");
+      expect(paramValue.asList()).to.deep.equal(["a", "b", "c"]);
+    });
+  });
+
+  describe("robustness", () => {
+    it("should handle values with commas inside JSON array", () => {
+      const paramValue = new params.ParamValue('["hello, world", "foo, bar"]', false, {
+        list: true,
+      });
+      expect(paramValue.asList()).to.deep.equal(["hello, world", "foo, bar"]);
+    });
+
+    it("should fall back to delimiter splitting for malformed JSON", () => {
+      const paramValue = new params.ParamValue("[a, b, c]", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["a", " b", " c"]);
+    });
+
+    it("should handle special characters", () => {
+      const paramValue = new params.ParamValue('["@#$%", "^&*()"]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["@#$%", "^&*()"]);
+    });
+
+    it("should work with fromList static method", () => {
+      const originalList = ["apple", "banana", "cherry"];
+      const paramValue = params.ParamValue.fromList(originalList);
+      expect(paramValue.asList()).to.deep.equal(originalList);
+    });
+
+    it("should handle square brackets in the middle of the string", () => {
+      const paramValue = new params.ParamValue('["]", "[", "]"]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["]", "[", "]"]);
+    });
+
+    it("should handle quotes, apostrophes, and backticks in the middle of the string", () => {
+      const paramValue = new params.ParamValue('["a\\"b", "c`d", "e\'f"]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(['a"b', "c`d", "e'f"]);
+    });
+
+    it("should handle empty string", () => {
+      const paramValue = new params.ParamValue("", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal([""]);
+    });
+
+    it("should handle whitespace-only string", () => {
+      const paramValue = new params.ParamValue("   ", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["   "]);
+    });
+
+    it("should handle JSON array with numbers", () => {
+      const paramValue = new params.ParamValue("[1, 2, 3]", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["1", "2", "3"]);
+    });
+
+    it("should handle JSON array with booleans", () => {
+      const paramValue = new params.ParamValue("[true, false, true]", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["true", "false", "true"]);
+    });
+
+    it("should handle JSON array with nulls", () => {
+      const paramValue = new params.ParamValue('["a", null, "b"]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["a", "null", "b"]);
+    });
+
+    it("should handle trailing delimiter", () => {
+      const paramValue = new params.ParamValue("a,b,c,", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["a", "b", "c", ""]);
+    });
+
+    it("should handle leading delimiter", () => {
+      const paramValue = new params.ParamValue(",a,b,c", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["", "a", "b", "c"]);
+    });
+
+    it("should handle consecutive delimiters", () => {
+      const paramValue = new params.ParamValue("a,,b", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["a", "", "b"]);
+    });
+
+    it("should handle only delimiters", () => {
+      const paramValue = new params.ParamValue(",,,", false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["", "", "", ""]);
+    });
+
+    it("should handle JSON array with empty strings", () => {
+      const paramValue = new params.ParamValue('["", "a", ""]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(["", "a", ""]);
+    });
+
+    it("should handle JSON array with whitespace strings", () => {
+      const paramValue = new params.ParamValue('[" ", "a", "  "]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal([" ", "a", "  "]);
+    });
+
+    it("should handle JSON array with nested arrays", () => {
+      const paramValue = new params.ParamValue('[["a", "b"], ["c"]]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(['["a","b"]', '["c"]']);
+    });
+
+    it("should handle JSON array with objects", () => {
+      const paramValue = new params.ParamValue('[{"foo":1}, {"bar":2}]', false, { list: true });
+      expect(paramValue.asList()).to.deep.equal(['{"foo":1}', '{"bar":2}']);
+    });
+  });
+});
