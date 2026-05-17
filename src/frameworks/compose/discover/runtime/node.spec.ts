@@ -54,6 +54,16 @@ describe("NodejsRuntime", () => {
 
       expect(actual).to.equal(expected);
     });
+
+    it("should return bun package manager", async () => {
+      const fileSystem = new MockFileSystem({
+        "bun.lock": "It is test file",
+      });
+      const actual = await nodeJSRuntime.getPackageManager(fileSystem);
+      const expected = "bun";
+
+      expect(actual).to.equal(expected);
+    });
   });
 
   describe("getDependencies", () => {
