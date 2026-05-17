@@ -270,7 +270,7 @@ FOO=foo
       keys.forEach((key) => {
         expect(() => {
           env.validateKey(key);
-        }).to.throw("reserved for internal use");
+        }).to.throw("reserved for internal use; please use a different key");
       });
     });
 
