@@ -265,24 +265,28 @@ export class Delegate {
   ): Promise<() => Promise<void>> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
 
+    const pExit = new Promise<void>((resolve, reject) => {
+      childProcess.once("exit", resolve);
+      childProcess.once("error", reject);
+    });
+
     // TODO: Refactor return type to () => Promise<void> to simplify nested promises
     return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
-
       try {
         await fetch(`http://localhost:${port}/__/quitquitquit`);
       } catch (e) {
         logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
       }
-      setTimeout(() => {
+
+      const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      return p;
+
+      return pExit.finally(() => {
+        clearTimeout(quitTimeout);
+      });
     });
   }
 
