@@ -4,6 +4,7 @@ import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 
@@ -29,11 +30,13 @@ export async function createLocalBuildTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
+  // Config ignore patterns and .gitignore files are bypassed here because they were already applied
+  // before the build when setting up the .local_build directory. Bypassing them ensures standalone
+  // node_modules and build output files are fully preserved.
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
-    ignore: ignore,
-    isGitIgnore: true,
+    ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+    supportGitIgnore: false,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
 
@@ -45,6 +48,10 @@ export async function createLocalBuildTarArchive(
       if (!allFiles.includes(file)) {
         allFiles.push(file);
       }
+    }
+    const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
+    if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
+      allFiles.push(bundleYamlPath);
     }
   }
 
@@ -75,7 +82,7 @@ export async function createLocalBuildTarArchive(
   if (config.localBuild && stats.size > sizeLimitBytes) {
     const sizeInMB = stats.size / (1024 * 1024);
     const limitInMB = sizeLimitBytes / (1024 * 1024);
-    throw new FirebaseError(
+    logger.warn(
       `The final build artifact is larger than ${limitInMB.toFixed(0)}MB (current size: ${sizeInMB.toFixed(2)}MB). Please reduce the size of your build artifacts.`,
     );
   }
@@ -101,15 +108,12 @@ export async function createSourceDeployArchive(
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push("firebase-debug.log", "firebase-debug.*.log");
-  const gitIgnorePatterns = parseGitIgnorePatterns(targetDir);
-  ignore.push(...gitIgnorePatterns);
+  const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
       path: targetDir,
-      ignore: ignore,
-      isGitIgnore: true,
+      ignoreStrings: ignore,
+      supportGitIgnore: true,
     });
     for (const file of files) {
       const name = path.relative(rootDir, file.name);
@@ -121,27 +125,30 @@ export async function createSourceDeployArchive(
     await pipeAsync(archive, fileStream);
   } catch (err: unknown) {
     throw new FirebaseError(
-      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${String(err)}`,
       { original: err as Error, exit: 1 },
     );
   }
   return tmpFile;
 }
 
-function parseGitIgnorePatterns(projectRoot: string, gitIgnorePath = ".gitignore"): string[] {
-  const absoluteFilePath = path.resolve(projectRoot, gitIgnorePath);
-  if (!fs.existsSync(absoluteFilePath)) {
-    return [];
-  }
-  const lines = fs
-    .readFileSync(absoluteFilePath)
-    .toString() // Buffer -> string
-    .split("\n") // split into lines
-    .map((line) => line.trim())
-    .filter((line) => !line.startsWith("#") && !(line === "")); // remove comments and empty lines
-  return lines;
+/**
+ * Resolves the ignore patterns for App Hosting deployments.
+ * Merges config ignores and defaults. (.gitignore patterns are handled dynamically by fsAsync.readdirRecursive).
+ */
+export function resolveIgnorePatterns(
+  config: AppHostingSingle,
+  skipDefaultNodeModules = false,
+): string[] {
+  const ignore = config.ignore
+    ? [...config.ignore]
+    : skipDefaultNodeModules
+      ? [".git"]
+      : ["node_modules", ".git"];
+  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  ignore.push(".local_build_*");
+  return ignore;
 }
-
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();

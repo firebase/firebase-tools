@@ -256,6 +256,7 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
 
 export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const DEFAULT_TIMEOUT_SECONDS = 60;
 export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
