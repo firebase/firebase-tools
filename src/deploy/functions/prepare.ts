@@ -67,6 +67,22 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 export const DEFAULT_FUNCTION_REGION = "us-central1";
 
 /**
+ * A subset of the backend.Endpoint interface for the purposes of resolving regions.
+ */
+interface TriggerResolutionTarget {
+  project: string;
+  eventTrigger?: {
+    eventType: string;
+    eventFilters?: Record<string, string | build.Expression<string>>;
+    region?: string | build.Expression<string>;
+  };
+  blockingTrigger?: {
+    eventType: string;
+    options?: Record<string, unknown>;
+  };
+}
+
+/**
  * Prepare functions codebases for deploy.
  */
 export async function prepare(
@@ -381,11 +397,10 @@ export async function resolveDefaultRegionsForBuild(
       } else {
         // Match triggers.
         try {
-          const fullEndpoint = { ...endpoint, id } as any;
           if (build.isBlockingTriggered(endpoint)) {
-            resolvedRegion = resolveRegionForBlockingTrigger(fullEndpoint);
+            resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
           } else if (build.isEventTriggered(endpoint)) {
-            resolvedRegion = await resolveRegionForEventTrigger(fullEndpoint);
+            resolvedRegion = await resolveRegionForEventTrigger(endpoint);
           }
         } catch (err: any) {
           logger.debug(
@@ -400,9 +415,10 @@ export async function resolveDefaultRegionsForBuild(
   }
 }
 
-function resolveRegionForBlockingTrigger(
-  endpoint: backend.Endpoint & backend.BlockingTriggered,
-): string {
+function resolveRegionForBlockingTrigger(endpoint: TriggerResolutionTarget): string {
+  if (!endpoint.blockingTrigger) {
+    return DEFAULT_FUNCTION_REGION;
+  }
   const eventType = endpoint.blockingTrigger.eventType;
   if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
     return "us-east1";
@@ -415,9 +431,10 @@ function resolveRegionForBlockingTrigger(
   return DEFAULT_FUNCTION_REGION;
 }
 
-async function resolveRegionForEventTrigger(
-  endpoint: backend.Endpoint & backend.EventTriggered,
-): Promise<string> {
+async function resolveRegionForEventTrigger(endpoint: TriggerResolutionTarget): Promise<string> {
+  if (!endpoint.eventTrigger) {
+    return DEFAULT_FUNCTION_REGION;
+  }
   const eventTrigger = endpoint.eventTrigger;
   const eventType = eventTrigger.eventType;
 
