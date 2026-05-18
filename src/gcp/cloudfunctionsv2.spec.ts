@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as nock from "nock";
+import type { ParsedUrlQuery } from "querystring";
 
 import * as cloudfunctionsv2 from "./cloudfunctionsv2";
 import * as backend from "../deploy/functions/backend";
@@ -244,6 +245,10 @@ describe("cloudfunctionsv2", () => {
 
       const fullGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: "projects/project/serviceAccounts/inlined@google.com",
+        },
         labels: {
           ...CLOUD_FUNCTION_V2.labels,
           foo: "bar",
@@ -402,6 +407,10 @@ describe("cloudfunctionsv2", () => {
 
       const saGcfFunction: cloudfunctionsv2.InputCloudFunction = {
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: "projects/project/serviceAccounts/sa@google.com",
+        },
         eventTrigger: {
           eventType: events.v2.DATABASE_EVENTS[0],
           eventFilters: [
@@ -475,6 +484,10 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: `projects/${ENDPOINT.project}/serviceAccounts/sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
+        },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           serviceAccountEmail: `sa@${ENDPOINT.project}.iam.gserviceaccount.com`,
@@ -491,6 +504,10 @@ describe("cloudfunctionsv2", () => {
         }),
       ).to.deep.equal({
         ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: null,
+        },
         serviceConfig: {
           ...CLOUD_FUNCTION_V2.serviceConfig,
           serviceAccountEmail: null,
@@ -776,6 +793,45 @@ describe("cloudfunctionsv2", () => {
       });
     });
 
+    it("should preserve null service account", () => {
+      expect(
+        cloudfunctionsv2.endpointFromFunction({
+          ...HAVE_CLOUD_FUNCTION_V2,
+          serviceConfig: {
+            ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+            service: "service",
+            uri: RUN_URI,
+            serviceAccountEmail: null,
+          },
+        }),
+      ).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        uri: GCF_URL,
+        serviceAccount: null,
+      });
+    });
+
+    it("should leave service account unset when omitted", () => {
+      const endpoint = cloudfunctionsv2.endpointFromFunction({
+        ...HAVE_CLOUD_FUNCTION_V2,
+        serviceConfig: {
+          ...HAVE_CLOUD_FUNCTION_V2.serviceConfig,
+          service: "service",
+          uri: RUN_URI,
+        },
+      });
+
+      expect(endpoint).to.deep.equal({
+        ...ENDPOINT,
+        httpsTrigger: {},
+        platform: "gcfv2",
+        uri: GCF_URL,
+      });
+      expect(endpoint).not.to.have.property("serviceAccount");
+    });
+
     it("should transform fields", () => {
       const extraFields: backend.ServiceConfiguration = {
         minInstances: 1,
@@ -928,6 +984,19 @@ describe("cloudfunctionsv2", () => {
   });
 
   describe("updateFunction", () => {
+    const expectServiceAccountUpdateMask = (queryParams: ParsedUrlQuery): boolean => {
+      const updateMask = queryParams.updateMask;
+      expect(updateMask).to.be.a("string");
+      if (typeof updateMask !== "string") {
+        return false;
+      }
+      expect(updateMask.split(",")).to.include.members([
+        "buildConfig.serviceAccount",
+        "serviceConfig.serviceAccountEmail",
+      ]);
+      return true;
+    };
+
     it("should set default environment variables", async () => {
       const scope = nock(functionsV2Origin())
         .patch("/v2/projects/project/locations/region/functions/id", (body) => {
@@ -949,6 +1018,66 @@ describe("cloudfunctionsv2", () => {
         .reply(200, { name: "operations/123", done: true });
 
       await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("should include custom service account fields in update mask", async () => {
+      const testFunction: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: "projects/project/serviceAccounts/inlined@google.com",
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: "inlined@google.com",
+        },
+      };
+
+      const scope = nock(functionsV2Origin())
+        .patch(
+          "/v2/projects/project/locations/region/functions/id",
+          (body: cloudfunctionsv2.InputCloudFunction) => {
+            expect(body.buildConfig.serviceAccount).to.equal(
+              "projects/project/serviceAccounts/inlined@google.com",
+            );
+            expect(body.serviceConfig.serviceAccountEmail).to.equal("inlined@google.com");
+            return true;
+          },
+        )
+        .query(expectServiceAccountUpdateMask)
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.updateFunction(testFunction);
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("should include null service account fields in update mask", async () => {
+      const testFunction: cloudfunctionsv2.InputCloudFunction = {
+        ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          serviceAccount: null,
+        },
+        serviceConfig: {
+          ...CLOUD_FUNCTION_V2.serviceConfig,
+          serviceAccountEmail: null,
+        },
+      };
+
+      const scope = nock(functionsV2Origin())
+        .patch(
+          "/v2/projects/project/locations/region/functions/id",
+          (body: cloudfunctionsv2.InputCloudFunction) => {
+            expect(body.buildConfig.serviceAccount).to.equal(null);
+            expect(body.serviceConfig.serviceAccountEmail).to.equal(null);
+            return true;
+          },
+        )
+        .query(expectServiceAccountUpdateMask)
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.updateFunction(testFunction);
       expect(scope.isDone()).to.be.true;
     });
   });
