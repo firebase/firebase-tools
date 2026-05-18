@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
+import * as iam from "../../../gcp/iam";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
@@ -50,6 +51,22 @@ export class AILogicService implements Service {
 
   ensureTriggerRegion: (ep: backend.Endpoint & backend.EventTriggered) => Promise<void> = () =>
     Promise.resolve();
+
+  /**
+   * The AI logic proxy server uses a service account to invoke functions.
+   * Setting requiredProjectBindings here causes the ensureServiceAgentRoles
+   * call during prepare phase to upsert the corresponding IAM binding.
+   */
+  async requiredProjectBindings(projectNumber: string): Promise<Array<iam.Binding>> {
+    return [
+      {
+        role: "roles/run.invoker",
+        members: [
+          `serviceAccount:service-${projectNumber}@gcp-sa-firebasevertexai.iam.gserviceaccount.com`,
+        ],
+      },
+    ];
+  }
 
   /**
    * Validate that there are no duplicate AI Logic triggers of the same type.

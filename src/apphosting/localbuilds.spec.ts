@@ -1,52 +1,75 @@
 import * as sinon from "sinon";
 import { expect } from "chai";
-import * as localBuildModule from "@apphosting/build";
 import { localBuild, runUniversalMaker } from "./localbuilds";
 import * as secrets from "./secrets/index";
 import { EnvMap } from "./yaml";
 import * as childProcess from "child_process";
 
-import * as experiments from "../experiments";
 import * as universalMakerDownload from "./universalMakerDownload";
 import * as fsExtra from "fs-extra";
 
 describe("localBuild", () => {
+  let downloadStub: sinon.SinonStub;
+
   beforeEach(() => {
-    sinon.stub(experiments, "isEnabled").returns(false);
+    downloadStub = sinon
+      .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
+      .resolves("/path/to/universal_maker");
+    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: any) => {
+      if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
+        return `
+          runConfig:
+            runCommand: npm run start
+          outputFiles:
+            serverApp:
+              include:
+                - .next/standalone
+        `;
+      }
+      if (typeof pathStr === "string" && pathStr.includes("build_output.json")) {
+        return JSON.stringify({
+          command: "npm",
+          args: ["run", "start"],
+          language: "nodejs",
+          runtime: "nodejs22",
+          envVars: {
+            PORT: "3000",
+          },
+        });
+      }
+      return "";
+    });
+    sinon.stub(fsExtra, "existsSync").returns(true);
+    sinon.stub(fsExtra, "unlinkSync");
+    sinon.stub(fsExtra, "readdirSync").returns(["bundle.yaml"] as any);
+    sinon.stub(fsExtra, "ensureDirSync");
+    sinon.stub(fsExtra, "removeSync");
+    sinon.stub(fsExtra, "moveSync");
   });
+
   afterEach(() => {
     sinon.restore();
   });
+
   it("returns the expected output", async () => {
-    const bundleConfig = {
-      version: "v1" as const,
-      runConfig: {
-        runCommand: "npm run build:prod",
-      },
-      metadata: {
-        adapterPackageName: "@apphosting/angular-adapter",
-        adapterVersion: "14.1",
-        framework: "nextjs",
-      },
-      outputFiles: {
-        serverApp: {
-          include: ["./next/standalone"],
-        },
-      },
-    };
     const expectedAnnotations = {
-      adapterPackageName: "@apphosting/angular-adapter",
-      adapterVersion: "14.1",
+      language: "nodejs",
+      runtime: "nodejs22",
       framework: "nextjs",
     };
-    const expectedOutputFiles = ["./next/standalone"];
+    const expectedOutputFiles = [".next/standalone"];
     const expectedBuildConfig = {
-      runCommand: "npm run build:prod",
-      env: [],
+      runCommand: "npm run start",
+      env: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],
     };
-    const localApphostingBuildStub: sinon.SinonStub = sinon
-      .stub(localBuildModule, "localBuild")
-      .resolves(bundleConfig);
+    const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+      status: 0,
+      output: ["", "mock output", ""],
+      pid: 12345,
+      stdout: "mock stdout",
+      stderr: "mock stderr",
+      signal: null,
+    });
     const { outputFiles, annotations, buildConfig } = await localBuild(
       "test-project",
       "./",
@@ -55,25 +78,22 @@ describe("localBuild", () => {
     expect(annotations).to.deep.equal(expectedAnnotations);
     expect(buildConfig).to.deep.equal(expectedBuildConfig);
     expect(outputFiles).to.deep.equal(expectedOutputFiles);
-    sinon.assert.calledWith(localApphostingBuildStub, "./", "nextjs");
+    sinon.assert.calledOnce(spawnStub);
   });
 
   it("resolves BUILD-available secrets passed in the environment map and ignores RUNTIME-only ones", async () => {
-    const bundleConfig = {
-      version: "v1" as const,
-      runConfig: { runCommand: "npm run build:prod" },
-      metadata: {
-        adapterPackageName: "@apphosting/angular-adapter",
-        adapterVersion: "14.1",
-        framework: "nextjs",
-      },
-      outputFiles: { serverApp: { include: ["./next/standalone"] } },
-    };
-    sinon.stub(localBuildModule, "localBuild").callsFake(async () => {
+    sinon.stub(childProcess, "spawnSync").callsFake(() => {
       expect(process.env.MY_BUILD_SECRET).to.equal("secret-value");
       expect(process.env.MY_RUNTIME_SECRET).to.be.undefined;
       expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
-      return bundleConfig;
+      return {
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      } as any;
     });
     const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
@@ -97,20 +117,17 @@ describe("localBuild", () => {
   });
 
   it("handles environment variables that do not contain secrets", async () => {
-    const bundleConfig = {
-      version: "v1" as const,
-      runConfig: { runCommand: "npm run build:prod" },
-      metadata: {
-        adapterPackageName: "@apphosting/angular-adapter",
-        adapterVersion: "14.1",
-        framework: "nextjs",
-      },
-      outputFiles: { serverApp: { include: ["./next/standalone"] } },
-    };
-    sinon.stub(localBuildModule, "localBuild").callsFake(async () => {
+    sinon.stub(childProcess, "spawnSync").callsFake(() => {
       expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
       expect(process.env.ANOTHER_VAR).to.equal("another-value");
-      return bundleConfig;
+      return {
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      } as any;
     });
     const loadSecretStub = sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
@@ -148,17 +165,14 @@ describe("localBuild", () => {
     });
 
     it("allows build-available secrets in non-interactive mode if bypass flag is provided", async () => {
-      const bundleConfig = {
-        version: "v1" as const,
-        runConfig: { runCommand: "npm run build:prod" },
-        metadata: {
-          adapterPackageName: "@apphosting/angular-adapter",
-          adapterVersion: "14.1",
-          framework: "nextjs",
-        },
-        outputFiles: { serverApp: { include: ["./next/standalone"] } },
-      };
-      sinon.stub(localBuildModule, "localBuild").resolves(bundleConfig);
+      sinon.stub(childProcess, "spawnSync").returns({
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      });
       sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
       const envMap: EnvMap = {
@@ -188,17 +202,14 @@ describe("localBuild", () => {
 
     it("proceeds with the build if the user accepts the secrets confirmation prompt", async () => {
       confirmStub.resolves(true);
-      const bundleConfig = {
-        version: "v1" as const,
-        runConfig: { runCommand: "npm run build:prod" },
-        metadata: {
-          adapterPackageName: "@apphosting/angular-adapter",
-          adapterVersion: "14.1",
-          framework: "nextjs",
-        },
-        outputFiles: { serverApp: { include: ["./next/standalone"] } },
-      };
-      sinon.stub(localBuildModule, "localBuild").resolves(bundleConfig);
+      sinon.stub(childProcess, "spawnSync").returns({
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      });
       sinon.stub(secrets, "loadSecret").resolves("secret-value");
 
       const envMap: EnvMap = {
@@ -211,44 +222,6 @@ describe("localBuild", () => {
   });
 
   describe("runUniversalMaker", () => {
-    let downloadStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      downloadStub = sinon
-        .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
-        .resolves("/path/to/universal_maker");
-      sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: any) => {
-        if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
-          return `
-            runConfig:
-              runCommand: npm run start
-            outputFiles:
-              serverApp:
-                include:
-                  - .next/standalone
-          `;
-        }
-        if (typeof pathStr === "string" && pathStr.includes("build_output.json")) {
-          return JSON.stringify({
-            command: "npm",
-            args: ["run", "start"],
-            language: "nodejs",
-            runtime: "nodejs22",
-            envVars: {
-              PORT: "3000",
-            },
-          });
-        }
-        return "";
-      });
-      sinon.stub(fsExtra, "existsSync").returns(true);
-      sinon.stub(fsExtra, "unlinkSync");
-      sinon.stub(fsExtra, "readdirSync").returns(["bundle.yaml"] as any);
-      sinon.stub(fsExtra, "ensureDirSync");
-      sinon.stub(fsExtra, "removeSync");
-      sinon.stub(fsExtra, "moveSync");
-    });
-
     it("should successfully execute Universal Maker and parse output", async () => {
       const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
         status: 0,
