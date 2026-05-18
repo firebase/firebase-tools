@@ -69,9 +69,10 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     locales,
     baseHref: baseUrl,
     ssr,
+    buildTargetOptions,
   } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
-  await maybeWarnAngular22SsrSecurity(dir, configuration, ssr);
+  await maybeWarnAngular22SsrSecurity(dir, { ssr, buildTargetOptions });
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);

@@ -397,6 +397,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions: buildTargetOptions || undefined,
   };
 }
 
@@ -532,6 +533,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   } = await getContext(sourceDir, configuration);
   const targets = (
     buildTarget
@@ -556,6 +558,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     locales,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   };
 }
 
@@ -652,7 +655,7 @@ export function getAngular22SsrSecurityWarning(opts: {
 
   const declared = opts.buildOptionsAllowedHosts ?? [];
   const serverHasAllowedHosts =
-    !!opts.serverEntrySource && /\ballowedHosts\b/.test(opts.serverEntrySource);
+    !!opts.serverEntrySource && /\ballowedHosts\s*[:=]/.test(opts.serverEntrySource);
 
   let allowedHostsMissing: string[];
   if (declared.includes("*")) {
@@ -670,7 +673,7 @@ export function getAngular22SsrSecurityWarning(opts: {
   }
 
   const trustProxyHeadersMissing =
-    !opts.serverEntrySource || !/\btrustProxyHeaders\b/.test(opts.serverEntrySource);
+    !opts.serverEntrySource || !/\btrustProxyHeaders\s*[:=]/.test(opts.serverEntrySource);
 
   if (allowedHostsMissing.length === 0 && !trustProxyHeadersMissing) return undefined;
   return { allowedHostsMissing, trustProxyHeadersMissing };
@@ -714,56 +717,48 @@ export function formatAngular22SsrSecurityWarning(warning: Angular22SsrSecurityW
 }
 
 /**
- * Pluggable I/O surface used by `maybeWarnAngular22SsrSecurity`. Splitting
- * the readers out lets the orchestrator stay framework-specific while keeping
- * each piece independently testable without spinning up `@angular-devkit`.
- */
-export type Angular22SsrSecurityIO = {
-  readBuildOptionsAllowedHosts: (
-    dir: string,
-    configuration: string,
-  ) => Promise<string[] | undefined>;
-  readServerEntrySource: (dir: string) => Promise<string | undefined>;
-  logWarning: (message: string) => void;
-};
-
-export const angular22SsrSecurityDefaultIO: Angular22SsrSecurityIO = {
-  readBuildOptionsAllowedHosts: readAngular22BuildOptionsAllowedHosts,
-  readServerEntrySource: readAngular22ServerEntrySource,
-  logWarning: (message) => logLabeledWarning("angular", message),
-};
-
-/**
- * Reads the user's `security.allowedHosts` and `src/server.ts` source, then
- * surfaces an angular-labeled warning when the project ships Angular 22 SSR
- * without the configuration Firebase Hosting Web Frameworks needs at runtime.
+ * Surfaces an angular-labeled warning when the project ships Angular 22 SSR
+ * without the `security.allowedHosts` / `trustProxyHeaders` configuration
+ * Firebase Hosting Web Frameworks needs at runtime.
  *
- * Best-effort: any unexpected failure (missing target, unparseable workspace,
- * missing source file) is swallowed so the security check never blocks a build
- * that would otherwise succeed.
+ * `buildTargetOptions` is the already-resolved `application` builder options
+ * (threaded out of `getBuildConfig`), so this check does not re-run the
+ * expensive `getContext`/`angular.json` parse the main build flow already did.
+ *
+ * Best-effort: any unexpected failure (unparseable options, missing source
+ * file) is swallowed so the security check never blocks a build that would
+ * otherwise succeed. The decision logic lives in the pure, unit-tested
+ * `getAngular22SsrSecurityWarning`; this orchestrator is just glue.
  */
 export async function maybeWarnAngular22SsrSecurity(
   dir: string,
-  configuration: string,
-  ssr: boolean,
-  io: Angular22SsrSecurityIO = angular22SsrSecurityDefaultIO,
+  opts: { ssr: boolean; buildTargetOptions: JsonObject | null | undefined },
 ): Promise<void> {
   try {
     const version = getAngularVersion(dir);
-    if (!version || !ssr) return;
+    if (!version || !opts.ssr) return;
 
-    const buildOptionsAllowedHosts = await io.readBuildOptionsAllowedHosts(dir, configuration);
-    const serverEntrySource = await io.readServerEntrySource(dir);
+    const buildOptionsAllowedHosts = extractAngular22AllowedHostsFromBuildOptions(
+      opts.buildTargetOptions,
+    );
+    const entryPath = getAngular22ServerEntryPath(opts.buildTargetOptions);
+    let serverEntrySource: string | undefined;
+    try {
+      serverEntrySource = await readFile(join(dir, entryPath), "utf8");
+    } catch {
+      // A missing/unreadable entry just means we cannot confirm manual
+      // wiring — keep going so the warning still fires.
+    }
 
     const warning = getAngular22SsrSecurityWarning({
       version,
-      ssr,
+      ssr: opts.ssr,
       buildOptionsAllowedHosts,
       serverEntrySource,
     });
     if (!warning) return;
 
-    io.logWarning(formatAngular22SsrSecurityWarning(warning));
+    logLabeledWarning("Angular 22", formatAngular22SsrSecurityWarning(warning));
   } catch {
     // Never let the security pre-flight break a build.
   }
@@ -784,39 +779,28 @@ export function extractAngular22AllowedHostsFromBuildOptions(
 }
 
 /**
- * Loads the build target's resolved options through the Angular Architect
- * Host and returns its `security.allowedHosts` array. Returns `undefined`
- * whenever the workspace cannot be resolved so the security pre-flight stays
- * non-fatal.
+ * The conventional SSR server entry the `@angular/ssr` schematic generates and
+ * points `ssr.entry` at. Used as the fallback when the build options enable SSR
+ * (`ssr: true` / `ssr: {}`) without an explicit `entry` — Angular SSR sources
+ * are always TypeScript, so `.ts` is the only conventional extension.
  */
-export async function readAngular22BuildOptionsAllowedHosts(
-  dir: string,
-  configuration: string,
-): Promise<string[] | undefined> {
-  try {
-    const { architectHost, buildTarget } = await getContext(dir, configuration);
-    if (!buildTarget) return undefined;
-    const options = await architectHost.getOptionsForTarget(buildTarget);
-    return extractAngular22AllowedHostsFromBuildOptions(options);
-  } catch {
-    return undefined;
-  }
-}
+export const ANGULAR_22_DEFAULT_SERVER_ENTRY = "src/server.ts";
 
 /**
- * Reads the project's SSR server entry point so callers can detect manual
- * `allowedHosts`/`trustProxyHeaders` wiring. Falls back from `.ts` to `.mjs`
- * to `.js` to match the layouts Angular SSR generators have shipped.
+ * Resolves the SSR server entry *source* path to inspect for manual
+ * `allowedHosts`/`trustProxyHeaders` wiring.
+ *
+ * Prefers the explicit `options.ssr.entry` from the `@angular/build:application`
+ * builder (supports custom layouts). `ssr.entry` is optional in Angular 22 —
+ * the boolean `ssr: true` form and the object form without `entry` both still
+ * produce real SSR — so when no explicit entry is declared we fall back to the
+ * conventional `src/server.ts` the schematic generates. A non-existent file is
+ * handled downstream (best-effort read), keeping the check fail-safe.
  */
-export async function readAngular22ServerEntrySource(dir: string): Promise<string | undefined> {
-  // Default Angular SSR layout has src/server.ts; fall back to .mjs/.js if the
-  // user converted to one of those.
-  for (const candidate of ["src/server.ts", "src/server.mjs", "src/server.js"]) {
-    try {
-      return await readFile(join(dir, candidate), "utf8");
-    } catch {
-      // try next candidate
-    }
+export function getAngular22ServerEntryPath(options: JsonObject | null | undefined): string {
+  const ssr = options?.ssr as { entry?: unknown } | boolean | undefined;
+  if (ssr && typeof ssr !== "boolean" && typeof ssr.entry === "string") {
+    return ssr.entry;
   }
-  return undefined;
+  return ANGULAR_22_DEFAULT_SERVER_ENTRY;
 }

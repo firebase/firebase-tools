@@ -2,6 +2,7 @@ import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 
+import type { JsonObject } from "@angular-devkit/core";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
@@ -12,13 +13,59 @@ import {
   formatAngular22SsrSecurityWarning,
   ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
   extractAngular22AllowedHostsFromBuildOptions,
-  readAngular22ServerEntrySource,
+  getAngular22ServerEntryPath,
   maybeWarnAngular22SsrSecurity,
-  Angular22SsrSecurityIO,
 } from "./utils";
 import * as frameworkUtils from "../utils";
+import * as cliUtils from "../../utils";
 
 describe("Angular utils", () => {
+  // The unmodified src/server.ts emitted by `ng add @angular/ssr` for the
+  // @angular/build:application builder (no SSRF configuration). Kept faithful
+  // so the detection regexes are exercised against real Angular v22 code.
+  // Source: angular-cli packages/schematics/angular/ssr/files/application-builder/server.ts.template
+  const SERVER_TS_DEFAULT = [
+    "import {",
+    "  AngularNodeAppEngine,",
+    "  createNodeRequestHandler,",
+    "  isMainModule,",
+    "  writeResponseToNodeResponse,",
+    "} from '@angular/ssr/node';",
+    "import express from 'express';",
+    "import { join } from 'node:path';",
+    "",
+    "const browserDistFolder = join(import.meta.dirname, '../browser');",
+    "",
+    "const app = express();",
+    "const angularApp = new AngularNodeAppEngine();",
+    "",
+    "app.use(",
+    "  express.static(browserDistFolder, { maxAge: '1y', index: false, redirect: false }),",
+    ");",
+    "",
+    "app.use((req, res, next) => {",
+    "  angularApp",
+    "    .handle(req)",
+    "    .then((response) =>",
+    "      response ? writeResponseToNodeResponse(response, res) : next(),",
+    "    )",
+    "    .catch(next);",
+    "});",
+    "",
+    "export const reqHandler = createNodeRequestHandler(app);",
+    "",
+  ].join("\n");
+
+  // Realistic configured server.ts: the security doc shows allowedHosts /
+  // trustProxyHeaders being passed to the engine constructor as an options
+  // object (multi-line, as a developer would actually write it).
+  // Source: angular/angular adev/src/content/guide/security.md
+  const serverTsWithEngineOptions = (...optionLines: string[]): string =>
+    SERVER_TS_DEFAULT.replace(
+      "const angularApp = new AngularNodeAppEngine();",
+      ["const angularApp = new AngularNodeAppEngine({", ...optionLines, "});"].join("\n"),
+    );
+
   describe("getBuilderType", () => {
     it("should return the correct builder type for valid builders", () => {
       expect(getBuilderType("@angular-devkit/build-angular:browser")).to.equal(BuilderType.BROWSER);
@@ -97,7 +144,7 @@ describe("Angular utils", () => {
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: ["*"],
-        serverEntrySource: "new AngularNodeAppEngine({ trustProxyHeaders: true })",
+        serverEntrySource: serverTsWithEngineOptions("  trustProxyHeaders: true,"),
       });
       expect(result).to.be.undefined;
     });
@@ -106,15 +153,19 @@ describe("Angular utils", () => {
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
-        serverEntrySource: "trustProxyHeaders: ['x-forwarded-host']",
+        serverEntrySource: serverTsWithEngineOptions(
+          "  trustProxyHeaders: ['x-forwarded-host', 'x-forwarded-proto'],",
+        ),
       });
       expect(result).to.be.undefined;
     });
 
-    it("only flags trustProxyHeaders when hosts are configured but proxy headers are not", () => {
+    it("only flags trustProxyHeaders when hosts are configured but the default server.ts leaves it unset", () => {
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
+        // The unmodified schematic server.ts constructs the engine with no options.
+        serverEntrySource: SERVER_TS_DEFAULT,
       });
       expect(result).to.deep.equal({
         allowedHostsMissing: [],
@@ -126,7 +177,7 @@ describe("Angular utils", () => {
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: ["*.web.app"],
-        serverEntrySource: "trustProxyHeaders: true",
+        serverEntrySource: serverTsWithEngineOptions("  trustProxyHeaders: true,"),
       });
       expect(result).to.deep.equal({
         allowedHostsMissing: ["*.firebaseapp.com", "*.a.run.app"],
@@ -134,13 +185,78 @@ describe("Angular utils", () => {
       });
     });
 
-    it("treats an allowedHosts assignment in the server entry as user-managed", () => {
+    it("treats engine-level allowedHosts in the server entry as user-managed", () => {
+      // Per the Angular security guide, allowedHosts can be configured on the
+      // AngularNodeAppEngine instead of angular.json.
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
-        serverEntrySource:
-          "new CommonEngine({ allowedHosts: ['fb-tools-dev.web.app'] }); trustProxyHeaders: true",
+        serverEntrySource: serverTsWithEngineOptions(
+          "  allowedHosts: ['fb-tools-dev.web.app', '*.web.app'],",
+          "  trustProxyHeaders: true,",
+        ),
       });
       expect(result).to.be.undefined;
+    });
+
+    it("detects engine-level config on the non-Node AngularAppEngine variant", () => {
+      // The security guide documents the same options on AngularAppEngine.
+      const result = getAngular22SsrSecurityWarning({
+        ...baseOpts,
+        serverEntrySource: [
+          "import { AngularAppEngine } from '@angular/ssr';",
+          "",
+          "const angularApp = new AngularAppEngine({",
+          "  allowedHosts: ['fb-tools-dev.web.app'],",
+          "  trustProxyHeaders: ['x-forwarded-host'],",
+          "});",
+        ].join("\n"),
+      });
+      expect(result).to.be.undefined;
+    });
+
+    it("does not treat allowedHosts mentioned only in a comment as configured", () => {
+      // Regression: a stray mention in a comment (no `:`/`=` assignment) must
+      // not suppress the warning. trustProxyHeaders IS configured on the engine
+      // so only allowedHosts should be flagged.
+      const serverEntrySource = serverTsWithEngineOptions(
+        "  // TODO: pass allowedHosts to AngularNodeAppEngine before deploying",
+        "  trustProxyHeaders: true,",
+      );
+      const result = getAngular22SsrSecurityWarning({ ...baseOpts, serverEntrySource });
+      expect(result).to.deep.equal({
+        allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
+        trustProxyHeadersMissing: false,
+      });
+    });
+
+    it("recognizes a multi-line trustProxyHeaders option as configured", () => {
+      // The security guide writes the option object across multiple lines;
+      // the regex must still match `trustProxyHeaders` followed by `:`.
+      const result = getAngular22SsrSecurityWarning({
+        ...baseOpts,
+        buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
+        serverEntrySource: serverTsWithEngineOptions("  trustProxyHeaders: true,"),
+      });
+      expect(result).to.be.undefined;
+    });
+
+    it("does not treat trustProxyHeaders mentioned only in a comment as configured", () => {
+      // Regression: a comment mentioning trustProxyHeaders without an
+      // assignment must still be reported as missing. Uses the unmodified
+      // default server.ts with an added reminder comment.
+      const serverEntrySource = SERVER_TS_DEFAULT.replace(
+        "const app = express();",
+        "// remember to set trustProxyHeaders before deploy\nconst app = express();",
+      );
+      const result = getAngular22SsrSecurityWarning({
+        ...baseOpts,
+        buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
+        serverEntrySource,
+      });
+      expect(result).to.deep.equal({
+        allowedHostsMissing: [],
+        trustProxyHeadersMissing: true,
+      });
     });
   });
 
@@ -215,54 +331,158 @@ describe("Angular utils", () => {
     });
   });
 
-  describe("readAngular22ServerEntrySource", () => {
-    let tmpDir: string;
-
-    beforeEach(() => {
-      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "angular-server-entry-"));
-      fs.mkdirSync(path.join(tmpDir, "src"));
+  describe("getAngular22ServerEntryPath", () => {
+    it("falls back to the conventional src/server.ts when options are missing", () => {
+      expect(getAngular22ServerEntryPath(undefined)).to.equal("src/server.ts");
+      expect(getAngular22ServerEntryPath(null)).to.equal("src/server.ts");
     });
 
-    afterEach(() => {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+    it("falls back to src/server.ts when there is no ssr option", () => {
+      expect(getAngular22ServerEntryPath({})).to.equal("src/server.ts");
     });
 
-    it("returns undefined when no server entry file exists", async () => {
-      expect(await readAngular22ServerEntrySource(tmpDir)).to.be.undefined;
+    it("falls back to src/server.ts for the boolean ssr form (entry is optional in v22)", () => {
+      // ssr: true is real SSR, not SSG; ssr.entry is optional, so the
+      // conventional schematic-generated src/server.ts is still inspected.
+      expect(getAngular22ServerEntryPath({ ssr: true })).to.equal("src/server.ts");
+      expect(getAngular22ServerEntryPath({ ssr: false })).to.equal("src/server.ts");
     });
 
-    it("reads src/server.ts when present", async () => {
-      const contents = "import express from 'express';\nconst app = express();";
-      fs.writeFileSync(path.join(tmpDir, "src", "server.ts"), contents);
-      expect(await readAngular22ServerEntrySource(tmpDir)).to.equal(contents);
+    it("falls back to src/server.ts when ssr is an object without a string entry", () => {
+      expect(getAngular22ServerEntryPath({ ssr: {} })).to.equal("src/server.ts");
+      expect(getAngular22ServerEntryPath({ ssr: { entry: 42 } })).to.equal("src/server.ts");
     });
 
-    it("falls back to src/server.mjs when src/server.ts is missing", async () => {
-      const contents = "export const x = 1;";
-      fs.writeFileSync(path.join(tmpDir, "src", "server.mjs"), contents);
-      expect(await readAngular22ServerEntrySource(tmpDir)).to.equal(contents);
+    it("prefers the explicit ssr.entry path, including custom layouts", () => {
+      expect(getAngular22ServerEntryPath({ ssr: { entry: "src/server.ts" } })).to.equal(
+        "src/server.ts",
+      );
+      expect(
+        getAngular22ServerEntryPath({ ssr: { entry: "projects/foo/src/entry-server.ts" } }),
+      ).to.equal("projects/foo/src/entry-server.ts");
+    });
+  });
+
+  describe("angular.json resolved build options scenarios", () => {
+    // A minimal-but-realistic angular.json for the @angular/build:application
+    // builder. Only the keys relevant to the SSRF check vary per scenario.
+    // Shape mirrors angular/angular adev/.../guide/security.md.
+    type BuildOptions = Record<string, unknown>;
+    const angularJson = (
+      options: BuildOptions,
+      configurations: Record<string, BuildOptions> = {},
+    ): JsonObject =>
+      ({
+        version: 1,
+        projects: {
+          app: {
+            projectType: "application",
+            root: "",
+            sourceRoot: "src",
+            architect: {
+              build: {
+                builder: "@angular/build:application",
+                options: { outputPath: "dist/app", browser: "src/main.ts", ...options },
+                configurations,
+                defaultConfiguration: "production",
+              },
+            },
+          },
+        },
+      }) as unknown as JsonObject;
+
+    // Mirrors what architectHost.getOptionsForTarget(buildTarget) returns in
+    // getContext: the base options merged with the selected configuration.
+    const resolveBuildOptions = (json: JsonObject, configuration?: string): JsonObject => {
+      const build = (json as any).projects.app.architect.build;
+      return {
+        ...build.options,
+        ...(configuration ? build.configurations?.[configuration] ?? {} : {}),
+      } as JsonObject;
+    };
+
+    const warnFor = (json: JsonObject, serverEntrySource: string, configuration?: string) => {
+      const options = resolveBuildOptions(json, configuration);
+      return getAngular22SsrSecurityWarning({
+        version: "22.0.0",
+        ssr: !!options.ssr,
+        buildOptionsAllowedHosts: extractAngular22AllowedHostsFromBuildOptions(options),
+        serverEntrySource,
+      });
+    };
+
+    it("non-SSR project (no ssr option) is never flagged", () => {
+      const json = angularJson({ outputMode: "static" });
+      expect(warnFor(json, SERVER_TS_DEFAULT)).to.be.undefined;
     });
 
-    it("falls back to src/server.js when neither .ts nor .mjs exist", async () => {
-      const contents = "module.exports = {};";
-      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), contents);
-      expect(await readAngular22ServerEntrySource(tmpDir)).to.equal(contents);
+    it("SSR via ssr.entry with no security config flags both pieces", () => {
+      const json = angularJson({ outputMode: "server", ssr: { entry: "src/server.ts" } });
+      expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
+        allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
+        trustProxyHeadersMissing: true,
+      });
     });
 
-    it("prefers src/server.ts over the .mjs and .js fallbacks", async () => {
-      fs.writeFileSync(path.join(tmpDir, "src", "server.ts"), "// ts");
-      fs.writeFileSync(path.join(tmpDir, "src", "server.mjs"), "// mjs");
-      fs.writeFileSync(path.join(tmpDir, "src", "server.js"), "// js");
-      expect(await readAngular22ServerEntrySource(tmpDir)).to.equal("// ts");
+    it("SSR with security.allowedHosts set flags only trustProxyHeaders", () => {
+      const json = angularJson({
+        outputMode: "server",
+        ssr: { entry: "src/server.ts" },
+        security: { allowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS] },
+      });
+      expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
+        allowedHostsMissing: [],
+        trustProxyHeadersMissing: true,
+      });
+    });
+
+    it("SSR fully configured (security.allowedHosts + engine trustProxyHeaders) is not flagged", () => {
+      const json = angularJson({
+        outputMode: "server",
+        ssr: { entry: "src/server.ts" },
+        security: { allowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS] },
+      });
+      const serverTs = serverTsWithEngineOptions("  trustProxyHeaders: true,");
+      expect(warnFor(json, serverTs)).to.be.undefined;
+    });
+
+    it("security.allowedHosts ['*'] plus engine trustProxyHeaders is not flagged", () => {
+      const json = angularJson({
+        outputMode: "server",
+        ssr: { entry: "src/server.ts" },
+        security: { allowedHosts: ["*"] },
+      });
+      const serverTs = serverTsWithEngineOptions("  trustProxyHeaders: true,");
+      expect(warnFor(json, serverTs)).to.be.undefined;
+    });
+
+    it("resolves security.allowedHosts contributed by the selected configuration", () => {
+      // Realistic: base options have no security; the production configuration
+      // adds it. getOptionsForTarget merges configuration over options.
+      const json = angularJson(
+        { outputMode: "server", ssr: { entry: "src/server.ts" } },
+        { production: { security: { allowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS] } } },
+      );
+      // Without the configuration the hosts are missing...
+      expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
+        allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
+        trustProxyHeadersMissing: true,
+      });
+      // ...but resolving the production configuration satisfies allowedHosts.
+      expect(warnFor(json, SERVER_TS_DEFAULT, "production")).to.deep.equal({
+        allowedHostsMissing: [],
+        trustProxyHeadersMissing: true,
+      });
     });
   });
 
   describe("maybeWarnAngular22SsrSecurity", () => {
     let sandbox: sinon.SinonSandbox;
     let findDependencyStub: sinon.SinonStub;
-    let logWarning: sinon.SinonSpy;
-    let readBuildOptionsAllowedHosts: sinon.SinonStub;
-    let readServerEntrySource: sinon.SinonStub;
+    let logLabeledWarningStub: sinon.SinonStub;
+    let tmpDir: string;
+
+    const RECOMMENDED = [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS];
 
     const stubAngularVersion = (version: string | undefined): void => {
       findDependencyStub.callsFake((name: string) => {
@@ -273,84 +493,159 @@ describe("Angular utils", () => {
       });
     };
 
-    const buildIO = (): Angular22SsrSecurityIO => ({
-      readBuildOptionsAllowedHosts,
-      readServerEntrySource,
-      logWarning,
-    });
+    const writeServerEntry = (relPath: string, contents: string): void => {
+      const full = path.join(tmpDir, relPath);
+      fs.mkdirSync(path.dirname(full), { recursive: true });
+      fs.writeFileSync(full, contents);
+    };
+
+    // The warning message is logged as logLabeledWarning("Angular 22", message).
+    const warningMessage = (): string => logLabeledWarningStub.firstCall.args[1] as string;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       findDependencyStub = sandbox.stub(frameworkUtils, "findDependency");
-      logWarning = sinon.spy();
-      readBuildOptionsAllowedHosts = sandbox.stub().resolves(undefined);
-      readServerEntrySource = sandbox.stub().resolves(undefined);
+      logLabeledWarningStub = sandbox.stub(cliUtils, "logLabeledWarning");
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "angular-ssr-security-"));
     });
 
     afterEach(() => {
       sandbox.restore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     });
 
     it("does not warn when SSR is disabled", async () => {
       stubAngularVersion("22.0.0");
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", false, buildIO());
-      expect(logWarning.called).to.be.false;
-      expect(readBuildOptionsAllowedHosts.called).to.be.false;
-      expect(readServerEntrySource.called).to.be.false;
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: false,
+        buildTargetOptions: undefined,
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
     });
 
     it("does not warn when no Angular version can be detected", async () => {
       stubAngularVersion(undefined);
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
-      expect(logWarning.called).to.be.false;
-      expect(readBuildOptionsAllowedHosts.called).to.be.false;
-      expect(readServerEntrySource.called).to.be.false;
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: undefined,
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
     });
 
     it("does not warn for Angular versions older than 22 with SSR enabled", async () => {
       stubAngularVersion("21.2.0");
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
-      expect(logWarning.called).to.be.false;
+      writeServerEntry("src/server.ts", SERVER_TS_DEFAULT);
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: { entry: "src/server.ts" } },
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
     });
 
-    it("warns under the 'angular' label when v22 SSR has no security configuration", async () => {
+    it("warns under the 'Angular 22' label when v22 SSR has no security configuration", async () => {
       stubAngularVersion("22.0.0");
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
+      // No src/server.ts on disk and no security.allowedHosts in options.
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: true },
+      });
 
-      expect(readBuildOptionsAllowedHosts.calledOnceWith("/some/dir", "production")).to.be.true;
-      expect(readServerEntrySource.calledOnceWith("/some/dir")).to.be.true;
-      expect(logWarning.calledOnce).to.be.true;
-      const message = logWarning.firstCall.args[0] as string;
+      expect(logLabeledWarningStub.calledOnce).to.be.true;
+      expect(logLabeledWarningStub.firstCall.args[0]).to.equal("Angular 22");
+      const message = warningMessage();
       expect(message).to.include("security.allowedHosts");
       expect(message).to.include("trustProxyHeaders");
     });
 
+    it("inspects the conventional src/server.ts when ssr:true keeps trustProxyHeaders there", async () => {
+      // Regression for the hybrid fallback: a project using the boolean
+      // ssr:true form with a hand-maintained src/server.ts must not be
+      // falsely flagged for trustProxyHeaders.
+      stubAngularVersion("22.0.0");
+      writeServerEntry("src/server.ts", serverTsWithEngineOptions("  trustProxyHeaders: true,"));
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: true, security: { allowedHosts: RECOMMENDED } },
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
+    });
+
+    it("reads the server entry resolved from buildTargetOptions.ssr.entry", async () => {
+      stubAngularVersion("22.0.0");
+      writeServerEntry(
+        "projects/foo/src/entry-server.ts",
+        serverTsWithEngineOptions("  trustProxyHeaders: true,"),
+      );
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: {
+          ssr: { entry: "projects/foo/src/entry-server.ts" },
+          security: { allowedHosts: RECOMMENDED },
+        },
+      });
+      // The custom entry was read (its trustProxyHeaders satisfied the check),
+      // proving we use options.ssr.entry rather than guessing src/server.ts.
+      expect(logLabeledWarningStub.called).to.be.false;
+    });
+
+    it("sources allowedHosts from buildTargetOptions.security.allowedHosts", async () => {
+      stubAngularVersion("22.0.0");
+      writeServerEntry("src/server.ts", serverTsWithEngineOptions("  trustProxyHeaders: true,"));
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: {
+          ssr: { entry: "src/server.ts" },
+          security: { allowedHosts: ["*.web.app"] },
+        },
+      });
+
+      expect(logLabeledWarningStub.calledOnce).to.be.true;
+      const message = warningMessage();
+      expect(message).to.include("security.allowedHosts");
+      expect(message).to.include('"*.firebaseapp.com"');
+      expect(message).to.not.include("trustProxyHeaders");
+    });
+
     it("does not warn when allowedHosts and trustProxyHeaders are fully configured", async () => {
       stubAngularVersion("22.0.0");
-      readBuildOptionsAllowedHosts.resolves([...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS]);
-      readServerEntrySource.resolves("trustProxyHeaders: ['x-forwarded-host']");
-
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
-      expect(logWarning.called).to.be.false;
+      writeServerEntry(
+        "src/server.ts",
+        serverTsWithEngineOptions(
+          "  trustProxyHeaders: ['x-forwarded-host', 'x-forwarded-proto'],",
+        ),
+      );
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: {
+          ssr: { entry: "src/server.ts" },
+          security: { allowedHosts: RECOMMENDED },
+        },
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
     });
 
     it("only warns about trustProxyHeaders when allowedHosts is satisfied", async () => {
       stubAngularVersion("22.0.0");
-      readBuildOptionsAllowedHosts.resolves([...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS]);
-      readServerEntrySource.resolves(undefined);
-
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
-      expect(logWarning.calledOnce).to.be.true;
-      const message = logWarning.firstCall.args[0] as string;
+      // No server entry file => trustProxyHeaders cannot be confirmed.
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: true, security: { allowedHosts: RECOMMENDED } },
+      });
+      expect(logLabeledWarningStub.calledOnce).to.be.true;
+      const message = warningMessage();
       expect(message).to.include("trustProxyHeaders");
       expect(message).to.not.include("security.allowedHosts");
     });
 
-    it("swallows reader failures so the build is never blocked", async () => {
-      stubAngularVersion("22.0.0");
-      readBuildOptionsAllowedHosts.rejects(new Error("workspace blew up"));
-      await maybeWarnAngular22SsrSecurity("/some/dir", "production", true, buildIO());
-      expect(logWarning.called).to.be.false;
+    it("swallows unexpected failures so the build is never blocked", async () => {
+      // findDependency throwing simulates an unexpected internal failure; the
+      // pre-flight must never propagate it.
+      findDependencyStub.throws(new Error("dependency resolution blew up"));
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: { entry: "src/server.ts" } },
+      });
+      expect(logLabeledWarningStub.called).to.be.false;
     });
   });
 });
