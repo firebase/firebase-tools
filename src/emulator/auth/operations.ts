@@ -1230,8 +1230,6 @@ export function setAccountInfoImpl(
     }
 
     if (reqBody.deleteProvider?.includes(PROVIDER_PASSWORD)) {
-      updates.email = undefined;
-      updates.emailVerified = undefined;
       updates.emailLinkSignin = undefined;
       updates.passwordHash = undefined;
       updates.salt = undefined;
