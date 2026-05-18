@@ -87,4 +87,42 @@ describe("export", () => {
       );
     });
   });
+
+  describe("getTerraformIac", () => {
+    it("should return variables.tf and main.tf with generated terraform", async () => {
+      const mockBuild = {
+        endpoints: {
+          "my-func": {
+            platform: "gcfv1",
+            id: "my-func",
+            region: ["us-central1"],
+            entryPoint: "myFunc",
+            runtime: "nodejs18",
+            httpsTrigger: {},
+          },
+          "ignored-func": {
+            platform: "gcfv2", // Should be ignored
+          },
+        },
+      };
+      mockDelegate.discoverBuild.resolves(mockBuild);
+
+      const options = { config: { path: (s: string) => s, projectDir: "dir" } };
+      const codebase: projectConfig.ValidatedSingle = {
+        source: "src",
+        codebase: "default",
+        runtime: "nodejs18",
+      };
+
+      const result = await exportIac.getTerraformIac(options, codebase);
+
+      expect(result["variables.tf"]).to.be.a("string");
+      expect(result["main.tf"]).to.be.a("string");
+
+      const mainTf = result["main.tf"];
+      expect(mainTf).to.include('resource "google_cloudfunctions_function" "my_func"');
+      expect(mainTf).to.include('resource "google_cloudfunctions_function_iam_binding" "my_func"');
+      expect(mainTf).to.not.include("ignored-func");
+    });
+  });
 });
