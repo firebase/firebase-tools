@@ -85,15 +85,15 @@ describe("fdcExperience", () => {
         part: {
           codeChunk: {
             code: "type User { id: String }",
-            languageCode: "graphql"
-          }
-        }
+            languageCode: "graphql",
+          },
+        },
       };
 
       nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
-          prompt
+          prompt,
         })
         .reply(200, JSON.stringify(responseObj));
 
@@ -109,27 +109,27 @@ describe("fdcExperience", () => {
       const statusObj = {
         status: {
           state: "ANALYZING_SCHEMA",
-          message: "Analyzing schema..."
-        }
+          message: "Analyzing schema...",
+        },
       };
       const responseObj = {
         part: {
           codeChunk: {
             code: "type User { id: String }",
-            languageCode: "graphql"
-          }
-        }
+            languageCode: "graphql",
+          },
+        },
       };
 
       let statusCalledWith: any = null;
       const onStatus = (status: any) => {
-          statusCalledWith = status;
+        statusCalledWith = status;
       };
 
       nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
-          prompt
+          prompt,
         })
         .reply(200, JSON.stringify(statusObj) + "\n" + JSON.stringify(responseObj));
 
@@ -145,13 +145,13 @@ describe("fdcExperience", () => {
       const location = "us-central1";
       const payload = [
         { status: { message: "Generating..." } },
-        { part: { textChunk: { text: "```graphql\ntype User @table { id: String }\n```" } } }
+        { part: { textChunk: { text: "```graphql\ntype User @table { id: String }\n```" } } },
       ];
 
       nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
-          prompt
+          prompt,
         })
         .reply(200, JSON.stringify(payload));
 
@@ -170,15 +170,15 @@ describe("fdcExperience", () => {
         part: {
           codeChunk: {
             code: "query GetUsers { users { id } }",
-            languageCode: "graphql"
-          }
-        }
+            languageCode: "graphql",
+          },
+        },
       };
 
       nock(dataconnectOrigin())
         .post(`/v1/projects/my-project/locations/us-central1/services/my-service:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/my-service`,
-          prompt
+          prompt,
         })
         .reply(200, JSON.stringify(responseObj));
 
@@ -191,25 +191,27 @@ describe("fdcExperience", () => {
       const prompt = "Get users";
       const service = "projects/my-project/locations/us-central1/services/my-service";
       const project = "my-project";
-      const schemas: Schema[] = [{
-        name: "projects/my-project/locations/us-central1/services/my-service/schemas/main",
-        datasources: [],
-        source: { files: [{ path: "schema.gql", content: "type User { id: String }" }] }
-      }];
+      const schemas: Schema[] = [
+        {
+          name: "projects/my-project/locations/us-central1/services/my-service/schemas/main",
+          datasources: [],
+          source: { files: [{ path: "schema.gql", content: "type User { id: String }" }] },
+        },
+      ];
       const responseObj = {
         part: {
           codeChunk: {
             code: "query GetUsers { users { id } }",
-            languageCode: "graphql"
-          }
-        }
+            languageCode: "graphql",
+          },
+        },
       };
 
       nock(dataconnectOrigin())
         .post(`/v1/projects/my-project/locations/us-central1/services/-:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/-`,
           prompt,
-          schemas
+          schemas,
         } as any)
         .reply(200, JSON.stringify(responseObj));
 

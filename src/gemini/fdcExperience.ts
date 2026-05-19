@@ -170,7 +170,7 @@ async function consumeStream(
         }
       }
     });
- 
+
     stream.on("end", () => {
       try {
         const response = JSON.parse(fullText);
