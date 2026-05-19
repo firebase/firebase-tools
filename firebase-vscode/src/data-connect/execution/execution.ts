@@ -30,11 +30,12 @@ import { EmulatorsController } from "../../core/emulators";
 import {
   getConnectorGQLText,
   insertQueryAt,
+  getSchemas,
+  verifySchemaCompiles,
 } from "../file-utils";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
-import { getSchemas, verifySchemaCompiles } from "../gql_schema_helpers";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
