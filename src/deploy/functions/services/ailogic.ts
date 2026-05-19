@@ -1,4 +1,5 @@
 import * as backend from "../backend";
+import * as build from "../build";
 import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
@@ -15,15 +16,7 @@ export const AI_LOGIC_EVENTS = [
   AI_LOGIC_AFTER_GENERATE_CONTENT,
 ] as const;
 
-export interface AILogicTriggerTarget {
-  blockingTrigger?: {
-    eventType: string;
-    options?: Record<string, unknown>;
-  };
-  project?: string;
-}
-
-export type AILogicTrigger = {
+export type AILogicEndpoint = backend.Endpoint & {
   blockingTrigger: {
     eventType: (typeof AI_LOGIC_EVENTS)[number];
     options?: {
@@ -32,15 +25,11 @@ export type AILogicTrigger = {
   };
 };
 
-export type AILogicEndpoint = backend.Endpoint & AILogicTrigger;
-
 /**
  * Type guard to check if a trigger target is an AI Logic event trigger.
  */
-export function isAILogicEvent<T extends AILogicTriggerTarget>(
-  endpoint: T,
-): endpoint is T & AILogicTrigger {
-  if (!endpoint.blockingTrigger) {
+export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicEndpoint {
+  if (!backend.isBlockingTriggered(endpoint)) {
     return false;
   }
   return AI_LOGIC_EVENTS.includes(
@@ -49,9 +38,19 @@ export function isAILogicEvent<T extends AILogicTriggerTarget>(
 }
 
 /**
+ * Check if a blocking trigger is a global AI Logic trigger (not a regional webhook).
+ */
+export function isGlobalAILogicTrigger(blockingTrigger: build.BlockingTrigger): boolean {
+  return (
+    AI_LOGIC_EVENTS.includes(blockingTrigger.eventType as any) &&
+    !blockingTrigger.options?.regionalWebhook
+  );
+}
+
+/**
  * Check if an AI Logic trigger target is global (i.e. not a regional webhook).
  */
-export function isGlobalAILogicEndpoint(endpoint: AILogicTriggerTarget): boolean {
+export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
   if (!isAILogicEvent(endpoint)) {
     return false;
   }
