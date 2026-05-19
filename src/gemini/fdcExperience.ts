@@ -1,14 +1,10 @@
 import { Client } from "../apiv2";
+import { dataconnectOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import {
-  GenerateResponse,
-  GenerationStatus,
-} from "./types";
+import { GenerateResponse, GenerationStatus } from "./types";
 
-// Use autopush environment as requested
-const STAGING_ORIGIN = "https://firebasedataconnect.googleapis.com";
-const apiClient = new Client({ urlPrefix: STAGING_ORIGIN, auth: true });
+const apiClient = new Client({ urlPrefix: dataconnectOrigin(), auth: true });
 
 export const PROMPT_GENERATE_CONNECTOR =
   "Create 4 operations for an app using the instance schema with proper authentication.";
@@ -16,17 +12,17 @@ export const PROMPT_GENERATE_CONNECTOR =
 export const PROMPT_GENERATE_SEED_DATA =
   "Create a mutation to populate the database with some seed data.";
 
-function logCurl(method: string, path: string, body: any) {
-  const url = `${STAGING_ORIGIN}${path}`;
+// For debugging purposes
+function logCurl(method: string, path: string, body: any): void {
+  const url = `${dataconnectOrigin()}${path}`;
   const headers = [
     '-H "Content-Type: application/json"',
-    '-H "Authorization: Bearer $(gcloud auth print-access-token)"'
+    '-H "Authorization: Bearer $(gcloud auth print-access-token)"',
   ].join(" ");
-  
+
   const curl = `curl -X ${method} "${url}" ${headers} -d '${JSON.stringify(body)}'`;
   logger.info(`[fdcExperience] Reusable cURL command:\\n${curl}`);
 }
-
 
 /**
  * generateSchema generates a schema based on the users app design prompt.
@@ -59,7 +55,9 @@ export async function generateSchema(
 
   if (res.status >= 400) {
     const errorText = await readStream(res.body);
-    throw new FirebaseError(`Failed to generate schema. Status: ${res.status}, Message: ${errorText}`);
+    throw new FirebaseError(
+      `Failed to generate schema. Status: ${res.status}, Message: ${errorText}`,
+    );
   }
 
   return consumeStream(res.body, onStatus);
@@ -83,7 +81,7 @@ export async function generateOperation(
 ): Promise<string> {
   let location = "us-central1"; // Default fallback
   let serviceId = service;
-  
+
   if (service.startsWith("projects/")) {
     const parts = service.split("/");
     project = parts[1];
@@ -114,7 +112,9 @@ export async function generateOperation(
 
   if (res.status >= 400) {
     const errorText = await readStream(res.body);
-    throw new FirebaseError(`Failed to generate operation. Status: ${res.status}, Message: ${errorText}`);
+    throw new FirebaseError(
+      `Failed to generate operation. Status: ${res.status}, Message: ${errorText}`,
+    );
   }
 
   return consumeStream(res.body, onStatus);
@@ -148,14 +148,14 @@ async function consumeStream(
       // Try to parse individual chunks for status updates if they are full JSON lines (NDJSON)
       const lines = text.trim().split("\n");
       for (const line of lines) {
-         try {
-             const obj = JSON.parse(line) as GenerateResponse;
-             if (obj.status && onStatus) {
-                 onStatus(obj.status);
-             }
-         } catch (err) {
-             // Ignore partial JSON lines
-         }
+        try {
+          const obj = JSON.parse(line) as GenerateResponse;
+          if (obj.status && onStatus) {
+            onStatus(obj.status);
+          }
+        } catch (err) {
+          // Ignore partial JSON lines
+        }
       }
     });
 
@@ -194,23 +194,24 @@ async function consumeStream(
         const lines = fullText.trim().split("\n");
         let code = "";
         for (const line of lines) {
-             try {
-                 const obj = JSON.parse(line) as GenerateResponse;
-                 if (obj.part?.codeChunk?.code) {
-                     code += obj.part.codeChunk.code;
-                 } else if (obj.part?.textChunk?.text) {
-                     code += obj.part.textChunk.text;
-                 }
-                 if (obj.status && onStatus) {
-                      onStatus(obj.status);
-                 }
-             } catch (err) {
-             }
+          try {
+            const obj = JSON.parse(line) as GenerateResponse;
+            if (obj.part?.codeChunk?.code) {
+              code += obj.part.codeChunk.code;
+            } else if (obj.part?.textChunk?.text) {
+              code += obj.part.textChunk.text;
+            }
+            if (obj.status && onStatus) {
+              onStatus(obj.status);
+            }
+          } catch (err) {
+            logger.error("Failed to parse FSQL Generate response: ", err);
+          }
         }
         if (code) {
-             resolve(extractCodeBlock(code));
+          resolve(extractCodeBlock(code));
         } else {
-             resolve(fullText);
+          resolve(fullText);
         }
       }
     });
@@ -221,9 +222,12 @@ async function consumeStream(
   });
 }
 
+/**
+ * Extracts code block from a text response
+ */
 export function extractCodeBlock(text: string): string {
   const regex = /```(?:[a-z]+\n)?([\s\S]*?)```/m;
-  const match = text.match(regex);
+  const match = regex.exec(text);
   if (match && match[1]) {
     return match[1].trim();
   }
