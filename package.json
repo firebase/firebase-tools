@@ -113,7 +113,6 @@
     "@google-cloud/pubsub": "^5.2.0",
     "@inquirer/prompts": "^7.10.1",
     "@modelcontextprotocol/sdk": "^1.24.0",
-    "abort-controller": "^3.0.0",
     "ajv": "^8.17.1",
     "ajv-formats": "3.0.1",
     "archiver": "^7.0.0",
