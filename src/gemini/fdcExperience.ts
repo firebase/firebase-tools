@@ -3,12 +3,12 @@ import { dataconnectOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import {
-  GenerateResponse,
   GenerationStatus,
   GenerateSchemaRequest,
   GenerateOperationRequest,
   GenerateRequest,
   Schema,
+  GenerateResponse,
 } from "./types";
 
 const apiClient = new Client({ urlPrefix: dataconnectOrigin(), auth: true });
