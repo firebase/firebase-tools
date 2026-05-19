@@ -25,9 +25,6 @@ export type AILogicEndpoint = backend.Endpoint & {
   };
 };
 
-/**
- * Type guard to check if a trigger target is an AI Logic event trigger.
- */
 export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicEndpoint {
   if (!backend.isBlockingTriggered(endpoint)) {
     return false;
@@ -42,19 +39,9 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
  */
 export function isGlobalAILogicTrigger(blockingTrigger: build.BlockingTrigger): boolean {
   return (
-    AI_LOGIC_EVENTS.includes(blockingTrigger.eventType as any) &&
+    AI_LOGIC_EVENTS.includes(blockingTrigger.eventType as (typeof AI_LOGIC_EVENTS)[number]) &&
     !blockingTrigger.options?.regionalWebhook
   );
-}
-
-/**
- * Check if an AI Logic trigger target is global (i.e. not a regional webhook).
- */
-export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
-  if (!isAILogicEvent(endpoint)) {
-    return false;
-  }
-  return !endpoint.blockingTrigger.options?.regionalWebhook;
 }
 
 export class AILogicService implements Service {
