@@ -35,6 +35,7 @@ import {
   prepareEndpoints,
   BlockingTrigger,
   getTemporarySocketPath,
+  shouldIgnoreWatchPath,
 } from "./functionsEmulatorShared";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger, Verbosity } from "./emulatorLogger";
@@ -519,7 +520,12 @@ export class FunctionsEmulator implements EmulatorInstance {
       } else {
         const watcher = chokidar.watch(backend.functionsDir, {
           ignored: [
-            /(^|[\/\\])\../, // Ignore hidden files/dirs (covers .dart_tool, .git, etc.)
+            // Ignore hidden files/dirs within the watched directory (covers
+            // .dart_tool, .git, etc.). Match against the path relative to
+            // functionsDir so a dot-prefixed ancestor directory (e.g.
+            // `.worktrees/`) does not cause every file change to be ignored.
+            // See https://github.com/firebase/firebase-tools/issues/10187.
+            (filePath: string) => shouldIgnoreWatchPath(backend.functionsDir, filePath),
             /.+\.log/, // Ignore log files
             /.+?[\\\/]node_modules[\\\/].+?/, // Ignore node_modules
             /.+?[\\\/]venv[\\\/].+?/, // Ignore venv
