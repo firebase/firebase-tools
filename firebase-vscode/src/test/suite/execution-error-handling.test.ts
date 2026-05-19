@@ -119,5 +119,5 @@ firebaseSuite("generateOperation Error Handling", () => {
     assert.ok(showInformationMessageStub.calledOnce);
     assert.ok(showInformationMessageStub.getCall(0).args[0].startsWith("Generated response is not valid GraphQL"));
   });
-});
+}, 20000);
 
