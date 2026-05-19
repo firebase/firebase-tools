@@ -34,7 +34,7 @@ import {
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
-import { getSchemas, verifySchemaCompiles } from "../schema_helpers";
+import { getSchemas, verifySchemaCompiles } from "../gql_schema_helpers";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
@@ -46,7 +46,7 @@ import {
   GraphqlResponseError,
 } from "../../dataconnect/types";
 import { GraphqlResponse } from "../../../../src/dataconnect/types";
-import { logger } from "../../logger";
+import { logger } from "../../../../src/logger";
 
 export interface ExecutionInput {
   operationAst: OperationDefinitionNode;
