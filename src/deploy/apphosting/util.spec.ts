@@ -4,7 +4,9 @@ import * as path from "path";
 import * as tmp from "tmp";
 import * as tar from "tar";
 import * as util from "./util";
+import * as sinon from "sinon";
 import { AppHostingSingle } from "../../firebaseConfig";
+import { logger } from "../../logger";
 
 describe("util", () => {
   let tmpDir: tmp.DirResult;
@@ -194,6 +196,27 @@ describe("util", () => {
 
       expect(files).to.include("dist/index.js");
       expect(files).to.include("dist/gitignored.txt");
+    });
+
+    it("should log a warning if local build archive size exceeds limit", async () => {
+      const loggerWarnSpy = sinon.spy(logger, "warn");
+      try {
+        fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+
+        const config = {
+          backendId: "test-backend",
+          rootDir: "",
+          ignore: [],
+          localBuild: true,
+        };
+
+        await util.createLocalBuildTarArchive(config, rootDir, path.relative(rootDir, distDir), 1);
+
+        expect(loggerWarnSpy.calledOnce).to.be.true;
+        expect(loggerWarnSpy.firstCall.args[0]).to.match(/The final build artifact is larger than/);
+      } finally {
+        loggerWarnSpy.restore();
+      }
     });
   });
 });
