@@ -23,7 +23,6 @@ import {
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
-import { GraphqlError } from "../../../../src/dataconnect/types";
 import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
@@ -31,14 +30,11 @@ import { EmulatorsController } from "../../core/emulators";
 import {
   getConnectorGQLText,
   insertQueryAt,
-  findGqlFiles,
 } from "../file-utils";
-import * as fs from "fs";
-import * as path from "path";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
-import { DataConnectEmulator } from "../../../../src/emulator/dataconnectEmulator";
+import { getSchemas, verifySchemaCompiles } from "../schema_helpers";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
@@ -302,72 +298,14 @@ export function registerExecution(
         arg.document.fileName,
       );
 
-      const schemas: any[] = [];
+      let schemas: any[] = [];
 
       if (serviceConfig) {
-        const mainSchemaDir = path.join(
-          serviceConfig.path,
-          serviceConfig.mainSchemaDir,
-        );
-        const secondaryDirs = serviceConfig.secondarySchemaDirs.map((dir) =>
-          path.join(serviceConfig.path, dir),
-        );
-
-        const schemaFiles: string[] = [];
-        schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
-        for (const dir of secondaryDirs) {
-          schemaFiles.push(...(await findGqlFiles(dir)));
-        }
-
-        const files = await Promise.all(
-          schemaFiles.map(async (file) => {
-            const content = await fs.promises.readFile(file, "utf-8");
-            return {
-              path: path.basename(file),
-              content: content,
-            };
-          }),
-        );
-
-        if (files.length > 0) {
-          schemas.push({
-            source: {
-              files: files,
-            },
-          });
-        }
+        schemas = await getSchemas(serviceConfig);
 
         // Verify that the schema compiles before generating queries
-        try {
-          const buildResult = await DataConnectEmulator.build({
-            configDir: serviceConfig.path,
-            projectId: arg.projectId,
-          });
-          const schemaErrors = buildResult.errors?.filter((e) => {
-            // Ignore warnings
-            const isHardError = !e.extensions?.warningLevel;
-            const file = e.extensions?.file;
-            if (!file) return isHardError;
-
-            // Ignore operation (connector) errors, only keep schema errors
-            const isSchemaFile = !serviceConfig.connectorDirs.some((dir) => {
-              const absConnectorDir = path.resolve(serviceConfig.path, dir);
-              const absFile = path.resolve(serviceConfig.path, file);
-              return absFile.startsWith(absConnectorDir);
-            });
-
-            return isHardError && isSchemaFile;
-          });
-
-          if (schemaErrors?.length) {
-            // Handle compilation errors and provide navigation to the file
-            await handleCompilationError(schemaErrors[0], serviceConfig.path);
-            return;
-          }
-        } catch (e: any) {
-          vscode.window.showErrorMessage(
-            "Ensure schema compiles before generating queries",
-          );
+        const compiles = await verifySchemaCompiles(serviceConfig, arg.projectId);
+        if (!compiles) {
           return;
         }
       }
@@ -520,34 +458,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
  * @param error The GraphQL error object.
  * @param servicePath The path to the service directory.
  */
-async function handleCompilationError(
-  error: GraphqlError,
-  servicePath: string,
-): Promise<void> {
-  const message = `Schema compilation failed: ${error.message}`;
-  const file = error.extensions?.file;
-  const location = error.locations?.[0];
 
-  if (file) {
-    const fullPath = path.resolve(servicePath, file);
-    const selection = await vscode.window.showErrorMessage(
-      message,
-      "Open File",
-    );
-    if (selection === "Open File") {
-      const uri = vscode.Uri.file(fullPath);
-      const doc = await vscode.workspace.openTextDocument(uri);
-      const editor = await vscode.window.showTextDocument(doc);
-      if (location) {
-        const pos = new vscode.Position(location.line - 1, location.column - 1);
-        editor.revealRange(new vscode.Range(pos, pos));
-        editor.selection = new vscode.Selection(pos, pos);
-      }
-    }
-  } else {
-    vscode.window.showErrorMessage(message);
-  }
-}
 
 function executionError(message: string, error?: string) {
   vscode.window.showErrorMessage(
