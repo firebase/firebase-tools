@@ -28,7 +28,7 @@ function logCurl(method: string, path: string, body: GenerateRequest): void {
   ].join(" ");
 
   const curl = `curl -X ${method} "${url}" ${headers} -d '${JSON.stringify(body)}'`;
-  logger.info(`[fdcExperience] Reusable cURL command:\\n${curl}`);
+  logger.debug(`[Agent Service] Reusable cURL command:\\n${curl}`);
 }
 
 /**
