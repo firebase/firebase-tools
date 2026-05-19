@@ -198,6 +198,8 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
     const secondaryDirs = service.secondarySchemaDirs.map(dir => path.join(service.path, dir));
     
+    // Only provide schema code lenses for files inside the schema directories.
+    // This avoids parsing non-schema files (e.g. query files) which improves performance.
     const isSchemaFile = isPathInside(document.fileName, mainSchemaDir) || 
                          secondaryDirs.some(dir => isPathInside(document.fileName, dir));
 
