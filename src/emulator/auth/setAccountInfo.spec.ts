@@ -1097,6 +1097,26 @@ describeAuthEmulator("accounts:update", ({ authApi, getClock }) => {
     "google.com",
   );
 
+  it("should retain email after deleting password provider", async () => {
+    const email = "alice@example.com";
+    const { idToken } = await registerUser(authApi(), { email, password: "notasecret" });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({ idToken, deleteProvider: ["password"] })
+      .then((res) => expectStatusCode(200, res));
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
+      .query({ key: "fake-api-key" })
+      .send({ email, password: "notasecret" })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("EMAIL_EXISTS");
+      });
+  });
+
   it("should update user by localId when authenticated", async () => {
     const { localId } = await registerUser(authApi(), {
       email: "foo@example.com",
