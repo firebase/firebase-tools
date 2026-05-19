@@ -130,7 +130,7 @@ export async function generateOperation(
 async function readStream(stream: NodeJS.ReadableStream): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = "";
-    stream.on("data", (chunk) => {
+    stream.on("data", (chunk: Buffer | string) => {
       data += chunk.toString();
     });
     stream.on("end", () => {
@@ -149,7 +149,7 @@ async function consumeStream(
   return new Promise((resolve, reject) => {
     let buffer = "";
     let fullText = "";
-    stream.on("data", (chunk) => {
+    stream.on("data", (chunk: Buffer | string) => {
       const text = chunk.toString();
       fullText += text;
       buffer += text;
