@@ -147,25 +147,30 @@ async function consumeStream(
   onStatus?: (status: GenerationStatus) => void,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    let buffer = "";
     let fullText = "";
     stream.on("data", (chunk) => {
       const text = chunk.toString();
       fullText += text;
+      buffer += text;
 
-      // Try to parse individual chunks for status updates if they are full JSON lines (NDJSON)
-      const lines = text.trim().split("\n");
-      for (const line of lines) {
-        try {
-          const obj = JSON.parse(line) as GenerateResponse;
-          if (obj.status && onStatus) {
-            onStatus(obj.status);
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.substring(0, newlineIndex).trim();
+        buffer = buffer.substring(newlineIndex + 1);
+        if (line) {
+          try {
+            const obj = JSON.parse(line) as GenerateResponse;
+            if (obj.status && onStatus) {
+              onStatus(obj.status);
+            }
+          } catch (err) {
+            // Ignore partial JSON lines
           }
-        } catch (err) {
-          // Ignore partial JSON lines
         }
       }
     });
-
+ 
     stream.on("end", () => {
       try {
         const response = JSON.parse(fullText);

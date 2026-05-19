@@ -28,7 +28,11 @@ import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
-import { getConnectorGQLText, insertQueryAt, findGqlFiles } from "../file-utils";
+import {
+  getConnectorGQLText,
+  insertQueryAt,
+  findGqlFiles,
+} from "../file-utils";
 import * as fs from "fs";
 import * as path from "path";
 import { dataConnectConfigs, firebaseRC } from "../config";
@@ -41,8 +45,12 @@ import {
   executionVarsJSON,
   ExecutionParamsService,
 } from "./execution-params";
-import { ExecuteGraphqlRequest, GraphqlResponseError } from "../../dataconnect/types";
-import { GraphqlResponse } from '../../../../src/dataconnect/types';
+import {
+  ExecuteGraphqlRequest,
+  GraphqlResponseError,
+} from "../../dataconnect/types";
+import { GraphqlResponse } from "../../../../src/dataconnect/types";
+import { logger } from "../../logger";
 
 export interface ExecutionInput {
   operationAst: OperationDefinitionNode;
@@ -222,7 +230,7 @@ export function registerExecution(
       auth: executionAuthParams.value,
       results: {
         respErr: toSerializedError(new Error("execution in progress")),
-      }
+      },
     });
 
     try {
@@ -265,7 +273,8 @@ export function registerExecution(
         respErr: toSerializedError(
           error instanceof Error
             ? error
-            : new DataConnectError("Unknown error", error)),
+            : new DataConnectError("Unknown error", error),
+        ),
       };
     }
 
@@ -289,67 +298,78 @@ export function registerExecution(
     }
     try {
       const configs = dataConnectConfigs.value?.tryReadValue;
-      const serviceConfig = configs?.findEnclosingServiceForPath(arg.document.fileName);
-      
+      const serviceConfig = configs?.findEnclosingServiceForPath(
+        arg.document.fileName,
+      );
+
       const schemas: any[] = [];
-      
+
       if (serviceConfig) {
-          const mainSchemaDir = path.join(serviceConfig.path, serviceConfig.mainSchemaDir);
-          const secondaryDirs = serviceConfig.secondarySchemaDirs.map(dir => path.join(serviceConfig.path, dir));
-          
-          const schemaFiles: string[] = [];
-          schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
-          for (const dir of secondaryDirs) {
-             schemaFiles.push(...(await findGqlFiles(dir)));
-          }
-          
-          const files = await Promise.all(schemaFiles.map(async (file) => {
-             const content = fs.readFileSync(file, "utf-8");
-             return {
-                 path: path.basename(file),
-                 content: content
-             };
-          }));
-          
-          if (files.length > 0) {
-              schemas.push({
-                  source: {
-                      files: files
-                  }
-              });
-          }
+        const mainSchemaDir = path.join(
+          serviceConfig.path,
+          serviceConfig.mainSchemaDir,
+        );
+        const secondaryDirs = serviceConfig.secondarySchemaDirs.map((dir) =>
+          path.join(serviceConfig.path, dir),
+        );
 
-          // Verify that the schema compiles before generating queries
-          try {
-              const buildResult = await DataConnectEmulator.build({
-                  configDir: serviceConfig.path,
-                  projectId: arg.projectId,
-              });
-              const schemaErrors = buildResult.errors?.filter(e => {
-                  // Ignore warnings
-                  const isHardError = !e.extensions?.warningLevel;
-                  const file = e.extensions?.file;
-                  if (!file) return isHardError;
-                  
-                  // Ignore operation (connector) errors, only keep schema errors
-                  const isSchemaFile = !serviceConfig.connectorDirs.some(dir => {
-                      const absConnectorDir = path.resolve(serviceConfig.path, dir);
-                      const absFile = path.resolve(serviceConfig.path, file);
-                      return absFile.startsWith(absConnectorDir);
-                  });
-                  
-                  return isHardError && isSchemaFile;
-              });
+        const schemaFiles: string[] = [];
+        schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
+        for (const dir of secondaryDirs) {
+          schemaFiles.push(...(await findGqlFiles(dir)));
+        }
 
-              if (schemaErrors?.length) {
-                  // Handle compilation errors and provide navigation to the file
-                  await handleCompilationError(schemaErrors[0], serviceConfig.path);
-                  return;
-              }
-          } catch (e: any) {
-              vscode.window.showErrorMessage("Ensure schema compiles before generating queries");
-              return;
+        const files = await Promise.all(
+          schemaFiles.map(async (file) => {
+            const content = await fs.promises.readFile(file, "utf-8");
+            return {
+              path: path.basename(file),
+              content: content,
+            };
+          }),
+        );
+
+        if (files.length > 0) {
+          schemas.push({
+            source: {
+              files: files,
+            },
+          });
+        }
+
+        // Verify that the schema compiles before generating queries
+        try {
+          const buildResult = await DataConnectEmulator.build({
+            configDir: serviceConfig.path,
+            projectId: arg.projectId,
+          });
+          const schemaErrors = buildResult.errors?.filter((e) => {
+            // Ignore warnings
+            const isHardError = !e.extensions?.warningLevel;
+            const file = e.extensions?.file;
+            if (!file) return isHardError;
+
+            // Ignore operation (connector) errors, only keep schema errors
+            const isSchemaFile = !serviceConfig.connectorDirs.some((dir) => {
+              const absConnectorDir = path.resolve(serviceConfig.path, dir);
+              const absFile = path.resolve(serviceConfig.path, file);
+              return absFile.startsWith(absConnectorDir);
+            });
+
+            return isHardError && isSchemaFile;
+          });
+
+          if (schemaErrors?.length) {
+            // Handle compilation errors and provide navigation to the file
+            await handleCompilationError(schemaErrors[0], serviceConfig.path);
+            return;
           }
+        } catch (e: any) {
+          vscode.window.showErrorMessage(
+            "Ensure schema compiles before generating queries",
+          );
+          return;
+        }
       }
 
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
@@ -363,35 +383,41 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           return; // ToS isn't accepted.
         }
       }
-      const res = await vscode.window.withProgress({
-        location: vscode.ProgressLocation.Notification,
-        title: "Data Connect: Generating Operation...",
-      }, async (progress) => {
-        return await gif.generateOperation(
-          prompt,
-          serviceName,
-          arg.projectId!,
-          schemas.length > 0 ? schemas : undefined,
-          (status: any) => {
-             let message = "";
-             if (status.state) {
-                 message += `[${status.state}] `;
-             }
-             if (status.message) {
-                 message += status.message;
-             }
-             if (message) {
-                 progress.report({ message });
-             }
-          }
-        );
-      });
-      
+      const res = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Data Connect: Generating Operation...",
+        },
+        async (progress) => {
+          return await gif.generateOperation(
+            prompt,
+            serviceName,
+            arg.projectId!,
+            schemas.length > 0 ? schemas : undefined,
+            (status: any) => {
+              let message = "";
+              if (status.state) {
+                message += `[${status.state}] `;
+              }
+              if (status.message) {
+                message += status.message;
+              }
+              if (message) {
+                progress.report({ message });
+              }
+            },
+          );
+        },
+      );
+
       try {
-          parse(res);
+        parse(res);
       } catch (e: any) {
-          vscode.window.showInformationMessage(`Generated response is not valid GraphQL: ${res}`);
-          return;
+        logger.error(res);
+        vscode.window.showErrorMessage(
+          `Generated response is not valid GraphQL. Check the logs for details.`,
+        );
+        return;
       }
 
       await insertQueryAt(
@@ -405,8 +431,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
   }
-
-
 
   async function showGiFToSModal(projectId: string): Promise<boolean> {
     analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL);
@@ -496,14 +520,20 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
  * @param error The GraphQL error object.
  * @param servicePath The path to the service directory.
  */
-async function handleCompilationError(error: GraphqlError, servicePath: string): Promise<void> {
+async function handleCompilationError(
+  error: GraphqlError,
+  servicePath: string,
+): Promise<void> {
   const message = `Schema compilation failed: ${error.message}`;
   const file = error.extensions?.file;
   const location = error.locations?.[0];
 
   if (file) {
     const fullPath = path.resolve(servicePath, file);
-    const selection = await vscode.window.showErrorMessage(message, "Open File");
+    const selection = await vscode.window.showErrorMessage(
+      message,
+      "Open File",
+    );
     if (selection === "Open File") {
       const uri = vscode.Uri.file(fullPath);
       const doc = await vscode.workspace.openTextDocument(uri);
