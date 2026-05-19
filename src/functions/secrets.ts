@@ -1,4 +1,3 @@
-import * as utils from "../utils";
 import * as poller from "../operation-poller";
 import * as gcfV1 from "../gcp/cloudfunctions";
 import * as gcfV2 from "../gcp/cloudfunctionsv2";
@@ -309,7 +308,7 @@ export async function pruneAndDestroySecrets(
   const erred: PruneResult["erred"] = [];
   const msg = unusedSecrets.map((s) => `${s.secret}@${s.version}`);
   logger.debug(`Found unused secret versions: ${msg}. Destroying them...`);
-  const destroyResults = await utils.allSettled<backend.SecretEnvVar>(
+  const destroyResults = await Promise.allSettled<backend.SecretEnvVar>(
     unusedSecrets.map(async (sev) => {
       await destroySecretVersion(sev.projectId, sev.secret, sev.version);
       return sev;
