@@ -2,14 +2,15 @@ import * as childProcess from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { Availability, BuildConfig, Env } from "../gcp/apphosting";
+import { logger } from "../logger";
+import { wrappedSafeLoad } from "../utils";
 
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
-import { logger } from "../logger";
-import { wrappedSafeLoad } from "../utils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
+import { detectFramework } from "./utils";
 
 interface UniversalMakerOutput {
   command: string;
@@ -223,7 +224,7 @@ export interface AppHostingBuildOutput {
 export async function localBuild(
   projectId: string,
   projectRoot: string,
-  framework: string,
+  framework?: string,
   env: EnvMap = {},
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
@@ -231,6 +232,13 @@ export async function localBuild(
   annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
+  const detectedFramework = framework || (await detectFramework(projectRoot));
+  if (!detectedFramework) {
+    throw new FirebaseError(
+      `Could not detect framework in ${projectRoot}. Please ensure package.json is present with framework dependencies.`,
+    );
+  }
+
   const hasBuildAvailableSecrets = Object.values(env).some(
     (v) => v.secret && (!v.availability || v.availability.includes("BUILD")),
   );
@@ -264,7 +272,7 @@ export async function localBuild(
 
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
+    apphostingBuildOutput = await runUniversalMaker(projectRoot, detectedFramework);
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {

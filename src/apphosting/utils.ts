@@ -1,7 +1,10 @@
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { APPHOSTING_BASE_YAML_FILE, APPHOSTING_YAML_FILE_REGEX } from "./config";
 import { WebConfig } from "../fetchWebSetup";
 import * as prompt from "../prompt";
+import * as fs from "fs-extra";
+import * as path from "path";
+import { logger } from "../logger";
 
 /**
  * Returns <environment> given an apphosting.<environment>.yaml file
@@ -72,4 +75,52 @@ export function getAutoinitEnvVars(webappConfig: WebConfig | undefined): Record<
       projectId: webappConfig.projectId,
     }),
   };
+}
+
+/**
+ * Reads and parses the package.json file in the specified directory.
+ */
+export async function parsePackageJson(packageJsonPath: string): Promise<PackageJson | undefined> {
+  if (!(await fs.pathExists(packageJsonPath))) {
+    return undefined;
+  }
+  try {
+    const content = await fs.readFile(packageJsonPath, "utf-8");
+    return JSON.parse(content) as PackageJson;
+  } catch (err: unknown) {
+    logger.debug(`Failed to read or parse package.json at ${packageJsonPath}: ${getErrMsg(err)}`);
+    return undefined;
+  }
+}
+
+export interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+export enum Framework {
+  NEXTJS = "nextjs",
+  ANGULAR = "angular",
+}
+
+/**
+ * Detects the framework based on package.json dependencies.
+ * Returns Framework.NEXTJS or Framework.ANGULAR if detected, otherwise undefined.
+ */
+export async function detectFramework(appDir: string): Promise<Framework | undefined> {
+  const packageJsonPath = path.join(appDir, "package.json");
+  const pkg = await parsePackageJson(packageJsonPath);
+  if (!pkg) {
+    return undefined;
+  }
+
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  if (deps["next"]) {
+    return Framework.NEXTJS;
+  }
+  if (deps["@angular/core"]) {
+    return Framework.ANGULAR;
+  }
+
+  return undefined;
 }

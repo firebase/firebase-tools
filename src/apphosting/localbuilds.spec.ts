@@ -7,11 +7,13 @@ import * as childProcess from "child_process";
 
 import * as universalMakerDownload from "./universalMakerDownload";
 import * as fsExtra from "fs-extra";
+import * as utils from "./utils";
 
 describe("localBuild", () => {
   let downloadStub: sinon.SinonStub;
 
   beforeEach(() => {
+    sinon.stub(utils, "detectFramework").resolves(utils.Framework.NEXTJS);
     downloadStub = sinon
       .stub(universalMakerDownload, "getOrDownloadUniversalMaker")
       .resolves("/path/to/universal_maker");
@@ -218,6 +220,35 @@ describe("localBuild", () => {
 
       await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
+    });
+  });
+
+  describe("framework detection", () => {
+    it("should dynamically detect framework when not passed explicitly", async () => {
+      sinon.stub(childProcess, "spawnSync").returns({
+        status: 0,
+        output: ["", "mock output", ""],
+        pid: 12345,
+        stdout: "mock stdout",
+        stderr: "mock stderr",
+        signal: null,
+      });
+
+      const { outputFiles, annotations } = await localBuild("test-project", "./");
+
+      expect(outputFiles).to.deep.equal([".next/standalone"]);
+      expect(annotations.framework).to.equal("nextjs");
+      sinon.assert.calledOnce(utils.detectFramework as sinon.SinonStub);
+      sinon.assert.calledWith(utils.detectFramework as sinon.SinonStub, "./");
+    });
+
+    it("should throw a FirebaseError if framework cannot be detected", async () => {
+      const detectFrameworkStub = utils.detectFramework as sinon.SinonStub;
+      detectFrameworkStub.resolves(undefined);
+
+      await expect(localBuild("test-project", "./")).to.be.rejectedWith(
+        "Could not detect framework in ./. Please ensure package.json is present with framework dependencies.",
+      );
     });
   });
 
