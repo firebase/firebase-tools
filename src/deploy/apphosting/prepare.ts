@@ -211,14 +211,9 @@ export default async function (context: Context, options: Options): Promise<void
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
         },
       );
-      if (outputFiles.length !== 1) {
-        throw new FirebaseError(
-          `Local build for backend ${cfg.backendId} failed: No output files found.`,
-        );
-      }
+      const buildDir = outputFiles.length > 0 ? outputFiles[0] : ".";
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0],
+        buildDir,
         localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
