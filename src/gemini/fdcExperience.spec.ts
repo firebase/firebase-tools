@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import { extractCodeBlock, generateSchema, generateOperation } from "./fdcExperience";
 import * as nock from "nock";
+import { dataconnectOrigin } from "../api";
+import { Schema } from "./types";
 
 describe("fdcExperience", () => {
   beforeEach(() => {
@@ -88,7 +90,7 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+      nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
           prompt
@@ -124,7 +126,7 @@ describe("fdcExperience", () => {
           statusCalledWith = status;
       };
 
-      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+      nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
           prompt
@@ -146,7 +148,7 @@ describe("fdcExperience", () => {
         { part: { textChunk: { text: "```graphql\ntype User @table { id: String }\n```" } } }
       ];
 
-      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+      nock(dataconnectOrigin())
         .post(`/v1/projects/${project}/locations/${location}/services/-:generateSchema`, {
           name: `projects/${project}/locations/${location}/services/-`,
           prompt
@@ -173,7 +175,7 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+      nock(dataconnectOrigin())
         .post(`/v1/projects/my-project/locations/us-central1/services/my-service:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/my-service`,
           prompt
@@ -189,7 +191,11 @@ describe("fdcExperience", () => {
       const prompt = "Get users";
       const service = "projects/my-project/locations/us-central1/services/my-service";
       const project = "my-project";
-      const schemas = [{ source: { files: [{ path: "schema.gql", content: "type User { id: String }" }] } }];
+      const schemas: Schema[] = [{
+        name: "projects/my-project/locations/us-central1/services/my-service/schemas/main",
+        datasources: [],
+        source: { files: [{ path: "schema.gql", content: "type User { id: String }" }] }
+      }];
       const responseObj = {
         part: {
           codeChunk: {
@@ -199,12 +205,12 @@ describe("fdcExperience", () => {
         }
       };
 
-      nock("https://staging-firebasedataconnect.sandbox.googleapis.com")
+      nock(dataconnectOrigin())
         .post(`/v1/projects/my-project/locations/us-central1/services/-:generateQuery`, {
           name: `projects/my-project/locations/us-central1/services/-`,
           prompt,
           schemas
-        })
+        } as any)
         .reply(200, JSON.stringify(responseObj));
 
       const result = await generateOperation(prompt, service, project, schemas);

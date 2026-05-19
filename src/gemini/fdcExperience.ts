@@ -2,7 +2,14 @@ import { Client } from "../apiv2";
 import { dataconnectOrigin } from "../api";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { GenerateResponse, GenerationStatus } from "./types";
+import {
+  GenerateResponse,
+  GenerationStatus,
+  GenerateSchemaRequest,
+  GenerateOperationRequest,
+  GenerateRequest,
+  Schema,
+} from "./types";
 
 const apiClient = new Client({ urlPrefix: dataconnectOrigin(), auth: true });
 
@@ -13,7 +20,7 @@ export const PROMPT_GENERATE_SEED_DATA =
   "Create a mutation to populate the database with some seed data.";
 
 // For debugging purposes
-function logCurl(method: string, path: string, body: any): void {
+function logCurl(method: string, path: string, body: GenerateRequest): void {
   const url = `${dataconnectOrigin()}${path}`;
   const headers = [
     '-H "Content-Type: application/json"',
@@ -39,13 +46,13 @@ export async function generateSchema(
   onStatus?: (status: GenerationStatus) => void,
 ): Promise<string> {
   const path = `/v1/projects/${project}/locations/${location}/services/-:generateSchema`;
-  const body = {
+  const body: GenerateSchemaRequest = {
     name: `projects/${project}/locations/${location}/services/-`,
     prompt,
   };
   logCurl("POST", path, body);
 
-  const res = await apiClient.request<any, NodeJS.ReadableStream>({
+  const res = await apiClient.request<GenerateSchemaRequest, NodeJS.ReadableStream>({
     method: "POST",
     path,
     body,
@@ -76,7 +83,7 @@ export async function generateOperation(
   prompt: string,
   service: string,
   project: string,
-  schemas?: any[],
+  schemas?: Schema[],
   onStatus?: (status: GenerationStatus) => void,
 ): Promise<string> {
   let location = "us-central1"; // Default fallback
@@ -95,14 +102,14 @@ export async function generateOperation(
   }
 
   const path = `/v1/projects/${project}/locations/${location}/services/${serviceId}:generateQuery`;
-  const body = {
+  const body: GenerateOperationRequest = {
     name: `projects/${project}/locations/${location}/services/${serviceId}`,
     prompt,
     schemas,
   };
   logCurl("POST", path, body);
 
-  const res = await apiClient.request<any, NodeJS.ReadableStream>({
+  const res = await apiClient.request<GenerateOperationRequest, NodeJS.ReadableStream>({
     method: "POST",
     path,
     body,

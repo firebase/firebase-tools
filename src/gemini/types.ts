@@ -1,3 +1,6 @@
+import { Schema } from "../dataconnect/types";
+export { Schema };
+
 export interface CloudAICompanionMessage {
   content: string;
   author: string;
@@ -88,3 +91,17 @@ export interface GenerateResponse {
   status?: GenerationStatus;
   part?: Part;
 }
+
+
+export interface GenerateSchemaRequest {
+  name: string;
+  prompt: string;
+}
+
+export interface GenerateOperationRequest {
+  name: string;
+  prompt: string;
+  schemas?: Schema[];
+}
+
+export type GenerateRequest = GenerateSchemaRequest | GenerateOperationRequest;
