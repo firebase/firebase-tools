@@ -42,9 +42,9 @@ function executeUniversalMakerBinary(
   addedEnv: Record<string, string> = {},
 ): void {
   try {
-    const bundleOutput = path.join(projectRoot, "bundle_output");
-    fs.removeSync(bundleOutput);
-    fs.ensureDirSync(bundleOutput);
+    const targetAppHosting = path.join(projectRoot, ".apphosting");
+    fs.removeSync(targetAppHosting);
+    fs.ensureDirSync(targetAppHosting);
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
@@ -55,7 +55,7 @@ function executeUniversalMakerBinary(
           ...process.env,
           ...addedEnv,
           X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: bundleOutput,
+          FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
         },
         stdio: "pipe",
       },
@@ -126,23 +126,7 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
 
-  const bundleOutput = path.join(projectRoot, "bundle_output");
-  const targetAppHosting = path.join(projectRoot, ".apphosting");
 
-  // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
-  // To avoid this, we output to bundle_output first, and then safely move the files over.
-  if (fs.existsSync(bundleOutput)) {
-    fs.ensureDirSync(targetAppHosting);
-    const files = fs.readdirSync(bundleOutput);
-    for (const file of files) {
-      const dest = path.join(targetAppHosting, file);
-      if (fs.existsSync(dest)) {
-        fs.removeSync(dest);
-      }
-      fs.moveSync(path.join(bundleOutput, file), dest);
-    }
-    fs.removeSync(bundleOutput);
-  }
 
   let umOutput: UniversalMakerOutput;
   try {
@@ -270,22 +254,19 @@ export async function localBuild(
   };
 }
 
-async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
-  const entries = await Promise.all(
-    Object.entries(env).map(async ([key, value]) => {
-      if (value.availability && !value.availability.includes("BUILD")) {
-        return null;
-      }
+async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<string, string>> {
+  const buildVars = Object.entries(env).filter(([, value]) => {
+    return !value.availability || value.availability.includes("BUILD");
+  });
 
-      if (value.secret) {
-        const resolvedValue = await loadSecret(projectId, value.secret);
-        return [key, resolvedValue];
-      } else {
-        return [key, value.value || ""];
-      }
-    }),
+  const resolvedEntries = await Promise.all(
+    buildVars.map(async ([key, value]) => {
+      const resolvedValue = value.secret
+        ? await loadSecret(projectId, value.secret)
+        : value.value || "";
+      return [key, resolvedValue];
+    })
   );
 
-  const filteredEntries = entries.filter((entry): entry is [string, string] => entry !== null);
-  return Object.fromEntries(filteredEntries) as NodeJS.ProcessEnv;
+  return Object.fromEntries(resolvedEntries);
 }
