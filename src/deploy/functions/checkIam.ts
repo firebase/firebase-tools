@@ -164,19 +164,22 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
 /**
  * Resolves the service account emails that functions will run as.
  * Explicit endpoint.serviceAccount values are used as-is; missing values use the default compute SA.
+ * @param projectNumber project number
+ * @param endpoints endpoints to resolve service accounts for
  */
+
 export async function resolveRuntimeServiceAccounts(
   projectNumber: string,
   endpoints: backend.Endpoint[],
 ): Promise<string[]> {
-  const serviceAccounts = endpoints
-    .map((endpoint) => endpoint.serviceAccount || "")
-    .filter((value, index, self) => self.indexOf(value) === index);
-  const defaultServiceAccountIndex = serviceAccounts.indexOf("");
-  if (defaultServiceAccountIndex !== -1) {
-    serviceAccounts[defaultServiceAccountIndex] = await gce.getDefaultServiceAccount(projectNumber);
-  }
-  return serviceAccounts.filter((sa) => !!sa);
+  const serviceAccounts = endpoints.map((endpoint) => endpoint.serviceAccount || "")
+  const needsDefault = serviceAccounts.includes("");
+  const defaultSa = needsDefault ? await gce.getDefaultServiceAccount(projectNumber) : null;
+
+  const resolved = serviceAccounts.map((sa) => (sa === "" ? defaultSa!: sa))
+  .filter((sa) => !!sa);
+
+  return [...new Set(resolved)];
 }
 
 /**

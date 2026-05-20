@@ -172,6 +172,55 @@ describe("checkIam", () => {
 
       expect(result).to.deep.equal([apiDefaultSa]);
     });
+
+    it("should dedupe when default compute is implicit and explicit", async () => {
+      const endpoints: backend.Endpoint[] = [
+        {
+          id: "fn1",
+          entryPoint: "fn1",
+          platform: "gcfv2",
+          httpsTrigger: {},
+          ...SPEC,
+        },
+        {
+          id: "fn2",
+          entryPoint: "fn2",
+          platform: "gcfv2",
+          serviceAccount: DEFAULT_COMPUTE_SA,
+          httpsTrigger: {},
+          ...SPEC,
+        },
+      ];
+
+      const result = await checkIam.resolveRuntimeServiceAccounts(projectNumber, endpoints);
+
+      expect(result).to.deep.equal([DEFAULT_COMPUTE_SA]);
+      expect(gceStub).to.have.been.calledOnceWith(projectNumber);
+    });
+
+    it("should dedupe when two endpoints resolve to the same default compute email", async () => {
+      const endpoints: backend.Endpoint[] = [
+        {
+          id: "fn1",
+          entryPoint: "fn1",
+          platform: "gcfv2",
+          httpsTrigger: {},
+          ...SPEC,
+        },
+        {
+          id: "fn2",
+          entryPoint: "fn2",
+          platform: "gcfv2",
+          httpsTrigger: {},
+          ...SPEC,
+        },
+      ];
+
+      const result = await checkIam.resolveRuntimeServiceAccounts(projectNumber, endpoints);
+
+      expect(result).to.deep.equal([DEFAULT_COMPUTE_SA]);
+      expect(gceStub).to.have.been.calledOnceWith(projectNumber);
+    });
   });
 
   describe("obtainComputeServiceAgentBindings", () => {
