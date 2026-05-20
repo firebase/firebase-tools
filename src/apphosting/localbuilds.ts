@@ -126,8 +126,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
 
-
-
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
@@ -161,7 +159,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
 }
 
 export interface AppHostingBuildOutput {
-
   runConfig: {
     runCommand?: string;
     environmentVariables?: Array<{
@@ -223,9 +220,7 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
-  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv as Record<string, string>);
-
-
+  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
@@ -256,8 +251,8 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<stri
         ? await loadSecret(projectId, value.secret)
         : value.value || "";
       return [key, resolvedValue];
-    })
+    }),
   );
 
-  return Object.fromEntries(resolvedEntries);
+  return Object.fromEntries(resolvedEntries) as Record<string, string>;
 }
