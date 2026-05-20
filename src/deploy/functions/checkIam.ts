@@ -172,12 +172,11 @@ export async function resolveRuntimeServiceAccounts(
   projectNumber: string,
   endpoints: backend.Endpoint[],
 ): Promise<string[]> {
-  const serviceAccounts = endpoints.map((endpoint) => endpoint.serviceAccount || "")
+  const serviceAccounts = endpoints.map((endpoint) => endpoint.serviceAccount || "");
   const needsDefault = serviceAccounts.includes("");
   const defaultSa = needsDefault ? await gce.getDefaultServiceAccount(projectNumber) : null;
 
-  const resolved = serviceAccounts.map((sa) => (sa === "" ? defaultSa!: sa))
-  .filter((sa) => !!sa);
+  const resolved = serviceAccounts.map((sa) => (sa === "" ? defaultSa! : sa)).filter((sa) => !!sa);
 
   return [...new Set(resolved)];
 }
