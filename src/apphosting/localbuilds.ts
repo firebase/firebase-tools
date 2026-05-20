@@ -126,8 +126,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
 
-
-
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
@@ -268,7 +266,7 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<stri
         ? await loadSecret(projectId, value.secret)
         : value.value || "";
       return [key, resolvedValue];
-    })
+    }),
   );
 
   return Object.fromEntries(resolvedEntries);
