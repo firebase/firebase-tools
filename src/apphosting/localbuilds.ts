@@ -229,7 +229,7 @@ export async function localBuild(
   const addedEnv = await toProcessEnv(projectId, env);
   const apphostingBuildOutput = await runUniversalMaker(
     projectRoot,
-    addedEnv as Record<string, string>,
+    addedEnv,
   );
 
   const annotations: Record<string, string> = Object.fromEntries(
@@ -269,5 +269,5 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<stri
     }),
   );
 
-  return Object.fromEntries(resolvedEntries);
+  return Object.fromEntries(resolvedEntries) as Record<string, string>;
 }
