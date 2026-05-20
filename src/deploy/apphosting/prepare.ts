@@ -29,7 +29,6 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
-import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";

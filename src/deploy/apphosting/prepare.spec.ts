@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as os from "os";
-import * as path from "path";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
@@ -28,7 +27,6 @@ import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
-import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -148,7 +146,9 @@ describe("apphosting", () => {
       });
       expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal(["./next/standalone"]);
       expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal(buildConfig);
-      expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-foo-e1feae81");
+      expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal(
+        "/tmp/apphosting-local-build-foo-e1feae81",
+      );
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
         apphosting.serviceAgentEmail("123456789"),
@@ -228,8 +228,12 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithMultipleLocalBuilds);
 
-      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-backend-prod-e1feae81");
-      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-backend-staging-e1feae81");
+      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
+        "/tmp/apphosting-local-build-backend-prod-e1feae81",
+      );
+      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
+        "/tmp/apphosting-local-build-backend-staging-e1feae81",
+      );
 
       expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
         "./next/standalone-prod",
@@ -386,8 +390,6 @@ describe("apphosting", () => {
         }
       }
     });
-
-
 
     it("should succeed and configure multiple output files/directories if localBuild produces them", async () => {
       const optsWithLocalBuild = {

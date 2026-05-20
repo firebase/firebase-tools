@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as os from "os";
-import * as path from "path";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -12,7 +11,6 @@ import * as fs from "fs";
 import * as getProjectNumber from "../../getProjectNumber";
 import * as experiments from "../../experiments";
 import { FirebaseError } from "../../error";
-import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
