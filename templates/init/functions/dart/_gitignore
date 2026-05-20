@@ -1,4 +1,3 @@
 .dart_tool/
-build/
 bin/server
 *.local
