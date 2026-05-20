@@ -79,7 +79,7 @@ describe("localBuild", () => {
   it("returns empty outputFiles and succeeds if bundle.yaml has no outputFiles block (e.g., Angular)", async () => {
     const rfs = fsExtra.readFileSync as sinon.SinonStub;
     rfs.restore(); // Restore and stub specifically for this test case
-    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: any) => {
+    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: fsExtra.PathOrFileDescriptor) => {
       if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
         return `
           runConfig:
