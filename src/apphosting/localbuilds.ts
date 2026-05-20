@@ -159,7 +159,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
 }
 
 export interface AppHostingBuildOutput {
-
   runConfig: {
     runCommand?: string;
     environmentVariables?: Array<{
@@ -222,8 +221,6 @@ export async function localBuild(
 
   const addedEnv = await toProcessEnv(projectId, env);
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
-
-
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
