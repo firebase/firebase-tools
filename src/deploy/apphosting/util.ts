@@ -17,7 +17,7 @@ import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
  * the code/artifacts for upload to Google Cloud Storage.
  * @param config - The App Hosting backend configuration.
  * @param rootDir - The root directory of the project.
- * @param targetSubDir - Optional subdirectory to simplify (e.g. if we only want to zip 'dist').
+ * @param outputFiles - The output files or directories to package.
  * @return A promise that resolves to the absolute path of the created temporary tarball.
  */
 export async function createLocalBuildTarArchive(

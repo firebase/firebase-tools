@@ -34,11 +34,9 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [path.relative(rootDir, distDir)],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        path.relative(rootDir, distDir),
+      ]);
 
       // Verify: List files in tarball
       const files: string[] = [];
@@ -65,11 +63,9 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [path.relative(rootDir, distDir)],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        path.relative(rootDir, distDir),
+      ]);
 
       // Verify: List files in tarball
       const files: string[] = [];
@@ -93,11 +89,9 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [path.relative(rootDir, distDir)],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        path.relative(rootDir, distDir),
+      ]);
 
       // Verify: List files in tarball
       const files: string[] = [];
@@ -121,11 +115,9 @@ describe("util", () => {
         ignore: ["**/ignored.txt"],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [path.relative(rootDir, distDir)],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        path.relative(rootDir, distDir),
+      ]);
 
       const files: string[] = [];
       tar.list({
@@ -179,11 +171,9 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [path.relative(rootDir, distDir)],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        path.relative(rootDir, distDir),
+      ]);
 
       const files: string[] = [];
       tar.list({
@@ -214,11 +204,10 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        ["server", "standalone.js"],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
+        "server",
+        "standalone.js",
+      ]);
 
       const files: string[] = [];
       tar.list({
@@ -244,11 +233,7 @@ describe("util", () => {
         ignore: [],
       };
 
-      const tarballPath: string = await util.createLocalBuildTarArchive(
-        config,
-        rootDir,
-        [],
-      );
+      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, []);
 
       const files: string[] = [];
       tar.list({
