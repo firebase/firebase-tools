@@ -37,7 +37,7 @@ describe("util", () => {
       const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       // Verify: List files in tarball
@@ -68,7 +68,7 @@ describe("util", () => {
       const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       // Verify: List files in tarball
@@ -96,7 +96,7 @@ describe("util", () => {
       const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       // Verify: List files in tarball
@@ -124,7 +124,7 @@ describe("util", () => {
       const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       const files: string[] = [];
@@ -154,7 +154,7 @@ describe("util", () => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         configWithoutIgnore,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       const files: string[] = [];
@@ -182,7 +182,7 @@ describe("util", () => {
       const tarballPath: string = await util.createLocalBuildTarArchive(
         config,
         rootDir,
-        path.relative(rootDir, distDir),
+        [path.relative(rootDir, distDir)],
       );
 
       const files: string[] = [];
@@ -194,6 +194,72 @@ describe("util", () => {
 
       expect(files).to.include("dist/index.js");
       expect(files).to.include("dist/gitignored.txt");
+    });
+
+    it("should package mixed files and folders dynamically using fs.statSync", async () => {
+      fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
+      const apphostingDir = path.join(rootDir, ".apphosting");
+      fs.mkdirSync(apphostingDir);
+      fs.writeFileSync(path.join(apphostingDir, "bundle.yaml"), "runConfig: {}");
+
+      const serverDir = path.join(rootDir, "server");
+      fs.mkdirSync(serverDir);
+      fs.writeFileSync(path.join(serverDir, "index.js"), "console.log('server')");
+
+      fs.writeFileSync(path.join(rootDir, "standalone.js"), "console.log('standalone')");
+
+      const config = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: [],
+      };
+
+      const tarballPath: string = await util.createLocalBuildTarArchive(
+        config,
+        rootDir,
+        ["server", "standalone.js"],
+      );
+
+      const files: string[] = [];
+      tar.list({
+        file: tarballPath,
+        sync: true,
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
+
+      expect(files).to.include("server/index.js");
+      expect(files).to.include("standalone.js");
+      expect(files).to.include("apphosting.yaml");
+      expect(files).to.include(".apphosting/bundle.yaml");
+    });
+
+    it("should package the entire root directory if outputFiles is empty (Angular fallback)", async () => {
+      fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
+      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
+      fs.writeFileSync(path.join(rootDir, "server.js"), "console.log('server')");
+
+      const config = {
+        backendId: "test-backend",
+        rootDir: "",
+        ignore: [],
+      };
+
+      const tarballPath: string = await util.createLocalBuildTarArchive(
+        config,
+        rootDir,
+        [],
+      );
+
+      const files: string[] = [];
+      tar.list({
+        file: tarballPath,
+        sync: true,
+        onentry: (entry: { path: string }) => files.push(entry.path),
+      });
+
+      expect(files).to.include("dist/index.js");
+      expect(files).to.include("server.js");
+      expect(files).to.include("apphosting.yaml");
     });
   });
 });

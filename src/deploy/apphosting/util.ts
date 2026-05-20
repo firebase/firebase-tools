@@ -23,22 +23,31 @@ import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
-  targetSubDir?: string,
+  outputFiles: string[],
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  // Config ignore patterns and .gitignore files are bypassed here because they were already applied
-  // before the build when setting up the .local_build directory. Bypassing them ensures standalone
-  // node_modules and build output files are fully preserved.
-  const rdrFiles = await fsAsync.readdirRecursive({
-    path: targetDir,
-    ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
-    supportGitIgnore: false,
-  });
-  const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+  let allFiles: string[] = [];
 
-  if (targetSubDir) {
+  if (outputFiles.length > 0) {
+    for (const fileOrDir of outputFiles) {
+      const absolutePath = path.join(rootDir, fileOrDir);
+      if (!fs.existsSync(absolutePath)) {
+        continue;
+      }
+      const stat = fs.statSync(absolutePath);
+      if (stat.isDirectory()) {
+        const rdrFiles = await fsAsync.readdirRecursive({
+          path: absolutePath,
+          ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+          supportGitIgnore: false,
+        });
+        allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
+      } else {
+        allFiles.push(path.relative(rootDir, absolutePath));
+      }
+    }
+
     const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
       return APPHOSTING_YAML_FILE_REGEX.test(file);
     });
@@ -51,6 +60,13 @@ export async function createLocalBuildTarArchive(
     if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
       allFiles.push(bundleYamlPath);
     }
+  } else {
+    const rdrFiles = await fsAsync.readdirRecursive({
+      path: rootDir,
+      ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+      supportGitIgnore: false,
+    });
+    allFiles = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
   }
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.

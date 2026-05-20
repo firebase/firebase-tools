@@ -211,9 +211,8 @@ export default async function (context: Context, options: Options): Promise<void
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
         },
       );
-      const buildDir = outputFiles.length > 0 ? outputFiles[0] : ".";
       context.backendLocalBuilds[cfg.backendId] = {
-        buildDir,
+        outputFiles,
         localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
