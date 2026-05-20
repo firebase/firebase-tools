@@ -7,6 +7,7 @@ import * as childProcess from "child_process";
 
 import * as universalMakerDownload from "./universalMakerDownload";
 import * as fsExtra from "fs-extra";
+import * as fs from "fs";
 
 describe("localBuild", () => {
   let downloadStub: sinon.SinonStub;
@@ -79,7 +80,7 @@ describe("localBuild", () => {
   it("returns empty outputFiles and succeeds if bundle.yaml has no outputFiles block (e.g., Angular)", async () => {
     const rfs = fsExtra.readFileSync as sinon.SinonStub;
     rfs.restore(); // Restore and stub specifically for this test case
-    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: string) => {
+    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: fs.PathOrFileDescriptor) => {
       if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
         return `
           runConfig:
