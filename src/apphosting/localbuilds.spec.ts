@@ -52,10 +52,6 @@ describe("localBuild", () => {
   });
 
   it("returns the expected output", async () => {
-    const expectedAnnotations = {
-      language: "nodejs",
-      runtime: "nodejs22",
-    };
     const expectedOutputFiles = [".next/standalone"];
     const expectedBuildConfig = {
       runCommand: "npm run start",
@@ -69,8 +65,7 @@ describe("localBuild", () => {
       stderr: "mock stderr",
       signal: null,
     });
-    const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
-    expect(annotations).to.deep.equal(expectedAnnotations);
+    const { outputFiles, buildConfig } = await localBuild("test-project", "./");
     expect(buildConfig).to.deep.equal(expectedBuildConfig);
     expect(outputFiles).to.deep.equal(expectedOutputFiles);
     sinon.assert.calledOnce(spawnStub);
@@ -100,10 +95,6 @@ describe("localBuild", () => {
       return "";
     });
 
-    const expectedAnnotations = {
-      language: "nodejs",
-      runtime: "nodejs22",
-    };
     const expectedOutputFiles: string[] = [];
     const expectedBuildConfig = {
       runCommand: "node dist/angular-19/server/server.mjs",
@@ -118,8 +109,7 @@ describe("localBuild", () => {
       signal: null,
     });
 
-    const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
-    expect(annotations).to.deep.equal(expectedAnnotations);
+    const { outputFiles, buildConfig } = await localBuild("test-project", "./");
     expect(buildConfig).to.deep.equal(expectedBuildConfig);
     expect(outputFiles).to.deep.equal(expectedOutputFiles);
     sinon.assert.calledOnce(spawnStub);
@@ -283,10 +273,6 @@ describe("localBuild", () => {
       const output = await runUniversalMaker("./");
 
       expect(output).to.deep.equal({
-        metadata: {
-          language: "nodejs",
-          runtime: "nodejs22",
-        },
         runConfig: {
           runCommand: "npm run start",
           environmentVariables: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],

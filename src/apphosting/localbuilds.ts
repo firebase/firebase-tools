@@ -142,10 +142,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   );
 
   return {
-    metadata: {
-      language: umOutput.language,
-      runtime: umOutput.runtime,
-    },
     runConfig: {
       runCommand: finalRunCommand,
       environmentVariables: Object.entries(umOutput.envVars || {})
@@ -165,7 +161,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
 }
 
 export interface AppHostingBuildOutput {
-  metadata: Record<string, string | number | boolean>;
 
   runConfig: {
     runCommand?: string;
@@ -204,7 +199,6 @@ export async function localBuild(
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
   outputFiles: string[];
-  annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
   const hasBuildAvailableSecrets = Object.values(env).some(
@@ -231,9 +225,7 @@ export async function localBuild(
   const addedEnv = await toProcessEnv(projectId, env);
   const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv as Record<string, string>);
 
-  const annotations: Record<string, string> = Object.fromEntries(
-    Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
-  );
+
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
@@ -246,7 +238,6 @@ export async function localBuild(
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
-    annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,
       env: discoveredEnv ?? [],
