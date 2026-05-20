@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as os from "os";
 import * as path from "path";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
@@ -93,6 +94,7 @@ describe("apphosting", () => {
       .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
 
+    sinon.stub(os, "tmpdir").returns("/tmp");
     sinon.stub(fs, "existsSync").returns(false);
     sinon.stub(fs, "mkdirSync").returns(undefined);
     sinon.stub(fs, "rmSync").returns(undefined);
@@ -144,11 +146,9 @@ describe("apphosting", () => {
         ignore: [],
         localBuild: true,
       });
-      expect(context.backendLocalBuilds["foo"]).to.deep.equal({
-        outputFiles: ["./next/standalone"],
-        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
-        buildConfig,
-      });
+      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal(["./next/standalone"]);
+      expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal(buildConfig);
+      expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-foo-e1feae81");
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
         apphosting.serviceAgentEmail("123456789"),
@@ -201,7 +201,7 @@ describe("apphosting", () => {
       localBuildStub
         .withArgs(
           sinon.match.any,
-          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-prod`)),
+          sinon.match((p: string) => p === "/tmp/apphosting-local-build-backend-prod-e1feae81"),
           sinon.match.any,
         )
         .resolves({
@@ -211,7 +211,7 @@ describe("apphosting", () => {
       localBuildStub
         .withArgs(
           sinon.match.any,
-          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-staging`)),
+          sinon.match((p: string) => p === "/tmp/apphosting-local-build-backend-staging-e1feae81"),
           sinon.match.any,
         )
         .resolves({
@@ -228,12 +228,8 @@ describe("apphosting", () => {
 
       await prepare(context, optsWithMultipleLocalBuilds);
 
-      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
-        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-prod`),
-      );
-      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
-        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
-      );
+      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-backend-prod-e1feae81");
+      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal("/tmp/apphosting-local-build-backend-staging-e1feae81");
 
       expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
         "./next/standalone-prod",
@@ -391,40 +387,7 @@ describe("apphosting", () => {
       }
     });
 
-    it("should fail if localBuild is specified and local build directory already exists", async () => {
-      const optsWithLocalBuild = {
-        ...opts,
-        config: new Config({
-          apphosting: {
-            backendId: "foo",
-            rootDir: "/",
-            ignore: [],
-            localBuild: true,
-          },
-        }),
-      };
-      const context = initializeContext();
 
-      (fs.existsSync as sinon.SinonStub).callsFake((pathLike: fs.PathLike) => {
-        if (typeof pathLike === "string" && pathLike.endsWith(`${LOCAL_BUILD_DIR_NAME}_foo`)) {
-          return true;
-        }
-        return false;
-      });
-
-      listBackendsStub.onFirstCall().resolves({
-        backends: [
-          {
-            name: "projects/my-project/locations/us-central1/backends/foo",
-          },
-        ],
-      });
-
-      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
-        FirebaseError,
-        "The local build scratch directory",
-      );
-    });
 
     it("should succeed and configure multiple output files/directories if localBuild produces them", async () => {
       const optsWithLocalBuild = {

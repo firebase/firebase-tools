@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as os from "os";
 import * as path from "path";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
@@ -44,7 +45,7 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         outputFiles: ["./nextjs/standalone"],
-        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
+        localBuildScratchDir: "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
         buildConfig: {},
       },
     },
@@ -74,6 +75,7 @@ describe("apphosting", () => {
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    sinon.stub(os, "tmpdir").returns("/tmp");
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(experiments, "assertEnabled");
   });
@@ -174,7 +176,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
+        "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
@@ -217,7 +219,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
+        "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
