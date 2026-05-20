@@ -227,10 +227,7 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
-  const apphostingBuildOutput = await runUniversalMaker(
-    projectRoot,
-    addedEnv,
-  );
+  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const annotations: Record<string, string> = Object.fromEntries(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
