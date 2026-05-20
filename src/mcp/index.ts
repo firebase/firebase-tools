@@ -366,7 +366,7 @@ export class FirebaseMcpServer {
   async mcpCallTool(request: CallToolRequest): Promise<CallToolResult> {
     await this.detectProjectRoot();
     const toolName = request.params.name;
-    const toolArgs = request.params.arguments;
+    const toolArgs = request.params.arguments ?? {};
     const tool = await this.getTool(toolName);
     if (!tool) throw new Error(`Tool '${toolName}' could not be found.`);
 
