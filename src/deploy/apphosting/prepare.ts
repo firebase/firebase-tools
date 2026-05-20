@@ -205,7 +205,6 @@ export default async function (context: Context, options: Options): Promise<void
       const { outputFiles, annotations, buildConfig } = await localBuild(
         projectId,
         localBuildScratchDir,
-        "nextjs",
         buildEnv[cfg.backendId] || {},
         {
           nonInteractive: options.nonInteractive,

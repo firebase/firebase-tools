@@ -298,7 +298,6 @@ describe("apphosting", () => {
       expect(localBuildStub).to.be.calledWithMatch(
         "my-project",
         sinon.match.any,
-        "nextjs",
         sinon.match({
           FIREBASE_WEBAPP_CONFIG: { value: JSON.stringify(webAppConfig) },
           FIREBASE_CONFIG: {
@@ -359,14 +358,13 @@ describe("apphosting", () => {
       expect(localBuildStub).to.have.been.calledWithMatch(
         "my-project",
         sinon.match.any,
-        "nextjs",
         sinon.match({
           BUILD_VAR: { secret: "build-secret", availability: ["BUILD"] },
           SHARED_VAR: { secret: "shared-secret", availability: ["BUILD", "RUNTIME"] },
         }),
       );
       // RUNTIME_VAR should definitely NOT be present in match
-      expect(localBuildStub.firstCall.args[3]).to.not.have.property("RUNTIME_VAR");
+      expect(localBuildStub.firstCall.args[2]).to.not.have.property("RUNTIME_VAR");
     });
 
     it("should fail if localBuild is specified but experiment is disabled", async () => {

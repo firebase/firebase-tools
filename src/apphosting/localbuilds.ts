@@ -22,13 +22,10 @@ interface UniversalMakerOutput {
 /**
  * Runs the Universal Maker binary to build the project.
  */
-export async function runUniversalMaker(
-  projectRoot: string,
-  framework?: string,
-): Promise<AppHostingBuildOutput> {
+export async function runUniversalMaker(projectRoot: string): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
   executeUniversalMakerBinary(universalMakerBinary, projectRoot);
-  return processUniversalMakerOutput(projectRoot, framework);
+  return processUniversalMakerOutput(projectRoot);
 }
 
 /**
@@ -118,10 +115,7 @@ function parseBundleYaml(
  * This includes resolving the final run command and artifact paths from the
  * generated bundle.yaml, as well as cleaning up temporary metadata files.
  */
-function processUniversalMakerOutput(
-  projectRoot: string,
-  framework?: string,
-): AppHostingBuildOutput {
+function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput {
   const outputFilePath = path.join(projectRoot, "build_output.json");
   if (!fs.existsSync(outputFilePath)) {
     throw new FirebaseError(
@@ -166,7 +160,6 @@ function processUniversalMakerOutput(
     metadata: {
       language: umOutput.language,
       runtime: umOutput.runtime,
-      framework: framework || "nextjs",
     },
     runConfig: {
       runCommand: finalRunCommand,
@@ -213,7 +206,6 @@ export interface AppHostingBuildOutput {
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
  * @param projectRoot - The root directory of the project to build.
- * @param framework - The framework to use for the build (e.g., 'nextjs').
  * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
@@ -223,7 +215,6 @@ export interface AppHostingBuildOutput {
 export async function localBuild(
   projectId: string,
   projectRoot: string,
-  framework: string,
   env: EnvMap = {},
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
@@ -264,7 +255,7 @@ export async function localBuild(
 
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
+    apphostingBuildOutput = await runUniversalMaker(projectRoot);
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {
