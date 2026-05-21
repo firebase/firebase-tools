@@ -293,6 +293,7 @@ export function registerExecution(
       );
       return;
     }
+    await arg.document.save();
     try {
       const configs = dataConnectConfigs.value?.tryReadValue;
       const serviceConfig = configs?.findEnclosingServiceForPath(

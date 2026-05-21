@@ -67,7 +67,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     const document = {
         fileName: "test.gql",
         uri: vscode.Uri.parse("file:///test.gql"),
-    } as vscode.TextDocument;
+        save: stub().resolves(true),
+    } as unknown as vscode.TextDocument;
 
     const arg = {
         projectId: "my-project",
@@ -93,7 +94,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     const document = {
         fileName: "test.gql",
         uri: vscode.Uri.parse("file:///test.gql"),
-    } as vscode.TextDocument;
+        save: stub().resolves(true),
+    } as unknown as vscode.TextDocument;
 
     const arg = {
         projectId: "my-project",
