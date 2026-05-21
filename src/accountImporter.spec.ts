@@ -83,6 +83,39 @@ describe("accountImporter", () => {
       ).to.have.property("error");
     });
 
+    it("should not reject when known provider fields in user json - microsoft.com", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          email: "test@test.org",
+          providerUserInfo: [
+            {
+              providerId: "microsoft.com",
+              rawId: "123234234",
+              email: "test@test.org",
+            },
+          ]
+        }),
+      ).to.not.have.property("error");
+    });
+
+    it("should not reject when known provider fields in user json - apple.com", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          email: "test@test.org",
+          providerUserInfo: [
+            {
+              providerId: "apple.com",
+              rawId: "123234234",
+              email: "test@test.org",
+              displayName: "stevey j",
+            },
+          ]
+        }),
+      ).to.not.have.property("error");
+    });    
+
     it("should reject when passwordHash is invalid base64", () => {
       expect(
         validateUserJson({

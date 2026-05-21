@@ -46,12 +46,28 @@ describe("accountExporter", () => {
       sandbox = sinon.createSandbox();
       spyWrite = sandbox.spy(writeStream, "write");
       for (let i = 0; i < 7; i++) {
-        userList.push({
-          localId: i.toString(),
-          email: "test" + i + "@test.org",
-          displayName: "John Tester" + i,
-          disabled: i % 2 === 0,
-        });
+        if (i===6){
+          userList.push({
+            localId: i.toString(),
+            email: "test" + i + "@test.org",
+            displayName: "John Tester" + i,
+            disabled: i % 2 === 0,
+            providerUserInfo = [
+              {
+                providerId: "microsoft.com",
+                rawId: "123234234",
+                email: "test@test.org",
+              }
+            ]
+          });
+        }else {
+          userList.push({
+            localId: i.toString(),
+            email: "test" + i + "@test.org",
+            displayName: "John Tester" + i,
+            disabled: i % 2 === 0,
+          });
+        }
       }
     });
 
