@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { ExecutableDefinitionNode, Kind, parse } from "graphql";
 import { Disposable } from "vscode";
 import * as path from "path";
-import { isPathInside } from "./file-utils";
+import { isSchemaFile } from "./file-utils";
 
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
@@ -187,23 +187,8 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
     const codeLenses: vscode.CodeLens[] = [];
 
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    if (!fdcConfigs) {
-      return [];
-    }
-    const service = fdcConfigs.findEnclosingServiceForPath(document.fileName);
-    if (!service) {
-      return [];
-    }
 
-    const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
-    const secondaryDirs = service.secondarySchemaDirs.map(dir => path.join(service.path, dir));
-    
-    // Only provide schema code lenses for files inside the schema directories.
-    // This avoids parsing non-schema files (e.g. query files) which improves performance.
-    const isSchemaFile = isPathInside(document.fileName, mainSchemaDir) || 
-                         secondaryDirs.some(dir => isPathInside(document.fileName, dir));
-
-    if (!isSchemaFile) {
+    if (!isSchemaFile(fdcConfigs, document.fileName)) {
       return [];
     }
 

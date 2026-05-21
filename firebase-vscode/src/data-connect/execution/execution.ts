@@ -460,8 +460,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
  * @param error The GraphQL error object.
  * @param servicePath The path to the service directory.
  */
-
-
 function executionError(message: string, error?: string) {
   vscode.window.showErrorMessage(
     `Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`,

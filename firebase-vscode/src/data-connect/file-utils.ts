@@ -255,3 +255,29 @@ async function handleCompilationError(
     vscode.window.showErrorMessage(message);
   }
 }
+
+
+/**
+ * Checks if a given file is a schema file based on the provided FDCConfig object.
+ * @param fdcConfigs FDCConfig object
+ * @param fileName The path to the file to check.
+ * @returns true if the file is a schema file, false otherwise.
+ */
+export async function isSchemaFile(fdcConfigs: any, fileName: string): Promise<boolean> {
+    if (!fdcConfigs) {
+      return false;
+    }
+    const service = fdcConfigs.findEnclosingServiceForPath(fileName);
+    if (!service) {
+      return false;
+    }
+
+    const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
+    const secondaryDirs = service.secondarySchemaDirs.map(dir => path.join(service.path, dir));
+    
+    // Only provide schema code lenses for files inside the schema directories.
+    // This avoids parsing non-schema files (e.g. query files) which improves performance.
+    return isPathInside(fileName, mainSchemaDir) || 
+                         secondaryDirs.some(dir => isPathInside(fileName, dir));
+
+}
