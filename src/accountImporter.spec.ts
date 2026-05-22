@@ -116,6 +116,21 @@ describe("accountImporter", () => {
       ).to.not.have.property("error");
     });
 
+    it("should not reject when known provider fields in user json - additional providers", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          email: "test@test.org",
+          providerUserInfo: [
+            { providerId: "gc.apple.com", rawId: "123" },
+            { providerId: "playgames.google.com", rawId: "456" },
+            { providerId: "linkedin.com", rawId: "789" },
+            { providerId: "yahoo.com", rawId: "012" },
+          ],
+        }),
+      ).to.not.have.property("error");
+    });
+
     it("should reject when passwordHash is invalid base64", () => {
       expect(
         validateUserJson({

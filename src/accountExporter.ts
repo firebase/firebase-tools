@@ -43,6 +43,10 @@ const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
   ["github.com", 19],
   ["apple.com", 28],
   ["microsoft.com", 32],
+  ["gc.apple.com", 36],
+  ["playgames.google.com", 40],
+  ["linkedin.com", 44],
+  ["yahoo.com", 48],
 ]);
 
 function escapeComma(str: string): string {
@@ -65,7 +69,7 @@ function addProviderUserInfo(providerInfo: any, arr: any[], startPos: number): v
 }
 
 function transUserToArray(user: any): any[] {
-  const arr = Array(36).fill("");
+  const arr = Array(52).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;

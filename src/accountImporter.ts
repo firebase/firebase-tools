@@ -37,6 +37,10 @@ const ALLOWED_PROVIDER_IDS = [
   "github.com",
   "apple.com",
   "microsoft.com",
+  "gc.apple.com",
+  "playgames.google.com",
+  "linkedin.com",
+  "yahoo.com",
 ];
 
 function isValidBase64(str: string): boolean {
@@ -139,6 +143,10 @@ export function transArrayToUser(arr: any[]): any {
   addProviderUserInfo(user, "github.com", arr.slice(19, 23));
   addProviderUserInfo(user, "apple.com", arr.slice(28, 32));
   addProviderUserInfo(user, "microsoft.com", arr.slice(32, 36));
+  addProviderUserInfo(user, "gc.apple.com", arr.slice(36, 40));
+  addProviderUserInfo(user, "playgames.google.com", arr.slice(40, 44));
+  addProviderUserInfo(user, "linkedin.com", arr.slice(44, 48));
+  addProviderUserInfo(user, "yahoo.com", arr.slice(48, 52));
 
   if (user.passwordHash && !isValidBase64(user.passwordHash)) {
     return {
