@@ -273,11 +273,11 @@ export async function isSchemaFile(fdcConfigs: any, fileName: string): Promise<b
     }
 
     const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
-    const secondaryDirs = service.secondarySchemaDirs.map(dir => path.join(service.path, dir));
+    const secondaryDirs = service.secondarySchemaDirs.map((dir: string) => path.join(service.path, dir));
     
     // Only provide schema code lenses for files inside the schema directories.
     // This avoids parsing non-schema files (e.g. query files) which improves performance.
     return isPathInside(fileName, mainSchemaDir) || 
-                         secondaryDirs.some(dir => isPathInside(fileName, dir));
+                         secondaryDirs.some((dir: string) => isPathInside(fileName, dir));
 
 }
