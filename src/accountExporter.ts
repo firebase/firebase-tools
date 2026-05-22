@@ -69,7 +69,8 @@ function addProviderUserInfo(providerInfo: any, arr: any[], startPos: number): v
 }
 
 function transUserToArray(user: any): any[] {
-  const arr = Array(52).fill("");
+  const arrLength = Math.max(...PROVIDER_ID_INDEX_MAP.values()) + 4;
+  const arr = Array(arrLength).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;

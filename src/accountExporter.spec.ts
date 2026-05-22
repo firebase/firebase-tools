@@ -35,11 +35,17 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
-      providerUserInfo?: any[];
+      providerUserInfo?: {
+        providerId: string;
+        rawId: string;
+        email?: string;
+        displayName?: string;
+        photoUrl?: string;
+      }[];
     }[] = [];
     const writeStream = {
-      write: () => {},
-      end: () => {},
+      write: () => { },
+      end: () => { },
     };
     let spyWrite: sinon.SinonSpy;
 
@@ -181,7 +187,7 @@ describe("accountExporter", () => {
       await serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
-        writeStream: { write: firstWriteSpy, end: () => {} },
+        writeStream: { write: firstWriteSpy, end: () => { } },
       });
       expect(firstWriteSpy.args[0][0]).to.be.eq(
         correctString,
@@ -194,7 +200,7 @@ describe("accountExporter", () => {
       await serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
-        writeStream: { write: secondWriteSpy, end: () => {} },
+        writeStream: { write: secondWriteSpy, end: () => { } },
       });
       expect(secondWriteSpy.args[0][0]).to.be.eq(
         correctString,
