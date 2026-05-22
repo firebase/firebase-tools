@@ -7,7 +7,6 @@ import { DataConnectEmulator } from "../../../../src/emulator/dataconnectEmulato
 import { dataConnectConfigs } from "../../data-connect/config";
 import { ResultValue } from "../../result";
 import { registerExecution } from "../../data-connect/execution/execution";
-import * as ensureApis from "../../../../src/dataconnect/ensureApis";
 import * as auth from "../../../../src/auth";
 import * as nock from "nock";
 import { setAccessToken } from "../../../../src/apiv2";
@@ -16,7 +15,6 @@ firebaseSuite("generateOperation Error Handling", () => {
   let showErrorMessageStub: any;
   let showInformationMessageStub: any;
   let buildStub: any;
-  let ensureGIFApiTosStub: any;
   let authStub: any;
   let executionDisposable: vscode.Disposable;
 
@@ -24,7 +22,6 @@ firebaseSuite("generateOperation Error Handling", () => {
     showErrorMessageStub = stub(vscode.window, "showErrorMessage");
     showInformationMessageStub = stub(vscode.window, "showInformationMessage");
     buildStub = stub(DataConnectEmulator, "build");
-    ensureGIFApiTosStub = stub(ensureApis, "ensureGIFApiTos").resolves(true);
     authStub = stub(auth, "getAccessToken").resolves({ access_token: "an_access_token" });
     setAccessToken("an_access_token");
     

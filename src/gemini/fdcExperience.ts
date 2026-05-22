@@ -243,5 +243,43 @@ export function extractCodeBlock(text: string): string {
   if (match && match[1]) {
     return match[1].trim();
   }
+
+  // Loose parsing if no backticks are present
+  const lines = text.split("\n");
+  const keywords = [
+    "type",
+    "input",
+    "enum",
+    "interface",
+    "union",
+    "schema",
+    "extend",
+    "scalar",
+    "directive",
+    "query",
+    "mutation",
+    "subscription",
+    "fragment",
+  ];
+
+  let startIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmedLine = lines[i].trim();
+    const firstWord = trimmedLine.split(/\s+/)[0];
+    if (keywords.includes(firstWord)) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  if (startIndex !== -1) {
+    const remainingText = lines.slice(startIndex).join("\n");
+    const lastBraceIndex = remainingText.lastIndexOf("}");
+    if (lastBraceIndex !== -1) {
+      return remainingText.substring(0, lastBraceIndex + 1).trim();
+    }
+    return remainingText.trim();
+  }
+
   return text.trim();
 }

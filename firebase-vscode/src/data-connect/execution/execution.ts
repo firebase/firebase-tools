@@ -35,7 +35,6 @@ import {
 } from "../file-utils";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
-import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
@@ -318,7 +317,7 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       const serviceName = await dataConnectService.servicePath(
         arg.document.fileName,
       );
-      if (!(await ensureGIFApiTos(arg.projectId))) {
+      if (!configstore.get("gemini")) {
         if (!(await showGiFToSModal(arg.projectId))) {
           return; // ToS isn't accepted.
         }
@@ -391,7 +390,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED,
         );
         configstore.set("gemini", true);
-        await ensureGIFApiTos(projectId);
         return true;
       case tos:
         analyticsLogger.logger.logUsage(
