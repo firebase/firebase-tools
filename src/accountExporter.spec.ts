@@ -44,8 +44,8 @@ describe("accountExporter", () => {
       }[];
     }[] = [];
     const writeStream = {
-      write: () => { },
-      end: () => { },
+      write: () => {},
+      end: () => {},
     };
     let spyWrite: sinon.SinonSpy;
 
@@ -64,6 +64,7 @@ describe("accountExporter", () => {
                 providerId: "microsoft.com",
                 rawId: "123234234",
                 email: "test@test.org",
+                photoUrl: "https://example.com/photo.jpg",
               },
             ],
           });
@@ -121,7 +122,8 @@ describe("accountExporter", () => {
           Array(22).join(",") + // A lot of empty fields...
           userList[j].disabled;
         if (j === 6) {
-          expectedEntry += ",,,,,,123234234,test@test.org" + Array(20).join(",");
+          expectedEntry +=
+            ",,,,,,123234234,test@test.org,,https://example.com/photo.jpg" + Array(18).join(",");
         } else {
           expectedEntry += Array(27).join(",");
         }
@@ -187,7 +189,7 @@ describe("accountExporter", () => {
       await serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
-        writeStream: { write: firstWriteSpy, end: () => { } },
+        writeStream: { write: firstWriteSpy, end: () => {} },
       });
       expect(firstWriteSpy.args[0][0]).to.be.eq(
         correctString,
@@ -200,7 +202,7 @@ describe("accountExporter", () => {
       await serialExportUsers("test-project-id", {
         format: "JSON",
         batchSize: 3,
-        writeStream: { write: secondWriteSpy, end: () => { } },
+        writeStream: { write: secondWriteSpy, end: () => {} },
       });
       expect(secondWriteSpy.args[0][0]).to.be.eq(
         correctString,
