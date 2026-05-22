@@ -35,6 +35,7 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
+      providerUserInfo?: any[];
     }[] = [];
     const writeStream = {
       write: () => {},
@@ -46,21 +47,21 @@ describe("accountExporter", () => {
       sandbox = sinon.createSandbox();
       spyWrite = sandbox.spy(writeStream, "write");
       for (let i = 0; i < 7; i++) {
-        if (i===6){
+        if (i === 6) {
           userList.push({
             localId: i.toString(),
             email: "test" + i + "@test.org",
             displayName: "John Tester" + i,
             disabled: i % 2 === 0,
-            providerUserInfo = [
+            providerUserInfo: [
               {
                 providerId: "microsoft.com",
                 rawId: "123234234",
                 email: "test@test.org",
-              }
-            ]
+              },
+            ],
           });
-        }else {
+        } else {
           userList.push({
             localId: i.toString(),
             email: "test" + i + "@test.org",
@@ -105,7 +106,7 @@ describe("accountExporter", () => {
       });
       expect(spyWrite.callCount).to.eq(userList.length);
       for (let j = 0; j < userList.length; j++) {
-        const expectedEntry =
+        let expectedEntry =
           userList[j].localId +
           "," +
           userList[j].email +
@@ -113,7 +114,12 @@ describe("accountExporter", () => {
           userList[j].displayName +
           Array(22).join(",") + // A lot of empty fields...
           userList[j].disabled;
-        expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+        if (j === 6) {
+          expectedEntry += ",,,,,,123234234,test@test.org,,,";
+        } else {
+          expectedEntry += Array(11).join(",");
+        }
+        expect(spyWrite.getCall(j).args[0]).to.eq(expectedEntry + os.EOL);
       }
       expect(nock.isDone()).to.be.true;
     });
@@ -161,7 +167,7 @@ describe("accountExporter", () => {
         '"' +
         Array(22).join(",") + // A lot of empty fields.
         singleUser.disabled;
-      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(11).join(",") + os.EOL);
       expect(nock.isDone()).to.be.true;
     });
 

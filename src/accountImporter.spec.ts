@@ -94,7 +94,7 @@ describe("accountImporter", () => {
               rawId: "123234234",
               email: "test@test.org",
             },
-          ]
+          ],
         }),
       ).to.not.have.property("error");
     });
@@ -111,10 +111,10 @@ describe("accountImporter", () => {
               email: "test@test.org",
               displayName: "stevey j",
             },
-          ]
+          ],
         }),
       ).to.not.have.property("error");
-    });    
+    });
 
     it("should reject when passwordHash is invalid base64", () => {
       expect(

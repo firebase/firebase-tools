@@ -30,7 +30,14 @@ const ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",
 };
 const ALLOWED_PROVIDER_USER_INFO_KEYS = ["providerId", "rawId", "email", "displayName", "photoUrl"];
-const ALLOWED_PROVIDER_IDS = ["google.com", "facebook.com", "twitter.com", "github.com", "apple.com", "microsoft.com"];
+const ALLOWED_PROVIDER_IDS = [
+  "google.com",
+  "facebook.com",
+  "twitter.com",
+  "github.com",
+  "apple.com",
+  "microsoft.com",
+];
 
 function isValidBase64(str: string): boolean {
   const expected = Buffer.from(str, "base64").toString("base64");
@@ -130,8 +137,8 @@ export function transArrayToUser(arr: any[]): any {
   addProviderUserInfo(user, "facebook.com", arr.slice(11, 15));
   addProviderUserInfo(user, "twitter.com", arr.slice(15, 19));
   addProviderUserInfo(user, "github.com", arr.slice(19, 23));
-  addProviderUserInfo(user, "apple.com", arr.slice(23, 27));
-  addProviderUserInfo(user, "microsoft.com", arr.slice(27, 31));
+  addProviderUserInfo(user, "apple.com", arr.slice(28, 32));
+  addProviderUserInfo(user, "microsoft.com", arr.slice(32, 36));
 
   if (user.passwordHash && !isValidBase64(user.passwordHash)) {
     return {
