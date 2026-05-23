@@ -1,2 +1,3 @@
 - Updated Pub/Sub emulator to version 0.8.32
 - Updated Firebase SQL Connect genAI features to use new Agent Service API
+- Added support for 6 more iD providers in `auth:import` and `auth:export` commands
