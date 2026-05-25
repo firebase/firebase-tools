@@ -28,11 +28,13 @@ export async function createLocalBuildTarArchive(
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
+  // Config ignore patterns and .gitignore files are bypassed here because they were already applied
+  // before the build when setting up the .local_build directory. Bypassing them ensures standalone
+  // node_modules and build output files are fully preserved.
   const rdrFiles = await fsAsync.readdirRecursive({
     path: targetDir,
-    ignoreStrings: ignore,
-    supportGitIgnore: true,
+    ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+    supportGitIgnore: false,
   });
   const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
 
@@ -44,6 +46,10 @@ export async function createLocalBuildTarArchive(
       if (!allFiles.includes(file)) {
         allFiles.push(file);
       }
+    }
+    const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
+    if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
+      allFiles.push(bundleYamlPath);
     }
   }
 
@@ -90,8 +96,7 @@ export async function createSourceDeployArchive(
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
-  const ignore = config.ignore || ["node_modules", ".git"];
-  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  const ignore = resolveIgnorePatterns(config);
   try {
     const files = await fsAsync.readdirRecursive({
       path: targetDir,
@@ -108,13 +113,30 @@ export async function createSourceDeployArchive(
     await pipeAsync(archive, fileStream);
   } catch (err: unknown) {
     throw new FirebaseError(
-      `Could not read source directory. Remove links and shortcuts and try again. Original: ${err}`,
+      `Could not read source directory. Remove links and shortcuts and try again. Original: ${String(err)}`,
       { original: err as Error, exit: 1 },
     );
   }
   return tmpFile;
 }
 
+/**
+ * Resolves the ignore patterns for App Hosting deployments.
+ * Merges config ignores and defaults. (.gitignore patterns are handled dynamically by fsAsync.readdirRecursive).
+ */
+export function resolveIgnorePatterns(
+  config: AppHostingSingle,
+  skipDefaultNodeModules = false,
+): string[] {
+  const ignore = config.ignore
+    ? [...config.ignore]
+    : skipDefaultNodeModules
+      ? [".git"]
+      : ["node_modules", ".git"];
+  ignore.push("firebase-debug.log", "firebase-debug.*.log");
+  ignore.push(".local_build_*");
+  return ignore;
+}
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();

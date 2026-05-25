@@ -55,7 +55,6 @@ describe("localBuild", () => {
     const expectedAnnotations = {
       language: "nodejs",
       runtime: "nodejs22",
-      framework: "nextjs",
     };
     const expectedOutputFiles = [".next/standalone"];
     const expectedBuildConfig = {
@@ -70,11 +69,7 @@ describe("localBuild", () => {
       stderr: "mock stderr",
       signal: null,
     });
-    const { outputFiles, annotations, buildConfig } = await localBuild(
-      "test-project",
-      "./",
-      "nextjs",
-    );
+    const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
     expect(annotations).to.deep.equal(expectedAnnotations);
     expect(buildConfig).to.deep.equal(expectedBuildConfig);
     expect(outputFiles).to.deep.equal(expectedOutputFiles);
@@ -103,7 +98,7 @@ describe("localBuild", () => {
       MY_PLAIN_VAR: { value: "plain-value" },
     };
 
-    await localBuild("test-project", "./", "nextjs", envMap, {
+    await localBuild("test-project", "./", envMap, {
       nonInteractive: true,
       allowLocalBuildSecrets: true,
     });
@@ -136,7 +131,7 @@ describe("localBuild", () => {
       ANOTHER_VAR: { value: "another-value" },
     };
 
-    await localBuild("test-project", "./", "nextjs", envMap);
+    await localBuild("test-project", "./", envMap);
 
     expect(loadSecretStub).to.not.have.been.called;
     // We expect the original process.env to not have these injected globally after run completes,
@@ -158,7 +153,7 @@ describe("localBuild", () => {
       };
 
       await expect(
-        localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: true }),
+        localBuild("test-project", "./", envMap, { nonInteractive: true }),
       ).to.be.rejectedWith(
         "Using build-available secrets during a local build in non-interactive mode requires the --allow-local-build-secrets flag.",
       );
@@ -179,7 +174,7 @@ describe("localBuild", () => {
         MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
       };
 
-      await localBuild("test-project", "./", "nextjs", envMap, {
+      await localBuild("test-project", "./", envMap, {
         nonInteractive: true,
         allowLocalBuildSecrets: true,
       });
@@ -195,7 +190,7 @@ describe("localBuild", () => {
       };
 
       await expect(
-        localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false }),
+        localBuild("test-project", "./", envMap, { nonInteractive: false }),
       ).to.be.rejectedWith("Cancelled local build due to BUILD-available secrets.");
       expect(confirmStub).to.have.been.calledOnce;
     });
@@ -216,7 +211,7 @@ describe("localBuild", () => {
         MY_BUILD_SECRET: { secret: "my-secret-id", availability: ["BUILD"] },
       };
 
-      await localBuild("test-project", "./", "nextjs", envMap, { nonInteractive: false });
+      await localBuild("test-project", "./", envMap, { nonInteractive: false });
       expect(confirmStub).to.have.been.calledOnce;
     });
   });
@@ -232,13 +227,12 @@ describe("localBuild", () => {
         signal: null,
       });
 
-      const output = await runUniversalMaker("./", "nextjs");
+      const output = await runUniversalMaker("./");
 
       expect(output).to.deep.equal({
         metadata: {
           language: "nodejs",
           runtime: "nodejs22",
-          framework: "nextjs",
         },
         runConfig: {
           runCommand: "npm run start",
