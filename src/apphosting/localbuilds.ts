@@ -3,12 +3,10 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import { Availability, BuildConfig, Env } from "../gcp/apphosting";
 
-import { localBuild as localAppHostingBuild } from "@apphosting/build";
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
-import * as experiments from "../experiments";
 import { logger } from "../logger";
 import { wrappedSafeLoad } from "../utils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
@@ -24,13 +22,10 @@ interface UniversalMakerOutput {
 /**
  * Runs the Universal Maker binary to build the project.
  */
-export async function runUniversalMaker(
-  projectRoot: string,
-  framework?: string,
-): Promise<AppHostingBuildOutput> {
+export async function runUniversalMaker(projectRoot: string): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
   executeUniversalMakerBinary(universalMakerBinary, projectRoot);
-  return processUniversalMakerOutput(projectRoot, framework);
+  return processUniversalMakerOutput(projectRoot);
 }
 
 /**
@@ -48,6 +43,7 @@ function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: 
       universalMakerBinary,
       ["-application_dir", projectRoot, "-output_dir", projectRoot, "-output_format", "json"],
       {
+        cwd: projectRoot,
         env: {
           ...process.env,
           X_GOOGLE_TARGET_PLATFORM: "fah",
@@ -119,10 +115,7 @@ function parseBundleYaml(
  * This includes resolving the final run command and artifact paths from the
  * generated bundle.yaml, as well as cleaning up temporary metadata files.
  */
-function processUniversalMakerOutput(
-  projectRoot: string,
-  framework?: string,
-): AppHostingBuildOutput {
+function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput {
   const outputFilePath = path.join(projectRoot, "build_output.json");
   if (!fs.existsSync(outputFilePath)) {
     throw new FirebaseError(
@@ -167,7 +160,6 @@ function processUniversalMakerOutput(
     metadata: {
       language: umOutput.language,
       runtime: umOutput.runtime,
-      framework: framework || "nextjs",
     },
     runConfig: {
       runCommand: finalRunCommand,
@@ -214,7 +206,6 @@ export interface AppHostingBuildOutput {
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
  * @param projectRoot - The root directory of the project to build.
- * @param framework - The framework to use for the build (e.g., 'nextjs').
  * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
@@ -224,7 +215,6 @@ export interface AppHostingBuildOutput {
 export async function localBuild(
   projectId: string,
   projectRoot: string,
-  framework: string,
   env: EnvMap = {},
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
@@ -265,21 +255,7 @@ export async function localBuild(
 
   let apphostingBuildOutput: AppHostingBuildOutput;
   try {
-    if (experiments.isEnabled("universalMaker")) {
-      apphostingBuildOutput = await runUniversalMaker(projectRoot, framework);
-    } else {
-      const buildResult = await localAppHostingBuild(projectRoot, framework);
-      apphostingBuildOutput = {
-        metadata: Object.fromEntries(
-          Object.entries(buildResult.metadata || {}).map(([k, v]) => [
-            k,
-            v as string | number | boolean,
-          ]),
-        ),
-        runConfig: buildResult.runConfig,
-        outputFiles: buildResult.outputFiles,
-      };
-    }
+    apphostingBuildOutput = await runUniversalMaker(projectRoot);
   } finally {
     for (const key in process.env) {
       if (!(key in originalEnv)) {

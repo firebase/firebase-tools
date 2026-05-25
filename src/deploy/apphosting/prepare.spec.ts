@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as path from "path";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
@@ -24,6 +25,9 @@ import * as apphostingUtils from "../../apphosting/utils";
 import { AppHostingYamlConfig, EnvMap } from "../../apphosting/yaml";
 import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
+import * as fs from "fs";
+import * as fsAsync from "../../fsAsync";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -88,6 +92,12 @@ describe("apphosting", () => {
     addServiceAccountToRolesStub = sinon
       .stub(resourceManager, "addServiceAccountToRoles")
       .resolves();
+
+    sinon.stub(fs, "existsSync").returns(false);
+    sinon.stub(fs, "mkdirSync").returns(undefined);
+    sinon.stub(fs, "rmSync").returns(undefined);
+    sinon.stub(fs, "copyFileSync").returns(undefined);
+    sinon.stub(fsAsync, "readdirRecursive").resolves([]);
   });
 
   afterEach(() => {
@@ -142,6 +152,7 @@ describe("apphosting", () => {
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
         buildDir: "./next/standalone",
+        localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
         buildConfig,
         annotations,
       });
@@ -150,6 +161,94 @@ describe("apphosting", () => {
         apphosting.serviceAgentEmail("123456789"),
         ["roles/storage.objectViewer"],
         true,
+      );
+    });
+
+    it("supports multiple parallel local builds without directory clobbering", async () => {
+      const optsWithMultipleLocalBuilds = {
+        ...opts,
+        config: new Config({
+          apphosting: [
+            {
+              backendId: "backend-prod",
+              rootDir: "/",
+              ignore: [],
+              localBuild: true,
+            },
+            {
+              backendId: "backend-staging",
+              rootDir: "/",
+              ignore: [],
+              localBuild: true,
+            },
+          ],
+        }),
+      };
+      const context = initializeContext();
+      context.backendConfigs = {
+        "backend-prod": {
+          backendId: "backend-prod",
+          rootDir: "/",
+          ignore: [],
+          localBuild: true,
+        },
+        "backend-staging": {
+          backendId: "backend-staging",
+          rootDir: "/",
+          ignore: [],
+          localBuild: true,
+        },
+      };
+      context.backendLocations = {
+        "backend-prod": "us-central1",
+        "backend-staging": "us-central1",
+      };
+
+      const localBuildStub = sinon.stub(localbuilds, "localBuild");
+      localBuildStub
+        .withArgs(
+          sinon.match.any,
+          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-prod`)),
+          sinon.match.any,
+        )
+        .resolves({
+          outputFiles: ["./next/standalone-prod"],
+          buildConfig: { runCommand: "npm run build:prod", env: [] },
+          annotations: { framework: "nextjs" },
+        });
+      localBuildStub
+        .withArgs(
+          sinon.match.any,
+          sinon.match((p: string) => p.endsWith(`${LOCAL_BUILD_DIR_NAME}_backend-staging`)),
+          sinon.match.any,
+        )
+        .resolves({
+          outputFiles: ["./next/standalone-staging"],
+          buildConfig: { runCommand: "npm run build:staging", env: [] },
+          annotations: { framework: "nextjs" },
+        });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          { name: "projects/my-project/locations/us-central1/backends/backend-prod" },
+          { name: "projects/my-project/locations/us-central1/backends/backend-staging" },
+        ],
+      });
+
+      await prepare(context, optsWithMultipleLocalBuilds);
+
+      expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-prod`),
+      );
+      expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
+        path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
+      );
+
+      expect(context.backendLocalBuilds["backend-prod"].buildDir).to.equal(
+        "./next/standalone-prod",
+      );
+      expect(context.backendLocalBuilds["backend-staging"].buildDir).to.equal(
+        "./next/standalone-staging",
       );
     });
 
@@ -199,7 +298,6 @@ describe("apphosting", () => {
       expect(localBuildStub).to.be.calledWithMatch(
         "my-project",
         sinon.match.any,
-        "nextjs",
         sinon.match({
           FIREBASE_WEBAPP_CONFIG: { value: JSON.stringify(webAppConfig) },
           FIREBASE_CONFIG: {
@@ -260,14 +358,13 @@ describe("apphosting", () => {
       expect(localBuildStub).to.have.been.calledWithMatch(
         "my-project",
         sinon.match.any,
-        "nextjs",
         sinon.match({
           BUILD_VAR: { secret: "build-secret", availability: ["BUILD"] },
           SHARED_VAR: { secret: "shared-secret", availability: ["BUILD", "RUNTIME"] },
         }),
       );
       // RUNTIME_VAR should definitely NOT be present in match
-      expect(localBuildStub.firstCall.args[3]).to.not.have.property("RUNTIME_VAR");
+      expect(localBuildStub.firstCall.args[2]).to.not.have.property("RUNTIME_VAR");
     });
 
     it("should fail if localBuild is specified but experiment is disabled", async () => {
@@ -303,6 +400,41 @@ describe("apphosting", () => {
           expect.fail("Expected Error instance");
         }
       }
+    });
+
+    it("should fail if localBuild is specified and local build directory already exists", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      (fs.existsSync as sinon.SinonStub).callsFake((pathLike: fs.PathLike) => {
+        if (typeof pathLike === "string" && pathLike.endsWith(`${LOCAL_BUILD_DIR_NAME}_foo`)) {
+          return true;
+        }
+        return false;
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await expect(prepare(context, optsWithLocalBuild)).to.be.rejectedWith(
+        FirebaseError,
+        "The local build scratch directory",
+      );
     });
 
     it("links to existing backend if it already exists", async () => {
