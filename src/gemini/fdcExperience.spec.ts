@@ -75,42 +75,20 @@ describe("fdcExperience", () => {
       expect(extractCodeBlock(text)).to.eq(expected);
     });
 
-    it("should extract code without backticks but with preamble and postamble", () => {
-      const text = `Here is the schema:
+    it("should return entire text trimmed if no backticks but contains '{' (Scenario B)", () => {
+      const text = `
       type User {
         id: ID!
       }
-      Hope this helps!`;
+      `;
       const expected = `type User {
         id: ID!
       }`;
       expect(extractCodeBlock(text)).to.eq(expected);
     });
 
-    it("should extract code without backticks and only preamble", () => {
-      const text = `Here is the schema:
-      type User {
-        id: ID!
-      }`;
-      const expected = `type User {
-        id: ID!
-      }`;
-      expect(extractCodeBlock(text)).to.eq(expected);
-    });
-
-    it("should extract code without backticks and only postamble", () => {
-      const text = `type User {
-        id: ID!
-      }
-      Hope this helps!`;
-      const expected = `type User {
-        id: ID!
-      }`;
-      expect(extractCodeBlock(text)).to.eq(expected);
-    });
-
-    it("should return original text trimmed if no keywords found and no backticks", () => {
-      const text = "random text without keywords";
+    it("should return entire text trimmed if no backticks and no '{' (Scenario C)", () => {
+      const text = "random text without braces";
       expect(extractCodeBlock(text)).to.eq(text);
     });
   });

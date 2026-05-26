@@ -245,41 +245,12 @@ export function extractCodeBlock(text: string): string {
   }
 
   // Loose parsing if no backticks are present
-  const lines = text.split("\n");
-  const keywords = [
-    "type",
-    "input",
-    "enum",
-    "interface",
-    "union",
-    "schema",
-    "extend",
-    "scalar",
-    "directive",
-    "query",
-    "mutation",
-    "subscription",
-    "fragment",
-  ];
-
-  let startIndex = -1;
-  for (let i = 0; i < lines.length; i++) {
-    const trimmedLine = lines[i].trim();
-    const firstWord = trimmedLine.split(/\s+/)[0];
-    if (keywords.includes(firstWord)) {
-      startIndex = i;
-      break;
-    }
+  if (text.includes("{")) {
+    // Scenario B: No backticks, but has "{". Assume entire response is GraphQL.
+    return text.trim();
   }
 
-  if (startIndex !== -1) {
-    const remainingText = lines.slice(startIndex).join("\n");
-    const lastBraceIndex = remainingText.lastIndexOf("}");
-    if (lastBraceIndex !== -1) {
-      return remainingText.substring(0, lastBraceIndex + 1).trim();
-    }
-    return remainingText.trim();
-  }
-
+  // Scenario C: No backticks, no "{". Just text.
+  logger.debug("[Agent Service] Response seems to be plain text, no GraphQL code block found.");
   return text.trim();
 }
