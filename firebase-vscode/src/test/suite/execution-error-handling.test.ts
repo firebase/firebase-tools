@@ -10,6 +10,7 @@ import { registerExecution } from "../../data-connect/execution/execution";
 import * as auth from "../../../../src/auth";
 import * as nock from "nock";
 import { setAccessToken } from "../../../../src/apiv2";
+import { configstore } from "../../../../src/configstore";
 
 firebaseSuite("generateOperation Error Handling", () => {
   let showErrorMessageStub: any;
@@ -28,6 +29,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     stub(vscode.window, "withProgress").callsFake(async (options, task) => {
         return task({ report: () => {} }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose: () => {} }) } as any);
     });
+
+    stub(configstore, "get").withArgs("gemini").returns(true);
 
     // Mock dataConnectConfigs
     const mockConfigs = {
@@ -115,8 +118,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     console.log("nock isDone:", scope.isDone());
 
     assert.ok(scope.isDone(), "Nock should have intercepted the request");
-    assert.ok(showInformationMessageStub.calledOnce);
-    assert.ok(showInformationMessageStub.getCall(0).args[0].startsWith("Generated response is not valid GraphQL"));
+    assert.ok(showErrorMessageStub.calledOnce);
+    assert.ok(showErrorMessageStub.getCall(0).args[0].startsWith("Generated response is not valid GraphQL"));
   });
 }, 80000);
 
