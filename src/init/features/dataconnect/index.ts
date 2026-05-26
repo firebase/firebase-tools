@@ -300,7 +300,7 @@ async function actuateWithInfo(
   let operationGql = "";
   let seedDataGql = "";
   let genOperationsSuccess = false;
-  let genOperationsError: any = null;
+  let genOperationsError: unknown = null;
 
   await promiseWithSpinner(async () => {
     // 1. Start Schema Deployment
@@ -326,7 +326,11 @@ async function actuateWithInfo(
           generateOperation(PROMPT_GENERATE_SEED_DATA, serviceName, projectId, schemas),
         ]);
         return { op, seed, success: true };
-      } catch (err: any) {
+      } catch (err: unknown) {
+        logLabeledError(
+          "dataconnect",
+          `Deployment failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
         return { success: false, error: err };
       }
     })();
@@ -334,9 +338,9 @@ async function actuateWithInfo(
     // Await both to complete
     const [, opResult] = await Promise.all([deployPromise, opPromise]);
 
-    if (opResult.success) {
-      operationGql = opResult.op!;
-      seedDataGql = opResult.seed!;
+    if (opResult.success && opResult.op && opResult.seed) {
+      operationGql = opResult.op;
+      seedDataGql = opResult.seed;
       genOperationsSuccess = true;
     } else {
       logLabeledError("dataconnect", `Operation Generation failed...`);

@@ -317,11 +317,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       const serviceName = await dataConnectService.servicePath(
         arg.document.fileName,
       );
-      if (!configstore.get("gemini")) {
-        if (!(await showGiFToSModal(arg.projectId))) {
-          return; // ToS isn't accepted.
-        }
-      }
       const res = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -369,44 +364,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
-  }
-
-  async function showGiFToSModal(projectId: string): Promise<boolean> {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL);
-    const tos = "Terms of Service";
-    const enable = "Enable";
-    const result = await vscode.window.showWarningMessage(
-      "Gemini in Firebase",
-      {
-        modal: !process.env.VSCODE_TEST_MODE,
-        detail: "Gemini in Firebase helps you write SQL Connect queries.",
-      },
-      enable,
-      tos,
-    );
-    switch (result) {
-      case enable:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED,
-        );
-        configstore.set("gemini", true);
-        return true;
-      case tos:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED,
-        );
-        vscode.env.openExternal(
-          vscode.Uri.parse(
-            "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
-          ),
-        );
-      default:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED,
-        );
-        break;
-    }
-    return false;
   }
 
   return Disposable.from(

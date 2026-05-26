@@ -245,12 +245,10 @@ export function extractCodeBlock(text: string): string {
   }
 
   // Loose parsing if no backticks are present
-  if (text.includes("{")) {
-    // Scenario B: No backticks, but has "{". Assume entire response is GraphQL.
-    return text.trim();
+  if (!text.includes("{")) {
+    logger.warn("[Agent Service] Response seems to be plain text, no GraphQL code block found.");
   }
 
-  // Scenario C: No backticks, no "{". Just text.
-  logger.debug("[Agent Service] Response seems to be plain text, no GraphQL code block found.");
+  // Return the entire text if no markdown code block is found
   return text.trim();
 }
