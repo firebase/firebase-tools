@@ -77,11 +77,28 @@ export async function execute(
     database: opts.databaseId,
   });
 
+  pool.on("error", (err) => {
+    logger.debug("PostgreSQL pool error:", err);
+  });
+
   const cleanUpFn = async () => {
-    conn.release();
-    await pool.end();
-    connector.close();
+    try {
+      conn.release();
+    } catch (err) {
+      logger.debug("Error releasing pg connection:", err);
+    }
+    try {
+      connector.close();
+    } catch (err) {
+      logger.debug("Error closing Cloud SQL connector:", err);
+    }
+    try {
+      await pool.end();
+    } catch (err) {
+      logger.debug("Error ending pg pool:", err);
+    }
   };
+
 
   const conn = await pool.connect();
   const results: pg.QueryResult[] = [];
