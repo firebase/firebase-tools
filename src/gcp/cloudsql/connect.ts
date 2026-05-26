@@ -103,7 +103,6 @@ export async function execute(
     }
   };
 
-
   const conn = await pool.connect();
   const results: pg.QueryResult[] = [];
   logFn(`Logged in as ${opts.username}`);
