@@ -76,26 +76,30 @@ export async function execute(
     user: opts.username,
     database: opts.databaseId,
   });
-
+  // Absorb any 'error' events emitted on the pool after pool.end() is called.
+  // @google-cloud/cloud-sql-connector >=1.7.0 calls socket.destroy(err) during
+  // Connector.close(), which schedules an 'error' event via process.nextTick.
+  // If no listener is attached at that point Node escalates it to an uncaught
+  // exception, masking a successful operation.
   pool.on("error", (err) => {
-    logger.debug("PostgreSQL pool error:", err);
+    logger.debug("[cloudsql] pool error (ignored during teardown):", err);
   });
 
   const cleanUpFn = async () => {
     try {
       conn.release();
     } catch (err) {
-      logger.debug("Error releasing pg connection:", err);
-    }
-    try {
-      connector.close();
-    } catch (err) {
-      logger.debug("Error closing Cloud SQL connector:", err);
+      logger.debug("[cloudsql] error releasing connection during cleanup:", err);
     }
     try {
       await pool.end();
     } catch (err) {
-      logger.debug("Error ending pg pool:", err);
+      logger.debug("[cloudsql] error ending pool during cleanup:", err);
+    }
+    try {
+      connector.close();
+    } catch (err) {
+      logger.debug("[cloudsql] error closing connector during cleanup:", err);
     }
   };
 
