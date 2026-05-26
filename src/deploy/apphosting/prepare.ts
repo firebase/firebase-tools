@@ -1,4 +1,7 @@
+import * as fs from "fs";
 import * as path from "path";
+import * as fsAsync from "../../fsAsync";
+import { resolveIgnorePatterns } from "./util";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
@@ -24,6 +27,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
+import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -192,11 +196,15 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
+    const rootDir = options.projectRoot || process.cwd();
+    const localBuildScratchDir = path.join(rootDir, `${LOCAL_BUILD_DIR_NAME}_${cfg.backendId}`);
+
     try {
+      await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
+
       const { outputFiles, annotations, buildConfig } = await localBuild(
         projectId,
-        options.projectRoot || "./",
-        "nextjs",
+        localBuildScratchDir,
         buildEnv[cfg.backendId] || {},
         {
           nonInteractive: options.nonInteractive,
@@ -211,6 +219,7 @@ export default async function (context: Context, options: Options): Promise<void
       context.backendLocalBuilds[cfg.backendId] = {
         // TODO(9114): This only works for nextjs.
         buildDir: outputFiles[0],
+        localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
@@ -375,5 +384,45 @@ async function ensureAppHostingServiceAgentRoles(
       "apphosting",
       `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
     );
+  }
+}
+
+/**
+ * Prepares the scratch directory for local builds by copying non-ignored files.
+ *
+ * NOTE ON FILE FILTERING:
+ * For local builds, we apply all ignore filtering (user firebase.json ignores and .gitignore)
+ * BEFORE the build runs, right here during the directory copying phase. This creates a clean,
+ * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
+ * source files that would be uploaded to Cloud Build.
+ */
+async function prepareLocalBuildScratchDirectory(
+  rootDir: string,
+  localBuildScratchDir: string,
+  cfg: AppHostingSingle,
+): Promise<void> {
+  // Resolve ignores for local builds, including default node_modules ignore
+  const ignore = resolveIgnorePatterns(cfg);
+
+  // Check if local build scratch dir already exists
+  if (fs.existsSync(localBuildScratchDir)) {
+    throw new FirebaseError(
+      `The local build scratch directory '${localBuildScratchDir}' already exists. Please delete it and try again.`,
+    );
+  }
+  fs.mkdirSync(localBuildScratchDir, { recursive: true });
+
+  // Copy files respecting ignores
+  const filesToCopy = await fsAsync.readdirRecursive({
+    path: rootDir,
+    ignoreStrings: ignore,
+    supportGitIgnore: true,
+  });
+
+  for (const file of filesToCopy) {
+    const relativePath = path.relative(rootDir, file.name);
+    const destPath = path.join(localBuildScratchDir, relativePath);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(file.name, destPath);
   }
 }
