@@ -22,9 +22,12 @@ interface UniversalMakerOutput {
 /**
  * Runs the Universal Maker binary to build the project.
  */
-export async function runUniversalMaker(projectRoot: string): Promise<AppHostingBuildOutput> {
+export async function runUniversalMaker(
+  projectRoot: string,
+  addedEnv?: NodeJS.ProcessEnv,
+): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
-  executeUniversalMakerBinary(universalMakerBinary, projectRoot);
+  executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv);
   return processUniversalMakerOutput(projectRoot);
 }
 
@@ -33,7 +36,11 @@ export async function runUniversalMaker(projectRoot: string): Promise<AppHosting
  * output directories, injecting FAH-specific environment variables, and handling
  * binary-level execution errors (e.g., permission issues).
  */
-function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: string): void {
+function executeUniversalMakerBinary(
+  universalMakerBinary: string,
+  projectRoot: string,
+  addedEnv?: NodeJS.ProcessEnv,
+): void {
   try {
     const bundleOutput = path.join(projectRoot, "bundle_output");
     fs.removeSync(bundleOutput);
@@ -46,6 +53,7 @@ function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: 
         cwd: projectRoot,
         env: {
           ...process.env,
+          ...addedEnv,
           X_GOOGLE_TARGET_PLATFORM: "fah",
           FIREBASE_OUTPUT_BUNDLE_DIR: bundleOutput,
         },
@@ -236,29 +244,8 @@ export async function localBuild(
     }
   }
 
-  // We need to inject the environment variables into the process.env
-  // because the build adapter uses them to build the app.
-  // We'll restore the original process.env after the build is done.
-  const originalEnv = { ...process.env };
-
   const addedEnv = await toProcessEnv(projectId, env);
-  for (const [key, value] of Object.entries(addedEnv)) {
-    process.env[key] = value;
-  }
-
-  let apphostingBuildOutput: AppHostingBuildOutput;
-  try {
-    apphostingBuildOutput = await runUniversalMaker(projectRoot);
-  } finally {
-    for (const key in process.env) {
-      if (!(key in originalEnv)) {
-        delete process.env[key];
-      }
-    }
-    for (const [key, value] of Object.entries(originalEnv)) {
-      process.env[key] = value;
-    }
-  }
+  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const annotations: Record<string, string> = Object.fromEntries(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),

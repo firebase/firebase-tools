@@ -126,10 +126,12 @@ describe("localBuild", () => {
   });
 
   it("resolves BUILD-available secrets passed in the environment map and ignores RUNTIME-only ones", async () => {
-    sinon.stub(childProcess, "spawnSync").callsFake(() => {
-      expect(process.env.MY_BUILD_SECRET).to.equal("secret-value");
-      expect(process.env.MY_RUNTIME_SECRET).to.be.undefined;
-      expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
+    sinon.stub(childProcess, "spawnSync").callsFake((command: any, args: any, options: any) => {
+      expect(process.env.MY_BUILD_SECRET).to.be.undefined;
+      expect(process.env.MY_PLAIN_VAR).to.be.undefined;
+      expect(options?.env?.MY_BUILD_SECRET).to.equal("secret-value");
+      expect(options?.env?.MY_RUNTIME_SECRET).to.be.undefined;
+      expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       return {
         status: 0,
         output: ["", "mock output", ""],
@@ -161,9 +163,11 @@ describe("localBuild", () => {
   });
 
   it("handles environment variables that do not contain secrets", async () => {
-    sinon.stub(childProcess, "spawnSync").callsFake(() => {
-      expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
-      expect(process.env.ANOTHER_VAR).to.equal("another-value");
+    sinon.stub(childProcess, "spawnSync").callsFake((command: any, args: any, options: any) => {
+      expect(process.env.MY_PLAIN_VAR).to.be.undefined;
+      expect(process.env.ANOTHER_VAR).to.be.undefined;
+      expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
+      expect(options?.env?.ANOTHER_VAR).to.equal("another-value");
       return {
         status: 0,
         output: ["", "mock output", ""],
