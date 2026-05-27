@@ -1,0 +1,1 @@
+Adds the ext:inspect command to retrieve currently running extension configuration.

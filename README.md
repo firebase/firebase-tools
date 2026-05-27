@@ -130,6 +130,7 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 | **ext**             | Display information on how to use ext commands and extensions installed to your project.    |
 | **ext:configure**   | Configure an existing extension instance.                                                   |
 | **ext:info**        | Display information about an extension by name (extensionName@x.y.z for a specific version) |
+| **ext:inspect**     | Display the configuration of the currently running instances of installed extensions.       |
 | **ext:install**     | Install an extension.                                                                       |
 | **ext:sdk:install** | Install and SDK for an extension so you can define the extension in a functions codebase.   |
 | **ext:list**        | List all the extensions that are installed in your Firebase project.                        |

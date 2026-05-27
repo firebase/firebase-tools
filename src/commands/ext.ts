@@ -20,6 +20,7 @@ export const command = new Command("ext")
     utils.logLabeledBullet(logPrefix, "list of extensions commands:");
     const firebaseTools = require("../"); // eslint-disable-line @typescript-eslint/no-var-requires
     const commandNames = [
+      "ext:inspect",
       "ext:install",
       "ext:info",
       "ext:list",
