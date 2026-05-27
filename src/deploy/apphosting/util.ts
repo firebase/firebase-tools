@@ -8,7 +8,6 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { logLabeledWarning } from "../../utils";
 
-import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 
 /**
  * Creates a temporary tarball of the project source or build artifacts.
@@ -53,18 +52,6 @@ export async function createLocalBuildTarArchive(
     }
   }
 
-  const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
-    return APPHOSTING_YAML_FILE_REGEX.test(file);
-  });
-  for (const file of defaultFiles) {
-    if (!allFiles.includes(file)) {
-      allFiles.push(file);
-    }
-  }
-  const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
-  if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
-    allFiles.push(bundleYamlPath);
-  }
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
