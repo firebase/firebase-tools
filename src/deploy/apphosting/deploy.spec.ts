@@ -4,8 +4,6 @@ import * as os from "os";
 import * as path from "path";
 import * as crypto from "crypto";
 import { Config } from "../../config";
-
-const expectedHash = crypto.createHash("md5").update(process.cwd()).digest("hex").substring(0, 8);
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
 import { Context } from "./args";
@@ -28,6 +26,11 @@ const BASE_OPTS = {
 };
 
 function initializeContext(): Context {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   return {
     backendConfigs: {
       foo: {
@@ -49,7 +52,7 @@ function initializeContext(): Context {
         outputFiles: ["./nextjs/standalone"],
         localBuildScratchDir: path.join(
           os.tmpdir(),
-          `apphosting-local-build-fooLocalBuild-${expectedHash}`,
+          `apphosting-local-build-fooLocalBuild-${expectedPathHash}`,
         ),
         buildConfig: {},
       },
@@ -58,6 +61,11 @@ function initializeContext(): Context {
 }
 
 describe("apphosting", () => {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
@@ -181,7 +189,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedHash}`),
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
@@ -224,7 +232,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedHash}`),
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(

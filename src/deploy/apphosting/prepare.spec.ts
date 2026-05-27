@@ -51,7 +51,11 @@ function initializeContext(): Context {
 }
 
 describe("apphosting", () => {
-  const expectedHash = crypto.createHash("md5").update(process.cwd()).digest("hex").substring(0, 8);
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
 
   const opts = {
     ...BASE_OPTS,
@@ -151,7 +155,7 @@ describe("apphosting", () => {
       expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal(["./next/standalone"]);
       expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal(buildConfig);
       expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal(
-        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedHash}`),
+        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedPathHash}`),
       );
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
@@ -207,7 +211,8 @@ describe("apphosting", () => {
           sinon.match.any,
           sinon.match(
             (p: string) =>
-              p === path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedHash}`),
+              p ===
+              path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedPathHash}`),
           ),
           sinon.match.any,
         )
@@ -221,7 +226,7 @@ describe("apphosting", () => {
           sinon.match(
             (p: string) =>
               p ===
-              path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedHash}`),
+              path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedPathHash}`),
           ),
           sinon.match.any,
         )
@@ -240,10 +245,10 @@ describe("apphosting", () => {
       await prepare(context, optsWithMultipleLocalBuilds);
 
       expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
-        path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedHash}`),
+        path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedPathHash}`),
       );
       expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
-        path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedHash}`),
+        path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedPathHash}`),
       );
 
       expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
