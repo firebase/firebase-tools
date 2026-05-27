@@ -197,7 +197,7 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
-    const rootDir = options.projectRoot || process.cwd();
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
     const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
