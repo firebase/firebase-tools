@@ -8,7 +8,6 @@ import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { logLabeledWarning } from "../../utils";
 
-
 /**
  * Creates a temporary tarball of the project source or build artifacts.
  *
@@ -51,7 +50,6 @@ export async function createLocalBuildTarArchive(
       allFiles.push(path.relative(rootDir, absolutePath));
     }
   }
-
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
   try {
