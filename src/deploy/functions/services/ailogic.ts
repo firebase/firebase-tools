@@ -1,4 +1,5 @@
 import * as backend from "../backend";
+import * as build from "../build";
 import { FirebaseError, getErrStatus } from "../../../error";
 import { Name, Service } from "./index";
 import * as ailogicApi from "../../../gcp/ailogic";
@@ -33,11 +34,14 @@ export function isAILogicEvent(endpoint: backend.Endpoint): endpoint is AILogicE
   );
 }
 
-export function isGlobalAILogicEndpoint(endpoint: backend.Endpoint): boolean {
-  if (!isAILogicEvent(endpoint)) {
-    return false;
-  }
-  return !endpoint.blockingTrigger.options?.regionalWebhook;
+/**
+ * Check if a blocking trigger is a global AI Logic trigger (not a regional webhook).
+ */
+export function isGlobalAILogicTrigger(blockingTrigger: build.BlockingTrigger): boolean {
+  return (
+    AI_LOGIC_EVENTS.includes(blockingTrigger.eventType as (typeof AI_LOGIC_EVENTS)[number]) &&
+    !blockingTrigger.options?.regionalWebhook
+  );
 }
 
 export class AILogicService implements Service {
