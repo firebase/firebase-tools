@@ -301,8 +301,7 @@ function normalizeFileName(fileName: string): string {
 
 async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
   const client = new Client({
-    // TODO(tonybaroneee): use the real telemetry server url when ready
-    urlPrefix: "http://localhost",
+    urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
     auth: true,
     apiVersion: "v1",
   });
