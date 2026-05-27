@@ -151,7 +151,7 @@ describe("apphosting", () => {
         localBuild: true,
       });
       expect(context.backendLocalBuilds["foo"]).to.deep.equal({
-        buildDir: "./next/standalone",
+        outputFiles: ["./next/standalone"],
         localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
         buildConfig,
         annotations,
@@ -244,12 +244,12 @@ describe("apphosting", () => {
         path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_backend-staging`),
       );
 
-      expect(context.backendLocalBuilds["backend-prod"].buildDir).to.equal(
+      expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([
         "./next/standalone-prod",
-      );
-      expect(context.backendLocalBuilds["backend-staging"].buildDir).to.equal(
+      ]);
+      expect(context.backendLocalBuilds["backend-staging"].outputFiles).to.deep.equal([
         "./next/standalone-staging",
-      );
+      ]);
     });
 
     it("injects Firebase configuration when appId is present", async () => {
@@ -435,6 +435,73 @@ describe("apphosting", () => {
         FirebaseError,
         "The local build scratch directory",
       );
+    });
+
+    it("should succeed and configure multiple output files/directories if localBuild produces them", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone", "./another/path"],
+        buildConfig: { runCommand: "npm run start" },
+        annotations: {},
+      });
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([
+        "./next/standalone",
+        "./another/path",
+      ]);
+    });
+
+    it("should succeed with outputFiles as [] if localBuild produces 0 output files/directories (e.g. Angular)", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: [],
+        buildConfig: { runCommand: "npm run start" },
+        annotations: {},
+      });
+      listBackendsStub.onFirstCall().resolves({
+        backends: [
+          {
+            name: "projects/my-project/locations/us-central1/backends/foo",
+          },
+        ],
+      });
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal([]);
     });
 
     it("links to existing backend if it already exists", async () => {
