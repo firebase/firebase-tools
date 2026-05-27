@@ -23,88 +23,6 @@ describe("util", () => {
   });
 
   describe("createLocalBuildTarArchive", () => {
-    it("should include apphosting.yaml from root when archiving a subdirectory", async () => {
-      // Setup: Create apphosting.yaml in root and some files in dist
-      fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
-      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
-
-      const config = {
-        backendId: "test-backend",
-        rootDir: "",
-        ignore: [],
-      };
-
-      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
-        path.relative(rootDir, distDir),
-      ]);
-
-      // Verify: List files in tarball
-      const files: string[] = [];
-      tar.list({
-        file: tarballPath,
-        sync: true,
-        onentry: (entry: { path: string }) => files.push(entry.path),
-      });
-
-      expect(files).to.include("dist/index.js");
-      expect(files).to.include("apphosting.yaml");
-    });
-
-    it("should include .apphosting/bundle.yaml from root when archiving a subdirectory", async () => {
-      // Setup: Create .apphosting/bundle.yaml in root and some files in dist
-      const apphostingDir = path.join(rootDir, ".apphosting");
-      fs.mkdirSync(apphostingDir);
-      fs.writeFileSync(path.join(apphostingDir, "bundle.yaml"), "runConfig: {}");
-      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
-
-      const config = {
-        backendId: "test-backend",
-        rootDir: "",
-        ignore: [],
-      };
-
-      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
-        path.relative(rootDir, distDir),
-      ]);
-
-      // Verify: List files in tarball
-      const files: string[] = [];
-      tar.list({
-        file: tarballPath,
-        sync: true,
-        onentry: (entry: { path: string }) => files.push(entry.path),
-      });
-
-      expect(files).to.include("dist/index.js");
-      expect(files).to.include(".apphosting/bundle.yaml");
-    });
-
-    it("should not fail if apphosting.yaml does not exist", async () => {
-      // Setup: No apphosting.yaml, only files in dist
-      fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
-
-      const config = {
-        backendId: "test-backend",
-        rootDir: "",
-        ignore: [],
-      };
-
-      const tarballPath: string = await util.createLocalBuildTarArchive(config, rootDir, [
-        path.relative(rootDir, distDir),
-      ]);
-
-      // Verify: List files in tarball
-      const files: string[] = [];
-      tar.list({
-        file: tarballPath,
-        sync: true,
-        onentry: (entry: { path: string }) => files.push(entry.path),
-      });
-
-      expect(files).to.include("dist/index.js");
-      expect(files).to.not.include("apphosting.yaml");
-    });
-
     it("should NOT respect ignore patterns in config for local builds", async () => {
       fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
       fs.writeFileSync(path.join(distDir, "ignored.txt"), "ignore me");
@@ -187,11 +105,6 @@ describe("util", () => {
     });
 
     it("should package mixed files and folders dynamically using fs.statSync", async () => {
-      fs.writeFileSync(path.join(rootDir, "apphosting.yaml"), "env: []");
-      const apphostingDir = path.join(rootDir, ".apphosting");
-      fs.mkdirSync(apphostingDir);
-      fs.writeFileSync(path.join(apphostingDir, "bundle.yaml"), "runConfig: {}");
-
       const serverDir = path.join(rootDir, "server");
       fs.mkdirSync(serverDir);
       fs.writeFileSync(path.join(serverDir, "index.js"), "console.log('server')");
@@ -218,8 +131,8 @@ describe("util", () => {
 
       expect(files).to.include("server/index.js");
       expect(files).to.include("standalone.js");
-      expect(files).to.include("apphosting.yaml");
-      expect(files).to.include(".apphosting/bundle.yaml");
+      expect(files).to.not.include("apphosting.yaml");
+      expect(files).to.not.include(".apphosting/bundle.yaml");
     });
 
     it("should package the entire root directory if outputFiles is empty (Angular fallback)", async () => {
