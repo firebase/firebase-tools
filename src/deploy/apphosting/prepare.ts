@@ -1,4 +1,6 @@
+import * as crypto from "crypto";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import * as fsAsync from "../../fsAsync";
 import { resolveIgnorePatterns } from "./util";
@@ -27,7 +29,6 @@ import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
-import { LOCAL_BUILD_DIR_NAME } from "../../apphosting/constants";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -196,36 +197,34 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
-    const rootDir = options.projectRoot || process.cwd();
-    const localBuildScratchDir = path.join(rootDir, `${LOCAL_BUILD_DIR_NAME}_${cfg.backendId}`);
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    // Generate a static 8-character hash of the Workspace Root directory path to guarantee
+    // 100% sibling folder build isolation on the same machine, while preserving predictability.
+    const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
+    const localBuildScratchDir = path.join(
+      os.tmpdir(),
+      `apphosting-local-build-${cfg.backendId}-${pathHash}`,
+    );
 
     try {
       await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
 
-      const { outputFiles, annotations, buildConfig } = await localBuild(
+      const { outputFiles, buildConfig } = await localBuild(
         projectId,
         localBuildScratchDir,
-        "nextjs",
         buildEnv[cfg.backendId] || {},
         {
           nonInteractive: options.nonInteractive,
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
         },
       );
-      if (outputFiles.length !== 1) {
-        throw new FirebaseError(
-          `Local build for backend ${cfg.backendId} failed: No output files found.`,
-        );
-      }
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0],
+        outputFiles,
         localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
         },
-        annotations,
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -405,12 +404,9 @@ async function prepareLocalBuildScratchDirectory(
   // Resolve ignores for local builds, including default node_modules ignore
   const ignore = resolveIgnorePatterns(cfg);
 
-  // Check if local build scratch dir already exists
-  if (fs.existsSync(localBuildScratchDir)) {
-    throw new FirebaseError(
-      `The local build scratch directory '${localBuildScratchDir}' already exists. Please delete it and try again.`,
-    );
-  }
+  // Purge the temporary workspace if it already exists to guarantee a perfectly clean build environment,
+  // eliminating stale artifacts from any previous interrupted runs.
+  fs.rmSync(localBuildScratchDir, { recursive: true, force: true });
   fs.mkdirSync(localBuildScratchDir, { recursive: true });
 
   // Copy files respecting ignores
