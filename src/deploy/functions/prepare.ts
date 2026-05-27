@@ -16,7 +16,7 @@ import * as events from "../../functions/events/v1";
 import { getDatabase } from "./services/firestore";
 import { getBucket } from "./services/storage";
 import { getDatabaseInstanceDetails } from "./services/database";
-import { isGlobalAILogicEndpoint } from "./services/ailogic";
+import { isGlobalAILogicTrigger } from "./services/ailogic";
 import { parseServiceName, parseConnectorName } from "../../dataconnect/names";
 import {
   functionsOrigin,
@@ -381,11 +381,13 @@ export async function resolveDefaultRegionsForBuild(
       } else {
         // Match triggers.
         try {
-          const fullEndpoint = { ...endpoint, id } as any;
           if (build.isBlockingTriggered(endpoint)) {
-            resolvedRegion = resolveRegionForBlockingTrigger(fullEndpoint);
+            resolvedRegion = resolveRegionForBlockingTrigger(endpoint.blockingTrigger);
           } else if (build.isEventTriggered(endpoint)) {
-            resolvedRegion = await resolveRegionForEventTrigger(fullEndpoint);
+            resolvedRegion = await resolveRegionForEventTrigger(
+              endpoint.project,
+              endpoint.eventTrigger,
+            );
           }
         } catch (err: any) {
           logger.debug(
@@ -400,15 +402,13 @@ export async function resolveDefaultRegionsForBuild(
   }
 }
 
-function resolveRegionForBlockingTrigger(
-  endpoint: backend.Endpoint & backend.BlockingTriggered,
-): string {
-  const eventType = endpoint.blockingTrigger.eventType;
+function resolveRegionForBlockingTrigger(blockingTrigger: build.BlockingTrigger): string {
+  const eventType = blockingTrigger.eventType;
   if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
     return "us-east1";
   }
 
-  if (isGlobalAILogicEndpoint(endpoint)) {
+  if (isGlobalAILogicTrigger(blockingTrigger)) {
     return "us-east1";
   }
 
@@ -416,9 +416,9 @@ function resolveRegionForBlockingTrigger(
 }
 
 async function resolveRegionForEventTrigger(
-  endpoint: backend.Endpoint & backend.EventTriggered,
+  project: string,
+  eventTrigger: build.EventTrigger,
 ): Promise<string> {
-  const eventTrigger = endpoint.eventTrigger;
   const eventType = eventTrigger.eventType;
 
   // Global functions should be deployed to us-east1.
@@ -441,7 +441,7 @@ async function resolveRegionForEventTrigger(
   if (eventType.startsWith("google.cloud.firestore.")) {
     try {
       const databaseId = eventTrigger.eventFilters?.database || "(default)";
-      const db = await getDatabase(endpoint.project, databaseId);
+      const db = await getDatabase(project, databaseId);
       const locationId = db.locationId.toLowerCase();
 
       if (locationId === "nam5" || locationId === "nam7") return "us-central1";
@@ -481,7 +481,7 @@ async function resolveRegionForEventTrigger(
     try {
       const instanceName = eventTrigger.eventFilters?.instance;
       if (instanceName) {
-        const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+        const details = await getDatabaseInstanceDetails(project, instanceName);
         if (details.location && details.location !== "-") {
           return details.location.toLowerCase();
         }
