@@ -179,6 +179,51 @@ describe("accountExporter", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should escape displayNames with double quotes for csv formats", async () => {
+      // Initialize user with double quotes in display name.
+      const singleUser = {
+        localId: "1",
+        email: "foo1@bar.org",
+        displayName: 'Foo "Bar" Baz',
+        disabled: false,
+      };
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 1,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [singleUser],
+          nextPageToken: "1",
+        })
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 1,
+          nextPageToken: "1",
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: [],
+          nextPageToken: "1",
+        });
+
+      await serialExportUsers("test-project-id", {
+        format: "csv",
+        batchSize: 1,
+        writeStream: writeStream,
+      });
+      expect(spyWrite.callCount).to.eq(1);
+      const expectedEntry =
+        singleUser.localId +
+        "," +
+        singleUser.email +
+        ",false,,," +
+        '"Foo ""Bar"" Baz"' +
+        Array(22).join(",") + // A lot of empty fields.
+        singleUser.disabled;
+      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should not emit redundant comma in JSON on consecutive calls", async () => {
       mockAllUsersRequests();
 

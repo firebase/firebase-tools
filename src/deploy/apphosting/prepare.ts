@@ -202,7 +202,7 @@ export default async function (context: Context, options: Options): Promise<void
     try {
       await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
 
-      const { outputFiles, annotations, buildConfig } = await localBuild(
+      const { outputFiles, buildConfig } = await localBuild(
         projectId,
         localBuildScratchDir,
         buildEnv[cfg.backendId] || {},
@@ -211,20 +211,13 @@ export default async function (context: Context, options: Options): Promise<void
           allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
         },
       );
-      if (outputFiles.length !== 1) {
-        throw new FirebaseError(
-          `Local build for backend ${cfg.backendId} failed: No output files found.`,
-        );
-      }
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0],
+        outputFiles,
         localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
         },
-        annotations,
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
