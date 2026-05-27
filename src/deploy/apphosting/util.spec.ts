@@ -118,7 +118,12 @@ describe("util", () => {
           localBuild: true,
         };
 
-        await util.createLocalBuildTarArchive(config, rootDir, [path.relative(rootDir, distDir)], 1);
+        await util.createLocalBuildTarArchive(
+          config,
+          rootDir,
+          [path.relative(rootDir, distDir)],
+          1,
+        );
 
         expect(loggerWarnSpy.calledOnce).to.be.true;
         expect(loggerWarnSpy.firstCall.args[0]).to.match(/The final build artifact is larger than/);
@@ -180,7 +185,6 @@ describe("util", () => {
       expect(files).to.include("dist/index.js");
       expect(files).to.include("server.js");
       expect(files).to.include("apphosting.yaml");
-
     });
   });
 });
