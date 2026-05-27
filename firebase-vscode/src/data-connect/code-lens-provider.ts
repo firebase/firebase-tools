@@ -1,6 +1,8 @@
 import * as vscode from "vscode";
 import { ExecutableDefinitionNode, Kind, parse } from "graphql";
 import { Disposable } from "vscode";
+import * as path from "path";
+import { isSchemaFile } from "./file-utils";
 
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
@@ -184,26 +186,21 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     const codeLenses: vscode.CodeLens[] = [];
 
+    const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
+
+    if (!isSchemaFile(fdcConfigs, document.fileName)) {
+      return [];
+    }
+
+    const documentText = document.getText();
     // TODO: replace w/ online-parser to work with malformed documents
-    const documentNode = parse(document.getText());
+    const documentNode = parse(documentText);
 
     for (const x of documentNode.definitions) {
       if (x.kind === Kind.OBJECT_TYPE_DEFINITION && x.loc) {
         const line = x.loc.startToken.line - 1;
         const range = new vscode.Range(line, 0, line, 0);
         const documentPath = document.fileName;
-
-        // Add only at top of document
-        // if (line === 0) {
-        //   codeLenses.push(
-        //     new vscode.CodeLens(range, {
-        //       title: `Generate Schema`,
-        //       command: "firebase.dataConnect.generateSchema",
-        //       tooltip: "Generate a new schema",
-        //       arguments: [document.getText(), documentPath],
-        //     }),
-        //   );
-        // }
 
         const isTable = x.directives?.some((d) => d.name.value === "table");
         const isView = x.directives?.some((d) => d.name.value === "view");
