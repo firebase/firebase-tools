@@ -150,7 +150,7 @@ describe("dialogs", () => {
       });
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
       expect(utils.logWarning).to.have.been.calledWith(dialogs.WARN_NO_BACKENDS);
     });
@@ -162,7 +162,7 @@ describe("dialogs", () => {
       });
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logWarning).to.have.been.calledWith(
@@ -180,14 +180,14 @@ describe("dialogs", () => {
       prompt.confirm.resolves(true);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({
         buildServiceAccounts: [modernA.serviceAccount],
         runServiceAccounts: [],
       });
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message:
           "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
@@ -203,11 +203,11 @@ describe("dialogs", () => {
       prompt.confirm.resolves(false);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message:
           "To use this secret, your backend's service account must be granted access. Would you like to grant access now?",
@@ -224,7 +224,7 @@ describe("dialogs", () => {
       const accounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(secrets.toMulti(accounts));
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -237,7 +237,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -253,7 +253,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -266,7 +266,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -281,7 +281,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(true);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({
         buildServiceAccounts: [modernA.serviceAccount],
         runServiceAccounts: [],
@@ -297,7 +297,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -313,7 +313,7 @@ describe("dialogs", () => {
       prompt.confirm.resolves(false);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(utils.logBullet.getCall(0).args[0]).to.eq(
@@ -326,7 +326,7 @@ describe("dialogs", () => {
       );
 
       expect(prompt.confirm).to.have.been.calledWith({
-        nonInteractive: undefined,
+        nonInteractive: false,
         default: true,
         message: "Would you like to grant access to all backends now?",
       });
@@ -342,7 +342,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal({ buildServiceAccounts: ["a", "b"], runServiceAccounts: [] });
 
       expect(prompt.checkbox).to.have.been.calledWith({
@@ -370,7 +370,7 @@ describe("dialogs", () => {
       const legacyAccounts = await secrets.serviceAccountsForBackend("number", legacy);
 
       await expect(
-        dialogs.selectBackendServiceAccounts("number", "id", {}),
+        dialogs.selectBackendServiceAccounts("number", "id", false),
       ).to.eventually.deep.equal(emptyMulti);
 
       expect(prompt.checkbox).to.have.been.calledWith({

@@ -55,5 +55,11 @@ captures/
 # Formatter definitions
 .idea/codeStyles/
 
+# Dart/Flutter generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
 # Misc
 .DS_Store

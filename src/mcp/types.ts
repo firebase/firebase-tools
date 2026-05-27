@@ -15,6 +15,7 @@ export const SERVER_FEATURES = [
   "apptesting",
   "apphosting",
   "database",
+  "developerknowledge",
 ] as const;
 export type ServerFeature = (typeof SERVER_FEATURES)[number];
 
@@ -31,4 +32,5 @@ export interface McpContext {
   rc: RC;
   firebaseCliCommand: string;
   isBillingEnabled: boolean;
+  progressToken?: string | number;
 }

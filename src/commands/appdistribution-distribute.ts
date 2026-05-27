@@ -180,7 +180,7 @@ async function distribute(
     }
   }
 
-  const releaseName = await upload(requests, appName, distribution);
+  const release = await upload(requests, appName, distribution);
 
   // If this is an app bundle and the certificate was originally blank fetch the updated
   // certificate and print
@@ -200,8 +200,8 @@ async function distribute(
   }
 
   // Add release notes and distribute to testers/groups
-  await requests.updateReleaseNotes(releaseName, releaseNotes);
-  await requests.distribute(releaseName, testers, groups);
+  await requests.updateReleaseNotes(release.name, releaseNotes);
+  await requests.distribute(release.name, testers, groups);
 
   // Run automated tests
   if (testDevices.length) {
@@ -210,13 +210,13 @@ async function distribute(
     if (!testCases.length) {
       // fallback to basic automated test
       releaseTestPromises.push(
-        requests.createReleaseTest(releaseName, testDevices, undefined, loginCredential),
+        requests.createReleaseTest(release.name, testDevices, undefined, loginCredential),
       );
     } else {
       for (const testCaseId of testCases) {
         releaseTestPromises.push(
           requests.createReleaseTest(
-            releaseName,
+            release.name,
             testDevices,
             undefined,
             loginCredential,

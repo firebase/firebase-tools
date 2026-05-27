@@ -39,6 +39,9 @@ export const update_environment = tool(
       optionalProjectDir: true,
       requiresAuth: false,
       requiresProject: false,
+      ui: {
+        resourceUri: "ui://core/update_environment/mcp-app.html",
+      },
     },
   },
   async ({ project_dir, active_project, active_user_account }, { config, rc, host }) => {

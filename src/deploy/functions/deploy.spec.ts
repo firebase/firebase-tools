@@ -163,6 +163,7 @@ describe("deploy", () => {
     let gcfv2GenerateUploadUrlStub: sinon.SinonStub;
     let createReadStreamStub: sinon.SinonStub;
     let experimentEnabled: boolean;
+    let dartExperimentEnabled: boolean;
 
     const SOURCE: args.Source = {
       functionsSourceV2: "source.zip",
@@ -170,9 +171,13 @@ describe("deploy", () => {
     };
 
     before(() => {
-      experimentEnabled = experiments.isEnabled("runfunctions");
+      experimentEnabled = experiments.isEnabled("functionsrunapionly");
+      dartExperimentEnabled = experiments.isEnabled("dartfunctions");
     });
-    after(() => experiments.setEnabled("runfunctions", experimentEnabled));
+    after(() => {
+      experiments.setEnabled("functionsrunapionly", experimentEnabled);
+      experiments.setEnabled("dartfunctions", dartExperimentEnabled);
+    });
 
     beforeEach(() => {
       gcsUploadStub = sinon.stub(gcs, "upload").resolves({ generation: "1" });
@@ -191,11 +196,11 @@ describe("deploy", () => {
       sinon.restore();
     });
 
-    describe("with runfunctions experiment enabled", () => {
+    describe("with functionsrunapionly experiment enabled", () => {
       const PROJECT_NUMBER = "123456";
       const BUCKET_NAME = `firebase-functions-src-${PROJECT_NUMBER}`;
 
-      before(() => experiments.setEnabled("runfunctions", true));
+      before(() => experiments.setEnabled("functionsrunapionly", true));
 
       it("should call gcs.upsertBucket and gcs.upload for gcfv2 functions", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
@@ -252,8 +257,8 @@ describe("deploy", () => {
       });
     });
 
-    context("with runfunctions experiment disabled", () => {
-      before(() => experiments.setEnabled("runfunctions", false));
+    context("with functionsrunapionly experiment disabled", () => {
+      before(() => experiments.setEnabled("functionsrunapionly", false));
 
       it("should call gcfv2.generateUploadUrl and gcs.upload", async () => {
         const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2" });
@@ -268,6 +273,37 @@ describe("deploy", () => {
           undefined,
           true,
         );
+        expect(gcsUpsertBucketStub).not.to.be.called;
+      });
+    });
+
+    context("with dartfunctions experiment enabled", () => {
+      const PROJECT_NUMBER = "123456";
+      const BUCKET_NAME = `firebase-functions-src-\${PROJECT_NUMBER}`;
+
+      beforeEach(() => {
+        experiments.setEnabled("functionsrunapionly", false);
+        experiments.setEnabled("dartfunctions", true);
+      });
+
+      it("should call gcs.upsertBucket and gcs.upload for dart functions", async () => {
+        const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2", runtime: "dart3" as any });
+        gcsUpsertBucketStub.resolves(BUCKET_NAME);
+
+        await deploy.uploadSourceV2("project", PROJECT_NUMBER, SOURCE, wantBackend);
+
+        expect(gcsUpsertBucketStub).to.be.calledOnce;
+        expect(gcsUploadStub).to.be.calledOnce;
+        expect(gcfv2GenerateUploadUrlStub).not.to.be.called;
+      });
+
+      it("should call gcfv2.generateUploadUrl and gcs.upload for non-dart functions", async () => {
+        const wantBackend = backend.of({ ...ENDPOINT, platform: "gcfv2", runtime: "nodejs16" });
+
+        await deploy.uploadSourceV2("project", PROJECT_NUMBER, SOURCE, wantBackend);
+
+        expect(gcfv2GenerateUploadUrlStub).to.be.calledOnce;
+        expect(gcsUploadStub).to.be.calledOnce;
         expect(gcsUpsertBucketStub).not.to.be.called;
       });
     });

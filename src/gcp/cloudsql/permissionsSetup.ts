@@ -2,6 +2,7 @@ import * as clc from "colorette";
 
 import { Options } from "../../options";
 import {
+  DEFAULT_SCHEMA,
   firebaseowner,
   firebasewriter,
   firebasereader,
@@ -211,13 +212,13 @@ export async function greenFieldSchemaSetup(
       instanceId,
       databaseId,
       "cloudsqlsuperuser",
-      firebaseowner(databaseId),
+      firebaseowner(databaseId, schema),
     )
   ) {
     logger.warn(
       "Detected cloudsqlsuperuser was previously given to firebase owner, revoking to improve database security.",
     );
-    revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId)}"`);
+    revokes.push(`REVOKE "cloudsqlsuperuser" FROM "${firebaseowner(databaseId, schema)}"`);
   }
 
   const user = (await getIAMUser(options)).user;
@@ -455,13 +456,14 @@ export async function grantRoleTo(
   databaseId: string,
   role: string,
   email: string,
+  schema: string = DEFAULT_SCHEMA,
 ): Promise<void> {
   // Upsert new user account into the database.
   const projectId = needProjectId(options);
   const { user, mode } = toDatabaseUser(email);
   await cloudSqlAdminClient.createUser(projectId, instanceId, mode, user);
 
-  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId);
+  const fdcSqlRole = fdcSqlRoleMap[role as keyof typeof fdcSqlRoleMap](databaseId, schema);
   await executeSqlCmdsAsSuperUser(
     options,
     instanceId,

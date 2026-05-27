@@ -21,7 +21,10 @@ export function clearCache(): void {
  * @param project the project ID
  * @param databaseId the database ID or "(default)"
  */
-async function getDatabase(project: string, databaseId: string): Promise<firestore.Database> {
+export async function getDatabase(
+  project: string,
+  databaseId: string,
+): Promise<firestore.Database> {
   const key = `${project}/${databaseId}`;
 
   if (dbCache.has(key)) {

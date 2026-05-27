@@ -46,6 +46,24 @@ describe("toBackend", () => {
     }
   });
 
+  it("defaults region to REGION_TBD if not specified", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    if (endpointDef) {
+      expect(endpointDef.func.region).to.equal(build.REGION_TBD);
+    }
+  });
+
   it("doesn't populate if omit is set on the build", () => {
     const desiredBuild: build.Build = build.of({
       func: {
@@ -200,6 +218,43 @@ describe("toBackend", () => {
       expect(endpointDef.func.vpc?.connector).to.equal(
         "projects/project/locations/us-central1/connectors/connector",
       );
+      expect(endpointDef.func.vpc?.egressSettings).to.equal("ALL_TRAFFIC");
+    }
+  });
+
+  it("populates networkInterfaces from param values", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        vpc: {
+          networkInterfaces: [
+            {
+              network: "{{ params.NETWORK }}",
+              subnetwork: "{{ params.SUBNETWORK }}",
+              tags: ["{{ params.TAG }}"],
+            },
+          ],
+          egressSettings: "ALL_TRAFFIC",
+        },
+        httpsTrigger: {},
+      },
+    });
+    const backendResult = build.toBackend(desiredBuild, {
+      NETWORK: new ParamValue("my-network", false, { string: true }),
+      SUBNETWORK: new ParamValue("my-subnetwork", false, { string: true }),
+      TAG: new ParamValue("my-tag", false, { string: true }),
+    });
+    expect(Object.keys(backendResult.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backendResult.endpoints)[0];
+    expect(endpointDef).to.not.equal(undefined);
+    if (endpointDef) {
+      expect(endpointDef.func.vpc?.networkInterfaces).to.deep.equal([
+        { network: "my-network", subnetwork: "my-subnetwork", tags: ["my-tag"] },
+      ]);
       expect(endpointDef.func.vpc?.egressSettings).to.equal("ALL_TRAFFIC");
     }
   });

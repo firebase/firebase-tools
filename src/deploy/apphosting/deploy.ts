@@ -7,11 +7,20 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { logLabeledBullet } from "../../utils";
 import { Context } from "./args";
-import { createArchive } from "./util";
+import * as util from "./util";
+import * as experiments from "../../experiments";
+import { logger } from "../../logger";
 
 /**
- * Zips and uploads App Hosting source code to Google Cloud Storage in preparation for
- * build and deployment. Creates storage buckets if necessary.
+ * Uploads App Hosting source code or local build output to Google Cloud Storage.
+ *
+ * This step ensures that a GCS bucket exists for the target region and then
+ * archives the contents. Source deployments are zipped using the "createArchive"
+ * method, while local build deployments are tar-balled using the "createTarArchive"
+ * method. The resulting archive is uploaded to the bucket, and the URI is stored in
+ * the context for the subsequent release phase.
+ * @param context - The deployment context containing backend configs and locations.
+ * @param options - CLI options providing project ID and root directory.
  */
 export default async function (context: Context, options: Options): Promise<void> {
   if (Object.entries(context.backendConfigs).length === 0) {
@@ -64,40 +73,62 @@ export default async function (context: Context, options: Options): Promise<void
   await Promise.all(
     Object.values(context.backendConfigs).map(async (cfg) => {
       const rootDir = options.projectRoot ?? process.cwd();
-      let builtAppDir;
-      if (cfg.localBuild) {
-        builtAppDir = context.backendLocalBuilds[cfg.backendId].buildDir;
-        if (!builtAppDir) {
-          throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+      let localBuildScratchDir: string | undefined;
+      try {
+        const isLocalBuild = cfg.localBuild;
+        let builtAppDir: string | undefined;
+        if (isLocalBuild) {
+          experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
+          const localBuild = context.backendLocalBuilds[cfg.backendId];
+          builtAppDir = localBuild?.buildDir;
+          localBuildScratchDir = localBuild?.localBuildScratchDir;
+          if (!builtAppDir || !localBuildScratchDir) {
+            throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+          }
+        }
+
+        const zippedSourcePath = isLocalBuild
+          ? await util.createLocalBuildTarArchive(cfg, localBuildScratchDir!, builtAppDir)
+          : await util.createSourceDeployArchive(cfg, rootDir);
+
+        logLabeledBullet(
+          "apphosting",
+          `Zipped ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
+        );
+
+        const backendLocation = context.backendLocations[cfg.backendId];
+        if (!backendLocation) {
+          throw new FirebaseError(
+            `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+          );
+        }
+        logLabeledBullet(
+          "apphosting",
+          `Uploading ${isLocalBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
+        );
+        const bucketName = bucketsPerLocation[backendLocation]!;
+        const { bucket, object } = await gcs.uploadObject(
+          {
+            file: zippedSourcePath,
+            stream: fs.createReadStream(zippedSourcePath),
+          },
+          bucketName,
+          isLocalBuild ? gcs.ContentType.TAR : gcs.ContentType.ZIP,
+        );
+        logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
+        context.backendStorageUris[cfg.backendId] =
+          `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
+      } finally {
+        if (localBuildScratchDir && fs.existsSync(localBuildScratchDir)) {
+          try {
+            fs.rmSync(localBuildScratchDir, { recursive: true, force: true });
+          } catch (err) {
+            logger.debug(
+              `Failed to clean up local build directory ${localBuildScratchDir}: ${err}`,
+            );
+          }
         }
       }
-      const zippedSourcePath = await createArchive(cfg, rootDir, builtAppDir);
-      logLabeledBullet(
-        "apphosting",
-        `Zipped ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}`,
-      );
-
-      const backendLocation = context.backendLocations[cfg.backendId];
-      if (!backendLocation) {
-        throw new FirebaseError(
-          `Failed to find location for backend ${cfg.backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
-        );
-      }
-      logLabeledBullet(
-        "apphosting",
-        `Uploading ${cfg.localBuild ? "built app" : "source"} for backend ${cfg.backendId}...`,
-      );
-      const bucketName = bucketsPerLocation[backendLocation]!;
-      const { bucket, object } = await gcs.uploadObject(
-        {
-          file: zippedSourcePath,
-          stream: fs.createReadStream(zippedSourcePath),
-        },
-        bucketName,
-      );
-      logLabeledBullet("apphosting", `Uploaded at gs://${bucket}/${object}`);
-      context.backendStorageUris[cfg.backendId] =
-        `gs://${bucketName}/${path.basename(zippedSourcePath)}`;
     }),
   );
 }

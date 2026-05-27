@@ -43,13 +43,13 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+/** API agnostic version of a Firebase SQL Connect HTTPS trigger. */
 export interface DataConnectGraphqlTrigger {
   invoker?: string[] | null;
   schemaFilePath?: string;
 }
 
-/** Something that has a Data Connect HTTPS trigger */
+/** Something that has a SQL Connect HTTPS trigger */
 export interface DataConnectGraphqlTriggered {
   dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }
@@ -256,6 +256,7 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
 
 export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const DEFAULT_TIMEOUT_SECONDS = 60;
 export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
@@ -306,8 +307,13 @@ export interface ServiceConfiguration {
   maxInstances?: number | null;
   minInstances?: number | null;
   vpc?: {
-    connector: string;
+    connector?: string;
     egressSettings?: VpcEgressSettings | null;
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }> | null;
   } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;
@@ -407,6 +413,11 @@ export type Endpoint = TargetIds &
 
     // State of the endpoint.
     state?: EndpointState;
+
+    // Fields for Cloud Run platform (for no-build path)
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export interface RequiredAPI {
@@ -564,18 +575,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
   if (experiments.isEnabled("functionsrunapionly")) {
-    try {
-      const runServices = await run.listServices(ctx.projectId);
-      for (const service of runServices) {
-        const endpoint = run.endpointFromService(service);
-        existingBackend.endpoints[endpoint.region] =
-          existingBackend.endpoints[endpoint.region] || {};
-        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-      }
-    } catch (err: any) {
-      logger.debug(err.message);
-      unreachableRegions.run = ["unknown"];
-    }
+    await loadCloudRunServices(ctx, existingBackend, unreachableRegions, false);
   } else {
     const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
@@ -584,11 +584,44 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
     unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+
+    if (experiments.isEnabled("dartfunctions")) {
+      await loadCloudRunServices(ctx, existingBackend, unreachableRegions, true);
+    }
   }
 
   ctx.existingBackend = existingBackend;
   ctx.unreachableRegions = unreachableRegions;
   return ctx.existingBackend;
+}
+
+/**
+ * Loads Cloud Run services into the existing backend.
+ * @param ctx Context from the Command library, used for caching.
+ * @param existingBackend The existing backend to load Cloud Run services into.
+ * @param unreachableRegions Object to track unreachable regions.
+ * @param onlyMissing If true, only loads missing Cloud Run services.
+ */
+async function loadCloudRunServices(
+  ctx: Context,
+  existingBackend: Backend,
+  unreachableRegions: { run: string[] },
+  onlyMissing: boolean,
+): Promise<void> {
+  try {
+    const runServices = await run.listServices(ctx.projectId);
+    for (const service of runServices) {
+      const endpoint = run.endpointFromService(service);
+      if (!onlyMissing || !existingBackend.endpoints[endpoint.region]?.[endpoint.id]) {
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    }
+  } catch (err: any) {
+    logger.debug(`Error loading Cloud Run services: ${err.message}`);
+    unreachableRegions.run = ["unknown"];
+  }
 }
 
 /**
@@ -757,4 +790,22 @@ export function compareFunctions(
     return 1;
   }
   return 0;
+}
+
+/**
+ * Returns the deterministic Cloud Run URI for a given HTTPS function and project number if available based on the DNS segment length.
+ * If the function name is too long to have a deterministic URI, this method returns the non-deterministic URI from the backend instead.
+ * See https://docs.cloud.google.com/run/docs/triggering/https-request#deterministic for more details.
+ */
+export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber: string): string {
+  const serviceName = httpsFunc.id.toLowerCase().replaceAll("_", "-");
+  const dnsSegment = `${serviceName}-${projectNumber}`;
+  // TODO: Add deploy-time validation to prevent service names that would exceed this.
+  if (dnsSegment.length > 63) {
+    logger.info(
+      `Function name ${httpsFunc.id} is too long to have a deterministic Cloud Run URI. Printing the non-deterministic URI instead.`,
+    );
+    return httpsFunc.uri!;
+  }
+  return `https://${serviceName}-${projectNumber}.${httpsFunc.region}.run.app`;
 }

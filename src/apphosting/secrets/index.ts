@@ -1,3 +1,5 @@
+import * as clc from "colorette";
+
 import { FirebaseError, getErrStatus, getError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
@@ -9,6 +11,9 @@ import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
 import { Secret } from "../yaml";
+import * as dialogs from "../../apphosting/secrets/dialogs";
+import * as config from "../../apphosting/config";
+import { getProject } from "../../management/projects";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -181,7 +186,7 @@ export async function grantEmailsSecretAccess(
  * If a secret exists, we verify the user is not trying to change the region and verifies a secret
  * is not being used for both functions and app hosting as their garbage collection is incompatible
  * (client vs server-side).
- * @returns true if a secret was created, false if a secret already existed, and null if a user aborts.
+ * @return true if a secret was created, false if a secret already existed, and null if a user aborts.
  */
 export async function upsertSecret(
   project: string,
@@ -231,6 +236,73 @@ export async function upsertSecret(
 }
 
 /**
+ * Matches a fully qualified secret or version name, e.g.
+ * projects/my-project/secrets/my-secret/versions/1
+ * projects/my-project/secrets/my-secret/versions/latest
+ * projects/my-project/secrets/my-secret
+ */
+const secretResourceRegex =
+  /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
+
+/**
+ * Matches a shorthand for a project-relative secret, with optional version, e.g.
+ * my-secret
+ * my-secret@1
+ * my-secret@latest
+ */
+const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
+
+/**
+ * Resolves a secret name into its plaintext value using the Secret Manager access API.
+ * Supports both fully qualified resource names and shorthand strings (e.g. `secret@version`).
+ */
+export async function loadSecret(project: string | undefined, name: string): Promise<string> {
+  let projectId: string;
+  let secretId: string;
+  let version: string;
+  const match = secretResourceRegex.exec(name);
+  if (match) {
+    projectId = match[1];
+    secretId = match[2];
+    version = match[3] || "latest";
+  } else {
+    const match = secretShorthandRegex.exec(name);
+    if (!match) {
+      throw new FirebaseError(`Invalid secret name: ${name}`);
+    }
+    if (!project) {
+      throw new FirebaseError(
+        `Cannot load secret ${match[1]} without a project. ` +
+          `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
+      );
+    }
+    projectId = project;
+    secretId = match[1];
+    version = match[2] || "latest";
+  }
+  try {
+    return await gcsm.accessSecretVersion(projectId, secretId, version);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      const original = err.original;
+      if (typeof original === "object" && original !== null) {
+        if (
+          (original as any).code === 403 ||
+          (original as any).context?.response?.statusCode === 403
+        ) {
+          utils.logLabeledError(
+            "apphosting",
+            `Permission denied to access secret ${secretId}. Use ` +
+              `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+          );
+        }
+      }
+    }
+    throw err;
+  }
+}
+
+/**
  * Fetches secrets from Google Secret Manager and returns their values in plain text.
  */
 export async function fetchSecrets(
@@ -270,4 +342,91 @@ export function getSecretNameParts(secret: string): [string, string] {
   }
 
   return [name, version];
+}
+
+/**
+ * Action for the apphosting:secrets:set command.
+ */
+export async function apphostingSecretsSetAction(
+  secretName: string,
+  projectId: string,
+  projectNumber?: string,
+  location?: string,
+  dataFile?: string,
+  nonInteractive?: boolean,
+): Promise<void> {
+  if (!projectNumber) {
+    projectNumber = (await getProject(projectId)).projectNumber;
+  }
+  const created = await upsertSecret(projectId, secretName, location);
+  if (created === null) {
+    return;
+  } else if (created) {
+    utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
+  }
+
+  const secretValue = await utils.readSecretValue(`Enter a value for ${secretName}`, dataFile);
+
+  const version = await gcsm.addVersion(projectId, secretName, secretValue);
+  utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+  utils.logBullet(
+    `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
+  );
+
+  // If the secret already exists, we want to exit once the new version is added
+  if (!created) {
+    return;
+  }
+
+  const type = await prompt.select({
+    message: "Is this secret for production or only local testing?",
+    choices: [
+      { name: "Production", value: "production" },
+      { name: "Local testing only", value: "local" },
+    ],
+    nonInteractive: !!nonInteractive,
+    default: "production",
+  });
+
+  if (type === "local") {
+    const emailList = await prompt.input({
+      message:
+        "Please enter a comma separated list of user or groups who should have access to this secret:",
+    });
+    if (emailList.length) {
+      await grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+    } else {
+      utils.logBullet(
+        "To grant access in the future run " +
+          clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --emails [email list]`),
+      );
+    }
+    await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
+    return;
+  }
+
+  const accounts = await dialogs.selectBackendServiceAccounts(
+    projectNumber,
+    projectId,
+    !!nonInteractive,
+  );
+
+  // If we're not granting permissions, there's no point in adding to YAML either.
+  if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
+    utils.logWarning(
+      `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`,
+    );
+
+    // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
+  } else {
+    await grantSecretAccess(projectId, projectNumber, secretName, accounts);
+  }
+
+  await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE);
+  utils.logBullet(
+    "To grant additional users access to this secret run " +
+      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) +
+      ".\nTo grant additional backends access to this secret run " +
+      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --backend [backend ID]`),
+  );
 }

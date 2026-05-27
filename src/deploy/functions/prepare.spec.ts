@@ -5,6 +5,9 @@ import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as firestoreService from "./services/firestore";
+import * as storageService from "./services/storage";
+import * as databaseService from "./services/database";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
 import { RuntimeDelegate } from "./runtimes";
@@ -100,6 +103,36 @@ describe("prepare", () => {
       expect(builds.codebase.runtime).to.equal("nodejs20");
     });
 
+    it("should throw and print valid versions in the 'invalid runtime' error message", async () => {
+      const config: ValidatedConfig = [
+        {
+          source: "source",
+          codebase: "codebase",
+          // @ts-expect-error the runtime is intentionally invalid
+          runtime: "does-not-exist",
+        },
+      ];
+      const options = {
+        config: {
+          path: (p: string) => p,
+        },
+        projectId: "project",
+      } as unknown as Options;
+      const firebaseConfig = { projectId: "project" };
+      const runtimeConfig = {};
+
+      await expect(prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig))
+        .to.be.rejectedWith(FirebaseError)
+        .then((error) => {
+          // Should always list latest runtimes
+          expect(error.message).to.include(latest("nodejs"));
+          expect(error.message).to.include(latest("python"));
+
+          // Should never list a decommissioned runtime
+          expect(error.message).to.not.include("nodejs6");
+        });
+    });
+
     it("should pass only firebase config when disallowLegacyRuntimeConfig is true", async () => {
       const config: ValidatedConfig = [
         {
@@ -150,6 +183,338 @@ describe("prepare", () => {
       const callArgs = discoverBuildStub.firstCall.args;
       expect(callArgs[0]).to.deep.equal(runtimeConfig);
       expect(callArgs[0]).to.have.property("customKey", "customValue");
+    });
+  });
+
+  describe("resolveDefaultRegionsForBuild", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getDatabaseStub: sinon.SinonStub;
+    let getBucketStub: sinon.SinonStub;
+    let getDatabaseInstanceDetailsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getDatabaseStub = sandbox.stub(firestoreService, "getDatabase");
+      getBucketStub = sandbox.stub(storageService, "getBucket");
+      getDatabaseInstanceDetailsStub = sandbox.stub(databaseService, "getDatabaseInstanceDetails");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("does nothing if no endpoints or in REGION_TBD", async () => {
+      const want = build.empty();
+      const have = backend.empty();
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints).to.deep.equal({});
+    });
+
+    it("infers region from have backend if unique", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
+
+      const haveE = { ...ENDPOINT, region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves region to us-east1 and correctly formats VPC connector path with us-east1", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/project/locations/us-east1/connectors/my-connector",
+      );
+    });
+
+    it("resolves region and preserves pre-formatted VPC connector paths", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "projects/my-project/locations/us-central1/connectors/my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/my-project/locations/us-central1/connectors/my-connector",
+      );
+    });
+
+    it("throws error if ambiguous", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
+
+      const haveE1 = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const haveE2 = { ...ENDPOINT, id: "id", region: "us-west1" };
+      const have = backend.of(haveE1, haveE2);
+
+      await expect(prepare.resolveDefaultRegionsForBuild(want, have)).to.be.rejectedWith(
+        FirebaseError,
+        /Cannot resolve default region for function id. It exists in multiple regions. The region must be specified to continue./,
+      );
+    });
+
+    it("resolves us-east1 for global resource blocking triggers", async () => {
+      const want = build.of({
+        beforeCreate: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+          },
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["beforeCreate"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves us-east1 for global event triggers", async () => {
+      const want = build.of({
+        onPublish: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["onPublish"].region).to.deep.equal(["us-east1"]);
+    });
+
+    describe("Firestore event triggers", () => {
+      const testCases = [
+        { dbLocation: "nam5", expectedRegion: "us-central1" },
+        { dbLocation: "nam7", expectedRegion: "us-central1" },
+        { dbLocation: "eur3", expectedRegion: "europe-west1" },
+        { dbLocation: "asia-northeast1", expectedRegion: "asia-northeast1" },
+      ];
+
+      testCases.forEach(({ dbLocation, expectedRegion }) => {
+        it(`should resolve ${expectedRegion} when database location is ${dbLocation}`, async () => {
+          const want = build.of({
+            onDocumentCreate: {
+              platform: "gcfv2",
+              entryPoint: "entry",
+              project: "project",
+              runtime: latest("nodejs"),
+              eventTrigger: {
+                eventType: "google.cloud.firestore.document.v1.created",
+                eventFilters: { database: "(default)" },
+                retry: false,
+              },
+              region: [build.REGION_TBD],
+            },
+          });
+          const have = backend.empty();
+
+          getDatabaseStub.resolves({ locationId: dbLocation });
+
+          await prepare.resolveDefaultRegionsForBuild(want, have);
+
+          expect(want.endpoints["onDocumentCreate"].region).to.deep.equal([expectedRegion]);
+        });
+      });
+    });
+
+    describe("Storage event triggers", () => {
+      const testCases = [
+        { bucketLocation: "us", expectedRegion: "us-east1" },
+        { bucketLocation: "eu", expectedRegion: "europe-west1" },
+        { bucketLocation: "asia", expectedRegion: "asia-east1" },
+        { bucketLocation: "us-central1", expectedRegion: "us-central1" },
+      ];
+
+      testCases.forEach(({ bucketLocation, expectedRegion }) => {
+        it(`should resolve ${expectedRegion} when bucket location is ${bucketLocation}`, async () => {
+          const want = build.of({
+            onArchive: {
+              platform: "gcfv2",
+              entryPoint: "entry",
+              project: "project",
+              runtime: latest("nodejs"),
+              eventTrigger: {
+                eventType: "google.cloud.storage.object.v1.archived",
+                eventFilters: { bucket: "my-bucket" },
+                retry: false,
+              },
+              region: [build.REGION_TBD],
+            },
+          });
+          const have = backend.empty();
+
+          getBucketStub.resolves({ location: bucketLocation });
+
+          await prepare.resolveDefaultRegionsForBuild(want, have);
+
+          expect(want.endpoints["onArchive"].region).to.deep.equal([expectedRegion]);
+        });
+      });
+    });
+
+    it("resolves region for Database event triggers based on instance location", async () => {
+      const want = build.of({
+        onWrite: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.database.ref.v1.written",
+            eventFilters: { instance: "my-instance" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      getDatabaseInstanceDetailsStub.resolves({ location: "europe-west1" });
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["onWrite"].region).to.deep.equal(["europe-west1"]);
+    });
+
+    it("resolves region for DataConnect event triggers based on service location", async () => {
+      const want = build.of({
+        onMutationExecuted: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+            eventFilters: {
+              service: "projects/project/locations/europe-west1/services/my-service",
+            },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["onMutationExecuted"].region).to.deep.equal(["europe-west1"]);
+    });
+
+    it("resolves region for DataConnect event triggers based on connector location", async () => {
+      const want = build.of({
+        onMutationExecutedConnector: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+            eventFilters: {
+              connector:
+                "projects/project/locations/europe-west2/services/my-service/connectors/my-connector",
+            },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["onMutationExecutedConnector"].region).to.deep.equal(["europe-west2"]);
+    });
+
+    it("does not infer region from have backend if it belongs to a different codebase", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "europe-west1", codebase: "codebaseB" };
+      const have = backend.of(haveE);
+
+      const relevantEndpoints = backend
+        .allEndpoints(have)
+        .filter((e) => e.codebase === "codebaseA" || e.codebase === undefined);
+
+      await prepare.resolveDefaultRegionsForBuild(want, backend.of(...relevantEndpoints));
+
+      expect(want.endpoints["id"].region).to.deep.equal(["us-central1"]);
     });
   });
 
@@ -257,6 +622,18 @@ describe("prepare", () => {
       expect(want.availableMemoryMb).to.equal(512);
     });
 
+    it("fills in timeout from last deploy", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      const have: backend.Endpoint = JSON.parse(JSON.stringify(want));
+      have.timeoutSeconds = 120;
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.timeoutSeconds).to.equal(120);
+    });
+
     it("downgrades concurrency if necessary (explicit)", () => {
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,
@@ -308,6 +685,28 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
       prepare.resolveCpuAndConcurrency(backend.of(want));
       expect(want.concurrency).to.equal(1);
+    });
+
+    it("defaults timeout to 60 for run platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "run",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.equal(60);
+    });
+
+    it("does not default timeout for gcfv2 platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.be.undefined;
     });
   });
 

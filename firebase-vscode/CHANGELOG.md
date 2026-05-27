@@ -1,5 +1,41 @@
 ## NEXT
 
+- [Changed] Replace generateSchema and generateQuery backends with the new fdc AgentService API.
+- [Added] Improved error handling and status updates for query generation
+- [Added] Local schema aware query generation
+
+## 2.3.2
+
+- Update internal `firebase-tools` dependency to 15.18.0
+
+## 2.3.1
+
+- Update internal `firebase-tools` dependency to 15.16.0
+
+## 2.3.0
+
+- Rename product from Firebase Data Connect to Firebase SQL Connect.
+
+## 2.2.3
+
+- Update internal `firebase-tools` dependency to 15.13.0
+
+## 2.2.2
+
+- Update internal `firebase-tools` dependency to 15.12.0
+
+## 2.2.1
+
+- Update internal `firebase-tools` dependency to 15.10.0
+
+## 2.2.0
+
+- Update internal `firebase-tools` dependency to 15.9.0
+
+## 2.1.2
+
+- Update internal `firebase-tools` dependency to 15.7.0
+
 ## 2.1.1
 
 - Update internal `firebase-tools` dependency to 15.5.1

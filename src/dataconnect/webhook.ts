@@ -37,7 +37,7 @@ export async function sendVSCodeMessage(body: WebhookBody) {
     });
   } catch (e) {
     logger.debug(
-      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.`,
+      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.`,
     );
   }
 }

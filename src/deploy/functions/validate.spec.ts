@@ -464,6 +464,24 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
 
+    it("disallows unrecognized blocking trigger types", () => {
+      const ep: backend.Endpoint = {
+        platform: "gcfv2",
+        id: "id",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: "google.firebase.ailogic.v1.invalidEvent",
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /Unrecognized blocking trigger type: google.firebase.ailogic.v1.invalidEvent. Please update your CLI/,
+      );
+    });
+
     it("errors for scheduled functions with timeout > 1800s", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
@@ -673,6 +691,29 @@ describe("validate", () => {
         await validate.secretsAreValid(project, b);
         expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
       }
+    });
+
+    it("passes validation for Cloud Run (platform=run) functions with secrets", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "1",
+        state: "ENABLED",
+      });
+
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "run",
+        secretEnvironmentVariables: [
+          {
+            projectId: project,
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      });
+
+      await validate.secretsAreValid(project, b);
+      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
     });
   });
 

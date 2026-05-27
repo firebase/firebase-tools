@@ -89,7 +89,16 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
-    serviceForEndpoint(ep).validateTrigger(ep, wantBackend);
+    const service = serviceForEndpoint(ep);
+    if (backend.isBlockingTriggered(ep)) {
+      if (service.name === "noop") {
+        throw new FirebaseError(
+          `Unrecognized blocking trigger type: ${ep.blockingTrigger.eventType}. Please update your CLI with ${clc.bold("npm install -g firebase-tools@latest")}.`,
+          { exit: 1 },
+        );
+      }
+    }
+    service.validateTrigger(ep, wantBackend);
   }
 
   // Our SDK doesn't let people articulate this, but it's theoretically possible in the manifest syntax.
@@ -329,7 +338,8 @@ export async function secretsAreValid(projectId: string, wantBackend: backend.Ba
   await validateSecretVersions(projectId, endpoints);
 }
 
-const secretsSupportedPlatforms = ["gcfv1", "gcfv2"];
+const secretsSupportedPlatforms: readonly backend.FunctionsPlatform[] =
+  backend.AllFunctionsPlatforms;
 /**
  * Ensures that all endpoints specifying secret environment variables target platform that supports the feature.
  */

@@ -17,11 +17,11 @@ const apiClient = new Client({ urlPrefix: firebaseApiOrigin() });
 
 const LEGACY_RUNTIME_CONFIG_EXPERIMENT = "legacyRuntimeConfigCommands";
 
-const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE = `DEPRECATION NOTICE: Action required before March 2026
+const FUNCTIONS_CONFIG_DEPRECATION_MESSAGE = `DEPRECATION NOTICE: Action required before March 2027
 
-The functions.config() API and the Cloud Runtime Config service are deprecated. Deploys that rely on functions.config() will fail once Runtime Config shuts down in March 2026.
+The functions.config() API and the Cloud Runtime Config service are deprecated. Deploys that rely on functions.config() will fail once Runtime Config shuts down in March 2027.
 
-The legacy functions:config:* CLI commands are deprecated and will be removed before March 2026.
+The legacy functions:config:* CLI commands are deprecated and will be removed before March 2027.
 
 Learn how to migrate from functions.config() to the params package:
 

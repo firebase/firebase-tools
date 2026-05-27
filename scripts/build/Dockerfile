@@ -11,4 +11,4 @@ RUN curl -fsSL --output hub.tgz https://github.com/github/hub/releases/download/
 RUN tar --strip-components=2 -C /usr/bin -xf hub.tgz hub-linux-amd64-2.14.2/bin/hub
 
 # Upgrade npm to 10.
-RUN npm install --global npm@10.8
+RUN npm install --global npm@11.9

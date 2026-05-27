@@ -7,7 +7,7 @@ const STAGING_DATACONNECT_SA_DOMAIN = "gcp-sa-staging-dataconnect.iam.gserviceac
 const PROD_DATACONNECT_SA_DOMAIN = "gcp-sa-firebasedataconnect.iam.gserviceaccount.com";
 
 /**
- * Sets a Firebase Data Connect event trigger's region to the function region.
+ * Sets a Firebase SQL Connect event trigger's region to the function region.
  * @param endpoint the database endpoint
  */
 export function ensureDataConnectTriggerRegion(
@@ -18,14 +18,14 @@ export function ensureDataConnectTriggerRegion(
   }
   if (endpoint.eventTrigger.region !== endpoint.region) {
     throw new FirebaseError(
-      "The Firebase Data Connect trigger location must match the function region.",
+      "The Firebase SQL Connect trigger location must match the function region.",
     );
   }
   return Promise.resolve();
 }
 
 /**
- * Gets the P4SA for Firebase Data Connect for the given project number.
+ * Gets the P4SA for Firebase SQL Connect for the given project number.
  * @param projectNumber project identifier
  */
 export function getDataConnectP4SA(projectNumber: string): string {

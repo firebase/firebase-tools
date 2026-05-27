@@ -9,6 +9,8 @@ import * as gce from "../../gcp/computeEngine";
 import * as gcsmImport from "../../gcp/secretManager";
 import * as utilsImport from "../../utils";
 import * as promptImport from "../../prompt";
+import * as dialogs from "./dialogs";
+import * as config from "../config";
 
 import { Secret } from "../yaml";
 import { FirebaseError } from "../../error";
@@ -415,6 +417,90 @@ describe("secrets", () => {
         projectId,
         "projects/test-project/secrets/secretID",
         "latest",
+      );
+    });
+  });
+
+  describe("apphostingSecretsSetAction", () => {
+    let selectBackendServiceAccounts: sinon.SinonStub;
+    let maybeAddSecretToYaml: sinon.SinonStub;
+
+    beforeEach(() => {
+      selectBackendServiceAccounts = sinon.stub(dialogs, "selectBackendServiceAccounts");
+      maybeAddSecretToYaml = sinon.stub(config, "maybeAddSecretToYaml");
+    });
+
+    it("aborts if upsertSecret returns null", async () => {
+      gcsm.getSecret.rejects({ status: 500 }); // triggers Unexpected error loading secret
+
+      await expect(
+        secrets.apphostingSecretsSetAction("secret", "project", "12345"),
+      ).to.be.rejectedWith("Unexpected error loading secret");
+    });
+
+    it("creates a new secret and grants access", async () => {
+      gcsm.getSecret.rejects({ status: 404 });
+      utils.readSecretValue.resolves("secretValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+      prompt.select.resolves("production");
+      selectBackendServiceAccounts.resolves({
+        buildServiceAccounts: ["buildSA"],
+        runServiceAccounts: ["runSA"],
+      });
+      gcsm.getIamPolicy.resolves({ bindings: [], etag: "etag", version: 1 });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.createSecret).to.have.been.called;
+      expect(gcsm.addVersion).to.have.been.calledWith("project", "secret", "secretValue");
+      expect(gcsm.setIamPolicy).to.have.been.called;
+      expect(maybeAddSecretToYaml).to.have.been.calledWith(
+        "secret",
+        config.APPHOSTING_BASE_YAML_FILE,
+      );
+    });
+
+    it("updates an existing secret and exits", async () => {
+      gcsm.getSecret.resolves({
+        name: "secret",
+        projectId: "project",
+        labels: gcsm.labels("apphosting"),
+        replication: { automatic: {} },
+      });
+      utils.readSecretValue.resolves("newValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.addVersion).to.have.been.calledWith("project", "secret", "newValue");
+      expect(prompt.select).to.not.have.been.called;
+    });
+
+    it("handles local secrets", async () => {
+      gcsm.getSecret.rejects({ status: 404 });
+      utils.readSecretValue.resolves("localValue");
+      gcsm.addVersion.resolves({
+        secret: { name: "secret", projectId: "project" } as any,
+        versionId: "1",
+      } as any);
+      prompt.select.resolves("local");
+      prompt.input.resolves("user@example.com");
+      gcsm.getIamPolicy.resolves({ bindings: [], etag: "etag", version: 1 });
+      gcsm.setIamPolicy.resolves();
+
+      await secrets.apphostingSecretsSetAction("secret", "project", "12345");
+
+      expect(gcsm.setIamPolicy).to.have.been.called;
+      expect(maybeAddSecretToYaml).to.have.been.calledWith(
+        "secret",
+        config.APPHOSTING_EMULATORS_YAML_FILE,
       );
     });
   });

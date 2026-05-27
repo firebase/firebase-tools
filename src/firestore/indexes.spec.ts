@@ -269,6 +269,167 @@ describe("IndexValidation", () => {
     }).to.throw(FirebaseError, /Must contain "flat"/);
   });
 
+  it("should accept a valid searchConfig index", () => {
+    idx.validateSpec(
+      idx.upgradeOldSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  textSpec: {
+                    indexSpecs: [
+                      {
+                        indexType: "TOKENIZED",
+                        matchType: "MATCH_GLOBALLY",
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+  });
+
+  it("should accept a valid searchConfig index with geoSpec", () => {
+    idx.validateSpec(
+      idx.upgradeOldSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  geoSpec: {
+                    geoJsonIndexingDisabled: true,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+  });
+
+  it("should reject invalid searchConfig missing indexType", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  textSpec: {
+                    indexSpecs: [
+                      {
+                        matchType: "MATCH_GLOBALLY",
+                      } as any,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Must contain "indexType"/);
+  });
+
+  it("should reject invalid searchConfig missing matchType", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  textSpec: {
+                    indexSpecs: [
+                      {
+                        indexType: "TOKENIZED",
+                      } as any,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Must contain "matchType"/);
+  });
+
+  it("should reject invalid searchConfig with invalid indexType", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  textSpec: {
+                    indexSpecs: [
+                      {
+                        indexType: "INVALID",
+                        matchType: "MATCH_GLOBALLY",
+                      } as any,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Field "indexType" must be one of/);
+  });
+
+  it("should reject invalid searchConfig with invalid matchType", () => {
+    expect(() => {
+      idx.validateSpec({
+        indexes: [
+          {
+            collectionGroup: "collection",
+            queryScope: "COLLECTION",
+            fields: [
+              {
+                fieldPath: "foo",
+                searchConfig: {
+                  textSpec: {
+                    indexSpecs: [
+                      {
+                        indexType: "TOKENIZED",
+                        matchType: "INVALID",
+                      } as any,
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+    }).to.throw(FirebaseError, /Field "matchType" must be one of/);
+  });
+
   it("should reject an incomplete index spec", () => {
     expect(() => {
       idx.validateSpec({
@@ -299,7 +460,10 @@ describe("IndexValidation", () => {
           },
         ],
       });
-    }).to.throw(FirebaseError, /Must contain exactly one of "order,arrayConfig,vectorConfig"/);
+    }).to.throw(
+      FirebaseError,
+      /Must contain exactly one of "order,arrayConfig,searchConfig,vectorConfig"/,
+    );
   });
 });
 describe("IndexSpecMatching", () => {
@@ -323,6 +487,19 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: API.Order.ASCENDING },
         { fieldPath: "bar", arrayConfig: API.ArrayConfig.CONTAINS },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        {
+          fieldPath: "qux",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                {
+                  indexType: API.TextIndexType.TOKENIZED,
+                  matchType: API.TextMatchType.MATCH_GLOBALLY,
+                },
+              ],
+            },
+          },
+        },
         { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
       state: API.State.READY,
@@ -335,6 +512,19 @@ describe("IndexSpecMatching", () => {
         { fieldPath: "foo", order: "ASCENDING" },
         { fieldPath: "bar", arrayConfig: "CONTAINS" },
         { fieldPath: "baz", vectorConfig: { dimension: 384, flat: {} } },
+        {
+          fieldPath: "qux",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                {
+                  indexType: "TOKENIZED",
+                  matchType: "MATCH_GLOBALLY",
+                },
+              ],
+            },
+          },
+        },
         { fieldPath: "__name__", order: API.Order.ASCENDING },
       ],
     } as Spec.Index;
@@ -356,6 +546,41 @@ describe("IndexSpecMatching", () => {
 
     expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
     expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.ENTERPRISE)).to.eql(false);
+  });
+
+  it("should identify a negative index spec match with different search config", () => {
+    const apiIndex = {
+      ...baseApiIndex,
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            textSpec: {
+              indexSpecs: [
+                {
+                  indexType: API.TextIndexType.TOKENIZED,
+                  matchType: API.TextMatchType.MATCH_GLOBALLY,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    };
+
+    const specIndex = {
+      ...baseSpecIndex,
+      fields: [
+        {
+          fieldPath: "foo",
+          searchConfig: {
+            geoSpec: { geoJsonIndexingDisabled: true },
+          },
+        },
+      ],
+    } as Spec.Index;
+
+    expect(idx.indexMatchesSpec(apiIndex, specIndex, DatabaseEdition.STANDARD)).to.eql(false);
   });
 
   it("should identify a positive index spec match with apiScope, density, multikey, and unique", () => {

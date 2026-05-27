@@ -955,7 +955,7 @@ export async function promptForDirectory(args: {
   default?: boolean;
   relativeTo?: string;
 }): Promise<string> {
-  let dir: string = "";
+  let dir = "";
   while (!dir) {
     const promptPath = await input(args.message);
     let target: string;
@@ -977,7 +977,7 @@ export async function promptForDirectory(args: {
   return dir;
 }
 
-/*
+/**
  * Deeply compares two JSON-serializable objects.
  * It's a simplified version of a deep equal function, sufficient for comparing the structure
  * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
@@ -1054,4 +1054,16 @@ export function resolveWithin(base: string, subPath: string, errMsg?: string): s
     throw new FirebaseError(errMsg || `Path "${subPath}" must be within "${base}".`);
   }
   return abs;
+}
+
+/**
+ * Converts a string to lower snake case.
+ * Useful for converting camelCase for Python or Terraform
+ */
+export function toLowerSnakeCase(s: string): string {
+  return s
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[-\s]+/g, "_")
+    .toLowerCase();
 }
