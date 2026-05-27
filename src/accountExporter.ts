@@ -44,8 +44,8 @@ const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
 ]);
 
 function escapeCsv(str: string): string {
-  if (str.includes(",") || str.includes('"')) {
-    // Encapsulate the string with quotes if it contains a comma.
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    // Encapsulate the string with quotes if it contains a comma, quote, or newline.
     // Also escape any existing quotes by doubling them.
     return `"${str.replace(/"/g, '""')}"`;
   }
