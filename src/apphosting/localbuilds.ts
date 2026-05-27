@@ -21,6 +21,8 @@ interface UniversalMakerOutput {
 
 /**
  * Runs the Universal Maker binary to build the project.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the copied source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
 export async function runUniversalMaker(
   projectRoot: string,
@@ -35,6 +37,9 @@ export async function runUniversalMaker(
  * Orchestrates the Universal Maker binary execution, including setting up temporary
  * output directories, injecting FAH-specific environment variables, and handling
  * binary-level execution errors (e.g., permission issues).
+ * @param universalMakerBinary - The absolute path to the Universal Maker executable.
+ * @param projectRoot - The path to the temporary scratch directory containing the project source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
 function executeUniversalMakerBinary(
   universalMakerBinary: string,
@@ -42,9 +47,9 @@ function executeUniversalMakerBinary(
   addedEnv?: NodeJS.ProcessEnv,
 ): void {
   try {
-    const bundleOutput = path.join(projectRoot, "bundle_output");
-    fs.removeSync(bundleOutput);
-    fs.ensureDirSync(bundleOutput);
+    const targetAppHosting = path.join(projectRoot, ".apphosting");
+    fs.removeSync(targetAppHosting);
+    fs.ensureDirSync(targetAppHosting);
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
@@ -55,7 +60,7 @@ function executeUniversalMakerBinary(
           ...process.env,
           ...addedEnv,
           X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: bundleOutput,
+          FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
         },
         stdio: "pipe",
       },
@@ -126,24 +131,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
 
-  const bundleOutput = path.join(projectRoot, "bundle_output");
-  const targetAppHosting = path.join(projectRoot, ".apphosting");
-
-  // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
-  // To avoid this, we output to bundle_output first, and then safely move the files over.
-  if (fs.existsSync(bundleOutput)) {
-    fs.ensureDirSync(targetAppHosting);
-    const files = fs.readdirSync(bundleOutput);
-    for (const file of files) {
-      const dest = path.join(targetAppHosting, file);
-      if (fs.existsSync(dest)) {
-        fs.removeSync(dest);
-      }
-      fs.moveSync(path.join(bundleOutput, file), dest);
-    }
-    fs.removeSync(bundleOutput);
-  }
-
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
@@ -206,7 +193,7 @@ export interface AppHostingBuildOutput {
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
- * @param projectRoot - The root directory of the project to build.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the project source files.
  * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
@@ -271,21 +258,18 @@ export async function localBuild(
 }
 
 async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
-  const entries = await Promise.all(
-    Object.entries(env).map(async ([key, value]) => {
-      if (value.availability && !value.availability.includes("BUILD")) {
-        return null;
-      }
+  const buildVars = Object.entries(env).filter(([, value]) => {
+    return !value.availability || value.availability.includes("BUILD");
+  });
 
-      if (value.secret) {
-        const resolvedValue = await loadSecret(projectId, value.secret);
-        return [key, resolvedValue];
-      } else {
-        return [key, value.value || ""];
-      }
+  const resolvedEntries = await Promise.all(
+    buildVars.map(async ([key, value]) => {
+      const resolvedValue = value.secret
+        ? await loadSecret(projectId, value.secret)
+        : value.value || "";
+      return [key, resolvedValue];
     }),
   );
 
-  const filteredEntries = entries.filter((entry): entry is [string, string] => entry !== null);
-  return Object.fromEntries(filteredEntries) as NodeJS.ProcessEnv;
+  return Object.fromEntries(resolvedEntries) as NodeJS.ProcessEnv;
 }
