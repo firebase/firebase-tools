@@ -152,11 +152,11 @@ describe("apphosting", () => {
         ignore: [],
         localBuild: true,
       });
-      expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal(["./next/standalone"]);
-      expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal(buildConfig);
-      expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal(
-        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedPathHash}`),
-      );
+      expect(context.backendLocalBuilds["foo"]).to.deep.equal({
+        outputFiles: ["./next/standalone"],
+        localBuildScratchDir: path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedPathHash}`),
+        buildConfig,
+      });
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
         apphosting.serviceAgentEmail("123456789"),
