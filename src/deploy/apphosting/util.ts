@@ -26,7 +26,6 @@ export async function createLocalBuildTarArchive(
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
-
   const filesToPackage = outputFiles.length > 0 ? outputFiles : ["."];
   const allFiles: string[] = [];
 

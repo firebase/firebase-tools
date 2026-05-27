@@ -23,7 +23,6 @@ describe("util", () => {
   });
 
   describe("createLocalBuildTarArchive", () => {
-
     it("should NOT respect ignore patterns in config for local builds", async () => {
       fs.writeFileSync(path.join(distDir, "index.js"), "console.log('hello')");
       fs.writeFileSync(path.join(distDir, "ignored.txt"), "ignore me");
@@ -106,7 +105,6 @@ describe("util", () => {
     });
 
     it("should package mixed files and folders dynamically using fs.statSync", async () => {
-
       const serverDir = path.join(rootDir, "server");
       fs.mkdirSync(serverDir);
       fs.writeFileSync(path.join(serverDir, "index.js"), "console.log('server')");
