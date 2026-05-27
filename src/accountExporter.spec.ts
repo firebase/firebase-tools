@@ -220,7 +220,7 @@ describe("accountExporter", () => {
         '"Foo ""Bar"" Baz"' +
         Array(22).join(",") + // A lot of empty fields.
         singleUser.disabled;
-      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + ",," + os.EOL);
+      expect(spyWrite.getCall(0).args[0]).to.eq(expectedEntry + Array(27).join(",") + os.EOL);
       expect(nock.isDone()).to.be.true;
     });
 
