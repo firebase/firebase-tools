@@ -119,11 +119,6 @@ describe("apphosting", () => {
       };
       const context = initializeContext();
 
-      const annotations = {
-        adapterPackageName: "@apphosting/angular-adapter",
-        adapterVersion: "14.1",
-        framework: "nextjs",
-      };
       const buildConfig = {
         runCommand: "npm run build:prod",
         env: [],
@@ -131,7 +126,6 @@ describe("apphosting", () => {
       sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: ["./next/standalone"],
         buildConfig,
-        annotations,
       });
       listBackendsStub.onFirstCall().resolves({
         backends: [
@@ -154,7 +148,6 @@ describe("apphosting", () => {
         outputFiles: ["./next/standalone"],
         localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_foo`),
         buildConfig,
-        annotations,
       });
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
@@ -214,7 +207,6 @@ describe("apphosting", () => {
         .resolves({
           outputFiles: ["./next/standalone-prod"],
           buildConfig: { runCommand: "npm run build:prod", env: [] },
-          annotations: { framework: "nextjs" },
         });
       localBuildStub
         .withArgs(
@@ -225,7 +217,6 @@ describe("apphosting", () => {
         .resolves({
           outputFiles: ["./next/standalone-staging"],
           buildConfig: { runCommand: "npm run build:staging", env: [] },
-          annotations: { framework: "nextjs" },
         });
 
       listBackendsStub.onFirstCall().resolves({
@@ -281,7 +272,6 @@ describe("apphosting", () => {
       const localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: ["./next/standalone"],
         buildConfig: { runCommand: "npm run build", env: [] },
-        annotations: {},
       });
 
       listBackendsStub.onFirstCall().resolves({
@@ -342,7 +332,6 @@ describe("apphosting", () => {
       const localBuildStub = sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: ["./next/standalone"],
         buildConfig: { runCommand: "npm run build", env: [] },
-        annotations: {},
       });
 
       listBackendsStub.onFirstCall().resolves({
@@ -454,7 +443,6 @@ describe("apphosting", () => {
       sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: ["./next/standalone", "./another/path"],
         buildConfig: { runCommand: "npm run start" },
-        annotations: {},
       });
       listBackendsStub.onFirstCall().resolves({
         backends: [
@@ -489,7 +477,6 @@ describe("apphosting", () => {
       sinon.stub(localbuilds, "localBuild").resolves({
         outputFiles: [],
         buildConfig: { runCommand: "npm run start" },
-        annotations: {},
       });
       listBackendsStub.onFirstCall().resolves({
         backends: [
