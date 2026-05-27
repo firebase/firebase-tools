@@ -87,7 +87,6 @@ describe("apphosting", () => {
               runCommand: "npm run build",
               env: [{ variable: "VAR1", value: "VALUE1" }],
             },
-            annotations: {},
           },
         },
       };

@@ -46,7 +46,6 @@ function initializeContext(): Context {
         outputFiles: ["./nextjs/standalone"],
         localBuildScratchDir: path.join(process.cwd(), `${LOCAL_BUILD_DIR_NAME}_fooLocalBuild`),
         buildConfig: {},
-        annotations: {},
       },
     },
   };

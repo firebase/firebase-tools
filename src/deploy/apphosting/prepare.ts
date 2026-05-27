@@ -202,7 +202,7 @@ export default async function (context: Context, options: Options): Promise<void
     try {
       await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
 
-      const { outputFiles, annotations, buildConfig } = await localBuild(
+      const { outputFiles, buildConfig } = await localBuild(
         projectId,
         localBuildScratchDir,
         buildEnv[cfg.backendId] || {},
@@ -218,7 +218,6 @@ export default async function (context: Context, options: Options): Promise<void
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
         },
-        annotations,
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
