@@ -98,14 +98,7 @@ function parseBundleYaml(
   };
 
   const runCommand = bundleData?.runConfig?.runCommand ?? defaultRunCommand;
-  const outputFiles = bundleData?.outputFiles?.serverApp?.include;
-
-  if (!outputFiles) {
-    throw new FirebaseError(
-      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
-    );
-  }
-
+  const outputFiles = bundleData?.outputFiles?.serverApp?.include ?? [];
   return { runCommand, outputFiles };
 }
 
