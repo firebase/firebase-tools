@@ -487,6 +487,7 @@ firebaseSuite("registerConfig", () => {
         cb: (uri: vscode.Uri) => void,
       ) {
         const listeners = (watcherListeners[pattern] ??= {});
+        assert.equal(watcherListeners[pattern]?.create, undefined);
         listeners[type] = cb;
         return { dispose: () => {} };
       }

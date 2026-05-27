@@ -18,7 +18,6 @@ firebaseSuite("generateOperation Error Handling", () => {
   let buildStub: any;
   let ensureGIFApiTosStub: any;
   let authStub: any;
-  let refreshAuthStub: any;
   let executionDisposable: vscode.Disposable;
 
   setup(() => {
@@ -26,22 +25,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     showInformationMessageStub = stub(vscode.window, "showInformationMessage");
     buildStub = stub(DataConnectEmulator, "build");
     ensureGIFApiTosStub = stub(ensureApis, "ensureGIFApiTos").resolves(true);
-
-    // Mock authentication properly for apiv2
     authStub = stub(auth, "getAccessToken").resolves({ access_token: "an_access_token" });
     setAccessToken("an_access_token");
-
-    // We also need to stub refreshAuth in apiv2, or any direct call to refreshAuth if needed
-    // Actually requireAuth.ts exports refreshAuth, so let's mock it
-    const requireAuth = require("../../../../src/requireAuth");
-    if (requireAuth.refreshAuth) {
-        refreshAuthStub = stub(requireAuth, "refreshAuth").resolves({ access_token: "an_access_token" });
-    }
-
-    const apiv2 = require("../../../../src/apiv2");
-    if (apiv2.getAccessToken) {
-        stub(apiv2, "getAccessToken").resolves("an_access_token");
-    }
 
     stub(vscode.window, "withProgress").callsFake(async (options, task) => {
         return task({ report: () => {} }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose: () => {} }) } as any);

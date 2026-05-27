@@ -69,6 +69,7 @@ firebaseSuite("registerDataConnectConfigs", async () => {
         cb: (uri: vscode.Uri) => void,
       ) {
         const listeners = (watcherListeners[pattern] ??= {});
+        assert.equal(watcherListeners[pattern]?.create, undefined);
         listeners[type] = cb;
         return { dispose: () => {} };
       }
@@ -102,12 +103,8 @@ firebaseSuite("registerDataConnectConfigs", async () => {
       const dataConnectFile = path.join(dir, "**/{dataconnect,connector}.yaml");
 
       function testDataConnectEvent(event: "create" | "update" | "delete") {
-        // use a real file path for testing instead of a glob pattern
-        const realFile = path.join(dir, "dataconnect.yaml");
-        fs.writeFileSync(realFile, `specVersion: ${event}`);
-        if (dataConnectListeners && dataConnectListeners[event]) {
-            dataConnectListeners[event]!(vscode.Uri.file(realFile));
-        }
+        fs.writeFileSync(dataConnectFile, `specVersion: ${event}`);
+        dataConnectListeners[event]!(vscode.Uri.file(dataConnectFile));
 
         assert.deepEqual(dataConnectConfigs.value, [{}]);
       }
