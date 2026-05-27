@@ -6,8 +6,7 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
-
-import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
+import { logLabeledWarning } from "../../utils";
 
 /**
  * Creates a temporary tarball of the project source or build artifacts.
@@ -27,46 +26,30 @@ export async function createLocalBuildTarArchive(
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
-  let allFiles: string[] = [];
 
-  if (outputFiles.length > 0) {
-    for (const fileOrDir of outputFiles) {
-      const absolutePath = path.join(rootDir, fileOrDir);
-      if (!fs.existsSync(absolutePath)) {
-        continue;
-      }
-      const stat = fs.statSync(absolutePath);
-      if (stat.isDirectory()) {
-        const rdrFiles = await fsAsync.readdirRecursive({
-          path: absolutePath,
-          ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
-          supportGitIgnore: false,
-        });
-        allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
-      } else {
-        allFiles.push(path.relative(rootDir, absolutePath));
-      }
-    }
+  const filesToPackage = outputFiles.length > 0 ? outputFiles : ["."];
+  const allFiles: string[] = [];
 
-    const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
-      return APPHOSTING_YAML_FILE_REGEX.test(file);
-    });
-    for (const file of defaultFiles) {
-      if (!allFiles.includes(file)) {
-        allFiles.push(file);
-      }
+  for (const fileOrDir of filesToPackage) {
+    const absolutePath = path.join(rootDir, fileOrDir);
+    if (!fs.existsSync(absolutePath)) {
+      logLabeledWarning(
+        "apphosting",
+        `Expected build output file or directory not found: ${fileOrDir}`,
+      );
+      continue;
     }
-    const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
-    if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
-      allFiles.push(bundleYamlPath);
+    const stat = fs.statSync(absolutePath);
+    if (stat.isDirectory()) {
+      const rdrFiles = await fsAsync.readdirRecursive({
+        path: absolutePath,
+        ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+        supportGitIgnore: false,
+      });
+      allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
+    } else {
+      allFiles.push(path.relative(rootDir, absolutePath));
     }
-  } else {
-    const rdrFiles = await fsAsync.readdirRecursive({
-      path: rootDir,
-      ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
-      supportGitIgnore: false,
-    });
-    allFiles = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
   }
 
   // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
