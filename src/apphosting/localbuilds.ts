@@ -24,7 +24,7 @@ interface UniversalMakerOutput {
  */
 export async function runUniversalMaker(
   projectRoot: string,
-  addedEnv: Record<string, string> = {},
+  addedEnv?: NodeJS.ProcessEnv,
 ): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
   executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv);
@@ -39,7 +39,7 @@ export async function runUniversalMaker(
 function executeUniversalMakerBinary(
   universalMakerBinary: string,
   projectRoot: string,
-  addedEnv: Record<string, string> = {},
+  addedEnv?: NodeJS.ProcessEnv,
 ): void {
   try {
     const bundleOutput = path.join(projectRoot, "bundle_output");
@@ -245,10 +245,7 @@ export async function localBuild(
   }
 
   const addedEnv = await toProcessEnv(projectId, env);
-  const apphostingBuildOutput = await runUniversalMaker(
-    projectRoot,
-    addedEnv as Record<string, string>,
-  );
+  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const annotations: Record<string, string> = Object.fromEntries(
     Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
