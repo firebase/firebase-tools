@@ -6,6 +6,7 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
+import { logLabeledWarning } from "../../utils";
 
 import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
 
@@ -33,6 +34,10 @@ export async function createLocalBuildTarArchive(
   for (const fileOrDir of filesToPackage) {
     const absolutePath = path.join(rootDir, fileOrDir);
     if (!fs.existsSync(absolutePath)) {
+      logLabeledWarning(
+        "apphosting",
+        `Expected build output file or directory not found: ${fileOrDir}`,
+      );
       continue;
     }
     const stat = fs.statSync(absolutePath);
