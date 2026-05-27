@@ -1,6 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as os from "os";
+import * as path from "path";
+import * as crypto from "crypto";
 import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
 import * as apiEnabled from "../../ensureApiEnabled";
@@ -49,6 +51,8 @@ function initializeContext(): Context {
 }
 
 describe("apphosting", () => {
+  const expectedHash = crypto.createHash("md5").update(process.cwd()).digest("hex").substring(0, 8);
+
   const opts = {
     ...BASE_OPTS,
     projectId: "my-project",
@@ -147,7 +151,7 @@ describe("apphosting", () => {
       expect(context.backendLocalBuilds["foo"].outputFiles).to.deep.equal(["./next/standalone"]);
       expect(context.backendLocalBuilds["foo"].buildConfig).to.deep.equal(buildConfig);
       expect(context.backendLocalBuilds["foo"].localBuildScratchDir).to.equal(
-        "/tmp/apphosting-local-build-foo-e1feae81",
+        path.join(os.tmpdir(), `apphosting-local-build-foo-${expectedHash}`),
       );
       expect(addServiceAccountToRolesStub).to.have.been.calledWith(
         "my-project",
@@ -201,7 +205,10 @@ describe("apphosting", () => {
       localBuildStub
         .withArgs(
           sinon.match.any,
-          sinon.match((p: string) => p === "/tmp/apphosting-local-build-backend-prod-e1feae81"),
+          sinon.match(
+            (p: string) =>
+              p === path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedHash}`),
+          ),
           sinon.match.any,
         )
         .resolves({
@@ -211,7 +218,11 @@ describe("apphosting", () => {
       localBuildStub
         .withArgs(
           sinon.match.any,
-          sinon.match((p: string) => p === "/tmp/apphosting-local-build-backend-staging-e1feae81"),
+          sinon.match(
+            (p: string) =>
+              p ===
+              path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedHash}`),
+          ),
           sinon.match.any,
         )
         .resolves({
@@ -229,10 +240,10 @@ describe("apphosting", () => {
       await prepare(context, optsWithMultipleLocalBuilds);
 
       expect(context.backendLocalBuilds["backend-prod"].localBuildScratchDir).to.equal(
-        "/tmp/apphosting-local-build-backend-prod-e1feae81",
+        path.join(os.tmpdir(), `apphosting-local-build-backend-prod-${expectedHash}`),
       );
       expect(context.backendLocalBuilds["backend-staging"].localBuildScratchDir).to.equal(
-        "/tmp/apphosting-local-build-backend-staging-e1feae81",
+        path.join(os.tmpdir(), `apphosting-local-build-backend-staging-${expectedHash}`),
       );
 
       expect(context.backendLocalBuilds["backend-prod"].outputFiles).to.deep.equal([

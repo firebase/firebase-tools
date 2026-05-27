@@ -1,7 +1,11 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as os from "os";
+import * as path from "path";
+import * as crypto from "crypto";
 import { Config } from "../../config";
+
+const expectedHash = crypto.createHash("md5").update(process.cwd()).digest("hex").substring(0, 8);
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
 import { Context } from "./args";
@@ -43,7 +47,10 @@ function initializeContext(): Context {
     backendLocalBuilds: {
       fooLocalBuild: {
         outputFiles: ["./nextjs/standalone"],
-        localBuildScratchDir: "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
+        localBuildScratchDir: path.join(
+          os.tmpdir(),
+          `apphosting-local-build-fooLocalBuild-${expectedHash}`,
+        ),
         buildConfig: {},
       },
     },
@@ -174,7 +181,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedHash}`),
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
@@ -217,7 +224,7 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        "/tmp/apphosting-local-build-fooLocalBuild-e1feae81",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedHash}`),
         ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
