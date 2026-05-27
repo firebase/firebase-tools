@@ -1,3 +1,4 @@
 - Updated Pub/Sub emulator to version 0.8.32
 - Updated Firebase SQL Connect genAI features to use new Agent Service API
 - Fixed issue where auth:export doesn't escape double quotes for CSV format. (#3484)
+- Fixes `CloudSQLConnectorError: The connector was closed` unhandled exception during Data Connect deployments. (#10555)
