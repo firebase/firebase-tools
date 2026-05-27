@@ -21,10 +21,12 @@ interface UniversalMakerOutput {
 
 /**
  * Runs the Universal Maker binary to build the project.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the copied source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
 export async function runUniversalMaker(
   projectRoot: string,
-  addedEnv: Record<string, string> = {},
+  addedEnv?: NodeJS.ProcessEnv,
 ): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
   executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv);
@@ -35,11 +37,14 @@ export async function runUniversalMaker(
  * Orchestrates the Universal Maker binary execution, including setting up temporary
  * output directories, injecting FAH-specific environment variables, and handling
  * binary-level execution errors (e.g., permission issues).
+ * @param universalMakerBinary - The absolute path to the Universal Maker executable.
+ * @param projectRoot - The path to the temporary scratch directory containing the project source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
 function executeUniversalMakerBinary(
   universalMakerBinary: string,
   projectRoot: string,
-  addedEnv: Record<string, string> = {},
+  addedEnv?: NodeJS.ProcessEnv,
 ): void {
   try {
     const targetAppHosting = path.join(projectRoot, ".apphosting");
@@ -182,7 +187,7 @@ export interface AppHostingBuildOutput {
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
- * @param projectRoot - The root directory of the project to build.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the project source files.
  * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
@@ -240,7 +245,7 @@ export async function localBuild(
   };
 }
 
-async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<string, string>> {
+async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
   const buildVars = Object.entries(env).filter(([, value]) => {
     return !value.availability || value.availability.includes("BUILD");
   });
@@ -254,5 +259,5 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<Record<stri
     }),
   );
 
-  return Object.fromEntries(resolvedEntries) as Record<string, string>;
+  return Object.fromEntries(resolvedEntries) as NodeJS.ProcessEnv;
 }
