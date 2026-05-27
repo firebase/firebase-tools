@@ -61,16 +61,18 @@ export class AILogicService implements Service {
    * Setting requiredProjectBindings here causes the ensureServiceAgentRoles
    * call during prepare phase to upsert the corresponding IAM binding.
    */
-  async requiredProjectBindings(projectNumber: string): Promise<Array<iam.Binding>> {
-    return [
+  requiredProjectBindings: (projectNumber: string) => Promise<Array<iam.Binding>> = (
+    projectNumber: string,
+  ) => {
+    return Promise.resolve([
       {
         role: "roles/run.invoker",
         members: [
           `serviceAccount:service-${projectNumber}@gcp-sa-firebasevertexai.iam.gserviceaccount.com`,
         ],
       },
-    ];
-  }
+    ]);
+  };
 
   /**
    * Validate that there are no duplicate AI Logic triggers of the same type.
