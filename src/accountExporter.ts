@@ -43,10 +43,11 @@ const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
   ["github.com", 19],
 ]);
 
-function escapeComma(str: string): string {
-  if (str.includes(",")) {
-    // Encapsulate the string with quotes if it contains a comma.
-    return `"${str}"`;
+function escapeCsv(str: string): string {
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    // Encapsulate the string with quotes if it contains a comma, quote, or newline.
+    // Also escape any existing quotes by doubling them.
+    return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
@@ -58,7 +59,7 @@ function convertToNormalBase64(data: string): string {
 function addProviderUserInfo(providerInfo: any, arr: any[], startPos: number): void {
   arr[startPos] = providerInfo.rawId;
   arr[startPos + 1] = providerInfo.email || "";
-  arr[startPos + 2] = escapeComma(providerInfo.displayName || "");
+  arr[startPos + 2] = escapeCsv(providerInfo.displayName || "");
   arr[startPos + 3] = providerInfo.photoUrl || "";
 }
 
@@ -69,7 +70,7 @@ function transUserToArray(user: any): any[] {
   arr[2] = user.emailVerified || false;
   arr[3] = convertToNormalBase64(user.passwordHash || "");
   arr[4] = convertToNormalBase64(user.salt || "");
-  arr[5] = escapeComma(user.displayName || "");
+  arr[5] = escapeCsv(user.displayName || "");
   arr[6] = user.photoUrl || "";
   for (let i = 0; i < (!user.providerUserInfo ? 0 : user.providerUserInfo.length); i++) {
     const providerInfo = user.providerUserInfo[i];
