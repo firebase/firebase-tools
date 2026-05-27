@@ -41,6 +41,12 @@ const PROVIDER_ID_INDEX_MAP = new Map<string, number>([
   ["facebook.com", 11],
   ["twitter.com", 15],
   ["github.com", 19],
+  ["apple.com", 28],
+  ["microsoft.com", 32],
+  ["gc.apple.com", 36],
+  ["playgames.google.com", 40],
+  ["linkedin.com", 44],
+  ["yahoo.com", 48],
 ]);
 
 function escapeCsv(str: string): string {
@@ -64,7 +70,8 @@ function addProviderUserInfo(providerInfo: any, arr: any[], startPos: number): v
 }
 
 function transUserToArray(user: any): any[] {
-  const arr = Array(27).fill("");
+  const arrLength = Math.max(...PROVIDER_ID_INDEX_MAP.values()) + 4;
+  const arr = Array(arrLength).fill("");
   arr[0] = user.localId;
   arr[1] = user.email || "";
   arr[2] = user.emailVerified || false;
