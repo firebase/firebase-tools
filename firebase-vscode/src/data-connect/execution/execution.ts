@@ -19,7 +19,6 @@ import { batch, effect } from "@preact/signals-core";
 import {
   OperationDefinitionNode,
   OperationTypeNode,
-  parse,
   print,
 } from "graphql";
 import { DataConnectService } from "../service";
@@ -27,13 +26,7 @@ import { DataConnectError, toSerializedError } from "../../../common/error";
 import { InstanceType } from "../code-lens-provider";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
 import { EmulatorsController } from "../../core/emulators";
-import {
-  getConnectorGQLText,
-  insertQueryAt,
-  getSchemas,
-  verifySchemaCompiles,
-} from "../file-utils";
-import { dataConnectConfigs, firebaseRC } from "../config";
+import { getConnectorGQLText, insertQueryAt } from "../file-utils";
 import * as gif from "../../../../src/gemini/fdcExperience";
 import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
@@ -42,12 +35,8 @@ import {
   executionVarsJSON,
   ExecutionParamsService,
 } from "./execution-params";
-import {
-  ExecuteGraphqlRequest,
-  GraphqlResponseError,
-} from "../../dataconnect/types";
-import { GraphqlResponse } from "../../../../src/dataconnect/types";
-import { logger } from "../../../../src/logger";
+import { ExecuteGraphqlRequest, GraphqlResponseError } from "../../dataconnect/types";
+import { GraphqlResponse } from '../../../../src/dataconnect/types';
 
 export interface ExecutionInput {
   operationAst: OperationDefinitionNode;
@@ -227,7 +216,7 @@ export function registerExecution(
       auth: executionAuthParams.value,
       results: {
         respErr: toSerializedError(new Error("execution in progress")),
-      },
+      }
     });
 
     try {
@@ -270,8 +259,7 @@ export function registerExecution(
         respErr: toSerializedError(
           error instanceof Error
             ? error
-            : new DataConnectError("Unknown error", error),
-        ),
+            : new DataConnectError("Unknown error", error)),
       };
     }
 
@@ -293,28 +281,18 @@ export function registerExecution(
       );
       return;
     }
-    await arg.document.save();
     try {
-      const configs = dataConnectConfigs.value?.tryReadValue;
-      const serviceConfig = configs?.findEnclosingServiceForPath(
-        arg.document.fileName,
-      );
-
-      let schemas: any[] = [];
-
-      if (serviceConfig) {
-        schemas = await getSchemas(serviceConfig);
-
-        // Verify that the schema compiles before generating queries
-        const compiles = await verifySchemaCompiles(serviceConfig, arg.projectId);
-        if (!compiles) {
-          return;
-        }
-      }
-
+      const schema = await dataConnectService.schema();
+      // TODO: Update to SQL Connect once backend agent is updated
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
-${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}`;
-
+${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}
+${
+  schema
+    ? `\n\nUse the Data Connect Schema:\n\`\`\`graphql
+${schema}
+\`\`\``
+    : ""
+}`;
       const serviceName = await dataConnectService.servicePath(
         arg.document.fileName,
       );
@@ -323,50 +301,17 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
           return; // ToS isn't accepted.
         }
       }
-      const res = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: "Data Connect: Generating Operation...",
-        },
-        async (progress) => {
-          return await gif.generateOperation(
-            prompt,
-            serviceName,
-            arg.projectId!,
-            schemas.length > 0 ? schemas : undefined,
-            (status: any) => {
-              let message = "";
-              if (status.state) {
-                message += `[${status.state}] `;
-              }
-              if (status.message) {
-                message += status.message;
-              }
-              if (message) {
-                progress.report({ message });
-              }
-            },
-          );
-        },
+      const res = await gif.generateOperation(
+        prompt,
+        serviceName,
+        arg.projectId,
       );
-
-      try {
-        parse(res);
-      } catch (e: any) {
-        logger.error(res);
-        vscode.window.showErrorMessage(
-          `Generated response is not valid GraphQL. Check the logs for details.`,
-        );
-        return;
-      }
-
       await insertQueryAt(
         arg.document.uri,
         arg.insertPosition,
         arg.existingQuery,
         res,
       );
-      vscode.window.showInformationMessage("SQL Connect generation completed");
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
@@ -439,7 +384,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
         await generateOperation(arg);
       },
     ),
-
     vscode.commands.registerCommand(
       "firebase.dataConnect.selectExecutionResultToShow",
       (executionId) => {
@@ -455,11 +399,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
   );
 }
 
-/**
- * Handles compilation errors by showing an error message and providing an option to open the file.
- * @param error The GraphQL error object.
- * @param servicePath The path to the service directory.
- */
 function executionError(message: string, error?: string) {
   vscode.window.showErrorMessage(
     `Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`,
