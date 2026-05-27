@@ -1,4 +1,6 @@
 - Updated Pub/Sub emulator to version 0.8.32
-- Updated Firebase SQL Connect genAI features to use new Agent Service API
-- Fixed issue where auth:export doesn't escape double quotes for CSV format. (#3484)
+- Fixed issue where `auth:export` didn't escape double quotes for CSV format. (#3484)
 - Fixes `CloudSQLConnectorError: The connector was closed` unhandled exception during Data Connect deployments. (#10555)
+- Updated the Firebase Data Connect local toolkit to v3.4.9, which includes the following changes: (#10567)
+  - Added support for nested mutations for literals and also variables that define an incomplete set of fields.
+  - Fixed an issue in the JS Generated SDK where `QueryFetchPolicy` wasn't being respected.

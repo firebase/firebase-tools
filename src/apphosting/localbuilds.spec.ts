@@ -52,10 +52,6 @@ describe("localBuild", () => {
   });
 
   it("returns the expected output", async () => {
-    const expectedAnnotations = {
-      language: "nodejs",
-      runtime: "nodejs22",
-    };
     const expectedOutputFiles = [".next/standalone"];
     const expectedBuildConfig = {
       runCommand: "npm run start",
@@ -69,18 +65,63 @@ describe("localBuild", () => {
       stderr: "mock stderr",
       signal: null,
     });
-    const { outputFiles, annotations, buildConfig } = await localBuild("test-project", "./");
-    expect(annotations).to.deep.equal(expectedAnnotations);
+    const { outputFiles, buildConfig } = await localBuild("test-project", "./");
+    expect(buildConfig).to.deep.equal(expectedBuildConfig);
+    expect(outputFiles).to.deep.equal(expectedOutputFiles);
+    sinon.assert.calledOnce(spawnStub);
+  });
+
+  it("returns empty outputFiles and succeeds if bundle.yaml has no outputFiles block (e.g., Angular)", async () => {
+    const rfs = fsExtra.readFileSync as sinon.SinonStub;
+    rfs.restore(); // Restore and stub specifically for this test case
+    sinon.stub(fsExtra, "readFileSync").callsFake((pathStr: fsExtra.PathOrFileDescriptor) => {
+      if (typeof pathStr === "string" && pathStr.includes("bundle.yaml")) {
+        return `
+          runConfig:
+            runCommand: node dist/angular-19/server/server.mjs
+        `;
+      }
+      if (typeof pathStr === "string" && pathStr.includes("build_output.json")) {
+        return JSON.stringify({
+          command: "npm",
+          args: ["run", "start"],
+          language: "nodejs",
+          runtime: "nodejs22",
+          envVars: {
+            PORT: "3000",
+          },
+        });
+      }
+      return "";
+    });
+
+    const expectedOutputFiles: string[] = [];
+    const expectedBuildConfig = {
+      runCommand: "node dist/angular-19/server/server.mjs",
+      env: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],
+    };
+    const spawnStub = sinon.stub(childProcess, "spawnSync").returns({
+      status: 0,
+      output: ["", "mock output", ""],
+      pid: 12345,
+      stdout: "mock stdout",
+      stderr: "mock stderr",
+      signal: null,
+    });
+
+    const { outputFiles, buildConfig } = await localBuild("test-project", "./");
     expect(buildConfig).to.deep.equal(expectedBuildConfig);
     expect(outputFiles).to.deep.equal(expectedOutputFiles);
     sinon.assert.calledOnce(spawnStub);
   });
 
   it("resolves BUILD-available secrets passed in the environment map and ignores RUNTIME-only ones", async () => {
-    sinon.stub(childProcess, "spawnSync").callsFake(() => {
-      expect(process.env.MY_BUILD_SECRET).to.equal("secret-value");
-      expect(process.env.MY_RUNTIME_SECRET).to.be.undefined;
-      expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
+    sinon.stub(childProcess, "spawnSync").callsFake((command: any, args: any, options: any) => {
+      expect(process.env.MY_BUILD_SECRET).to.be.undefined;
+      expect(process.env.MY_PLAIN_VAR).to.be.undefined;
+      expect(options?.env?.MY_BUILD_SECRET).to.equal("secret-value");
+      expect(options?.env?.MY_RUNTIME_SECRET).to.be.undefined;
+      expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
       return {
         status: 0,
         output: ["", "mock output", ""],
@@ -112,9 +153,11 @@ describe("localBuild", () => {
   });
 
   it("handles environment variables that do not contain secrets", async () => {
-    sinon.stub(childProcess, "spawnSync").callsFake(() => {
-      expect(process.env.MY_PLAIN_VAR).to.equal("plain-value");
-      expect(process.env.ANOTHER_VAR).to.equal("another-value");
+    sinon.stub(childProcess, "spawnSync").callsFake((command: any, args: any, options: any) => {
+      expect(process.env.MY_PLAIN_VAR).to.be.undefined;
+      expect(process.env.ANOTHER_VAR).to.be.undefined;
+      expect(options?.env?.MY_PLAIN_VAR).to.equal("plain-value");
+      expect(options?.env?.ANOTHER_VAR).to.equal("another-value");
       return {
         status: 0,
         output: ["", "mock output", ""],
@@ -230,10 +273,6 @@ describe("localBuild", () => {
       const output = await runUniversalMaker("./");
 
       expect(output).to.deep.equal({
-        metadata: {
-          language: "nodejs",
-          runtime: "nodejs22",
-        },
         runConfig: {
           runCommand: "npm run start",
           environmentVariables: [{ variable: "PORT", value: "3000", availability: ["RUNTIME"] }],
