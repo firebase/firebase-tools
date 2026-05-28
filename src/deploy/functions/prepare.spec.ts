@@ -186,57 +186,7 @@ describe("prepare", () => {
     });
   });
 
-  describe("matchRegionsForExisting", () => {
-    it("does nothing if no endpoints in REGION_TBD", () => {
-      const want = backend.of(ENDPOINT);
-      const have = backend.empty();
-      prepare.matchRegionsForExisting(want, have);
-      expect(want).to.deep.equal(backend.of(ENDPOINT));
-    });
-
-    it("infers region from have backend if unique", () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
-      const want = backend.of(wantE);
-
-      // Choosing a region that is neither an old or new default
-      // for the test
-      const haveE = { ...ENDPOINT, region: "europe-west1" };
-      const have = backend.of(haveE);
-
-      prepare.matchRegionsForExisting(want, have);
-
-      expect(want.endpoints["europe-west1"]?.["id"]).to.exist;
-      expect(want.endpoints["europe-west1"]?.["id"].region).to.equal("europe-west1");
-      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
-    });
-
-    it("leaves in REGION_TBD if not found in have", () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
-      const want = backend.of(wantE);
-      const have = backend.empty();
-
-      prepare.matchRegionsForExisting(want, have);
-
-      expect(want.endpoints[build.REGION_TBD]?.["id"]).to.exist;
-      expect(want.endpoints["us-central1"]).to.not.exist;
-    });
-
-    it("throws error if ambiguous", () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
-      const want = backend.of(wantE);
-
-      const haveE1 = { ...ENDPOINT, id: "id", region: "us-east1" };
-      const haveE2 = { ...ENDPOINT, id: "id", region: "us-west1" };
-      const have = backend.of(haveE1, haveE2);
-
-      expect(() => prepare.matchRegionsForExisting(want, have)).to.throw(
-        FirebaseError,
-        /Cannot resolve default region for function id. It exists in multiple regions. The region must be specified to continue./,
-      );
-    });
-  });
-
-  describe("resolveDefaultRegions", () => {
+  describe("resolveDefaultRegionsForBuild", () => {
     let sandbox: sinon.SinonSandbox;
     let getDatabaseStub: sinon.SinonStub;
     let getBucketStub: sinon.SinonStub;
@@ -253,74 +203,151 @@ describe("prepare", () => {
       sandbox.restore();
     });
 
-    it("does nothing if no endpoints in REGION_TBD", async () => {
-      const want = backend.empty();
+    it("does nothing if no endpoints or in REGION_TBD", async () => {
+      const want = build.empty();
       const have = backend.empty();
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
       expect(want.endpoints).to.deep.equal({});
     });
 
     it("infers region from have backend if unique", async () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
-      const want = backend.of(wantE);
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
 
       const haveE = { ...ENDPOINT, region: "us-east1" };
       const have = backend.of(haveE);
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["us-east1"]?.["id"]).to.exist;
-      expect(want.endpoints["us-east1"]?.["id"].region).to.equal("us-east1");
-      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves region to us-east1 and correctly formats VPC connector path with us-east1", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/project/locations/us-east1/connectors/my-connector",
+      );
+    });
+
+    it("resolves region and preserves pre-formatted VPC connector paths", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "projects/my-project/locations/us-central1/connectors/my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/my-project/locations/us-central1/connectors/my-connector",
+      );
     });
 
     it("throws error if ambiguous", async () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD };
-      const want = backend.of(wantE);
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
 
       const haveE1 = { ...ENDPOINT, id: "id", region: "us-east1" };
       const haveE2 = { ...ENDPOINT, id: "id", region: "us-west1" };
       const have = backend.of(haveE1, haveE2);
 
-      await expect(prepare.resolveDefaultRegions(want, have)).to.be.rejectedWith(
+      await expect(prepare.resolveDefaultRegionsForBuild(want, have)).to.be.rejectedWith(
         FirebaseError,
         /Cannot resolve default region for function id. It exists in multiple regions. The region must be specified to continue./,
       );
     });
 
     it("resolves us-east1 for global resource blocking triggers", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "beforeCreate",
-        region: build.REGION_TBD,
-        blockingTrigger: {
-          eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+      const want = build.of({
+        beforeCreate: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "providers/cloud.auth/eventTypes/user.beforeCreate",
+          },
         },
-      };
-      const want = backend.of(wantE);
+      });
       const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["us-east1"]?.["beforeCreate"]).to.exist;
+      expect(want.endpoints["beforeCreate"].region).to.deep.equal(["us-east1"]);
     });
 
     it("resolves us-east1 for global event triggers", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onPublish",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.cloud.pubsub.topic.v1.messagePublished",
-          retry: false,
+      const want = build.of({
+        onPublish: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+            retry: false,
+          },
+          region: [build.REGION_TBD],
         },
-      };
-      const want = backend.of(wantE);
+      });
       const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["us-east1"]?.["onPublish"]).to.exist;
+      expect(want.endpoints["onPublish"].region).to.deep.equal(["us-east1"]);
     });
 
     describe("Firestore event triggers", () => {
@@ -333,24 +360,27 @@ describe("prepare", () => {
 
       testCases.forEach(({ dbLocation, expectedRegion }) => {
         it(`should resolve ${expectedRegion} when database location is ${dbLocation}`, async () => {
-          const wantE: backend.Endpoint = {
-            ...ENDPOINT_BASE,
-            id: "onDocumentCreate",
-            region: build.REGION_TBD,
-            eventTrigger: {
-              eventType: "google.cloud.firestore.document.v1.created",
-              eventFilters: { database: "(default)" },
-              retry: false,
+          const want = build.of({
+            onDocumentCreate: {
+              platform: "gcfv2",
+              entryPoint: "entry",
+              project: "project",
+              runtime: latest("nodejs"),
+              eventTrigger: {
+                eventType: "google.cloud.firestore.document.v1.created",
+                eventFilters: { database: "(default)" },
+                retry: false,
+              },
+              region: [build.REGION_TBD],
             },
-          };
-          const want = backend.of(wantE);
+          });
           const have = backend.empty();
 
           getDatabaseStub.resolves({ locationId: dbLocation });
 
-          await prepare.resolveDefaultRegions(want, have);
+          await prepare.resolveDefaultRegionsForBuild(want, have);
 
-          expect(want.endpoints[expectedRegion]?.["onDocumentCreate"]).to.exist;
+          expect(want.endpoints["onDocumentCreate"].region).to.deep.equal([expectedRegion]);
         });
       });
     });
@@ -365,112 +395,126 @@ describe("prepare", () => {
 
       testCases.forEach(({ bucketLocation, expectedRegion }) => {
         it(`should resolve ${expectedRegion} when bucket location is ${bucketLocation}`, async () => {
-          const wantE: backend.Endpoint = {
-            ...ENDPOINT_BASE,
-            id: "onArchive",
-            region: build.REGION_TBD,
-            eventTrigger: {
-              eventType: "google.cloud.storage.object.v1.archived",
-              eventFilters: { bucket: "my-bucket" },
-              retry: false,
+          const want = build.of({
+            onArchive: {
+              platform: "gcfv2",
+              entryPoint: "entry",
+              project: "project",
+              runtime: latest("nodejs"),
+              eventTrigger: {
+                eventType: "google.cloud.storage.object.v1.archived",
+                eventFilters: { bucket: "my-bucket" },
+                retry: false,
+              },
+              region: [build.REGION_TBD],
             },
-          };
-          const want = backend.of(wantE);
+          });
           const have = backend.empty();
 
           getBucketStub.resolves({ location: bucketLocation });
 
-          await prepare.resolveDefaultRegions(want, have);
+          await prepare.resolveDefaultRegionsForBuild(want, have);
 
-          expect(want.endpoints[expectedRegion]?.["onArchive"]).to.exist;
+          expect(want.endpoints["onArchive"].region).to.deep.equal([expectedRegion]);
         });
       });
     });
 
     it("resolves region for Database event triggers based on instance location", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onWrite",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.firebase.database.ref.v1.written",
-          eventFilters: { instance: "my-instance" },
-          retry: false,
+      const want = build.of({
+        onWrite: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.database.ref.v1.written",
+            eventFilters: { instance: "my-instance" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
         },
-      };
-      const want = backend.of(wantE);
+      });
       const have = backend.empty();
 
       getDatabaseInstanceDetailsStub.resolves({ location: "europe-west1" });
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["europe-west1"]?.["onWrite"]).to.exist;
+      expect(want.endpoints["onWrite"].region).to.deep.equal(["europe-west1"]);
     });
 
     it("resolves region for DataConnect event triggers based on service location", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onMutationExecuted",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
-          eventFilters: {
-            service: "projects/project/locations/europe-west1/services/my-service",
+      const want = build.of({
+        onMutationExecuted: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+            eventFilters: {
+              service: "projects/project/locations/europe-west1/services/my-service",
+            },
+            retry: false,
           },
-          retry: false,
+          region: [build.REGION_TBD],
         },
-      };
-      const want = backend.of(wantE);
+      });
       const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["europe-west1"]?.["onMutationExecuted"]).to.exist;
+      expect(want.endpoints["onMutationExecuted"].region).to.deep.equal(["europe-west1"]);
     });
 
     it("resolves region for DataConnect event triggers based on connector location", async () => {
-      const wantE: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        id: "onMutationExecutedConnector",
-        region: build.REGION_TBD,
-        eventTrigger: {
-          eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
-          eventFilters: {
-            connector:
-              "projects/project/locations/europe-west2/services/my-service/connectors/my-connector",
+      const want = build.of({
+        onMutationExecutedConnector: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.firebase.dataconnect.connector.v1.mutationExecuted",
+            eventFilters: {
+              connector:
+                "projects/project/locations/europe-west2/services/my-service/connectors/my-connector",
+            },
+            retry: false,
           },
-          retry: false,
+          region: [build.REGION_TBD],
         },
-      };
-      const want = backend.of(wantE);
+      });
       const have = backend.empty();
 
-      await prepare.resolveDefaultRegions(want, have);
+      await prepare.resolveDefaultRegionsForBuild(want, have);
 
-      expect(want.endpoints["europe-west2"]?.["onMutationExecutedConnector"]).to.exist;
+      expect(want.endpoints["onMutationExecutedConnector"].region).to.deep.equal(["europe-west2"]);
     });
 
     it("does not infer region from have backend if it belongs to a different codebase", async () => {
-      const wantE = { ...ENDPOINT, region: build.REGION_TBD, codebase: "codebaseA" };
-      const want = backend.of(wantE);
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+        },
+      });
 
-      // An existing endpoint with the same ID but in codebaseB
-      const haveE = { ...ENDPOINT, region: "europe-west1", codebase: "codebaseB" };
+      const haveE = { ...ENDPOINT, id: "id", region: "europe-west1", codebase: "codebaseB" };
       const have = backend.of(haveE);
 
-      // Mimic the Phase 4 change: Filter down to relevant endpoints
       const relevantEndpoints = backend
         .allEndpoints(have)
-        .filter((e) => e.codebase === wantE.codebase || e.codebase === undefined);
+        .filter((e) => e.codebase === "codebaseA" || e.codebase === undefined);
 
-      // Since codebaseB's existing function is filtered out, it won't match.
-      // It should instead correctly fall back to "us-central1".
-      await prepare.resolveDefaultRegions(want, backend.of(...relevantEndpoints));
+      await prepare.resolveDefaultRegionsForBuild(want, backend.of(...relevantEndpoints));
 
-      expect(want.endpoints["us-central1"]?.["id"]).to.exist;
-      expect(want.endpoints["us-central1"]?.["id"].region).to.equal("us-central1");
-      expect(want.endpoints[build.REGION_TBD]).to.not.exist;
+      expect(want.endpoints["id"].region).to.deep.equal(["us-central1"]);
     });
   });
 
@@ -578,6 +622,18 @@ describe("prepare", () => {
       expect(want.availableMemoryMb).to.equal(512);
     });
 
+    it("fills in timeout from last deploy", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      const have: backend.Endpoint = JSON.parse(JSON.stringify(want));
+      have.timeoutSeconds = 120;
+
+      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+      expect(want.timeoutSeconds).to.equal(120);
+    });
+
     it("downgrades concurrency if necessary (explicit)", () => {
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,
@@ -629,6 +685,28 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* useDotEnv= */ false);
       prepare.resolveCpuAndConcurrency(backend.of(want));
       expect(want.concurrency).to.equal(1);
+    });
+
+    it("defaults timeout to 60 for run platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "run",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.equal(60);
+    });
+
+    it("does not default timeout for gcfv2 platform functions", () => {
+      const want: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        httpsTrigger: {},
+      };
+
+      prepare.resolveDefaultTimeout(backend.of(want));
+      expect(want.timeoutSeconds).to.be.undefined;
     });
   });
 
