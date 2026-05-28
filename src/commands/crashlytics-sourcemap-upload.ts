@@ -119,13 +119,13 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
         ),
       );
 
-      results.forEach((success, i) => {
+      for (const [i, success] of results.entries()) {
         if (success) {
           successCount++;
         } else {
           failedFiles.push(mappings[i].mapFilePath);
         }
-      });
+      }
     } else {
       throw new FirebaseError(
         "provide a valid directory to mapping file(s), e.g. app/build/outputs",
