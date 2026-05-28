@@ -266,11 +266,16 @@ async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0):
   const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
   const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
 
+  const stream = fs.createReadStream(tmpArchive);
+  stream.on("error", (err) => {
+    logger.debug(`Stream error on tmpArchive: ${err}`);
+  });
+
   try {
     const { bucket, object } = await gcs.uploadObject(
       {
         file: gcsFile,
-        stream: fs.createReadStream(tmpArchive),
+        stream,
       },
       bucketName,
     );
@@ -292,6 +297,13 @@ async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0):
       logLabeledWarning("crashlytics", `Failed to upload mapping file ${filePath}:\n${e}`);
     }
     return false;
+  } finally {
+    stream.destroy();
+    try {
+      fs.rmSync(tmpArchive, { force: true });
+    } catch (err) {
+      logger.debug(`Failed to delete temporary archive ${tmpArchive}: ${err}`);
+    }
   }
 }
 

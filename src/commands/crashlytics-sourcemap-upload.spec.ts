@@ -1,5 +1,6 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
+import * as fs from "fs";
 
 import { command } from "./crashlytics-sourcemap-upload";
 import * as gcs from "../gcp/storage";
@@ -292,5 +293,39 @@ describe("crashlytics:sourcemap:upload", () => {
       "crashlytics",
       sinon.match(/mock_mapping\.js\.map/),
     );
+  });
+
+  it("should clean up temporary zip files from disk after success path upload", async () => {
+    const rmSyncSpy = sandbox.spy(fs, "rmSync");
+
+    await command.runner()(DIR_PATH, {
+      app: "test-app",
+    });
+
+    expect(rmSyncSpy.callCount).to.equal(2);
+
+    for (const call of rmSyncSpy.getCalls()) {
+      const filePath = call.args[0] as string;
+      expect(filePath).to.include(".zip");
+      expect(fs.existsSync(filePath)).to.be.false;
+    }
+  });
+
+  it("should clean up temporary zip files from disk even if upload fails and retries", async () => {
+    const rmSyncSpy = sandbox.spy(fs, "rmSync");
+    clientPatchStub.rejects(new Error("Registration failed"));
+
+    await command.runner()(DIR_PATH, {
+      app: "test-app",
+      retryDelay: 10,
+    });
+
+    expect(rmSyncSpy.callCount).to.equal(4);
+
+    for (const call of rmSyncSpy.getCalls()) {
+      const filePath = call.args[0] as string;
+      expect(filePath).to.include(".zip");
+      expect(fs.existsSync(filePath)).to.be.false;
+    }
   });
 });
