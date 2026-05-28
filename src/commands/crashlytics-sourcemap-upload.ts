@@ -204,9 +204,9 @@ async function getLinkedSourceMapPath(jsFilePath: string): Promise<string | unde
     const buffer = Buffer.alloc(bufferSize);
     await fileHandle.read(buffer, 0, bufferSize, size - bufferSize);
     const tail = buffer.toString("utf-8");
-    const match = tail.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
-    if (match) {
-      const sourceMappingURL = match[1].trim();
+    const match = tail.match(/^\/\/\s*[#@]\s*sourceMappingURL=(?<sourceMappingURL>.+)\s*$/m);
+    const sourceMappingURL = match?.groups?.sourceMappingURL?.trim();
+    if (sourceMappingURL) {
       return path.join(path.dirname(jsFilePath), sourceMappingURL);
     }
   } catch (e) {
