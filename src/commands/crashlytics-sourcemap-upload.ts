@@ -5,7 +5,7 @@ import { readdirRecursive } from "../fsAsync";
 import { Command } from "../command";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { commandExistsSync, logLabeledBullet, logLabeledWarning } from "../utils";
+import { commandExistsSync, logLabeledBullet, logLabeledWarning, murmurHashV3 } from "../utils";
 import { needProjectId } from "../projectUtils";
 import * as gcs from "../gcp/storage";
 import { getProjectNumber } from "../getProjectNumber";
@@ -13,7 +13,6 @@ import { Options } from "../options";
 import { archiveFile } from "../archiveFile";
 import { execSync } from "node:child_process";
 import { Client } from "../apiv2";
-import { murmurHashV3 } from "murmurhash-es";
 import * as pLimit from "p-limit";
 import { requireAuth } from "../requireAuth";
 
