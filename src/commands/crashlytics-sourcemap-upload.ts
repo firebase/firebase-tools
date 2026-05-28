@@ -94,7 +94,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
         maxDepth: 20,
       });
 
-      const mappings = findSourceMapMappings(files, rootDir);
+      const mappings = await findSourceMapMappings(files, rootDir);
 
       const limit = pLimit(CONCURRENCY);
       const results = await Promise.all(
@@ -143,7 +143,10 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
     }
   });
 
-function findSourceMapMappings(files: { name: string }[], rootDir: string): SourceMapMapping[] {
+async function findSourceMapMappings(
+  files: { name: string }[],
+  rootDir: string,
+): Promise<SourceMapMapping[]> {
   const jsFiles = files.filter((f) => f.name.endsWith(".js"));
   const mapFiles = files.filter((f) => f.name.endsWith(".js.map"));
 
@@ -152,8 +155,17 @@ function findSourceMapMappings(files: { name: string }[], rootDir: string): Sour
   // Set to track map files that were linked from a JS file (via `sourceMappingURL` comment)
   const mapFilesLinkedInJsComment = new Set<string>();
 
-  for (const jsFile of jsFiles) {
-    const mapFilePath = getLinkedSourceMapPath(jsFile.name);
+  const limit = pLimit(CONCURRENCY);
+  const results = await Promise.all(
+    jsFiles.map((jsFile) =>
+      limit(async () => {
+        const mapFilePath = await getLinkedSourceMapPath(jsFile.name);
+        return { jsFile, mapFilePath };
+      })
+    )
+  );
+
+  for (const { jsFile, mapFilePath } of results) {
     if (mapFilePath && mapFilePathsSet.has(mapFilePath)) {
       mappings.push({
         mapFilePath,
@@ -176,12 +188,37 @@ function findSourceMapMappings(files: { name: string }[], rootDir: string): Sour
   return mappings;
 }
 
-function getLinkedSourceMapPath(jsFilePath: string): string | undefined {
-  const jsContent = fs.readFileSync(jsFilePath, "utf-8");
-  const match = jsContent.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
-  if (match) {
-    const sourceMappingURL = match[1].trim();
-    return path.join(path.dirname(jsFilePath), sourceMappingURL);
+async function getLinkedSourceMapPath(jsFilePath: string): Promise<string | undefined> {
+  let fileHandle: fs.promises.FileHandle | undefined;
+  try {
+    const stat = await fs.promises.stat(jsFilePath);
+    const size = stat.size;
+    // The sourceMappingURL comment is always appended to the very end of the JS file by compilers.
+    // Reading the entire file can block the event loop and cause out-of-memory errors for large production
+    // bundles (often several megabytes). Reading only the last 4KB avoids this and improves performance.
+    const bufferSize = Math.min(size, 4096);
+    if (bufferSize === 0) {
+      return undefined;
+    }
+    fileHandle = await fs.promises.open(jsFilePath, "r");
+    const buffer = Buffer.alloc(bufferSize);
+    await fileHandle.read(buffer, 0, bufferSize, size - bufferSize);
+    const tail = buffer.toString("utf-8");
+    const match = tail.match(/^\/\/\s*[#@]\s*sourceMappingURL=(.+)\s*$/m);
+    if (match) {
+      const sourceMappingURL = match[1].trim();
+      return path.join(path.dirname(jsFilePath), sourceMappingURL);
+    }
+  } catch (e) {
+    logger.debug(`Error reading sourceMappingURL from ${jsFilePath}: ${e}`);
+  } finally {
+    if (fileHandle !== undefined) {
+      try {
+        await fileHandle.close();
+      } catch (e) {
+        // Ignore close error
+      }
+    }
   }
   return undefined;
 }
