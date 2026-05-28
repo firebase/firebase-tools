@@ -90,7 +90,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
       logLabeledBullet("crashlytics", "Looking for mapping files in your directory...");
       const files = await readdirRecursive({
         path: filePath,
-        ignore: ["node_modules", ".git"],
+        ignoreStrings: ["node_modules", ".git"],
         maxDepth: 20,
       });
 
