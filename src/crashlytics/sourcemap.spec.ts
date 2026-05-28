@@ -11,9 +11,27 @@ import {
   normalizeFileName,
   getLinkedSourceMapPath,
   findSourceMapMappings,
+  CommandOptions,
 } from "./sourcemap";
 import { FirebaseError } from "../error";
 import * as utils from "../utils";
+import { Config } from "../config";
+import { RC } from "../rc";
+
+function mockCommandOptions(options: Partial<CommandOptions> = {}): CommandOptions {
+  return {
+    configPath: "",
+    only: "",
+    except: "",
+    config: {} as unknown as Config,
+    filteredTargets: [],
+    force: false,
+    nonInteractive: true,
+    debug: false,
+    rc: {} as unknown as RC,
+    ...options,
+  };
+}
 
 const expect = chai.expect;
 
@@ -30,14 +48,14 @@ describe("crashlytics:sourcemap helpers", () => {
 
   describe("checkGoogleAppID", () => {
     it("should throw a FirebaseError if app ID is not set", () => {
-      expect(() => checkGoogleAppID({} as any)).to.throw(
+      expect(() => checkGoogleAppID(mockCommandOptions({}))).to.throw(
         FirebaseError,
         "set --app <appId> to a valid Firebase application id",
       );
     });
 
     it("should not throw if app ID is set", () => {
-      expect(() => checkGoogleAppID({ app: "1:12345:web:abc" } as any)).to.not.throw();
+      expect(() => checkGoogleAppID(mockCommandOptions({ app: "1:12345:web:abc" }))).to.not.throw();
     });
   });
 
@@ -58,14 +76,14 @@ describe("crashlytics:sourcemap helpers", () => {
     });
 
     it("should return the custom appVersion if provided", () => {
-      expect(getAppVersion({ appVersion: "2.3.4" } as any)).to.equal("2.3.4");
+      expect(getAppVersion(mockCommandOptions({ appVersion: "2.3.4" }))).to.equal("2.3.4");
     });
 
     it("should fall back to git commit hash if available", () => {
       commandExistsSyncStub.withArgs("git").returns(true);
       execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("abc123456"));
 
-      expect(getAppVersion({} as any)).to.equal("abc123456");
+      expect(getAppVersion(mockCommandOptions({}))).to.equal("abc123456");
     });
 
     it("should fall back to package.json version if git is not available", () => {
@@ -73,14 +91,14 @@ describe("crashlytics:sourcemap helpers", () => {
       commandExistsSyncStub.withArgs("npm").returns(true);
       execSyncStub.withArgs("npm pkg get version").returns(Buffer.from("1.0.1"));
 
-      expect(getAppVersion({} as any)).to.equal("1.0.1");
+      expect(getAppVersion(mockCommandOptions({}))).to.equal("1.0.1");
     });
 
     it("should return 'unset' if both git and npm fallback fail", () => {
       commandExistsSyncStub.withArgs("git").returns(false);
       commandExistsSyncStub.withArgs("npm").returns(false);
 
-      expect(getAppVersion({} as any)).to.equal("unset");
+      expect(getAppVersion(mockCommandOptions({}))).to.equal("unset");
     });
   });
 
@@ -108,7 +126,10 @@ describe("crashlytics:sourcemap helpers", () => {
 
     it("should extract correct sourceMappingURL with trailing newlines/spaces", async () => {
       const tmpFile = tmp.fileSync({ postfix: ".js" });
-      fs.writeFileSync(tmpFile.name, "console.log('hello');\n//@ sourceMappingURL=sub/other.js.map  \n\n ");
+      fs.writeFileSync(
+        tmpFile.name,
+        "console.log('hello');\n//@ sourceMappingURL=sub/other.js.map  \n\n ",
+      );
       try {
         const result = await getLinkedSourceMapPath(tmpFile.name);
         expect(result).to.equal(path.join(path.dirname(tmpFile.name), "sub/other.js.map"));
@@ -129,10 +150,7 @@ describe("crashlytics:sourcemap helpers", () => {
       fs.writeFileSync(tmpMap, '{"version":3}');
 
       try {
-        const files = [
-          { name: tmpJs.name },
-          { name: tmpMap },
-        ];
+        const files = [{ name: tmpJs.name }, { name: tmpMap }];
         const rootDir = path.dirname(tmpJs.name);
         const results = await findSourceMapMappings(files, rootDir);
 

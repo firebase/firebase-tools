@@ -41,6 +41,10 @@ export interface UploadRequest {
 
 export const CONCURRENCY = 25;
 
+/**
+ * Checks if the Google App ID is provided in command options.
+ * Throws a FirebaseError if it is missing.
+ */
 export function checkGoogleAppID(options: CommandOptions): void {
   if (!options.app) {
     throw new FirebaseError(
@@ -49,6 +53,10 @@ export function checkGoogleAppID(options: CommandOptions): void {
   }
 }
 
+/**
+ * Resolves the application version string.
+ * Uses explicit appVersion option, then falls back to git commit hash, then package version.
+ */
 export function getAppVersion(options: CommandOptions): string {
   if (options.appVersion) {
     return options.appVersion;
@@ -66,6 +74,9 @@ export function getAppVersion(options: CommandOptions): string {
   return "unset";
 }
 
+/**
+ * Retrieves the current Git commit hash if available.
+ */
 export function getGitCommit(): string | undefined {
   if (!commandExistsSync("git")) {
     return undefined;
@@ -77,6 +88,9 @@ export function getGitCommit(): string | undefined {
   }
 }
 
+/**
+ * Retrieves the current project version from package.json if npm is available.
+ */
 export function getPackageVersion(): string | undefined {
   if (!commandExistsSync("npm")) {
     return undefined;
@@ -88,14 +102,17 @@ export function getPackageVersion(): string | undefined {
   }
 }
 
+/**
+ * Creates or gets the Google Cloud Storage bucket for Crashlytics source maps.
+ */
 export async function upsertBucket(
   projectId: string,
   projectNumber: string,
   options: CommandOptions,
 ): Promise<string> {
-  let loc: string = "US-CENTRAL1";
+  let loc = "US-CENTRAL1";
   if (options.bucketLocation) {
-    loc = (options.bucketLocation as string).toUpperCase();
+    loc = options.bucketLocation.toUpperCase();
   } else {
     logLabeledBullet(
       "crashlytics",
@@ -128,6 +145,9 @@ export async function upsertBucket(
   });
 }
 
+/**
+ * Scans files to discover mapping files and links them to source assets.
+ */
 export async function findSourceMapMappings(
   files: { name: string }[],
   rootDir: string,
@@ -146,8 +166,8 @@ export async function findSourceMapMappings(
       limit(async () => {
         const mapFilePath = await getLinkedSourceMapPath(jsFile.name);
         return { jsFile, mapFilePath };
-      })
-    )
+      }),
+    ),
   );
 
   for (const { jsFile, mapFilePath } of results) {
@@ -173,6 +193,9 @@ export async function findSourceMapMappings(
   return mappings;
 }
 
+/**
+ * Extracts sourceMappingURL value from the last 4KB tail of a JS file.
+ */
 export async function getLinkedSourceMapPath(jsFilePath: string): Promise<string | undefined> {
   let fileHandle: fs.promises.FileHandle | undefined;
   try {
@@ -189,13 +212,16 @@ export async function getLinkedSourceMapPath(jsFilePath: string): Promise<string
     const buffer = Buffer.alloc(bufferSize);
     await fileHandle.read(buffer, 0, bufferSize, size - bufferSize);
     const tail = buffer.toString("utf-8");
-    const match = tail.match(/^\/\/\s*[#@]\s*sourceMappingURL=(?<sourceMappingURL>.+)\s*$/m);
+    const regex = /^\/\/\s*[#@]\s*sourceMappingURL=(?<sourceMappingURL>.+)\s*$/m;
+    const match = regex.exec(tail);
     const sourceMappingURL = match?.groups?.sourceMappingURL?.trim();
     if (sourceMappingURL) {
       return path.join(path.dirname(jsFilePath), sourceMappingURL);
     }
   } catch (e) {
-    logger.debug(`Error reading sourceMappingURL from ${jsFilePath}: ${e}`);
+    logger.debug(
+      `Error reading sourceMappingURL from ${jsFilePath}: ${e instanceof Error ? e.message : String(e)}`,
+    );
   } finally {
     if (fileHandle !== undefined) {
       try {
@@ -207,11 +233,15 @@ export async function getLinkedSourceMapPath(jsFilePath: string): Promise<string
   }
   return undefined;
 }
+
 export interface UploadResult {
   successCount: number;
   failedFiles: string[];
 }
 
+/**
+ * Orchestrates direct parallel uploads with safe rate limiting concurrency checks and retry actions.
+ */
 export async function uploadSourceMaps(
   mappings: SourceMapMapping[],
   request: {
@@ -219,7 +249,7 @@ export async function uploadSourceMaps(
     bucketName: string;
     appVersion: string;
     options: CommandOptions;
-  }
+  },
 ): Promise<UploadResult> {
   const { projectId, bucketName, appVersion, options } = request;
   const limit = pLimit(CONCURRENCY);
@@ -241,8 +271,8 @@ export async function uploadSourceMaps(
           success = await uploadMap(uploadRequest);
         }
         return success;
-      })
-    )
+      }),
+    ),
   );
 
   let successCount = 0;
@@ -261,7 +291,10 @@ export async function uploadSourceMaps(
   };
 }
 
-export async function uploadMap(request: UploadRequest, attemptsRemaining: number = 0): Promise<boolean> {
+/**
+ * Prepares zip archive bundle assets and performs file upload tasks to Google Cloud Storage.
+ */
+export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
   const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
   const obfuscatedPath = path
@@ -272,13 +305,14 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining: numbe
     .filter((p) => p !== "dev")
     .join("/");
   const tmpArchive = await archiveFile(filePath, { archivedFileName: "mapping.js.map" });
-  const gcsFile = `${options.app}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
-  const uid = murmurHashV3(`${options.app!}-${appVersion}-${obfuscatedPath}`);
+  const appId = options.app || "";
+  const gcsFile = `${appId}-${appVersion}-${normalizeFileName(obfuscatedPath)}.zip`;
+  const uid = murmurHashV3(`${appId}-${appVersion}-${obfuscatedPath}`);
   const name = `projects/${projectId}/locations/global/mappingFiles/${uid}`;
 
   const stream = fs.createReadStream(tmpArchive);
   stream.on("error", (err) => {
-    logger.debug(`Stream error on tmpArchive: ${err}`);
+    logger.debug(`Stream error on tmpArchive: ${err instanceof Error ? err.message : String(err)}`);
   });
 
   try {
@@ -294,7 +328,7 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining: numbe
 
     await registerSourceMap({
       name,
-      appId: options.app!,
+      appId,
       version: appVersion,
       obfuscatedFilePath: `/${obfuscatedPath}`,
       fileUri,
@@ -304,7 +338,10 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining: numbe
     return true;
   } catch (e) {
     if (attemptsRemaining === 0) {
-      logLabeledWarning("crashlytics", `Failed to upload mapping file ${filePath}:\n${e}`);
+      logLabeledWarning(
+        "crashlytics",
+        `Failed to upload mapping file ${filePath}:\n${e instanceof Error ? e.message : String(e)}`,
+      );
     }
     return false;
   } finally {
@@ -312,15 +349,23 @@ export async function uploadMap(request: UploadRequest, attemptsRemaining: numbe
     try {
       fs.rmSync(tmpArchive, { force: true });
     } catch (err) {
-      logger.debug(`Failed to delete temporary archive ${tmpArchive}: ${err}`);
+      logger.debug(
+        `Failed to delete temporary archive ${tmpArchive}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 }
 
+/**
+ * Normalizes file paths to avoid backslash and forward slash issues.
+ */
 export function normalizeFileName(fileName: string): string {
   return fileName.replaceAll(/\//g, "-");
 }
 
+/**
+ * Submits resource descriptors to the Firebase Telemetry API to register completed source maps.
+ */
 export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
   const client = new Client({
     urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
@@ -341,7 +386,7 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
       }
     }
     throw new FirebaseError(
-      `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e}`,
+      `Failed to register source map ${sourceMap.obfuscatedFilePath} with Firebase Telemetry service:\n${e instanceof Error ? e.message : String(e)}`,
     );
   }
 }

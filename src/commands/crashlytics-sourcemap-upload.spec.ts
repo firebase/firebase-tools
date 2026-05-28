@@ -4,6 +4,7 @@ import * as fs from "fs";
 
 import { command } from "./crashlytics-sourcemap-upload";
 import * as gcs from "../gcp/storage";
+import { SourceMap } from "../crashlytics/sourcemap";
 import * as projectUtils from "../projectUtils";
 import * as getProjectNumber from "../getProjectNumber";
 import { FirebaseError } from "../error";
@@ -56,7 +57,7 @@ describe("crashlytics:sourcemap:upload", () => {
     execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
     clientPatchStub = sandbox.stub(Client.prototype, "patch").resolves({
       status: 200,
-      response: {} as any,
+      response: {} as unknown as import("node-fetch").Response,
       body: {},
     });
   });
@@ -97,7 +98,7 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should throw an error if the mapping file path is invalid", async () => {
-    expect(
+    await expect(
       command.runner()("invalid/path", {
         app: "test-app",
       }),
@@ -105,7 +106,7 @@ describe("crashlytics:sourcemap:upload", () => {
   });
 
   it("should throw an error if the mapping file path is not a directory", async () => {
-    expect(
+    await expect(
       command.runner()(FILE_PATH, {
         app: "test-app",
       }),
@@ -172,7 +173,7 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(clientPatchStub).to.be.calledTwice;
     const apiPayloads = clientPatchStub
       .getCalls()
-      .map((call) => call.args[1].obfuscatedFilePath)
+      .map((call) => (call.args[1] as SourceMap).obfuscatedFilePath)
       .sort();
 
     expect(apiPayloads[0]).to.equal("/src/test/fixtures/mapping-files-with-js/main.js");
@@ -247,7 +248,7 @@ describe("crashlytics:sourcemap:upload", () => {
     expect(clientPatchStub).to.be.calledTwice;
     const payloads = clientPatchStub
       .getCalls()
-      .map((call) => call.args[1])
+      .map((call) => call.args[1] as SourceMap)
       .sort((a, b) => a.obfuscatedFilePath.localeCompare(b.obfuscatedFilePath));
     expect(payloads[0].name).to.match(
       /projects\/test-project\/locations\/global\/mappingFiles\/2906062618/,
@@ -259,7 +260,9 @@ describe("crashlytics:sourcemap:upload", () => {
       obfuscatedFilePath: "/src/test/fixtures/mapping-files/mock_mapping.js.map",
       fileUri: `gs://${BUCKET_NAME}/test-object`,
     });
-    expect(clientPatchStub.firstCall.args[2].queryParams).to.deep.equal({ allowMissing: "true" });
+    expect(
+      (clientPatchStub.firstCall.args[2] as { queryParams: Record<string, string> }).queryParams,
+    ).to.deep.equal({ allowMissing: "true" });
   });
 
   it("should warn if registration fails", async () => {
