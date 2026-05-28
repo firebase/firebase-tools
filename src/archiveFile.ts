@@ -23,10 +23,11 @@ export async function archiveFile(filePath: string, options?: ArchiveOptions): P
 }
 
 async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
-  from.pipe(to);
-  await from.finalize();
   return new Promise((resolve, reject) => {
     to.on("finish", resolve);
     to.on("error", reject);
+    from.on("error", reject);
+    from.pipe(to);
+    from.finalize().catch(reject);
   });
 }
