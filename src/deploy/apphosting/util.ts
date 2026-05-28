@@ -6,8 +6,7 @@ import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
-
-import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
+import { logLabeledWarning } from "../../utils";
 
 /**
  * Creates a temporary tarball of the project source or build artifacts.
@@ -17,39 +16,38 @@ import { APPHOSTING_YAML_FILE_REGEX } from "../../apphosting/config";
  * the code/artifacts for upload to Google Cloud Storage.
  * @param config - The App Hosting backend configuration.
  * @param rootDir - The root directory of the project.
- * @param targetSubDir - Optional subdirectory to simplify (e.g. if we only want to zip 'dist').
+ * @param outputFiles - The output files or directories to package.
  * @return A promise that resolves to the absolute path of the created temporary tarball.
  */
 export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
-  targetSubDir?: string,
+  outputFiles: string[],
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  // Config ignore patterns and .gitignore files are bypassed here because they were already applied
-  // before the build when setting up the .local_build directory. Bypassing them ensures standalone
-  // node_modules and build output files are fully preserved.
-  const rdrFiles = await fsAsync.readdirRecursive({
-    path: targetDir,
-    ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
-    supportGitIgnore: false,
-  });
-  const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+  const filesToPackage = outputFiles.length > 0 ? outputFiles : ["."];
+  const allFiles: string[] = [];
 
-  if (targetSubDir) {
-    const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
-      return APPHOSTING_YAML_FILE_REGEX.test(file);
-    });
-    for (const file of defaultFiles) {
-      if (!allFiles.includes(file)) {
-        allFiles.push(file);
-      }
+  for (const fileOrDir of filesToPackage) {
+    const absolutePath = path.join(rootDir, fileOrDir);
+    if (!fs.existsSync(absolutePath)) {
+      logLabeledWarning(
+        "apphosting",
+        `Expected build output file or directory not found: ${fileOrDir}`,
+      );
+      continue;
     }
-    const bundleYamlPath = path.join(".apphosting", "bundle.yaml");
-    if (fs.existsSync(path.join(rootDir, bundleYamlPath)) && !allFiles.includes(bundleYamlPath)) {
-      allFiles.push(bundleYamlPath);
+    const stat = fs.statSync(absolutePath);
+    if (stat.isDirectory()) {
+      const rdrFiles = await fsAsync.readdirRecursive({
+        path: absolutePath,
+        ignoreStrings: ["firebase-debug.log", "firebase-debug.*.log"],
+        supportGitIgnore: false,
+      });
+      allFiles.push(...rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name)));
+    } else {
+      allFiles.push(path.relative(rootDir, absolutePath));
     }
   }
 
