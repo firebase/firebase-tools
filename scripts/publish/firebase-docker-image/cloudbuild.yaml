@@ -29,7 +29,6 @@ steps:
             -f ./Dockerfile .
         fi
 
-
 images:
   - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
 
