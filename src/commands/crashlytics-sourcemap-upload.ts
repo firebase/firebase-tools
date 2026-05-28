@@ -20,6 +20,7 @@ interface CommandOptions extends Options {
   app?: string;
   bucketLocation?: string;
   appVersion?: string;
+  retryDelay?: number;
 }
 
 interface SourceMap {
@@ -110,7 +111,7 @@ export const command = new Command("crashlytics:sourcemap:upload [mappingFiles]"
             let success = await uploadMap(request, 1);
             if (!success) {
               // Wait 5s and retry
-              await new Promise((res) => setTimeout(res, (options.retryDelay as number) || 5000));
+              await new Promise((res) => setTimeout(res, options.retryDelay || 5000));
               success = await uploadMap(request);
             }
             return success;
