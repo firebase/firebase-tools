@@ -210,8 +210,8 @@ export async function getLinkedSourceMapPath(jsFilePath: string): Promise<string
     }
     fileHandle = await fs.promises.open(jsFilePath, "r");
     const buffer = Buffer.alloc(bufferSize);
-    await fileHandle.read(buffer, 0, bufferSize, size - bufferSize);
-    const tail = buffer.toString("utf-8");
+    const { bytesRead } = await fileHandle.read(buffer, 0, bufferSize, size - bufferSize);
+    const tail = buffer.toString("utf-8", 0, bytesRead);
     const regex = /^\/\/\s*[#@]\s*sourceMappingURL=(?<sourceMappingURL>.+)\s*$/m;
     const match = regex.exec(tail);
     const sourceMappingURL = match?.groups?.sourceMappingURL?.trim();
@@ -223,7 +223,7 @@ export async function getLinkedSourceMapPath(jsFilePath: string): Promise<string
       `Error reading sourceMappingURL from ${jsFilePath}: ${e instanceof Error ? e.message : String(e)}`,
     );
   } finally {
-    if (fileHandle !== undefined) {
+    if (fileHandle) {
       try {
         await fileHandle.close();
       } catch (e) {
