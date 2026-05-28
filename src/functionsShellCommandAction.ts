@@ -20,6 +20,21 @@ import { needProjectId } from "./projectUtils";
 
 const serveFunctions = new FunctionsServer();
 
+export const initializeFunctionsShellContext = (
+  context: Record<string, any>,
+  emulator: shell.FunctionsEmulatorShell,
+) => {
+  for (const trigger of emulator.triggers) {
+    if (emulator.emulatedFunctions.includes(trigger.id)) {
+      const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
+      _.set(context, trigger.entryPoint, localFunction.makeFn());
+    }
+  }
+  context.help =
+    "Instructions for the Functions Shell can be found at: " +
+    "https://firebase.google.com/docs/functions/local-emulator";
+};
+
 export const actionFunction = async (options: Options) => {
   if (typeof options.port === "string") {
     options.port = parseInt(options.port, 10);
@@ -95,19 +110,6 @@ export const actionFunction = async (options: Options) => {
         process.exit();
       }
 
-      const initializeContext = (context: any) => {
-        for (const trigger of emulator.triggers) {
-          if (emulator.emulatedFunctions.includes(trigger.id)) {
-            const localFunction = new LocalFunction(trigger, emulator.urls, emulator);
-            const triggerNameDotNotation = trigger.name.replace(/-/g, ".");
-            _.set(context, triggerNameDotNotation, localFunction.makeFn());
-          }
-        }
-        context.help =
-          "Instructions for the Functions Shell can be found at: " +
-          "https://firebase.google.com/docs/functions/local-emulator";
-      };
-
       for (const e of runningEmulators) {
         const info = remoteEmulators[e];
         utils.logLabeledBullet(
@@ -138,8 +140,8 @@ export const actionFunction = async (options: Options) => {
         writer: writer,
         useColors: true,
       });
-      initializeContext(replServer.context);
-      replServer.on("reset", initializeContext);
+      initializeFunctionsShellContext(replServer.context, emulator);
+      replServer.on("reset", (context) => initializeFunctionsShellContext(context, emulator));
 
       return new Promise((resolve) => {
         replServer.on("exit", () => {
