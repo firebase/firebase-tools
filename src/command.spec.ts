@@ -211,24 +211,6 @@ describe("Command", () => {
     const run = command
       .action((options) => {
         return {
-          except: options.except,
-        };
-      })
-      .runner();
-
-    const result = await run({
-      except: "firestore, hosting,  auth",
-    });
-
-    expect(result).to.deep.eq({
-      except: "firestore,hosting,auth",
-    });
-  });
-
-  it("should normalize space and commas separated values in 'only' options", async () => {
-    const run = command
-      .action((options) => {
-        return {
           only: options.only,
         };
       })
@@ -240,6 +222,24 @@ describe("Command", () => {
 
     expect(result).to.deep.eq({
       only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space and commas separated values in 'except' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          except: options.except,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      except: "firestore, hosting,  auth",
+    });
+
+    expect(result).to.deep.eq({
+      except: "firestore,hosting,auth",
     });
   });
 });
