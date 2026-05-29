@@ -65,4 +65,13 @@ describe("checkValidTargetFilters", () => {
       'Cannot specify "--only functions" and "--only functions:<filter>" at the same time',
     );
   });
+
+  it("should error if a target filter is missing product prefix", async () => {
+    const options = Object.assign(SAMPLE_OPTIONS, {
+      only: "functions:func1,func2",
+    });
+    await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
+      /"func2" is not a valid deploy target/,
+    );
+  });
 });
