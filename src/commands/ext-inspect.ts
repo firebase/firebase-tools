@@ -37,10 +37,10 @@ export const command = new Command("ext:inspect [extensionInstanceId]")
       }
 
       found = true;
-      const liveParams = instance.config.params || [];
-      const liveSystemParams = instance.config.systemParams || [];
-      const specParams = instance.config.source.spec.params || [];
-      const specSystemParams = instance.config.source.spec.systemParams || [];
+      const liveParams = instance.config?.params || {};
+      const liveSystemParams = instance.config?.systemParams || {};
+      const specParams = instance.config?.source?.spec?.params || {};
+      const specSystemParams = instance.config?.source?.spec?.systemParams || {};
 
       if (listAll) {
         console.log("# " + instanceId);
@@ -69,7 +69,7 @@ export const command = new Command("ext:inspect [extensionInstanceId]")
         );
         console.log(renamed + "=" + sysParamValue);
       });
-      specSystemParams.forEach((specSystemParam) => {
+      Object.entries(specSystemParams).forEach(([_, specSystemParam]) => {
         if (specSystemParam.param in liveSystemParams) {
           return;
         }
