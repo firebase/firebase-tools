@@ -1,9 +1,8 @@
 import { expect } from "chai";
-import * as crypto from "crypto";
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import { rmSync } from "node:fs";
+import * as crypto from "node:crypto";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
 
 import { listFiles } from "./listFiles";
 import { FIXTURE_DIR } from "./test/fixtures/ignores";
@@ -53,8 +52,12 @@ describe("listFiles", () => {
     });
 
     after(() => {
-      rmSync(tmpRoot, { recursive: true, force: true });
-      rmSync(outsideTarget, { force: true });
+      if (tmpRoot) {
+        fs.rmSync(tmpRoot, { recursive: true, force: true });
+      }
+      if (outsideTarget) {
+        fs.rmSync(outsideTarget, { force: true });
+      }
     });
 
     it("excludes a symlink-to-file at the top level (security: prevents leaking files outside source tree)", () => {
@@ -111,7 +114,7 @@ describe("listFiles", () => {
         } catch {
           /* ignore */
         }
-        rmSync(outsideDir, { recursive: true, force: true });
+        fs.rmSync(outsideDir, { recursive: true, force: true });
       }
     });
   });
