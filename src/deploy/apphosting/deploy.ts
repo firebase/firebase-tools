@@ -76,19 +76,19 @@ export default async function (context: Context, options: Options): Promise<void
       let localBuildScratchDir: string | undefined;
       try {
         const isLocalBuild = cfg.localBuild;
-        let builtAppDir: string | undefined;
+        let outputFiles: string[] | undefined;
         if (isLocalBuild) {
           experiments.assertEnabled("apphostinglocalbuilds", "App Hosting local builds");
           const localBuild = context.backendLocalBuilds[cfg.backendId];
-          builtAppDir = localBuild?.buildDir;
+          outputFiles = localBuild?.outputFiles;
           localBuildScratchDir = localBuild?.localBuildScratchDir;
-          if (!builtAppDir || !localBuildScratchDir) {
-            throw new FirebaseError(`No local build dir found for ${cfg.backendId}`);
+          if (!outputFiles || !localBuildScratchDir) {
+            throw new FirebaseError(`No local build output files found for ${cfg.backendId}`);
           }
         }
 
         const zippedSourcePath = isLocalBuild
-          ? await util.createLocalBuildTarArchive(cfg, localBuildScratchDir!, builtAppDir)
+          ? await util.createLocalBuildTarArchive(cfg, localBuildScratchDir!, outputFiles ?? [])
           : await util.createSourceDeployArchive(cfg, rootDir);
 
         logLabeledBullet(

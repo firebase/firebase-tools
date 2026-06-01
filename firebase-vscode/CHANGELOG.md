@@ -4,6 +4,10 @@
 - [Added] Improved error handling and status updates for query generation
 - [Added] Local schema aware query generation
 
+## 2.3.3
+
+- Update internal `firebase-tools` dependency to 15.19.0
+
 ## 2.3.2
 
 - Update internal `firebase-tools` dependency to 15.18.0
