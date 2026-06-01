@@ -22,24 +22,27 @@ const UNFILTERABLE_TARGETS = ["remoteconfig", "extensions"];
 
 describe("checkValidTargetFilters", () => {
   it("should resolve", async () => {
-    const options = Object.assign(SAMPLE_OPTIONS, {
+    const options = {
+      ...SAMPLE_OPTIONS,
       only: "functions",
-    });
+    };
     await expect(checkValidTargetFilters(options)).to.be.fulfilled;
   });
 
   it("should resolve if there are no 'only' targets specified", async () => {
-    const options = Object.assign(SAMPLE_OPTIONS, {
-      only: null,
-    });
+    const options = {
+      ...SAMPLE_OPTIONS,
+      only: null as any,
+    };
     await expect(checkValidTargetFilters(options)).to.be.fulfilled;
   });
 
   it("should error if an only option and except option have been provided", async () => {
-    const options = Object.assign(SAMPLE_OPTIONS, {
+    const options = {
+      ...SAMPLE_OPTIONS,
       only: "functions",
       except: "hosting",
-    });
+    };
     await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
       "Cannot specify both --only and --except",
     );
@@ -47,10 +50,10 @@ describe("checkValidTargetFilters", () => {
 
   UNFILTERABLE_TARGETS.forEach((target) => {
     it(`should error if non-filter-type target (${target}) has filters`, async () => {
-      const options = Object.assign(SAMPLE_OPTIONS, {
+      const options = {
+        ...SAMPLE_OPTIONS,
         only: `${target}:filter`,
-        except: null,
-      });
+      };
       await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
         /Filters specified with colons \(e.g. --only functions:func1,functions:func2\) are only supported for .*/,
       );
@@ -58,18 +61,20 @@ describe("checkValidTargetFilters", () => {
   });
 
   it("should error if the same target is specified with and without a filter", async () => {
-    const options = Object.assign(SAMPLE_OPTIONS, {
+    const options = {
+      ...SAMPLE_OPTIONS,
       only: "functions,functions:filter",
-    });
+    };
     await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
       'Cannot specify "--only functions" and "--only functions:<filter>" at the same time',
     );
   });
 
   it("should error if a target filter is missing product prefix", async () => {
-    const options = Object.assign(SAMPLE_OPTIONS, {
+    const options = {
+      ...SAMPLE_OPTIONS,
       only: "functions:func1,func2",
-    });
+    };
     await expect(checkValidTargetFilters(options)).to.be.rejectedWith(
       /"func2" is not a valid deploy target/,
     );
