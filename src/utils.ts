@@ -1070,6 +1070,13 @@ export function toLowerSnakeCase(s: string): string {
 
 /**
  * Generates a 32-bit positive integer using the MurmurHash3 algorithm.
+ *
+ * Based on the open-source JavaScript implementation of MurmurHash3 by Gary Court.
+ * @see https://github.com/garycourt/murmurhash-js
+ *
+ * @param key - The string or byte array to hash.
+ * @param seed - Optional seed value (default is 0).
+ * @returns A 32-bit positive integer hash value.
  */
 export function murmurHashV3(key: string | Uint8Array, seed = 0): number {
   if (typeof key === "string") {
