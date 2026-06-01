@@ -7,16 +7,15 @@ import { DataConnectEmulator } from "../../../../src/emulator/dataconnectEmulato
 import { dataConnectConfigs } from "../../data-connect/config";
 import { ResultValue } from "../../result";
 import { registerExecution } from "../../data-connect/execution/execution";
-import * as ensureApis from "../../../../src/dataconnect/ensureApis";
 import * as auth from "../../../../src/auth";
 import * as nock from "nock";
 import { setAccessToken } from "../../../../src/apiv2";
+import { configstore } from "../../../../src/configstore";
 
 firebaseSuite("generateOperation Error Handling", () => {
   let showErrorMessageStub: any;
   let showInformationMessageStub: any;
   let buildStub: any;
-  let ensureGIFApiTosStub: any;
   let authStub: any;
   let executionDisposable: vscode.Disposable;
 
@@ -24,13 +23,14 @@ firebaseSuite("generateOperation Error Handling", () => {
     showErrorMessageStub = stub(vscode.window, "showErrorMessage");
     showInformationMessageStub = stub(vscode.window, "showInformationMessage");
     buildStub = stub(DataConnectEmulator, "build");
-    ensureGIFApiTosStub = stub(ensureApis, "ensureGIFApiTos").resolves(true);
     authStub = stub(auth, "getAccessToken").resolves({ access_token: "an_access_token" });
     setAccessToken("an_access_token");
     
     stub(vscode.window, "withProgress").callsFake(async (options, task) => {
         return task({ report: () => {} }, { isCancellationRequested: false, onCancellationRequested: () => ({ dispose: () => {} }) } as any);
     });
+
+    stub(configstore, "get").withArgs("gemini").returns(true);
 
     // Mock dataConnectConfigs
     const mockConfigs = {
@@ -118,8 +118,8 @@ firebaseSuite("generateOperation Error Handling", () => {
     console.log("nock isDone:", scope.isDone());
 
     assert.ok(scope.isDone(), "Nock should have intercepted the request");
-    assert.ok(showInformationMessageStub.calledOnce);
-    assert.ok(showInformationMessageStub.getCall(0).args[0].startsWith("Generated response is not valid GraphQL"));
+    assert.ok(showErrorMessageStub.calledOnce);
+    assert.ok(showErrorMessageStub.getCall(0).args[0].startsWith("Generated response is not valid GraphQL"));
   });
 }, 80000);
 

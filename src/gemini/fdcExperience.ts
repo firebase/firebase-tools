@@ -243,5 +243,12 @@ export function extractCodeBlock(text: string): string {
   if (match && match[1]) {
     return match[1].trim();
   }
+
+  // Loose parsing if no backticks are present
+  if (!text.includes("{")) {
+    logger.warn("[Agent Service] Response seems to be plain text, no GraphQL code block found.");
+  }
+
+  // Return the entire text if no markdown code block is found
   return text.trim();
 }
