@@ -69,7 +69,7 @@ export const command = new Command("ext:inspect [extensionInstanceId]")
         );
         console.log(renamed + "=" + sysParamValue);
       });
-      Object.entries(specSystemParams).forEach(([_, specSystemParam]) => {
+      Object.entries(specSystemParams).forEach(([, specSystemParam]) => {
         if (specSystemParam.param in liveSystemParams) {
           return;
         }
@@ -85,6 +85,7 @@ export const command = new Command("ext:inspect [extensionInstanceId]")
     if (!found) {
       throw new FirebaseError(
         `Could not find extension instance ${wantInstanceId} in active extensions`,
+        { status: 404 },
       );
     }
   });
