@@ -10,7 +10,9 @@ export interface ArchiveOptions {
 
 /** Archives (zips) a file and returns a path to the tmp output file. */
 export async function archiveFile(filePath: string, options?: ArchiveOptions): Promise<string> {
-  const tmpFile = tmp.fileSync({ postfix: ".zip" }).name;
+  const tmpFileObj = tmp.fileSync({ postfix: ".zip" });
+  const tmpFile = tmpFileObj.name;
+  fs.closeSync(tmpFileObj.fd);
   const fileStream = fs.createWriteStream(tmpFile, {
     flags: "w",
     encoding: "binary",
