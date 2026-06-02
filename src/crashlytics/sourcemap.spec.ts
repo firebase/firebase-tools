@@ -255,7 +255,7 @@ describe("crashlytics:sourcemap helpers", () => {
     it("should archive, upload, and register a source map successfully", async () => {
       const request = mockUploadRequest({
         mappingFile: "/mock-root/path/to/file.js.map",
-        obfuscatedFilePath: "/mock-root/path/to/file.js",
+        obfuscatedFilePath: "path/to/file.js",
         options: mockCommandOptions({
           app: "1:12345:web:abc",
           projectRoot: "/mock-root",
@@ -298,7 +298,7 @@ describe("crashlytics:sourcemap helpers", () => {
     it("should normalize Next.js paths and ignore dev segments in obfuscated path", async () => {
       const request = mockUploadRequest({
         mappingFile: "/mock-root/path/to/file.js.map",
-        obfuscatedFilePath: "/mock-root/path/to/.next/dev/file.js",
+        obfuscatedFilePath: "path/to/.next/dev/file.js",
         options: mockCommandOptions({
           app: "1:12345:web:abc",
           projectRoot: "/mock-root",

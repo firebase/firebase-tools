@@ -297,8 +297,7 @@ export async function uploadSourceMaps(
 export async function uploadMap(request: UploadRequest, attemptsRemaining = 0): Promise<boolean> {
   const { projectId, mappingFile, obfuscatedFilePath, bucketName, appVersion, options } = request;
   const filePath = path.relative(options.projectRoot ?? process.cwd(), mappingFile);
-  const obfuscatedPath = path
-    .relative(options.projectRoot ?? process.cwd(), obfuscatedFilePath)
+  const obfuscatedPath = obfuscatedFilePath
     .split(path.sep)
     .map((p) => (p === ".next" ? "_next" : p))
     // TODO(andrewbrook): add flag to allow uploading dev maps
