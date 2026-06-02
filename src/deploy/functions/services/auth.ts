@@ -1,7 +1,6 @@
 import * as backend from "../backend";
 import * as identityPlatform from "../../../gcp/identityPlatform";
 import * as events from "../../../functions/events";
-import * as build from "../build";
 import { FirebaseError } from "../../../error";
 import { cloneDeep } from "../../../utils";
 import { Name, noop, Service } from "./index";
@@ -182,8 +181,7 @@ export class AuthBlockingService implements Service {
     return this.triggerQueue;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  async getDefaultRegion(): Promise<string> {
     return "us-east1";
   }
 }

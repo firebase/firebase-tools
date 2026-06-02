@@ -204,11 +204,10 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
 
 export function serviceForEndpoint(endpoint: backend.Endpoint | build.Endpoint): Service {
   let eventType: string | undefined;
-  const ep = endpoint as any;
-  if (ep.eventTrigger?.eventType) {
-    eventType = ep.eventTrigger.eventType;
-  } else if (ep.blockingTrigger?.eventType) {
-    eventType = ep.blockingTrigger.eventType;
+  if ("eventTrigger" in endpoint && endpoint.eventTrigger?.eventType) {
+    eventType = endpoint.eventTrigger.eventType;
+  } else if ("blockingTrigger" in endpoint && endpoint.blockingTrigger?.eventType) {
+    eventType = endpoint.blockingTrigger.eventType;
   }
 
   return eventType ? EVENT_SERVICE_MAPPING[eventType as events.Event] || noOpService : noOpService;
