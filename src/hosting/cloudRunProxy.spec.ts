@@ -1,4 +1,3 @@
-import { cloneDeep } from "lodash";
 import { expect } from "chai";
 import * as express from "express";
 import * as nock from "nock";
@@ -347,8 +346,7 @@ describe("cloudRunProxy", () => {
       .get("/project-foo/us-central1/helloworld/")
       .reply(200, "local version");
 
-    const options = cloneDeep(fakeOptions);
-    options.targets = ["functions"];
+    const options: CloudRunProxyOptions = { ...fakeOptions, targets: ["functions"] };
 
     const mwGenerator = cloudRunProxy(options);
     const mw = await mwGenerator(fakeRewrite);
@@ -372,8 +370,7 @@ describe("cloudRunProxy", () => {
       .get("/project-foo/asia-southeast1/helloworld/")
       .reply(200, "local version");
 
-    const options = cloneDeep(fakeOptions);
-    options.targets = ["functions"];
+    const options: CloudRunProxyOptions = { ...fakeOptions, targets: ["functions"] };
 
     const mwGenerator = cloudRunProxy(options);
     const mw = await mwGenerator({ run: { serviceId: "helloworld", region: "asia-southeast1" } });

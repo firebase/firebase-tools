@@ -1,4 +1,3 @@
-import { includes } from "lodash";
 import { RequestHandler } from "express";
 
 import { Client } from "../apiv2";
@@ -76,7 +75,7 @@ export default function (
 
     const textIdentifier = `Cloud Run service "${rewrite.run.serviceId}" for region "${rewrite.run.region}"`;
 
-    if (includes(options.targets, "functions") && EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
+    if (options.targets?.includes("functions") && EmulatorRegistry.isRunning(Emulators.FUNCTIONS)) {
       const projectId = needProjectId(options);
       const url = FunctionsEmulator.getHttpFunctionUrl(
         projectId,
