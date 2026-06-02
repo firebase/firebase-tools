@@ -246,6 +246,16 @@ describe("migrate", () => {
           agentName: "gemini-cli",
         }),
       ).to.be.true;
+
+      expect(
+        installSkillsStub.calledWith({
+          cwd: testRoot,
+          global: false,
+          background: false,
+          agentName: "gemini-cli",
+          skillPackage: "genkit-ai/skills",
+        }),
+      ).to.be.true;
     });
 
     it("should append existing README.md content if it exists", async () => {
