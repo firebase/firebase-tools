@@ -5,6 +5,9 @@ import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as firestore from "../../gcp/firestore";
+import * as storage from "../../gcp/storage";
+import * as database from "../../management/database";
 import * as firestoreService from "./services/firestore";
 import * as storageService from "./services/storage";
 import * as databaseService from "./services/database";
@@ -194,9 +197,12 @@ describe("prepare", () => {
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      getDatabaseStub = sandbox.stub(firestoreService, "getDatabase");
-      getBucketStub = sandbox.stub(storageService, "getBucket");
-      getDatabaseInstanceDetailsStub = sandbox.stub(databaseService, "getDatabaseInstanceDetails");
+      firestoreService.clearCache();
+      storageService.clearCache();
+      databaseService.clearCache();
+      getDatabaseStub = sandbox.stub(firestore, "getDatabase");
+      getBucketStub = sandbox.stub(storage, "getBucket");
+      getDatabaseInstanceDetailsStub = sandbox.stub(database, "getDatabaseInstanceDetails");
     });
 
     afterEach(() => {
