@@ -10,7 +10,7 @@ import { FirebaseError } from "../error";
 
 import * as clc from "colorette";
 
-export const command = new Command("ext:inspect [extensionInstanceId]")
+export const command = new Command("ext:instances:get [extensionInstanceId]")
   .description("shows the current configuration for a currently installed Extension")
   .option("--with-secrets", "shows the parameter name (but not value) of SECRET-type params")
   .before(requirePermissions, ["firebaseextensions.instances.list"])
