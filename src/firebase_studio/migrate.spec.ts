@@ -549,6 +549,7 @@ describe("migrate", () => {
           global: true,
           background: false,
           agentName: "gemini-cli",
+          skillPackage: "firebase/agent-skills",
         }),
       ).to.be.true;
     });
