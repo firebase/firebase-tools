@@ -620,4 +620,22 @@ describe("utils", () => {
       expect(p).to.equal(inside);
     });
   });
+
+  describe("murmurHashV3", () => {
+    it("should return identical hashes to reference values for basic strings", () => {
+      expect(utils.murmurHashV3("Hello World")).to.equal(427197390);
+      expect(utils.murmurHashV3("abc")).to.equal(3017643002);
+      expect(utils.murmurHashV3("")).to.equal(0);
+    });
+
+    it("should handle custom seed values correctly", () => {
+      expect(utils.murmurHashV3("Hello World", 12345)).to.equal(389305035);
+    });
+
+    it("should handle string and Uint8Array keys identically", () => {
+      const keyStr = "Hello World";
+      const keyBytes = new TextEncoder().encode(keyStr);
+      expect(utils.murmurHashV3(keyBytes)).to.equal(utils.murmurHashV3(keyStr));
+    });
+  });
 });
