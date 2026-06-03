@@ -1,1 +1,3 @@
 - Updated Firebase SQL Connect genAI features to use new Agent Service API
+- Updated the Firebase Data Connect local toolkit to v3.4.10, which includes the following changes:
+  - Extended client cache consistency validation to include conflicts with schema field names.
