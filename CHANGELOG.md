@@ -1,1 +1,2 @@
 - Adds the ext:instances:get command to retrieve currently running Extensions configurations (#10583)
+- Updated Firebase SQL Connect genAI features to use new Agent Service API
