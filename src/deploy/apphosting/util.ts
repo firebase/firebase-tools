@@ -1,5 +1,6 @@
 import * as archiver from "archiver";
 import * as fs from "fs";
+import * as fsExtra from "fs-extra";
 import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
@@ -26,49 +27,80 @@ export async function createLocalBuildTarArchive(
   targetSubDir?: string,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
+  const tempDir = tmp.dirSync({ prefix: `fah-local-build-${config.backendId}-` }).name;
 
-  const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
-  const ignore = ["firebase-debug.log", "firebase-debug.*.log", ".git"];
-  const rdrFiles = await fsAsync.readdirRecursive({
-    path: targetDir,
-    ignore: ignore,
-    isGitIgnore: true,
-  });
-  const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(rootDir, rdrf.name));
+  try {
+    const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
 
-  if (targetSubDir) {
-    const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
-      return APPHOSTING_YAML_FILE_REGEX.test(file);
-    });
-    for (const file of defaultFiles) {
-      if (!allFiles.includes(file)) {
-        allFiles.push(file);
+    if (targetSubDir) {
+      const destTargetDir = path.join(tempDir, targetSubDir);
+      fsExtra.mkdirpSync(destTargetDir);
+      fsExtra.copySync(targetDir, destTargetDir);
+    } else {
+      fsExtra.copySync(rootDir, tempDir, {
+        filter: (src) => {
+          const relativePath = path.relative(rootDir, src);
+          return !relativePath.startsWith(".git") && !relativePath.includes("firebase-debug");
+        },
+      });
+    }
+
+    const placeholderPackageJson = {
+      name: "local-build-placeholder",
+      version: "1.0.0",
+      scripts: {
+        "apphosting:build": "echo 'already built'",
+      },
+    };
+    fsExtra.writeFileSync(
+      path.join(tempDir, "package.json"),
+      JSON.stringify(placeholderPackageJson, null, 2),
+    );
+
+    const bundleYamlSrc = path.join(rootDir, ".apphosting", "bundle.yaml");
+    const bundleYamlDest = path.join(tempDir, ".apphosting", "bundle.yaml");
+    if (fsExtra.existsSync(bundleYamlSrc)) {
+      fsExtra.mkdirpSync(path.dirname(bundleYamlDest));
+      fsExtra.copySync(bundleYamlSrc, bundleYamlDest);
+    }
+
+    if (targetSubDir) {
+      const defaultFiles = fs.readdirSync(rootDir).filter((file) => {
+        return APPHOSTING_YAML_FILE_REGEX.test(file);
+      });
+      for (const file of defaultFiles) {
+        const srcPath = path.join(rootDir, file);
+        const destPath = path.join(tempDir, file);
+        fsExtra.copySync(srcPath, destPath);
       }
     }
-  }
 
-  // `tar` returns a `TypeError` if `allFiles` is empty. Let's check a feww things.
-  try {
-    fs.statSync(rootDir);
-  } catch (err: unknown) {
-    if (err instanceof Error && "code" in err && err.code === "ENOENT") {
-      throw new FirebaseError(`Could not read directory "${rootDir}"`);
+    const rdrFiles = await fsAsync.readdirRecursive({
+      path: tempDir,
+    });
+    const allFiles: string[] = rdrFiles.map((rdrf) => path.relative(tempDir, rdrf.name));
+
+    if (!allFiles.length) {
+      throw new FirebaseError(`Cannot create a tar archive with 0 files from directory "${tempDir}"`);
     }
-    throw err;
-  }
-  if (!allFiles.length) {
-    throw new FirebaseError(`Cannot create a tar archive with 0 files from directory "${rootDir}"`);
+
+    await tar.create(
+      {
+        gzip: true,
+        file: tmpFile,
+        cwd: tempDir,
+        portable: true,
+      },
+      allFiles,
+    );
+  } finally {
+    try {
+      fsExtra.rmSync(tempDir, { recursive: true, force: true });
+    } catch (err) {
+      // ignore
+    }
   }
 
-  await tar.create(
-    {
-      gzip: true,
-      file: tmpFile,
-      cwd: rootDir,
-      portable: true,
-    },
-    allFiles,
-  );
   return tmpFile;
 }
 

@@ -365,9 +365,19 @@ export async function relativeRequire(dir: string, mod: string) {
     let packageJson: PackageJson | undefined;
     let isEsm = extname(path) === ".mjs";
     if (!isEsm) {
-      packageJson = await readJSON<PackageJson | undefined>(
-        join(dirname(path), "package.json"),
-      ).catch(() => undefined);
+      let currentDir = dirname(path);
+      while (currentDir !== dirname(currentDir)) {
+        const p = join(currentDir, "package.json");
+        if (fileExistsSync(p)) {
+          try {
+            packageJson = readJsonSync(p);
+            break;
+          } catch {
+            // ignore
+          }
+        }
+        currentDir = dirname(currentDir);
+      }
 
       isEsm = packageJson?.type === "module";
     }

@@ -608,3 +608,6 @@ function codegenDevModeFunctionsDirectory() {
   const packageJson = {};
   return Promise.resolve({ packageJson, frameworksEntry: "_devMode" });
 }
+
+export { handleWebFrameworkMigration } from "./migration";
+
