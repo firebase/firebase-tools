@@ -12,7 +12,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
-import { serviceForEndpoint } from "./services";
+import { serviceForEndpoint, FALLBACK_DEPLOYMENT_REGION } from "./services";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -59,7 +59,6 @@ import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-export const DEFAULT_FUNCTION_REGION = "us-central1";
 
 /**
  * Prepare functions codebases for deploy.
@@ -356,7 +355,7 @@ export async function resolveDefaultRegionsForBuild(
 ): Promise<void> {
   for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
     if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
-      let resolvedRegion = DEFAULT_FUNCTION_REGION;
+      let resolvedRegion = FALLBACK_DEPLOYMENT_REGION;
 
       // Match existing endpoints.
       let matching: backend.Endpoint | undefined;
@@ -379,7 +378,7 @@ export async function resolveDefaultRegionsForBuild(
           resolvedRegion = await resolveRegionForTrigger(endpoint);
         } catch (err: any) {
           logger.debug(
-            `Failed to resolve region for endpoint ${id}. Defaulting to ${DEFAULT_FUNCTION_REGION}.`,
+            `Failed to resolve region for endpoint ${id}. Defaulting to ${FALLBACK_DEPLOYMENT_REGION}.`,
             getErrStack(err),
           );
         }
@@ -392,10 +391,7 @@ export async function resolveDefaultRegionsForBuild(
 
 async function resolveRegionForTrigger(endpoint: build.Endpoint): Promise<string> {
   const service = serviceForEndpoint(endpoint);
-  if (service.getDefaultRegion) {
-    return await service.getDefaultRegion(endpoint);
-  }
-  return DEFAULT_FUNCTION_REGION;
+  return await service.getDefaultRegion(endpoint);
 }
 
 /**
