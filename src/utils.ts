@@ -1067,3 +1067,65 @@ export function toLowerSnakeCase(s: string): string {
     .replace(/[-\s]+/g, "_")
     .toLowerCase();
 }
+
+/**
+ * Generates a 32-bit positive integer using the MurmurHash3 algorithm.
+ *
+ * Based on the open-source JavaScript implementation of MurmurHash3 by Gary Court.
+ * @see https://github.com/garycourt/murmurhash-js
+ *
+ * @param key - The string or byte array to hash.
+ * @param seed - Optional seed value (default is 0).
+ * @returns A 32-bit positive integer hash value.
+ */
+export function murmurHashV3(key: string | Uint8Array, seed = 0): number {
+  if (typeof key === "string") {
+    key = new TextEncoder().encode(key);
+  }
+  const remainder = key.length & 3;
+  const bytes = key.length - remainder;
+  const c1 = 3432918353;
+  const c2 = 461845907;
+
+  let h1 = seed;
+  let i = 0;
+  let k1 = 0;
+
+  while (i < bytes) {
+    k1 =
+      (key[i] & 255) |
+      ((key[++i] & 255) << 8) |
+      ((key[++i] & 255) << 16) |
+      ((key[++i] & 255) << 24);
+    ++i;
+    k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+    k1 = (k1 << 15) | (k1 >>> 17);
+    k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+    h1 ^= k1;
+    h1 = (h1 << 13) | (h1 >>> 19);
+    const h1b = ((h1 & 65535) * 5 + ((((h1 >>> 16) * 5) & 65535) << 16)) & 4294967295;
+    h1 = (h1b & 65535) + 27492 + ((((h1b >>> 16) + 58964) & 65535) << 16);
+  }
+  k1 = 0;
+  switch (remainder) {
+    case 3:
+      k1 ^= (key[i + 2] & 255) << 16;
+    // falls through
+    case 2:
+      k1 ^= (key[i + 1] & 255) << 8;
+    // falls through
+    case 1:
+      k1 ^= key[i] & 255;
+      k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+      k1 = (k1 << 15) | (k1 >>> 17);
+      k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+      h1 ^= k1;
+  }
+  h1 ^= key.length;
+  h1 ^= h1 >>> 16;
+  h1 = ((h1 & 65535) * 2246822507 + ((((h1 >>> 16) * 2246822507) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 13;
+  h1 = ((h1 & 65535) * 3266489909 + ((((h1 >>> 16) * 3266489909) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 16;
+  return h1 >>> 0;
+}

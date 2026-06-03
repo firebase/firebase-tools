@@ -74,6 +74,23 @@ describe("fdcExperience", () => {
       }`;
       expect(extractCodeBlock(text)).to.eq(expected);
     });
+
+    it("should return entire text trimmed if no backticks but contains '{' (Scenario B)", () => {
+      const text = `
+      type User {
+        id: ID!
+      }
+      `;
+      const expected = `type User {
+        id: ID!
+      }`;
+      expect(extractCodeBlock(text)).to.eq(expected);
+    });
+
+    it("should return entire text trimmed if no backticks and no '{' (Scenario C)", () => {
+      const text = "random text without braces";
+      expect(extractCodeBlock(text)).to.eq(text);
+    });
   });
 
   describe("generateSchema", () => {
