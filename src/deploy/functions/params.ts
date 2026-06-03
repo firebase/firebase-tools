@@ -430,6 +430,7 @@ export async function resolveParams(
     }
     if (promptable.optional && dotEnvPresent) {
       paramValues[param.name] = defaultOrZeroValue(param, paramDefault);
+      continue;
     }
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
