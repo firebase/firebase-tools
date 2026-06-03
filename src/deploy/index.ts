@@ -19,7 +19,7 @@ import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
-import { prepareFrameworks } from "../frameworks";
+import { prepareFrameworks, handleWebFrameworkMigration } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
 import { isRunningInGithubAction } from "../utils";
@@ -104,6 +104,10 @@ export const deploy = async function (
   const releases: Chain = [];
   const postdeploys: Chain = [];
   const startTime = Date.now();
+
+  if (targetNames.includes("hosting") && isDeployingWebFramework(options)) {
+    await handleWebFrameworkMigration(targetNames, context, options);
+  }
 
   if (targetNames.includes("hosting") && isDeployingWebFramework(options)) {
     experiments.assertEnabled("webframeworks", "deploy a web framework from source");
