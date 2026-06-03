@@ -150,7 +150,8 @@ export const ALL_EXPERIMENTS = experiments({
   },
 
   abiu: {
-    shortDescription: "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
     default: true,
     public: true,
   },
