@@ -50,7 +50,12 @@ export const command = new Command("ext:instances:get [extensionInstanceId]")
       specParams.forEach((specParam) => {
         if (specParam.type === "SECRET") {
           if (options.withSecrets) {
-            console.log("# " + specParam.param + " stored in Cloud Secret Manager");
+            console.log(
+              specParam.param +
+                "=" +
+                liveParams[specParam.param] +
+                " # stored in Cloud Secret Manager",
+            );
           }
         } else if (specParam.param in liveParams) {
           console.log(specParam.param + "=" + liveParams[specParam.param]);
