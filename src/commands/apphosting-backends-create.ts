@@ -5,7 +5,7 @@ import { needProjectId } from "../projectUtils";
 import { requireAuth } from "../requireAuth";
 import { doSetup } from "../apphosting/backend";
 import { ensureApiEnabled } from "../gcp/apphosting";
-import * as experiments from "../experiments";
+
 import { APPHOSTING_TOS_ID } from "../gcp/firedata";
 import { requireTosAcceptance } from "../requireTosAcceptance";
 
@@ -29,13 +29,10 @@ export const command = new Command("apphosting:backends:create")
     "specify the primary region for the backend. Required with --non-interactive.",
   )
   .option("--root-dir <rootDir>", "specify the root directory for the backend.");
-const abiuEnabled = experiments.isEnabled("abiu");
-if (abiuEnabled) {
-  command.option(
-    "--runtime [runtime]",
-    "specify the runtime for the backend (e.g., nodejs, nodejs22)",
-  );
-}
+command.option(
+  "--runtime [runtime]",
+  "specify the runtime for the backend (e.g., nodejs, nodejs22)",
+);
 
 command
   .before(requireAuth)
@@ -47,16 +44,9 @@ command
       throw new FirebaseError(`--non-interactive option requires --backend and --primary-region`);
     }
 
-    const abiuAllowed = experiments.isEnabled("abiu");
-    if (!abiuAllowed && options.runtime) {
-      throw new FirebaseError(
-        "The --runtime flag is only available when the 'abiu' experiment is enabled. To enable it, run 'firebase experiments:enable abiu'.",
-      );
-    }
-    // When ABIU is allowed but the user doesn't provide a runtime string, we let doSetup handle it.
+    // When the user doesn't provide a runtime string, we let doSetup handle it.
     // We strictly check for string type to avoid boolean true (flag present without value) causing issues.
-    const runtime =
-      abiuAllowed && typeof options.runtime === "string" ? options.runtime : undefined;
+    const runtime = typeof options.runtime === "string" ? options.runtime : undefined;
 
     return doSetup(
       projectId,

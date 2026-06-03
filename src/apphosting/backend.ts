@@ -28,7 +28,7 @@ import * as ora from "ora";
 import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
-import { isEnabled } from "../experiments";
+
 import { resolveRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
@@ -387,10 +387,7 @@ export async function createBackend(
     appId: webAppId,
   };
 
-  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
-  if (isEnabled("abiu")) {
-    backendReqBody.runtime = { value: runtime ?? "" };
-  }
+  backendReqBody.runtime = { value: runtime ?? "" };
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

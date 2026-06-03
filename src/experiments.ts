@@ -149,13 +149,6 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
-  abiu: {
-    shortDescription:
-      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
-    default: true,
-    public: true,
-  },
-
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
     shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
