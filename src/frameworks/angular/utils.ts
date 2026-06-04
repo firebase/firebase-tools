@@ -633,16 +633,11 @@ export type Angular22SsrSecurityWarning = {
  * second requirement. Returns undefined when unaffected.
  */
 export function getAngular22SsrSecurityWarning(opts: {
-  version: string | undefined;
   ssr: boolean;
   buildOptionsAllowedHosts: string[] | undefined;
   serverEntrySource: string | undefined;
 }): Angular22SsrSecurityWarning | undefined {
-  if (!opts.version || !opts.ssr) return undefined;
-
-  const semver = coerce(opts.version);
-  if (!semver) return undefined;
-  if (semver.major < 22) return undefined;
+  if (!opts.ssr) return undefined;
 
   const declared = opts.buildOptionsAllowedHosts ?? [];
 
@@ -708,7 +703,10 @@ export async function maybeWarnAngular22SsrSecurity(
 ): Promise<void> {
   try {
     const version = getAngularVersion(dir);
-    if (!version || !opts.ssr) return;
+    if (!version) return;
+    const semver = coerce(version);
+    if (!semver || semver.major < 22) return;
+    if (!opts.ssr) return;
 
     const buildOptionsAllowedHosts = extractAngular22AllowedHostsFromBuildOptions(
       opts.buildTargetOptions,
@@ -723,7 +721,6 @@ export async function maybeWarnAngular22SsrSecurity(
     }
 
     const warning = getAngular22SsrSecurityWarning({
-      version,
       ssr: opts.ssr,
       buildOptionsAllowedHosts,
       serverEntrySource,

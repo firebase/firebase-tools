@@ -103,37 +103,18 @@ describe("Angular utils", () => {
 
   describe("getAngular22SsrSecurityWarning", () => {
     const baseOpts = {
-      version: "22.0.0",
       ssr: true,
       buildOptionsAllowedHosts: undefined as string[] | undefined,
       serverEntrySource: undefined as string | undefined,
     };
-
-    it("returns undefined when Angular version is missing", () => {
-      const result = getAngular22SsrSecurityWarning({ ...baseOpts, version: undefined });
-      expect(result).to.be.undefined;
-    });
 
     it("returns undefined when SSR is disabled", () => {
       const result = getAngular22SsrSecurityWarning({ ...baseOpts, ssr: false });
       expect(result).to.be.undefined;
     });
 
-    it("returns undefined for Angular versions older than 22", () => {
-      expect(getAngular22SsrSecurityWarning({ ...baseOpts, version: "20.3.10" })).to.be.undefined;
-      expect(getAngular22SsrSecurityWarning({ ...baseOpts, version: "21.2.8" })).to.be.undefined;
-    });
-
     it("flags the missing hosts when nothing is configured for v22 SSR", () => {
       const result = getAngular22SsrSecurityWarning(baseOpts);
-      expect(result).to.deep.equal({
-        allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersEnabled: false,
-      });
-    });
-
-    it("supports prerelease versions like 22.0.0-next.12", () => {
-      const result = getAngular22SsrSecurityWarning({ ...baseOpts, version: "22.0.0-next.12" });
       expect(result).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
         trustProxyHeadersEnabled: false,
@@ -401,7 +382,6 @@ describe("Angular utils", () => {
     const warnFor = (json: JsonObject, serverEntrySource: string, configuration?: string) => {
       const options = resolveBuildOptions(json, configuration);
       return getAngular22SsrSecurityWarning({
-        version: "22.0.0",
         ssr: !!options.ssr,
         buildOptionsAllowedHosts: extractAngular22AllowedHostsFromBuildOptions(options),
         serverEntrySource,
@@ -533,6 +513,15 @@ describe("Angular utils", () => {
         buildTargetOptions: { ssr: { entry: "src/server.ts" } },
       });
       expect(logLabeledWarningStub.called).to.be.false;
+    });
+
+    it("warns when using a prerelease Angular 22 version like 22.0.0-next.12", async () => {
+      stubAngularVersion("22.0.0-next.12");
+      await maybeWarnAngular22SsrSecurity(tmpDir, {
+        ssr: true,
+        buildTargetOptions: { ssr: true },
+      });
+      expect(logLabeledWarningStub.calledOnce).to.be.true;
     });
 
     it("warns under the 'Angular 22' label when v22 SSR has no security configuration", async () => {
