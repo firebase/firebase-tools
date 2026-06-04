@@ -124,11 +124,11 @@ describe("Angular utils", () => {
       expect(getAngular22SsrSecurityWarning({ ...baseOpts, version: "21.2.8" })).to.be.undefined;
     });
 
-    it("flags both issues when nothing is configured for v22 SSR", () => {
+    it("flags the missing hosts when nothing is configured for v22 SSR", () => {
       const result = getAngular22SsrSecurityWarning(baseOpts);
       expect(result).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersMissing: true,
+        trustProxyHeadersEnabled: false,
       });
     });
 
@@ -136,8 +136,17 @@ describe("Angular utils", () => {
       const result = getAngular22SsrSecurityWarning({ ...baseOpts, version: "22.0.0-next.12" });
       expect(result).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersMissing: true,
+        trustProxyHeadersEnabled: false,
       });
+    });
+
+    it("returns undefined when allowedHosts contains '*' even without trustProxyHeaders", () => {
+      const result = getAngular22SsrSecurityWarning({
+        ...baseOpts,
+        buildOptionsAllowedHosts: ["*"],
+        serverEntrySource: SERVER_TS_DEFAULT,
+      });
+      expect(result).to.be.undefined;
     });
 
     it("returns undefined when allowedHosts contains '*' and trustProxyHeaders is configured", () => {
@@ -160,20 +169,19 @@ describe("Angular utils", () => {
       expect(result).to.be.undefined;
     });
 
-    it("only flags trustProxyHeaders when hosts are configured but the default server.ts leaves it unset", () => {
+    it("returns undefined when every host is allowlisted even though the default server.ts leaves trustProxyHeaders unset", () => {
+      // Allowlist covers the Cloud Run host the engine validates; trustProxyHeaders not required.
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
         // The unmodified schematic server.ts constructs the engine with no options.
         serverEntrySource: SERVER_TS_DEFAULT,
       });
-      expect(result).to.deep.equal({
-        allowedHostsMissing: [],
-        trustProxyHeadersMissing: true,
-      });
+      expect(result).to.be.undefined;
     });
 
-    it("only flags allowedHosts when proxy headers are configured but hosts are partial", () => {
+    it("flags the remaining hosts when proxy headers are on but the allowlist is partial", () => {
+      // Proxied mode validates the public domain; *.firebaseapp.com still missing.
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
         buildOptionsAllowedHosts: ["*.web.app"],
@@ -181,7 +189,7 @@ describe("Angular utils", () => {
       });
       expect(result).to.deep.equal({
         allowedHostsMissing: ["*.firebaseapp.com", "*.a.run.app"],
-        trustProxyHeadersMissing: false,
+        trustProxyHeadersEnabled: true,
       });
     });
 
@@ -215,9 +223,7 @@ describe("Angular utils", () => {
     });
 
     it("does not treat allowedHosts mentioned only in a comment as configured", () => {
-      // Regression: a stray mention in a comment (no `:`/`=` assignment) must
-      // not suppress the warning. trustProxyHeaders IS configured on the engine
-      // so only allowedHosts should be flagged.
+      // Comment mention (no assignment) must not suppress; proxied mode, no public host allowlisted.
       const serverEntrySource = serverTsWithEngineOptions(
         "  // TODO: pass allowedHosts to AngularNodeAppEngine before deploying",
         "  trustProxyHeaders: true,",
@@ -225,7 +231,7 @@ describe("Angular utils", () => {
       const result = getAngular22SsrSecurityWarning({ ...baseOpts, serverEntrySource });
       expect(result).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersMissing: false,
+        trustProxyHeadersEnabled: true,
       });
     });
 
@@ -240,31 +246,30 @@ describe("Angular utils", () => {
       expect(result).to.be.undefined;
     });
 
-    it("does not treat trustProxyHeaders mentioned only in a comment as configured", () => {
-      // Regression: a comment mentioning trustProxyHeaders without an
-      // assignment must still be reported as missing. Uses the unmodified
-      // default server.ts with an added reminder comment.
+    it("does not treat trustProxyHeaders mentioned only in a comment as enabled", () => {
+      // Comment mention must not flip to proxied mode; default mode still needs the Cloud Run host.
       const serverEntrySource = SERVER_TS_DEFAULT.replace(
         "const app = express();",
         "// remember to set trustProxyHeaders before deploy\nconst app = express();",
       );
       const result = getAngular22SsrSecurityWarning({
         ...baseOpts,
-        buildOptionsAllowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
+        buildOptionsAllowedHosts: ["*.web.app", "*.firebaseapp.com"],
         serverEntrySource,
       });
       expect(result).to.deep.equal({
-        allowedHostsMissing: [],
-        trustProxyHeadersMissing: true,
+        allowedHostsMissing: ["*.a.run.app"],
+        trustProxyHeadersEnabled: false,
       });
     });
   });
 
   describe("formatAngular22SsrSecurityWarning", () => {
     it("includes the missing hostnames and the angular.json snippet", () => {
+      // trustProxyHeaders already enabled -> the alternative hint is redundant.
       const message = formatAngular22SsrSecurityWarning({
         allowedHostsMissing: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS],
-        trustProxyHeadersMissing: false,
+        trustProxyHeadersEnabled: true,
       });
       expect(message).to.include("Angular 22");
       expect(message).to.include('"*.web.app"');
@@ -277,25 +282,17 @@ describe("Angular utils", () => {
       expect(message).to.not.include("trustProxyHeaders");
     });
 
-    it("includes the trustProxyHeaders snippet when that piece is missing", () => {
+    it("adds the trustProxyHeaders alternative when it is not already enabled", () => {
       const message = formatAngular22SsrSecurityWarning({
-        allowedHostsMissing: [],
-        trustProxyHeadersMissing: true,
+        allowedHostsMissing: ["*.a.run.app"],
+        trustProxyHeadersEnabled: false,
       });
+      expect(message).to.include("security.allowedHosts");
+      expect(message).to.include('"*.a.run.app"');
       expect(message).to.include("trustProxyHeaders");
       expect(message).to.include(
         "https://angular.dev/best-practices/security#configuring-trusted-proxy-headers",
       );
-      expect(message).to.not.include("security.allowedHosts");
-    });
-
-    it("includes both sections when both pieces are missing", () => {
-      const message = formatAngular22SsrSecurityWarning({
-        allowedHostsMissing: ["*.a.run.app"],
-        trustProxyHeadersMissing: true,
-      });
-      expect(message).to.include("security.allowedHosts");
-      expect(message).to.include("trustProxyHeaders");
     });
   });
 
@@ -416,24 +413,22 @@ describe("Angular utils", () => {
       expect(warnFor(json, SERVER_TS_DEFAULT)).to.be.undefined;
     });
 
-    it("SSR via ssr.entry with no security config flags both pieces", () => {
+    it("SSR via ssr.entry with no security config flags the missing hosts", () => {
       const json = angularJson({ outputMode: "server", ssr: { entry: "src/server.ts" } });
       expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersMissing: true,
+        trustProxyHeadersEnabled: false,
       });
     });
 
-    it("SSR with security.allowedHosts set flags only trustProxyHeaders", () => {
+    it("SSR with the recommended security.allowedHosts is not flagged (Cloud Run host covered)", () => {
       const json = angularJson({
         outputMode: "server",
         ssr: { entry: "src/server.ts" },
         security: { allowedHosts: [...ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS] },
       });
-      expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
-        allowedHostsMissing: [],
-        trustProxyHeadersMissing: true,
-      });
+      // allowlist covers *.a.run.app (the validated host), so no warning despite trustProxyHeaders unset.
+      expect(warnFor(json, SERVER_TS_DEFAULT)).to.be.undefined;
     });
 
     it("SSR fully configured (security.allowedHosts + engine trustProxyHeaders) is not flagged", () => {
@@ -466,13 +461,11 @@ describe("Angular utils", () => {
       // Without the configuration the hosts are missing...
       expect(warnFor(json, SERVER_TS_DEFAULT)).to.deep.equal({
         allowedHostsMissing: ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS,
-        trustProxyHeadersMissing: true,
+        trustProxyHeadersEnabled: false,
       });
-      // ...but resolving the production configuration satisfies allowedHosts.
-      expect(warnFor(json, SERVER_TS_DEFAULT, "production")).to.deep.equal({
-        allowedHostsMissing: [],
-        trustProxyHeadersMissing: true,
-      });
+      // ...but resolving the production configuration satisfies allowedHosts
+      // (the Cloud Run host is covered), so the warning clears.
+      expect(warnFor(json, SERVER_TS_DEFAULT, "production")).to.be.undefined;
     });
   });
 
@@ -624,17 +617,14 @@ describe("Angular utils", () => {
       expect(logLabeledWarningStub.called).to.be.false;
     });
 
-    it("only warns about trustProxyHeaders when allowedHosts is satisfied", async () => {
+    it("does not warn when the allowlist covers the Cloud Run host even though trustProxyHeaders is unset", async () => {
       stubAngularVersion("22.0.0");
-      // No server entry file => trustProxyHeaders cannot be confirmed.
+      // No server entry => direct mode; recommended allowlist covers the Cloud Run host.
       await maybeWarnAngular22SsrSecurity(tmpDir, {
         ssr: true,
         buildTargetOptions: { ssr: true, security: { allowedHosts: RECOMMENDED } },
       });
-      expect(logLabeledWarningStub.calledOnce).to.be.true;
-      const message = warningMessage();
-      expect(message).to.include("trustProxyHeaders");
-      expect(message).to.not.include("security.allowedHosts");
+      expect(logLabeledWarningStub.called).to.be.false;
     });
 
     it("swallows unexpected failures so the build is never blocked", async () => {
