@@ -522,6 +522,87 @@ describe("prepare", () => {
 
       expect(want.endpoints["id"].region).to.deep.equal(["us-central1"]);
     });
+
+    it("resolves us-east1 for global AI Logic triggers", async () => {
+      const want = build.of({
+        globalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["globalAI"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves us-central1 for regional AI Logic triggers", async () => {
+      const want = build.of({
+        regionalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+            options: {
+              regionalWebhook: true,
+            },
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["regionalAI"].region).to.deep.equal(["us-central1"]);
+    });
+
+    it("falls back to us-central1 when getDatabase or getBucket throws an API error during region resolution", async () => {
+      const want = build.of({
+        firestoreTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.firestore.document.v1.created",
+            eventFilters: { database: "(default)" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+        storageTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.archived",
+            eventFilters: { bucket: "my-bucket" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      getDatabaseStub.rejects(new Error("API Error fetching database location"));
+      getBucketStub.rejects(new Error("API Error fetching bucket location"));
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["firestoreTrigger"].region).to.deep.equal(["us-central1"]);
+      expect(want.endpoints["storageTrigger"].region).to.deep.equal(["us-central1"]);
+    });
   });
 
   describe("inferDetailsFromExisting", () => {
