@@ -486,7 +486,7 @@ describe("distribution", () => {
       nock(appDistributionOrigin())
         .post(`/v1alpha/${releaseName}/tests`, {
           deviceExecutions: mockDevices.map((device) => ({ device })),
-        } as any)
+        })
         .reply(200, mockReleaseTest);
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
@@ -499,18 +499,12 @@ describe("distribution", () => {
         .post(`/v1alpha/${releaseName}/tests`, {
           deviceExecutions: mockDevices.map((device) => ({ device })),
           resultsBucket: "projects/123/buckets/my-bucket",
-        } as any)
+        })
         .reply(200, mockReleaseTest);
       await expect(
-        appDistributionClient.createReleaseTest(
-          releaseName,
-          mockDevices,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          "projects/123/buckets/my-bucket",
-        ),
+        appDistributionClient.createReleaseTest(releaseName, mockDevices, {
+          resultsBucket: "projects/123/buckets/my-bucket",
+        }),
       ).to.be.eventually.deep.eq(mockReleaseTest);
       expect(nock.isDone()).to.be.true;
     });

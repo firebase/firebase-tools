@@ -143,15 +143,11 @@ async function invokeTests(
         steps: testDef.testCase.steps,
       };
       releaseTests.push(
-        await client.createReleaseTest(
-          releaseName,
-          devices,
+        await client.createReleaseTest(releaseName, devices, {
           aiInstructions,
-          undefined,
-          undefined,
-          testDef.testCase.displayName,
+          displayName: testDef.testCase.displayName,
           resultsBucket,
-        ),
+        }),
       );
     }
     return releaseTests;

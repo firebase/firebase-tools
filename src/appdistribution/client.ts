@@ -278,11 +278,13 @@ export class AppDistributionClient {
   async createReleaseTest(
     releaseName: string,
     devices: TestDevice[],
-    aiInstructions?: AiInstructions,
-    loginCredential?: LoginCredential,
-    testCaseName?: string,
-    displayName?: string,
-    resultsBucket?: string,
+    options: {
+      aiInstructions?: AiInstructions;
+      loginCredential?: LoginCredential;
+      testCaseName?: string;
+      displayName?: string;
+      resultsBucket?: string;
+    } = {},
   ): Promise<ReleaseTest> {
     try {
       const response = await this.appDistroV1AlphaClient.request<ReleaseTest, ReleaseTest>({
@@ -290,11 +292,11 @@ export class AppDistributionClient {
         path: `${releaseName}/tests`,
         body: {
           deviceExecutions: devices.map((device) => ({ device })),
-          loginCredential,
-          testCase: testCaseName,
-          aiInstructions: aiInstructions,
-          displayName: displayName,
-          resultsBucket: resultsBucket,
+          loginCredential: options.loginCredential,
+          testCase: options.testCaseName,
+          aiInstructions: options.aiInstructions,
+          displayName: options.displayName,
+          resultsBucket: options.resultsBucket,
         },
       });
       return response.body;

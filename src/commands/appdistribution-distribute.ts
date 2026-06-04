@@ -218,28 +218,19 @@ async function distribute(
     if (!testCases.length) {
       // fallback to basic automated test
       releaseTestPromises.push(
-        requests.createReleaseTest(
-          release.name,
-          testDevices,
-          undefined,
+        requests.createReleaseTest(release.name, testDevices, {
           loginCredential,
-          undefined,
-          undefined,
           resultsBucket,
-        ),
+        }),
       );
     } else {
       for (const testCaseId of testCases) {
         releaseTestPromises.push(
-          requests.createReleaseTest(
-            release.name,
-            testDevices,
-            undefined,
+          requests.createReleaseTest(release.name, testDevices, {
             loginCredential,
-            `${appName}/testCases/${testCaseId}`,
-            undefined,
+            testCaseName: `${appName}/testCases/${testCaseId}`,
             resultsBucket,
-          ),
+          }),
         );
       }
     }
