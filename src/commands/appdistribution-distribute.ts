@@ -15,6 +15,7 @@ import {
   getLoginCredential,
   parseTestDevices,
   parseIntoStringArray,
+  getResultsBucket,
 } from "../appdistribution/options-parser-util";
 import {
   AabInfo,
@@ -85,9 +86,14 @@ export const command = new Command("appdistribution:distribute <release-binary-f
     "--test-case-ids-file <file>",
     "path to file with a comma- or newline-separated list of test case IDs.",
   )
+  .option(
+    "--results-bucket <bucket>",
+    "The name of a Google Cloud Storage bucket where raw results of any automated tests will be stored. If this flag is not set, Firebase creates a bucket for you. Note that the bucket must be owned by a billing-enabled project, and that using a non-default bucket will result in billing charges for the storage used.",
+  )
   .before(requireAuth)
   .action(async (file: string, options: any) => {
     const appName = getAppName(options);
+    const resultsBucket = getResultsBucket(options.resultsBucket, appName);
     const distribution = new Distribution(file);
     const releaseNotes = getReleaseNotes(options.releaseNotes, options.releaseNotesFile);
     const testers = parseIntoStringArray(options.testers, options.testersFile);
@@ -117,6 +123,7 @@ export const command = new Command("appdistribution:distribute <release-binary-f
       groups,
       options.testNonBlocking,
       loginCredential,
+      resultsBucket,
     );
   });
 
@@ -133,6 +140,7 @@ async function distribute(
   groups?: string[],
   testNonBlocking?: boolean,
   loginCredential?: LoginCredential,
+  resultsBucket?: string,
 ) {
   const requests = new AppDistributionClient();
   let aabInfo: AabInfo | undefined;
@@ -210,7 +218,15 @@ async function distribute(
     if (!testCases.length) {
       // fallback to basic automated test
       releaseTestPromises.push(
-        requests.createReleaseTest(release.name, testDevices, undefined, loginCredential),
+        requests.createReleaseTest(
+          release.name,
+          testDevices,
+          undefined,
+          loginCredential,
+          undefined,
+          undefined,
+          resultsBucket,
+        ),
       );
     } else {
       for (const testCaseId of testCases) {
@@ -221,6 +237,8 @@ async function distribute(
             undefined,
             loginCredential,
             `${appName}/testCases/${testCaseId}`,
+            undefined,
+            resultsBucket,
           ),
         );
       }

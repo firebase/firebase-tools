@@ -187,3 +187,29 @@ export function getLoginCredential(args: {
 function isPresenceMismatched(value1?: string, value2?: string) {
   return (value1 && !value2) || (!value1 && value2);
 }
+
+const APP_NAME_REGEX = /^projects\/(?<projectNumber>[^\/]+)\/apps\/(?<appId>[^\/]+)$/;
+const BUCKET_NAME_FORMAT_REGEX = /^[a-z0-9-_.]+$/;
+
+/**
+ * Parses and returns the custom GCS results bucket resource name path format:
+ * `projects/{project_number}/buckets/{bucket}`.
+ */
+export function getResultsBucket(bucket: string | undefined, appName: string): string | undefined {
+  if (!bucket) {
+    return undefined;
+  }
+  let bucketName = bucket;
+  if (bucketName.startsWith("gs://")) {
+    bucketName = bucketName.substring(5);
+  }
+  if (!BUCKET_NAME_FORMAT_REGEX.test(bucketName)) {
+    throw new FirebaseError(`Invalid results bucket format: ${bucket}`);
+  }
+  const match = APP_NAME_REGEX.exec(appName);
+  if (!match || typeof match.groups === "undefined") {
+    throw new FirebaseError(`Invalid app name: ${appName}`);
+  }
+  const { projectNumber } = match.groups;
+  return `projects/${projectNumber}/buckets/${bucketName}`;
+}

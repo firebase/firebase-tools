@@ -7,7 +7,11 @@ import { FirebaseError, getError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
 import { awaitTestResults, Distribution, upload } from "../appdistribution/distribution";
 import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
-import { getAppName, parseTestDevices } from "../appdistribution/options-parser-util";
+import {
+  getAppName,
+  parseTestDevices,
+  getResultsBucket,
+} from "../appdistribution/options-parser-util";
 import * as utils from "../utils";
 import { dirExistsSync } from "../fsutils";
 import * as path from "path";
@@ -48,9 +52,14 @@ export const command = new Command("apptesting:execute [release-binary-file]")
     "--test-non-blocking",
     "Run automated tests without waiting for them to complete. Visit the Firebase console for the test results.",
   )
+  .option(
+    "--results-bucket <bucket>",
+    "The name of a Google Cloud Storage bucket where raw test results will be stored. If this flag is not set, Firebase creates a default bucket for you. Note that the bucket must be owned by a billing-enabled project, and that using a non-default bucket will result in billing charges for the storage used.",
+  )
   .before(requireAuth)
   .action(async (target: string | undefined, options: any) => {
     const appName = getAppName(options);
+    const resultsBucket = getResultsBucket(options.resultsBucket, appName);
 
     const testDir = path.resolve(options.testDir || "tests");
     if (!dirExistsSync(testDir)) {
@@ -99,6 +108,7 @@ export const command = new Command("apptesting:execute [release-binary-file]")
         release.name,
         tests,
         !testDevices.length ? defaultDevices : testDevices,
+        resultsBucket,
       );
       invokeSpinner.text = `${pluralizeTests(releaseTests.length)} started successfully!`;
       invokeSpinner.succeed();
@@ -124,6 +134,7 @@ async function invokeTests(
   releaseName: string,
   testDefs: TestCaseInvocation[],
   devices: TestDevice[],
+  resultsBucket?: string,
 ): Promise<ReleaseTest[]> {
   try {
     const releaseTests: ReleaseTest[] = [];
@@ -139,6 +150,7 @@ async function invokeTests(
           undefined,
           undefined,
           testDef.testCase.displayName,
+          resultsBucket,
         ),
       );
     }
