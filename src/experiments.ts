@@ -150,9 +150,10 @@ export const ALL_EXPERIMENTS = experiments({
   },
 
   abiu: {
-    shortDescription: "Enable App Hosting ABIU and runtime selection",
-    default: false,
-    public: false,
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
