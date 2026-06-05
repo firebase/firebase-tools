@@ -134,4 +134,11 @@ export class AILogicService implements Service {
       }
     }
   }
+
+  async getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+    if (build.isBlockingTriggered(endpoint) && isGlobalAILogicTrigger(endpoint.blockingTrigger)) {
+      return "us-east1";
+    }
+    return "us-central1";
+  }
 }
