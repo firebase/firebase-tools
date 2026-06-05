@@ -483,12 +483,39 @@ describe("distribution", () => {
     });
 
     it("should resolve with ReleaseTest when request succeeds", async () => {
+      let capturedRequestBody: nock.Body | undefined;
       nock(appDistributionOrigin())
         .post(`/v1alpha/${releaseName}/tests`)
-        .reply(200, mockReleaseTest);
+        .reply(200, (uri, requestBody) => {
+          capturedRequestBody = requestBody;
+          return mockReleaseTest;
+        });
       await expect(
         appDistributionClient.createReleaseTest(releaseName, mockDevices),
       ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(capturedRequestBody).to.deep.equal({
+        deviceExecutions: mockDevices.map((device) => ({ device })),
+      });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should include resultsBucket in request body if specified", async () => {
+      let capturedRequestBody: nock.Body | undefined;
+      nock(appDistributionOrigin())
+        .post(`/v1alpha/${releaseName}/tests`)
+        .reply(200, (uri, requestBody) => {
+          capturedRequestBody = requestBody;
+          return mockReleaseTest;
+        });
+      await expect(
+        appDistributionClient.createReleaseTest(releaseName, mockDevices, {
+          resultsBucket: "projects/123/buckets/my-bucket",
+        }),
+      ).to.be.eventually.deep.eq(mockReleaseTest);
+      expect(capturedRequestBody).to.deep.equal({
+        deviceExecutions: mockDevices.map((device) => ({ device })),
+        resultsBucket: "projects/123/buckets/my-bucket",
+      });
       expect(nock.isDone()).to.be.true;
     });
   });
