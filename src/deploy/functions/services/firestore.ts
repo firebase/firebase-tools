@@ -2,7 +2,7 @@ import * as backend from "../backend";
 import * as firestore from "../../../gcp/firestore";
 import { FirebaseError } from "../../../error";
 import * as build from "../build";
-import { FIRESTORE_MULTI_REGION_MAPPING } from "../../../gcp/location";
+import { FIRESTORE_DUAL_REGION_TO_REGION_MAPPING } from "../../../gcp/location";
 
 const dbCache = new Map<string, firestore.Database>();
 const dbPromiseCache = new Map<string, Promise<firestore.Database>>();
@@ -85,5 +85,5 @@ export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string
   const databaseId = endpoint.eventTrigger.eventFilters?.database || "(default)";
   const db = await getDatabase(endpoint.project, databaseId);
   const locationId = db.locationId.toLowerCase();
-  return FIRESTORE_MULTI_REGION_MAPPING[locationId] || locationId;
+  return FIRESTORE_DUAL_REGION_TO_REGION_MAPPING[locationId] || locationId;
 }

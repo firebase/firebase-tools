@@ -40,15 +40,15 @@ export const DUAL_REGION_MAPPING: Record<string, string> = {
   "us-east1": "nam4",
 };
 
-/** Firestore multi-region mapping (https://cloud.google.com/firestore/docs/locations#multi-region) */
-export const FIRESTORE_MULTI_REGION_MAPPING: Record<string, string> = {
+/** Firestore dual-region to default function region mapping. */
+export const FIRESTORE_DUAL_REGION_TO_REGION_MAPPING: Record<string, string> = {
   nam5: "us-central1",
   nam7: "us-central1",
   eur3: "europe-west1",
 };
 
-/** Google Cloud Storage multi-region location to default region mapping (https://cloud.google.com/storage/docs/locations#multi-region) */
-export const STORAGE_MULTI_REGION_MAPPING: Record<string, string> = {
+/** Google Cloud Storage multi-region to default function region mapping. */
+export const STORAGE_MULTI_REGION_TO_REGION_MAPPING: Record<string, string> = {
   us: "us-east1",
   eu: "europe-west1",
   asia: "asia-east1",

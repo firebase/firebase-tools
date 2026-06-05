@@ -3,7 +3,7 @@ import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import { logger } from "../../../logger";
 import { FirebaseError } from "../../../error";
-import { regionInLocation, STORAGE_MULTI_REGION_MAPPING } from "../../../gcp/location";
+import { regionInLocation, STORAGE_MULTI_REGION_TO_REGION_MAPPING } from "../../../gcp/location";
 import * as build from "../build";
 
 const PUBSUB_PUBLISHER_ROLE = "roles/pubsub.publisher";
@@ -103,5 +103,5 @@ export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string
   }
   const bucket = await getBucket(bucketName);
   const locationId = bucket.location.toLowerCase();
-  return STORAGE_MULTI_REGION_MAPPING[locationId] || locationId;
+  return STORAGE_MULTI_REGION_TO_REGION_MAPPING[locationId] || locationId;
 }
