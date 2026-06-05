@@ -1,0 +1,1 @@
+- Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
