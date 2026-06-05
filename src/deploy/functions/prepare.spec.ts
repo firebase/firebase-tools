@@ -5,6 +5,9 @@ import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as firestore from "../../gcp/firestore";
+import * as storage from "../../gcp/storage";
+import * as database from "../../management/database";
 import * as firestoreService from "./services/firestore";
 import * as storageService from "./services/storage";
 import * as databaseService from "./services/database";
@@ -194,9 +197,12 @@ describe("prepare", () => {
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      getDatabaseStub = sandbox.stub(firestoreService, "getDatabase");
-      getBucketStub = sandbox.stub(storageService, "getBucket");
-      getDatabaseInstanceDetailsStub = sandbox.stub(databaseService, "getDatabaseInstanceDetails");
+      firestoreService.clearCache();
+      storageService.clearCache();
+      databaseService.clearCache();
+      getDatabaseStub = sandbox.stub(firestore, "getDatabase");
+      getBucketStub = sandbox.stub(storage, "getBucket");
+      getDatabaseInstanceDetailsStub = sandbox.stub(database, "getDatabaseInstanceDetails");
     });
 
     afterEach(() => {
@@ -515,6 +521,87 @@ describe("prepare", () => {
       await prepare.resolveDefaultRegionsForBuild(want, backend.of(...relevantEndpoints));
 
       expect(want.endpoints["id"].region).to.deep.equal(["us-central1"]);
+    });
+
+    it("resolves us-east1 for global AI Logic triggers", async () => {
+      const want = build.of({
+        globalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["globalAI"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves us-central1 for regional AI Logic triggers", async () => {
+      const want = build.of({
+        regionalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+            options: {
+              regionalWebhook: true,
+            },
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["regionalAI"].region).to.deep.equal(["us-central1"]);
+    });
+
+    it("falls back to us-central1 when getDatabase or getBucket throws an API error during region resolution", async () => {
+      const want = build.of({
+        firestoreTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.firestore.document.v1.created",
+            eventFilters: { database: "(default)" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+        storageTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.archived",
+            eventFilters: { bucket: "my-bucket" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      getDatabaseStub.rejects(new Error("API Error fetching database location"));
+      getBucketStub.rejects(new Error("API Error fetching bucket location"));
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["firestoreTrigger"].region).to.deep.equal(["us-central1"]);
+      expect(want.endpoints["storageTrigger"].region).to.deep.equal(["us-central1"]);
     });
   });
 
