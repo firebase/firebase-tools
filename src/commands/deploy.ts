@@ -102,7 +102,8 @@ export const command = new Command("deploy")
     "--dry-run",
     "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
       "In order to provide better validation, this may still enable APIs on the target project",
-  );
+  )
+  .option("--wasm", "compile Flutter Web to WebAssembly when building the framework for Hosting");
 
 if (experiments.isEnabled("apphostinglocalbuilds")) {
   command.option(

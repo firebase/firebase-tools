@@ -1,1 +1,2 @@
 - Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
+- Added a `--wasm` flag to `firebase deploy` to compile Flutter Web to WebAssembly when building for Hosting
