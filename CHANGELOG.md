@@ -1,1 +1,2 @@
 - [changed] Improve formatting and user experience for Cloud Functions parameter and secret prompts.
+- Added a `--wasm` flag to `firebase deploy` to compile Flutter Web to WebAssembly when building for Hosting
