@@ -397,33 +397,20 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
           metadata: {},
         };
 
+        const HEADER_MAP: Record<string, keyof IncomingMetadata> = {
+          "content-type": "contentType",
+          "cache-control": "cacheControl",
+          "content-disposition": "contentDisposition",
+          "content-encoding": "contentEncoding",
+          "content-language": "contentLanguage",
+        };
         for (const part of formData) {
           if (part.type === "file" || part.name === "key") continue;
-
           const key = part.name.toLowerCase();
-          const value = part.value.trim();
-
           if (key.startsWith("x-goog-meta-")) {
-            const metaKey = key.replace("x-goog-meta-", "");
-            metadata.metadata![metaKey] = value;
-          } else {
-            switch (key) {
-              case "content-type":
-                metadata.contentType = value;
-                break;
-              case "cache-control":
-                metadata.cacheControl = value;
-                break;
-              case "content-disposition":
-                metadata.contentDisposition = value;
-                break;
-              case "content-encoding":
-                metadata.contentEncoding = value;
-                break;
-              case "content-language":
-                metadata.contentLanguage = value;
-                break;
-            }
+            metadata.metadata![key.substring(12)] = part.value;
+          } else if (HEADER_MAP[key]) {
+            (metadata[HEADER_MAP[key]] as string) = part.value.trim();
           }
         }
 
