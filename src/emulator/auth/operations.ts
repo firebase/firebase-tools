@@ -2327,7 +2327,7 @@ function passkeyEnrollmentFinalize(
 
   let { user } = parseIdToken(state, reqBody.idToken);
 
-  const credentialId = (reqBody.authenticatorRegistrationResponse as any).id;
+  const credentialId = (reqBody.authenticatorRegistrationResponse as { id?: string }).id;
   assert(credentialId, "INVALID_CREDENTIAL_ID");
 
   const newPasskey: PasskeyInfo = {
@@ -2372,7 +2372,7 @@ function passkeySignInFinalize(
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.authenticatorAuthenticationResponse, "MISSING_AUTHENTICATOR_RESPONSE");
 
-  const credentialId = (reqBody.authenticatorAuthenticationResponse as any).id;
+  const credentialId = (reqBody.authenticatorAuthenticationResponse as { id?: string }).id;
   assert(credentialId, "INVALID_CREDENTIAL_ID");
 
   // Find user by credentialId
