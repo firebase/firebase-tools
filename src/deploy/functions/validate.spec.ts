@@ -692,6 +692,29 @@ describe("validate", () => {
         expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
       }
     });
+
+    it("passes validation for Cloud Run (platform=run) functions with secrets", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "1",
+        state: "ENABLED",
+      });
+
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "run",
+        secretEnvironmentVariables: [
+          {
+            projectId: project,
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      });
+
+      await validate.secretsAreValid(project, b);
+      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+    });
   });
 
   describe("validateTimeoutConfig", () => {

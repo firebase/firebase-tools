@@ -12,12 +12,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
-import * as events from "../../functions/events/v1";
-import { getDatabase } from "./services/firestore";
-import { getBucket } from "./services/storage";
-import { getDatabaseInstanceDetails } from "./services/database";
-import { isGlobalAILogicEndpoint } from "./services/ailogic";
-import { parseServiceName, parseConnectorName } from "../../dataconnect/names";
+import { serviceForEndpoint, FALLBACK_DEPLOYMENT_REGION } from "./services";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -64,7 +59,6 @@ import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
-export const DEFAULT_FUNCTION_REGION = "us-central1";
 
 /**
  * Prepare functions codebases for deploy.
@@ -124,6 +118,8 @@ export async function prepare(
     context.filters,
   );
 
+  const existingBackend = await backend.existingBackend(context);
+
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
@@ -148,6 +144,11 @@ export async function prepare(
     proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
+
+    const relevantEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((e) => e.codebase === codebase || e.codebase === undefined);
+    await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
@@ -282,13 +283,7 @@ export async function prepare(
   // Resolve default regions for backends we want before grouping endpoints by codebase.
   // This way, endpoints aren't incorrectly grouped together under the REGION_TBD region if the
   // region is unresolved for multiple codebases.
-  const existingBackend = await backend.existingBackend(context);
-  for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
-    const relevantEndpoints = backend
-      .allEndpoints(existingBackend)
-      .filter((e) => e.codebase === codebase || e.codebase === undefined);
-    await resolveDefaultRegions(wantBackend, backend.of(...relevantEndpoints));
-  }
+
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
     backend.allEndpoints(existingBackend),
@@ -301,6 +296,7 @@ export async function prepare(
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
+    resolveDefaultTimeout(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -349,197 +345,53 @@ export async function prepare(
   applyBackendHashToBackends(wantBackends, context);
 }
 
-function moveEndpointToRegion(
-  backend: backend.Backend,
-  endpoint: backend.Endpoint,
-  region: string,
-) {
-  endpoint.region = region;
-  backend.endpoints[region] = backend.endpoints[region] || {};
-  backend.endpoints[region][endpoint.id] = endpoint;
-  delete backend.endpoints[build.REGION_TBD][endpoint.id];
-  if (Object.keys(backend.endpoints[build.REGION_TBD]).length === 0) {
-    delete backend.endpoints[build.REGION_TBD];
-  }
-}
-
 /**
- * Verifies that we don't have a peculiar edge case where we cannot know what region a default endpoint was in.
- * This is only possible in insane edge cases (esp since you can only have multi-region functions for HTTPS and
- * regional AI Logic functions) where a customer HAD specified multiple regions in a function and then deleted
- * the regions annotation entirely and we don't know which to delete and which to keep.
+ * Resolves default regions for endpoints in a Build before it is converted to a Backend.
+ * This allows the VPC connector string to be built with the correct region in build.ts.
  */
-export function matchRegionsForExisting(want: backend.Backend, have: backend.Backend): void {
-  for (const [id, wantE] of Object.entries(want.endpoints[build.REGION_TBD] || {})) {
-    let matching: backend.Endpoint | undefined;
-    for (const region of Object.keys(have.endpoints)) {
-      if (region === build.REGION_TBD) {
-        continue;
-      }
-      if (have.endpoints[region][id]) {
-        if (matching) {
-          throw new FirebaseError(
-            `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
-          );
-        }
-        matching = have.endpoints[region][id];
-      }
-    }
-
-    if (!matching) {
-      continue;
-    }
-
-    moveEndpointToRegion(want, wantE, matching.region);
-  }
-}
-
-/**
- * Resolves regions for endpoints that were not specified in the build.
- * This is an improvement from old logic where everything was hard-coded to us-central1. Now,
- * we can move defaults to adjust for regional capacity or automaically match the function
- * to its event source allowing region to be specified less often.
- */
-// N.B. This is async because it will eventually look up backend info
-export async function resolveDefaultRegions(
-  want: backend.Backend,
+export async function resolveDefaultRegionsForBuild(
+  buildObj: build.Build,
   have: backend.Backend,
 ): Promise<void> {
-  matchRegionsForExisting(want, have);
+  for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
+    if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
+      let resolvedRegion = FALLBACK_DEPLOYMENT_REGION;
 
-  const endpoints = Object.values(want.endpoints[build.REGION_TBD] || {});
-
-  for (const endpoint of endpoints) {
-    let resolvedRegion = "us-central1";
-
-    try {
-      if (backend.isBlockingTriggered(endpoint)) {
-        resolvedRegion = resolveRegionForBlockingTrigger(endpoint);
-      } else if (backend.isEventTriggered(endpoint)) {
-        resolvedRegion = await resolveRegionForEventTrigger(endpoint);
-      }
-    } catch (err: any) {
-      logger.debug(
-        `Failed to resolve region for endpoint ${endpoint.id}. Defaulting to us-central1.`,
-        getErrStack(err),
-      );
-    }
-
-    moveEndpointToRegion(want, endpoint, resolvedRegion);
-  }
-}
-
-function resolveRegionForBlockingTrigger(
-  endpoint: backend.Endpoint & backend.BlockingTriggered,
-): string {
-  const eventType = endpoint.blockingTrigger.eventType;
-  if ((events.AUTH_BLOCKING_EVENTS as readonly string[]).includes(eventType)) {
-    return "us-east1";
-  }
-
-  if (isGlobalAILogicEndpoint(endpoint)) {
-    return "us-east1";
-  }
-
-  return DEFAULT_FUNCTION_REGION;
-}
-
-async function resolveRegionForEventTrigger(
-  endpoint: backend.Endpoint & backend.EventTriggered,
-): Promise<string> {
-  const eventTrigger = endpoint.eventTrigger;
-  const eventType = eventTrigger.eventType;
-
-  // Global functions should be deployed to us-east1.
-  if (
-    eventType.startsWith("google.cloud.pubsub.") ||
-    eventType.startsWith("providers/cloud.auth/eventTypes/") ||
-    eventType.startsWith("providers/firebase.auth/eventTypes/") ||
-    eventType.startsWith("google.firebase.testlab.") ||
-    eventType.startsWith("google.firebase.remoteconfig.") ||
-    eventType.startsWith("google.firebase.firebasealerts.")
-  ) {
-    return "us-east1";
-  }
-
-  // Firestore functions should be deployed to the same region as the database.
-  // In multi-region locations, we default to:
-  // * nam5 -> us-central1
-  // * nam7 -> us-central1
-  // * eur3 -> europe-west1
-  if (eventType.startsWith("google.cloud.firestore.")) {
-    try {
-      const databaseId = eventTrigger.eventFilters?.database || "(default)";
-      const db = await getDatabase(endpoint.project, databaseId);
-      const locationId = db.locationId.toLowerCase();
-
-      if (locationId === "nam5" || locationId === "nam7") return "us-central1";
-      if (locationId === "eur3") return "europe-west1";
-      return locationId;
-    } catch (err: any) {
-      logger.debug("Failed to resolve Firestore database location", getErrStack(err));
-    }
-  }
-
-  // Cloud Storage functions should be deployed to the same region as the bucket.
-  // In multi-region locations, we default to:
-  // * us -> us-east1
-  // * eu -> europe-west1
-  // * asia -> asia-east1
-  if (eventType.startsWith("google.cloud.storage.")) {
-    try {
-      const bucketName = eventTrigger.eventFilters?.bucket;
-      if (bucketName) {
-        const bucket = await getBucket(bucketName);
-        const locationId = bucket.location.toLowerCase();
-
-        if (locationId === "us") return "us-east1";
-        if (locationId === "eu") return "europe-west1";
-        if (locationId === "asia") return "asia-east1";
-        return locationId;
-      }
-    } catch (err: any) {
-      logger.debug("Failed to resolve Cloud Storage bucket location", getErrStack(err));
-    }
-  }
-
-  // Realtime Database functions should be deployed to the same region as the database.
-  if (eventType.startsWith("google.firebase.database.")) {
-    if (eventTrigger.region) return eventTrigger.region;
-
-    try {
-      const instanceName = eventTrigger.eventFilters?.instance;
-      if (instanceName) {
-        const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
-        if (details.location && details.location !== "-") {
-          return details.location.toLowerCase();
+      // Match existing endpoints.
+      let matching: backend.Endpoint | undefined;
+      for (const region of Object.keys(have.endpoints)) {
+        if (have.endpoints[region][id]) {
+          if (matching) {
+            throw new FirebaseError(
+              `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
+            );
+          }
+          matching = have.endpoints[region][id];
         }
       }
-    } catch (err: any) {
-      logger.debug("Failed to resolve Realtime Database instance location", getErrStack(err));
-    }
-  }
 
-  // DataConnect functions should be deployed to the same region as the service.
-  if (eventType.startsWith("google.firebase.dataconnect.")) {
-    if (eventTrigger.region) return eventTrigger.region;
-
-    try {
-      const service = eventTrigger.eventFilters?.service;
-      if (service) {
-        return parseServiceName(service).location;
+      if (matching) {
+        resolvedRegion = matching.region;
+      } else {
+        // Match triggers.
+        try {
+          resolvedRegion = await resolveRegionForTrigger(endpoint);
+        } catch (err: any) {
+          logger.debug(
+            `Failed to resolve region for endpoint ${id}. Defaulting to ${FALLBACK_DEPLOYMENT_REGION}.`,
+            getErrStack(err),
+          );
+        }
       }
 
-      const connector = eventTrigger.eventFilters?.connector;
-      if (connector) {
-        return parseConnectorName(connector).location;
-      }
-    } catch (err: any) {
-      logger.debug("Failed to resolve DataConnect location", getErrStack(err));
+      endpoint.region = [resolvedRegion];
     }
   }
+}
 
-  return DEFAULT_FUNCTION_REGION;
+async function resolveRegionForTrigger(endpoint: build.Endpoint): Promise<string> {
+  const service = serviceForEndpoint(endpoint);
+  return await service.getDefaultRegion(endpoint);
 }
 
 /**
@@ -580,6 +432,10 @@ export function inferDetailsFromExisting(
 
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
+    }
+
+    if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
+      wantE.timeoutSeconds = haveE.timeoutSeconds;
     }
 
     // N.B. concurrency has different defaults based on CPU. If the customer
@@ -676,6 +532,18 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
     if (!e.concurrency) {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
+    }
+  }
+}
+
+/**
+ * Assigns the default timeout to a function if it is deployed to Cloud Run
+ * and no timeout was specified.
+ */
+export function resolveDefaultTimeout(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
+    if (e.platform === "run" && e.timeoutSeconds === undefined) {
+      e.timeoutSeconds = backend.DEFAULT_TIMEOUT_SECONDS;
     }
   }
 }
