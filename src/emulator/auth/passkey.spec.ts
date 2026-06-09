@@ -162,4 +162,124 @@ describeAuthEmulator("passkey (WebAuthn) support", ({ authApi }) => {
         expect(user.passkeyInfo[0].name).to.equal("Key B");
       });
   });
+
+  it("should support name fallback to displayName and Unnamed Passkey during enrollment", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "passkey-fallback@example.com",
+      password: "password123",
+      displayName: "My Display Name",
+    });
+
+    // Test fallback to displayName
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeyEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        authenticatorRegistrationResponse: { id: "fallback_cred_1" },
+        displayName: "My Display Name",
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    // Test fallback to "Unnamed Passkey"
+    const { idToken: idToken2 } = await registerUser(authApi(), {
+      email: "passkey-fallback-2@example.com",
+      password: "password123",
+    });
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeyEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken: idToken2,
+        authenticatorRegistrationResponse: { id: "fallback_cred_2" },
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+
+    // Verify both names in database
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
+      .query({ key: "fake-api-key" })
+      .send({ idToken })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users[0].passkeyInfo[0].name).to.equal("My Display Name");
+      });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:lookup")
+      .query({ key: "fake-api-key" })
+      .send({ idToken: idToken2 })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users[0].passkeyInfo[0].name).to.equal("Unnamed Passkey");
+      });
+  });
+
+  it("should fail start/finalize endpoints if required fields are missing", async () => {
+    // Missing idToken in enrollment start
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeyEnrollment:start")
+      .query({ key: "fake-api-key" })
+      .send({})
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("MISSING_ID_TOKEN");
+      });
+
+    // Missing idToken in enrollment finalize
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeyEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        authenticatorRegistrationResponse: { id: "some_cred" },
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("MISSING_ID_TOKEN");
+      });
+
+    // Missing authenticatorRegistrationResponse in enrollment finalize
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeyEnrollment:finalize")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken: "some_token",
+      })
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("MISSING_AUTHENTICATOR_RESPONSE");
+      });
+
+    // Missing authenticatorAuthenticationResponse in sign-in finalize
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v2/accounts/passkeySignIn:finalize")
+      .query({ key: "fake-api-key" })
+      .send({})
+      .then((res) => {
+        expectStatusCode(400, res);
+        expect(res.body.error.message).to.equal("MISSING_AUTHENTICATOR_RESPONSE");
+      });
+  });
+
+  it("should safely handle deleting a passkey when user has no passkeys", async () => {
+    const { idToken } = await registerUser(authApi(), {
+      email: "passkey-no-keys@example.com",
+      password: "password123",
+    });
+
+    await authApi()
+      .post("/identitytoolkit.googleapis.com/v1/accounts:update")
+      .query({ key: "fake-api-key" })
+      .send({
+        idToken,
+        deletePasskey: ["nonexistent_key"],
+      })
+      .then((res) => {
+        expectStatusCode(200, res);
+      });
+  });
 });
