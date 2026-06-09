@@ -165,7 +165,7 @@ export async function migrateSchema(args: {
 
   const projectId = needProjectId(options);
   const { serviceName, instanceId, instanceName, databaseId, schemaName } = getIdentifiers(schema);
-  await ensureServiceIsConnectedToCloudSql(
+  const isFirstDeploy = await ensureServiceIsConnectedToCloudSql(
     serviceName,
     instanceName,
     databaseId,
@@ -236,6 +236,7 @@ export async function migrateSchema(args: {
       incompatible,
       validateOnly,
       validationMode,
+      isFirstDeploy,
     );
 
     const shouldDeleteInvalidConnectors = await promptForInvalidConnectorError(
@@ -292,6 +293,7 @@ export async function migrateSchema(args: {
         incompatible,
         validateOnly,
         "STRICT_AFTER_COMPATIBLE",
+        isFirstDeploy,
       );
 
       if (incompatible) {
@@ -539,19 +541,28 @@ async function handleIncompatibleSchemaError(args: {
   return [];
 }
 
-async function promptForSchemaMigration(
+export async function promptForSchemaMigration(
   options: Options,
   instanceId: string,
   databaseId: string,
   err: IncompatibleSqlSchemaError | undefined,
   validateOnly: boolean,
   validationMode: SchemaValidation | "STRICT_AFTER_COMPATIBLE",
+  isFirstDeploy: boolean,
 ): Promise<"none" | "safe" | "all"> {
   if (!err) {
     return "none";
   }
   const defaultChoice = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
   displaySchemaChanges(err, validationMode);
+  // On first deploy, auto-approve without prompting since there's nothing to migrate from.
+  if (isFirstDeploy && !validateOnly) {
+    logLabeledBullet(
+      "dataconnect",
+      "First schema deployment detected — automatically applying SQL changes.",
+    );
+    return defaultChoice;
+  }
   if (!options.nonInteractive) {
     if (validateOnly && options.force) {
       // `firebase dataconnect:sql:migrate --force` performs all compatible migrations.
@@ -664,8 +675,9 @@ export async function ensureServiceIsConnectedToCloudSql(
   databaseId: string,
   linkIfNotConnected: boolean,
   schemaName?: string,
-): Promise<void> {
+): Promise<boolean> {
   let currentSchema = await getSchema(serviceName);
+  const isFirstDeploy = !currentSchema || !currentSchema.source?.files?.length;
   let postgresql = currentSchema?.datasources?.find((d) => d.postgresql)?.postgresql;
   if (
     currentSchema?.reconciling && // active LRO
@@ -695,7 +707,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   if (!currentSchema || !postgresql) {
     if (!linkIfNotConnected) {
       logLabeledWarning("dataconnect", `Not yet linked to the Cloud SQL instance.`);
-      return;
+      return isFirstDeploy;
     }
     // TODO: make this prompt
     // Should we upsert service here as well? so `database:sql:migrate` work for new service as well.
@@ -734,7 +746,7 @@ export async function ensureServiceIsConnectedToCloudSql(
   }
   if (alreadyConnected) {
     // Skip provisioning connectivity if FDC backend has already connected to this Cloud SQL instance.
-    return;
+    return isFirstDeploy;
   }
   try {
     postgresql.schemaValidation = "STRICT";
@@ -748,6 +760,7 @@ export async function ensureServiceIsConnectedToCloudSql(
     }
     logger.debug(`Failed to ensure service is connected to Cloud SQL: ${err.message}`);
   }
+  return isFirstDeploy;
 }
 
 function displayStartSchemaDiff(validationMode: SchemaValidation): void {

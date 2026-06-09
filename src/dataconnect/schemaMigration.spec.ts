@@ -1,6 +1,7 @@
 import { expect } from "chai";
-import { serviceNameFromSchema, getIdentifiers } from "./schemaMigration";
-import { Schema } from "./types";
+import { serviceNameFromSchema, getIdentifiers, promptForSchemaMigration } from "./schemaMigration";
+import { IncompatibleSqlSchemaError, Schema } from "./types";
+import { Options } from "../options";
 
 describe("serviceNameFromSchema", () => {
   it("main schema", () => {
@@ -123,5 +124,72 @@ describe("getIdentifiers", () => {
     expect(() => getIdentifiers(schema)).to.throw(
       "SQL Connect schema must have a postgres datasource with a CloudSQL instance.",
     );
+  });
+});
+
+describe("promptForSchemaMigration", () => {
+  const baseOptions: Options = {
+    cwd: "",
+    configPath: "",
+    only: "",
+    except: "",
+    filteredTargets: [],
+    force: false,
+    nonInteractive: false,
+    debug: false,
+    config: {} as Options["config"],
+    rc: null as unknown as Options["rc"],
+    project: "test-project",
+  };
+
+  const incompatibleError: IncompatibleSqlSchemaError = {
+    diffs: [
+      {
+        sql: 'CREATE TABLE "public"."movie" ("id" uuid NOT NULL, PRIMARY KEY ("id"))',
+        description: 'create "movie" table',
+        destructive: false,
+      },
+    ],
+    destructive: false,
+    violationType: "INCOMPATIBLE_SCHEMA",
+  };
+
+  it("should return 'none' when there is no error", async () => {
+    const result = await promptForSchemaMigration(
+      baseOptions,
+      "my-instance",
+      "my-db",
+      undefined,
+      false,
+      "COMPATIBLE",
+      false,
+    );
+    expect(result).to.equal("none");
+  });
+
+  it("should auto-approve on first deploy during firebase deploy (validateOnly=false)", async () => {
+    const result = await promptForSchemaMigration(
+      baseOptions,
+      "my-instance",
+      "my-db",
+      incompatibleError,
+      /* validateOnly= */ false,
+      "COMPATIBLE",
+      /* isFirstDeploy= */ true,
+    );
+    expect(result).to.equal("all");
+  });
+
+  it("should auto-approve STRICT_AFTER_COMPATIBLE on first deploy with 'none'", async () => {
+    const result = await promptForSchemaMigration(
+      baseOptions,
+      "my-instance",
+      "my-db",
+      incompatibleError,
+      /* validateOnly= */ false,
+      "STRICT_AFTER_COMPATIBLE",
+      /* isFirstDeploy= */ true,
+    );
+    expect(result).to.equal("none");
   });
 });
