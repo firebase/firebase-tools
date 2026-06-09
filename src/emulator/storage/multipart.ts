@@ -212,16 +212,8 @@ function parseMultipartFormDataBodyPart(part: Buffer): MultipartFormDataPart {
   for (const h of headers) {
     const lowerH = h.toLowerCase();
     if (lowerH.startsWith("content-disposition:")) {
-      const contentDispositionParams = h.split(";").slice(1);
-      for (const param of contentDispositionParams) {
-        const [paramName, ...valueParts] = param.trim().split("=");
-        const value = valueParts.join("=").replace(/^["'](.+(?=["']$))["']$/, "$1");
-        if (paramName === "name") {
-          name = value;
-        } else if (paramName === "filename") {
-          filename = value;
-        }
-      }
+      name = extractParam(h, "name") ?? name;
+      filename = extractParam(h, "filename") ?? filename;
     } else if (lowerH.startsWith("content-type:")) {
       contentType = h.substring("content-type:".length).trim();
     }
@@ -250,6 +242,11 @@ function parseMultipartFormDataBodyPart(part: Buffer): MultipartFormDataPart {
   }
 }
 
+function extractParam(header: string, param: string): string | undefined {
+  const match = header.match(new RegExp(`\\b${param}=["']?([^"';]+)["']?`, "i"));
+  return match ? match[1] : undefined;
+}
+
 /**
  * @param contentTypeHeader value of ContentType header passed in request.
  * @param body string value of the body of the multipart request.
@@ -261,7 +258,7 @@ export function parseFormDataMultipartRequest(
   if (!contentTypeHeader.startsWith("multipart/form-data")) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
-  const boundaryId = contentTypeHeader.split("boundary=")[1];
+  const boundaryId = contentTypeHeader.split("boundary=")[1]?.split(";")[0]?.trim();
   if (!boundaryId) {
     throw new Error(`Bad content type. ${contentTypeHeader}`);
   }
