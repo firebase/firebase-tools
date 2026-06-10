@@ -60,6 +60,18 @@ describe("agentSkills", () => {
       expect(skills).to.include("firebase-basics");
     }).timeout(60000);
 
+    it("should use custom skill package if provided", async () => {
+      const spawnSyncStub = sandbox.stub(require("child_process"), "spawnSync").returns({
+        status: 0,
+      } as any);
+
+      await installAgentSkills({ cwd: testRoot, skillPackage: "custom/package" });
+
+      expect(spawnSyncStub.calledOnce).to.be.true;
+      const args = spawnSyncStub.firstCall.args[1];
+      expect(args).to.include("custom/package");
+    });
+
     it("should skip if npx is not available", async () => {
       sandbox.stub(utils, "commandExistsSync").withArgs("npx").returns(false);
 
