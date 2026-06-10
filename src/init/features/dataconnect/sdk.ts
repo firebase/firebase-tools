@@ -99,9 +99,8 @@ export async function askQuestions(
         case "skip":
           break;
       }
-    } catch (err: unknown) {
-      // The detailed error message are already piped into stderr. No need to repeat here.
-      logLabeledError("dataconnect", `Failed to create a ${choice} app template`);
+    } catch (err: any) {
+      logLabeledError("dataconnect", `Failed to create a ${choice} app template: ${err?.stack || err}`);
     }
   }
 
