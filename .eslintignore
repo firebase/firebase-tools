@@ -11,3 +11,4 @@ scripts/agent-evals/lib
 scripts/agent-evals/templates
 julesbot
 .agent
+test-init

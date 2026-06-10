@@ -39,3 +39,6 @@ clean/
 # Dart/Flutter
 .dart_tool/
 **/pubspec.lock
+
+# Test artifacts
+test-init/

@@ -19,7 +19,7 @@ import {
   SwiftSDK,
 } from "../../../dataconnect/types";
 import * as experiments from "../../../experiments";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrMsg, getErrStack } from "../../../error";
 import { isArray } from "lodash";
 import {
   logBullet,
@@ -99,8 +99,11 @@ export async function askQuestions(
         case "skip":
           break;
       }
-    } catch (err: any) {
-      logLabeledError("dataconnect", `Failed to create a ${choice} app template: ${err?.stack || err}`);
+    } catch (err: unknown) {
+      logLabeledError(
+        "dataconnect",
+        `Failed to create a ${choice} app template: ${getErrStack(err)}`,
+      );
     }
   }
 
@@ -278,8 +281,8 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       configDir: connectorInfo.directory,
       account,
     });
-  } catch (e: any) {
-    logLabeledError("dataconnect", `Failed to generate SQL Connect SDKs\n${e?.message}`);
+  } catch (e: unknown) {
+    logLabeledError("dataconnect", `Failed to generate SQL Connect SDKs\n${getErrMsg(e)}`);
   }
 
   logLabeledSuccess(

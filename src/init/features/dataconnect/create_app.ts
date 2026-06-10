@@ -48,7 +48,7 @@ async function executeCommand(command: string, args: string[]): Promise<void> {
         resolve();
       } else {
         // Command failed
-        reject(new Error(`Command failed with exit code ${code}`));
+        reject(new Error(`Command failed with exit code ${code ?? "null"}`));
       }
     });
 
