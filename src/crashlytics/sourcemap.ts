@@ -369,7 +369,7 @@ export async function registerSourceMap(sourceMap: SourceMap): Promise<void> {
   const client = new Client({
     urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
     auth: true,
-    apiVersion: "v1",
+    apiVersion: "v1alpha",
   });
 
   try {
