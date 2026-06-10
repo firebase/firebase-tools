@@ -52,7 +52,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition, zip } from "../../functional";
+import { assertExhaustive, partition } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -685,7 +685,7 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,
-  options: { force?: boolean; nonInteractive?: boolean },
+  options: { force?: boolean; nonInteractive?: boolean } = {},
 ): Promise<void> {
   const STANDARD_APIS = [
     "cloudfunctions.googleapis.com",
@@ -701,7 +701,7 @@ export async function ensureAllRequiredAPIsEnabled(
     "cloudtasks.googleapis.com",
   ];
 
-  const requiredApis = Object.values(wantBackend.requiredAPIs);
+  const requiredApis = Object.values(wantBackend.requiredAPIs ?? {});
   const [standardApis, additionalApis] = partition(requiredApis, ({ api }) =>
     STANDARD_APIS.includes(api),
   );
@@ -712,9 +712,7 @@ export async function ensureAllRequiredAPIsEnabled(
         ensureApiEnabled.check(projectNumber, api, "functions", /* silent=*/ true),
       ),
     );
-    const missingApis = [...zip(additionalApis, checks)]
-      .filter(([_, isEnabled]) => !isEnabled)
-      .map(([entry]) => entry);
+    const missingApis = additionalApis.filter((_, i) => !checks[i]);
 
     if (missingApis.length > 0) {
       const apiList = missingApis
