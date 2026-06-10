@@ -113,7 +113,7 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
   backendConfig.rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your firebase.json directory",
-    validate: async (input: string) => {
+    validate: (input: string) => {
       const absPath = path.join(process.cwd(), input);
       if (!existsSync(absPath)) {
         return `Directory ${absPath} does not exist. Please enter a valid directory.`;
