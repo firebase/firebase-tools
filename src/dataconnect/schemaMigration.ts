@@ -553,8 +553,8 @@ async function promptForSchemaMigration(
   const defaultChoice = validationMode === "STRICT_AFTER_COMPATIBLE" ? "none" : "all";
   displaySchemaChanges(err, validationMode);
   if (!options.nonInteractive) {
-    if (validateOnly && options.force) {
-      // `firebase dataconnect:sql:migrate --force` performs all compatible migrations.
+    if (options.force) {
+      // `--force` performs all compatible migrations without prompting.
       return defaultChoice;
     }
     let choices: { name: string; value: "none" | "safe" | "all" | "abort" }[] = [
@@ -582,14 +582,14 @@ async function promptForSchemaMigration(
     }
     return ans;
   }
-  if (!validateOnly) {
+  if (options.force) {
+    // `--nonInteractive --force` performs all migrations.
+    return defaultChoice;
+  } else if (!validateOnly) {
     // `firebase deploy --nonInteractive` performs no migrations
     throw new FirebaseError(
       "Command aborted. Your database schema is incompatible with your SQL Connect schema. Run `firebase dataconnect:sql:migrate` to migrate your database schema",
     );
-  } else if (options.force) {
-    // `dataconnect:sql:migrate --nonInteractive --force` performs all migrations.
-    return defaultChoice;
   } else if (!err.destructive) {
     // `dataconnect:sql:migrate --nonInteractive` performs only non-destructive migrations.
     return defaultChoice;
