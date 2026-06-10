@@ -2,7 +2,13 @@ import { sync as spawnSync } from "cross-spawn";
 import { copy, pathExists } from "fs-extra";
 import { join } from "path";
 
-import { BuildResult, Discovery, FrameworkType, SupportLevel } from "../interfaces";
+import {
+  BuildResult,
+  Discovery,
+  FrameworkContext,
+  FrameworkType,
+  SupportLevel,
+} from "../interfaces";
 import { FirebaseError } from "../../error";
 import { assertFlutterCliExists, getPubSpec, getAdditionalBuildArgs } from "./utils";
 import { DART_RESERVED_WORDS, FALLBACK_PROJECT_NAME } from "./constants";
@@ -47,12 +53,18 @@ export function init(setup: any, config: any) {
   return Promise.resolve();
 }
 
-export async function build(cwd: string): Promise<BuildResult> {
+export async function build(
+  cwd: string,
+  _target?: string,
+  context?: FrameworkContext,
+): Promise<BuildResult> {
   assertFlutterCliExists();
 
   const pubSpec = await getPubSpec(cwd);
   const otherArgs = getAdditionalBuildArgs(pubSpec);
-  const buildArgs = ["build", "web", ...otherArgs].filter(Boolean);
+  // Compile to WebAssembly when `firebase deploy --wasm` is used.
+  const wasmArgs = context?.wasm ? ["--wasm"] : [];
+  const buildArgs = ["build", "web", ...otherArgs, ...wasmArgs].filter(Boolean);
 
   const build = spawnSync("flutter", buildArgs, { cwd, stdio: "inherit" });
   if (build.status !== 0) throw new FirebaseError("Unable to build your Flutter app");
