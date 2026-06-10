@@ -52,7 +52,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive } from "../../functional";
+import { assertExhaustive, partition, zip } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -305,7 +305,7 @@ export async function prepare(
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
-  await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend);
+  await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend, options);
   await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
   warnIfDartBackendHasUnsupportedTriggers(wantBackend);
 
@@ -685,9 +685,62 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,
+  options: { force?: boolean; nonInteractive?: boolean },
 ): Promise<void> {
+  const STANDARD_APIS = [
+    "cloudfunctions.googleapis.com",
+    "runtimeconfig.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "run.googleapis.com",
+    "eventarc.googleapis.com",
+    "pubsub.googleapis.com",
+    "storage.googleapis.com",
+    "secretmanager.googleapis.com",
+    "cloudscheduler.googleapis.com",
+    "cloudtasks.googleapis.com",
+  ];
+
+  const requiredApis = Object.values(wantBackend.requiredAPIs);
+  const [standardApis, additionalApis] = partition(requiredApis, ({ api }) =>
+    STANDARD_APIS.includes(api),
+  );
+
+  if (additionalApis.length > 0) {
+    const checks = await Promise.all(
+      additionalApis.map(({ api }) =>
+        ensureApiEnabled.check(projectNumber, api, "functions", /* silent=*/ true),
+      ),
+    );
+    const missingApis = [...zip(additionalApis, checks)]
+      .filter(([_, isEnabled]) => !isEnabled)
+      .map(([entry]) => entry);
+
+    if (missingApis.length > 0) {
+      const apiList = missingApis
+        .map(({ api, reason }) => ` - ${api}${reason ? `: ${reason}` : ""}`)
+        .join("\n");
+      const confirm = await prompt.confirm({
+        message: `This codebase depends on the following additional API(s) which are currently disabled:\n${apiList}\nWould you like to enable them?`,
+        default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      });
+
+      if (!confirm) {
+        throw new FirebaseError("Must enable required APIs to deploy.");
+      }
+
+      await Promise.all(
+        missingApis.map(({ api }) => {
+          return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
+        }),
+      );
+    }
+  }
+
   await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
+    standardApis.map(({ api }) => {
       return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
     }),
   );

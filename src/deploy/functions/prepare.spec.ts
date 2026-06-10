@@ -1041,34 +1041,87 @@ describe("prepare", () => {
     let sinonSandbox: sinon.SinonSandbox;
     let ensureApiStub: sinon.SinonStub;
     let generateServiceIdentityStub: sinon.SinonStub;
+    let checkApiStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
       sinonSandbox = sinon.createSandbox();
       ensureApiStub = sinonSandbox.stub(ensureApiEnabled, "ensure").resolves();
+      checkApiStub = sinonSandbox.stub(ensureApiEnabled, "check").resolves(true);
       generateServiceIdentityStub = sinonSandbox
         .stub(serviceusage, "generateServiceIdentity")
         .resolves();
+      promptStub = sinonSandbox.stub(prompt, "confirm").resolves(true);
     });
 
     afterEach(() => {
       sinonSandbox.restore();
     });
 
+    const mockOptions = {};
+
     it("should not enable any APIs for an empty backend", async () => {
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty());
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty(), mockOptions);
       expect(ensureApiStub.called).to.be.false;
       expect(generateServiceIdentityStub.called).to.be.false;
     });
 
-    it("should enable APIs from backend.requiredAPIs", async () => {
-      const api1 = "testapi1.googleapis.com";
-      const api2 = "testapi2.googleapis.com";
+    it("should not prompt when APIs are part of allowlist", async () => {
       const b = backend.empty();
-      b.requiredAPIs = [{ api: api1 }, { api: api2 }];
+      b.requiredAPIs = [{ api: "cloudscheduler.googleapis.com" }]; // Standard API
 
-      await prepare.ensureAllRequiredAPIsEnabled("project", b);
-      expect(ensureApiStub.calledWith("project", api1, "functions", false)).to.be.true;
-      expect(ensureApiStub.calledWith("project", api2, "functions", false)).to.be.true;
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.called).to.be.false;
+      expect(ensureApiStub.calledWith("project", "cloudscheduler.googleapis.com", "functions", false)).to.be.true;
+    });
+
+    it("should not prompt when additional API is already enabled", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      b.requiredAPIs = [{ api: customApi }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(true);
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.called).to.be.false;
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.false;
+    });
+
+    it("should prompt and enable additional API when user confirms", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      const customReason = "Needed for custom stuff";
+      b.requiredAPIs = [{ api: customApi, reason: customReason }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(false);
+      promptStub.resolves(true);
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.calledOnce).to.be.true;
+      expect(
+        promptStub.calledWith(
+          sinon.match({
+            message: `This codebase depends on the following additional API(s) which are currently disabled:\n - ${customApi}: ${customReason}\nWould you like to enable them?`,
+            default: false,
+          })
+        )
+      ).to.be.true;
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.true;
+    });
+
+    it("should throw exception when user aborts prompt", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      b.requiredAPIs = [{ api: customApi }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(false);
+      promptStub.resolves(false);
+
+      await expect(
+        prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions)
+      ).to.be.rejectedWith(FirebaseError, "Must enable required APIs to deploy.");
+
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.false;
     });
 
     it("should enable Secret Manager API if secrets are used ", async () => {
@@ -1088,7 +1141,7 @@ describe("prepare", () => {
           },
         ],
       };
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e), mockOptions);
       expect(
         ensureApiStub.calledWith(
           "project",
@@ -1110,7 +1163,7 @@ describe("prepare", () => {
         httpsTrigger: {},
       };
 
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e), mockOptions);
 
       expect(ensureApiStub.calledWith("project", "https://run.googleapis.com", "functions")).to.be
         .true;
