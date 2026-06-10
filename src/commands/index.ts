@@ -107,8 +107,6 @@ export function load(client: CLIClient): CLIClient {
   client.ext.configure = loadCommand("ext-configure");
   client.ext.info = loadCommand("ext-info");
   client.ext.export = loadCommand("ext-export");
-  client.ext.instances = {};
-  client.ext.instances.get = loadCommand("ext-get");
   client.ext.install = loadCommand("ext-install");
   client.ext.list = loadCommand("ext-list");
   client.ext.uninstall = loadCommand("ext-uninstall");
@@ -197,6 +195,9 @@ export function load(client: CLIClient): CLIClient {
     client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+    client.internaltesting.ext = {};
+    client.internaltesting.ext.instances = {};
+    client.internaltesting.ext.instances.get = loadCommand("ext-get");
   }
   if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};

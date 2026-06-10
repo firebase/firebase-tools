@@ -1,3 +1,3 @@
 - Fixes `firebase init dataconnect` failing with `ENOEXEC` when creating a new template app on some operating systems. (#10616)
 - Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
-- Adds the ext:instances:get command to retrieve currently running Extensions configurations (#10583)
+- Adds the internaltesting:ext:instances:get command to retrieve currently running Extensions configurations. This command's behavior is currently unstable and should not be relied on externally. (#10583)

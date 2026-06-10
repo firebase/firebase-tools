@@ -21,7 +21,6 @@ export const command = new Command("ext")
     const firebaseTools = require("../"); // eslint-disable-line @typescript-eslint/no-var-requires
     const commandNames = [
       "ext:install",
-      "ext:instances:get",
       "ext:info",
       "ext:list",
       "ext:configure",
