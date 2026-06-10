@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import * as spawn from "cross-spawn";
 import * as clc from "colorette";
 import { logLabeledBullet } from "../../../utils";
 
@@ -40,8 +40,6 @@ async function executeCommand(command: string, args: string[]): Promise<void> {
     const childProcess = spawn(command, args, {
       // 'inherit' pipes stdin, stdout, and stderr to the parent process
       stdio: "inherit",
-      // Runs the command in a shell, which allows for shell syntax like pipes, etc.
-      shell: true,
     });
 
     childProcess.on("close", (code) => {
@@ -50,7 +48,7 @@ async function executeCommand(command: string, args: string[]): Promise<void> {
         resolve();
       } else {
         // Command failed
-        reject(new Error(`Command failed with exit code ${code}`));
+        reject(new Error(`Command failed with exit code ${code ?? "null"}`));
       }
     });
 
