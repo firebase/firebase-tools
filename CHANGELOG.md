@@ -1,2 +1,3 @@
 - Fixes `firebase init dataconnect` failing with `ENOEXEC` when creating a new template app on some operating systems. (#10616)
 - Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
+- Remove prompt and logic to delete Data Connect services not listed in `firebase.json` during deployment.
