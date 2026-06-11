@@ -497,12 +497,7 @@ describe("validate", () => {
     });
 
     it("disallows v2 Auth Eventarc triggers if autheventarc experiment is not enabled", () => {
-      const sandbox = sinon.createSandbox();
-      const assertEnabledStub = sandbox.stub(experiments, "assertEnabled");
-      assertEnabledStub
-        .withArgs("autheventarc", sinon.match.any)
-        .throws(new FirebaseError("the experiment autheventarc is not enabled"));
-
+      experiments.setEnabled("autheventarc", false);
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv2",
@@ -515,18 +510,15 @@ describe("validate", () => {
 
       try {
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
-          /the experiment autheventarc is not enabled/
+          /Cannot deploy Auth Eventarc triggers because the experiment.*autheventarc.*is not enabled/,
         );
       } finally {
-        sandbox.restore();
+        experiments.setEnabled("autheventarc", null);
       }
     });
 
     it("allows v2 Auth Eventarc triggers if autheventarc experiment is enabled", () => {
-      const sandbox = sinon.createSandbox();
-      const assertEnabledStub = sandbox.stub(experiments, "assertEnabled");
-      assertEnabledStub.withArgs("autheventarc", sinon.match.any).returns();
-
+      experiments.setEnabled("autheventarc", true);
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv2",
@@ -540,7 +532,7 @@ describe("validate", () => {
       try {
         expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
       } finally {
-        sandbox.restore();
+        experiments.setEnabled("autheventarc", null);
       }
     });
   });

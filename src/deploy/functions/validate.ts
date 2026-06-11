@@ -13,6 +13,8 @@ import * as secrets from "../../functions/secrets";
 import * as experiments from "../../experiments";
 import { AUTH_EVENTS } from "../../functions/events/v2";
 
+const AUTH_EVENTS_SET = new Set<string>(AUTH_EVENTS);
+
 /**
  * GCF Gen 1 has a max timeout of 540s.
  */
@@ -92,7 +94,7 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
     if (backend.isEventTriggered(ep)) {
-      if ((AUTH_EVENTS as readonly string[]).includes(ep.eventTrigger.eventType)) {
+      if (AUTH_EVENTS_SET.has(ep.eventTrigger.eventType)) {
         experiments.assertEnabled("autheventarc", "deploy Auth Eventarc triggers");
       }
     }
