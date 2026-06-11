@@ -6,6 +6,7 @@ import { dataConnectConfigs, ResolvedDataConnectConfig } from "./config";
 import { pluginLogger } from "../logger-wrapper";
 import { DataConnectEmulator } from "../../../src/emulator/dataconnectEmulator";
 import { GraphqlError } from "../../../src/dataconnect/types";
+import { getGlobalDefaultAccount } from "../../../src/auth";
 
 export async function checkIfFileExists(file: Uri) {
   try {
@@ -191,6 +192,7 @@ export async function verifySchemaCompiles(
     const buildResult = await DataConnectEmulator.build({
       configDir: serviceConfig.path,
       projectId: projectId,
+      account: getGlobalDefaultAccount(),
     });
     const schemaErrors = buildResult.errors?.filter((e) => {
       // Ignore warnings
