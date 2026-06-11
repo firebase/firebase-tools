@@ -667,7 +667,7 @@ export function getAngular22SsrSecurityWarning(opts: {
 /** Renders the warning: allowlist fix first, trustProxyHeaders only as an alternative when unset. */
 export function formatAngular22SsrSecurityWarning(warning: Angular22SsrSecurityWarning): string {
   const sections: string[] = [
-    "Angular 22 enabled strict SSRF protection on its SSR engine. Firebase Hosting Web Frameworks routes SSR through Cloud Run with rotating hostnames; without the matching security.allowedHosts entries the SSR function will reject requests and return errors after deploy.",
+    "Angular 22 enabled strict SSRF protection on its SSR engine. Without the matching security.allowedHosts entries, the SSR function will reject requests and return errors after deploy.",
     [
       "Add these hostnames to security.allowedHosts in angular.json:",
       `  ${JSON.stringify(warning.allowedHostsMissing)}`,
