@@ -10,6 +10,7 @@ import { RC } from "../rc";
 import { findOpenPort } from "../utils/port_utils";
 import { pluginLogger } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
+import { getGlobalDefaultAccount } from "../../../src/auth";
 
 const DEFAULT_PORT = 50001;
 /** FDC-specific emulator logic; Toolkit and emulator */
@@ -46,6 +47,7 @@ export class DataConnectToolkit implements vscode.Disposable {
       enable_output_generated_sdk: true,
       enable_output_schema_extensions: true,
       extraEnv: settings.extraEnv,
+      account: getGlobalDefaultAccount(),
     };
     pluginLogger.info(`Starting SQL Connect toolkit (version ${DataConnectToolkitController.getVersion()}) on port ${port}`);
     return DataConnectToolkitController.start(toolkitArgs);
