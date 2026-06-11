@@ -678,7 +678,7 @@ export function formatAngular22SsrSecurityWarning(warning: Angular22SsrSecurityW
   if (!warning.trustProxyHeadersEnabled) {
     sections.push(
       [
-        "Alternatively, enable trustProxyHeaders so the engine validates the forwarded Hosting domain instead of the Cloud Run host. If you do, also add any custom domains you serve from to security.allowedHosts.",
+        "Alternatively, enable trustProxyHeaders so the engine validates the forwarded Hosting domain instead of the SSR function host. If you do, also add any custom domains you serve from to security.allowedHosts.",
         `${clc.bold("Documentation")}: https://angular.dev/best-practices/security#configuring-trusted-proxy-headers`,
       ].join("\n"),
     );
