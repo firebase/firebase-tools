@@ -1,3 +1,4 @@
+import "syswide-cas";
 import * as vscode from "vscode";
 import { spawnSync } from "child_process";
 import * as semver from "semver";
