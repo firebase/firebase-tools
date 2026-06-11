@@ -680,8 +680,15 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   }
 }
 
-// Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
-// require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
+/**
+ * Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+ * require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
+ * @param projectNumber The GCP project number to inspect and enable APIs on.
+ * @param wantBackend The expected Backend spec containing manifest-declared required APIs.
+ * @param options Deploy execution options for prompting configuration.
+ * @param [options.force] Whether to force confirm interactive prompts.
+ * @param [options.nonInteractive] Whether the CLI is running in non-interactive mode.
+ */
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend,
