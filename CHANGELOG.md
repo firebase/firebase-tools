@@ -1,1 +1,3 @@
-- Prompt the user to enable non-standard Google Cloud APIs during function deployments.
+- Functions can declare additional API dependencies (#10621)
+- Updated the Firebase Data Connect local toolkit to v3.4.11, which includes the following changes:
+  - [changed] Updated the Golang dependency version to 1.25.11.
