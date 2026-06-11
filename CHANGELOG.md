@@ -1,3 +1,4 @@
 - Updated the Firebase Data Connect local toolkit to v3.4.11, which includes the following changes:
   - [changed] Updated the Golang dependency version to 1.25.11.
+- Fixed issue where `apptesting:execute` command rejects documented `--test-username`, `--test-password`, and `--test-password-file` options.
 - Updated Web Frameworks to warn about missing SSRF protection config in Angular 22 deploys (#10523)
