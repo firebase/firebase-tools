@@ -1,1 +1,2 @@
-- Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
+- Updated the Firebase Data Connect local toolkit to v3.4.11, which includes the following changes:
+  - [changed] Updated the Golang dependency version to 1.25.11.
