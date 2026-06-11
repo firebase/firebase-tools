@@ -1073,7 +1073,9 @@ describe("prepare", () => {
       await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
 
       expect(promptStub.called).to.be.false;
-      expect(ensureApiStub.calledWith("project", "cloudscheduler.googleapis.com", "functions", false)).to.be.true;
+      expect(
+        ensureApiStub.calledWith("project", "cloudscheduler.googleapis.com", "functions", false),
+      ).to.be.true;
     });
 
     it("should not prompt when additional API is already enabled", async () => {
@@ -1104,8 +1106,8 @@ describe("prepare", () => {
           sinon.match({
             message: `This codebase depends on the following additional API(s) which are currently disabled:\n - ${customApi}: ${customReason}\nWould you like to enable them?`,
             default: false,
-          })
-        )
+          }),
+        ),
       ).to.be.true;
       expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.true;
     });
@@ -1118,7 +1120,7 @@ describe("prepare", () => {
       promptStub.resolves(false);
 
       await expect(
-        prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions)
+        prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions),
       ).to.be.rejectedWith(FirebaseError, "Must enable required APIs to deploy.");
 
       expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.false;
