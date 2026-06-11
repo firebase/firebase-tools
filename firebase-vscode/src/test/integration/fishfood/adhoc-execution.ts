@@ -96,8 +96,8 @@ firebaseSuite("Execution", async function () {
       // file should be created, saved, then opened
       expect(activeEditor?.document.isDirty).toBe(false);
 
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       async function getExecutionStatus(name: string) {
         await browser.pause(1000);

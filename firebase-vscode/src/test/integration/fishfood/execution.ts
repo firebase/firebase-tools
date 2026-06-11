@@ -66,8 +66,8 @@ firebaseSuite("Execution", async function () {
       // Insert a post
       await editor.openFile(mutationsPath);
 
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       async function getExecutionStatus(name: string) {
         await browser.pause(1000);
@@ -94,8 +94,8 @@ firebaseSuite("Execution", async function () {
 
       // Execute query
       await editor.openFile(queriesPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       // Waiting for the new history entry to appear
       await browser.waitUntil(async () => {
@@ -123,8 +123,8 @@ firebaseSuite("Execution", async function () {
 
       await execution.setVariables(`{}`);
       await editor.openFile(queryWithFragmentPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       // Waiting for the new history entry to appear
       await browser.waitUntil(async () => {
