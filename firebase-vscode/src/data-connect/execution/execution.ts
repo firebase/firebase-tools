@@ -150,7 +150,7 @@ export function registerExecution(
       !(await emulatorsController.areEmulatorsRunning())
     ) {
       vscode.window.showWarningMessage(
-        "Automatically starting emulator... Please retry `Run local` execution after it's started.",
+        "Automatically starting emulator... Please retry `Run Emulator` execution after it's started.",
         { modal: false },
       );
       analyticsLogger.logger.logUsage(

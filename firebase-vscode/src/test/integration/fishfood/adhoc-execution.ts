@@ -36,10 +36,10 @@ firebaseSuite("Execution", async function () {
       const execution = new ExecutionPanel(workbench);
       const editor = new EditorView(workbench);
 
-      // Click run local while emulator is not started
+      // Click run emulator while emulator is not started
       await editor.openFile(mutationsPath);
-      await editor.runLocalButton.waitForDisplayed();
-      await editor.runLocalButton.click();
+      await editor.runEmulatorButton.waitForDisplayed();
+      await editor.runEmulatorButton.click();
 
       // get start emulator notification
       const notificationUtil = new Notifications(workbench);
