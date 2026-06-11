@@ -9,6 +9,7 @@ import * as secretManager from "../../gcp/secretManager";
 import * as backend from "./backend";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { resolveCpuAndConcurrency } from "./prepare";
+import * as experiments from "../../experiments";
 
 describe("validate", () => {
   describe("functionsDirectoryExists", () => {
@@ -493,6 +494,54 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
         "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
       );
+    });
+
+    it("disallows v2 Auth Eventarc triggers if autheventarc experiment is not enabled", () => {
+      const sandbox = sinon.createSandbox();
+      const assertEnabledStub = sandbox.stub(experiments, "assertEnabled");
+      assertEnabledStub
+        .withArgs("autheventarc", sinon.match.any)
+        .throws(new FirebaseError("the experiment autheventarc is not enabled"));
+
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.auth.user.v2.created",
+          eventFilters: {},
+          retry: false,
+        },
+      };
+
+      try {
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+          /the experiment autheventarc is not enabled/
+        );
+      } finally {
+        sandbox.restore();
+      }
+    });
+
+    it("allows v2 Auth Eventarc triggers if autheventarc experiment is enabled", () => {
+      const sandbox = sinon.createSandbox();
+      const assertEnabledStub = sandbox.stub(experiments, "assertEnabled");
+      assertEnabledStub.withArgs("autheventarc", sinon.match.any).returns();
+
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.auth.user.v2.created",
+          eventFilters: {},
+          retry: false,
+        },
+      };
+
+      try {
+        expect(() => validate.endpointsAreValid(backend.of(ep))).to.not.throw();
+      } finally {
+        sandbox.restore();
+      }
     });
   });
 
