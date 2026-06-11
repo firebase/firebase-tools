@@ -87,6 +87,11 @@ export const command = new Command("apptesting:execute [release-binary-file]")
       options.testNamePattern,
     );
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
+    const loginCredential = getLoginCredential({
+      username: options.testUsername,
+      password: options.testPassword,
+      passwordFile: options.testPasswordFile,
+    });
 
     if (!tests.length) {
       throw new FirebaseError(`No tests found under test directory ${testDir}`);
@@ -114,12 +119,6 @@ export const command = new Command("apptesting:execute [release-binary-file]")
         release = latestRelease;
         utils.logBullet(`Using release ${release.displayVersion} created at ${release.createTime}`);
       }
-
-      const loginCredential = getLoginCredential({
-        username: options.testUsername,
-        password: options.testPassword,
-        passwordFile: options.testPasswordFile,
-      });
 
       invokeSpinner.start();
       releaseTests = await invokeTests(
