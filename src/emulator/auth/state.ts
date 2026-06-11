@@ -201,10 +201,9 @@ export abstract class ProjectState {
   /**
    * Validates a collection of MFA Enrollments. If all data is valid, returns the data
    * unmodified to the caller.
-   *
    * @param enrollments the MFA Enrollments to validate. each enrollment must have a valid and unique phone number, a non-null enrollment ID,
    * and the enrollment ID must be unique across all other enrollments in the array.
-   * @returns the validated MFA Enrollments passed to this method
+   * @return the validated MFA Enrollments passed to this method
    * @throws BadRequestError if the phone number is absent or invalid
    * @throws BadRequestError if the MFA Enrollment ID is absent
    * @throws BadRequestError if the MFA Enrollment ID is duplicated in the provided array
@@ -660,7 +659,7 @@ export class AgentProjectState extends ProjectState {
     const triggers = this.blockingFunctionsConfig.triggers;
     if (triggers) {
       return Object.prototype.hasOwnProperty.call(triggers, event)
-        ? triggers![event].functionUri
+        ? triggers[event].functionUri
         : undefined;
     }
     return undefined;
@@ -847,12 +846,14 @@ export type ProviderUserInfo = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitV1ProviderUserInfo"],
   "rawId" | "providerId"
 >;
+export type PasskeyInfo = Schemas["GoogleCloudIdentitytoolkitV1PasskeyInfo"];
 export type UserInfo = Omit<
   Schemas["GoogleCloudIdentitytoolkitV1UserInfo"],
-  "localId" | "providerUserInfo"
+  "localId" | "providerUserInfo" | "passkeyInfo"
 > & {
   localId: string;
   providerUserInfo?: ProviderUserInfo[];
+  passkeyInfo?: PasskeyInfo[];
 };
 export type MfaConfig = MakeRequired<
   Schemas["GoogleCloudIdentitytoolkitAdminV2MultiFactorAuthConfig"],
@@ -932,10 +933,16 @@ interface TemporaryProofRecord {
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
+/**
+ *
+ */
 export function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
   return Buffer.from(JSON.stringify(refreshTokenRecord), "utf8").toString("base64");
 }
 
+/**
+ *
+ */
 export function decodeRefreshToken(refreshTokenString: string): RefreshTokenRecord {
   let refreshTokenRecord: RefreshTokenRecord;
   try {
@@ -961,11 +968,10 @@ function getProviderEmailsForUser(user: UserInfo): Set<string> {
 /**
  * Updates fields based on specified update mask. Note that this is a no-op if
  * the update mask is empty.
- *
  * @param updateMask a comma separated list of fully qualified names of fields
  * @param dest the destination to apply updates to
  * @param update the updates to apply
- * @returns the updated destination object
+ * @return the updated destination object
  */
 function applyMask<T>(updateMask: string, dest: T, update: DeepPartial<T>): T {
   const paths = updateMask.split(",");
