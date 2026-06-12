@@ -37,10 +37,12 @@ describe("crashlytics:sourcemap:upload", () => {
 
     sandbox = sinon.createSandbox();
     gcsMock = sandbox.stub(gcs);
-    projectUtilsMock = sandbox.stub(projectUtils);
+    projectUtilsMock = sandbox.stub(projectUtils) as any;
+    projectUtilsMock.needProjectId.returns(PROJECT_ID);
+    projectUtilsMock.getProjectResolution.callThrough();
+    projectUtilsMock.getActiveProject.callThrough();
     getProjectNumberMock = sandbox.stub(getProjectNumber);
 
-    projectUtilsMock.needProjectId.returns(PROJECT_ID);
     getProjectNumberMock.getProjectNumber.resolves(PROJECT_NUMBER);
     gcsMock.upsertBucket.resolves(BUCKET_NAME);
     gcsMock.uploadObject.resolves({

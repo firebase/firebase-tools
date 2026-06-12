@@ -17,6 +17,7 @@ import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 import { useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
+import { getActiveProject, getProjectResolution } from "./projectUtils";
 
 export interface CommandModule {
   load: () => void;
@@ -393,7 +394,7 @@ export class Command {
   private async applyRC(options: Options) {
     const rc = loadRC(options);
     options.rc = rc;
-    let activeProject = this.configstoreProject(options.projectRoot || process.cwd());
+    let cwdActiveProject = getActiveProject(options.projectRoot || process.cwd(), configstore.get("activeProjects") ?? {});
 
     // Only fetch the Studio Workspace project if we're running in Firebase
     // Studio. If the user passes the project via --project, it should take
@@ -401,46 +402,18 @@ export class Command {
     // If this is the firebase use command, don't worry about reconciling - the user is changing it anyway
     const isUseCommand = process.argv.includes("use");
     if (isFirebaseStudio() && !options.project && !isUseCommand) {
-      activeProject = await reconcileStudioFirebaseProject(options, activeProject);
+      cwdActiveProject = await reconcileStudioFirebaseProject(options, cwdActiveProject);
     }
 
-    options.project = options.project ?? activeProject;
-    // support deprecated "firebase" key in firebase.json
-    if (options.config && !options.project) {
-      options.project = options.config.defaults.project;
-    }
+    const resolution = getProjectResolution({
+      project: options.project,
+      cwdActiveProject,
+      rcAliases: rc.projects,
+      configDefaultProject: options.config?.defaults?.project,
+    });
 
-    const aliases = rc.projects;
-    const rcProject = options.project ? aliases[options.project] : undefined;
-    if (rcProject) {
-      // Look up aliases
-      options.projectAlias = options.project;
-      options.project = rcProject;
-    } else if (!options.project && size(aliases) === 1) {
-      // If there's only a single alias, use that.
-      // This seems to be how we originally implemented default project - keeping this behavior to avoid breaking any unusual set ups.
-      options.projectAlias = head(keys(aliases));
-      options.project = head(values(aliases));
-    } else if (!options.project && aliases["default"]) {
-      // If there's an alias named 'default', default to that.
-      options.projectAlias = "default";
-      options.project = aliases["default"];
-    }
-  }
-
-  private configstoreProject(dir: string) {
-    const projectMap = configstore.get("activeProjects") ?? {};
-    let currentDir = path.resolve(dir);
-    while (true) {
-      if (projectMap[currentDir]) {
-        return projectMap[currentDir];
-      }
-      const parentDir = path.dirname(currentDir);
-      if (parentDir === currentDir) {
-        return null;
-      }
-      currentDir = parentDir;
-    }
+    options.project = resolution.project;
+    options.projectAlias = resolution.projectAlias;
   }
 
   private async resolveProjectIdentifiers(options: {

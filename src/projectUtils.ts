@@ -5,6 +5,65 @@ import * as clc from "colorette";
 import { marked } from "marked";
 
 const { FirebaseError } = require("./error");
+import * as path from "path";
+
+/**
+ * Gets the active project from the configstore map by walking up the directory tree.
+ */
+export function getActiveProject(cwd: string, projectMap: Record<string, string>): string | undefined {
+  let currentDir = path.resolve(cwd);
+  while (true) {
+    if (projectMap[currentDir]) {
+      return projectMap[currentDir];
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      break;
+    }
+    currentDir = parentDir;
+  }
+  return undefined;
+}
+
+/**
+ * Resolves the active project, applying RC and firebase.json fallbacks.
+ * Returns the resolved project ID and its alias if one exists.
+ */
+export function getProjectResolution(options: {
+  project?: string;
+  cwdActiveProject?: string;
+  rcAliases?: Record<string, string>;
+  configDefaultProject?: string;
+}): { project?: string; projectAlias?: string } {
+  let activeProject = options.project;
+
+  if (!activeProject) {
+    activeProject = options.cwdActiveProject;
+  }
+
+  activeProject = activeProject ?? options.configDefaultProject;
+
+  const aliases = options.rcAliases ?? {};
+  const rcProject = activeProject ? aliases[activeProject] : undefined;
+
+  let projectAlias: string | undefined = undefined;
+  let project: string | undefined = undefined;
+
+  if (rcProject) {
+    projectAlias = activeProject;
+    project = rcProject;
+  } else if (!activeProject && Object.keys(aliases).length === 1) {
+    projectAlias = Object.keys(aliases)[0];
+    project = Object.values(aliases)[0];
+  } else if (!activeProject && aliases["default"]) {
+    projectAlias = "default";
+    project = aliases["default"];
+  } else {
+    project = activeProject;
+  }
+
+  return { project, projectAlias };
+}
 
 /**
  * Retrieves the projectId from a command's options context.

@@ -10,16 +10,43 @@ import { globalSignal } from "../utils/globals";
 import { firstWhereDefined } from "../utils/signal";
 import { User } from "../types/auth";
 import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
+import * as fs from "fs";
+import * as path from "path";
 /** Available projects */
 export const projects = globalSignal<Record<string, FirebaseProjectMetadata[]>>(
   {},
 );
 
+import { configstore } from "../../../src/configstore";
+import { currentOptions } from "../options";
+import { firebaseConfig } from "./config";
+import { getActiveProject, getProjectResolution } from "../../../src/projectUtils";
+
+export const configstoreActiveProjects = globalSignal<Record<string, string>>(
+  configstore.get("activeProjects") ?? {},
+);
+
+// We don't have fs.watch for configstore here, but we can assume it will be updated
+// or we can add fs.watch if the user had it. I will skip fs.watch for now and just use configstoreActiveProjects.
+
 /** Currently selected project ID */
 export const currentProjectId = computed(() => {
-  const rc = firebaseRC.value?.tryReadValue;
+  if (isServiceAccount.value) {
+    return userScopedProjects.value?.[0]?.projectId;
+  }
 
-  return rc?.projects.default;
+  const cwdActiveProject = currentOptions.value.cwd
+    ? getActiveProject(currentOptions.value.cwd, configstoreActiveProjects.value)
+    : undefined;
+
+  const resolution = getProjectResolution({
+    cwdActiveProject,
+    rcAliases: firebaseRC.value?.tryReadValue?.projects,
+    configDefaultProject: firebaseConfig.value?.tryReadValue?.defaults?.project,
+  });
+
+  // VS Code extension specifically relies on the actual project ID, not the alias name.
+  return resolution.project;
 });
 
 const userScopedProjects = computed<FirebaseProjectMetadata[] | undefined>(
@@ -47,6 +74,18 @@ export function registerProject(
       broker.send("notifyProjectChanged", { projectId });
     },
   );
+
+  let configstoreWatcher: fs.FSWatcher | undefined;
+  if (fs.existsSync(configstore.path) && !configstoreWatcher) {
+    try {
+      configstoreWatcher = fs.watch(configstore.path, () => {
+        configstoreActiveProjects.value =
+          configstore.get("activeProjects") ?? {};
+      });
+    } catch (e) {
+      pluginLogger.error("Failed to watch configstore path:", e);
+    }
+  }
 
   async function fetchNewProjects(user: User) {
     const userProjects = await listProjects();
