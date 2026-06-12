@@ -8,6 +8,7 @@ import { logger } from "../../logger";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { logLabeledWarning } from "../../utils";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 /**
  * Creates a temporary tarball of the project source or build artifacts.
@@ -24,7 +25,7 @@ export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
   outputFiles: string[],
-  sizeLimitBytes: number = 250 * 1024 * 1024,
+  sizeLimitBytes: number = CLOUD_RUN_SIZE_LIMIT_BYTES,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
