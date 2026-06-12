@@ -1,3 +1,4 @@
+- Functions can declare additional API dependencies (#10621)
 - Added mock Passkey (WebAuthn) support to the Auth emulator. (#10636)
 - Fixes `spawn activate.bat ENOENT` error on Windows when initializing Python functions. (#10608)
 - Fixed an issue where Cloud Run rewrites in the Hosting emulator would always hit the live Cloud Run API instead of routing to the local functions emulator. (#10588)
