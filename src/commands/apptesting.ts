@@ -6,11 +6,18 @@ import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";
 import { awaitTestResults, Distribution, upload } from "../appdistribution/distribution";
-import { AiInstructions, ReleaseTest, TestDevice, Release } from "../appdistribution/types";
+import {
+  AiInstructions,
+  ReleaseTest,
+  TestDevice,
+  Release,
+  LoginCredential,
+} from "../appdistribution/types";
 import {
   getAppName,
   parseTestDevices,
   getResultsBucket,
+  getLoginCredential,
 } from "../appdistribution/options-parser-util";
 import * as utils from "../utils";
 import { dirExistsSync } from "../fsutils";
@@ -56,6 +63,12 @@ export const command = new Command("apptesting:execute [release-binary-file]")
     "--results-bucket <bucket>",
     "The name of a Google Cloud Storage bucket where raw test results will be stored. If this flag is not set, Firebase creates a default bucket for you. Note that the bucket must be owned by a billing-enabled project, and that using a non-default bucket will result in billing charges for the storage used.",
   )
+  .option("--test-username <string>", "username for automatic login")
+  .option(
+    "--test-password <string>",
+    "password for automatic login. If using a real password, use --test-password-file instead to avoid putting sensitive info in history and logs.",
+  )
+  .option("--test-password-file <string>", "path to file containing password for automatic login")
   .before(requireAuth)
   .action(async (target: string | undefined, options: any) => {
     const appName = getAppName(options);
@@ -74,6 +87,11 @@ export const command = new Command("apptesting:execute [release-binary-file]")
       options.testNamePattern,
     );
     const testDevices = parseTestDevices(options.testDevices, options.testDevicesFile);
+    const loginCredential = getLoginCredential({
+      username: options.testUsername,
+      password: options.testPassword,
+      passwordFile: options.testPasswordFile,
+    });
 
     if (!tests.length) {
       throw new FirebaseError(`No tests found under test directory ${testDir}`);
@@ -109,6 +127,7 @@ export const command = new Command("apptesting:execute [release-binary-file]")
         tests,
         !testDevices.length ? defaultDevices : testDevices,
         resultsBucket,
+        loginCredential,
       );
       invokeSpinner.text = `${pluralizeTests(releaseTests.length)} started successfully!`;
       invokeSpinner.succeed();
@@ -135,6 +154,7 @@ async function invokeTests(
   testDefs: TestCaseInvocation[],
   devices: TestDevice[],
   resultsBucket?: string,
+  loginCredential?: LoginCredential,
 ): Promise<ReleaseTest[]> {
   try {
     const releaseTests: ReleaseTest[] = [];
@@ -147,6 +167,7 @@ async function invokeTests(
           aiInstructions,
           displayName: testDef.testCase.displayName,
           resultsBucket,
+          loginCredential,
         }),
       );
     }
