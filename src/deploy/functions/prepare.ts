@@ -694,8 +694,11 @@ export async function ensureAllRequiredAPIsEnabled(
   wantBackend: backend.Backend,
   options: { force?: boolean; nonInteractive?: boolean } = {},
 ): Promise<void> {
-  // Standard Google Cloud APIs normally used or ensured enabled by Firebase during deployment
-  // across various features (Functions, Cloud Run, Eventarc, PubSub, Storage, Scheduler, Tasks, etc.).
+  // Standard built-in Google Cloud APIs that the CLI inherently relies upon or ensures
+  // enabled during the normal Cloud Functions deployment lifecycle. This covers:
+  // - Core compute & build: cloudfunctions, run, cloudbuild, artifactregistry
+  // - Configuration & secrets: runtimeconfig, secretmanager
+  // - Async triggers & events: pubsub, eventarc, storage, cloudscheduler, cloudtasks
   const STANDARD_APIS = [
     "cloudfunctions.googleapis.com",
     "runtimeconfig.googleapis.com",
