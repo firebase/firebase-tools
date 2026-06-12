@@ -31,7 +31,6 @@ import {
   getConnectorGQLText,
   insertQueryAt,
   getSchemas,
-  verifySchemaCompiles,
 } from "../file-utils";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
@@ -303,12 +302,6 @@ export function registerExecution(
 
       if (serviceConfig) {
         schemas = await getSchemas(serviceConfig);
-
-        // Verify that the schema compiles before generating queries
-        const compiles = await verifySchemaCompiles(serviceConfig, arg.projectId);
-        if (!compiles) {
-          return;
-        }
       }
 
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
