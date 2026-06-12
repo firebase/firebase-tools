@@ -680,6 +680,25 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   }
 }
 
+// Standard built-in Google Cloud APIs that the CLI inherently relies upon or ensures
+// enabled during the normal Cloud Functions deployment lifecycle. This covers:
+// - Core compute & build: cloudfunctions, run, cloudbuild, artifactregistry
+// - Configuration & secrets: runtimeconfig, secretmanager
+// - Async triggers & events: pubsub, eventarc, storage, cloudscheduler, cloudtasks
+const STANDARD_APIS = [
+  "cloudfunctions.googleapis.com",
+  "runtimeconfig.googleapis.com",
+  "cloudbuild.googleapis.com",
+  "artifactregistry.googleapis.com",
+  "run.googleapis.com",
+  "eventarc.googleapis.com",
+  "pubsub.googleapis.com",
+  "storage.googleapis.com",
+  "secretmanager.googleapis.com",
+  "cloudscheduler.googleapis.com",
+  "cloudtasks.googleapis.com",
+];
+
 /**
  * Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
  * require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
@@ -691,29 +710,10 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
  */
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
-  wantBackend: backend.Backend,
+  wantBackend: backend.Backend = backend.empty(),
   options: { force?: boolean; nonInteractive?: boolean } = {},
 ): Promise<void> {
-  // Standard built-in Google Cloud APIs that the CLI inherently relies upon or ensures
-  // enabled during the normal Cloud Functions deployment lifecycle. This covers:
-  // - Core compute & build: cloudfunctions, run, cloudbuild, artifactregistry
-  // - Configuration & secrets: runtimeconfig, secretmanager
-  // - Async triggers & events: pubsub, eventarc, storage, cloudscheduler, cloudtasks
-  const STANDARD_APIS = [
-    "cloudfunctions.googleapis.com",
-    "runtimeconfig.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "artifactregistry.googleapis.com",
-    "run.googleapis.com",
-    "eventarc.googleapis.com",
-    "pubsub.googleapis.com",
-    "storage.googleapis.com",
-    "secretmanager.googleapis.com",
-    "cloudscheduler.googleapis.com",
-    "cloudtasks.googleapis.com",
-  ];
-
-  const requiredApis = Object.values(wantBackend.requiredAPIs ?? {});
+  const requiredApis = Object.values(wantBackend?.requiredAPIs ?? {});
   const [standardApis, additionalApis] = partition(requiredApis, ({ api }) =>
     STANDARD_APIS.includes(api),
   );
