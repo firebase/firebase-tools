@@ -3490,16 +3490,28 @@ function generateBlockingFunctionJwt(
 }
 
 /**
+ * Asserts that the payload is a valid BlockingFunctionsJwtPayload.
+ */
+function assertBlockingFunctionsJwtPayload(
+  payload: unknown,
+): asserts payload is BlockingFunctionsJwtPayload {
+  assert(payload !== null && typeof payload === "object", "((Invalid blocking function jwt.))");
+  const p = payload as Record<string, unknown>;
+  assert(typeof p.iss === "string", "((Invalid blocking function jwt, missing `iss` claim.))");
+  assert(typeof p.aud === "string", "((Invalid blocking function jwt, missing `aud` claim.))");
+  assert(
+    p.user_record !== undefined,
+    "((Invalid blocking function jwt, missing `user_record` claim.))",
+  );
+}
+
+/**
  * Parses and validates a JWT containing blocking function payloads.
  */
 export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
   const decoded = decodeJwt(jwt, { json: true });
-  assert(decoded && typeof decoded === "object", "((Invalid blocking function jwt.))");
-  const payload = decoded as Record<string, unknown>;
-  assert(payload.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
-  assert(payload.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
-  assert(payload.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
-  return payload as BlockingFunctionsJwtPayload;
+  assertBlockingFunctionsJwtPayload(decoded);
+  return decoded;
 }
 
 export interface SamlAssertion {
