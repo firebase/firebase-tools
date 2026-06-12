@@ -1,3 +1,4 @@
+- Added mock Passkey (WebAuthn) support to the Auth emulator. (#10636)
 - Fixed an issue where Cloud Run rewrites in the Hosting emulator would always hit the live Cloud Run API instead of routing to the local functions emulator. (#10588)
 - Removed temporary warning directing Dart functions users to Cloud Console, as Firebase Console now supports Dart functions. (#10584)
 - Updated the Firebase Data Connect local toolkit to v3.4.11, which includes the following changes:

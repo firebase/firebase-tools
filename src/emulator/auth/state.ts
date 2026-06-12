@@ -26,6 +26,7 @@ export abstract class ProjectState {
   private localIdForPhoneNumber: Map<string, string> = new Map();
   private localIdsForProviderEmail: Map<string, Set<string>> = new Map();
   private userIdForProviderRawId: Map<string, Map<string, string>> = new Map();
+  private localIdForPasskeyCredentialId: Map<string, string> = new Map();
   private oobs: Map<string, OobRecord> = new Map();
   private verificationCodes: Map<string, PhoneVerificationRecord> = new Map();
   private temporaryProofs: Map<string, TemporaryProofRecord> = new Map();
@@ -146,9 +147,23 @@ export abstract class ProjectState {
     }
     const oldEmail = user.email;
     const oldPhoneNumber = user.phoneNumber;
+    const oldPasskeyInfo = user.passkeyInfo;
 
     for (const field of Object.keys(fields) as (keyof typeof fields)[]) {
       mirrorFieldTo(user, field, fields);
+    }
+
+    if (fields.passkeyInfo) {
+      for (const pk of oldPasskeyInfo ?? []) {
+        if (pk.credentialId) {
+          this.localIdForPasskeyCredentialId.delete(pk.credentialId);
+        }
+      }
+      for (const pk of fields.passkeyInfo) {
+        if (pk.credentialId) {
+          this.localIdForPasskeyCredentialId.set(pk.credentialId, user.localId);
+        }
+      }
     }
 
     if (oldEmail && oldEmail !== user.email) {
@@ -381,6 +396,14 @@ export abstract class ProjectState {
     return this.users.get(localId);
   }
 
+  getUserByPasskeyCredentialId(credentialId: string): UserInfo | undefined {
+    const localId = this.localIdForPasskeyCredentialId.get(credentialId);
+    if (!localId) {
+      return undefined;
+    }
+    return this.getUserByLocalIdAssertingExists(localId);
+  }
+
   createRefreshTokenFor(
     userInfo: UserInfo,
     provider: string,
@@ -489,6 +512,7 @@ export abstract class ProjectState {
     this.localIdForPhoneNumber.clear();
     this.localIdsForProviderEmail.clear();
     this.userIdForProviderRawId.clear();
+    this.localIdForPasskeyCredentialId.clear();
 
     // We do not clear OOBs / phone verification codes since some of those may
     // still be valid (e.g. email link / phone sign-in may still create a new
@@ -570,6 +594,12 @@ export abstract class ProjectState {
       this.userIdForProviderRawId.get(info.providerId)?.delete(info.rawId);
       if (info.email) {
         this.removeProviderEmailForUser(info.email, user.localId);
+      }
+    }
+
+    for (const pk of user.passkeyInfo ?? []) {
+      if (pk.credentialId) {
+        this.localIdForPasskeyCredentialId.delete(pk.credentialId);
       }
     }
   }

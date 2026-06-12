@@ -2330,9 +2330,7 @@ function passkeyEnrollmentFinalize(
   const credentialId = (reqBody.authenticatorRegistrationResponse as { id?: string }).id;
   assert(credentialId, "INVALID_CREDENTIAL_ID");
 
-  const isDuplicate = state.queryUsers({}, { order: "ASC", sortByField: "localId" }).some(
-    (u) => u.passkeyInfo?.some((pk) => pk.credentialId === credentialId)
-  );
+  const isDuplicate = !!state.getUserByPasskeyCredentialId(credentialId);
   assert(!isDuplicate, "CREDENTIAL_ALREADY_IN_USE");
 
   const newPasskey: PasskeyInfo = {
@@ -2379,13 +2377,7 @@ function passkeySignInFinalize(
   assert(credentialId, "INVALID_CREDENTIAL_ID");
 
   // Find user by credentialId
-  let matchedUser: UserInfo | undefined;
-  for (const user of state.queryUsers({}, { order: "ASC", sortByField: "localId" })) {
-    if (user.passkeyInfo?.some((pk) => pk.credentialId === credentialId)) {
-      matchedUser = user;
-      break;
-    }
-  }
+  let matchedUser = state.getUserByPasskeyCredentialId(credentialId);
 
   assert(matchedUser, "PASSKEY_CREDENTIAL_NOT_FOUND");
   assert(!matchedUser.disabled, "USER_DISABLED");
