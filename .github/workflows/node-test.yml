@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
+          - "24"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,7 +49,6 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
           - "22"
           - "24"
     steps:
@@ -69,14 +68,14 @@ jobs:
       - run: npm run test:unit
         working-directory: firebase-vscode
       - uses: codecov/codecov-action@v5
-        if: matrix.node-version == '20'
+        if: matrix.node-version == '24'
 
   # vscode_integration:
   #   runs-on: macos-latest
   #   strategy:
   #     matrix:
   #       node-version:
-  #         - "20"
+  #         - "24"
 
   #   env:
   #     FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -127,14 +126,14 @@ jobs:
   #         path: firebase-vscode/src/test/screenshots
 
   #     - uses: codecov/codecov-action@v5
-  #       if: matrix.node-version == '20'
+  #       if: matrix.node-version == '24'
 
   agent_evals_build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version:
-          - "22"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -155,7 +154,6 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
           - "22"
           - "24"
     steps:
@@ -179,7 +177,7 @@ jobs:
       - run: npm test -- -- --forbid-only
 
       - uses: codecov/codecov-action@v5
-        if: matrix.node-version == '20'
+        if: matrix.node-version == '24'
         with:
           files: ./.coverage/lcov.info
 
@@ -201,7 +199,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "20"
+          - "24"
         script:
           - npm run test:client-integration
           - npm run test:emulator
@@ -270,7 +268,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "20"
+          - "24"
         script:
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
@@ -324,7 +322,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
@@ -343,7 +341,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
@@ -362,7 +360,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "20"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
