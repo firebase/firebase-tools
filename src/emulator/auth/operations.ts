@@ -2330,6 +2330,11 @@ function passkeyEnrollmentFinalize(
   const credentialId = (reqBody.authenticatorRegistrationResponse as { id?: string }).id;
   assert(credentialId, "INVALID_CREDENTIAL_ID");
 
+  const isDuplicate = state.queryUsers({}, { order: "ASC", sortByField: "localId" }).some(
+    (u) => u.passkeyInfo?.some((pk) => pk.credentialId === credentialId)
+  );
+  assert(!isDuplicate, "CREDENTIAL_ALREADY_IN_USE");
+
   const newPasskey: PasskeyInfo = {
     credentialId,
     name: reqBody.name || reqBody.displayName || "Unnamed Passkey",
