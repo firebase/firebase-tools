@@ -458,12 +458,6 @@ function addEmulatorOperations(openapi3: any): void {
         },
         type: "object",
       },
-      emailPrivacyConfig: {
-        properties: {
-          enableImprovedEmailPrivacy: { type: "boolean" },
-        },
-        type: "object",
-      },
     },
   };
   openapi3.paths["/emulator/v1/projects/{targetProjectId}/oobCodes"] = {

@@ -933,16 +933,10 @@ interface TemporaryProofRecord {
   // a bit easier. Therefore, there's no need to record createdAt timestamps.
 }
 
-/**
- *
- */
 export function encodeRefreshToken(refreshTokenRecord: RefreshTokenRecord): string {
   return Buffer.from(JSON.stringify(refreshTokenRecord), "utf8").toString("base64");
 }
 
-/**
- *
- */
 export function decodeRefreshToken(refreshTokenString: string): RefreshTokenRecord {
   let refreshTokenRecord: RefreshTokenRecord;
   try {

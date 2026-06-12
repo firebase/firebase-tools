@@ -1246,7 +1246,7 @@ export function setAccountInfoImpl(
     if (reqBody.deleteProvider?.includes(PROVIDER_PHONE)) {
       updates.phoneNumber = undefined;
     }
-    if (reqBody.deletePasskey && reqBody.deletePasskey.length > 0) {
+    if (reqBody.deletePasskey) {
       const deletePasskey = reqBody.deletePasskey;
       updates.passkeyInfo = (user.passkeyInfo || []).filter(
         (pk) => pk.credentialId && !deletePasskey.includes(pk.credentialId),
@@ -2366,9 +2366,7 @@ function passkeySignInStart(
 function passkeySignInFinalize(
   state: ProjectState,
   reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest"],
-):
-  | Promise<Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse"]>
-  | Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse"] {
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse"] {
   assert(!state.disableAuth, "PROJECT_DISABLED");
   assert(reqBody.authenticatorAuthenticationResponse, "MISSING_AUTHENTICATOR_RESPONSE");
 
@@ -2417,19 +2415,17 @@ function updateConfig(
     state instanceof AgentProjectState,
     "((Can only update top-level configurations on agent projects.))",
   );
-  if (reqBody.blockingFunctions?.triggers) {
-    const blockingFunctions = reqBody.blockingFunctions;
-    for (const event in blockingFunctions.triggers) {
-      if (Object.prototype.hasOwnProperty.call(blockingFunctions.triggers, event)) {
-        assert(
-          Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
-          "INVALID_BLOCKING_FUNCTION : ((Event type is invalid.))",
-        );
-        assert(
-          parseAbsoluteUri(blockingFunctions.triggers[event].functionUri!),
-          "INVALID_BLOCKING_FUNCTION : ((Expected an absolute URI with valid scheme and host.))",
-        );
-      }
+  const triggers = reqBody.blockingFunctions?.triggers ?? {};
+  for (const event in triggers) {
+    if (Object.prototype.hasOwnProperty.call(triggers, event)) {
+      assert(
+        Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
+        "INVALID_BLOCKING_FUNCTION : ((Event type is invalid.))",
+      );
+      assert(
+        parseAbsoluteUri(triggers[event].functionUri!),
+        "INVALID_BLOCKING_FUNCTION : ((Expected an absolute URI with valid scheme and host.))",
+      );
     }
   }
   return state.updateConfig(reqBody, ctx.params.query.updateMask);
@@ -3494,15 +3490,16 @@ function generateBlockingFunctionJwt(
 }
 
 /**
- *
+ * Parses and validates a JWT containing blocking function payloads.
  */
 export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
-  const decoded = decodeJwt(jwt, { json: true }) as any as BlockingFunctionsJwtPayload;
-  assert(decoded, "((Invalid blocking function jwt.))");
-  assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
-  assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
-  assert(decoded.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
-  return decoded;
+  const decoded = decodeJwt(jwt, { json: true });
+  assert(decoded && typeof decoded === "object", "((Invalid blocking function jwt.))");
+  const payload = decoded as Record<string, unknown>;
+  assert(payload.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
+  assert(payload.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
+  assert(payload.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
+  return payload as BlockingFunctionsJwtPayload;
 }
 
 export interface SamlAssertion {
