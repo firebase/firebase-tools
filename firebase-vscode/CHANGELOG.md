@@ -1,5 +1,14 @@
 ## NEXT
 
+- [Fixed] Fix auth issue from Generate Operation button by skipping unnecessary schema compilation check.
+- [Changed] Replace generateSchema and generateQuery backends with the new fdc AgentService API.
+- [Added] Improved error handling and status updates for query generation
+- [Added] Local schema aware query generation
+
+## 2.3.3
+
+- Update internal `firebase-tools` dependency to 15.19.0
+
 ## 2.3.2
 
 - Update internal `firebase-tools` dependency to 15.18.0
