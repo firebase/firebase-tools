@@ -28,3 +28,4 @@ lib/
 dev/
 clean/
 .gemini/
+!.agents/
