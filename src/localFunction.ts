@@ -321,7 +321,7 @@ export default class LocalFunction {
       } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
         dataPayload = data;
         if (this.trigger.platform === "gcfv2") {
-          dataPayload = { message: { ...(data as any), messageId: randomUUID() } };
+          dataPayload = { message: { ...(data as Record<string, unknown>), messageId: randomUUID() } };
         }
         this.controller.call(this.trigger, dataPayload || {}, opts);
       } else {

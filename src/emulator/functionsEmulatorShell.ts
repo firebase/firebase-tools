@@ -74,7 +74,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       ce.source = `projects/_/buckets/${eventTrigger.eventFilters?.bucket}`;
     } else if (eventTrigger.eventType.startsWith("google.cloud.pubsub")) {
       ce.source = eventTrigger.eventFilters!.topic!;
-      data = { ...(data as any), messageId: randomUUID() };
+      data = { ...(data as Record<string, unknown>), messageId: randomUUID() };
     } else if (eventTrigger.eventType.startsWith("google.cloud.firestore")) {
       ce.source = `projects/_/databases/(default)`;
       if (opts.resource) {
