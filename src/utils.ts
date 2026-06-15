@@ -1148,6 +1148,10 @@ export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;
  * A lightweight Promise concurrency limiter.
  */
 export function pLimit(concurrency: number): Limit {
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new FirebaseError(`pLimit concurrency must be a positive integer, got ${concurrency}`);
+  }
+
   const queue: Array<() => void> = [];
   let activeCount = 0;
 
@@ -1162,7 +1166,12 @@ export function pLimit(concurrency: number): Limit {
     return new Promise<T>((resolve, reject) => {
       const run = () => {
         activeCount++;
-        fn().then(resolve, reject).finally(next);
+        try {
+          Promise.resolve(fn()).then(resolve, reject).finally(next);
+        } catch (err) {
+          reject(err);
+          next();
+        }
       };
 
       if (activeCount < concurrency) {
