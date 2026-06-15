@@ -133,7 +133,6 @@
     "exegesis": "^4.2.0",
     "exegesis-express": "^4.0.0",
     "express": "^4.16.4",
-    "filesize": "^6.1.0",
     "form-data": "^4.0.1",
     "fs-extra": "^10.1.0",
     "fuzzy": "^0.1.3",
