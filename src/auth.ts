@@ -14,8 +14,7 @@ import { logger } from "./logger";
 import { input } from "./prompt";
 import * as scopes from "./scopes";
 import { clearCredentials } from "./defaultCredentials";
-import { v4 as uuidv4 } from "uuid";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, randomUUID } from "crypto";
 import { trackGA4 } from "./track";
 import {
   authOrigin,
@@ -437,7 +436,7 @@ export async function loginPrototyper(): Promise<PrototyperRes> {
     auth: false,
   });
 
-  const sessionId = uuidv4();
+  const sessionId = randomUUID();
   const codeVerifier = randomBytes(32).toString("hex");
   // urlsafe base64 is required for code_challenge in OAuth PKCE
   const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
@@ -486,7 +485,7 @@ async function loginRemotely(): Promise<UserCredentials> {
     auth: false,
   });
 
-  const sessionId = uuidv4();
+  const sessionId = randomUUID();
   const codeVerifier = randomBytes(32).toString("hex");
   // urlsafe base64 is required for code_challenge in OAuth PKCE
   const codeChallenge = urlsafeBase64(createHash("sha256").update(codeVerifier).digest("base64"));
