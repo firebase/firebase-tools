@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import { detectAIAgent } from "./env";
-import * as fsutils from "./fsutils";
 
 describe("env", () => {
   describe("detectAIAgent", () => {
@@ -121,11 +120,6 @@ describe("env", () => {
         process.env.COPILOT_GITHUB_TOKEN = "token";
         expect(detectAIAgent()).to.equal("github_copilot");
       });
-    });
-
-    it("should detect Devin via file system check", () => {
-      sandbox.stub(fsutils, "fileExistsSync").withArgs("/opt/.devin").returns(true);
-      expect(detectAIAgent()).to.equal("devin");
     });
 
     describe("Codex detection", () => {

@@ -1,4 +1,4 @@
-import { dirExistsSync, fileExistsSync } from "./fsutils";
+import { dirExistsSync } from "./fsutils";
 
 let googleIdxFolderExists: boolean | undefined;
 export function isFirebaseStudio() {
@@ -70,11 +70,6 @@ export function detectAIAgent(): string {
     process.env.COPILOT_GITHUB_TOKEN
   ) {
     return "github_copilot";
-  }
-
-  // Devin (via filesystem probing)
-  if (fileExistsSync("/opt/.devin")) {
-    return "devin";
   }
 
   // Replit
