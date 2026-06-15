@@ -24,6 +24,7 @@ import {
   OobRequestType,
   UserInfo,
   ProviderUserInfo,
+  PasskeyInfo,
   PROVIDER_PASSWORD,
   PROVIDER_ANONYMOUS,
   PROVIDER_PHONE,
@@ -72,6 +73,14 @@ export const authOperations: AuthOps = {
       mfaSignIn: {
         start: mfaSignInStart,
         finalize: mfaSignInFinalize,
+      },
+      passkeyEnrollment: {
+        start: passkeyEnrollmentStart,
+        finalize: passkeyEnrollmentFinalize,
+      },
+      passkeySignIn: {
+        start: passkeySignInStart,
+        finalize: passkeySignInFinalize,
       },
     },
     projects: {
@@ -814,7 +823,6 @@ function queryAccounts(
 
 /**
  * Reset password for a user account.
- *
  * @param state the current project state
  * @param reqBody request with oobCode and passwords
  * @return the HTTP response body
@@ -1030,7 +1038,6 @@ function setAccountInfo(
 
 /**
  * Updates an account based on localId, idToken, or oobCode.
- *
  * @param state the current project state
  * @param reqBody request with fields to update
  * @param privileged whether request is OAuth2 authenticated. Affects validation
@@ -1074,7 +1081,7 @@ export function setAccountInfoImpl(
   const updates: Omit<Partial<UserInfo>, "localId" | "providerUserInfo"> = {};
   let user: UserInfo;
   let signInProvider: string | undefined;
-  let isEmailUpdate: boolean = false;
+  let isEmailUpdate = false;
   let newEmail: string | undefined;
 
   if (reqBody.oobCode) {
@@ -1238,6 +1245,12 @@ export function setAccountInfoImpl(
     }
     if (reqBody.deleteProvider?.includes(PROVIDER_PHONE)) {
       updates.phoneNumber = undefined;
+    }
+    if (reqBody.deletePasskey) {
+      const deletePasskey = reqBody.deletePasskey;
+      updates.passkeyInfo = (user.passkeyInfo || []).filter(
+        (pk) => pk.credentialId && !deletePasskey.includes(pk.credentialId),
+      );
     }
   }
 
@@ -2276,6 +2289,111 @@ async function mfaSignInFinalize(
   };
 }
 
+function passkeyEnrollmentStart(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentRequest"],
+): Schemas["GoogleCloudIdentitytoolkitV2StartPasskeyEnrollmentResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+
+  const { user } = parseIdToken(state, reqBody.idToken);
+
+  return {
+    credentialCreationOptions: {
+      rp: { name: "localhost", id: "localhost" },
+      user: {
+        id: Buffer.from(user.localId).toString("base64"),
+        name: user.email || "user@example.com",
+        displayName: user.displayName || "User",
+      },
+      challenge: Buffer.from(newRandomId(32)).toString("base64"),
+      pubKeyCredParams: [
+        { type: "public-key", alg: -7 }, // ES256
+        { type: "public-key", alg: -257 }, // RS256
+      ],
+      timeout: 60000,
+      attestation: "none",
+    },
+  };
+}
+
+function passkeyEnrollmentFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentRequest"],
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeyEnrollmentResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(reqBody.idToken, "MISSING_ID_TOKEN");
+  assert(reqBody.authenticatorRegistrationResponse, "MISSING_AUTHENTICATOR_RESPONSE");
+
+  let { user } = parseIdToken(state, reqBody.idToken);
+
+  const credentialId = (reqBody.authenticatorRegistrationResponse as { id?: string }).id;
+  assert(credentialId, "INVALID_CREDENTIAL_ID");
+
+  const isDuplicate = !!state.getUserByPasskeyCredentialId(credentialId);
+  assert(!isDuplicate, "CREDENTIAL_ALREADY_IN_USE");
+
+  const newPasskey: PasskeyInfo = {
+    credentialId,
+    name: reqBody.name || reqBody.displayName || "Unnamed Passkey",
+  };
+
+  const existing = user.passkeyInfo || [];
+  user = state.updateUserByLocalId(user.localId, {
+    passkeyInfo: [...existing, newPasskey],
+  });
+
+  const { idToken, refreshToken } = issueTokens(state, user, "passkey");
+
+  return {
+    localId: user.localId,
+    idToken,
+    refreshToken,
+  };
+}
+
+function passkeySignInStart(
+  state: ProjectState,
+): Schemas["GoogleCloudIdentitytoolkitV2StartPasskeySignInResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+
+  return {
+    credentialRequestOptions: {
+      challenge: Buffer.from(newRandomId(32)).toString("base64"),
+      rpId: "localhost",
+      userVerification: "required",
+    },
+  };
+}
+
+function passkeySignInFinalize(
+  state: ProjectState,
+  reqBody: Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInRequest"],
+): Schemas["GoogleCloudIdentitytoolkitV2FinalizePasskeySignInResponse"] {
+  assert(!state.disableAuth, "PROJECT_DISABLED");
+  assert(reqBody.authenticatorAuthenticationResponse, "MISSING_AUTHENTICATOR_RESPONSE");
+
+  const credentialId = (reqBody.authenticatorAuthenticationResponse as { id?: string }).id;
+  assert(credentialId, "INVALID_CREDENTIAL_ID");
+
+  // Find user by credentialId
+  let matchedUser = state.getUserByPasskeyCredentialId(credentialId);
+
+  assert(matchedUser, "PASSKEY_CREDENTIAL_NOT_FOUND");
+  assert(!matchedUser.disabled, "USER_DISABLED");
+
+  matchedUser = state.updateUserByLocalId(matchedUser.localId, {
+    lastLoginAt: Date.now().toString(),
+  });
+
+  const { idToken, refreshToken } = issueTokens(state, matchedUser, "passkey");
+
+  return {
+    idToken,
+    refreshToken,
+  };
+}
+
 function getConfig(state: ProjectState): Schemas["GoogleCloudIdentitytoolkitAdminV2Config"] {
   // Shouldn't error on this but need assertion for type checking
   assert(
@@ -2294,14 +2412,15 @@ function updateConfig(
     state instanceof AgentProjectState,
     "((Can only update top-level configurations on agent projects.))",
   );
-  for (const event in reqBody.blockingFunctions?.triggers) {
-    if (Object.prototype.hasOwnProperty.call(reqBody.blockingFunctions!.triggers, event)) {
+  const triggers = reqBody.blockingFunctions?.triggers ?? {};
+  for (const event in triggers) {
+    if (Object.prototype.hasOwnProperty.call(triggers, event)) {
       assert(
         Object.values(BlockingFunctionEvents).includes(event as BlockingFunctionEvents),
         "INVALID_BLOCKING_FUNCTION : ((Event type is invalid.))",
       );
       assert(
-        parseAbsoluteUri(reqBody.blockingFunctions!.triggers[event].functionUri!),
+        parseAbsoluteUri(triggers[event].functionUri!),
         "INVALID_BLOCKING_FUNCTION : ((Expected an absolute URI with valid scheme and host.))",
       );
     }
@@ -2745,13 +2864,13 @@ function fakeFetchUserInfoFromIdp(
       });
       break;
     }
-    case providerId.match(/^saml\./)?.input:
+    case /^saml\./.exec(providerId)?.input:
       const nameId = samlResponse?.assertion?.subject?.nameId;
       response.email = nameId && isValidEmailAddress(nameId) ? nameId : response.email;
       response.emailVerified = true;
       response.rawUserInfo = JSON.stringify(samlResponse?.assertion?.attributeStatements);
       break;
-    case providerId.match(/^oidc\./)?.input:
+    case /^oidc\./.exec(providerId)?.input:
     default:
       response.rawUserInfo = JSON.stringify(claims);
       break;
@@ -3113,7 +3232,7 @@ async function fetchBlockingFunction(
     oauthTokenSecret?: string;
     oauthExpiresIn?: string;
   } = {},
-  timeoutMs: number = 60000,
+  timeoutMs = 60000,
 ): Promise<{
   updates: BlockingFunctionUpdates;
   extraClaims?: Record<string, unknown>;
@@ -3367,12 +3486,28 @@ function generateBlockingFunctionJwt(
   return jwtStr;
 }
 
+/**
+ * Asserts that the payload is a valid BlockingFunctionsJwtPayload.
+ */
+function assertBlockingFunctionsJwtPayload(
+  payload: unknown,
+): asserts payload is BlockingFunctionsJwtPayload {
+  assert(payload !== null && typeof payload === "object", "((Invalid blocking function jwt.))");
+  const p = payload as Record<string, unknown>;
+  assert(typeof p.iss === "string", "((Invalid blocking function jwt, missing `iss` claim.))");
+  assert(typeof p.aud === "string", "((Invalid blocking function jwt, missing `aud` claim.))");
+  assert(
+    p.user_record !== undefined,
+    "((Invalid blocking function jwt, missing `user_record` claim.))",
+  );
+}
+
+/**
+ * Parses and validates a JWT containing blocking function payloads.
+ */
 export function parseBlockingFunctionJwt(jwt: string): BlockingFunctionsJwtPayload {
-  const decoded = decodeJwt(jwt, { json: true }) as any as BlockingFunctionsJwtPayload;
-  assert(decoded, "((Invalid blocking function jwt.))");
-  assert(decoded.iss, "((Invalid blocking function jwt, missing `iss` claim.))");
-  assert(decoded.aud, "((Invalid blocking function jwt, missing `aud` claim.))");
-  assert(decoded.user_record, "((Invalid blocking function jwt, missing `user_record` claim.))");
+  const decoded = decodeJwt(jwt, { json: true });
+  assertBlockingFunctionsJwtPayload(decoded);
   return decoded;
 }
 
