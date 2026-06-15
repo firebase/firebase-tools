@@ -44,7 +44,6 @@
         "ignore": "^7.0.4",
         "js-yaml": "^3.14.2",
         "jsonwebtoken": "^9.0.2",
-        "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
         "lodash": "^4.18.0",
         "lsofi": "^2.0.0",
@@ -13436,14 +13435,6 @@
         "safe-buffer": "~5.1.1",
         "string_decoder": "~1.1.1",
         "util-deprecate": "~1.0.1"
-      }
-    },
-    "node_modules/leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==",
-      "engines": {
-        "node": ">=6"
       }
     },
     "node_modules/levn": {
@@ -31631,11 +31622,6 @@
           }
         }
       }
-    },
-    "leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A=="
     },
     "levn": {
       "version": "0.3.0",

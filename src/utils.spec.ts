@@ -693,4 +693,15 @@ describe("utils", () => {
       await expect(t3).to.eventually.equal("Recovered");
     });
   });
+
+  describe("stringDistance", () => {
+    it("should correctly compute Levenshtein distance between two strings", () => {
+      expect(utils.stringDistance("", "")).to.equal(0);
+      expect(utils.stringDistance("a", "")).to.equal(1);
+      expect(utils.stringDistance("", "a")).to.equal(1);
+      expect(utils.stringDistance("abc", "abc")).to.equal(0);
+      expect(utils.stringDistance("kitten", "sitting")).to.equal(3);
+      expect(utils.stringDistance("flaw", "lawn")).to.equal(2);
+    });
+  });
 });
