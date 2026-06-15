@@ -44,7 +44,6 @@
         "ignore": "^7.0.4",
         "js-yaml": "^3.14.2",
         "jsonwebtoken": "^9.0.2",
-        "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
         "lodash": "^4.18.0",
         "lsofi": "^2.0.0",
@@ -56,7 +55,6 @@
         "node-fetch": "^2.6.7",
         "open": "^6.3.0",
         "ora": "^5.4.1",
-        "p-limit": "^3.0.1",
         "pg": "^8.11.3",
         "pg-gateway": "^0.3.0-beta.4",
         "pglite-2": "npm:@electric-sql/pglite@0.2.17",
@@ -13439,14 +13437,6 @@
         "util-deprecate": "~1.0.1"
       }
     },
-    "node_modules/leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==",
-      "engines": {
-        "node": ">=6"
-      }
-    },
     "node_modules/levn": {
       "version": "0.3.0",
       "resolved": "https://registry.npmjs.org/levn/-/levn-0.3.0.tgz",
@@ -16667,6 +16657,7 @@
       "version": "3.1.0",
       "resolved": "https://registry.npmjs.org/p-limit/-/p-limit-3.1.0.tgz",
       "integrity": "sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==",
+      "dev": true,
       "dependencies": {
         "yocto-queue": "^0.1.0"
       },
@@ -21780,6 +21771,7 @@
       "version": "0.1.0",
       "resolved": "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz",
       "integrity": "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==",
+      "dev": true,
       "engines": {
         "node": ">=10"
       },
@@ -31631,11 +31623,6 @@
         }
       }
     },
-    "leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A=="
-    },
     "levn": {
       "version": "0.3.0",
       "resolved": "https://registry.npmjs.org/levn/-/levn-0.3.0.tgz",
@@ -33955,6 +33942,7 @@
       "version": "3.1.0",
       "resolved": "https://registry.npmjs.org/p-limit/-/p-limit-3.1.0.tgz",
       "integrity": "sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==",
+      "dev": true,
       "requires": {
         "yocto-queue": "^0.1.0"
       }
@@ -37705,7 +37693,8 @@
     "yocto-queue": {
       "version": "0.1.0",
       "resolved": "https://registry.npmjs.org/yocto-queue/-/yocto-queue-0.1.0.tgz",
-      "integrity": "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q=="
+      "integrity": "sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==",
+      "dev": true
     },
     "yoctocolors-cjs": {
       "version": "2.1.3",
