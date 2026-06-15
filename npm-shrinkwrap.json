@@ -44,7 +44,6 @@
         "ignore": "^7.0.4",
         "js-yaml": "^3.14.2",
         "jsonwebtoken": "^9.0.2",
-        "leven": "^3.1.0",
         "libsodium-wrappers": "^0.7.10",
         "lodash": "^4.18.0",
         "lsofi": "^2.0.0",
@@ -13438,14 +13437,6 @@
         "util-deprecate": "~1.0.1"
       }
     },
-    "node_modules/leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A==",
-      "engines": {
-        "node": ">=6"
-      }
-    },
     "node_modules/levn": {
       "version": "0.3.0",
       "resolved": "https://registry.npmjs.org/levn/-/levn-0.3.0.tgz",
@@ -26207,7 +26198,7 @@
       "resolved": "https://registry.npmjs.org/ajv-formats/-/ajv-formats-3.0.1.tgz",
       "integrity": "sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==",
       "requires": {
-        "ajv": "^8.17.1"
+        "ajv": "^8.0.0"
       }
     },
     "ansi-align": {
@@ -31631,11 +31622,6 @@
           }
         }
       }
-    },
-    "leven": {
-      "version": "3.1.0",
-      "resolved": "https://registry.npmjs.org/leven/-/leven-3.1.0.tgz",
-      "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A=="
     },
     "levn": {
       "version": "0.3.0",

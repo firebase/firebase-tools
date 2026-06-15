@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./utils";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -242,7 +241,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 
