@@ -58,10 +58,10 @@ export async function requireAuthWrapper(
     currentOptions.value = { ...currentOptions.value, ...account };
   }
 
-  if (!account) {
+  if (!account && currentUser.value) {
     // If nothing in configstore top level, grab the first "additionalAccount"
     for (const additionalAccount of accounts) {
-      if (additionalAccount.user.email === currentUser.value!.email) {
+      if (additionalAccount.user.email === currentUser.value.email) {
         account = additionalAccount;
         setGlobalDefaultAccount(account);
       }
@@ -89,7 +89,20 @@ export async function requireAuthWrapper(
       pluginLogger.debug("User found: ", userEmail);
 
       // VSCode only has the concept of a single user
-      return getGlobalDefaultAccount()!.user;
+      const globalAccount = getGlobalDefaultAccount();
+      if (globalAccount) {
+        return globalAccount.user;
+      }
+
+      // If we don't have a global default account (e.g. authenticated via ADC/Service Account),
+      // return a synthetic user object.
+      const isServiceAccount =
+        userEmail.includes(".gserviceaccount.com") ||
+        userEmail.includes("iam.gserviceaccount.com");
+      return {
+        email: userEmail,
+        ...(isServiceAccount ? { type: "service_account" } : {}),
+      } as User;
     }
 
     pluginLogger.debug("No user found (this may be normal)");
