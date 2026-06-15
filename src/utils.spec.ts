@@ -642,10 +642,12 @@ describe("utils", () => {
   describe("formatFilesize", () => {
     it("should correctly format byte values to human readable strings", () => {
       expect(utils.formatFilesize(0)).to.equal("0 Bytes");
+      expect(utils.formatFilesize(-500)).to.equal("0 Bytes");
       expect(utils.formatFilesize(500)).to.equal("500 Bytes");
       expect(utils.formatFilesize(1024)).to.equal("1 KB");
       expect(utils.formatFilesize(1234567)).to.equal("1.18 MB");
       expect(utils.formatFilesize(1234567890)).to.equal("1.15 GB");
+      expect(utils.formatFilesize(Math.pow(1024, 5) * 2.5)).to.equal("2.5 PB");
     });
   });
 });
