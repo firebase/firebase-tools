@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import * as utils from "../utils";
 import { FunctionsEmulator } from "./functionsEmulator";
@@ -46,7 +46,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       resource = resource.name;
     }
     return {
-      eventId: uuid.v4(),
+      eventId: randomUUID(),
       timestamp: new Date().toISOString(),
       eventType: eventTrigger.eventType,
       resource: resource as string,
@@ -64,7 +64,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
     const ce: CloudEvent<unknown> = {
       specversion: "1.0",
       datacontenttype: "application/json",
-      id: uuid.v4(),
+      id: randomUUID(),
       type: eventTrigger.eventType,
       time: new Date().toISOString(),
       source: "",
@@ -74,7 +74,7 @@ export class FunctionsEmulatorShell implements FunctionsShellController {
       ce.source = `projects/_/buckets/${eventTrigger.eventFilters?.bucket}`;
     } else if (eventTrigger.eventType.startsWith("google.cloud.pubsub")) {
       ce.source = eventTrigger.eventFilters!.topic!;
-      data = { ...(data as any), messageId: uuid.v4() };
+      data = { ...(data as any), messageId: randomUUID() };
     } else if (eventTrigger.eventType.startsWith("google.cloud.firestore")) {
       ce.source = `projects/_/databases/(default)`;
       if (opts.resource) {

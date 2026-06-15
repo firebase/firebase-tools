@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { encodeFirestoreValue } from "./firestore/encodeFirestoreValue";
 import * as utils from "./utils";
@@ -321,7 +321,7 @@ export default class LocalFunction {
       } else if (this.isPubsubFunc(this.trigger.eventTrigger)) {
         dataPayload = data;
         if (this.trigger.platform === "gcfv2") {
-          dataPayload = { message: { ...(data as any), messageId: uuid.v4() } };
+          dataPayload = { message: { ...(data as any), messageId: randomUUID() } };
         }
         this.controller.call(this.trigger, dataPayload || {}, opts);
       } else {
