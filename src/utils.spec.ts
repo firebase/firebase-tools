@@ -650,4 +650,47 @@ describe("utils", () => {
       expect(utils.formatFilesize(Math.pow(1024, 5) * 2.5)).to.equal("2.5 PB");
     });
   });
+
+  describe("pLimit", () => {
+    it("should limit concurrent promise executions", async () => {
+      const limit = utils.pLimit(2);
+      let active = 0;
+      let maxActive = 0;
+
+      const tasks = Array.from({ length: 5 }, () =>
+        limit(async () => {
+          active++;
+          maxActive = Math.max(maxActive, active);
+          await new Promise((res) => setTimeout(res, 10));
+          active--;
+        }),
+      );
+
+      await Promise.all(tasks);
+      expect(maxActive).to.equal(2);
+    });
+
+    it("should throw when given invalid concurrency values", () => {
+      expect(() => utils.pLimit(0)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(-5)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(2.5)).to.throw(FirebaseError);
+    });
+
+    it("should recover correctly when a queued task throws synchronously", async () => {
+      const limit = utils.pLimit(1);
+
+      // Task 1 will hang for 20ms
+      const t1 = limit(() => new Promise((res) => setTimeout(res, 20)));
+      // Task 2 will throw synchronously
+      const t2 = limit(() => {
+        throw new Error("Sync error");
+      });
+      // Task 3 should run successfully after t1 and t2 finish
+      const t3 = limit(() => Promise.resolve("Recovered"));
+
+      await expect(t1).to.be.fulfilled;
+      await expect(t2).to.be.rejectedWith("Sync error");
+      await expect(t3).to.eventually.equal("Recovered");
+    });
+  });
 });

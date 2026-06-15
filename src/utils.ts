@@ -1141,3 +1141,44 @@ export function formatFilesize(bytes: number, decimals = 2): string {
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
 }
+
+export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;
+
+/**
+ * A lightweight Promise concurrency limiter.
+ */
+export function pLimit(concurrency: number): Limit {
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new FirebaseError(`pLimit concurrency must be a positive integer, got ${concurrency}`);
+  }
+
+  const queue: Array<() => void> = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()?.();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = () => {
+        activeCount++;
+        try {
+          Promise.resolve(fn()).then(resolve, reject).finally(next);
+        } catch (err) {
+          reject(err);
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
