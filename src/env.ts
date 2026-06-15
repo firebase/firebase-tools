@@ -1,9 +1,6 @@
 import { dirExistsSync, fileExistsSync } from "./fsutils";
 
 let googleIdxFolderExists: boolean | undefined;
-/**
- *
- */
 export function isFirebaseStudio() {
   if (googleIdxFolderExists === true || process.env.MONOSPACE_ENV) return true;
   if (googleIdxFolderExists === false) return false;
@@ -12,16 +9,10 @@ export function isFirebaseStudio() {
 }
 
 let isFirebaseMcpFlag = false;
-/**
- *
- */
 export function isFirebaseMcp() {
   return isFirebaseMcpFlag;
 }
 
-/**
- *
- */
 export function setFirebaseMcp(value: boolean) {
   isFirebaseMcpFlag = value;
 }
@@ -29,9 +20,6 @@ export function setFirebaseMcp(value: boolean) {
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.
 // Standardized standard (AI_AGENT) is checked first to allow universal override.
 // See: https://github.com/vercel/vercel/tree/main/packages/detect-agent
-/**
- *
- */
 export function detectAIAgent(): string {
   // 1. Standardized standard
   if (process.env.AI_AGENT) {
