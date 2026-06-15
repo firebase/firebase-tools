@@ -1186,23 +1186,33 @@ export function pLimit(concurrency: number): Limit {
  * Calculates the Levenshtein distance between two strings.
  */
 export function stringDistance(a: string, b: string): number {
+  if (a === b) return 0;
   if (a.length === 0) return b.length;
   if (b.length === 0) return a.length;
-  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
 
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
-        matrix[i][j] = matrix[i - 1][j - 1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i - 1][j - 1] + 1, // substitution
-          matrix[i][j - 1] + 1, // insertion
-          matrix[i - 1][j] + 1, // deletion
-        );
-      }
+  // Make 's1' the shorter string to optimize space
+  const [s1, s2] = a.length <= b.length ? [a, b] : [b, a];
+  const v0 = new Array<number>(s1.length + 1);
+  const v1 = new Array<number>(s1.length + 1);
+
+  for (let i = 0; i <= s1.length; i++) {
+    v0[i] = i;
+  }
+
+  for (let i = 0; i < s2.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < s1.length; j++) {
+      const cost = s1[j] === s2[i] ? 0 : 1;
+      v1[j + 1] = Math.min(
+        v1[j] + 1, // Insertion
+        v0[j + 1] + 1, // Deletion
+        v0[j] + cost, // Substitution
+      );
+    }
+    for (let j = 0; j <= s1.length; j++) {
+      v0[j] = v1[j];
     }
   }
-  return matrix[b.length][a.length];
+
+  return v0[s1.length];
 }
