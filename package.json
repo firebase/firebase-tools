@@ -153,7 +153,6 @@
     "node-fetch": "^2.6.7",
     "open": "^6.3.0",
     "ora": "^5.4.1",
-    "p-limit": "^3.0.1",
     "pg": "^8.11.3",
     "pg-gateway": "^0.3.0-beta.4",
     "pglite-2": "npm:@electric-sql/pglite@0.2.17",

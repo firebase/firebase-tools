@@ -650,4 +650,24 @@ describe("utils", () => {
       expect(utils.formatFilesize(Math.pow(1024, 5) * 2.5)).to.equal("2.5 PB");
     });
   });
+
+  describe("pLimit", () => {
+    it("should limit concurrent promise executions", async () => {
+      const limit = utils.pLimit(2);
+      let active = 0;
+      let maxActive = 0;
+
+      const tasks = Array.from({ length: 5 }, () =>
+        limit(async () => {
+          active++;
+          maxActive = Math.max(maxActive, active);
+          await new Promise((res) => setTimeout(res, 10));
+          active--;
+        }),
+      );
+
+      await Promise.all(tasks);
+      expect(maxActive).to.equal(2);
+    });
+  });
 });
