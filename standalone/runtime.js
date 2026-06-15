@@ -57,7 +57,7 @@ exports.Script_NodeJS = function() {
     });
 };
 
-exports.normalizeShellScriptArgs = function(args) {
+function normalizeShellScriptArgs(args) {
   args = [...args];
 
   const index = args.indexOf("-c");
@@ -70,7 +70,9 @@ exports.normalizeShellScriptArgs = function(args) {
   }
 
   return args;
-};
+}
+
+exports.normalizeShellScriptArgs = normalizeShellScriptArgs;
 
 /*
   -------------------------------------
