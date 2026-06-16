@@ -67,7 +67,8 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
  * Mutates want Backend to populate managed service account and etag labels.
  * Returns existing discovered roles, or undefined if no security changes needed.
  */
-async function discoverSecurityDetails(
+export async function discoverSecurityDetails(
+
   codebase: string,
   want: backend.Backend,
   have: backend.Backend,
@@ -145,6 +146,7 @@ async function discoverSecurityDetails(
       existingEtag,
       existingManagedSA,
       managedSA,
+      newEtag,
     };
   }
 
@@ -178,6 +180,7 @@ async function discoverSecurityDetails(
     existingEtag,
     existingManagedSA,
     managedSA,
+    newEtag,
   };
 }
 

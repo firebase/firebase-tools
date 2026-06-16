@@ -13,6 +13,8 @@ import * as storageService from "./services/storage";
 import * as databaseService from "./services/database";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
@@ -1128,4 +1130,98 @@ describe("prepare", () => {
       ).to.be.true;
     });
   });
+
+  describe("discoverSecurityDetails", () => {
+    let testIamPermissionsStub: sinon.SinonStub;
+    let generateManagedServiceAccountNameStub: sinon.SinonStub;
+    let getServiceAccountRolesStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      testIamPermissionsStub = sinon
+        .stub(iam, "testIamPermissions")
+        .resolves({ passed: true } as any);
+      generateManagedServiceAccountNameStub = sinon
+        .stub(iam, "generateManagedServiceAccountName")
+        .resolves("firebase-fn-123");
+      getServiceAccountRolesStub = sinon
+        .stub(resourcemanager, "getServiceAccountRoles")
+        .resolves([]);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should mutate endpoints to use managed service account when enrolling in declarative security", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "default",
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.managedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.newEtag).to.be.a("string");
+      expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(e.labels?.["firebase-declarative-roles-etag"]).to.equal(result.newEtag);
+    });
+
+    it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-roles-etag": "salt-etag",
+        },
+      };
+      const want = backend.of(e);
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal(
+        "firebase-fn-123@project.iam.gserviceaccount.com",
+      );
+      expect(result.existingEtag).to.equal("salt-etag");
+      expect(e.serviceAccount).to.equal("default");
+      expect(e.labels?.["firebase-declarative-roles-etag"]).to.be.undefined;
+    });
+
+    it("should throw error if user combines custom SA and declarative security", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "custom-sa@project.iam.gserviceaccount.com",
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
+        .rejected;
+    });
+
+    it("should throw error if user lacks IAM operator permissions", async () => {
+      testIamPermissionsStub.resolves({
+        passed: false,
+        missing: ["iam.serviceAccounts.create"],
+      });
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "default",
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
+        .rejected;
+    });
+  });
 });
+
