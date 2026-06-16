@@ -259,7 +259,7 @@ describe("iam", () => {
           .get(new RegExp(`/v1/projects/${PROJECT_ID}/serviceAccounts/firebase-fn-.*`))
           .reply(404);
 
-        const name = await iam.generateManagedServiceAccountName(PROJECT_ID);
+        const name = await iam.generateManagedServiceAccountName(PROJECT_ID, "firebase-fn");
         expect(name).to.match(/^firebase-fn-\d{10}$/);
         expect(nock.isDone()).to.be.true;
       });

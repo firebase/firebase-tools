@@ -81,7 +81,6 @@ export interface EventTrigger {
 
   /**
    * Additional exact-match filters for narrowing down which events to receive.
-   *
    * While not required by the GCF API, this is always provided in
    * the Cloud Console, and we are likely to always require it as well.
    * V1 functions will always (and only) have the "resource" filter.
@@ -266,7 +265,6 @@ export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-sc
  * or Cloud Scheduler job to a function it invokes. Methods that operate on
  * a function name should take a TargetIds instead of a FunctionSpec
  * (e.g. functionName or functionLabel)
- *
  * It's possible that this type will need to become more complex when we support
  * a Cloud Run revision. We'll cross that bridge when we get to it.
  */

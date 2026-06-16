@@ -116,7 +116,9 @@ export function buildFromV1Alpha1(
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
-  bd.requiredRoles = parseRequiredRoles(manifest);
+  if (manifest.requiredRoles) {
+    bd.requiredRoles = parseRequiredRoles(manifest);
+  }
   for (const id of Object.keys(manifest.endpoints)) {
     const me: WireEndpoint = manifest.endpoints[id];
     assertBuildEndpoint(me, id);

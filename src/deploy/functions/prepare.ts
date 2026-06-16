@@ -126,7 +126,7 @@ export async function discoverSecurityDetails(
 
   let managedSA = existingManagedSA;
   if (!managedSA) {
-    const saToCreate = await iam.generateManagedServiceAccountName(projectId);
+    const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
     managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
   }
 
@@ -155,11 +155,15 @@ export async function discoverSecurityDetails(
   }
   const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
   if (!iamResult.passed) {
-    throw new FirebaseError(
-      `Cannot enable/modify declarative security because you do not have permissions necessary (${iamResult.missing.join(
-        ", ",
-      )}). Please ask an IAM administrator to perform the next deploy.`,
-    );
+    if (!existingManagedSA) {
+      throw new FirebaseError(
+        `Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    } else {
+      throw new FirebaseError(
+        `You do not have access to make the policy changes required in codebase ${codebase} deploy. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    }
   }
 
   let existingRoles: string[] = [];
@@ -168,7 +172,7 @@ export async function discoverSecurityDetails(
       existingRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
     } catch (err: any) {
       throw new FirebaseError(
-        `Failed to fetch existing roles for service account ${managedSA}. Please ensure you have permission to view IAM policies.`,
+        `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
         { original: err },
       );
     }
@@ -186,7 +190,6 @@ export async function discoverSecurityDetails(
 /**
  * Prepare functions codebases for deploy.
  */
-
 export async function prepare(
   context: args.Context,
   options: DeployOptions,

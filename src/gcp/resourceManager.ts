@@ -136,7 +136,6 @@ export async function serviceAccountHasRoles(
 /**
  * Removes the specified IAM roles from a service account in the project policy.
  */
-
 export async function removeServiceAccountRoles(
   projectId: string,
   serviceAccountEmail: string,

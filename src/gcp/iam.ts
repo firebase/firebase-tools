@@ -282,7 +282,6 @@ export function printManualIamConfig(
  * Returns the human-readable title of an IAM role.
  * Short-circuits using a local map of known roles for speed, and falls back to the GCP API.
  */
-
 export async function getRoleName(role: string): Promise<string> {
   const map: Record<string, string> = knownRoles;
   if (map[role]) {
@@ -300,14 +299,17 @@ export async function getRoleName(role: string): Promise<string> {
  * Generates a unique managed service account name by appending a random number
  * and checking against GCP until an unused name is found.
  */
-export async function generateManagedServiceAccountName(projectId: string): Promise<string> {
+export async function generateManagedServiceAccountName(
+  projectId: string,
+  prefix: string,
+): Promise<string> {
   const maxAttempts = 10;
   for (let i = 0; i < maxAttempts; i++) {
     const randomSuffix = Math.floor(Math.random() * 10000000000)
       .toString()
       .padStart(10, "0");
 
-    const accountId = `firebase-fn-${randomSuffix}`;
+    const accountId = `${prefix}-${randomSuffix}`;
     try {
       await getServiceAccount(projectId, accountId);
       // If it succeeds, the account exists, so try another
