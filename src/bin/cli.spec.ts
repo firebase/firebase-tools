@@ -3,10 +3,16 @@ import * as sinon from "sinon";
 
 import { loadAllCommands } from "./cli";
 
-function makeCommand(): any {
-  const fn: any = function () {
+interface MockCommand {
+  (): void;
+  load: sinon.SinonStub;
+  [key: string]: unknown;
+}
+
+function makeCommand(): MockCommand {
+  const fn = function () {
     return undefined;
-  };
+  } as MockCommand;
   fn.load = sinon.stub();
   return fn;
 }
@@ -14,7 +20,7 @@ function makeCommand(): any {
 describe("cli loadAllCommands", () => {
   it("loads commands nested under a plain namespace object", () => {
     const authExport = makeCommand();
-    const client: any = {
+    const client: Record<string, unknown> = {
       cli: {},
       auth: { export: authExport },
     };
@@ -28,10 +34,12 @@ describe("cli loadAllCommands", () => {
     // `login`/`target`/`ext` are command functions that also carry their
     // subcommands as attached properties. All of them must be registered.
     const login = makeCommand();
-    login.add = makeCommand();
-    login.list = makeCommand();
+    const loginAdd = makeCommand();
+    const loginList = makeCommand();
+    login.add = loginAdd;
+    login.list = loginList;
 
-    const client: any = {
+    const client: Record<string, unknown> = {
       cli: {},
       login,
     };
@@ -39,22 +47,24 @@ describe("cli loadAllCommands", () => {
     loadAllCommands(client);
 
     expect(login.load.calledOnce, "bare login command loaded").to.be.true;
-    expect(login.add.load.calledOnce, "login:add loaded").to.be.true;
-    expect(login.list.load.calledOnce, "login:list loaded").to.be.true;
+    expect(loginAdd.load.calledOnce, "login:add loaded").to.be.true;
+    expect(loginList.load.calledOnce, "login:list loaded").to.be.true;
   });
 
   it("does not traverse the `cli` property and ignores arrays", () => {
     const open = makeCommand();
-    const client: any = {
-      cli: { commands: [makeCommand()] }, // cli is intentionally not traversed
-      list: [makeCommand()], // arrays are not traversed
+    const cliCommand = makeCommand();
+    const arrayCommand = makeCommand();
+    const client: Record<string, unknown> = {
+      cli: { commands: [cliCommand] }, // cli is intentionally not traversed
+      list: [arrayCommand], // arrays are not traversed
       open,
     };
 
     loadAllCommands(client);
 
     expect(open.load.calledOnce).to.be.true;
-    expect(client.cli.commands[0].load.called, "cli subtree skipped").to.be.false;
-    expect(client.list[0].load.called, "array entries skipped").to.be.false;
+    expect(cliCommand.load.called, "cli subtree skipped").to.be.false;
+    expect(arrayCommand.load.called, "array entries skipped").to.be.false;
   });
 });

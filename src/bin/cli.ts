@@ -32,9 +32,9 @@ import { detectAIAgent } from "../env";
  * attached as properties. We therefore load command functions *and* recurse
  * into them so the nested subcommands are not skipped.
  */
-export function loadAllCommands(client: any): void {
-  const seen = new Set();
-  const loadAll = (obj: any) => {
+export function loadAllCommands(client: Record<string, unknown>): void {
+  const seen = new Set<unknown>();
+  const loadAll = (obj: Record<string, unknown>) => {
     if (seen.has(obj)) return;
     seen.add(obj);
     for (const [key, value] of Object.entries(obj)) {
@@ -49,7 +49,7 @@ export function loadAllCommands(client: any): void {
         value !== null &&
         !Array.isArray(value)
       ) {
-        loadAll(value);
+        loadAll(value as Record<string, unknown>);
       }
     }
   };
@@ -159,7 +159,7 @@ export function cli(pkg: any) {
   }
 
   if (isHelp) {
-    loadAllCommands(client);
+    loadAllCommands(client as Record<string, unknown>);
   }
   // If there are no args, display help
   if (!args.length) {
