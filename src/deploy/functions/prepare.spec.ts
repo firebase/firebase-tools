@@ -1193,6 +1193,38 @@ describe("prepare", () => {
       expect(e.labels?.["firebase-declarative-roles-etag"]).to.be.undefined;
     });
 
+    it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {
+      const eCustom: backend.Endpoint = {
+        ...ENDPOINT,
+        id: "custom",
+        serviceAccount: "custom-sa@project.iam.gserviceaccount.com",
+      };
+      const eManaged: backend.Endpoint = {
+        ...ENDPOINT,
+        id: "managed",
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+      };
+      const want = backend.merge(backend.of(eCustom), backend.of(eManaged));
+
+      const have = backend.merge(
+        backend.of({
+          ...eCustom,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: { "firebase-declarative-roles-etag": "salt-etag" },
+        }),
+        backend.of({
+          ...eManaged,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: { "firebase-declarative-roles-etag": "salt-etag" },
+        }),
+      );
+
+      await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(eCustom.serviceAccount).to.equal("custom-sa@project.iam.gserviceaccount.com");
+      expect(eManaged.serviceAccount).to.equal("default");
+    });
+
     it("should throw error if user combines custom SA and declarative security", async () => {
       const e: backend.Endpoint = {
         ...ENDPOINT,
