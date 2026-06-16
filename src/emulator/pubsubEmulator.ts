@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 import { MessagePublishedData } from "@google/events/cloud/pubsub/v1/MessagePublishedData";
 import { Message, PubSub, Subscription } from "@google-cloud/pubsub";
 
@@ -170,7 +170,7 @@ export class PubsubEmulator implements EmulatorInstance {
   private createLegacyEventRequestBody(topic: string, message: Message) {
     return {
       context: {
-        eventId: uuid.v4(),
+        eventId: randomUUID(),
         resource: {
           service: "pubsub.googleapis.com",
           name: `projects/${this.args.projectId}/topics/${topic}`,
@@ -210,7 +210,7 @@ export class PubsubEmulator implements EmulatorInstance {
     };
     return {
       specversion: "1.0",
-      id: uuid.v4(),
+      id: randomUUID(),
       time: truncatedPublishTime,
       type: "google.cloud.pubsub.topic.v1.messagePublished",
       source: `//pubsub.googleapis.com/projects/${this.args.projectId}/topics/${topic}`,
