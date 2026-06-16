@@ -23,6 +23,39 @@ import { fetchMOTD } from "../fetchMOTD";
 import { isCommandModule } from "../command";
 import { detectAIAgent } from "../env";
 
+/**
+ * Recursively registers every command in the client tree so that they all
+ * appear in `firebase --help`.
+ *
+ * A node can be both a leaf command and a namespace parent (e.g. `login`,
+ * `target`, `ext`): these are command functions that have their subcommands
+ * attached as properties. We therefore load command functions *and* recurse
+ * into them so the nested subcommands are not skipped.
+ */
+export function loadAllCommands(client: any): void {
+  const seen = new Set();
+  const loadAll = (obj: any) => {
+    if (seen.has(obj)) return;
+    seen.add(obj);
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === "cli") {
+        continue;
+      }
+      if (isCommandModule(value)) {
+        value.load();
+      }
+      if (
+        (typeof value === "object" || typeof value === "function") &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        loadAll(value);
+      }
+    }
+  };
+  loadAll(client);
+}
+
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
 
@@ -126,24 +159,7 @@ export function cli(pkg: any) {
   }
 
   if (isHelp) {
-    const seen = new Set();
-    const loadAll = (obj: any) => {
-      if (seen.has(obj)) return;
-      seen.add(obj);
-      for (const [key, value] of Object.entries(obj)) {
-        if (isCommandModule(value)) {
-          value.load();
-        } else if (
-          typeof value === "object" &&
-          value !== null &&
-          !Array.isArray(value) &&
-          key !== "cli"
-        ) {
-          loadAll(value);
-        }
-      }
-    };
-    loadAll(client);
+    loadAllCommands(client);
   }
   // If there are no args, display help
   if (!args.length) {
