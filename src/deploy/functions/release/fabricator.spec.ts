@@ -23,6 +23,8 @@ import * as identityPlatformNS from "../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../services/auth";
 import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -2030,4 +2032,75 @@ describe("Fabricator", () => {
       expect(runv2.deleteService).to.have.been.called;
     });
   });
+
+  describe("declarative security phases", () => {
+    let createServiceAccountStub: sinon.SinonStub;
+    let addServiceAccountRolesStub: sinon.SinonStub;
+    let removeServiceAccountRolesStub: sinon.SinonStub;
+    let deleteServiceAccountStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      createServiceAccountStub = sinon.stub(iam, "createServiceAccount").resolves();
+      addServiceAccountRolesStub = sinon.stub(resourcemanager, "addServiceAccountRoles").resolves();
+      removeServiceAccountRolesStub = sinon
+        .stub(resourcemanager, "removeServiceAccountRoles")
+        .resolves();
+      deleteServiceAccountStub = sinon.stub(iam, "deleteServiceAccount").resolves();
+      sinon.stub(iam, "testIamPermissions").resolves({ passed: true } as any);
+    });
+
+    it("should create SA and grant roles in grantNewRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+
+      await fab.grantNewRoles(plan, "default");
+
+      expect(createServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123",
+        "Managed by Firebase CLI for codebase default",
+        "Firebase Functions default",
+      );
+      expect(addServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/viewer"],
+      );
+    });
+
+    it("should remove roles or delete SA in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        regionalChangesets: {},
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToRemove: ["roles/oldRole"],
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(removeServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/oldRole"],
+      );
+    });
+
+    it("should delete SA if serviceAccountToDelete is set in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+  });
 });
+

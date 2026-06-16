@@ -22,32 +22,30 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-import * as declarativeSecurity from "./declarativeSecurity";
-
 /**
  * Represents the comprehensive deployment plan for a single codebase.
- *
- * Note: The `securityPlan` sits at the codebase level rather than inside
- * individual regional `Changeset` objects. This is because GCP IAM service
- * accounts and assigned IAM roles exist at the GCP Project level. Therefore,
- * they are shared by all functions in the codebase across all GCP regions,
- * and must be orchestrated exactly once for the entire codebase.
  */
 export interface CodebasePlan {
   regionalChangesets: Record<string, Changeset>;
-  securityPlan?: declarativeSecurity.SecurityPlan;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: string;
+  managedServiceAccount?: string;
 }
 
 export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
 export interface PlanArgs {
-
   wantBackend: backend.Backend; // the desired state
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
   projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
+  existingRoles?: string[];
+  existingManagedSA?: string;
+  managedSA?: string;
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -148,14 +146,33 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
  * Create a plan for deploying all functions for one codebase.
  */
 export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan> {
-  let { wantBackend, haveBackend, codebase, projectId, filters, deleteAll } = args;
-
-  const securityPlan = await declarativeSecurity.createSecurityPlan(
-    codebase,
+  let {
     wantBackend,
     haveBackend,
-    projectId,
-  );
+    codebase,
+    filters,
+    deleteAll,
+    existingRoles,
+    existingManagedSA,
+    managedSA,
+  } = args;
+
+  const requiredRoles = wantBackend.requiredRoles;
+  const roles = existingRoles || [];
+  let rolesToAdd: string[] | undefined;
+  let rolesToRemove: string[] | undefined;
+  let serviceAccountToCreate: string | undefined;
+  let serviceAccountToDelete: string | undefined;
+
+  if (requiredRoles) {
+    rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
+    rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
+    if (!existingManagedSA && managedSA) {
+      serviceAccountToCreate = managedSA;
+    }
+  } else if (existingManagedSA) {
+    serviceAccountToDelete = existingManagedSA;
+  }
 
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
@@ -191,7 +208,11 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   }
   return {
     regionalChangesets,
-    securityPlan,
+    rolesToAdd,
+    rolesToRemove,
+    serviceAccountToCreate,
+    serviceAccountToDelete,
+    managedServiceAccount: managedSA,
   };
 }
 

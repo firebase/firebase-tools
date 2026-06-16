@@ -20,7 +20,6 @@ export const firebaseRoles = {
 /**
  * Fetches the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/getIamPolicy
- *
  * @param projectIdOrNumber the id of the project whose IAM Policy you want to get
  */
 export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
@@ -33,7 +32,6 @@ export async function getIamPolicy(projectIdOrNumber: string): Promise<Policy> {
 /**
  * Sets the IAM Policy of a project.
  * https://cloud.google.com/resource-manager/reference/rest/v1/projects/setIamPolicy
- *
  * @param projectIdOrNumber the id of the project for which you want to set a new IAM Policy
  * @param newPolicy the new IAM policy for the project
  * @param updateMask A FieldMask specifying which fields of the policy to modify
@@ -55,7 +53,6 @@ export async function setIamPolicy(
 
 /**
  * Update the IAM Policy of a project to include a service account in a role.
- *
  * @param projectId the id of the project whose IAM Policy you want to set
  * @param serviceAccountName the name of the service account
  * @param roles the new roles of the service account

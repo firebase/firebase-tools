@@ -42,15 +42,23 @@ export async function release(
   }
 
   const plan: planner.DeploymentPlan = {};
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
+  for (const [
+    codebase,
+    { wantBackend, haveBackend, existingRoles, existingManagedSA, managedSA },
+  ] of Object.entries(payload.functions)) {
     plan[codebase] = await planner.createDeploymentPlan({
       codebase,
       wantBackend,
       haveBackend,
       projectId: context.projectId,
       filters: context.filters,
+      existingRoles,
+      existingManagedSA,
+      managedSA,
     });
   }
+
+  await prompts.promptForSecurityChanges(plan, options);
 
   const allRegionalChanges = Object.values(plan)
     .map((codebasePlan) => Object.values(codebasePlan.regionalChangesets))
@@ -84,12 +92,16 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  // N.B. THIS IS TEMPORARY
+  // This will limit concurrent deploys of run functions to two while zip deploy capacity
+  // is low.
   const runThrottlerOptions = {
     ...throttlerOptions,
     concurrency: 2,
   };
 
   const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
+
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
     runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
@@ -174,12 +186,10 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
 /**
  * Sets up artifact cleanup policies for the regions where functions are deployed
  * and automatically sets up policies where needed.
- *
  * The policy is only set up when:
  *   1. No cleanup policy exists yet
  *   2. No other cleanup policies exist (beyond our own if we previously set one)
  *   3. User has not explicitly opted out
- *
  * In non-interactive mode:
  *   - With force flag: applies the default cleanup policy
  *   - Without force flag: warns and aborts deployment

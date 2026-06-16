@@ -57,12 +57,134 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
 /**
+ * Discovers and coordinates declarative security details for a codebase.
+ * Mutates want Backend to populate managed service account and etag labels.
+ * Returns existing discovered roles, or undefined if no security changes needed.
+ */
+async function discoverSecurityDetails(
+  codebase: string,
+  want: backend.Backend,
+  have: backend.Backend,
+  projectId: string,
+): Promise<{
+  existingRoles?: string[];
+  existingEtag?: string;
+  existingManagedSA?: string;
+  managedSA?: string;
+  newEtag?: string;
+}> {
+  const requiredRoles = want.requiredRoles;
+  const firstHave = backend.allEndpoints(have)[0];
+  let existingManagedSA: string | undefined;
+  let existingEtag: string | undefined;
+  if (firstHave) {
+    existingEtag = firstHave.labels?.["firebase-declarative-roles-etag"];
+    existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
+      ? firstHave.serviceAccount
+      : undefined;
+  }
+
+  if (!requiredRoles && (!existingManagedSA || !existingEtag)) {
+    return {};
+  }
+
+  if (
+    requiredRoles &&
+    backend.someEndpoint(
+      want,
+      (e) =>
+        typeof e.serviceAccount === "string" &&
+        e.serviceAccount !== "default" &&
+        !e.serviceAccount.startsWith("firebase-fn-"),
+    )
+  ) {
+    throw new FirebaseError(
+      `Cannot use explicit custom service accounts on functions while using declarative security in codebase ${codebase}.`,
+    );
+  }
+
+  if (!requiredRoles && existingManagedSA && existingEtag) {
+    for (const endpoint of backend.allEndpoints(want)) {
+      if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
+        endpoint.serviceAccount = "default";
+      }
+      if (endpoint.labels) {
+        delete endpoint.labels["firebase-declarative-roles-etag"];
+      }
+    }
+    return {
+      existingEtag,
+      existingManagedSA,
+    };
+  }
+
+  let managedSA = existingManagedSA;
+  if (!managedSA) {
+    const saToCreate = await iam.generateManagedServiceAccountName(projectId);
+    managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
+  }
+
+  const existingSalt = existingEtag ? existingEtag.split("-")[0] : undefined;
+  const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
+
+  for (const endpoint of backend.allEndpoints(want)) {
+    endpoint.serviceAccount = managedSA;
+    endpoint.labels = endpoint.labels || {};
+    endpoint.labels["firebase-declarative-roles-etag"] = newEtag;
+  }
+
+  if (existingEtag && existingEtag === newEtag) {
+    return {
+      existingRoles: requiredRoles,
+      existingEtag,
+      existingManagedSA,
+      managedSA,
+    };
+  }
+
+  const permissionsToTest = ["resourcemanager.projects.setIamPolicy"];
+  if (!existingManagedSA) {
+    permissionsToTest.push("iam.serviceAccounts.create");
+  }
+  const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  if (!iamResult.passed) {
+    throw new FirebaseError(
+      `Cannot enable/modify declarative security because you do not have permissions necessary (${iamResult.missing.join(
+        ", ",
+      )}). Please ask an IAM administrator to perform the next deploy.`,
+    );
+  }
+
+  let existingRoles: string[] = [];
+  if (existingManagedSA) {
+    try {
+      existingRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `Failed to fetch existing roles for service account ${managedSA}. Please ensure you have permission to view IAM policies.`,
+        { original: err },
+      );
+    }
+  }
+
+  return {
+    existingRoles,
+    existingEtag,
+    existingManagedSA,
+    managedSA,
+  };
+}
+
+/**
  * Prepare functions codebases for deploy.
  */
+
 export async function prepare(
   context: args.Context,
   options: DeployOptions,
@@ -290,8 +412,10 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    payload.functions[codebase] = { wantBackend, haveBackend };
+    const security = await discoverSecurityDetails(codebase, wantBackend, haveBackend, projectId);
+    payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
+
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);

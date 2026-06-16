@@ -57,7 +57,6 @@ const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
 import * as iam from "../../../gcp/iam";
 import * as resourcemanager from "../../../gcp/resourceManager";
-import * as declarativeSecurity from "./declarativeSecurity";
 
 export interface FabricatorArgs {
   executor: Executor;
@@ -96,16 +95,13 @@ export class Fabricator {
     this.projectId = args.projectId;
   }
 
-  async executeSecurityPhase0(
-    sec: declarativeSecurity.SecurityPlan,
-    codebase: string,
-  ): Promise<void> {
-    if (sec.saAction === "create") {
+  async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToCreate) {
       utils.logLabeledBullet(
         "functions",
-        `Creating managed service account ${sec.serviceAccount}...`,
+        `Creating managed service account ${plan.serviceAccountToCreate}...`,
       );
-      const saName = sec.serviceAccount.split("@")[0];
+      const saName = plan.serviceAccountToCreate.split("@")[0];
       await iam.createServiceAccount(
         this.projectId,
         saName,
@@ -113,28 +109,37 @@ export class Fabricator {
         `Firebase Functions ${codebase}`,
       );
     }
-    if (sec.saAction !== "delete" && sec.rolesToGrant.length > 0) {
-      utils.logLabeledBullet("functions", `Granting IAM roles to ${sec.serviceAccount}...`);
+    if (
+      !plan.serviceAccountToDelete &&
+      plan.rolesToAdd &&
+      plan.rolesToAdd.length > 0 &&
+      plan.managedServiceAccount
+    ) {
+      utils.logLabeledBullet(
+        "functions",
+        `Granting IAM roles to ${plan.managedServiceAccount}...`,
+      );
       await resourcemanager.addServiceAccountRoles(
         this.projectId,
-        sec.serviceAccount,
-        sec.rolesToGrant,
+        plan.managedServiceAccount,
+        plan.rolesToAdd,
       );
     }
   }
 
-  async executeSecurityPhase2(
-    sec: declarativeSecurity.SecurityPlan,
-    codebase: string,
-  ): Promise<void> {
-    if (sec.saAction === "delete") {
+  async removeOldRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToDelete) {
       utils.logLabeledBullet(
         "functions",
-        `Deleting managed service account ${sec.serviceAccount}...`,
+        `Deleting managed service account ${plan.serviceAccountToDelete}...`,
       );
-      await iam.deleteServiceAccount(this.projectId, sec.serviceAccount);
-    } else if (sec.rolesToRevoke.length > 0) {
-      if (sec.rolesToGrant.length === 0) {
+      await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
+    } else if (
+      plan.rolesToRemove &&
+      plan.rolesToRemove.length > 0 &&
+      plan.managedServiceAccount
+    ) {
+      if (!plan.rolesToAdd || plan.rolesToAdd.length === 0) {
         const iamResult = await iam.testIamPermissions(this.projectId, [
           "resourcemanager.projects.setIamPolicy",
         ]);
@@ -148,13 +153,12 @@ export class Fabricator {
       }
       utils.logLabeledBullet(
         "functions",
-        `Revoking unneeded IAM roles from ${sec.serviceAccount} for codebase ${codebase}...`,
+        `Revoking unneeded IAM roles from ${plan.managedServiceAccount} for codebase ${codebase}...`,
       );
-
       await resourcemanager.removeServiceAccountRoles(
         this.projectId,
-        sec.serviceAccount,
-        sec.rolesToRevoke,
+        plan.managedServiceAccount,
+        plan.rolesToRemove,
       );
     }
   }
@@ -166,11 +170,8 @@ export class Fabricator {
       results: [],
     };
 
-    // Phase 0: Security Enrollment (Add Roles & Create SAs)
     for (const [codebase, codebasePlan] of Object.entries(plan)) {
-      if (codebasePlan.securityPlan) {
-        await this.executeSecurityPhase0(codebasePlan.securityPlan, codebase);
-      }
+      await this.grantNewRoles(codebasePlan, codebase);
     }
 
     // Accumulate all regional changesets across all codebases
@@ -236,11 +237,8 @@ export class Fabricator {
 
     summary.results.push(...deleteResults);
 
-    // Phase 2 Security: Security Unenrollment (Revoke Roles & Delete SAs)
     for (const [codebase, codebasePlan] of Object.entries(plan)) {
-      if (codebasePlan.securityPlan) {
-        await this.executeSecurityPhase2(codebasePlan.securityPlan, codebase);
-      }
+      await this.removeOldRoles(codebasePlan, codebase);
     }
 
     summary.totalTime = timer.stop();

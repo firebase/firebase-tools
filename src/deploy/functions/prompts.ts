@@ -9,7 +9,8 @@ import * as pricing from "./pricing";
 import * as utils from "../../utils";
 import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
-import { EndpointUpdate } from "./release/planner";
+import { EndpointUpdate, DeploymentPlan } from "./release/planner";
+import * as iam from "../../gcp/iam";
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -292,3 +293,62 @@ export async function promptForCleanupPolicyDays(
       !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
   });
 }
+
+/**
+ * Prompts operators for codebase-wide declarative security changes.
+ */
+export async function promptForSecurityChanges(
+  plan: DeploymentPlan,
+  options: Options,
+): Promise<void> {
+  if (options.force) {
+    return;
+  }
+  for (const [codebase, codebasePlan] of Object.entries(plan)) {
+    if (codebasePlan.serviceAccountToDelete) {
+      const msg = `Deploying this code will opt out of declarative security for codebase ${codebase}. All functions which do not specify a custom service account will use a default service account on next deploy. As a cleanup, the managed service account ${codebasePlan.serviceAccountToDelete} will be deleted. Continue?`;
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+
+    if (codebasePlan.serviceAccountToCreate) {
+      const roleNames = await Promise.all(
+        (codebasePlan.rolesToAdd || []).map((r) => iam.getRoleName(r)),
+      );
+      const msg = `This codebase uses declarative security. It will use the following role(s):\n${roleNames
+        .map((r) => `* ${r}`)
+        .join("\n")}\nContinue?`;
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    } else if (
+      (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) ||
+      (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0)
+    ) {
+      let msg = `Deploying this code will modify the managed service account for codebase ${codebase}.\n`;
+      if (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) {
+        const addedNames = await Promise.all(codebasePlan.rolesToAdd.map((r) => iam.getRoleName(r)));
+        msg += `All functions in this codebase will be granted the following new role(s):\n${addedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      if (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0) {
+        const removedNames = await Promise.all(
+          codebasePlan.rolesToRemove.map((r) => iam.getRoleName(r)),
+        );
+        msg += `All functions in this codebase will lose access to the following role(s):\n${removedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      msg += "Continue?";
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+  }
+}
+

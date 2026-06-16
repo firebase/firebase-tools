@@ -4,6 +4,7 @@ import { Client } from "../apiv2";
 import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import * as knownRoles from "./knownRoles.json";
+import * as crypto from "crypto";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
@@ -319,3 +320,26 @@ export async function generateManagedServiceAccountName(projectId: string): Prom
   }
   throw new FirebaseError("Failed to generate a unique service account name after 10 attempts.");
 }
+
+/** Computes a base38 label etag formatted as <random 10 char salt>-<base38 hash>. */
+export function computeRolesEtag(roles: string[], existingSalt?: string): string {
+  const BASE38_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789-_";
+  let salt = existingSalt;
+  if (!salt) {
+    salt = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+    for (let i = 0; i < 9; i++) {
+      salt += BASE38_CHARS[Math.floor(Math.random() * 38)];
+    }
+  }
+  const sorted = Array.from(roles).sort();
+  const hashBuffer = crypto
+    .createHash("sha256")
+    .update(salt + sorted.join(","))
+    .digest();
+  let hashStr = "";
+  for (const byte of hashBuffer) {
+    hashStr += BASE38_CHARS[byte % 38];
+  }
+  return `${salt}-${hashStr.substring(0, 52)}`;
+}
+
