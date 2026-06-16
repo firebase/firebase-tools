@@ -70,7 +70,7 @@ function executeUniversalMakerBinary(
       logger.debug("[Universal Maker stdout]:\n" + res.stdout.toString());
     }
     if (res.stderr) {
-      logger.debug("[Universal Maker stderr]:\n" + res.stderr.toString());
+      logger.info("[Universal Maker stderr]:\n" + res.stderr.toString());
     }
 
     if (res.error) {
