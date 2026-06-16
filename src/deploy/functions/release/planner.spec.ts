@@ -406,7 +406,7 @@ describe("planner", () => {
   describe("createDeploymentPlan", () => {
     const codebase = "default";
 
-    it("groups deployment by region and memory", () => {
+    it("groups deployment by region and memory", async () => {
       const region1mem1Created: backend.Endpoint = func("id1", "region1");
       const region1mem1Updated: backend.Endpoint = func("id2", "region1");
 
@@ -425,7 +425,13 @@ describe("planner", () => {
         region2mem2Updated,
       );
 
-      expect(planner.createDeploymentPlan({ wantBackend, haveBackend, codebase })).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region1-default": {
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
@@ -457,7 +463,7 @@ describe("planner", () => {
       });
     });
 
-    it("applies filters", () => {
+    it("applies filters", async () => {
       const group1Created = func("g1-created", "region");
       const group1Updated = func("g1-updated", "region");
       const group1Deleted = func("g1-deleted", "region");
@@ -472,14 +478,14 @@ describe("planner", () => {
       const wantBackend = backend.of(group1Updated, group1Created, group2Updated, group2Created);
       const haveBackend = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      expect(
-        planner.createDeploymentPlan({
-          wantBackend,
-          haveBackend,
-          codebase,
-          filters: [{ codebase, idChunks: ["g1"] }],
-        }),
-      ).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["g1"] }],
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -494,7 +500,7 @@ describe("planner", () => {
       });
     });
 
-    it("nudges users towards concurrency settings when upgrading and not setting", () => {
+    it("nudges users towards concurrency settings when upgrading and not setting", async () => {
       const original: backend.Endpoint = func("id", "region");
       original.platform = "gcfv1";
       const upgraded: backend.Endpoint = { ...original };
@@ -504,44 +510,49 @@ describe("planner", () => {
       const wantBackend = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan({ wantBackend, haveBackend, codebase });
+      await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/),
       );
     });
 
-    it("does not warn users about concurrency when inappropriate", () => {
+    it("does not warn users about concurrency when inappropriate", async () => {
       allowV2Upgrades();
-      // Concurrency isn't set but this isn't an upgrade operation, so there
-      // should be no warning
       const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v2Function),
         haveBackend: backend.of(v2Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
       const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v1Function),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
-      // Upgraded but specified concurrency
       const concurrencyUpgraded: backend.Endpoint = {
         ...v1Function,
         platform: "gcfv2",
         concurrency: 80,
       };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(concurrencyUpgraded),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
     });

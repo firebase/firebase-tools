@@ -17,6 +17,7 @@ export interface Build {
   params: params.Param[];
   runtime?: Runtime;
   extensions?: Record<string, DynamicExtension>;
+  requiredRoles?: string[];
 }
 
 /**
@@ -588,6 +589,9 @@ export function toBackend(
 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
+  if (build.requiredRoles) {
+    bkend.requiredRoles = build.requiredRoles;
+  }
   return bkend;
 }
 

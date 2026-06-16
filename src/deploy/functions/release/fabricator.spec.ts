@@ -124,7 +124,9 @@ describe("Fabricator", () => {
     },
     appEngineLocation: "us-central1",
     projectNumber: "1234567",
+    projectId: "test-project",
   };
+
   let fab: fabricator.Fabricator;
   beforeEach(() => {
     fab = new fabricator.Fabricator(ctorArgs);
@@ -1600,7 +1602,9 @@ describe("Fabricator", () => {
       const updateEndpoint = sinon.stub(fab, "updateEndpoint");
       updateEndpoint.callsFake(fakeUpsert);
 
-      await fab.applyPlan({ "us-central1": changes });
+      await fab.applyPlan({
+        default: { regionalChangesets: { "us-central1": changes } },
+      });
     });
 
     it("handles errors and wraps them in results", async () => {
@@ -1613,7 +1617,10 @@ describe("Fabricator", () => {
         endpointsToSkip: [],
       };
 
-      const summary = await fab.applyPlan({ "us-central1": changes });
+      const summary = await fab.applyPlan({
+        default: { regionalChangesets: { "us-central1": changes } },
+      });
+
       const results = summary.results;
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
@@ -1666,7 +1673,10 @@ describe("Fabricator", () => {
       endpointsToSkip: [],
     };
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: { regionalChangesets: { "us-central1": changes } },
+    });
+
     const results = summary.results;
     const result = results.find((r) => r.endpoint.id === deleteEP.id);
     expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
@@ -1693,7 +1703,10 @@ describe("Fabricator", () => {
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: { regionalChangesets: { "us-central1": changes } },
+    });
+
     const results = summary.results;
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
@@ -1711,17 +1724,21 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1740,21 +1757,26 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1", id: "A" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1", id: "B" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
       let resolveCreate: () => void;
+
       const createPromise = new Promise<void>((resolve) => {
         resolveCreate = resolve;
       });
@@ -1787,21 +1809,26 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { id: "A", region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B", region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [ep2],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
+        default: {
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [ep2],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
       const scrapers: scraper.SourceTokenScraper[] = [];
+
       sinon
         .stub(fab, "createEndpoint")
         .callsFake((unused: backend.Endpoint, s: scraper.SourceTokenScraper) => {

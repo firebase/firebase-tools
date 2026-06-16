@@ -434,9 +434,11 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  requiredRoles?: string[];
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.

@@ -13,6 +13,7 @@ import * as executor from "./executor";
 import * as prompts from "../prompts";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
+
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
@@ -40,42 +41,40 @@ export async function release(
     return;
   }
 
-  let plan: planner.DeploymentPlan = {};
+  const plan: planner.DeploymentPlan = {};
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    plan = {
-      ...plan,
-      ...planner.createDeploymentPlan({
-        codebase,
-        wantBackend,
-        haveBackend,
-        filters: context.filters,
-      }),
-    };
+    plan[codebase] = await planner.createDeploymentPlan({
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId: context.projectId,
+      filters: context.filters,
+    });
   }
 
-  const fnsToDelete = Object.values(plan)
+  const allRegionalChanges = Object.values(plan)
+    .map((codebasePlan) => Object.values(codebasePlan.regionalChangesets))
+    .reduce(reduceFlat, []);
+
+  const fnsToDelete = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
   const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
-    for (const change of Object.values(plan)) {
-      change.endpointsToDelete = [];
+    for (const changes of allRegionalChanges) {
+      changes.endpointsToDelete = [];
     }
   }
 
-  const fnsToUpdate = Object.values(plan)
+  const fnsToUpdate = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToUpdate)
     .reduce(reduceFlat, []);
   const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
-  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
-  // to update or customers have confirmed they want to update unsafely
-  for (const key of Object.keys(plan)) {
-    plan[key].endpointsToUpdate = [];
-  }
-  for (const eu of fnsToUpdateSafe) {
-    const e = eu.endpoint;
-    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
-    plan[key].endpointsToUpdate.push(eu);
+  const safeEndpoints = new Set(fnsToUpdateSafe.map((eu) => eu.endpoint));
+  for (const changes of allRegionalChanges) {
+    changes.endpointsToUpdate = changes.endpointsToUpdate.filter((eu) =>
+      safeEndpoints.has(eu.endpoint),
+    );
   }
 
   const throttlerOptions = {
@@ -85,9 +84,6 @@ export async function release(
     maxBackoff: 100000,
   };
 
-  // N.B. THIS IS TEMPORARY
-  // This will limit concurrent deploys of run functions to two while zip deploy capacity
-  // is low.
   const runThrottlerOptions = {
     ...throttlerOptions,
     concurrency: 2,
@@ -101,6 +97,7 @@ export async function release(
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
     projectNumber: projectNumber,
+    projectId: context.projectId,
   });
 
   const summary = await fab.applyPlan(plan);

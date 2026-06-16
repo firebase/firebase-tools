@@ -91,6 +91,7 @@ export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
+  requiredRoles?: string[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
 }
@@ -108,12 +109,14 @@ export function buildFromV1Alpha1(
     specVersion: "string",
     params: "array",
     requiredAPIs: "array",
+    requiredRoles: "array",
     endpoints: "object",
     extensions: "object",
   });
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
+  bd.requiredRoles = parseRequiredRoles(manifest);
   for (const id of Object.keys(manifest.endpoints)) {
     const me: WireEndpoint = manifest.endpoints[id];
     assertBuildEndpoint(me, id);
@@ -132,8 +135,25 @@ export function buildFromV1Alpha1(
   return bd;
 }
 
+const ROLE_REGEX =
+  /^(roles\/[^\s]+|projects\/[^\s]+\/roles\/[^\s]+|organizations\/[^\s]+\/roles\/[^\s]+)$/;
+
+function parseRequiredRoles(manifest: WireManifest): string[] {
+  const roles: string[] = manifest.requiredRoles || [];
+  for (const role of roles) {
+    if (typeof role !== "string") {
+      throw new FirebaseError(`Invalid role "${JSON.stringify(role)}". Expected string`);
+    }
+    if (!ROLE_REGEX.test(role)) {
+      throw new FirebaseError(`Invalid IAM role format "${role}".`);
+    }
+  }
+  return Array.from(new Set(roles)); // Deduplicate as requested
+}
+
 function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
   const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
+
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);

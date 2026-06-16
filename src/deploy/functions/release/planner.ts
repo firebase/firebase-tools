@@ -22,12 +22,30 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, Changeset>;
+import * as declarativeSecurity from "./declarativeSecurity";
+
+/**
+ * Represents the comprehensive deployment plan for a single codebase.
+ *
+ * Note: The `securityPlan` sits at the codebase level rather than inside
+ * individual regional `Changeset` objects. This is because GCP IAM service
+ * accounts and assigned IAM roles exist at the GCP Project level. Therefore,
+ * they are shared by all functions in the codebase across all GCP regions,
+ * and must be orchestrated exactly once for the entire codebase.
+ */
+export interface CodebasePlan {
+  regionalChangesets: Record<string, Changeset>;
+  securityPlan?: declarativeSecurity.SecurityPlan;
+}
+
+export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
 export interface PlanArgs {
+
   wantBackend: backend.Backend; // the desired state
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
+  projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
 }
@@ -127,11 +145,18 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 }
 
 /**
- * Create a plan for deploying all functions in one region.
+ * Create a plan for deploying all functions for one codebase.
  */
-export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
-  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
-  let deployment: DeploymentPlan = {};
+export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan> {
+  let { wantBackend, haveBackend, codebase, projectId, filters, deleteAll } = args;
+
+  const securityPlan = await declarativeSecurity.createSecurityPlan(
+    codebase,
+    wantBackend,
+    haveBackend,
+    projectId,
+  );
+
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
   });
@@ -140,6 +165,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
     return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
+  const regionalChangesets: Record<string, Changeset> = {};
   const regions = new Set([
     ...Object.keys(wantBackend.endpoints),
     ...Object.keys(haveBackend.endpoints),
@@ -151,7 +177,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
       deleteAll,
     );
-    deployment = { ...deployment, ...changesets };
+    Object.assign(regionalChangesets, changesets);
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
@@ -163,7 +189,10 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  return deployment;
+  return {
+    regionalChangesets,
+    securityPlan,
+  };
 }
 
 /** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */

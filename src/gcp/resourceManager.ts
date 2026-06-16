@@ -133,6 +133,59 @@ export async function serviceAccountHasRoles(
       return false;
     }
   }
-
   return true;
 }
+
+/**
+ * Removes the specified IAM roles from a service account in the project policy.
+ */
+
+export async function removeServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+  rolesToRemove: string[],
+): Promise<Policy> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  let updated = false;
+
+  for (let i = projectPolicy.bindings.length - 1; i >= 0; i--) {
+    const binding = projectPolicy.bindings[i];
+    if (rolesToRemove.includes(binding.role)) {
+      const memberIndex = binding.members.indexOf(memberName);
+      if (memberIndex !== -1) {
+        binding.members.splice(memberIndex, 1);
+        updated = true;
+        if (binding.members.length === 0) {
+          projectPolicy.bindings.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  if (updated) {
+    return await setIamPolicy(projectId, projectPolicy, "bindings");
+  }
+  return projectPolicy;
+}
+
+/**
+ * Returns a list of all IAM roles currently granted to the service account in the project policy.
+ */
+export async function getServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+): Promise<string[]> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  const roles: string[] = [];
+
+  for (const binding of projectPolicy.bindings) {
+    if (binding.members.includes(memberName)) {
+      roles.push(binding.role);
+    }
+  }
+  return roles;
+}
+
+export const addServiceAccountRoles = addServiceAccountToRoles;

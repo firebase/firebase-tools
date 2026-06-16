@@ -47,14 +47,15 @@ export const command = new Command("functions:delete [filters...]")
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
     }
-    const plan = planner.createDeploymentPlan({
+    const plan = await planner.createDeploymentPlan({
       wantBackend: backend.empty(),
       haveBackend: existingBackend,
       codebase: "",
+      projectId: context.projectId,
       filters: context.filters,
       deleteAll: true,
     });
-    const allEpToDelete = Object.values(plan)
+    const allEpToDelete = Object.values(plan.regionalChangesets)
       .map((changes) => changes.endpointsToDelete)
       .reduce(reduceFlat, [])
       .sort(backend.compareFunctions);
@@ -90,15 +91,16 @@ export const command = new Command("functions:delete [filters...]")
     try {
       const fab = new fabricator.Fabricator({
         functionExecutor,
-        // Note: we don't need the temporary concurrency reduction of 2, because that quota limit is for deploys
         runFunctionExecutor: functionExecutor,
         appEngineLocation,
         executor: new executor.QueueExecutor({}),
         sources: {},
         projectNumber:
           options.projectNumber || (await getProjectNumber({ projectId: context.projectId })),
+        projectId: context.projectId,
       });
-      const summary = await fab.applyPlan(plan);
+      const summary = await fab.applyPlan({ default: plan });
+
       await reporter.logAndTrackDeployStats(summary);
       reporter.printErrors(summary);
     } catch (err: any) {

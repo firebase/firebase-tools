@@ -55,6 +55,10 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
+import * as declarativeSecurity from "./declarativeSecurity";
+
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
@@ -62,6 +66,7 @@ export interface FabricatorArgs {
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
+  projectId: string;
 }
 
 const rethrowAs =
@@ -79,6 +84,7 @@ export class Fabricator {
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
+  projectId: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -87,6 +93,70 @@ export class Fabricator {
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
+    this.projectId = args.projectId;
+  }
+
+  async executeSecurityPhase0(
+    sec: declarativeSecurity.SecurityPlan,
+    codebase: string,
+  ): Promise<void> {
+    if (sec.saAction === "create") {
+      utils.logLabeledBullet(
+        "functions",
+        `Creating managed service account ${sec.serviceAccount}...`,
+      );
+      const saName = sec.serviceAccount.split("@")[0];
+      await iam.createServiceAccount(
+        this.projectId,
+        saName,
+        `Managed by Firebase CLI for codebase ${codebase}`,
+        `Firebase Functions ${codebase}`,
+      );
+    }
+    if (sec.saAction !== "delete" && sec.rolesToGrant.length > 0) {
+      utils.logLabeledBullet("functions", `Granting IAM roles to ${sec.serviceAccount}...`);
+      await resourcemanager.addServiceAccountRoles(
+        this.projectId,
+        sec.serviceAccount,
+        sec.rolesToGrant,
+      );
+    }
+  }
+
+  async executeSecurityPhase2(
+    sec: declarativeSecurity.SecurityPlan,
+    codebase: string,
+  ): Promise<void> {
+    if (sec.saAction === "delete") {
+      utils.logLabeledBullet(
+        "functions",
+        `Deleting managed service account ${sec.serviceAccount}...`,
+      );
+      await iam.deleteServiceAccount(this.projectId, sec.serviceAccount);
+    } else if (sec.rolesToRevoke.length > 0) {
+      if (sec.rolesToGrant.length === 0) {
+        const iamResult = await iam.testIamPermissions(this.projectId, [
+          "resourcemanager.projects.setIamPolicy",
+        ]);
+        if (!iamResult.passed) {
+          utils.logLabeledWarning(
+            "functions",
+            `Cannot revoke unneeded IAM roles because you lack permission.`,
+          );
+          return;
+        }
+      }
+      utils.logLabeledBullet(
+        "functions",
+        `Revoking unneeded IAM roles from ${sec.serviceAccount} for codebase ${codebase}...`,
+      );
+
+      await resourcemanager.removeServiceAccountRoles(
+        this.projectId,
+        sec.serviceAccount,
+        sec.rolesToRevoke,
+      );
+    }
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -96,10 +166,21 @@ export class Fabricator {
       results: [],
     };
 
-    const changesets = Object.values(plan);
+    // Phase 0: Security Enrollment (Add Roles & Create SAs)
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      if (codebasePlan.securityPlan) {
+        await this.executeSecurityPhase0(codebasePlan.securityPlan, codebase);
+      }
+    }
+
+    // Accumulate all regional changesets across all codebases
+    const allChangesets: planner.Changeset[] = [];
+    for (const codebasePlan of Object.values(plan)) {
+      allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
+    }
 
     // Phase 1: Creates and Updates
-    const createAndUpdatePromises = changesets.map((changes) => {
+    const createAndUpdatePromises = allChangesets.map((changes) => {
       const scraperV1 = new SourceTokenScraper();
       const scraperV2 = new SourceTokenScraper();
       return this.applyUpserts(changes, scraperV1, scraperV2);
@@ -119,13 +200,12 @@ export class Fabricator {
       return acc;
     }, []);
 
-    // Simplify failure check (remove redundant check on createAndUpdateResultsArray)
     const hasFailures = summary.results.some((r) => r.error);
 
     if (hasFailures) {
       utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
 
-      summary.results = changesets.reduce<reporter.DeployResult[]>((accum, changes) => {
+      summary.results = allChangesets.reduce<reporter.DeployResult[]>((accum, changes) => {
         const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
           endpoint,
           durationMs: 0,
@@ -140,7 +220,7 @@ export class Fabricator {
 
     // Phase 2: Deletes
     const deleteResultsArray = await Promise.allSettled(
-      changesets.map((changes) => this.applyDeletes(changes)),
+      allChangesets.map((changes) => this.applyDeletes(changes)),
     );
 
     const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
@@ -155,6 +235,13 @@ export class Fabricator {
     }, []);
 
     summary.results.push(...deleteResults);
+
+    // Phase 2 Security: Security Unenrollment (Revoke Roles & Delete SAs)
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      if (codebasePlan.securityPlan) {
+        await this.executeSecurityPhase2(codebasePlan.securityPlan, codebase);
+      }
+    }
 
     summary.totalTime = timer.stop();
     return summary;
