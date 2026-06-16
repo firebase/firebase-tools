@@ -21,6 +21,7 @@ import * as utils from "../utils";
 import { fetchMOTD } from "../fetchMOTD";
 
 import { isCommandModule } from "../command";
+import { detectAIAgent } from "../env";
 
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
@@ -41,6 +42,7 @@ export function cli(pkg: any) {
   logger.debug("CLI Version:  ", pkg.version);
   logger.debug("Platform:     ", process.platform);
   logger.debug("Node Version: ", process.version);
+  logger.debug("Detected Agent:", detectAIAgent());
   logger.debug("Time:         ", new Date().toString());
   if (utils.envOverrides.length) {
     logger.debug("Env Overrides:", utils.envOverrides.join(", "));
