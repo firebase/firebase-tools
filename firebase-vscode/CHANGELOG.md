@@ -1,5 +1,7 @@
 ## NEXT
 
+- [Changed] Rename "Run (local)" code lens to "Run (Emulator)".
+- [Fixed] Fix auth issue from Generate Operation button by skipping unnecessary schema compilation check.
 - [Changed] Replace generateSchema and generateQuery backends with the new fdc AgentService API.
 - [Added] Improved error handling and status updates for query generation
 - [Added] Local schema aware query generation
