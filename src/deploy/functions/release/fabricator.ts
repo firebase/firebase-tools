@@ -115,10 +115,7 @@ export class Fabricator {
       plan.rolesToAdd.length > 0 &&
       plan.managedServiceAccount
     ) {
-      utils.logLabeledBullet(
-        "functions",
-        `Granting IAM roles to ${plan.managedServiceAccount}...`,
-      );
+      utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
       await resourcemanager.addServiceAccountRoles(
         this.projectId,
         plan.managedServiceAccount,
@@ -134,11 +131,7 @@ export class Fabricator {
         `Deleting managed service account ${plan.serviceAccountToDelete}...`,
       );
       await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
-    } else if (
-      plan.rolesToRemove &&
-      plan.rolesToRemove.length > 0 &&
-      plan.managedServiceAccount
-    ) {
+    } else if (plan.rolesToRemove && plan.rolesToRemove.length > 0 && plan.managedServiceAccount) {
       if (!plan.rolesToAdd || plan.rolesToAdd.length === 0) {
         const iamResult = await iam.testIamPermissions(this.projectId, [
           "resourcemanager.projects.setIamPolicy",

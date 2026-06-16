@@ -68,7 +68,6 @@ export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
  * Returns existing discovered roles, or undefined if no security changes needed.
  */
 export async function discoverSecurityDetails(
-
   codebase: string,
   want: backend.Backend,
   have: backend.Backend,

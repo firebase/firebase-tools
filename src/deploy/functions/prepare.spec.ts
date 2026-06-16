@@ -1133,19 +1133,13 @@ describe("prepare", () => {
 
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
-    let generateManagedServiceAccountNameStub: sinon.SinonStub;
-    let getServiceAccountRolesStub: sinon.SinonStub;
 
     beforeEach(() => {
       testIamPermissionsStub = sinon
         .stub(iam, "testIamPermissions")
         .resolves({ passed: true } as any);
-      generateManagedServiceAccountNameStub = sinon
-        .stub(iam, "generateManagedServiceAccountName")
-        .resolves("firebase-fn-123");
-      getServiceAccountRolesStub = sinon
-        .stub(resourcemanager, "getServiceAccountRoles")
-        .resolves([]);
+      sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
+      sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
     });
 
     afterEach(() => {
@@ -1185,9 +1179,7 @@ describe("prepare", () => {
 
       const result = await prepare.discoverSecurityDetails("default", want, have, "project");
 
-      expect(result.existingManagedSA).to.equal(
-        "firebase-fn-123@project.iam.gserviceaccount.com",
-      );
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(result.existingEtag).to.equal("salt-etag");
       expect(e.serviceAccount).to.equal("default");
       expect(e.labels?.["firebase-declarative-roles-etag"]).to.be.undefined;
@@ -1256,4 +1248,3 @@ describe("prepare", () => {
     });
   });
 });
-

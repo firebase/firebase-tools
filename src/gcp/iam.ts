@@ -342,4 +342,3 @@ export function computeRolesEtag(roles: string[], existingSalt?: string): string
   }
   return `${salt}-${hashStr.substring(0, 52)}`;
 }
-

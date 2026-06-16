@@ -330,7 +330,9 @@ export async function promptForSecurityChanges(
     ) {
       let msg = `Deploying this code will modify the managed service account for codebase ${codebase}.\n`;
       if (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) {
-        const addedNames = await Promise.all(codebasePlan.rolesToAdd.map((r) => iam.getRoleName(r)));
+        const addedNames = await Promise.all(
+          codebasePlan.rolesToAdd.map((r) => iam.getRoleName(r)),
+        );
         msg += `All functions in this codebase will be granted the following new role(s):\n${addedNames
           .map((r) => `* ${r}`)
           .join("\n")}\n`;
@@ -351,4 +353,3 @@ export async function promptForSecurityChanges(
     }
   }
 }
-
