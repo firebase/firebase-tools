@@ -68,6 +68,20 @@ export async function checkValidTargetFilters(options: Options): Promise<void> {
         ),
       );
     }
+
+    for (const target of only) {
+      const baseTarget = target.split(":")[0];
+      if (!VALID_DEPLOY_TARGETS.includes(baseTarget)) {
+        return reject(
+          new FirebaseError(
+            `"${baseTarget}" is not a valid deploy target. Valid target prefixes are: ${VALID_DEPLOY_TARGETS.join(
+              ", ",
+            )}`,
+          ),
+        );
+      }
+    }
+
     return resolve();
   });
 }
