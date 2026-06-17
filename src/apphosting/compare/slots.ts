@@ -20,7 +20,7 @@ const apphostingPollerOptions = {
   maxBackoff: 10_000,
 };
 
-async function updateBackendAndPoll(
+async function updateBackendLabels(
   projectId: string,
   location: string,
   backendId: string,
@@ -101,14 +101,14 @@ export async function acquireComparisonSlot(
           logger.info(`Provisioning backend ${backendId}...`);
           await createBackend(projectId, location, backendId, null, undefined, webAppId);
           updatePromises.push(
-            updateBackendAndPoll(projectId, location, backendId, {
+            updateBackendLabels(projectId, location, backendId, {
               status: "busy",
               type: "comparison-sandbox",
             }),
           );
         } else {
           updatePromises.push(
-            updateBackendAndPoll(projectId, location, backendId, {
+            updateBackendLabels(projectId, location, backendId, {
               ...backend.labels,
               status: "busy",
             }),
@@ -147,7 +147,7 @@ export async function releaseComparisonSlot(
     const backend = backendsList.find((b) => b.name.endsWith(backendId));
     if (backend) {
       updatePromises.push(
-        updateBackendAndPoll(projectId, location, backendId, {
+        updateBackendLabels(projectId, location, backendId, {
           ...backend.labels,
           status: "idle",
         }),

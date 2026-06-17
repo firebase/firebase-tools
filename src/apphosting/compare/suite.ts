@@ -1,11 +1,6 @@
 import * as path from "path";
 import * as fs from "fs-extra";
-import * as crypto from "crypto";
-import * as os from "os";
-import * as gcs from "../../gcp/storage";
 import * as apphosting from "../../gcp/apphosting";
-import * as rollout from "../rollout";
-import * as deployUtil from "../../deploy/apphosting/util";
 import { getProjectNumber } from "../../getProjectNumber";
 import { apphostingOrigin } from "../../api";
 import * as secrets from "./secrets";
@@ -15,10 +10,9 @@ import * as discover from "./discover";
 import { Crawler } from "./crawler";
 import * as compare from "./compare";
 import * as reporter from "./reporter";
-import { localBuild } from "../localbuilds";
-import * as fsAsync from "../../fsAsync";
 import * as poller from "../../operation-poller";
 import { logger } from "../../logger";
+import { FirebaseError } from "../../error";
 
 const apphostingPollerOptions = {
   apiOrigin: apphostingOrigin(),
@@ -28,39 +22,20 @@ const apphostingPollerOptions = {
   timeout: 120000, // 2 minutes
 };
 
-async function prepareLocalBuildDir(
-  rootDir: string,
-  scratchDir: string,
-  backendId: string,
-): Promise<void> {
-  const ignore = deployUtil.resolveIgnorePatterns({ backendId, rootDir: "/", ignore: [] });
-  fs.rmSync(scratchDir, { recursive: true, force: true });
-  fs.mkdirSync(scratchDir, { recursive: true });
-  const filesToCopy = await fsAsync.readdirRecursive({
-    path: rootDir,
-    ignoreStrings: ignore,
-    supportGitIgnore: true,
-  });
-  for (const file of filesToCopy) {
-    const relativePath = path.relative(rootDir, file.name);
-    const destPath = path.join(scratchDir, relativePath);
-    fs.mkdirSync(path.dirname(destPath), { recursive: true });
-    fs.copyFileSync(file.name, destPath);
-  }
-}
+import * as cp from "child_process";
+import * as util from "util";
+
+export const createdConfigs = new Set<string>();
 
 async function deployToBackend(
   projectId: string,
   location: string,
   backendId: string,
   appPath: string,
-  bucketName: string,
+  bucketName: string, // Kept for backwards compatibility but unused
   useLocalBuild: boolean,
   runtimeVersion?: string,
 ): Promise<void> {
-  let archivePath: string;
-  let buildInput: any;
-
   if (runtimeVersion) {
     logger.info(`Patching runtime version for backend ${backendId} to ${runtimeVersion}...`);
     const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
@@ -76,89 +51,39 @@ async function deployToBackend(
     });
   }
 
-  if (useLocalBuild) {
-    logger.info(`Running local build for slot backend ${backendId}...`);
-    const pathHash = crypto.createHash("md5").update(appPath).digest("hex").substring(0, 8);
-    const scratchDir = path.join(os.tmpdir(), `apphosting-local-build-${backendId}-${pathHash}`);
+  const tempConfigName = `firebase-compare-${backendId}.json`;
+  const configPath = path.join(appPath, tempConfigName);
+  createdConfigs.add(configPath);
 
-    await prepareLocalBuildDir(appPath, scratchDir, backendId);
+  const firebaseJson = {
+    apphosting: [
+      {
+        source: ".",
+        backendId: backendId,
+        localBuild: useLocalBuild
+      }
+    ]
+  };
 
-    const { outputFiles, buildConfig } = await localBuild(
-      projectId,
-      scratchDir,
-      {},
-      { nonInteractive: true },
-    );
+  await fs.writeJson(configPath, firebaseJson, { spaces: 2 });
 
-    archivePath = await deployUtil.createLocalBuildTarArchive(
-      { backendId, rootDir: "/", ignore: [] },
-      scratchDir,
-      outputFiles,
-    );
-
-    logger.info(`Uploading local build bundle for ${backendId}...`);
-    await gcs.uploadObject(
-      { file: archivePath, stream: fs.createReadStream(archivePath) },
-      bucketName,
-      gcs.ContentType.TAR,
-    );
-
-    const uri = `gs://${bucketName}/${path.basename(archivePath)}`;
-    buildInput = {
-      config: buildConfig,
-      source: {
-        locallyBuilt: {
-          userStorageUri: uri,
-          rootDirectory: "/",
-          runCommand: buildConfig.runCommand,
-          env: buildConfig.env,
-        },
-      },
-    };
-  } else {
-    logger.info(`Packaging source archive for ${backendId}...`);
-    archivePath = await deployUtil.createSourceDeployArchive(
-      { backendId, rootDir: "/", ignore: [] },
-      appPath,
-    );
-
-    logger.info(`Uploading source archive for ${backendId}...`);
-    await gcs.uploadObject(
-      { file: archivePath, stream: fs.createReadStream(archivePath) },
-      bucketName,
-      gcs.ContentType.ZIP,
-    );
-
-    const uri = `gs://${bucketName}/${path.basename(archivePath)}`;
-    buildInput = {
-      source: {
-        archive: {
-          userStorageUri: uri,
-          rootDirectory: "/",
-        },
-      },
-    };
-  }
-
-  logger.info(`Triggering rollout for backend ${backendId}...`);
-  await rollout.orchestrateRollout({
-    projectId,
-    location,
-    backendId,
-    buildInput,
-  });
-
-  // Wait until the backend is fully done reconciling after the rollout.
-  logger.info(`Waiting for backend ${backendId} to finish reconciling...`);
-  let backendIsReconciling = true;
-  while (backendIsReconciling) {
-    const b = await apphosting.client.get<any>(
-      `projects/${projectId}/locations/${location}/backends/${backendId}`,
-    );
-    backendIsReconciling = !!b.body.reconciling;
-    if (backendIsReconciling) {
-      await new Promise((r) => setTimeout(r, 2000));
-    }
+  try {
+    logger.info(`Triggering CLI deploy for backend ${backendId} (localBuild: ${useLocalBuild})...`);
+    // Run exactly the same deployment path as a customer
+    const experimentPrefix = useLocalBuild ? "FIREBASE_CLI_EXPERIMENTS=apphostinglocalbuilds " : "";
+    const binPath = process.argv[1] || path.resolve(__dirname, "../../../bin/firebase.js");
+    
+    const cmd = `${experimentPrefix}node "${binPath}" deploy --only apphosting:${backendId} --project ${projectId} --config ${tempConfigName} --non-interactive --allow-local-build-secrets`;
+    
+    const execAsync = util.promisify(cp.exec);
+    const { stdout, stderr } = await execAsync(cmd, { cwd: appPath, maxBuffer: 1024 * 1024 * 100 });
+    logger.debug(`Deploy output for ${backendId}:\n${stdout}`);
+  } catch (err: any) {
+    logger.error(`Deploy for ${backendId} failed!\nSTDOUT:\n${err.stdout}\nSTDERR:\n${err.stderr}`);
+    throw new FirebaseError(`Failed to deploy variant to ${backendId}.`, { original: err });
+  } finally {
+    await fs.remove(configPath);
+    createdConfigs.delete(configPath);
   }
 }
 
@@ -172,158 +97,216 @@ export interface VariantConfig {
 /**
  *
  */
+import * as cache from "./cache";
+import fetch from "node-fetch";
+
+async function recordVariant(
+  testCaseName: string,
+  variantId: string,
+  url: string,
+  appPath: string,
+): Promise<cache.VariantRecording> {
+  const discoveredStaticRoutes = await discover.discoverRoutes(appPath);
+  const allRoutesSet = new Set<string>(discoveredStaticRoutes);
+
+  logger.info(`Crawling Variant ${variantId} at ${url} for dynamic link discovery...`);
+  const crawler = new Crawler(url);
+  await crawler.crawl();
+  crawler.getRoutes().forEach((r) => allRoutesSet.add(r));
+
+  const routes: Record<string, cache.RouteResponse> = {};
+
+  for (const route of allRoutesSet) {
+    logger.debug(`Recording route ${route}...`);
+    try {
+      const res = await fetch(`${url}${route}`, {
+        redirect: "manual" as const,
+        headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
+      });
+
+      const contentType = res.headers.get("content-type") || "";
+      const isBinary = isBinaryContentType(contentType);
+
+      const headers: Record<string, string> = {};
+      res.headers.forEach((val, key) => { headers[key] = val; });
+
+      routes[route] = {
+        status: res.status,
+        headers,
+        isBinary,
+        body: isBinary ? (await res.buffer()).toString("base64") : await res.text(),
+      };
+    } catch (err) {
+      logger.warn(`Failed to record route ${route}: ${err}`);
+    }
+  }
+
+  return {
+    id: variantId,
+    testCaseName,
+    timestamp: new Date().toISOString(),
+    url,
+    routes,
+  };
+}
+
+function isBinaryContentType(contentType: string): boolean {
+  const normalized = contentType.toLowerCase();
+  return [
+    "image/",
+    "application/pdf",
+    "application/zip",
+    "application/octet-stream",
+  ].some((type) => normalized.includes(type));
+}
+
 export async function runCompareSuite(
   projectId: string,
   location: string,
+  backendIds: string[],
+  slotIndex: number,
+  testCaseName: string,
   variants: VariantConfig[],
   options: {
     outputDir?: string;
+    recordOnly?: boolean;
+    compareOnly?: boolean;
   } = {},
 ): Promise<void> {
-  lifecycle.validateProject(projectId);
-  await lifecycle.runGarbageCollection(projectId, location);
+  const recordings: cache.VariantRecording[] = [];
 
-  const projectNumber = await getProjectNumber({ projectId });
+  if (!options.compareOnly) {
+    // === RECORD PHASE ===
+    const projectNumber = await getProjectNumber({ projectId });
+    let secretsMappings: secrets.SecretMapping[][] = [];
 
-  // 1. Acquire Comparison Slot for N variants
-  const slot = await slots.acquireComparisonSlot(projectId, location, variants.length);
-  logger.info(
-    `Acquired Comparison Slot ${slot.index} with ${variants.length} backends: ${slot.backendIds.join(", ")}`,
-  );
+    const cleanUp = async () => {
+      logger.warn("\nInterrupted. Deleting mock secrets...");
+      for (const mapping of secretsMappings) {
+        await secrets.cleanupSandboxSecrets(projectId, mapping);
+      }
+      process.exit(1);
+    };
+    process.on("SIGINT", cleanUp);
+    process.on("SIGTERM", cleanUp);
 
-  let secretsMappings: secrets.SecretMapping[][] = [];
+    try {
+      // Setup secrets
+      const uniquePaths = Array.from(new Set(variants.map((v) => v.path)));
+      secretsMappings = await Promise.all(
+        uniquePaths.map((uniquePath) => {
+          const pathBackendIds = variants
+            .map((v, i) => (v.path === uniquePath ? backendIds[i] : null))
+            .filter((id): id is string => id !== null);
 
-  const cleanUp = async () => {
-    logger.warn("\nInterrupted. Restoring slot and deleting mock secrets...");
-    for (const mapping of secretsMappings) {
-      await secrets.cleanupSandboxSecrets(projectId, mapping);
-    }
-    await slots.releaseComparisonSlot(projectId, location, slot.index, variants.length);
-    process.exit(1);
-  };
-  process.on("SIGINT", cleanUp);
-  process.on("SIGTERM", cleanUp);
+          return secrets.setupSandboxSecrets(
+            projectId,
+            location,
+            uniquePath,
+            slotIndex,
+            pathBackendIds
+          );
+        })
+      );
 
-  try {
-    // 2. Setup mock secrets per unique codebase path
-    const uniquePaths = Array.from(new Set(variants.map((v) => v.path)));
-    secretsMappings = await Promise.all(
-      uniquePaths.map((uniquePath) => {
-        const pathBackendIds = variants
-          .map((v, i) => (v.path === uniquePath ? slot.backendIds[i] : null))
-          .filter((id): id is string => id !== null);
-
-        return secrets.setupSandboxSecrets(
+      // Deploy variants sequentially
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        await deployToBackend(
           projectId,
           location,
-          uniquePath,
-          slot.index,
-          pathBackendIds
-        );
-      })
-    );
-
-    // 3. Package, Upload and Deploy Source for all N variants
-    const bucketName = `firebaseapphosting-sources-${projectNumber}-${location.toLowerCase()}`;
-    await gcs.upsertBucket({
-      product: "apphosting",
-      createMessage: `Ensuring bucket for comparison slot sources in ${location}...`,
-      projectId,
-      req: {
-        baseName: bucketName,
-        purposeLabel: `apphosting-source-${location.toLowerCase()}`,
-        location,
-        lifecycle: {
-          rule: [
-            {
-              action: { type: "Delete" },
-              condition: { age: 30 },
-            },
-          ],
-        },
-      },
-    });
-
-    await Promise.all(
-      variants.map((v, i) =>
-        deployToBackend(
-          projectId,
-          location,
-          slot.backendIds[i],
+          backendIds[i],
           v.path,
-          bucketName,
+          "", // bucketName
           !!v.localBuild,
           v.runtime,
-        ),
-      ),
-    );
-
-    logger.info("All N-Way Rollouts completed successfully!");
-
-    // 4. Retrieve Live URLs for all variants
-    const backendDataList = await Promise.all(
-      slot.backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
-    );
-    const urls = backendDataList.map((b) => (b.uri.startsWith("http") ? b.uri : `https://${b.uri}`));
-
-    urls.forEach((url, i) => {
-      logger.info(`Variant ${variants[i].id || i} URL: ${url}`);
-    });
-
-    // 5. Route Discovery & Crawling across all variants
-    const allRoutesSet = new Set<string>();
-
-    for (let i = 0; i < variants.length; i++) {
-      const v = variants[i];
-      const url = urls[i];
-
-      const discoveredStaticRoutes = await discover.discoverRoutes(v.path);
-      discoveredStaticRoutes.forEach((r) => allRoutesSet.add(r));
-
-      logger.info(`Crawling Variant ${v.id || i} for dynamic link discovery...`);
-      const crawler = new Crawler(url);
-      await crawler.crawl();
-      const crawledRoutes = crawler.getRoutes();
-      crawledRoutes.forEach((r) => allRoutesSet.add(r));
-    }
-
-    const allRoutes = Array.from(allRoutesSet).sort();
-    logger.info(`Total unique routes discovered across matrix: ${allRoutes.length}`);
-
-    // 6. Report Generation for all unique pairs (Matrix Diffing)
-    for (let i = 0; i < variants.length; i++) {
-      for (let j = i + 1; j < variants.length; j++) {
-        logger.info(
-          `\nGenerating Comparison Report: ${variants[i].id || i} vs ${variants[j].id || j}...`,
-        );
-
-        const results: compare.ComparisonResult[] = [];
-        for (const route of allRoutes) {
-          const res = await compare.compareRoute(route, urls[i], urls[j]);
-          results.push(res);
-        }
-
-        const pairOutputDir = options.outputDir
-          ? path.join(options.outputDir, `${variants[i].id || i}-vs-${variants[j].id || j}`)
-          : undefined;
-
-        await reporter.generateReport(
-          projectId,
-          location,
-          slot.backendIds[i],
-          slot.backendIds[j],
-          results,
-          pairOutputDir,
         );
       }
-    }
-  } finally {
-    process.off("SIGINT", cleanUp);
-    process.off("SIGTERM", cleanUp);
 
-    for (const mapping of secretsMappings) {
-      await secrets.cleanupSandboxSecrets(projectId, mapping);
+      logger.info("All rollouts completed successfully!");
+
+      // Retrieve URLs and Record
+      const backendDataList = await Promise.all(
+        backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
+      );
+      const urls = backendDataList.map((b) => (b.uri.startsWith("http") ? b.uri : `https://${b.uri}`));
+
+      for (let i = 0; i < variants.length; i++) {
+        const v = variants[i];
+        const url = urls[i];
+        const record = await recordVariant(testCaseName, v.id || String(i), url, v.path);
+        await cache.saveRecording(record);
+        recordings.push(record);
+      }
+    } finally {
+      process.off("SIGINT", cleanUp);
+      process.off("SIGTERM", cleanUp);
+      for (const mapping of secretsMappings) {
+        await secrets.cleanupSandboxSecrets(projectId, mapping);
+      }
     }
-    await slots.releaseComparisonSlot(projectId, location, slot.index, variants.length);
+  } else {
+    // === LOAD RECORDINGS FROM CACHE ===
+    logger.info(`Loading cached recordings for test case "${testCaseName}"...`);
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      const record = await cache.loadRecording(testCaseName, v.id || String(i));
+      recordings.push(record);
+    }
+  }
+
+  if (options.recordOnly) {
+    logger.info("Record phase complete. Skipping comparison as requested.");
+    return;
+  }
+
+  // === COMPARE PHASE ===
+  logger.info("Starting pairwise comparison of recorded variants...");
+  for (let i = 0; i < recordings.length; i++) {
+    for (let j = i + 1; j < recordings.length; j++) {
+      const recA = recordings[i];
+      const recB = recordings[j];
+      logger.info(`\nGenerating Comparison Report: ${recA.id} vs ${recB.id}...`);
+
+      const allRoutes = Array.from(new Set([
+        ...Object.keys(recA.routes),
+        ...Object.keys(recB.routes)
+      ])).sort();
+
+      const results: compare.ComparisonResult[] = [];
+      for (const route of allRoutes) {
+        const resA = recA.routes[route];
+        const resB = recB.routes[route];
+
+        if (!resA || !resB) {
+          results.push({
+            route,
+            statusMatch: false,
+            headerMismatches: [],
+            expectedHeaderVariations: [],
+            bodySimilarity: 0.0,
+            bodyDiff: `Route missing on one variant: ${!resA ? recA.id : recB.id}`,
+            isBinary: false
+          });
+          continue;
+        }
+
+        const res = await compare.compareRouteResponses(route, resA, resB);
+        results.push(res);
+      }
+
+      const pairOutputDir = options.outputDir
+        ? path.join(options.outputDir, `${recA.id}-vs-${recB.id}`)
+        : undefined;
+
+      await reporter.generateReport(
+        projectId,
+        location,
+        recA.id,
+        recB.id,
+        results,
+        pairOutputDir,
+      );
+    }
   }
 }

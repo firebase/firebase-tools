@@ -9,7 +9,7 @@ import { acquireComparisonSlot, releaseComparisonSlot } from "./slots";
 
 describe("Comparison Slots Manager", () => {
   let listBackendsStub: sinon.SinonStub;
-  let updateBackendStub: sinon.SinonStub;
+  let patchBackendStub: sinon.SinonStub;
   let createBackendStub: sinon.SinonStub;
   let listFirebaseAppsStub: sinon.SinonStub;
   let createWebAppStub: sinon.SinonStub;
@@ -17,7 +17,7 @@ describe("Comparison Slots Manager", () => {
 
   beforeEach(() => {
     listBackendsStub = sinon.stub(apphosting, "listBackends");
-    updateBackendStub = sinon.stub(apphosting, "updateBackend");
+    patchBackendStub = sinon.stub(apphosting.client, "patch").resolves({ body: { name: "op-name" } } as any);
     createBackendStub = sinon.stub(backendHelper, "createBackend");
     listFirebaseAppsStub = sinon.stub(apps, "listFirebaseApps");
     createWebAppStub = sinon.stub(apps, "createWebApp");
@@ -42,14 +42,13 @@ describe("Comparison Slots Manager", () => {
       ],
     });
     listFirebaseAppsStub.resolves([{ appId: "web-app-123", displayName: "existing-app" }]);
-    updateBackendStub.resolves({ name: "op-name" });
 
     const slot = await acquireComparisonSlot("aryanf-test", "us-central1", 2);
     expect(slot.index).to.equal(1);
     expect(slot.backendIds[0]).to.equal("compare-slot-1-0");
     expect(slot.backendIds[1]).to.equal("compare-slot-1-1");
 
-    expect(updateBackendStub.callCount).to.equal(2);
+    expect(patchBackendStub.callCount).to.equal(2); // Updates labels twice
     expect(createBackendStub.callCount).to.equal(0);
   });
 
@@ -57,7 +56,6 @@ describe("Comparison Slots Manager", () => {
     listBackendsStub.resolves({ backends: [] });
     listFirebaseAppsStub.resolves([{ appId: "web-app-123", displayName: "existing-app" }]);
     createBackendStub.resolves({ name: "backend-resource" });
-    updateBackendStub.resolves({ name: "op-name" });
 
     const slot = await acquireComparisonSlot("aryanf-test", "us-central1", 2);
     expect(slot.index).to.equal(1);
@@ -66,7 +64,7 @@ describe("Comparison Slots Manager", () => {
 
   it("should throw if all slots are locked/busy", async () => {
     const busyBackends = [];
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 10; i++) {
       busyBackends.push(
         {
           name: `projects/test/locations/us-central1/backends/compare-slot-${i}-0`,
@@ -81,7 +79,7 @@ describe("Comparison Slots Manager", () => {
     listBackendsStub.resolves({ backends: busyBackends });
 
     await expect(acquireComparisonSlot("aryanf-test", "us-central1", 2)).to.be.rejectedWith(
-      "All 5 comparison slots are currently in use or project backend limits exceeded",
+      "All 10 comparison slots are currently in use or project backend limits exceeded",
     );
   });
 });

@@ -5,6 +5,8 @@ import { MyersDiffEngine } from "./distance";
 export interface ComparisonResult {
   route: string;
   statusMatch: boolean;
+  statusA?: number;
+  statusB?: number;
   headerMismatches: Array<{ header: string; valA: string; valB: string }>;
   expectedHeaderVariations: Array<{ header: string; valA: string; valB: string }>;
   bodySimilarity: number; // 0.0 to 1.0
@@ -54,25 +56,70 @@ export async function compareRoute(
     fetch(`${urlB}${route}`, fetchOptions),
   ]);
 
+  const contentTypeA = resA.headers.get("content-type") || "";
+  const contentTypeB = resB.headers.get("content-type") || "";
+  const isBinaryA = isBinaryContentType(contentTypeA);
+  const isBinaryB = isBinaryContentType(contentTypeB);
+
+  const headersA: Record<string, string> = {};
+  resA.headers.forEach((val, key) => { headersA[key] = val; });
+
+  const headersB: Record<string, string> = {};
+  resB.headers.forEach((val, key) => { headersB[key] = val; });
+
+  const responseA: RouteResponse = {
+    status: resA.status,
+    headers: headersA,
+    isBinary: isBinaryA || isBinaryB,
+    body: (isBinaryA || isBinaryB) ? (await resA.buffer()).toString("base64") : await resA.text(),
+  };
+
+  const responseB: RouteResponse = {
+    status: resB.status,
+    headers: headersB,
+    isBinary: isBinaryA || isBinaryB,
+    body: (isBinaryA || isBinaryB) ? (await resB.buffer()).toString("base64") : await resB.text(),
+  };
+
+  return await compareRouteResponses(route, responseA, responseB);
+}
+
+export interface RouteResponse {
+  status: number;
+  headers: Record<string, string>;
+  body: string;
+  isBinary: boolean;
+}
+
+/**
+ *
+ */
+export async function compareRouteResponses(
+  route: string,
+  resA: RouteResponse,
+  resB: RouteResponse,
+): Promise<ComparisonResult> {
   const result: ComparisonResult = {
     route,
     statusMatch: resA.status === resB.status,
+    statusA: resA.status,
+    statusB: resB.status,
     headerMismatches: [],
     expectedHeaderVariations: [],
     bodySimilarity: 1.0,
     bodyDiff: "",
-    isBinary: false,
+    isBinary: resA.isBinary || resB.isBinary,
   };
 
   // 1. Compare Headers
   const allHeaderKeys = new Set([
-    ...Array.from(resA.headers.keys()),
-    ...Array.from(resB.headers.keys()),
+    ...Object.keys(resA.headers),
+    ...Object.keys(resB.headers),
   ]);
 
   for (const key of allHeaderKeys) {
-    const valA = resA.headers.get(key) || "";
-    const valB = resB.headers.get(key) || "";
+    const valA = resA.headers[key] || "";
+    const valB = resB.headers[key] || "";
     if (valA !== valB) {
       if (BEHAVIORAL_HEADERS.includes(key.toLowerCase())) {
         result.headerMismatches.push({ header: key, valA, valB });
@@ -82,14 +129,10 @@ export async function compareRoute(
     }
   }
 
-  // 2. Detect Binary
-  const contentTypeA = resA.headers.get("content-type") || "";
-  const contentTypeB = resB.headers.get("content-type") || "";
-  if (isBinaryContentType(contentTypeA) || isBinaryContentType(contentTypeB)) {
-    result.isBinary = true;
-
-    const bufA = await resA.buffer();
-    const bufB = await resB.buffer();
+  // 2. Compare Binary
+  if (result.isBinary) {
+    const bufA = Buffer.from(resA.body, "base64");
+    const bufB = Buffer.from(resB.body, "base64");
 
     const sizeA = bufA.length;
     const sizeB = bufB.length;
@@ -111,19 +154,30 @@ export async function compareRoute(
   }
 
   // 3. Compare Text Body
-  let bodyA = await resA.text();
-  let bodyB = await resB.text();
+  let bodyA = resA.body;
+  let bodyB = resB.body;
 
-  if (contentTypeA.includes("text/html")) {
+  const contentType = (resA.headers["content-type"] || resA.headers["Content-Type"] || "").toLowerCase();
+  if (contentType.includes("text/html")) {
     try {
       const prettier = require("prettier");
       bodyA = await prettier.format(bodyA, { parser: "html" });
       bodyB = await prettier.format(bodyB, { parser: "html" });
     } catch (e: any) {
-      // Fallback to unformatted if prettier fails
+      // Fallback to advanced tag-based line splitting if prettier fails
+      const HTML_SPLIT_REGEX = /(<(script|style)\b[\s\S]*?<\/\2>|<!--[\s\S]*?-->|<[^'">]*(?:"[^"]*"[^'">]*|'[^']*'[^'">]*)*>)\s*(?=<)/gi;
+      bodyA = bodyA.replace(HTML_SPLIT_REGEX, "$1\n");
+      bodyB = bodyB.replace(HTML_SPLIT_REGEX, "$1\n");
+    }
+  } else if (contentType.includes("application/json") || route.endsWith(".json")) {
+    try {
+      bodyA = JSON.stringify(JSON.parse(bodyA), null, 2);
+      bodyB = JSON.stringify(JSON.parse(bodyB), null, 2);
+    } catch (e: any) {
+      // Fallback to raw text
     }
   }
-  
+
   result.bodyA = bodyA;
   result.bodyB = bodyB;
 
@@ -136,3 +190,4 @@ export async function compareRoute(
 
   return result;
 }
+

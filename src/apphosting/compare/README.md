@@ -2,12 +2,12 @@
 
 This is an experimental internal CLI tool built for the Firebase App Hosting team to dynamically verify the compatibility and performance of different infrastructure backends or application builds. 
 
-It takes an array of $N$ configurations (variants) and automatically deploys them simultaneously, discovering their routes, and dumping an $O(N^2)$ Pair-wise Cartesian Matrix of differences.
+It takes an array of $N$ configurations (variants) and automatically deploys them, discovering their routes, and dumping an $O(N^2)$ Pair-wise Cartesian Matrix of differences.
 
 ## Capabilities
 
-1. **N-Way Concurrency**: By leveraging `Promise.all` and dynamic `backendIds`, the tool spins up all $N$ test variants in parallel on Google Cloud.
-2. **Local vs Remote Build Verification**: Can deploy locally built bundles (e.g. `locally_built: true`) side-by-side with remote Cloud Build source zips.
+1. **Standard CLI Fidelity**: Deployments are executed by automatically constructing a temporary `firebase.json` and programmatically calling the `firebase deploy` CLI execution path. This guarantees that test deployments faithfully mirror the actual customer experience (including Secrets, AutoInit Env Vars, and custom headers).
+2. **Local vs Remote Build Verification**: Can deploy locally built bundles (e.g. `localBuild: true`) side-by-side with remote Cloud Build source zips.
 3. **Automated IAM & Secrets Management**: Intelligently creates a single mock secret in Secret Manager for each distinct codebase path, mapping the IAM `secretAccessor` roles simultaneously to all backends generated from that codebase.
 4. **Dynamic Spidering**: Automatically crawls Next.js / Angular apps recursively starting from `/` to discover hidden dynamic routes, alongside statically parsing `.next/prerender-manifest.json`.
 5. **Exact Diff Inspection**: Generates HTML dashboards, JSON summaries, and specifically dumps the raw HTTP HTML outputs of each variant so engineers can run local diffs.
@@ -17,33 +17,31 @@ It takes an array of $N$ configurations (variants) and automatically deploys the
 1. Create a `matrix-test.json` file to define your test cases:
 
 ```json
-{
-  "testCases": [
-    {
-      "name": "Node Matrix Test",
-      "variants": [
-        {
-          "id": "Local-Node24",
-          "path": "../next-sample-1",
-          "localBuild": true,
-          "runtime": "nodejs24"
-        },
-        {
-          "id": "Source-Node24",
-          "path": "../next-sample-1",
-          "localBuild": false,
-          "runtime": "nodejs24"
-        },
-        {
-          "id": "Source-Node22",
-          "path": "../next-sample-1",
-          "localBuild": false,
-          "runtime": "nodejs22"
-        }
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "Node Matrix Test",
+    "variants": [
+      {
+        "id": "Local-Node24",
+        "path": "../next-sample-1",
+        "localBuild": true,
+        "runtime": "nodejs24"
+      },
+      {
+        "id": "Source-Node24",
+        "path": "../next-sample-1",
+        "localBuild": false,
+        "runtime": "nodejs24"
+      },
+      {
+        "id": "Source-Node22",
+        "path": "../next-sample-1",
+        "localBuild": false,
+        "runtime": "nodejs22"
+      }
+    ]
+  }
+]
 ```
 
 2. Run the command:
