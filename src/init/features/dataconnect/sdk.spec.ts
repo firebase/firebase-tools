@@ -609,7 +609,7 @@ describe("actuate", () => {
     await actuate(setup, config);
 
     const writtenYaml = writeProjectFileStub.getCall(0).args[1];
-    const parsedYaml = yaml.load(writtenYaml);
+    const parsedYaml = yaml.load(writtenYaml) as any;
     expect(parsedYaml.generate.javascriptSdk).to.have.lengthOf(1);
   });
 });
