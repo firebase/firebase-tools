@@ -1,3 +1,4 @@
+- Updated Pub/Sub emulator to version 0.8.33.
 - Fixed an issue where `login:*`, `target:*`, and `ext:*` subcommands were missing from `firebase --help`.
 - Functions can declare additional API dependencies (#10621)
 - Added mock Passkey (WebAuthn) support to the Auth emulator. (#10636)
