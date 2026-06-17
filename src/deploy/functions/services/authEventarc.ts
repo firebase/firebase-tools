@@ -12,7 +12,9 @@ export function ensureAuthEventarcTriggerRegion(
     endpoint.eventTrigger.region = "global";
   }
   if (endpoint.eventTrigger.region !== "global") {
-    throw new FirebaseError("A Firebase Auth Eventarc trigger must specify 'global' trigger location");
+    throw new FirebaseError(
+      "A Firebase Auth Eventarc trigger must specify 'global' trigger location",
+    );
   }
   return Promise.resolve();
 }
