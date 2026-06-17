@@ -13,9 +13,19 @@ export const command = new Command("apphosting:secrets:revokeaccess <secretNames
   .description(
     "Revoke service accounts, users, or groups permissions from the provided secret(s). Can pass one or more secrets, separated by a comma",
   )
-  .option("-l, --location <location>", "backend location", "-")
-  .option("-b, --backend <backend>", "backend name")
-  .option("-e, --emails <emails>", "comma delimited list of user or group emails")
+  .option(
+    "-l, --location <location>",
+    "the location of the backend to revoke secret access from. Cannot be combined with --emails",
+    "-",
+  )
+  .option(
+    "-b, --backend <backend>",
+    "the name of the backend to revoke secret access from. Cannot be combined with --emails",
+  )
+  .option(
+    "-e, --emails <emails>",
+    "comma delimited list of user or group emails to revoke secret access from. Cannot be combined with --backend",
+  )
   .before(requireAuth)
   .before(secretManager.ensureApi)
   .before(apphosting.ensureApiEnabled)
