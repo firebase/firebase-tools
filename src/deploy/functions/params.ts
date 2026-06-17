@@ -885,7 +885,7 @@ async function promptSelectMultiple<T extends string>(
     return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
   }
   if (disallowEmpty && Array.isArray(converted) && converted.length === 0) {
-    logger.error(`Input cannot be the empty string, retrying...`);
+    logger.error(`Input cannot be empty, retrying...`);
     return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
   }
   return converted;
