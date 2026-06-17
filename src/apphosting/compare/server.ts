@@ -146,16 +146,7 @@ export function startServer(port: number): Promise<void> {
             continue; // Already computed symmetrical pair
           }
 
-          if (testCase === "GLOBAL") {
-            const tc_A = vA.split("/")[0];
-            const tc_B = vB.split("/")[0];
-            if (tc_A !== tc_B) {
-              // Skip meaningless cross-app comparisons
-              matrix[vA][vB] = null;
-              matrix[vB][vA] = null;
-              continue;
-            }
-          }
+
 
           // Compute average body similarity across all shared routes
           const recA = recMap[vA];
@@ -941,8 +932,15 @@ function getDashboardHtml(): string {
           const similarity = data.matrix[vA][vB] || 0.0;
           const percent = Math.round(similarity * 100);
           tdCell.textContent = percent + "%";
-          tdCell.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
-          tdCell.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
+          const getFamily = (name) => {
+            const lower = name.toLowerCase();
+            if (lower.includes("angular")) return "angular";
+            if (lower.includes("next")) return "nextjs";
+            if (lower.includes("node")) return "node";
+            return name;
+          };
+          tdCell.dataset.codebaseA = vA.includes("/") ? getFamily(vA.split("/")[0]) : "";
+          tdCell.dataset.codebaseB = vB.includes("/") ? getFamily(vB.split("/")[0]) : "";
 
           // Color coding based on similarity
           let bg = "rgba(239, 68, 68, 0.85)"; // Red (low similarity)
