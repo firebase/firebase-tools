@@ -66,11 +66,16 @@ function executeUniversalMakerBinary(
       },
     );
 
+    const failed = !!res.error || res.status !== 0;
+
+    // If UM fails, log results to stdout and hide otherwise.
+    const log = (msg: string) => (failed ? logger.info(msg) : logger.debug(msg));
+
     if (res.stdout) {
-      logger.debug("[Universal Maker stdout]:\n" + res.stdout.toString());
+      log("[Universal Maker stdout]:\n" + res.stdout.toString());
     }
     if (res.stderr) {
-      logger.info("[Universal Maker stderr]:\n" + res.stderr.toString());
+      log("[Universal Maker stderr]:\n" + res.stderr.toString());
     }
 
     if (res.error) {
