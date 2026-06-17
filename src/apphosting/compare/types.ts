@@ -28,8 +28,15 @@ export interface CompareResponse {
   results: DashboardComparisonResult[];
 }
 
+export interface VariantMetadata {
+  id: string;
+  localBuild: boolean;
+  runtime: string;
+}
+
 export interface MatrixResponse {
   testCase: string;
   variants: string[];
+  variantsMetadata: Record<string, VariantMetadata>;
   matrix: Record<string, Record<string, number | null>>;
 }

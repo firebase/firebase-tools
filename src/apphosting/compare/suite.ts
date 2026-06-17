@@ -278,6 +278,8 @@ export async function runCompareSuite(
         const v = variants[i];
         const url = urls[i];
         const record = await recordVariant(testCaseName, v.id || String(i), url, v.path);
+        record.localBuild = !!v.localBuild;
+        record.runtime = v.runtime;
         await cache.saveRecording(record);
         recordings.push(record);
       }

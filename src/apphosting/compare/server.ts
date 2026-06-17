@@ -3,7 +3,7 @@ import * as http from "http";
 import { logger } from "../../logger";
 import * as cache from "./cache";
 import * as compare from "./compare";
-import { CompareResponse, MatrixResponse, DashboardComparisonResult } from "./types";
+import { CompareResponse, MatrixResponse, DashboardComparisonResult, VariantMetadata } from "./types";
 
 export function startServer(port: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -130,9 +130,18 @@ export function startServer(port: number): Promise<void> {
       }
 
       if (variantsList.length === 0) {
-        const emptyPayload: MatrixResponse = { testCase, variants: [], matrix: {} };
+        const emptyPayload: MatrixResponse = { testCase, variants: [], variantsMetadata: {}, matrix: {} };
         res.json(emptyPayload);
         return;
+      }
+
+      const variantsMetadata: Record<string, VariantMetadata> = {};
+      for (const v of variantsList) {
+        variantsMetadata[v] = {
+          id: recMap[v].id,
+          localBuild: !!recMap[v].localBuild,
+          runtime: recMap[v].runtime || "default"
+        };
       }
 
       const matrix: Record<string, Record<string, number | null>> = {};
@@ -150,8 +159,6 @@ export function startServer(port: number): Promise<void> {
           if (matrix[vA][vB] !== undefined) {
             continue; // Already computed symmetrical pair
           }
-
-
 
           // Compute average body similarity across all shared routes
           const recA = recMap[vA];
@@ -187,6 +194,7 @@ export function startServer(port: number): Promise<void> {
       const responsePayload: MatrixResponse = {
         testCase,
         variants: variantsList,
+        variantsMetadata,
         matrix
       };
       res.json(responsePayload);
@@ -717,6 +725,21 @@ function getDashboardHtml(): string {
             Ignore Comparisons for Different Codebases
           </label>
         </div>
+        <div id="heatmap-filters-bar" style="display: flex; padding: 10px 16px; gap: 16px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.015);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--text-muted);">Search Variants:</span>
+            <input type="text" id="variant-search-input" placeholder="e.g. Node24" style="background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-family: var(--font-family); font-size: 12px; outline: none; width: 140px;" oninput="applyMetadataFilters()">
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; height: 18px;">
+            <span style="color: var(--text-muted);">Build Origin:</span>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;"><input type="checkbox" id="filter-local-builds" checked onchange="applyMetadataFilters()"> Local Builds</label>
+            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;"><input type="checkbox" id="filter-source-deploys" checked onchange="applyMetadataFilters()"> Source Deploys</label>
+          </div>
+          <div id="runtime-filters-container" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; height: 18px;">
+            <span style="color: var(--text-muted);">Runtimes:</span>
+            <!-- Dynamically populated -->
+          </div>
+        </div>
         <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1;">
           <div id="heatmap-grid-container" style="overflow-x: auto; max-width: 100%;"></div>
         </div>
@@ -825,6 +848,7 @@ function getDashboardHtml(): string {
     let comparisonResults = [];
     let activeUrlA = "";
     let activeUrlB = "";
+    let lastMatrixData = null;
 
     // Fetch list of recordings on load
     async function loadRecordings() {
@@ -902,13 +926,89 @@ function getDashboardHtml(): string {
       document.getElementById("comparison-details").style.display = "none";
 
       const res = await fetch(\`/api/matrix?testCase=\${tc}\`);
-      const data = await res.json();
+      lastMatrixData = await res.json();
 
+      // Dynamically populate runtime checkboxes
+      const container = document.getElementById("runtime-filters-container");
+      container.innerHTML = \`<span style="color: var(--text-muted);">Runtimes:</span>\`;
+
+      const runtimes = new Set();
+      if (lastMatrixData.variantsMetadata) {
+        Object.values(lastMatrixData.variantsMetadata).forEach(meta => {
+          if (meta.runtime) runtimes.add(meta.runtime);
+        });
+      }
+
+      if (runtimes.size <= 1) {
+        // If 0 or 1 runtime, hide runtime filters section to keep UI clean
+        container.style.display = "none";
+      } else {
+        container.style.display = "flex";
+        Array.from(runtimes).sort().forEach(rt => {
+          const lbl = document.createElement("label");
+          lbl.style.cssText = "display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;";
+
+          const chk = document.createElement("input");
+          chk.type = "checkbox";
+          chk.className = "runtime-filter-chk";
+          chk.dataset.runtime = rt;
+          chk.checked = true;
+          chk.onchange = applyMetadataFilters;
+
+          lbl.appendChild(chk);
+          lbl.appendChild(document.createTextNode(rt));
+          container.appendChild(lbl);
+        });
+      }
+
+      // Reset search field and other filters
+      document.getElementById("variant-search-input").value = "";
+      document.getElementById("filter-local-builds").checked = true;
+      document.getElementById("filter-source-deploys").checked = true;
+
+      applyMetadataFilters();
+    }
+
+    function applyMetadataFilters() {
+      if (!lastMatrixData) return;
+
+      const searchQuery = document.getElementById("variant-search-input").value.toLowerCase();
+      const showLocal = document.getElementById("filter-local-builds").checked;
+      const showSource = document.getElementById("filter-source-deploys").checked;
+      const runtimeChks = document.querySelectorAll(".runtime-filter-chk");
+      const activeRuntimes = Array.from(runtimeChks)
+        .filter(chk => chk.checked)
+        .map(chk => chk.dataset.runtime);
+
+      const filteredVariants = lastMatrixData.variants.filter(v => {
+        const meta = lastMatrixData.variantsMetadata[v] || { id: v, localBuild: false, runtime: "default" };
+
+        // Match search query
+        const matchesSearch = v.toLowerCase().includes(searchQuery);
+        if (!matchesSearch) return false;
+
+        // Match build origin
+        if (meta.localBuild && !showLocal) return false;
+        if (!meta.localBuild && !showSource) return false;
+
+        // Match runtime (if checkboxes exist)
+        if (runtimeChks.length > 0) {
+          const rtVal = meta.runtime || "default";
+          if (!activeRuntimes.includes(rtVal)) return false;
+        }
+
+        return true;
+      });
+
+      renderMatrixTable(filteredVariants);
+    }
+
+    function renderMatrixTable(variants) {
       const container = document.getElementById("heatmap-grid-container");
       container.innerHTML = "";
 
-      if (!data.variants || data.variants.length === 0) {
-        container.innerHTML = "No variants found in cache.";
+      if (variants.length === 0) {
+        container.innerHTML = \`<div style="color: var(--text-muted); padding: 24px; text-align: center;">No matching variants found for active filters.</div>\`;
         return;
       }
 
@@ -918,7 +1018,7 @@ function getDashboardHtml(): string {
       // 1. Header Row
       const thead = document.createElement("tr");
       thead.appendChild(document.createElement("th")); // empty top-left corner
-      data.variants.forEach((v) => {
+      variants.forEach((v) => {
         const th = document.createElement("th");
         th.className = "heatmap-header-cell";
         th.textContent = v;
@@ -927,7 +1027,7 @@ function getDashboardHtml(): string {
       table.appendChild(thead);
 
       // 2. Rows
-      data.variants.forEach((vA) => {
+      variants.forEach((vA) => {
         const tr = document.createElement("tr");
 
         // Row label
@@ -936,10 +1036,10 @@ function getDashboardHtml(): string {
         tdLabel.textContent = vA;
         tr.appendChild(tdLabel);
 
-        data.variants.forEach((vB) => {
+        variants.forEach((vB) => {
           const tdCell = document.createElement("td");
           tdCell.className = "heatmap-cell";
-          const similarity = data.matrix[vA][vB] || 0.0;
+          const similarity = lastMatrixData.matrix[vA][vB] || 0.0;
           const percent = Math.round(similarity * 100);
           tdCell.textContent = percent + "%";
           tdCell.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
