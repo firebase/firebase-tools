@@ -6,16 +6,21 @@ import * as supertest from "supertest";
 
 import { cloudRunApiOrigin } from "../api";
 import cloudRunProxy, { CloudRunProxyOptions, CloudRunProxyRewrite } from "./cloudRunProxy";
+import { EmulatorRegistry } from "../emulator/registry";
+import { Emulators } from "../emulator/types";
+import { FakeEmulator } from "../emulator/testing/fakeEmulator";
 
 describe("cloudRunProxy", () => {
   const fakeOptions: CloudRunProxyOptions = {
     project: "project-foo",
+    targets: [],
   };
   const fakeRewrite: CloudRunProxyRewrite = { run: { serviceId: "helloworld" } };
   const cloudRunServiceOrigin = "https://helloworld-hash-uc.a.run.app";
 
-  afterEach(() => {
+  afterEach(async () => {
     nock.cleanAll();
+    await EmulatorRegistry.stopAll();
   });
 
   it("should error when not provided a valid Cloud Run service ID", async () => {
@@ -326,6 +331,54 @@ describe("cloudRunProxy", () => {
     return supertest(spyMw)
       .get("/sockettimeout")
       .expect(504)
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should route to the local functions emulator when targets includes 'functions'", async () => {
+    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, [
+      { address: "127.0.0.1", family: "IPv4", port: 7778 },
+    ]);
+    await EmulatorRegistry.start(fakeFunctionsEmulator);
+
+    nock("http://127.0.0.1:7778")
+      .get("/project-foo/us-central1/helloworld/")
+      .reply(200, "local version");
+
+    const options: CloudRunProxyOptions = { ...fakeOptions, targets: ["functions"] };
+
+    const mwGenerator = cloudRunProxy(options);
+    const mw = await mwGenerator(fakeRewrite);
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(200, "local version")
+      .then(() => {
+        expect(spyMw.calledOnce).to.be.true;
+      });
+  });
+
+  it("should route to the local functions emulator in another region", async () => {
+    const fakeFunctionsEmulator = new FakeEmulator(Emulators.FUNCTIONS, [
+      { address: "127.0.0.1", family: "IPv4", port: 7778 },
+    ]);
+    await EmulatorRegistry.start(fakeFunctionsEmulator);
+
+    nock("http://127.0.0.1:7778")
+      .get("/project-foo/asia-southeast1/helloworld/")
+      .reply(200, "local version");
+
+    const options: CloudRunProxyOptions = { ...fakeOptions, targets: ["functions"] };
+
+    const mwGenerator = cloudRunProxy(options);
+    const mw = await mwGenerator({ run: { serviceId: "helloworld", region: "asia-southeast1" } });
+    const spyMw = sinon.spy(mw);
+
+    return supertest(spyMw)
+      .get("/")
+      .expect(200, "local version")
       .then(() => {
         expect(spyMw.calledOnce).to.be.true;
       });

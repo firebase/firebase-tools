@@ -1,6 +1,6 @@
 import { Persistence } from "./persistence";
 import { IncomingMetadata } from "./metadata";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { NotFoundError } from "./errors";
 
 /** A file upload. */
@@ -126,7 +126,7 @@ export class UploadService {
   }
 
   private startOneShotUpload(request: OneShotUploadRequest): Upload {
-    const id = uuidV4();
+    const id = randomUUID();
     const upload: Upload = {
       id,
       bucketId: request.bucketId,
@@ -147,7 +147,7 @@ export class UploadService {
    * Initializes a new ResumableUpload.
    */
   public startResumableUpload(request: StartResumableUploadRequest): Upload {
-    const id = uuidV4();
+    const id = randomUUID();
     const upload: Upload = {
       id: id,
       bucketId: request.bucketId,
