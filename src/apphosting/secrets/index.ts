@@ -198,7 +198,8 @@ export async function upsertSecret(
     existing = await gcsm.getSecret(project, secret);
   } catch (err: unknown) {
     if (getErrStatus(err) !== 404) {
-      throw new FirebaseError("Unexpected error loading secret", { original: getError(err) });
+      const original = getError(err);
+      throw new FirebaseError(`Unexpected error loading secret: ${original.message}`, { original });
     }
     await gcsm.createSecret(project, secret, gcsm.labels("apphosting"), location);
     return true;
