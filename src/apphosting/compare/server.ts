@@ -808,14 +808,12 @@ function getDashboardHtml(): string {
       <!-- Understanding the Metrics Legend -->
       <div class="card" id="metrics-legend" style="margin-bottom: 20px;">
         <div class="card-header" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="document.getElementById('legend-body').style.display = document.getElementById('legend-body').style.display === 'none' ? 'block' : 'none'">
-          <span>Understanding Parity Metrics & Next.js Quirks</span>
+          <span>Understanding Parity Metrics</span>
           <span style="font-size: 12px; color: var(--accent);">[Click to Expand]</span>
         </div>
         <div id="legend-body" class="panel-body" style="display: none; padding-top: 0; font-size: 13px; color: var(--text-muted);">
           <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
             <li><strong style="color: var(--text);">Body Similarity</strong>: A percentage representing how identical the HTML/JSON response bodies are. Uses string distance algorithms.</li>
-            <li><strong style="color: var(--warning);">Next.js Low Similarity (e.g. 9%)</strong>: In Next.js, local builds (Standalone Maker) generate completely different <code>BUILD_ID</code>s and asset chunk hashes (e.g., <code>_next/static/chunks/main-xyz.js</code>) than Cloud Build deployments. This inherently causes low similarity in HTML bodies, which is expected!</li>
-            <li><strong style="color: var(--danger);">x-powered-by: Express</strong>: If a Cloud Build variant shows "Express" instead of "Next.js", it's because Cloud Build uses the legacy <code>firebase-frameworks</code> adapter which wraps Next.js in an Express server. Local builds (UM) run pure Next.js standalone.</li>
             <li><strong style="color: var(--text);">Expected Variations</strong>: Certain headers (like <code>Date</code>, <code>Traceparent</code>, <code>Server-Timing</code>) naturally change every request and are excluded from strict parity failure checks.</li>
           </ul>
         </div>
