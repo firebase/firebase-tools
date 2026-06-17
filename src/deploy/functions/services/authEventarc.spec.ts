@@ -20,7 +20,7 @@ const endpoint: Endpoint = {
 
 describe("ensureAuthEventarcTriggerRegion", () => {
   it("should set the trigger location to global", async () => {
-    const ep = { ...endpoint };
+    const ep = { ...endpoint, eventTrigger: { ...endpoint.eventTrigger } };
 
     await authEventarc.ensureAuthEventarcTriggerRegion(ep);
 
@@ -28,7 +28,7 @@ describe("ensureAuthEventarcTriggerRegion", () => {
   });
 
   it("should not error if the trigger location is global", async () => {
-    const ep = { ...endpoint };
+    const ep = { ...endpoint, eventTrigger: { ...endpoint.eventTrigger } };
     ep.eventTrigger.region = "global";
 
     await authEventarc.ensureAuthEventarcTriggerRegion(ep);
@@ -37,7 +37,7 @@ describe("ensureAuthEventarcTriggerRegion", () => {
   });
 
   it("should error if the trigger location is not global", () => {
-    const ep = { ...endpoint };
+    const ep = { ...endpoint, eventTrigger: { ...endpoint.eventTrigger } };
     ep.eventTrigger.region = "us-west1";
 
     expect(() => authEventarc.ensureAuthEventarcTriggerRegion(ep)).to.throw(
