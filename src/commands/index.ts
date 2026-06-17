@@ -205,6 +205,7 @@ export function load(client: CLIClient): CLIClient {
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
     client.apphosting.secrets = {};
     client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
+    client.apphosting.secrets.revokeaccess = loadCommand("apphosting-secrets-revokeaccess");
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
