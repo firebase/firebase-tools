@@ -161,8 +161,10 @@ export async function compareRouteResponses(
   if (contentType.includes("text/html")) {
     try {
       const prettier = require("prettier");
-      bodyA = await prettier.format(bodyA, { parser: "html" });
-      bodyB = await prettier.format(bodyB, { parser: "html" });
+      const formattedA = await prettier.format(bodyA, { parser: "html" });
+      const formattedB = await prettier.format(bodyB, { parser: "html" });
+      bodyA = formattedA;
+      bodyB = formattedB;
     } catch (e: any) {
       // Fallback to advanced tag-based line splitting if prettier fails
       const HTML_SPLIT_REGEX = /(<(script|style)\b[\s\S]*?<\/\2>|<!--[\s\S]*?-->|<[^'">]*(?:"[^"]*"[^'">]*|'[^']*'[^'">]*)*>)\s*(?=<)/gi;

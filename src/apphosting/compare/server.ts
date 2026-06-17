@@ -29,8 +29,19 @@ export function startServer(port: number): Promise<void> {
     }
 
     try {
-      const recA = await cache.loadRecording(testCase as string, variantA as string);
-      const recB = await cache.loadRecording(testCase as string, variantB as string);
+      let recA, recB;
+      if (testCase === "GLOBAL") {
+        if (typeof variantA !== "string" || typeof variantB !== "string" || !variantA.includes("/") || !variantB.includes("/")) {
+          throw new Error("Invalid variant query parameters for GLOBAL testCase");
+        }
+        const [tcA, varA] = variantA.split("/");
+        const [tcB, varB] = variantB.split("/");
+        recA = await cache.loadRecording(tcA, varA);
+        recB = await cache.loadRecording(tcB, varB);
+      } else {
+        recA = await cache.loadRecording(testCase as string, variantA as string);
+        recB = await cache.loadRecording(testCase as string, variantB as string);
+      }
 
       const allRoutes = Array.from(new Set([
         ...Object.keys(recA.routes),
@@ -96,26 +107,54 @@ export function startServer(port: number): Promise<void> {
 
     try {
       const recordings = await cache.listRecordings();
-      const variants = recordings[testCase as string];
-      if (!variants || variants.length === 0) {
+      let variantsList: string[] = [];
+      const recMap: Record<string, any> = {};
+
+      if (testCase === "GLOBAL") {
+        for (const tc of Object.keys(recordings)) {
+          for (const v of recordings[tc]) {
+            const id = `${tc}/${v}`;
+            variantsList.push(id);
+            recMap[id] = await cache.loadRecording(tc, v);
+          }
+        }
+      } else {
+        variantsList = recordings[testCase as string] || [];
+        for (const v of variantsList) {
+          recMap[v] = await cache.loadRecording(testCase as string, v);
+        }
+      }
+
+      if (variantsList.length === 0) {
         res.json({ testCase, variants: [], matrix: {} });
         return;
       }
 
-      // Preload all recordings to avoid repeated reads
-      const recMap: Record<string, any> = {};
-      for (const v of variants) {
-        recMap[v] = await cache.loadRecording(testCase as string, v);
-      }
+      const matrix: Record<string, Record<string, number | null>> = {};
 
-      const matrix: Record<string, Record<string, number>> = {};
+      for (const vA of variantsList) {
+        matrix[vA] = matrix[vA] || {};
+        for (const vB of variantsList) {
+          matrix[vB] = matrix[vB] || {};
 
-      for (const vA of variants) {
-        matrix[vA] = {};
-        for (const vB of variants) {
           if (vA === vB) {
             matrix[vA][vB] = 1.0;
             continue;
+          }
+
+          if (matrix[vA][vB] !== undefined) {
+            continue; // Already computed symmetrical pair
+          }
+
+          if (testCase === "GLOBAL") {
+            const tc_A = vA.split("/")[0];
+            const tc_B = vB.split("/")[0];
+            if (tc_A !== tc_B) {
+              // Skip meaningless cross-app comparisons
+              matrix[vA][vB] = null;
+              matrix[vB][vA] = null;
+              continue;
+            }
           }
 
           // Compute average body similarity across all shared routes
@@ -134,6 +173,7 @@ export function startServer(port: number): Promise<void> {
             const resB = recB.routes[route];
 
             if (!resA || !resB) {
+              countedRoutes++; // Missing routes act as 0% similarity penalty
               continue;
             }
 
@@ -142,17 +182,56 @@ export function startServer(port: number): Promise<void> {
             countedRoutes++;
           }
 
-          matrix[vA][vB] = countedRoutes > 0 ? (totalSimilarity / countedRoutes) : 0.0;
+          const score = countedRoutes > 0 ? (totalSimilarity / countedRoutes) : 0.0;
+          matrix[vA][vB] = score;
+          matrix[vB][vA] = score;
         }
       }
 
       res.json({
         testCase,
-        variants,
+        variants: variantsList,
         matrix
       });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
+    }
+  });
+
+  // API: Render cached recording directly (bypasses iframe network requests)
+  app.get("/api/render", async (req, res) => {
+    const { testCase, variant, route } = req.query;
+    try {
+      if (!testCase || !variant || !route) throw new Error("Missing query parameters");
+      let tc = testCase as string;
+      let varId = variant as string;
+      if (tc === "GLOBAL") {
+        const parts = varId.split("/");
+        if (parts.length >= 2) {
+          tc = parts[0];
+          varId = parts.slice(1).join("/");
+        }
+      }
+      const rec = await cache.loadRecording(tc, varId);
+      const resData = rec.routes[route as string];
+      if (!resData) {
+        res.status(404).send("Route not found in cache");
+        return;
+      }
+      if (resData.isBinary) {
+        res.setHeader("Content-Type", "application/octet-stream");
+        res.send(Buffer.from(resData.body, "base64"));
+      } else {
+        res.setHeader("Content-Type", "text/html");
+        // Inject <base> tag to fix relative assets
+        let html = resData.body;
+        if (!html.includes("<base ")) {
+          html = html.replace("<head>", `<head><base href="${rec.url}">`);
+        }
+        res.send(html);
+      }
+    } catch (err: any) {
+      res.status(500).send(err.message);
     }
   });
 
@@ -510,6 +589,15 @@ function getDashboardHtml(): string {
       transform: scale(1.06);
       filter: brightness(1.15);
     }
+    .heatmap-cell.de-emphasized {
+      opacity: 0.15;
+      filter: grayscale(80%);
+    }
+    .heatmap-cell.de-emphasized:hover {
+      opacity: 0.35;
+      filter: grayscale(40%);
+    }
+
     .heatmap-header-cell {
       padding: 10px;
       font-weight: 600;
@@ -602,9 +690,32 @@ function getDashboardHtml(): string {
 
     <!-- Main Content -->
     <div class="content">
+      
+      <!-- Understanding the Metrics Legend -->
+      <div class="card" id="metrics-legend" style="margin-bottom: 20px;">
+        <div class="card-header" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="document.getElementById('legend-body').style.display = document.getElementById('legend-body').style.display === 'none' ? 'block' : 'none'">
+          <span>Understanding Parity Metrics & Next.js Quirks</span>
+          <span style="font-size: 12px; color: var(--accent);">[Click to Expand]</span>
+        </div>
+        <div id="legend-body" class="panel-body" style="display: none; padding-top: 0; font-size: 13px; color: var(--text-muted);">
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+            <li><strong style="color: var(--text);">Body Similarity</strong>: A percentage representing how identical the HTML/JSON response bodies are. Uses string distance algorithms.</li>
+            <li><strong style="color: var(--warning);">Next.js Low Similarity (e.g. 9%)</strong>: In Next.js, local builds (Standalone Maker) generate completely different <code>BUILD_ID</code>s and asset chunk hashes (e.g., <code>_next/static/chunks/main-xyz.js</code>) than Cloud Build deployments. This inherently causes low similarity in HTML bodies, which is expected!</li>
+            <li><strong style="color: var(--danger);">x-powered-by: Express</strong>: If a Cloud Build variant shows "Express" instead of "Next.js", it's because Cloud Build uses the legacy <code>firebase-frameworks</code> adapter which wraps Next.js in an Express server. Local builds (UM) run pure Next.js standalone.</li>
+            <li><strong style="color: var(--text);">Expected Variations</strong>: Certain headers (like <code>Date</code>, <code>Traceparent</code>, <code>Server-Timing</code>) naturally change every request and are excluded from strict parity failure checks.</li>
+          </ul>
+        </div>
+      </div>
+
       <!-- Heatmap View -->
       <div class="card" id="heatmap-card" style="display: none; flex: 1; flex-direction: column;">
-        <div class="card-header">Joint Parity Heatmap (Click any cell to compare)</div>
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Joint Parity Heatmap (Click any cell to compare)</span>
+          <label id="filter-codebases-container" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: normal; cursor: pointer; color: var(--text-muted);">
+            <input type="checkbox" id="toggle-filter-codebases" style="cursor: pointer;" onchange="applyMatrixFilter()">
+            Ignore Comparisons for Different Codebases
+          </label>
+        </div>
         <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1;">
           <div id="heatmap-grid-container" style="overflow-x: auto; max-width: 100%;"></div>
         </div>
@@ -667,13 +778,31 @@ function getDashboardHtml(): string {
           </div>
         </div>
 
-        <!-- Right: Body Code Diff -->
+        <!-- Right: Body Code Diff & Visual Render -->
         <div class="card details-right">
-          <div class="card-header" id="body-diff-header">Response Body Content Diff</div>
-          <div class="panel-body" style="padding: 0; overflow: hidden; display: flex; flex-direction: column;">
-            <div id="body-diff-container" class="diff-container">
-              <!-- Populated by diff2html -->
+          <div class="card-header" style="display: flex; gap: 16px; padding-bottom: 0;">
+            <div id="tab-code-diff" class="tab active" onclick="switchRightTab('code')" style="padding-bottom: 12px; cursor: pointer; border-bottom: 2px solid var(--accent);">Raw Code Diff</div>
+            <div id="tab-visual" class="tab" onclick="switchRightTab('visual')" style="padding-bottom: 12px; cursor: pointer; color: var(--text-muted);">Visual Split-View</div>
+          </div>
+          <div class="panel-body" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; flex: 1;">
+            
+            <!-- Code Diff View -->
+            <div id="body-diff-container" class="diff-container" style="flex: 1; overflow: auto;">
+              <!-- Populated dynamically -->
             </div>
+
+            <!-- Visual Render View -->
+            <div id="visual-render-container" style="display: none; flex: 1; flex-direction: row; height: 100%;">
+              <div style="flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--border);">
+                <div style="padding: 8px; background: rgba(0,0,0,0.2); font-size: 11px; text-align: center; color: var(--text-muted);">Variant A Renderer</div>
+                <iframe id="iframe-a" style="flex: 1; width: 100%; border: none; background: #fff;"></iframe>
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column;">
+                <div style="padding: 8px; background: rgba(0,0,0,0.2); font-size: 11px; text-align: center; color: var(--text-muted);">Variant B Renderer</div>
+                <iframe id="iframe-b" style="flex: 1; width: 100%; border: none; background: #fff;"></iframe>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -704,6 +833,15 @@ function getDashboardHtml(): string {
       const container = document.getElementById("test-cases-list");
       container.innerHTML = "";
 
+      // Add GLOBAL test case
+      const globalItem = document.createElement("div");
+      globalItem.className = "list-item";
+      globalItem.style.fontWeight = "bold";
+      globalItem.style.color = "var(--accent)";
+      globalItem.textContent = "🌍 GLOBAL MATRIX (All Apps)";
+      globalItem.onclick = () => selectTestCase("GLOBAL", globalItem);
+      container.appendChild(globalItem);
+
       Object.keys(recordingsData).forEach((tc) => {
         const item = document.createElement("div");
         item.className = "list-item";
@@ -718,7 +856,17 @@ function getDashboardHtml(): string {
       element.classList.add("active");
 
       activeTestCase = tc;
-      const variants = recordingsData[tc];
+      let variants = [];
+
+      if (tc === "GLOBAL") {
+        document.getElementById("filter-codebases-container").style.display = "flex";
+        Object.keys(recordingsData).forEach(suite => {
+          recordingsData[suite].forEach(v => variants.push(\`\${suite}/\${v}\`));
+        });
+      } else {
+        document.getElementById("filter-codebases-container").style.display = "none";
+        variants = recordingsData[tc];
+      }
 
       // Populate Variant Dropdowns
       const selectA = document.getElementById("select-variant-a");
@@ -793,6 +941,8 @@ function getDashboardHtml(): string {
           const similarity = data.matrix[vA][vB] || 0.0;
           const percent = Math.round(similarity * 100);
           tdCell.textContent = percent + "%";
+          tdCell.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
+          tdCell.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
 
           // Color coding based on similarity
           let bg = "rgba(239, 68, 68, 0.85)"; // Red (low similarity)
@@ -823,6 +973,21 @@ function getDashboardHtml(): string {
       });
 
       container.appendChild(table);
+      applyMatrixFilter();
+    }
+
+    function applyMatrixFilter() {
+      const ignoreDiffCodebases = document.getElementById("toggle-filter-codebases")?.checked;
+      const cells = document.querySelectorAll(".heatmap-cell");
+      cells.forEach((cell) => {
+        const cbA = cell.dataset.codebaseA;
+        const cbB = cell.dataset.codebaseB;
+        if (ignoreDiffCodebases && cbA && cbB && cbA !== cbB) {
+          cell.classList.add("de-emphasized");
+        } else {
+          cell.classList.remove("de-emphasized");
+        }
+      });
     }
 
     function showHeatmapView() {
@@ -841,7 +1006,7 @@ function getDashboardHtml(): string {
       document.getElementById("routes-card").style.display = "flex";
       document.getElementById("comparison-details").style.display = "none";
 
-      const res = await fetch(\`/api/compare?testCase=\${activeTestCase}&variantA=\${varA}&variantB=\${varB}\`);
+      const res = await fetch(\`/api/compare?testCase=\${encodeURIComponent(activeTestCase)}&variantA=\${encodeURIComponent(varA)}&variantB=\${encodeURIComponent(varB)}\`);
       const data = await res.json();
       comparisonResults = data.results;
       activeUrlA = data.urlA || "";
@@ -909,6 +1074,11 @@ function getDashboardHtml(): string {
       linkB.href = activeUrlB + res.route;
       linkB.textContent = activeUrlB + res.route;
 
+      // Update Visual Render Iframes
+      // Update Visual Render Iframes (use cached renderer)
+      document.getElementById("iframe-a").src = \`/api/render?testCase=\${encodeURIComponent(activeTestCase)}&variant=\${encodeURIComponent(document.getElementById("select-variant-a").value)}&route=\${encodeURIComponent(res.route)}\`;
+      document.getElementById("iframe-b").src = \`/api/render?testCase=\${encodeURIComponent(activeTestCase)}&variant=\${encodeURIComponent(document.getElementById("select-variant-b").value)}&route=\${encodeURIComponent(res.route)}\`;
+
       // 1. Status Code
       const statusBox = document.getElementById("status-comparison-box");
       const statusText = \`A: \${res.statusA} vs B: \${res.statusB}\`;
@@ -941,12 +1111,35 @@ function getDashboardHtml(): string {
             ? '<span class="badge danger" style="padding: 2px 6px;">Critical Mismatch</span>'
             : '<span class="badge warning" style="padding: 2px 6px; background-color: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2);">Expected Variation</span>';
           
-          headersTbody.innerHTML += \`<tr>
-            <td style="font-family:monospace; font-weight:500;">\${h.header}</td>
-            <td style="color: \${h.critical ? 'var(--danger)' : 'var(--text)'}; font-family: monospace; font-size: 11px; word-break: break-all;">\${h.valA || '(missing)'}</td>
-            <td style="color: \${h.critical ? 'var(--success)' : 'var(--text)'}; font-family: monospace; font-size: 11px; word-break: break-all;">\${h.valB || '(missing)'}</td>
-            <td>\${badgeHtml}</td>
-          </tr>\`;
+          const tr = document.createElement("tr");
+          
+          const td1 = document.createElement("td");
+          td1.style.fontFamily = "monospace";
+          td1.style.fontWeight = "500";
+          td1.textContent = h.header;
+          
+          const td2 = document.createElement("td");
+          td2.style.color = h.critical ? 'var(--danger)' : 'var(--text)';
+          td2.style.fontFamily = "monospace";
+          td2.style.fontSize = "11px";
+          td2.style.wordBreak = "break-all";
+          td2.textContent = h.valA || '(missing)';
+          
+          const td3 = document.createElement("td");
+          td3.style.color = h.critical ? 'var(--success)' : 'var(--text)';
+          td3.style.fontFamily = "monospace";
+          td3.style.fontSize = "11px";
+          td3.style.wordBreak = "break-all";
+          td3.textContent = h.valB || '(missing)';
+          
+          const td4 = document.createElement("td");
+          td4.innerHTML = badgeHtml; // Safe: hardcoded markup
+
+          tr.appendChild(td1);
+          tr.appendChild(td2);
+          tr.appendChild(td3);
+          tr.appendChild(td4);
+          headersTbody.appendChild(tr);
         });
       }
 
@@ -970,7 +1163,11 @@ function getDashboardHtml(): string {
       }
 
       if (!res.diffChanges || res.diffChanges.length === 0) {
-        diffContainer.innerHTML = '<div class="empty-state">No diff details available</div>';
+        if (res.bodyDiff) {
+          diffContainer.innerHTML = \`<div class="empty-state">\${res.bodyDiff}</div>\`;
+        } else {
+          diffContainer.innerHTML = '<div class="empty-state">No diff details available</div>';
+        }
         return;
       }
 
@@ -1004,6 +1201,31 @@ function getDashboardHtml(): string {
       });
 
       diffContainer.appendChild(diffView);
+    }
+
+    function switchRightTab(tabId) {
+      document.getElementById("tab-code-diff").classList.remove("active");
+      document.getElementById("tab-code-diff").style.borderBottom = "none";
+      document.getElementById("tab-code-diff").style.color = "var(--text-muted)";
+      
+      document.getElementById("tab-visual").classList.remove("active");
+      document.getElementById("tab-visual").style.borderBottom = "none";
+      document.getElementById("tab-visual").style.color = "var(--text-muted)";
+
+      document.getElementById("body-diff-container").style.display = "none";
+      document.getElementById("visual-render-container").style.display = "none";
+
+      if (tabId === 'code') {
+        document.getElementById("tab-code-diff").classList.add("active");
+        document.getElementById("tab-code-diff").style.borderBottom = "2px solid var(--accent)";
+        document.getElementById("tab-code-diff").style.color = "var(--text)";
+        document.getElementById("body-diff-container").style.display = "block";
+      } else if (tabId === 'visual') {
+        document.getElementById("tab-visual").classList.add("active");
+        document.getElementById("tab-visual").style.borderBottom = "2px solid var(--accent)";
+        document.getElementById("tab-visual").style.color = "var(--text)";
+        document.getElementById("visual-render-container").style.display = "flex";
+      }
     }
 
     window.onload = loadRecordings;

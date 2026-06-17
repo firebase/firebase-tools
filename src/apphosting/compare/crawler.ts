@@ -1,5 +1,14 @@
 import fetch from "node-fetch";
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 export class Crawler {
   private visited = new Set<string>();
   private discoveredRoutes = new Set<string>();
@@ -29,15 +38,22 @@ export class Crawler {
     this.visited.add(canonical);
     this.discoveredRoutes.add(canonical);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const url = `${this.baseUrl}${canonical}`;
       const res = await fetch(url, {
         redirect: "manual" as const,
         headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
+        signal: controller.signal,
       });
 
       // Handle Redirects
       if ([301, 302, 307, 308].includes(res.status)) {
+        if (res.body) {
+          (res.body as any).destroy();
+        }
         const location = res.headers.get("location");
         if (location) {
           const nextRoute = this.resolveRelative(canonical, location);
@@ -51,6 +67,9 @@ export class Crawler {
       // Only parse HTML responses
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.toLowerCase().includes("text/html")) {
+        if (res.body) {
+          (res.body as any).destroy();
+        }
         return;
       }
 
@@ -62,6 +81,8 @@ export class Crawler {
       }
     } catch (err) {
       // Ignore fetch failures for single routes during discovery
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -90,11 +111,14 @@ export class Crawler {
 
   private extractLinks(html: string, currentRoute: string): string[] {
     const links: string[] = [];
-    const regex = /<a\s+(?:[^>]*?\s+)?href=(["'])(.*?)\1/gi;
+    const regex = /<a\s+(?:[^>]*?\s+)?href\s*=\s*(?:(["'])(.*?)\1|([^\s>]+))/gi;
     let match;
 
     while ((match = regex.exec(html)) !== null) {
-      const href = match[2].trim();
+      const rawHref = match[2] !== undefined ? match[2] : match[3];
+      if (!rawHref) continue;
+      
+      const href = decodeHtmlEntities(rawHref.trim());
       if (
         !href ||
         href.startsWith("#") ||
@@ -127,3 +151,4 @@ export class Crawler {
     }
   }
 }
+

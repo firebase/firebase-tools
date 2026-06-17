@@ -13,6 +13,8 @@ import * as reporter from "./reporter";
 import * as poller from "../../operation-poller";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import { sleep } from "../../utils";
+
 
 const apphostingPollerOptions = {
   apiOrigin: apphostingOrigin(),
@@ -118,10 +120,13 @@ async function recordVariant(
 
   for (const route of allRoutesSet) {
     logger.debug(`Recording route ${route}...`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       const res = await fetch(`${url}${route}`, {
         redirect: "manual" as const,
         headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
+        signal: controller.signal,
       });
 
       const contentType = res.headers.get("content-type") || "";
@@ -130,14 +135,32 @@ async function recordVariant(
       const headers: Record<string, string> = {};
       res.headers.forEach((val, key) => { headers[key] = val; });
 
+      let body = "";
+      const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
+      if (contentLength > 2 * 1024 * 1024) {
+        body = `(omitted - size ${contentLength} bytes exceeds 2MB limit)`;
+        if (res.body) {
+          (res.body as any).destroy();
+        }
+      } else {
+        const buffer = await res.buffer();
+        if (buffer.length > 2 * 1024 * 1024) {
+          body = `(omitted - size ${buffer.length} bytes exceeds 2MB limit)`;
+        } else {
+          body = isBinary ? buffer.toString("base64") : buffer.toString("utf-8");
+        }
+      }
+
       routes[route] = {
         status: res.status,
         headers,
         isBinary,
-        body: isBinary ? (await res.buffer()).toString("base64") : await res.text(),
+        body,
       };
     } catch (err) {
       logger.warn(`Failed to record route ${route}: ${err}`);
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
@@ -193,21 +216,22 @@ export async function runCompareSuite(
     try {
       // Setup secrets
       const uniquePaths = Array.from(new Set(variants.map((v) => v.path)));
-      secretsMappings = await Promise.all(
-        uniquePaths.map((uniquePath) => {
-          const pathBackendIds = variants
-            .map((v, i) => (v.path === uniquePath ? backendIds[i] : null))
-            .filter((id): id is string => id !== null);
+      // Setup secrets sequentially to avoid concurrent creation conflicts in Secret Manager
+      secretsMappings = [];
+      for (const uniquePath of uniquePaths) {
+        const pathBackendIds = variants
+          .map((v, i) => (v.path === uniquePath ? backendIds[i] : null))
+          .filter((id): id is string => id !== null);
 
-          return secrets.setupSandboxSecrets(
-            projectId,
-            location,
-            uniquePath,
-            slotIndex,
-            pathBackendIds
-          );
-        })
-      );
+        const mappings = await secrets.setupSandboxSecrets(
+          projectId,
+          location,
+          uniquePath,
+          slotIndex,
+          pathBackendIds
+        );
+        secretsMappings.push(mappings);
+      }
 
       // Deploy variants sequentially
       for (let i = 0; i < variants.length; i++) {
@@ -225,7 +249,11 @@ export async function runCompareSuite(
 
       logger.info("All rollouts completed successfully!");
 
+      logger.info("Waiting 30 seconds for Firebase Hosting routing propagation to complete...");
+      await sleep(30000);
+
       // Retrieve URLs and Record
+
       const backendDataList = await Promise.all(
         backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
       );

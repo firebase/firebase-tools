@@ -23,7 +23,7 @@ export async function runGarbageCollection(projectId: string, location: string):
   const existingBackends = await apphosting.listBackends(projectId, location);
   const backendsList = existingBackends.backends || [];
   const now = Date.now();
-  const twoHours = 2 * 60 * 60 * 1000;
+  const thirtyMinutes = 30 * 60 * 1000;
 
   for (const backend of backendsList) {
     const nameParts = backend.name.split("/");
@@ -33,7 +33,7 @@ export async function runGarbageCollection(projectId: string, location: string):
       const isBusy = backend.labels?.status === "busy";
       if (isBusy) {
         const updateTime = new Date(backend.updateTime).getTime();
-        if (now - updateTime > twoHours) {
+        if (now - updateTime > thirtyMinutes) {
           logger.info(`Found stale lock on comparison slot backend ${backendId}. Unlocking...`);
           try {
             await apphosting.updateBackend(projectId, location, backendId, {
