@@ -4,7 +4,10 @@ export class Crawler {
   private visited = new Set<string>();
   private discoveredRoutes = new Set<string>();
 
-  constructor(private readonly baseUrl: string, private readonly maxDepth = 3) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly maxDepth = 3,
+  ) {}
 
   public getRoutes(): string[] {
     return Array.from(this.discoveredRoutes).sort();
@@ -30,7 +33,7 @@ export class Crawler {
       const url = `${this.baseUrl}${canonical}`;
       const res = await fetch(url, {
         redirect: "manual" as const,
-        headers: { "User-Agent": "FirebaseCompareCrawler/1.0" }
+        headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
       });
 
       // Handle Redirects
@@ -74,7 +77,9 @@ export class Crawler {
         pathname = pathname.slice(0, -1);
       }
 
-      const params = Array.from(url.searchParams.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+      const params = Array.from(url.searchParams.entries()).sort((a, b) =>
+        a[0].localeCompare(b[0]),
+      );
       const search = params.length > 0 ? "?" + params.map(([k, v]) => `${k}=${v}`).join("&") : "";
 
       return `${pathname}${search}`;

@@ -16,20 +16,23 @@ export interface ComparisonSummary {
   overallSimilarity: number;
 }
 
+/**
+ *
+ */
 export async function generateReport(
   projectId: string,
   location: string,
   backendA: string,
   backendB: string,
   results: ComparisonResult[],
-  outputDir = "./compare-report"
+  outputDir = "./compare-report",
 ): Promise<void> {
   const totalRoutes = results.length;
   const matching = results.filter(
-    r => r.statusMatch && r.headerMismatches.length === 0 && r.bodySimilarity >= 0.99
+    (r) => r.statusMatch && r.headerMismatches.length === 0 && r.bodySimilarity >= 0.99,
   );
   const mismatches = results.filter(
-    r => !r.statusMatch || r.headerMismatches.length > 0 || r.bodySimilarity < 0.99
+    (r) => !r.statusMatch || r.headerMismatches.length > 0 || r.bodySimilarity < 0.99,
   );
 
   const totalSimilarity = results.reduce((sum, r) => sum + r.bodySimilarity, 0);
@@ -44,7 +47,7 @@ export async function generateReport(
     totalRoutes,
     matchingRoutes: matching.length,
     mismatchingRoutes: mismatches.length,
-    overallSimilarity
+    overallSimilarity,
   };
 
   logger.info("\n==========================================");
@@ -56,7 +59,9 @@ export async function generateReport(
   logger.info(`Backend B:    ${backendB}`);
   logger.info(`Total Routes: ${totalRoutes}`);
   logger.info(`Passed:       ${clc.green(String(matching.length))}`);
-  logger.info(`Mismatched:   ${mismatches.length > 0 ? clc.red(String(mismatches.length)) : clc.green("0")}`);
+  logger.info(
+    `Mismatched:   ${mismatches.length > 0 ? clc.red(String(mismatches.length)) : clc.green("0")}`,
+  );
   logger.info(`Similarity:   ${clc.cyan((overallSimilarity * 100).toFixed(2) + "%")}`);
   logger.info("==========================================\n");
 
@@ -78,41 +83,64 @@ export async function generateReport(
   }
 
   await fs.ensureDir(outputDir);
-  await fs.writeJson(path.join(outputDir, "summary.json"), { summary, results }, { spaces: 2 });
+  
+  // Dump summary without the bodies to save space
+  const resultsWithoutBodies = results.map(r => {
+    const { bodyA, bodyB, ...rest } = r;
+    return rest;
+  });
+  await fs.writeJson(path.join(outputDir, "summary.json"), { summary, results: resultsWithoutBodies }, { spaces: 2 });
   logger.info(`JSON report saved to: ${path.join(outputDir, "summary.json")}`);
 
-  const html = getHtmlTemplate(summary, results);
+  // Dump raw bodies for manual diffing
+  const routesDirA = path.join(outputDir, "backendA");
+  const routesDirB = path.join(outputDir, "backendB");
+  for (const r of results) {
+    if (r.bodyA !== undefined && r.bodyB !== undefined) {
+      // Map route /foo/bar to /foo/bar.html or /foo/bar/index.html
+      const safeRoute = r.route === "/" ? "index.html" : r.route.replace(/^\//, "") + ".html";
+      await fs.outputFile(path.join(routesDirA, safeRoute), r.bodyA, "utf-8");
+      await fs.outputFile(path.join(routesDirB, safeRoute), r.bodyB, "utf-8");
+    }
+  }
+  logger.info(`Raw responses saved to ${routesDirA} and ${routesDirB} for manual diffing.`);
+
+  const html = getHtmlTemplate(summary, resultsWithoutBodies as any);
   await fs.outputFile(path.join(outputDir, "index.html"), html, "utf-8");
-  logger.info(`HTML Dashboard generated at: ${clc.underline(path.join(outputDir, "index.html"))}\n`);
+  logger.info(
+    `HTML Dashboard generated at: ${clc.underline(path.join(outputDir, "index.html"))}\n`,
+  );
 }
 
 function getHtmlTemplate(summary: ComparisonSummary, results: ComparisonResult[]): string {
-  const resultsRows = results.map(r => {
-    const isPass = r.statusMatch && r.headerMismatches.length === 0 && r.bodySimilarity >= 0.99;
-    const badgeClass = isPass ? "badge-success" : "badge-error";
-    const badgeText = isPass ? "PASS" : "FAIL";
-    
-    const headersList = r.headerMismatches.map(m => 
-      `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`
-    ).join("");
+  const resultsRows = results
+    .map((r) => {
+      const isPass = r.statusMatch && r.headerMismatches.length === 0 && r.bodySimilarity >= 0.99;
+      const badgeClass = isPass ? "badge-success" : "badge-error";
+      const badgeText = isPass ? "PASS" : "FAIL";
 
-    const variationsList = r.expectedHeaderVariations.map(m => 
-      `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`
-    ).join("");
+      const headersList = r.headerMismatches
+        .map((m) => `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`)
+        .join("");
 
-    return `
-      <tr class="route-row ${isPass ? 'pass-row' : 'fail-row'}">
+      const variationsList = r.expectedHeaderVariations
+        .map((m) => `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`)
+        .join("");
+
+      return `
+      <tr class="route-row ${isPass ? "pass-row" : "fail-row"}">
         <td class="font-mono">${r.route}</td>
         <td><span class="badge ${badgeClass}">${badgeText}</span></td>
-        <td>${r.statusMatch ? 'Match' : 'Mismatch'}</td>
+        <td>${r.statusMatch ? "Match" : "Mismatch"}</td>
         <td>${(r.bodySimilarity * 100).toFixed(1)}%</td>
         <td>
-          ${r.headerMismatches.length > 0 ? `<div class="collapsible"><strong>Mismatches:</strong><ul>${headersList}</ul></div>` : 'Match'}
-          ${r.expectedHeaderVariations.length > 0 ? `<div class="collapsible variations"><strong>Variations:</strong><ul>${variationsList}</ul></div>` : ''}
+          ${r.headerMismatches.length > 0 ? `<div class="collapsible"><strong>Mismatches:</strong><ul>${headersList}</ul></div>` : "Match"}
+          ${r.expectedHeaderVariations.length > 0 ? `<div class="collapsible variations"><strong>Variations:</strong><ul>${variationsList}</ul></div>` : ""}
         </td>
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
 
   return `
 <!DOCTYPE html>

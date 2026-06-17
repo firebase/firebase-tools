@@ -1,90 +1,71 @@
-# App Hosting Comparison Tool
+# App Hosting N-Way Matrix Comparison Tool
 
-The App Hosting Comparison Tool (`firebase apphosting:compare` and `firebase apphosting:compare-suite`) is an autonomous differential testing tool. It allows developers and CI/CD systems to deploy, crawl, and compare two different versions or configurations of an application on Firebase App Hosting, asserting parity across status codes, response headers, and body payloads (text diffs and binary hashes).
+This is an experimental internal CLI tool built for the Firebase App Hosting team to dynamically verify the compatibility and performance of different infrastructure backends or application builds. 
 
----
+It takes an array of $N$ configurations (variants) and automatically deploys them simultaneously, discovering their routes, and dumping an $O(N^2)$ Pair-wise Cartesian Matrix of differences.
 
-## Commands
+## Capabilities
 
-### `firebase apphosting:compare`
+1. **N-Way Concurrency**: By leveraging `Promise.all` and dynamic `backendIds`, the tool spins up all $N$ test variants in parallel on Google Cloud.
+2. **Local vs Remote Build Verification**: Can deploy locally built bundles (e.g. `locally_built: true`) side-by-side with remote Cloud Build source zips.
+3. **Automated IAM & Secrets Management**: Intelligently creates a single mock secret in Secret Manager for each distinct codebase path, mapping the IAM `secretAccessor` roles simultaneously to all backends generated from that codebase.
+4. **Dynamic Spidering**: Automatically crawls Next.js / Angular apps recursively starting from `/` to discover hidden dynamic routes, alongside statically parsing `.next/prerender-manifest.json`.
+5. **Exact Diff Inspection**: Generates HTML dashboards, JSON summaries, and specifically dumps the raw HTTP HTML outputs of each variant so engineers can run local diffs.
 
-Deploys and compares two versions of an application.
+## Usage
 
-```bash
-firebase apphosting:compare \
-  --path-b <path-to-canary-dir> \
-  [--path-a <path-to-stable-dir>] \
-  [--location <location>] \
-  [--output-dir <report-output-dir>]
-```
+1. Create a `matrix-test.json` file to define your test cases:
 
-**Options:**
-* `--path-b` (Required): The directory path containing the version to compare against (e.g. your canary/experimental branch).
-* `--path-a` (Optional): The directory path containing the baseline version (e.g. your stable branch). Defaults to the current working directory (`.`).
-* `--location` (Optional): The GCP location where App Hosting backends should reside. Defaults to `us-central1`.
-* `--output-dir` (Optional): The directory path where comparison results and the dashboard will be written. Defaults to `./compare-report`.
-
----
-
-### `firebase apphosting:compare-suite`
-
-Runs a batch of comparison tests on multiple codebases defined in a JSON suite config.
-
-```bash
-firebase apphosting:compare-suite \
-  --suite-config <path-to-json-file> \
-  [--location <location>] \
-  [--output-dir <report-output-dir>]
-```
-
-**Suite Config Format (`suite.json`):**
 ```json
-[
-  {
-    "name": "nextjs-reference",
-    "pathA": "./apps/nextjs-reference/stable",
-    "pathB": "./apps/nextjs-reference/canary"
-  },
-  {
-    "name": "nextjs-sample",
-    "pathA": "./next-sample-1",
-    "pathB": "./next-sample-1-modified"
-  }
-]
+{
+  "testCases": [
+    {
+      "name": "Node Matrix Test",
+      "variants": [
+        {
+          "id": "Local-Node24",
+          "path": "../next-sample-1",
+          "localBuild": true,
+          "runtime": "nodejs24"
+        },
+        {
+          "id": "Source-Node24",
+          "path": "../next-sample-1",
+          "localBuild": false,
+          "runtime": "nodejs24"
+        },
+        {
+          "id": "Source-Node22",
+          "path": "../next-sample-1",
+          "localBuild": false,
+          "runtime": "nodejs22"
+        }
+      ]
+    }
+  ]
+}
 ```
 
----
+2. Run the command:
 
-## Core Architecture
+```bash
+FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --project <your-project> --suite-config matrix-test.json
+```
 
-### 1. Quota & Slot Pool Management
-To work around the standard project limit of **10 backends per project**, the tool manages a leased pool of **5 parallel comparison slots** (`compare-slot-1` to `compare-slot-5`).
-* Each slot contains an A/B pair of backends: `compare-slot-X-a` and `compare-slot-X-b`.
-* Slot backends are dynamically created upon first run and **kept alive (reused)** for subsequent runs, reducing rollout provisioning time by ~2 minutes.
-* State is managed via GCP labels (`status: busy`, `status: idle`, `last_active: <timestamp>`).
-* If a run is interrupted (`SIGINT`/`SIGTERM`), a signal handler cleans up resources and releases the slot lock.
-* A startup GC sweeper automatically releases slot locks held `busy` for more than 2 hours.
+## How to Inspect Diffs
 
-### 2. Secret manager Isolation
-If the codebases reference Google Cloud Secret Manager values in their `apphosting.yaml` configurations, the tool:
-* Automatically provisions mock sandboxed secrets (prefixed with `cmp-sec-[slot]-`) to prevent naming conflicts.
-* Grants read access to the slot backend's Cloud Run service account.
-* Safely removes the mock secrets from Secret Manager when the comparison concludes.
+When the command completes, it generates reports in the `./compare-report/<TestCaseName>/` directory.
+Inside this folder, you will see a subfolder for each pairwise comparison, such as `Local-Node24-vs-Source-Node24/`.
 
-### 3. Route Discovery
-The comparison engine discovers routes using a two-pass mechanism:
-* **Static Discovery**: Parses local Next.js build manifests (e.g., `.next/routes-manifest.json`, `.next/prerender-manifest.json`) and local `sitemap.xml` files.
-* **Dynamic Crawling**: Executes a recursive HTML link crawler on Backend A to dynamically harvest links, query strings, and redirects (up to 5 redirect levels) at runtime.
+Inside the pair folder:
+- **`index.html`**: A beautifully styled visual dashboard showing percentage differences and mismatches.
+- **`summary.json`**: The structured data representation.
+- **`backendA/` and `backendB/`**: These folders contain the raw HTTP HTML bodies retrieved during the crawl! 
 
-### 4. Differential Analyzer
-Once routes are collected, the analyzer queries the matching paths on both backends and performs:
-* **Status Match**: Asserts status code parity (e.g. `200` vs `200`, `404` vs `404`).
-* **Header Auditing**: Separates expected dynamic headers (`x-cloud-trace-context`, `date`, `etag`, `age`) from static behavioral headers (`content-type`, `cache-control`) to detect regression.
-* **Payload Comparison**:
-  * **Text/HTML**: Computes Myers' line-level diffs and Sorensen-Dice similarity scores to match dynamic content.
-  * **Binary Assets**: Compares exact size (bytes) and SHA-256 payload hashes.
+To manually inspect the exact diffs, you can use standard diff tools on the generated files:
 
-### 5. Premium Dashboard
-The comparison run outputs:
-* **`summary.json`**: Machine-readable JSON structured logs of every mismatch, status code, and similarity score.
-* **`index.html`**: A responsive, modern dark-mode HTML split-pane code diff viewer, letting you visually compare the precise lines that changed on each page.
+```bash
+diff compare-report/Node\ Matrix\ Test/Local-Node24-vs-Source-Node24/backendA/index.html compare-report/Node\ Matrix\ Test/Local-Node24-vs-Source-Node24/backendB/index.html
+```
+
+Or you can right-click the files in VSCode and select "Select for Compare" and "Compare with Selected".

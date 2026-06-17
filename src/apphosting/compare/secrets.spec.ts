@@ -39,33 +39,29 @@ describe("Sandbox Secrets Manager", () => {
 
   it("should setup sandbox secrets for yaml configuration", async () => {
     pathExistsStub.resolves(true);
-    
+
     const mockYaml = new AppHostingYamlConfig();
     mockYaml.env = {
-      API_KEY: { secret: "my-production-api-key", availability: ["RUNTIME"] }
+      API_KEY: { secret: "my-production-api-key", availability: ["RUNTIME"] },
     };
     loadConfigStub.resolves(mockYaml);
     getProjectNumberStub.resolves("12345");
-    
+
     getBackendStub.resolves({ name: "backend-resource" });
     serviceAccountsStub.resolves({
       buildServiceAccount: "build-sa@google.com",
-      runServiceAccount: "run-sa@google.com"
+      runServiceAccount: "run-sa@google.com",
     });
-    
+
     secretExistsStub.resolves(false);
     createSecretStub.resolves();
     addVersionStub.resolves();
     grantSecretAccessStub.resolves();
 
-    const mappings = await setupSandboxSecrets(
-      "aryanf-test",
-      "us-central1",
-      "/app/path",
-      1,
+    const mappings = await setupSandboxSecrets("aryanf-test", "us-central1", "/app/path", 1, [
       "compare-slot-1-a",
-      "compare-slot-1-b"
-    );
+      "compare-slot-1-b",
+    ]);
 
     expect(mappings).to.have.lengthOf(1);
     expect(mappings[0].originalName).to.equal("my-production-api-key");
@@ -81,7 +77,7 @@ describe("Sandbox Secrets Manager", () => {
     deleteSecretStub.resolves();
 
     const mappings = [
-      { originalName: "my-key", mockSecretName: "cmp-sec-1-my-key", mockValue: "val" }
+      { originalName: "my-key", mockSecretName: "cmp-sec-1-my-key", mockValue: "val" },
     ];
 
     await cleanupSandboxSecrets("aryanf-test", mappings);

@@ -41,7 +41,7 @@ export async function discoverRoutes(appPath: string): Promise<string[]> {
   const sitemapPaths = [
     path.join(appPath, "public", "sitemap.xml"),
     path.join(appPath, "sitemap.xml"),
-    path.join(appPath, "dist", "sitemap.xml")
+    path.join(appPath, "dist", "sitemap.xml"),
   ];
 
   for (const sitemapPath of sitemapPaths) {

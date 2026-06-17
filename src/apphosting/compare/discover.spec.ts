@@ -7,7 +7,10 @@ describe("discoverRoutes", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = path.join(process.cwd(), "scratch-test-discover-" + Math.random().toString(36).substring(7));
+    tempDir = path.join(
+      process.cwd(),
+      "scratch-test-discover-" + Math.random().toString(36).substring(7),
+    );
     fs.ensureDirSync(tempDir);
   });
 
@@ -27,15 +30,12 @@ describe("discoverRoutes", () => {
     fs.writeJsonSync(path.join(nextDir, "prerender-manifest.json"), {
       routes: {
         "/about": {},
-        "/blog/post-1": {}
-      }
+        "/blog/post-1": {},
+      },
     });
 
     fs.writeJsonSync(path.join(nextDir, "routes-manifest.json"), {
-      staticRoutes: [
-        { page: "/" },
-        { page: "/contact" }
-      ]
+      staticRoutes: [{ page: "/" }, { page: "/contact" }],
     });
 
     const routes = await discoverRoutes(tempDir);

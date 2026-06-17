@@ -31,17 +31,23 @@ describe("Comparison Slots Manager", () => {
   it("should acquire an existing idle slot", async () => {
     listBackendsStub.resolves({
       backends: [
-        { name: "projects/test/locations/us-central1/backends/compare-slot-1-a", labels: { status: "idle", type: "comparison-sandbox" } },
-        { name: "projects/test/locations/us-central1/backends/compare-slot-1-b", labels: { status: "idle", type: "comparison-sandbox" } }
-      ]
+        {
+          name: "projects/test/locations/us-central1/backends/compare-slot-1-0",
+          labels: { status: "idle", type: "comparison-sandbox" },
+        },
+        {
+          name: "projects/test/locations/us-central1/backends/compare-slot-1-1",
+          labels: { status: "idle", type: "comparison-sandbox" },
+        },
+      ],
     });
     listFirebaseAppsStub.resolves([{ appId: "web-app-123", displayName: "existing-app" }]);
     updateBackendStub.resolves({ name: "op-name" });
 
-    const slot = await acquireComparisonSlot("aryanf-test", "us-central1");
+    const slot = await acquireComparisonSlot("aryanf-test", "us-central1", 2);
     expect(slot.index).to.equal(1);
-    expect(slot.backendIdA).to.equal("compare-slot-1-a");
-    expect(slot.backendIdB).to.equal("compare-slot-1-b");
+    expect(slot.backendIds[0]).to.equal("compare-slot-1-0");
+    expect(slot.backendIds[1]).to.equal("compare-slot-1-1");
 
     expect(updateBackendStub.callCount).to.equal(2);
     expect(createBackendStub.callCount).to.equal(0);
@@ -53,7 +59,7 @@ describe("Comparison Slots Manager", () => {
     createBackendStub.resolves({ name: "backend-resource" });
     updateBackendStub.resolves({ name: "op-name" });
 
-    const slot = await acquireComparisonSlot("aryanf-test", "us-central1");
+    const slot = await acquireComparisonSlot("aryanf-test", "us-central1", 2);
     expect(slot.index).to.equal(1);
     expect(createBackendStub.callCount).to.equal(2);
   });
@@ -62,14 +68,20 @@ describe("Comparison Slots Manager", () => {
     const busyBackends = [];
     for (let i = 1; i <= 5; i++) {
       busyBackends.push(
-        { name: `projects/test/locations/us-central1/backends/compare-slot-${i}-a`, labels: { status: "busy", type: "comparison-sandbox" } },
-        { name: `projects/test/locations/us-central1/backends/compare-slot-${i}-b`, labels: { status: "busy", type: "comparison-sandbox" } }
+        {
+          name: `projects/test/locations/us-central1/backends/compare-slot-${i}-0`,
+          labels: { status: "busy", type: "comparison-sandbox" },
+        },
+        {
+          name: `projects/test/locations/us-central1/backends/compare-slot-${i}-1`,
+          labels: { status: "busy", type: "comparison-sandbox" },
+        },
       );
     }
     listBackendsStub.resolves({ backends: busyBackends });
 
-    await expect(acquireComparisonSlot("aryanf-test", "us-central1")).to.be.rejectedWith(
-      "All 5 comparison slots are currently in use or project backend limits exceeded"
+    await expect(acquireComparisonSlot("aryanf-test", "us-central1", 2)).to.be.rejectedWith(
+      "All 5 comparison slots are currently in use or project backend limits exceeded",
     );
   });
 });

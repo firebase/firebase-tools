@@ -13,10 +13,12 @@ describe("Crawler", () => {
 
   it("should recursively crawl text/html links", async () => {
     const base = "https://example.com";
-    
+
     nock(base)
       .get("/")
-      .reply(200, `
+      .reply(
+        200,
+        `
         <html>
           <body>
             <a href="/about">About Us</a>
@@ -24,25 +26,27 @@ describe("Crawler", () => {
             <a href="https://external.com">External Link</a>
           </body>
         </html>
-      `, { "Content-Type": "text/html" });
+      `,
+        { "Content-Type": "text/html" },
+      );
 
     nock(base)
       .get("/about")
-      .reply(200, `
+      .reply(
+        200,
+        `
         <html>
           <body>
             <a href="/careers">Careers</a>
           </body>
         </html>
-      `, { "Content-Type": "text/html" });
+      `,
+        { "Content-Type": "text/html" },
+      );
 
-    nock(base)
-      .get("/contact")
-      .reply(200, "Contact Details", { "Content-Type": "text/html" });
+    nock(base).get("/contact").reply(200, "Contact Details", { "Content-Type": "text/html" });
 
-    nock(base)
-      .get("/careers")
-      .reply(200, "Join our team", { "Content-Type": "text/html" });
+    nock(base).get("/careers").reply(200, "Join our team", { "Content-Type": "text/html" });
 
     const crawler = new Crawler(base);
     await crawler.crawl();
@@ -58,13 +62,9 @@ describe("Crawler", () => {
       .get("/")
       .reply(200, `<a href="/old-link">Redirect me</a>`, { "Content-Type": "text/html" });
 
-    nock(base)
-      .get("/old-link")
-      .reply(302, undefined, { "Location": "/new-link" });
+    nock(base).get("/old-link").reply(302, undefined, { Location: "/new-link" });
 
-    nock(base)
-      .get("/new-link")
-      .reply(200, "Done!", { "Content-Type": "text/html" });
+    nock(base).get("/new-link").reply(200, "Done!", { "Content-Type": "text/html" });
 
     const crawler = new Crawler(base);
     await crawler.crawl();

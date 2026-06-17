@@ -5,10 +5,13 @@ import { acquireComparisonSlot, releaseComparisonSlot } from "./slots";
 
 const ALLOWED_PROJECTS = ["aryanf-test", "pretend-public"];
 
+/**
+ *
+ */
 export function validateProject(projectId: string): void {
   if (!ALLOWED_PROJECTS.includes(projectId)) {
     throw new FirebaseError(
-      `Invalid project ID "${projectId}". This tool can only run on projects: ${ALLOWED_PROJECTS.join(", ")}`
+      `Invalid project ID "${projectId}". This tool can only run on projects: ${ALLOWED_PROJECTS.join(", ")}`,
     );
   }
 }
@@ -34,7 +37,7 @@ export async function runGarbageCollection(projectId: string, location: string):
           logger.info(`Found stale lock on comparison slot backend ${backendId}. Unlocking...`);
           try {
             await apphosting.updateBackend(projectId, location, backendId, {
-              labels: { ...backend.labels, status: "idle" }
+              labels: { ...backend.labels, status: "idle" },
             });
           } catch (err) {
             logger.debug(`Failed to unlock stale backend ${backendId}: ${err}`);
@@ -45,20 +48,23 @@ export async function runGarbageCollection(projectId: string, location: string):
   }
 }
 
+/**
+ *
+ */
 export async function runAutonomousComparison(
   projectId: string,
   location: string,
   localPath: string,
-  options: any
+  options: any,
 ): Promise<void> {
   validateProject(projectId);
   await runGarbageCollection(projectId, location);
 
-  const slot = await acquireComparisonSlot(projectId, location);
+  const slot = await acquireComparisonSlot(projectId, location, 2);
 
   const cleanUpAndExit = async () => {
     logger.warn("\nProcess interrupted. Cleaning up comparison slot lock before exit...");
-    await releaseComparisonSlot(projectId, location, slot.index);
+    await releaseComparisonSlot(projectId, location, slot.index, 2);
     process.exit(1);
   };
 
@@ -67,11 +73,13 @@ export async function runAutonomousComparison(
 
   try {
     // Setup secrets, deploy, and compare...
-    logger.info(`Using Comparison Slot ${slot.index} (Backend A: ${slot.backendIdA}, Backend B: ${slot.backendIdB})`);
+    logger.info(
+      `Using Comparison Slot ${slot.index} (Backend A: ${slot.backendIds[0]}, Backend B: ${slot.backendIds[1]})`,
+    );
   } finally {
     process.off("SIGINT", cleanUpAndExit);
     process.off("SIGTERM", cleanUpAndExit);
 
-    await releaseComparisonSlot(projectId, location, slot.index);
+    await releaseComparisonSlot(projectId, location, slot.index, 2);
   }
 }

@@ -7,6 +7,7 @@ import * as apphosting from "../../gcp/apphosting";
 import * as rollout from "../rollout";
 import * as deployUtil from "../../deploy/apphosting/util";
 import { getProjectNumber } from "../../getProjectNumber";
+import { apphostingOrigin } from "../../api";
 import * as secrets from "./secrets";
 import * as slots from "./slots";
 import * as lifecycle from "./lifecycle";
@@ -20,14 +21,18 @@ import * as poller from "../../operation-poller";
 import { logger } from "../../logger";
 
 const apphostingPollerOptions = {
-  apiOrigin: apphosting.apphostingOrigin(),
+  apiOrigin: apphostingOrigin(),
   apiVersion: "v1beta",
   backoff: 200,
   maxBackoff: 10000,
   timeout: 120000, // 2 minutes
 };
 
-async function prepareLocalBuildDir(rootDir: string, scratchDir: string, backendId: string): Promise<void> {
+async function prepareLocalBuildDir(
+  rootDir: string,
+  scratchDir: string,
+  backendId: string,
+): Promise<void> {
   const ignore = deployUtil.resolveIgnorePatterns({ backendId, rootDir: "/", ignore: [] });
   fs.rmSync(scratchDir, { recursive: true, force: true });
   fs.mkdirSync(scratchDir, { recursive: true });
@@ -51,20 +56,23 @@ async function deployToBackend(
   appPath: string,
   bucketName: string,
   useLocalBuild: boolean,
-  runtimeVersion?: string
+  runtimeVersion?: string,
 ): Promise<void> {
   let archivePath: string;
   let buildInput: any;
 
   if (runtimeVersion) {
     logger.info(`Patching runtime version for backend ${backendId} to ${runtimeVersion}...`);
-    const op = await apphosting.updateBackend(projectId, location, backendId, {
-      runtime: { value: runtimeVersion }
-    });
+    const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+    const op = await apphosting.client.patch<any, apphosting.Operation>(
+      name,
+      { name, runtime: { value: runtimeVersion } },
+      { queryParams: { updateMask: "runtime" } },
+    );
     await poller.pollOperation<apphosting.Backend>({
       ...apphostingPollerOptions,
       pollerName: `update-runtime-${backendId}`,
-      operationResourceName: op.name,
+      operationResourceName: op.body.name,
     });
   }
 
@@ -72,27 +80,27 @@ async function deployToBackend(
     logger.info(`Running local build for slot backend ${backendId}...`);
     const pathHash = crypto.createHash("md5").update(appPath).digest("hex").substring(0, 8);
     const scratchDir = path.join(os.tmpdir(), `apphosting-local-build-${backendId}-${pathHash}`);
-    
+
     await prepareLocalBuildDir(appPath, scratchDir, backendId);
-    
+
     const { outputFiles, buildConfig } = await localBuild(
       projectId,
       scratchDir,
       {},
-      { nonInteractive: true }
+      { nonInteractive: true },
     );
 
     archivePath = await deployUtil.createLocalBuildTarArchive(
       { backendId, rootDir: "/", ignore: [] },
       scratchDir,
-      outputFiles
+      outputFiles,
     );
 
     logger.info(`Uploading local build bundle for ${backendId}...`);
     await gcs.uploadObject(
       { file: archivePath, stream: fs.createReadStream(archivePath) },
       bucketName,
-      gcs.ContentType.TAR
+      gcs.ContentType.TAR,
     );
 
     const uri = `gs://${bucketName}/${path.basename(archivePath)}`;
@@ -104,21 +112,21 @@ async function deployToBackend(
           rootDirectory: "/",
           runCommand: buildConfig.runCommand,
           env: buildConfig.env,
-        }
-      }
+        },
+      },
     };
   } else {
     logger.info(`Packaging source archive for ${backendId}...`);
     archivePath = await deployUtil.createSourceDeployArchive(
       { backendId, rootDir: "/", ignore: [] },
-      appPath
+      appPath,
     );
 
     logger.info(`Uploading source archive for ${backendId}...`);
     await gcs.uploadObject(
       { file: archivePath, stream: fs.createReadStream(archivePath) },
       bucketName,
-      gcs.ContentType.ZIP
+      gcs.ContentType.ZIP,
     );
 
     const uri = `gs://${bucketName}/${path.basename(archivePath)}`;
@@ -126,9 +134,9 @@ async function deployToBackend(
       source: {
         archive: {
           userStorageUri: uri,
-          rootDirectory: "/"
-        }
-      }
+          rootDirectory: "/",
+        },
+      },
     };
   }
 
@@ -137,54 +145,85 @@ async function deployToBackend(
     projectId,
     location,
     backendId,
-    buildInput
+    buildInput,
   });
+
+  // Wait until the backend is fully done reconciling after the rollout.
+  logger.info(`Waiting for backend ${backendId} to finish reconciling...`);
+  let backendIsReconciling = true;
+  while (backendIsReconciling) {
+    const b = await apphosting.client.get<any>(
+      `projects/${projectId}/locations/${location}/backends/${backendId}`,
+    );
+    backendIsReconciling = !!b.body.reconciling;
+    if (backendIsReconciling) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
 }
 
+export interface VariantConfig {
+  id?: string;
+  path: string;
+  localBuild?: boolean;
+  runtime?: string;
+}
+
+/**
+ *
+ */
 export async function runCompareSuite(
   projectId: string,
   location: string,
-  appPathA: string,
-  appPathB: string,
+  variants: VariantConfig[],
   options: {
     outputDir?: string;
-    localBuildA?: boolean;
-    localBuildB?: boolean;
-    runtimeA?: string;
-    runtimeB?: string;
-  } = {}
+  } = {},
 ): Promise<void> {
   lifecycle.validateProject(projectId);
   await lifecycle.runGarbageCollection(projectId, location);
 
   const projectNumber = await getProjectNumber({ projectId });
-  
-  // 1. Acquire Comparison Slot
-  const slot = await slots.acquireComparisonSlot(projectId, location);
-  logger.info(`Acquired Comparison Slot ${slot.index}. Deploying A (localBuild: ${!!options.localBuildA}, runtime: ${options.runtimeA || "default"}): ${slot.backendIdA}, B (localBuild: ${!!options.localBuildB}, runtime: ${options.runtimeB || "default"}): ${slot.backendIdB}...`);
 
-  let secretsMappings: secrets.SecretMapping[] = [];
+  // 1. Acquire Comparison Slot for N variants
+  const slot = await slots.acquireComparisonSlot(projectId, location, variants.length);
+  logger.info(
+    `Acquired Comparison Slot ${slot.index} with ${variants.length} backends: ${slot.backendIds.join(", ")}`,
+  );
+
+  let secretsMappings: secrets.SecretMapping[][] = [];
 
   const cleanUp = async () => {
     logger.warn("\nInterrupted. Restoring slot and deleting mock secrets...");
-    await secrets.cleanupSandboxSecrets(projectId, secretsMappings);
-    await slots.releaseComparisonSlot(projectId, location, slot.index);
+    for (const mapping of secretsMappings) {
+      await secrets.cleanupSandboxSecrets(projectId, mapping);
+    }
+    await slots.releaseComparisonSlot(projectId, location, slot.index, variants.length);
+    process.exit(1);
   };
   process.on("SIGINT", cleanUp);
   process.on("SIGTERM", cleanUp);
 
   try {
-    // 2. Setup mock secrets
-    secretsMappings = await secrets.setupSandboxSecrets(
-      projectId,
-      location,
-      appPathA,
-      slot.index,
-      slot.backendIdA,
-      slot.backendIdB
+    // 2. Setup mock secrets per unique codebase path
+    const uniquePaths = Array.from(new Set(variants.map((v) => v.path)));
+    secretsMappings = await Promise.all(
+      uniquePaths.map((uniquePath) => {
+        const pathBackendIds = variants
+          .map((v, i) => (v.path === uniquePath ? slot.backendIds[i] : null))
+          .filter((id): id is string => id !== null);
+
+        return secrets.setupSandboxSecrets(
+          projectId,
+          location,
+          uniquePath,
+          slot.index,
+          pathBackendIds
+        );
+      })
     );
 
-    // 3. Package, Upload and Deploy Source A & B
+    // 3. Package, Upload and Deploy Source for all N variants
     const bucketName = `firebaseapphosting-sources-${projectNumber}-${location.toLowerCase()}`;
     await gcs.upsertBucket({
       product: "apphosting",
@@ -197,65 +236,94 @@ export async function runCompareSuite(
         lifecycle: {
           rule: [
             {
-              action: {
-                type: "Delete",
-              },
-              condition: {
-                age: 30,
-              },
+              action: { type: "Delete" },
+              condition: { age: 30 },
             },
           ],
         },
-      }
+      },
     });
 
-    await Promise.all([
-      deployToBackend(projectId, location, slot.backendIdA, appPathA, bucketName, !!options.localBuildA, options.runtimeA),
-      deployToBackend(projectId, location, slot.backendIdB, appPathB, bucketName, !!options.localBuildB, options.runtimeB)
-    ]);
+    await Promise.all(
+      variants.map((v, i) =>
+        deployToBackend(
+          projectId,
+          location,
+          slot.backendIds[i],
+          v.path,
+          bucketName,
+          !!v.localBuild,
+          v.runtime,
+        ),
+      ),
+    );
 
-    logger.info("Rollouts completed successfully!");
+    logger.info("All N-Way Rollouts completed successfully!");
 
-    // 4. Route Discovery
-    const discoveredStaticRoutes = await discover.discoverRoutes(appPathA);
-    logger.info(`Discovered ${discoveredStaticRoutes.length} static routes from manifests/sitemap.`);
+    // 4. Retrieve Live URLs for all variants
+    const backendDataList = await Promise.all(
+      slot.backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
+    );
+    const urls = backendDataList.map((b) => (b.uri.startsWith("http") ? b.uri : `https://${b.uri}`));
 
-    // 5. Retrieve Live URLs and Run Crawler & Compare
-    const [bA, bB] = await Promise.all([
-      apphosting.getBackend(projectId, location, slot.backendIdA),
-      apphosting.getBackend(projectId, location, slot.backendIdB)
-    ]);
+    urls.forEach((url, i) => {
+      logger.info(`Variant ${variants[i].id || i} URL: ${url}`);
+    });
 
-    const urlA = bA.uri;
-    const urlB = bB.uri;
+    // 5. Route Discovery & Crawling across all variants
+    const allRoutesSet = new Set<string>();
 
-    logger.info(`Backend A URL: ${urlA}`);
-    logger.info(`Backend B URL: ${urlB}`);
+    for (let i = 0; i < variants.length; i++) {
+      const v = variants[i];
+      const url = urls[i];
 
-    logger.info("Crawling Backend A for dynamic link discovery...");
-    const crawler = new Crawler(urlA);
-    await crawler.crawl();
-    const crawledRoutes = crawler.getRoutes();
-    logger.info(`Crawler discovered ${crawledRoutes.length} routes.`);
+      const discoveredStaticRoutes = await discover.discoverRoutes(v.path);
+      discoveredStaticRoutes.forEach((r) => allRoutesSet.add(r));
 
-    const allRoutes = Array.from(new Set([...discoveredStaticRoutes, ...crawledRoutes])).sort();
-
-    logger.info(`Commencing comparison of ${allRoutes.length} routes...`);
-    const results: compare.ComparisonResult[] = [];
-    for (const route of allRoutes) {
-      logger.info(`Comparing route: ${route}`);
-      const res = await compare.compareRoute(route, urlA, urlB);
-      results.push(res);
+      logger.info(`Crawling Variant ${v.id || i} for dynamic link discovery...`);
+      const crawler = new Crawler(url);
+      await crawler.crawl();
+      const crawledRoutes = crawler.getRoutes();
+      crawledRoutes.forEach((r) => allRoutesSet.add(r));
     }
 
-    // 6. Report Generation
-    await reporter.generateReport(projectId, location, slot.backendIdA, slot.backendIdB, results, options.outputDir);
+    const allRoutes = Array.from(allRoutesSet).sort();
+    logger.info(`Total unique routes discovered across matrix: ${allRoutes.length}`);
 
+    // 6. Report Generation for all unique pairs (Matrix Diffing)
+    for (let i = 0; i < variants.length; i++) {
+      for (let j = i + 1; j < variants.length; j++) {
+        logger.info(
+          `\nGenerating Comparison Report: ${variants[i].id || i} vs ${variants[j].id || j}...`,
+        );
+
+        const results: compare.ComparisonResult[] = [];
+        for (const route of allRoutes) {
+          const res = await compare.compareRoute(route, urls[i], urls[j]);
+          results.push(res);
+        }
+
+        const pairOutputDir = options.outputDir
+          ? path.join(options.outputDir, `${variants[i].id || i}-vs-${variants[j].id || j}`)
+          : undefined;
+
+        await reporter.generateReport(
+          projectId,
+          location,
+          slot.backendIds[i],
+          slot.backendIds[j],
+          results,
+          pairOutputDir,
+        );
+      }
+    }
   } finally {
     process.off("SIGINT", cleanUp);
     process.off("SIGTERM", cleanUp);
 
-    await secrets.cleanupSandboxSecrets(projectId, secretsMappings);
-    await slots.releaseComparisonSlot(projectId, location, slot.index);
+    for (const mapping of secretsMappings) {
+      await secrets.cleanupSandboxSecrets(projectId, mapping);
+    }
+    await slots.releaseComparisonSlot(projectId, location, slot.index, variants.length);
   }
 }

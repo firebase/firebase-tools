@@ -8,7 +8,10 @@ describe("Report Generator", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = path.join(process.cwd(), "scratch-test-report-" + Math.random().toString(36).substring(7));
+    tempDir = path.join(
+      process.cwd(),
+      "scratch-test-report-" + Math.random().toString(36).substring(7),
+    );
     fs.ensureDirSync(tempDir);
   });
 
@@ -25,7 +28,7 @@ describe("Report Generator", () => {
         expectedHeaderVariations: [],
         bodySimilarity: 1.0,
         bodyDiff: "",
-        isBinary: false
+        isBinary: false,
       },
       {
         route: "/about",
@@ -34,8 +37,8 @@ describe("Report Generator", () => {
         expectedHeaderVariations: [],
         bodySimilarity: 0.95,
         bodyDiff: "HTML content mismatch",
-        isBinary: false
-      }
+        isBinary: false,
+      },
     ];
 
     await generateReport(
@@ -44,7 +47,7 @@ describe("Report Generator", () => {
       "compare-slot-1-a",
       "compare-slot-1-b",
       results,
-      tempDir
+      tempDir,
     );
 
     const jsonPath = path.join(tempDir, "summary.json");

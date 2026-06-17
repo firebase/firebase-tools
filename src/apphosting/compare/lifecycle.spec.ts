@@ -24,7 +24,7 @@ describe("Lifecycle Manager", () => {
 
     it("should throw on non-whitelisted projects", () => {
       expect(() => validateProject("my-secret-project")).to.throw(
-        /Invalid project ID "my-secret-project"/
+        /Invalid project ID "my-secret-project"/,
       );
     });
   });
@@ -40,14 +40,14 @@ describe("Lifecycle Manager", () => {
           {
             name: "projects/test/locations/us-central1/backends/compare-slot-1-a",
             labels: { status: "busy", type: "comparison-sandbox" },
-            updateTime: threeHoursAgo
+            updateTime: threeHoursAgo,
           },
           {
             name: "projects/test/locations/us-central1/backends/compare-slot-1-b",
             labels: { status: "busy", type: "comparison-sandbox" },
-            updateTime: oneHourAgo
-          }
-        ]
+            updateTime: oneHourAgo,
+          },
+        ],
       });
 
       updateBackendStub.resolves({ name: "op-name" });

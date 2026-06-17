@@ -10,6 +10,8 @@ export interface ComparisonResult {
   bodySimilarity: number; // 0.0 to 1.0
   bodyDiff: string;
   isBinary: boolean;
+  bodyA?: string;
+  bodyB?: string;
 }
 
 const BEHAVIORAL_HEADERS = [
@@ -18,35 +20,38 @@ const BEHAVIORAL_HEADERS = [
   "content-type",
   "content-encoding",
   "location",
-  "strict-transport-security"
+  "strict-transport-security",
 ];
 
 const BINARY_CONTENT_TYPES = [
   "image/",
   "application/pdf",
   "application/zip",
-  "application/octet-stream"
+  "application/octet-stream",
 ];
 
 function isBinaryContentType(contentType: string): boolean {
   const normalized = contentType.toLowerCase();
-  return BINARY_CONTENT_TYPES.some(type => normalized.includes(type));
+  return BINARY_CONTENT_TYPES.some((type) => normalized.includes(type));
 }
 
+/**
+ *
+ */
 export async function compareRoute(
   route: string,
   urlA: string,
   urlB: string,
-  options: { headers?: Record<string, string> } = {}
+  options: { headers?: Record<string, string> } = {},
 ): Promise<ComparisonResult> {
   const fetchOptions = {
     headers: options.headers || {},
-    redirect: "manual" as const
+    redirect: "manual" as const,
   };
 
   const [resA, resB] = await Promise.all([
     fetch(`${urlA}${route}`, fetchOptions),
-    fetch(`${urlB}${route}`, fetchOptions)
+    fetch(`${urlB}${route}`, fetchOptions),
   ]);
 
   const result: ComparisonResult = {
@@ -56,13 +61,13 @@ export async function compareRoute(
     expectedHeaderVariations: [],
     bodySimilarity: 1.0,
     bodyDiff: "",
-    isBinary: false
+    isBinary: false,
   };
 
   // 1. Compare Headers
   const allHeaderKeys = new Set([
     ...Array.from(resA.headers.keys()),
-    ...Array.from(resB.headers.keys())
+    ...Array.from(resB.headers.keys()),
   ]);
 
   for (const key of allHeaderKeys) {
@@ -82,13 +87,13 @@ export async function compareRoute(
   const contentTypeB = resB.headers.get("content-type") || "";
   if (isBinaryContentType(contentTypeA) || isBinaryContentType(contentTypeB)) {
     result.isBinary = true;
-    
+
     const bufA = await resA.buffer();
     const bufB = await resB.buffer();
-    
+
     const sizeA = bufA.length;
     const sizeB = bufB.length;
-    
+
     if (sizeA !== sizeB) {
       result.bodySimilarity = 0.0;
       result.bodyDiff = `Binary size mismatch: ${sizeA} bytes vs ${sizeB} bytes`;
@@ -106,8 +111,21 @@ export async function compareRoute(
   }
 
   // 3. Compare Text Body
-  const bodyA = await resA.text();
-  const bodyB = await resB.text();
+  let bodyA = await resA.text();
+  let bodyB = await resB.text();
+
+  if (contentTypeA.includes("text/html")) {
+    try {
+      const prettier = require("prettier");
+      bodyA = await prettier.format(bodyA, { parser: "html" });
+      bodyB = await prettier.format(bodyB, { parser: "html" });
+    } catch (e: any) {
+      // Fallback to unformatted if prettier fails
+    }
+  }
+  
+  result.bodyA = bodyA;
+  result.bodyB = bodyB;
 
   if (bodyA !== bodyB) {
     result.bodySimilarity = MyersDiffEngine.getSimilarity(bodyA, bodyB);

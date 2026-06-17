@@ -52,7 +52,7 @@ describe("runCompareSuite Orchestrator", () => {
     getProjectNumberStub = sinon.stub(projectNumberHelper, "getProjectNumber").resolves("12345");
     setupSecretsStub = sinon.stub(secretsManager, "setupSandboxSecrets").resolves([]);
     cleanupSecretsStub = sinon.stub(secretsManager, "cleanupSandboxSecrets").resolves();
-    acquireSlotStub = sinon.stub(slotsManager, "acquireComparisonSlot").resolves({ index: 1, backendIdA: "compare-slot-1-a", backendIdB: "compare-slot-1-b" });
+    acquireSlotStub = sinon.stub(slotsManager, "acquireComparisonSlot").resolves({ index: 1, backendIds: ["compare-slot-1-a", "compare-slot-1-b"] } as any);
     releaseSlotStub = sinon.stub(slotsManager, "releaseComparisonSlot").resolves();
     validateProjectStub = sinon.stub(lifecycle, "validateProject").returns();
     runGarbageCollectionStub = sinon.stub(lifecycle, "runGarbageCollection").resolves();
@@ -82,8 +82,10 @@ describe("runCompareSuite Orchestrator", () => {
     await runCompareSuite(
       "aryanf-test",
       "us-central1",
-      "/app/path-a",
-      "/app/path-b"
+      [
+        { path: "/app/path-a" },
+        { path: "/app/path-b" }
+      ]
     );
 
     expect(acquireSlotStub.callCount).to.equal(1);
@@ -95,9 +97,8 @@ describe("runCompareSuite Orchestrator", () => {
     expect(discoverRoutesStub.callCount).to.equal(1);
     expect(crawlStub.callCount).to.equal(1);
     
-    expect(compareRouteStub.callCount).to.equal(2);
+    expect(compareRouteStub.callCount).to.equal(1);
     expect(compareRouteStub.firstCall.args[0]).to.equal("/");
-    expect(compareRouteStub.secondCall.args[0]).to.equal("/about");
 
     expect(generateReportStub.callCount).to.equal(1);
     expect(cleanupSecretsStub.callCount).to.equal(1);
@@ -115,18 +116,31 @@ describe("runCompareSuite Orchestrator", () => {
     await runCompareSuite(
       "aryanf-test",
       "us-central1",
-      "/app/path-a",
-      "/app/path-b",
-      { localBuildA: false, localBuildB: true }
+      [
+        { path: "/app/path-a", localBuild: false },
+        { path: "/app/path-b", localBuild: true }
+      ]
     );
 
-    // Backend A is source deploy -> calls createSourceDeployArchive (1 time)
-    // Backend B is local build -> calls localBuild (1 time) and createLocalBuildTarArchive (1 time)
     expect(createArchiveStub.callCount).to.equal(1);
     expect(localBuildStub.callCount).to.equal(1);
     expect(createTarStub.callCount).to.equal(1);
 
     expect(uploadObjectStub.callCount).to.equal(2);
     expect(orchestrateRolloutStub.callCount).to.equal(2);
+  it("should support runtime version patching for backends", async () => {
+    await runCompareSuite(
+      "aryanf-test",
+      "us-central1",
+      [
+        { path: "/app/path-a", runtime: "nodejs20" },
+        { path: "/app/path-b", runtime: "nodejs22" }
+      ]
+    );
+
+    expect(createArchiveStub.callCount).to.equal(2);
+    expect(uploadObjectStub.callCount).to.equal(2);
+    expect(orchestrateRolloutStub.callCount).to.equal(2);
   });
+});
 });

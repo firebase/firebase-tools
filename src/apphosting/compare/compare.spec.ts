@@ -14,11 +14,11 @@ describe("compareRoute", () => {
   it("should match identical text pages", async () => {
     nock("https://backend-a.com").get("/").reply(200, "hello world", {
       "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600"
+      "Cache-Control": "public, max-age=3600",
     });
     nock("https://backend-b.com").get("/").reply(200, "hello world", {
       "Content-Type": "text/html",
-      "Cache-Control": "public, max-age=3600"
+      "Cache-Control": "public, max-age=3600",
     });
 
     const res = await compareRoute("/", "https://backend-a.com", "https://backend-b.com");
@@ -39,17 +39,17 @@ describe("compareRoute", () => {
   it("should flag behavioral header mismatches but record dynamic ones as expected variations", async () => {
     nock("https://backend-a.com").get("/").reply(200, "ok", {
       "Cache-Control": "public, max-age=3600",
-      "Date": "Wed, 17 Jun 2026 01:00:00 GMT"
+      Date: "Wed, 17 Jun 2026 01:00:00 GMT",
     });
     nock("https://backend-b.com").get("/").reply(200, "ok", {
       "Cache-Control": "no-cache",
-      "Date": "Wed, 17 Jun 2026 01:05:00 GMT"
+      Date: "Wed, 17 Jun 2026 01:05:00 GMT",
     });
 
     const res = await compareRoute("/", "https://backend-a.com", "https://backend-b.com");
     expect(res.headerMismatches).to.have.lengthOf(1);
     expect(res.headerMismatches[0].header.toLowerCase()).to.equal("cache-control");
-    
+
     expect(res.expectedHeaderVariations).to.have.lengthOf(1);
     expect(res.expectedHeaderVariations[0].header.toLowerCase()).to.equal("date");
   });
@@ -60,24 +60,32 @@ describe("compareRoute", () => {
     const binC = Buffer.from([1, 2, 3, 5]);
 
     nock("https://backend-a.com").get("/img.png").reply(200, binA, {
-      "Content-Type": "image/png"
+      "Content-Type": "image/png",
     });
     nock("https://backend-b.com").get("/img.png").reply(200, binB, {
-      "Content-Type": "image/png"
+      "Content-Type": "image/png",
     });
 
-    const resMatch = await compareRoute("/img.png", "https://backend-a.com", "https://backend-b.com");
+    const resMatch = await compareRoute(
+      "/img.png",
+      "https://backend-a.com",
+      "https://backend-b.com",
+    );
     expect(resMatch.isBinary).to.be.true;
     expect(resMatch.bodySimilarity).to.equal(1.0);
 
     nock("https://backend-a.com").get("/img.png").reply(200, binA, {
-      "Content-Type": "image/png"
+      "Content-Type": "image/png",
     });
     nock("https://backend-b.com").get("/img.png").reply(200, binC, {
-      "Content-Type": "image/png"
+      "Content-Type": "image/png",
     });
 
-    const resMismatch = await compareRoute("/img.png", "https://backend-a.com", "https://backend-b.com");
+    const resMismatch = await compareRoute(
+      "/img.png",
+      "https://backend-a.com",
+      "https://backend-b.com",
+    );
     expect(resMismatch.isBinary).to.be.true;
     expect(resMismatch.bodySimilarity).to.equal(0.0);
   });

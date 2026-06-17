@@ -13,13 +13,15 @@ export interface SecretMapping {
   mockValue: string;
 }
 
+/**
+ *
+ */
 export async function setupSandboxSecrets(
   projectId: string,
   location: string,
   appPath: string,
   slotIndex: number,
-  backendIdA: string,
-  backendIdB: string
+  backendIds: string[],
 ): Promise<SecretMapping[]> {
   const yamlPath = path.join(appPath, "apphosting.yaml");
   if (!(await fs.pathExists(yamlPath))) {
@@ -35,24 +37,21 @@ export async function setupSandboxSecrets(
   const projectNumber = await getProjectNumber({ projectId });
   const mappings: SecretMapping[] = [];
 
-  // Fetch backends to extract their service accounts
-  const [backendA, backendB] = await Promise.all([
-    apphosting.getBackend(projectId, location, backendIdA),
-    apphosting.getBackend(projectId, location, backendIdB)
-  ]);
+  // Fetch all backends to extract their service accounts
+  const backends = await Promise.all(
+    backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
+  );
 
-  const [accountsA, accountsB] = await Promise.all([
-    serviceAccountsForBackend(projectNumber, backendA),
-    serviceAccountsForBackend(projectNumber, backendB)
-  ]);
+  const multiAccountsList = await Promise.all(
+    backends.map(async (b) => toMulti(await serviceAccountsForBackend(projectNumber, b))),
+  );
 
-  const multiAccountsA = toMulti(accountsA);
-  const multiAccountsB = toMulti(accountsB);
-
-  // Combine build/run service accounts from both backends
+  // Combine build/run service accounts from all backends
   const combinedAccounts = {
-    buildServiceAccounts: Array.from(new Set([...multiAccountsA.buildServiceAccounts, ...multiAccountsB.buildServiceAccounts])),
-    runServiceAccounts: Array.from(new Set([...multiAccountsA.runServiceAccounts, ...multiAccountsB.runServiceAccounts]))
+    buildServiceAccounts: Array.from(
+      new Set(multiAccountsList.flatMap((a) => a.buildServiceAccounts)),
+    ),
+    runServiceAccounts: Array.from(new Set(multiAccountsList.flatMap((a) => a.runServiceAccounts))),
   };
 
   for (const [envName, envVal] of secretEntries) {
@@ -68,7 +67,7 @@ export async function setupSandboxSecrets(
     if (!exists) {
       await csm.createSecret(projectId, mockSecretName, {
         "created-by": "apphosting-compare-tool",
-        "slot": String(slotIndex)
+        slot: String(slotIndex),
       });
     }
 
@@ -78,18 +77,26 @@ export async function setupSandboxSecrets(
     mappings.push({
       originalName: originalSecretName,
       mockSecretName,
-      mockValue
+      mockValue,
     });
   }
 
   return mappings;
 }
 
-export async function cleanupSandboxSecrets(projectId: string, mappings: SecretMapping[]): Promise<void> {
+/**
+ *
+ */
+export async function cleanupSandboxSecrets(
+  projectId: string,
+  mappings: SecretMapping[],
+): Promise<void> {
   if (mappings.length === 0) return;
 
   logger.info("Cleaning up sandboxed secrets in Secret Manager...");
   await Promise.allSettled(
-    mappings.map(m => csm.deleteSecret(projectId, m.mockSecretName).catch(e => logger.debug(e)))
+    mappings.map((m) =>
+      csm.deleteSecret(projectId, m.mockSecretName).catch((e) => logger.debug(e)),
+    ),
   );
 }
