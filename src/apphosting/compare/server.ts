@@ -942,17 +942,9 @@ function getDashboardHtml(): string {
           tdCell.dataset.codebaseA = vA.includes("/") ? getFamily(vA.split("/")[0]) : "";
           tdCell.dataset.codebaseB = vB.includes("/") ? getFamily(vB.split("/")[0]) : "";
 
-          // Color coding based on similarity
-          let bg = "rgba(239, 68, 68, 0.85)"; // Red (low similarity)
-          if (percent === 100) {
-            bg = "rgba(16, 185, 129, 0.85)"; // Bright green
-          } else if (percent >= 98) {
-            bg = "rgba(139, 92, 246, 0.85)"; // Indigo / high parity
-          } else if (percent >= 95) {
-            bg = "rgba(59, 130, 246, 0.85)"; // Blue
-          } else if (percent >= 90) {
-            bg = "rgba(245, 158, 11, 0.85)"; // Orange/Yellow
-          }
+          // Continuous red-to-green gradient interpolation (0% = HSL 0, 100% = HSL 120)
+          const hue = similarity * 120;
+          const bg = \`hsla(\${hue}, 70%, 42%, 0.85)\`;
 
           tdCell.style.backgroundColor = bg;
           tdCell.title = \`Similarity between \${vA} and \${vB}: \${percent}%\`;
