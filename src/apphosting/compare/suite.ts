@@ -16,18 +16,32 @@ import { FirebaseError } from "../../error";
 import { sleep } from "../../utils";
 
 
-const apphostingPollerOptions = {
+
+const apphostingPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: apphostingOrigin(),
   apiVersion: "v1beta",
   backoff: 200,
   maxBackoff: 10000,
-  timeout: 120000, // 2 minutes
+  masterTimeout: 120000, // 2 minutes
 };
 
 import * as cp from "child_process";
 import * as util from "util";
 
 export const createdConfigs = new Set<string>();
+
+interface Destroyable {
+  destroy(): void;
+}
+
+function isDestroyable(obj: unknown): obj is Destroyable {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "destroy" in obj &&
+    typeof (obj as Record<string, unknown>).destroy === "function"
+  );
+}
 
 async function deployToBackend(
   projectId: string,
@@ -41,7 +55,7 @@ async function deployToBackend(
   if (runtimeVersion) {
     logger.info(`Patching runtime version for backend ${backendId} to ${runtimeVersion}...`);
     const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
-    const op = await apphosting.client.patch<any, apphosting.Operation>(
+    const op = await apphosting.client.patch<{ name: string; runtime: { value: string } }, apphosting.Operation>(
       name,
       { name, runtime: { value: runtimeVersion } },
       { queryParams: { updateMask: "runtime" } },
@@ -80,9 +94,10 @@ async function deployToBackend(
     const execAsync = util.promisify(cp.exec);
     const { stdout, stderr } = await execAsync(cmd, { cwd: appPath, maxBuffer: 1024 * 1024 * 100 });
     logger.debug(`Deploy output for ${backendId}:\n${stdout}`);
-  } catch (err: any) {
-    logger.error(`Deploy for ${backendId} failed!\nSTDOUT:\n${err.stdout}\nSTDERR:\n${err.stderr}`);
-    throw new FirebaseError(`Failed to deploy variant to ${backendId}.`, { original: err });
+  } catch (err: unknown) {
+    const execErr = err as { stdout?: string; stderr?: string };
+    logger.error(`Deploy for ${backendId} failed!\nSTDOUT:\n${execErr.stdout || ""}\nSTDERR:\n${execErr.stderr || ""}`);
+    throw new FirebaseError(`Failed to deploy variant to ${backendId}.`, { original: err instanceof Error ? err : undefined });
   } finally {
     await fs.remove(configPath);
     createdConfigs.delete(configPath);
@@ -139,8 +154,8 @@ async function recordVariant(
       const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
       if (contentLength > 2 * 1024 * 1024) {
         body = `(omitted - size ${contentLength} bytes exceeds 2MB limit)`;
-        if (res.body) {
-          (res.body as any).destroy();
+        if (res.body && isDestroyable(res.body)) {
+          res.body.destroy();
         }
       } else {
         const buffer = await res.buffer();

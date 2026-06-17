@@ -9,6 +9,19 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'");
 }
 
+interface Destroyable {
+  destroy(): void;
+}
+
+function isDestroyable(obj: unknown): obj is Destroyable {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "destroy" in obj &&
+    typeof (obj as Record<string, unknown>).destroy === "function"
+  );
+}
+
 export class Crawler {
   private visited = new Set<string>();
   private discoveredRoutes = new Set<string>();
@@ -51,8 +64,8 @@ export class Crawler {
 
       // Handle Redirects
       if ([301, 302, 307, 308].includes(res.status)) {
-        if (res.body) {
-          (res.body as any).destroy();
+        if (res.body && isDestroyable(res.body)) {
+          res.body.destroy();
         }
         const location = res.headers.get("location");
         if (location) {
@@ -67,8 +80,8 @@ export class Crawler {
       // Only parse HTML responses
       const contentType = res.headers.get("content-type") || "";
       if (!contentType.toLowerCase().includes("text/html")) {
-        if (res.body) {
-          (res.body as any).destroy();
+        if (res.body && isDestroyable(res.body)) {
+          res.body.destroy();
         }
         return;
       }

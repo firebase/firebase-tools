@@ -18,6 +18,45 @@ export interface VariantRecording {
   routes: Record<string, RouteResponse>;
 }
 
+export function isRouteResponse(obj: unknown): obj is RouteResponse {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  return (
+    typeof o.status === "number" &&
+    typeof o.headers === "object" && o.headers !== null &&
+    typeof o.body === "string" &&
+    typeof o.isBinary === "boolean"
+  );
+}
+
+export function isVariantRecording(obj: unknown): obj is VariantRecording {
+  if (typeof obj !== "object" || obj === null) return false;
+  const o = obj as Record<string, unknown>;
+  
+  if (!(
+    typeof o.id === "string" &&
+    typeof o.testCaseName === "string" &&
+    typeof o.timestamp === "string" &&
+    typeof o.url === "string" &&
+    typeof o.routes === "object" && o.routes !== null
+  )) {
+    return false;
+  }
+
+  const routes = o.routes as Record<string, unknown>;
+  for (const key of Object.keys(routes)) {
+    if (!isRouteResponse(routes[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
+}
+
 const CACHE_DIR = path.resolve(process.cwd(), "compare-cache");
 
 function getRecordingPath(testCaseName: string, variantId: string): string {
@@ -50,7 +89,11 @@ export async function loadRecording(testCaseName: string, variantId: string): Pr
   if (!(await fs.pathExists(filePath))) {
     throw new Error(`No recording found in cache for variant "${variantId}" under test case "${testCaseName}"`);
   }
-  return await fs.readJson(filePath);
+  const data = await fs.readJson(filePath);
+  if (!isVariantRecording(data)) {
+    throw new Error(`Invalid recording format in cache for variant "${variantId}" under test case "${testCaseName}"`);
+  }
+  return data;
 }
 
 /**
@@ -78,8 +121,12 @@ export async function listRecordings(): Promise<Record<string, string[]>> {
             for (const file of jsonFiles) {
               try {
                 const data = await fs.readJson(path.join(tcDir, file));
-                originalTestCaseName = data.testCaseName || tc;
-                variantIds.push(data.id || file.replace(/\.json$/, ""));
+                if (isVariantRecording(data)) {
+                  originalTestCaseName = data.testCaseName;
+                  variantIds.push(data.id);
+                } else {
+                  logger.debug(`Cache file ${file} does not match VariantRecording schema`);
+                }
               } catch (readErr) {
                 // If a file is partially written or corrupted, skip it
                 logger.debug(`Failed to read metadata for cache file: ${file}`, readErr);
@@ -90,15 +137,15 @@ export async function listRecordings(): Promise<Record<string, string[]>> {
             }
           }
         }
-      } catch (err: any) {
-        if (err.code === "ENOENT") {
+      } catch (err: unknown) {
+        if (isErrnoException(err) && err.code === "ENOENT") {
           continue; // Directory was concurrently deleted/moved
         }
         throw err;
       }
     }
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
+  } catch (err: unknown) {
+    if (isErrnoException(err) && err.code === "ENOENT") {
       return {};
     }
     throw err;
@@ -106,4 +153,5 @@ export async function listRecordings(): Promise<Record<string, string[]>> {
 
   return result;
 }
+
 

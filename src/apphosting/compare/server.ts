@@ -3,6 +3,7 @@ import * as http from "http";
 import { logger } from "../../logger";
 import * as cache from "./cache";
 import * as compare from "./compare";
+import { CompareResponse, MatrixResponse, DashboardComparisonResult } from "./types";
 
 export function startServer(port: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -15,23 +16,24 @@ export function startServer(port: number): Promise<void> {
     try {
       const recordings = await cache.listRecordings();
       res.json(recordings);
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: errMsg });
     }
   });
 
-  // API: Compare two cached recordings of a test case
   app.get("/api/compare", async (req, res) => {
     const { testCase, variantA, variantB } = req.query;
-    if (!testCase || !variantA || !variantB) {
-      res.status(400).json({ error: "Missing testCase, variantA, or variantB query parameters" });
+    if (typeof testCase !== "string" || typeof variantA !== "string" || typeof variantB !== "string") {
+      res.status(400).json({ error: "Missing or invalid query parameters: testCase, variantA, and variantB must be strings." });
       return;
     }
 
     try {
-      let recA, recB;
+      let recA: cache.VariantRecording;
+      let recB: cache.VariantRecording;
       if (testCase === "GLOBAL") {
-        if (typeof variantA !== "string" || typeof variantB !== "string" || !variantA.includes("/") || !variantB.includes("/")) {
+        if (!variantA.includes("/") || !variantB.includes("/")) {
           throw new Error("Invalid variant query parameters for GLOBAL testCase");
         }
         const [tcA, varA] = variantA.split("/");
@@ -39,8 +41,8 @@ export function startServer(port: number): Promise<void> {
         recA = await cache.loadRecording(tcA, varA);
         recB = await cache.loadRecording(tcB, varB);
       } else {
-        recA = await cache.loadRecording(testCase as string, variantA as string);
-        recB = await cache.loadRecording(testCase as string, variantB as string);
+        recA = await cache.loadRecording(testCase, variantA);
+        recB = await cache.loadRecording(testCase, variantB);
       }
 
       const allRoutes = Array.from(new Set([
@@ -48,7 +50,7 @@ export function startServer(port: number): Promise<void> {
         ...Object.keys(recB.routes)
       ])).sort();
 
-      const results: compare.ComparisonResult[] = [];
+      const results: DashboardComparisonResult[] = [];
       for (const route of allRoutes) {
         const resA = recA.routes[route];
         const resB = recB.routes[route];
@@ -69,46 +71,48 @@ export function startServer(port: number): Promise<void> {
         }
 
         const compResult = await compare.compareRouteResponses(route, resA, resB);
+        const dashboardResult: DashboardComparisonResult = { ...compResult };
 
         if (!resA.isBinary && !resB.isBinary) {
           const diff = require("diff");
-          const changes = diff.diffLines(compResult.bodyA || "", compResult.bodyB || "");
+          const changes = diff.diffLines(dashboardResult.bodyA || "", dashboardResult.bodyB || "");
           // Filter/map to minimal JSON to keep payload clean
-          (compResult as any).diffChanges = changes.map((c: any) => ({
+          dashboardResult.diffChanges = changes.map((c: any) => ({
             value: c.value,
             added: !!c.added,
             removed: !!c.removed
           }));
         }
 
-        results.push(compResult);
+        results.push(dashboardResult);
       }
 
-      res.json({
+      const responsePayload: CompareResponse = {
         testCase,
         variantA: recA.id,
         variantB: recB.id,
         urlA: recA.url,
         urlB: recB.url,
         results
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      };
+      res.json(responsePayload);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: errMsg });
     }
   });
 
-  // API: Get N x N pairwise similarity matrix for a test case
   app.get("/api/matrix", async (req, res) => {
     const { testCase } = req.query;
-    if (!testCase) {
-      res.status(400).json({ error: "Missing testCase query parameter" });
+    if (typeof testCase !== "string") {
+      res.status(400).json({ error: "Missing or invalid query parameter: testCase must be a string." });
       return;
     }
 
     try {
       const recordings = await cache.listRecordings();
       let variantsList: string[] = [];
-      const recMap: Record<string, any> = {};
+      const recMap: Record<string, cache.VariantRecording> = {};
 
       if (testCase === "GLOBAL") {
         for (const tc of Object.keys(recordings)) {
@@ -119,14 +123,15 @@ export function startServer(port: number): Promise<void> {
           }
         }
       } else {
-        variantsList = recordings[testCase as string] || [];
+        variantsList = recordings[testCase] || [];
         for (const v of variantsList) {
-          recMap[v] = await cache.loadRecording(testCase as string, v);
+          recMap[v] = await cache.loadRecording(testCase, v);
         }
       }
 
       if (variantsList.length === 0) {
-        res.json({ testCase, variants: [], matrix: {} });
+        const emptyPayload: MatrixResponse = { testCase, variants: [], matrix: {} };
+        res.json(emptyPayload);
         return;
       }
 
@@ -179,23 +184,27 @@ export function startServer(port: number): Promise<void> {
         }
       }
 
-      res.json({
+      const responsePayload: MatrixResponse = {
         testCase,
         variants: variantsList,
         matrix
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      };
+      res.json(responsePayload);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: errMsg });
     }
   });
 
-  // API: Render cached recording directly (bypasses iframe network requests)
   app.get("/api/render", async (req, res) => {
     const { testCase, variant, route } = req.query;
+    if (typeof testCase !== "string" || typeof variant !== "string" || typeof route !== "string") {
+      res.status(400).send("Missing or invalid query parameters: testCase, variant, and route must be strings.");
+      return;
+    }
     try {
-      if (!testCase || !variant || !route) throw new Error("Missing query parameters");
-      let tc = testCase as string;
-      let varId = variant as string;
+      let tc = testCase;
+      let varId = variant;
       if (tc === "GLOBAL") {
         const parts = varId.split("/");
         if (parts.length >= 2) {
@@ -204,7 +213,7 @@ export function startServer(port: number): Promise<void> {
         }
       }
       const rec = await cache.loadRecording(tc, varId);
-      const resData = rec.routes[route as string];
+      const resData = rec.routes[route];
       if (!resData) {
         res.status(404).send("Route not found in cache");
         return;
@@ -221,8 +230,9 @@ export function startServer(port: number): Promise<void> {
         }
         res.send(html);
       }
-    } catch (err: any) {
-      res.status(500).send(err.message);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      res.status(500).send(errMsg);
     }
   });
 
@@ -932,15 +942,8 @@ function getDashboardHtml(): string {
           const similarity = data.matrix[vA][vB] || 0.0;
           const percent = Math.round(similarity * 100);
           tdCell.textContent = percent + "%";
-          const getFamily = (name) => {
-            const lower = name.toLowerCase();
-            if (lower.includes("angular")) return "angular";
-            if (lower.includes("next")) return "nextjs";
-            if (lower.includes("node")) return "node";
-            return name;
-          };
-          tdCell.dataset.codebaseA = vA.includes("/") ? getFamily(vA.split("/")[0]) : "";
-          tdCell.dataset.codebaseB = vB.includes("/") ? getFamily(vB.split("/")[0]) : "";
+          tdCell.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
+          tdCell.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
 
           // Continuous red-to-green gradient interpolation (0% = HSL 0, 100% = HSL 120)
           const hue = similarity * 120;
