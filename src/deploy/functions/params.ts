@@ -650,7 +650,7 @@ async function promptStringParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+    return promptResourceString(prompt, param.input, projectId, param.nonEmpty, resolvedDefault);
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isSelectInput(param.input)) {
