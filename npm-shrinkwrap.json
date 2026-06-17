@@ -4423,27 +4423,18 @@
       }
     },
     "node_modules/@opentelemetry/core": {
-      "version": "1.30.1",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/core/-/core-1.30.1.tgz",
-      "integrity": "sha512-OOCM2C/QIURhJMuKaekP3TRBxBKxG/TWWA0TL2J6nXUtDnuCtccy49LUJF8xPFXMX+0LMcxFpCo8M9cGY1W6rQ==",
+      "version": "2.8.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/core/-/core-2.8.0.tgz",
+      "integrity": "sha512-hd1Lfh8p545nNz+jq1Ejfz+Mn1hyLuxYn1YzTfFNrxr8urEWMNQLPf1Th8kjOH+HxwawCrtgBp8JpBUR4ZSgww==",
       "license": "Apache-2.0",
       "dependencies": {
-        "@opentelemetry/semantic-conventions": "1.28.0"
+        "@opentelemetry/semantic-conventions": "^1.29.0"
       },
       "engines": {
-        "node": ">=14"
+        "node": "^18.19.0 || >=20.6.0"
       },
       "peerDependencies": {
         "@opentelemetry/api": ">=1.0.0 <1.10.0"
-      }
-    },
-    "node_modules/@opentelemetry/core/node_modules/@opentelemetry/semantic-conventions": {
-      "version": "1.28.0",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.28.0.tgz",
-      "integrity": "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA==",
-      "license": "Apache-2.0",
-      "engines": {
-        "node": ">=14"
       }
     },
     "node_modules/@opentelemetry/semantic-conventions": {
@@ -23557,7 +23548,7 @@
         "@google-cloud/projectify": "^5.0.0",
         "@google-cloud/promisify": "^5.0.0",
         "@opentelemetry/api": "~1.9.0",
-        "@opentelemetry/core": "^1.30.1",
+        "@opentelemetry/core": "^2.8.0",
         "@opentelemetry/semantic-conventions": "~1.34.0",
         "arrify": "^2.0.0",
         "extend": "^3.0.2",
@@ -24916,18 +24907,11 @@
       "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
     },
     "@opentelemetry/core": {
-      "version": "1.30.1",
-      "resolved": "https://registry.npmjs.org/@opentelemetry/core/-/core-1.30.1.tgz",
-      "integrity": "sha512-OOCM2C/QIURhJMuKaekP3TRBxBKxG/TWWA0TL2J6nXUtDnuCtccy49LUJF8xPFXMX+0LMcxFpCo8M9cGY1W6rQ==",
+      "version": "2.8.0",
+      "resolved": "https://registry.npmjs.org/@opentelemetry/core/-/core-2.8.0.tgz",
+      "integrity": "sha512-hd1Lfh8p545nNz+jq1Ejfz+Mn1hyLuxYn1YzTfFNrxr8urEWMNQLPf1Th8kjOH+HxwawCrtgBp8JpBUR4ZSgww==",
       "requires": {
-        "@opentelemetry/semantic-conventions": "1.28.0"
-      },
-      "dependencies": {
-        "@opentelemetry/semantic-conventions": {
-          "version": "1.28.0",
-          "resolved": "https://registry.npmjs.org/@opentelemetry/semantic-conventions/-/semantic-conventions-1.28.0.tgz",
-          "integrity": "sha512-lp4qAiMTD4sNWW4DbKLBkfiMZ4jbAboJIGOQr5DvciMRI494OapieI9qiODpOt0XBr1LjIDy1xAGAnVs5supTA=="
-        }
+        "@opentelemetry/semantic-conventions": "^1.29.0"
       }
     },
     "@opentelemetry/semantic-conventions": {

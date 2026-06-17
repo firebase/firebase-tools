@@ -286,6 +286,7 @@
     "picomatch": "^2.3.2",
     "qs": "^6.15.2",
     "tar": "^7.5.11",
+    "@opentelemetry/core": "^2.8.0",
     "basic-ftp": "^5.2.2",
     "@babel/traverse": "^7.23.2",
     "universal-analytics": {
