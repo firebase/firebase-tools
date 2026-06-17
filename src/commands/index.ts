@@ -210,6 +210,8 @@ export function load(client: CLIClient): CLIClient {
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
     client.apphosting.rollouts = {};
     client.apphosting.rollouts.create = loadCommand("apphosting-rollouts-create");
+    client.apphosting.compare = loadCommand("apphosting-compare");
+    client.apphosting.compareSuite = loadCommand("apphosting-compare-suite");
     client.apphosting.config = {};
     if (experiments.isEnabled("internaltesting")) {
       client.apphosting.builds = {};
