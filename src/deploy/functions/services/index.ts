@@ -24,6 +24,7 @@ import {
   getDefaultRegion as ensureDataConnectDefaultRegion,
 } from "./dataconnect";
 import { AILogicService } from "./ailogic";
+import { ensureAuthEventarcTriggerRegion } from "./authEventarc";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
@@ -49,7 +50,8 @@ export type Name =
   | "testlab"
   | "firestore"
   | "dataconnect"
-  | "ailogic";
+  | "ailogic"
+  | "autheventarc";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -177,6 +179,18 @@ const dataconnectService: Service = {
   getDefaultRegion: ensureDataConnectDefaultRegion,
 };
 
+/** A Firebase Auth Eventarc service object */
+const authEventarcService: Service = {
+  name: "autheventarc",
+  api: "eventarc.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureAuthEventarcTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
+};
+
 /** Mapping from event type string to service object */
 // TODO: See if there's a way to deduplicate these consts while still ensuring type safety and exhaustion
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
@@ -207,6 +221,8 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
   "google.firebase.ailogic.v1.beforeGenerate": aiLogicService,
   "google.firebase.ailogic.v1.afterGenerate": aiLogicService,
+  "google.firebase.auth.user.v2.created": authEventarcService,
+  "google.firebase.auth.user.v2.deleted": authEventarcService,
 };
 
 export function serviceForEndpoint(endpoint: backend.Endpoint | build.Endpoint): Service {
