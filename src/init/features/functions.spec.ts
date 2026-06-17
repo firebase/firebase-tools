@@ -10,6 +10,7 @@ import { RC } from "../../rc";
 import * as experiments from "../../experiments";
 import * as spawn from "cross-spawn";
 import * as initSpawn from "../spawn";
+import * as pythonUtils from "../../functions/python";
 
 const TEST_SOURCE_DEFAULT = "functions";
 const TEST_CODEBASE_DEFAULT = "default";
@@ -135,16 +136,22 @@ describe("functions", () => {
       describe("python project", () => {
         let spawnStub: sinon.SinonStub;
         let wrapSpawnStub: sinon.SinonStub;
+        let getAvailablePythonRuntimesStub: sinon.SinonStub;
 
         beforeEach(() => {
           spawnStub = sandbox.stub(spawn, "spawn");
           wrapSpawnStub = sandbox.stub(initSpawn, "wrapSpawn");
+          getAvailablePythonRuntimesStub = sandbox.stub(pythonUtils, "getAvailablePythonRuntimes");
+          getAvailablePythonRuntimesStub.resolves([
+            { runtime: "python314", binary: "python3.14", version: "Python 3.14.0" },
+          ]);
         });
 
         it("creates a new python codebase with the correct configuration", async () => {
           const config = new Config("{}", { projectDir: "test", cwd: "test" });
           const setup = { config: { functions: [] }, rcfile: {} };
           prompt.select.onFirstCall().resolves("python");
+          prompt.select.onSecondCall().resolves("python314");
           // do not install dependencies
           prompt.confirm.onFirstCall().resolves(false);
           askWriteProjectFileStub = sandbox.stub(config, "askWriteProjectFile");
