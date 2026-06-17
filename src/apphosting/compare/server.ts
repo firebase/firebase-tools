@@ -659,9 +659,114 @@ function getDashboardHtml(): string {
       color: var(--text-muted);
       opacity: 0.7;
     }
-    .diff-text {
-      flex: 1;
-      white-space: pre-wrap;
+    /* Filter Dropdowns styles */
+    .filter-dropdown-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .filter-dropdown-btn {
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: var(--font-family);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      outline: none;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .filter-dropdown-btn:hover {
+      border-color: var(--accent);
+      background-color: rgba(255,255,255,0.02);
+    }
+
+    .filter-dropdown-btn::after {
+      content: "";
+      border: solid var(--text-muted);
+      border-width: 0 1.5px 1.5px 0;
+      display: inline-block;
+      padding: 2px;
+      transform: rotate(45deg);
+      margin-left: 4px;
+      transition: transform 0.2s;
+    }
+
+    .filter-dropdown-container.open .filter-dropdown-btn::after {
+      transform: rotate(-135deg);
+    }
+
+    .filter-dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      min-width: 180px;
+      max-width: 250px;
+      margin-top: 4px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .filter-dropdown-container.open .filter-dropdown-content {
+      display: block;
+    }
+
+    .filter-search-box {
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-family: var(--font-family);
+      font-size: 11px;
+      box-sizing: border-box;
+      outline: none;
+      margin-bottom: 8px;
+    }
+
+    .filter-search-box:focus {
+      border-color: var(--accent);
+    }
+
+    .filter-options-list {
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .filter-opt-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      color: var(--text);
+      transition: background-color 0.15s;
+    }
+
+    .filter-opt-item:hover {
+      background-color: rgba(255,255,255,0.04);
+    }
+
+    .filter-opt-item input[type="checkbox"] {
+      cursor: pointer;
+      margin: 0;
     }
   </style>
 </head>
@@ -730,15 +835,7 @@ function getDashboardHtml(): string {
             <span style="color: var(--text-muted);">Search Variants:</span>
             <input type="text" id="variant-search-input" placeholder="e.g. Node24" style="background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-family: var(--font-family); font-size: 12px; outline: none; width: 140px;" oninput="applyMetadataFilters()">
           </div>
-          <div style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; height: 18px;">
-            <span style="color: var(--text-muted);">Build Origin:</span>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;"><input type="checkbox" id="filter-local-builds" checked onchange="applyMetadataFilters()"> Local Builds</label>
-            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;"><input type="checkbox" id="filter-source-deploys" checked onchange="applyMetadataFilters()"> Source Deploys</label>
-          </div>
-          <div id="runtime-filters-container" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; height: 18px;">
-            <span style="color: var(--text-muted);">Runtimes:</span>
-            <!-- Dynamically populated -->
-          </div>
+          <div id="heatmap-dynamic-filters" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; flex-wrap: wrap;"></div>
         </div>
         <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1;">
           <div id="heatmap-grid-container" style="overflow-x: auto; max-width: 100%;"></div>
@@ -919,6 +1016,47 @@ function getDashboardHtml(): string {
       await loadHeatmap(tc);
     }
 
+    // Close dropdowns if clicked outside
+    window.addEventListener("click", (e) => {
+      document.querySelectorAll(".filter-dropdown-container").forEach(container => {
+        if (!container.contains(e.target)) {
+          container.classList.remove("open");
+        }
+      });
+    });
+
+    function toggleDropdown(container, event) {
+      event.stopPropagation();
+      const wasOpen = container.classList.contains("open");
+
+      // Close other dropdowns
+      document.querySelectorAll(".filter-dropdown-container").forEach(c => c.classList.remove("open"));
+
+      if (!wasOpen) {
+        container.classList.add("open");
+        const searchInput = container.querySelector(".filter-search-box");
+        if (searchInput) {
+          searchInput.value = "";
+          // Reset visibility of option items
+          container.querySelectorAll(".filter-opt-item").forEach(item => item.style.display = "flex");
+          searchInput.focus();
+        }
+      }
+    }
+
+    function filterDropdownOptions(input) {
+      const query = input.value.toLowerCase();
+      const container = input.closest(".filter-dropdown-container");
+      container.querySelectorAll(".filter-opt-item").forEach(item => {
+        const val = item.dataset.value.toLowerCase();
+        if (val.includes(query)) {
+          item.style.display = "flex";
+        } else {
+          item.style.display = "none";
+        }
+      });
+    }
+
     async function loadHeatmap(tc) {
       document.getElementById("dashboard-empty-state").style.display = "none";
       document.getElementById("heatmap-card").style.display = "flex";
@@ -928,73 +1066,141 @@ function getDashboardHtml(): string {
       const res = await fetch(\`/api/matrix?testCase=\${tc}\`);
       lastMatrixData = await res.json();
 
-      // Dynamically populate runtime checkboxes
-      const container = document.getElementById("runtime-filters-container");
-      container.innerHTML = \`<span style="color: var(--text-muted);">Runtimes:</span>\`;
+      // Reset search field
+      document.getElementById("variant-search-input").value = "";
 
-      const runtimes = new Set();
-      if (lastMatrixData.variantsMetadata) {
-        Object.values(lastMatrixData.variantsMetadata).forEach(meta => {
-          if (meta.runtime) runtimes.add(meta.runtime);
-        });
+      // Build Dynamic Dropdown Filters
+      const filtersBar = document.getElementById("heatmap-dynamic-filters");
+      filtersBar.innerHTML = "";
+
+      if (!lastMatrixData.variantsMetadata) {
+        applyMetadataFilters();
+        return;
       }
 
-      if (runtimes.size <= 1) {
-        // If 0 or 1 runtime, hide runtime filters section to keep UI clean
-        container.style.display = "none";
-      } else {
-        container.style.display = "flex";
-        Array.from(runtimes).sort().forEach(rt => {
-          const lbl = document.createElement("label");
-          lbl.style.cssText = "display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none;";
+      // Gather unique values for each metadata property
+      const properties = {};
+      Object.values(lastMatrixData.variantsMetadata).forEach(meta => {
+        Object.entries(meta).forEach(([key, val]) => {
+          if (key === "id") return; // Skip ID
+
+          properties[key] = properties[key] || new Set();
+          if (key === "localBuild") {
+            properties[key].add(val ? "Local" : "Source");
+          } else {
+            properties[key].add(val === undefined ? "default" : String(val));
+          }
+        });
+      });
+
+      // Render a dropdown for each property
+      Object.entries(properties).forEach(([propName, valuesSet]) => {
+        const uniqueValues = Array.from(valuesSet).sort();
+
+        // Create Dropdown Container
+        const dropdownContainer = document.createElement("div");
+        dropdownContainer.className = "filter-dropdown-container";
+        dropdownContainer.dataset.prop = propName;
+
+        // Button
+        const btn = document.createElement("button");
+        btn.className = "filter-dropdown-btn";
+        const formattedPropName = propName === "localBuild" ? "Build Origin" : propName.charAt(0).toUpperCase() + propName.slice(1);
+        btn.textContent = \`\${formattedPropName}: All\`;
+        btn.onclick = (e) => toggleDropdown(dropdownContainer, e);
+        dropdownContainer.appendChild(btn);
+
+        // Content panel
+        const content = document.createElement("div");
+        content.className = "filter-dropdown-content";
+
+        // Autocomplete search box
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.className = "filter-search-box";
+        searchInput.placeholder = "Search values...";
+        searchInput.oninput = () => filterDropdownOptions(searchInput);
+        content.appendChild(searchInput);
+
+        // Options list container
+        const optionsList = document.createElement("div");
+        optionsList.className = "filter-options-list";
+
+        uniqueValues.forEach(val => {
+          const item = document.createElement("label");
+          item.className = "filter-opt-item";
+          item.dataset.value = val;
 
           const chk = document.createElement("input");
           chk.type = "checkbox";
-          chk.className = "runtime-filter-chk";
-          chk.dataset.runtime = rt;
-          chk.checked = true;
-          chk.onchange = applyMetadataFilters;
+          chk.className = "filter-opt-chk";
+          chk.value = val;
+          chk.checked = true; // checked by default
+          chk.onchange = () => {
+            updateDropdownButtonLabel(dropdownContainer, btn, formattedPropName);
+            applyMetadataFilters();
+          };
 
-          lbl.appendChild(chk);
-          lbl.appendChild(document.createTextNode(rt));
-          container.appendChild(lbl);
+          item.appendChild(chk);
+          item.appendChild(document.createTextNode(val));
+          optionsList.appendChild(item);
         });
-      }
 
-      // Reset search field and other filters
-      document.getElementById("variant-search-input").value = "";
-      document.getElementById("filter-local-builds").checked = true;
-      document.getElementById("filter-source-deploys").checked = true;
+        content.appendChild(optionsList);
+        dropdownContainer.appendChild(content);
+        filtersBar.appendChild(dropdownContainer);
+      });
 
       applyMetadataFilters();
+    }
+
+    function updateDropdownButtonLabel(container, btn, propLabel) {
+      const chks = container.querySelectorAll(".filter-opt-chk");
+      const checked = container.querySelectorAll(".filter-opt-chk:checked");
+      if (checked.length === chks.length) {
+        btn.textContent = \`\${propLabel}: All\`;
+      } else if (checked.length === 0) {
+        btn.textContent = \`\${propLabel}: None\`;
+      } else if (checked.length === 1) {
+        btn.textContent = \`\${propLabel}: \${checked[0].value}\`;
+      } else {
+        btn.textContent = \`\${propLabel}: (\${checked.length} selected)\`;
+      }
     }
 
     function applyMetadataFilters() {
       if (!lastMatrixData) return;
 
       const searchQuery = document.getElementById("variant-search-input").value.toLowerCase();
-      const showLocal = document.getElementById("filter-local-builds").checked;
-      const showSource = document.getElementById("filter-source-deploys").checked;
-      const runtimeChks = document.querySelectorAll(".runtime-filter-chk");
-      const activeRuntimes = Array.from(runtimeChks)
-        .filter(chk => chk.checked)
-        .map(chk => chk.dataset.runtime);
+
+      // Gather active checkboxes per property
+      const activeSelections = {};
+      document.querySelectorAll(".filter-dropdown-container").forEach(container => {
+        const propName = container.dataset.prop;
+        const checkedVals = Array.from(container.querySelectorAll(".filter-opt-chk:checked")).map(chk => chk.value);
+        activeSelections[propName] = new Set(checkedVals);
+      });
 
       const filteredVariants = lastMatrixData.variants.filter(v => {
-        const meta = lastMatrixData.variantsMetadata[v] || { id: v, localBuild: false, runtime: "default" };
+        // Search query check on variant name
+        if (!v.toLowerCase().includes(searchQuery)) return false;
 
-        // Match search query
-        const matchesSearch = v.toLowerCase().includes(searchQuery);
-        if (!matchesSearch) return false;
+        if (!lastMatrixData.variantsMetadata) return true;
 
-        // Match build origin
-        if (meta.localBuild && !showLocal) return false;
-        if (!meta.localBuild && !showSource) return false;
+        const meta = lastMatrixData.variantsMetadata[v] || {};
 
-        // Match runtime (if checkboxes exist)
-        if (runtimeChks.length > 0) {
-          const rtVal = meta.runtime || "default";
-          if (!activeRuntimes.includes(rtVal)) return false;
+        // Dynamic properties check
+        for (const propName of Object.keys(activeSelections)) {
+          let val = meta[propName];
+          if (propName === "localBuild") {
+            val = val ? "Local" : "Source";
+          } else {
+            val = val === undefined ? "default" : String(val);
+          }
+
+          if (!activeSelections[propName].has(val)) {
+            return false;
+          }
         }
 
         return true;
