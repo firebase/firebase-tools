@@ -186,10 +186,12 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
 /**
  * Sets up artifact cleanup policies for the regions where functions are deployed
  * and automatically sets up policies where needed.
+ *
  * The policy is only set up when:
  *   1. No cleanup policy exists yet
  *   2. No other cleanup policies exist (beyond our own if we previously set one)
  *   3. User has not explicitly opted out
+ *
  * In non-interactive mode:
  *   - With force flag: applies the default cleanup policy
  *   - Without force flag: warns and aborts deployment
