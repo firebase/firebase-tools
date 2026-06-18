@@ -1,6 +1,6 @@
 import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
 import { Request, Response, Router } from "express";
 import { StorageEmulator } from "../index";
@@ -189,7 +189,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       if (!upload.metadata?.metadata?.firebaseStorageDownloadTokens) {
         const customMetadata = {
           ...(upload.metadata?.metadata || {}),
-          firebaseStorageDownloadTokens: uuid.v4(),
+          firebaseStorageDownloadTokens: randomUUID(),
         };
         upload.metadata = { ...(upload.metadata || {}), metadata: customMetadata };
       }
