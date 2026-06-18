@@ -4,6 +4,15 @@ import * as clc from "colorette";
 import { ComparisonResult } from "./compare";
 import { logger } from "../../logger";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export interface ComparisonSummary {
   projectId: string;
   location: string;
@@ -85,7 +94,7 @@ export async function generateReport(
   await fs.ensureDir(outputDir);
   
   // Dump summary without the bodies to save space
-  const resultsWithoutBodies = results.map(r => {
+  const resultsWithoutBodies: ComparisonResult[] = results.map(r => {
     const { bodyA, bodyB, ...rest } = r;
     return rest;
   });
@@ -105,7 +114,7 @@ export async function generateReport(
   }
   logger.info(`Raw responses saved to ${routesDirA} and ${routesDirB} for manual diffing.`);
 
-  const html = getHtmlTemplate(summary, resultsWithoutBodies as any);
+  const html = getHtmlTemplate(summary, resultsWithoutBodies);
   await fs.outputFile(path.join(outputDir, "index.html"), html, "utf-8");
   logger.info(
     `HTML Dashboard generated at: ${clc.underline(path.join(outputDir, "index.html"))}\n`,
@@ -120,16 +129,16 @@ function getHtmlTemplate(summary: ComparisonSummary, results: ComparisonResult[]
       const badgeText = isPass ? "PASS" : "FAIL";
 
       const headersList = r.headerMismatches
-        .map((m) => `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`)
+        .map((m) => `<li><code>${escapeHtml(m.header)}</code>: "${escapeHtml(m.valA)}" vs "${escapeHtml(m.valB)}"</li>`)
         .join("");
 
       const variationsList = r.expectedHeaderVariations
-        .map((m) => `<li><code>${m.header}</code>: "${m.valA}" vs "${m.valB}"</li>`)
+        .map((m) => `<li><code>${escapeHtml(m.header)}</code>: "${escapeHtml(m.valA)}" vs "${escapeHtml(m.valB)}"</li>`)
         .join("");
 
       return `
       <tr class="route-row ${isPass ? "pass-row" : "fail-row"}">
-        <td class="font-mono">${r.route}</td>
+        <td class="font-mono">${escapeHtml(r.route)}</td>
         <td><span class="badge ${badgeClass}">${badgeText}</span></td>
         <td>${r.statusMatch ? "Match" : "Mismatch"}</td>
         <td>${(r.bodySimilarity * 100).toFixed(1)}%</td>

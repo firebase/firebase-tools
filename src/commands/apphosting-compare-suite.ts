@@ -80,6 +80,9 @@ export const command = new Command("apphosting:compare-suite")
     await lifecycle.runGarbageCollection(projectId, location);
 
     // Compute max variants to acquire a slot large enough
+    if (suite.length === 0) {
+      throw new FirebaseError("Suite config must contain at least one test case.");
+    }
     const maxVariants = Math.max(...suite.map((tc: any) => tc.variants?.length || 0));
     if (maxVariants < 2) {
       throw new FirebaseError("All test cases must have at least 2 variants.");

@@ -1,12 +1,16 @@
 import fetch from "node-fetch";
 
 function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+  const entities: Record<string, string> = {
+    "amp": "&",
+    "lt": "<",
+    "gt": ">",
+    "quot": '"',
+    "#39": "'"
+  };
+  return str.replace(/&(amp|lt|gt|quot|#39);/gi, (match, entity) => {
+    return entities[entity.toLowerCase()] || match;
+  });
 }
 
 interface Destroyable {
@@ -60,6 +64,7 @@ export class Crawler {
         redirect: "manual" as const,
         headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
         signal: controller.signal,
+        size: 2 * 1024 * 1024,
       });
 
       // Handle Redirects
@@ -89,9 +94,7 @@ export class Crawler {
       const html = await res.text();
       const links = this.extractLinks(html, canonical);
 
-      for (const link of links) {
-        await this.crawlRoute(link, depth + 1);
-      }
+      await Promise.all(links.map((link) => this.crawlRoute(link, depth + 1)));
     } catch (err) {
       // Ignore fetch failures for single routes during discovery
     } finally {
@@ -130,16 +133,18 @@ export class Crawler {
     while ((match = regex.exec(html)) !== null) {
       const rawHref = match[2] !== undefined ? match[2] : match[3];
       if (!rawHref) continue;
-      
+
       const href = decodeHtmlEntities(rawHref.trim());
-      if (
-        !href ||
-        href.startsWith("#") ||
-        href.startsWith("mailto:") ||
-        href.startsWith("tel:") ||
-        href.startsWith("javascript:")
-      ) {
+      if (!href || href.startsWith("#")) {
         continue;
+      }
+
+      const schemeMatch = href.match(/^[a-z][a-z0-9+.-]*:/i);
+      if (schemeMatch) {
+        const scheme = schemeMatch[0].toLowerCase();
+        if (scheme !== "http:" && scheme !== "https:") {
+          continue;
+        }
       }
 
       const resolved = this.resolveRelative(currentRoute, href);

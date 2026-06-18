@@ -1,9 +1,15 @@
 import { FirebaseError } from "../../error";
 import * as apphosting from "../../gcp/apphosting";
 import { logger } from "../../logger";
-import { acquireComparisonSlot, releaseComparisonSlot } from "./slots";
 
-const ALLOWED_PROJECTS = ["aryanf-test", "pretend-public"];
+const ALLOWED_PROJECTS = [
+  "aryanf-test",
+  "pretend-public",
+  ...(process.env.APP_HOSTING_COMPARE_ALLOWED_PROJECTS || "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean),
+];
 
 /**
  *
@@ -23,7 +29,7 @@ export async function runGarbageCollection(projectId: string, location: string):
   const existingBackends = await apphosting.listBackends(projectId, location);
   const backendsList = existingBackends.backends || [];
   const now = Date.now();
-  const thirtyMinutes = 30 * 60 * 1000;
+  const twoHours = 2 * 60 * 60 * 1000;
 
   for (const backend of backendsList) {
     const nameParts = backend.name.split("/");
@@ -33,7 +39,7 @@ export async function runGarbageCollection(projectId: string, location: string):
       const isBusy = backend.labels?.status === "busy";
       if (isBusy) {
         const updateTime = new Date(backend.updateTime).getTime();
-        if (now - updateTime > thirtyMinutes) {
+        if (now - updateTime > twoHours) {
           logger.info(`Found stale lock on comparison slot backend ${backendId}. Unlocking...`);
           try {
             await apphosting.updateBackend(projectId, location, backendId, {
@@ -45,41 +51,5 @@ export async function runGarbageCollection(projectId: string, location: string):
         }
       }
     }
-  }
-}
-
-/**
- *
- */
-export async function runAutonomousComparison(
-  projectId: string,
-  location: string,
-  localPath: string,
-  options: any,
-): Promise<void> {
-  validateProject(projectId);
-  await runGarbageCollection(projectId, location);
-
-  const slot = await acquireComparisonSlot(projectId, location, 2);
-
-  const cleanUpAndExit = async () => {
-    logger.warn("\nProcess interrupted. Cleaning up comparison slot lock before exit...");
-    await releaseComparisonSlot(projectId, location, slot.index, 2);
-    process.exit(1);
-  };
-
-  process.on("SIGINT", cleanUpAndExit);
-  process.on("SIGTERM", cleanUpAndExit);
-
-  try {
-    // Setup secrets, deploy, and compare...
-    logger.info(
-      `Using Comparison Slot ${slot.index} (Backend A: ${slot.backendIds[0]}, Backend B: ${slot.backendIds[1]})`,
-    );
-  } finally {
-    process.off("SIGINT", cleanUpAndExit);
-    process.off("SIGTERM", cleanUpAndExit);
-
-    await releaseComparisonSlot(projectId, location, slot.index, 2);
   }
 }

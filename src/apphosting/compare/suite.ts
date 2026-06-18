@@ -87,7 +87,10 @@ async function deployToBackend(
     logger.info(`Triggering CLI deploy for backend ${backendId} (localBuild: ${useLocalBuild})...`);
     // Run exactly the same deployment path as a customer
     const experimentPrefix = useLocalBuild ? "FIREBASE_CLI_EXPERIMENTS=apphostinglocalbuilds " : "";
-    const binPath = process.argv[1] || path.resolve(__dirname, "../../../bin/firebase.js");
+    let binPath = path.resolve(__dirname, "../../bin/firebase.js");
+    if (!fs.existsSync(binPath)) {
+      binPath = path.resolve(__dirname, "../../../lib/bin/firebase.js");
+    }
     
     const cmd = `${experimentPrefix}node "${binPath}" deploy --only apphosting:${backendId} --project ${projectId} --config ${tempConfigName} --non-interactive --allow-local-build-secrets`;
     
@@ -142,13 +145,14 @@ async function recordVariant(
         redirect: "manual" as const,
         headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
         signal: controller.signal,
+        size: 2 * 1024 * 1024,
       });
 
       const contentType = res.headers.get("content-type") || "";
       const isBinary = isBinaryContentType(contentType);
 
       const headers: Record<string, string> = {};
-      res.headers.forEach((val, key) => { headers[key] = val; });
+      res.headers.forEach((val, key) => { headers[key.toLowerCase()] = val; });
 
       let body = "";
       const contentLength = parseInt(res.headers.get("content-length") || "0", 10);
@@ -272,7 +276,12 @@ export async function runCompareSuite(
       const backendDataList = await Promise.all(
         backendIds.map((id) => apphosting.getBackend(projectId, location, id)),
       );
-      const urls = backendDataList.map((b) => (b.uri.startsWith("http") ? b.uri : `https://${b.uri}`));
+      const urls = backendDataList.map((b) => {
+        if (!b.uri) {
+          throw new FirebaseError(`Backend ${b.name} has no valid URI. Deployment may have failed or is still provisioning.`);
+        }
+        return b.uri.startsWith("http") ? b.uri : `https://${b.uri}`;
+      });
 
       for (let i = 0; i < variants.length; i++) {
         const v = variants[i];

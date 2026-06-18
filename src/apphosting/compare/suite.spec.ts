@@ -14,6 +14,7 @@ import * as reporterManager from "./reporter";
 import * as fetchModule from "node-fetch";
 import * as cache from "./cache";
 import { runCompareSuite } from "./suite";
+import * as utils from "../../utils";
 
 describe("runCompareSuite Orchestrator", () => {
   let tempDir: string;
@@ -42,6 +43,7 @@ describe("runCompareSuite Orchestrator", () => {
     setupSecretsStub = sinon.stub(secretsManager, "setupSandboxSecrets").resolves([]);
     cleanupSecretsStub = sinon.stub(secretsManager, "cleanupSandboxSecrets").resolves();
     discoverRoutesStub = sinon.stub(discoverManager, "discoverRoutes").resolves(["/"]);
+    sinon.stub(utils, "sleep").resolves();
     
     compareRouteResponsesStub = sinon.stub(compareManager, "compareRouteResponses").resolves({
       route: "/",

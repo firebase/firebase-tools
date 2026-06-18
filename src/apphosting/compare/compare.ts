@@ -49,6 +49,7 @@ export async function compareRoute(
   const fetchOptions = {
     headers: options.headers || {},
     redirect: "manual" as const,
+    size: 2 * 1024 * 1024,
   };
 
   const [resA, resB] = await Promise.all([
@@ -62,10 +63,10 @@ export async function compareRoute(
   const isBinaryB = isBinaryContentType(contentTypeB);
 
   const headersA: Record<string, string> = {};
-  resA.headers.forEach((val, key) => { headersA[key] = val; });
+  resA.headers.forEach((val, key) => { headersA[key.toLowerCase()] = val; });
 
   const headersB: Record<string, string> = {};
-  resB.headers.forEach((val, key) => { headersB[key] = val; });
+  resB.headers.forEach((val, key) => { headersB[key.toLowerCase()] = val; });
 
   const responseA: RouteResponse = {
     status: resA.status,

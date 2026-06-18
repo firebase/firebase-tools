@@ -3,6 +3,7 @@ import * as http from "http";
 import { logger } from "../../logger";
 import * as cache from "./cache";
 import * as compare from "./compare";
+import * as diff from "diff";
 import { CompareResponse, MatrixResponse, DashboardComparisonResult, VariantMetadata } from "./types";
 
 export function startServer(port: number): Promise<void> {
@@ -74,7 +75,6 @@ export function startServer(port: number): Promise<void> {
         const dashboardResult: DashboardComparisonResult = { ...compResult };
 
         if (!resA.isBinary && !resB.isBinary) {
-          const diff = require("diff");
           const changes = diff.diffLines(dashboardResult.bodyA || "", dashboardResult.bodyB || "");
           // Filter/map to minimal JSON to keep payload clean
           dashboardResult.diffChanges = changes.map((c: any) => ({
@@ -207,7 +207,7 @@ export function startServer(port: number): Promise<void> {
   app.get("/api/render", async (req, res) => {
     const { testCase, variant, route } = req.query;
     if (typeof testCase !== "string" || typeof variant !== "string" || typeof route !== "string") {
-      res.status(400).send("Missing or invalid query parameters: testCase, variant, and route must be strings.");
+      res.status(400).type("text/plain").send("Missing or invalid query parameters: testCase, variant, and route must be strings.");
       return;
     }
     try {
@@ -223,7 +223,7 @@ export function startServer(port: number): Promise<void> {
       const rec = await cache.loadRecording(tc, varId);
       const resData = rec.routes[route];
       if (!resData) {
-        res.status(404).send("Route not found in cache");
+        res.status(404).type("text/plain").send("Route not found in cache");
         return;
       }
       if (resData.isBinary) {
@@ -234,13 +234,17 @@ export function startServer(port: number): Promise<void> {
         // Inject <base> tag to fix relative assets
         let html = resData.body;
         if (!html.includes("<base ")) {
-          html = html.replace("<head>", `<head><base href="${rec.url}">`);
+          if (/<head>/i.test(html)) {
+            html = html.replace(/<head>/i, `<head><base href="${rec.url}">`);
+          } else {
+            html = `<base href="${rec.url}">` + html;
+          }
         }
         res.send(html);
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      res.status(500).send(errMsg);
+      res.status(500).type("text/plain").send(errMsg);
     }
   });
 
@@ -1445,26 +1449,39 @@ function getDashboardHtml(): string {
       diffContainer.innerHTML = "";
 
       if (res.isBinary) {
-        diffContainer.innerHTML = \`<div class="empty-state">Binary File Comparison: \${res.bodyDiff || "Identical"}</div>\`;
+        const div = document.createElement("div");
+        div.className = "empty-state";
+        div.textContent = "Binary File Comparison: " + (res.bodyDiff || "Identical");
+        diffContainer.appendChild(div);
         return;
       }
 
       if (res.bodyA === undefined && res.bodyB === undefined) {
-        diffContainer.innerHTML = '<div class="empty-state">No body content recorded</div>';
+        const div = document.createElement("div");
+        div.className = "empty-state";
+        div.textContent = "No body content recorded";
+        diffContainer.appendChild(div);
         return;
       }
 
       if (res.bodyA === res.bodyB) {
-        diffContainer.innerHTML = '<div class="empty-state" style="color:var(--success);">Body Content is 100% Identical</div>';
+        const div = document.createElement("div");
+        div.className = "empty-state";
+        div.style.color = "var(--success)";
+        div.textContent = "Body Content is 100% Identical";
+        diffContainer.appendChild(div);
         return;
       }
 
       if (!res.diffChanges || res.diffChanges.length === 0) {
+        const div = document.createElement("div");
+        div.className = "empty-state";
         if (res.bodyDiff) {
-          diffContainer.innerHTML = \`<div class="empty-state">\${res.bodyDiff}</div>\`;
+          div.textContent = res.bodyDiff;
         } else {
-          diffContainer.innerHTML = '<div class="empty-state">No diff details available</div>';
+          div.textContent = "No diff details available";
         }
+        diffContainer.appendChild(div);
         return;
       }
 

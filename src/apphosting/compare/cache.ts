@@ -74,7 +74,12 @@ function getRecordingPath(testCaseName: string, variantId: string): string {
   const vHash = crypto.createHash("sha256").update(variantId).digest("hex").slice(0, 8);
   const safeTestCase = `${testCaseName.replace(/[^a-zA-Z0-9_-]/g, "_")}_${tcHash}`;
   const safeVariant = `${variantId.replace(/[^a-zA-Z0-9_-]/g, "_")}_${vHash}`;
-  return path.join(CACHE_DIR, "recordings", safeTestCase, `${safeVariant}.json`);
+  const resolvedPath = path.resolve(path.join(CACHE_DIR, "recordings", safeTestCase, `${safeVariant}.json`));
+  
+  if (!resolvedPath.startsWith(path.resolve(CACHE_DIR))) {
+    throw new Error("Path traversal restriction violation");
+  }
+  return resolvedPath;
 }
 
 /**
@@ -122,30 +127,32 @@ export async function listRecordings(): Promise<Record<string, string[]>> {
       const tcDir = path.join(recordingsDir, tc);
       try {
         const stat = await fs.stat(tcDir);
-        if (stat.isDirectory()) {
-          const files = await fs.readdir(tcDir);
-          const jsonFiles = files.filter((file) => file.endsWith(".json"));
-          if (jsonFiles.length > 0) {
-            const variantIds: string[] = [];
-            let originalTestCaseName = "";
-            for (const file of jsonFiles) {
-              try {
-                const data = await fs.readJson(path.join(tcDir, file));
-                if (isVariantRecording(data)) {
-                  originalTestCaseName = data.testCaseName;
-                  variantIds.push(data.id);
-                } else {
-                  logger.debug(`Cache file ${file} does not match VariantRecording schema`);
-                }
-              } catch (readErr) {
-                // If a file is partially written or corrupted, skip it
-                logger.debug(`Failed to read metadata for cache file: ${file}`, readErr);
-              }
+        if (!stat.isDirectory()) {
+          continue;
+        }
+        const files = await fs.readdir(tcDir);
+        const jsonFiles = files.filter((file) => file.endsWith(".json"));
+        if (jsonFiles.length === 0) {
+          continue;
+        }
+        const variantIds: string[] = [];
+        let originalTestCaseName = "";
+        for (const file of jsonFiles) {
+          try {
+            const data = await fs.readJson(path.join(tcDir, file));
+            if (isVariantRecording(data)) {
+              originalTestCaseName = data.testCaseName;
+              variantIds.push(data.id);
+            } else {
+              logger.debug(`Cache file ${file} does not match VariantRecording schema`);
             }
-            if (originalTestCaseName && variantIds.length > 0) {
-              result[originalTestCaseName] = variantIds;
-            }
+          } catch (readErr) {
+            // If a file is partially written or corrupted, skip it
+            logger.debug(`Failed to read metadata for cache file: ${file}`, readErr);
           }
+        }
+        if (originalTestCaseName && variantIds.length > 0) {
+          result[originalTestCaseName] = variantIds;
         }
       } catch (err: unknown) {
         if (isErrnoException(err) && err.code === "ENOENT") {
