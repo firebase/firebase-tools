@@ -1129,3 +1129,91 @@ export function murmurHashV3(key: string | Uint8Array, seed = 0): number {
   h1 ^= h1 >>> 16;
   return h1 >>> 0;
 }
+
+/**
+ * Formats a byte count into a human-readable file size string.
+ */
+export function formatFilesize(bytes: number, decimals = 2): string {
+  if (bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
+export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;
+
+/**
+ * A lightweight Promise concurrency limiter.
+ */
+export function pLimit(concurrency: number): Limit {
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new FirebaseError(`pLimit concurrency must be a positive integer, got ${concurrency}`);
+  }
+
+  const queue: Array<() => void> = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()?.();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = () => {
+        activeCount++;
+        try {
+          Promise.resolve(fn()).then(resolve, reject).finally(next);
+        } catch (err) {
+          reject(err);
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ */
+export function stringDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  // Make 's1' the shorter string to optimize space
+  const [s1, s2] = a.length <= b.length ? [a, b] : [b, a];
+  const v0 = new Array<number>(s1.length + 1);
+  const v1 = new Array<number>(s1.length + 1);
+
+  for (let i = 0; i <= s1.length; i++) {
+    v0[i] = i;
+  }
+
+  for (let i = 0; i < s2.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < s1.length; j++) {
+      const cost = s1[j] === s2[i] ? 0 : 1;
+      v1[j + 1] = Math.min(
+        v1[j] + 1, // Insertion
+        v0[j + 1] + 1, // Deletion
+        v0[j] + cost, // Substitution
+      );
+    }
+    for (let j = 0; j <= s1.length; j++) {
+      v0[j] = v1[j];
+    }
+  }
+
+  return v0[s1.length];
+}

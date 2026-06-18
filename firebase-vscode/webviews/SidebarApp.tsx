@@ -6,6 +6,7 @@ import { ProjectSection } from "./components/ProjectSection";
 import {
   VSCodeButton,
   VSCodeDropdown,
+  VSCodeLink,
   VSCodeOption,
   VSCodeProgressRing,
 } from "@vscode/webview-ui-toolkit/react";
@@ -107,13 +108,16 @@ function EmulatorsPanel() {
       </VSCodeButton>
       <Spacer size="xsmall" />
       <Label level={3}>
-        <a
-          onClick={() => {
+        <VSCodeLink
+          href="#"
+          style={{ fontSize: "inherit", fontWeight: "inherit" }}
+          onClick={(e) => {
+            e.preventDefault();
             broker.send("fdc.open-emulator-settings");
           }}
         >
           Configure emulator
-        </a>
+        </VSCodeLink>
       </Label>
       <Label level={3}>
         See also:{" "}

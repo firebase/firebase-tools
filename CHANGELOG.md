@@ -6,3 +6,4 @@
 - Fixed issue where `apptesting:execute` command rejects documented `--test-username`, `--test-password`, and `--test-password-file` options.
 - Updated Web Frameworks to warn about missing SSRF protection config in Angular 22 deploys (#10523)
 - Fixed an issue where Astro 6 SSR deploys returned HTTP 500 by preserving the `server/` directory in the generated Cloud Function. (#10537)
+- Updated Pub/Sub emulator to version 0.8.33.

@@ -206,7 +206,7 @@ export async function ɵcodegenFunctionsDirectory(
   if (bundleDependencies) {
     const dependencies: Record<string, string> = {};
     for (const externalDependency of externalDependencies) {
-      const packageVersion = findDependency(externalDependency)?.version;
+      const packageVersion = findDependency(externalDependency, { cwd: sourceDir })?.version;
       if (packageVersion) {
         dependencies[externalDependency] = packageVersion;
       }
