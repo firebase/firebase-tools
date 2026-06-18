@@ -1,5 +1,0 @@
-- Added `apphosting:secrets:revokeaccess` command. (#10669)
-- Updated Pub/Sub emulator to version 0.8.33.
-- Updated Data Connect emulator to version 3.4.12.
-- Fix Data Connect non-deterministic output order of generated SDK files when compiled from multiple GQL source files.
-- Optimize Data Connect singular relation filters on PKs to avoid EXISTS subqueries.
