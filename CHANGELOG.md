@@ -1,1 +1,2 @@
 - Added `apphosting:secrets:revokeaccess` command. (#10669)
+- Updated Pub/Sub emulator to version 0.8.33.
