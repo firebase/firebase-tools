@@ -2,7 +2,7 @@
 
 This is an experimental internal CLI tool built for the Firebase App Hosting team to dynamically verify the compatibility and performance of different infrastructure backends or application builds. 
 
-It takes an array of $N$ configurations (variants) and automatically deploys them, discovering their routes, and dumping an $O(N^2)$ Pair-wise Cartesian Matrix of differences.
+It takes an array of configurations (variants) and automatically deploys them, discovering their routes, and rendering an interactive $O(N^2)$ Pair-wise Cartesian Matrix heatmap dashboard.
 
 ## Capabilities
 
@@ -10,7 +10,7 @@ It takes an array of $N$ configurations (variants) and automatically deploys the
 2. **Local vs Remote Build Verification**: Can deploy locally built bundles (e.g. `localBuild: true`) side-by-side with remote Cloud Build source zips.
 3. **Automated IAM & Secrets Management**: Intelligently creates a single mock secret in Secret Manager for each distinct codebase path, mapping the IAM `secretAccessor` roles simultaneously to all backends generated from that codebase.
 4. **Dynamic Spidering**: Automatically crawls Next.js / Angular apps recursively starting from `/` to discover hidden dynamic routes, alongside statically parsing `.next/prerender-manifest.json`.
-5. **Exact Diff Inspection**: Generates HTML dashboards, JSON summaries, and specifically dumps the raw HTTP HTML outputs of each variant so engineers can run local diffs.
+5. **Interactive Visualization Dashboard**: Hosts an interactive split-view dashboard showcasing global parity heatmaps, dynamic filtering, code diffs, and exact header mismatches.
 
 ## Usage
 
@@ -32,38 +32,43 @@ It takes an array of $N$ configurations (variants) and automatically deploys the
         "path": "../next-sample-1",
         "localBuild": false,
         "runtime": "nodejs24"
-      },
-      {
-        "id": "Source-Node22",
-        "path": "../next-sample-1",
-        "localBuild": false,
-        "runtime": "nodejs22"
       }
     ]
   }
 ]
 ```
 
-2. Run the command:
+2. Run the deployment and recording phase:
 
 ```bash
-FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --project <your-project> --suite-config matrix-test.json
+FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --project <your-project> --suite-config matrix-test.json --record-only
 ```
 
-## How to Inspect Diffs
-
-When the command completes, it generates reports in the `./compare-report/<TestCaseName>/` directory.
-Inside this folder, you will see a subfolder for each pairwise comparison, such as `Local-Node24-vs-Source-Node24/`.
-
-Inside the pair folder:
-- **`index.html`**: A beautifully styled visual dashboard showing percentage differences and mismatches.
-- **`summary.json`**: The structured data representation.
-- **`backendA/` and `backendB/`**: These folders contain the raw HTTP HTML bodies retrieved during the crawl! 
-
-To manually inspect the exact diffs, you can use standard diff tools on the generated files:
+3. Spin up the visual dashboard to inspect the matrices and diffs:
 
 ```bash
-diff compare-report/Node\ Matrix\ Test/Local-Node24-vs-Source-Node24/backendA/index.html compare-report/Node\ Matrix\ Test/Local-Node24-vs-Source-Node24/backendB/index.html
+FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --serve --port 3000
 ```
 
-Or you can right-click the files in VSCode and select "Select for Compare" and "Compare with Selected".
+---
+
+## 🤖 Instructions for AI Agents
+
+If you are an AI Agent tasked with running differential tests or adding new variants to a matrix, follow these strict guidelines:
+
+### 1. Matrix Configuration
+* Matrices must be an array of test cases. Each test case MUST have at least 2 variants.
+* Always point `path` to the correct target framework codebase directory relative to your working directory.
+* Valid configuration flags inside a variant: `id` (string), `path` (string), `localBuild` (boolean), `runtime` (string).
+
+### 2. Execution Phases
+The tool separates deploying/crawling from visual analysis.
+1. **Record Phase**: Run the suite using `--record-only` to deploy to App Hosting and generate the cache. This takes several minutes per variant. Wait for the command to finish.
+   * *Note: The tool globally locks GCP slots (e.g. `compare-slot-1-0`). Do NOT run multiple record suites concurrently.*
+2. **Analyze Phase**: Once recording is complete, start the dashboard using `--serve --port 8000` in the background (using `WaitMsBeforeAsync: 3000`).
+
+### 3. Visual Verification
+* You CANNOT read the raw test outputs or diff matrices from the terminal. All comparison analysis must be done visually.
+* After starting the `--serve` server, use your `browser_subagent` to open `http://localhost:8000`.
+* Instruct the browser subagent to click the heatmap cells, toggle the "Visual Split-View" tabs, apply "Runtime" or "Build Origin" dynamic dropdown filters, and capture screenshots of the diffs.
+* Read the screenshots returned by the subagent to interpret the parity results or detect UI rendering regressions.
