@@ -113,14 +113,20 @@ export async function compareRouteResponses(
   };
 
   // 1. Compare Headers
+  const normalizedHeadersA: Record<string, string> = {};
+  Object.entries(resA.headers).forEach(([k, v]) => { normalizedHeadersA[k.toLowerCase()] = v; });
+
+  const normalizedHeadersB: Record<string, string> = {};
+  Object.entries(resB.headers).forEach(([k, v]) => { normalizedHeadersB[k.toLowerCase()] = v; });
+
   const allHeaderKeys = new Set([
-    ...Object.keys(resA.headers),
-    ...Object.keys(resB.headers),
+    ...Object.keys(normalizedHeadersA),
+    ...Object.keys(normalizedHeadersB),
   ]);
 
   for (const key of allHeaderKeys) {
-    const valA = resA.headers[key] || "";
-    const valB = resB.headers[key] || "";
+    const valA = normalizedHeadersA[key] || "";
+    const valB = normalizedHeadersB[key] || "";
     if (valA !== valB) {
       if (BEHAVIORAL_HEADERS.includes(key.toLowerCase())) {
         result.headerMismatches.push({ header: key, valA, valB });
