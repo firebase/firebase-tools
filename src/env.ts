@@ -10,11 +10,16 @@ export function isFirebaseStudio() {
 
 let isFirebaseMcpFlag = false;
 export function isFirebaseMcp() {
-  return isFirebaseMcpFlag;
+  return isFirebaseMcpFlag || process.env.IS_FIREBASE_MCP === "true";
 }
 
 export function setFirebaseMcp(value: boolean) {
   isFirebaseMcpFlag = value;
+  if (value) {
+    process.env.IS_FIREBASE_MCP = "true";
+  } else {
+    delete process.env.IS_FIREBASE_MCP;
+  }
 }
 
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.
