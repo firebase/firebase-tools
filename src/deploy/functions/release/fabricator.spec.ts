@@ -14,6 +14,8 @@ import * as runNS from "../../../gcp/run";
 import * as runV2NS from "../../../gcp/runv2";
 import * as cloudtasksNS from "../../../gcp/cloudtasks";
 import * as backend from "../backend";
+import * as utils from "../../../utils";
+import { FIREBASE_FRAMEWORKS_CODEBASE_PREFIX } from "../../../frameworks/constants";
 import * as scraper from "./sourceTokenScraper";
 import * as planner from "./planner";
 import * as v2events from "../../../functions/events/v2";
@@ -76,6 +78,7 @@ describe("Fabricator", () => {
     run.setIamPolicy.rejects(new Error("unexpected run.setIamPolicy"));
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
     run.setInvokerUpdate.rejects(new Error("unexpected run.setInvokerUpdate"));
+    run.ensureInvokerPublic.rejects(new Error("unexpected run.ensureInvokerPublic"));
     run.replaceService.rejects(new Error("unexpected run.replaceService"));
     run.updateService.rejects(new Error("Unexpected run.updateService"));
     runv2.createService.rejects(new Error("unexpected runv2.createService"));
@@ -112,12 +115,17 @@ describe("Fabricator", () => {
     object: "object",
     generation: 42,
   };
+  const frameworksCodebase = `${FIREBASE_FRAMEWORKS_CODEBASE_PREFIX}site`;
   const ctorArgs: fabricator.FabricatorArgs = {
     executor: new executor.InlineExecutor(),
     functionExecutor: new executor.InlineExecutor(),
     runFunctionExecutor: new executor.InlineExecutor(),
     sources: {
       default: {
+        sourceUrl: "https://example.com",
+        storage: storage,
+      },
+      [frameworksCodebase]: {
         sourceUrl: "https://example.com",
         storage: storage,
       },
@@ -982,6 +990,48 @@ describe("Fabricator", () => {
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("ensures a frameworks SSR function stays publicly invokable when no invoker is declared", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.ensureInvokerPublic.resolves();
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", codebase: frameworksCodebase },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.ensureInvokerPublic).to.have.been.calledWith("service");
+      expect(run.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("warns but does not fail the deploy when ensuring a frameworks function's invoker fails", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.ensureInvokerPublic.rejects(new Error("permission denied"));
+      const warn = sinon.stub(utils, "logLabeledWarning");
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", codebase: frameworksCodebase },
+      );
+
+      await expect(fab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.not.be.rejected;
+      expect(run.ensureInvokerPublic).to.have.been.calledWith("service");
+      expect(warn).to.have.been.calledOnce;
+      expect(warn.firstCall.args[1]).to.contain("publicly invokable");
+    });
+
+    it("does not ensure public invoker for non-frameworks functions", async () => {
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        { platform: "gcfv2", codebase: `no-${frameworksCodebase}` },
+      );
+
+      await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
+      expect(run.ensureInvokerPublic).to.not.have.been.called;
     });
 
     it("updates invoker to public on Node updates when explicitly null", async () => {

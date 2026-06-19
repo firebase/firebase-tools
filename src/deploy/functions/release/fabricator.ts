@@ -27,6 +27,7 @@ import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { getDataConnectP4SA } from "../services/dataconnect";
+import { isFrameworksManagedCodebase } from "../../../frameworks/constants";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -626,6 +627,29 @@ export class Fabricator {
       await this.executor
         .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
         .catch(rethrowAs(endpoint, "set invoker"));
+    } else if (
+      backend.isHttpsTriggered(endpoint) &&
+      isFrameworksManagedCodebase(endpoint.codebase)
+    ) {
+      // Frameworks-managed SSR functions are fronted by Firebase Hosting, which
+      // invokes them anonymously, so they must remain publicly invokable. They
+      // declare no invoker, so the branch above leaves IAM untouched and a binding
+      // removed out-of-band (e.g. by an org policy) is never restored. Re-assert
+      // allUsers additively — preserving any members the user added — and warn
+      // rather than fail the deploy when something blocks it.
+      // See: https://firebase.google.com/docs/hosting/cloud-run
+      // See: https://github.com/firebase/firebase-tools/issues/10631
+      await this.executor
+        .run(() => run.ensureInvokerPublic(serviceName))
+        .catch((err: unknown) => {
+          utils.logLabeledWarning(
+            "functions",
+            `Unable to make the SSR function ${endpoint.id} publicly invokable. Requests served ` +
+              `by it will return 403 until allUsers is granted the Cloud Run Invoker role. ` +
+              `See https://firebase.google.com/docs/hosting/cloud-run`,
+          );
+          logger.debug(`Failed to ensure ${serviceName} is publicly invokable: ${err}`);
+        });
     }
   }
 
