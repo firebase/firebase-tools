@@ -360,7 +360,7 @@ export async function ensureInvokerPublic(serviceName: string): Promise<void> {
   const currentInvokerBinding = currentPolicy.bindings?.find(
     (binding) => binding.role === invokerRole,
   );
-  if (currentInvokerBinding?.members.includes("allUsers")) {
+  if (currentInvokerBinding?.members?.includes("allUsers")) {
     return;
   }
 
