@@ -136,7 +136,7 @@ export class FirebaseMcpServer {
       this.clientInfo = clientInfo;
       if (clientInfo?.name) {
         void this.trackGA4("mcp_client_connected");
-        if (!process.env.AI_AGENT) {
+        if (!process.env.AI_AGENT?.trim()) {
           process.env.AI_AGENT = clientInfo.name;
         }
       }

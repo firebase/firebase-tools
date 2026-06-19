@@ -27,8 +27,9 @@ export function setFirebaseMcp(value: boolean) {
 // See: https://github.com/vercel/vercel/tree/main/packages/detect-agent
 export function detectAIAgent(): string {
   // 1. Standardized standard
-  if (process.env.AI_AGENT) {
-    return process.env.AI_AGENT.trim();
+  const aiAgent = process.env.AI_AGENT?.trim();
+  if (aiAgent) {
+    return aiAgent;
   }
 
   // 2. Specific agents (ordered as requested)
