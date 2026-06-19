@@ -1,0 +1,1 @@
+- Fixed `functions:delete` recreating an already-deleted Cloud Tasks queue for task queue functions. (#9305)
