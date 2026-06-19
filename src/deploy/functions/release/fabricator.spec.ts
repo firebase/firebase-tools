@@ -1025,10 +1025,7 @@ describe("Fabricator", () => {
     it("does not ensure public invoker for non-frameworks functions", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
-      const ep = endpoint(
-        { httpsTrigger: {} },
-        { platform: "gcfv2", codebase: `no-${frameworksCodebase}` },
-      );
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
       expect(run.ensureInvokerPublic).to.not.have.been.called;

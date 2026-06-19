@@ -637,7 +637,7 @@ export class Fabricator {
       // removed out-of-band (e.g. by an org policy) is never restored. Re-assert
       // allUsers additively — preserving any members the user added — and warn
       // rather than fail the deploy when something blocks it.
-      // See: https://firebase.google.com/docs/hosting/cloud-run
+      // See: https://cloud.google.com/run/docs/authenticating/public
       // See: https://github.com/firebase/firebase-tools/issues/10631
       await this.executor
         .run(() => run.ensureInvokerPublic(serviceName))
@@ -646,7 +646,7 @@ export class Fabricator {
             "functions",
             `Unable to make the SSR function ${endpoint.id} publicly invokable. Requests served ` +
               `by it will return 403 until allUsers is granted the Cloud Run Invoker role. ` +
-              `See https://firebase.google.com/docs/hosting/cloud-run`,
+              `See https://cloud.google.com/run/docs/authenticating/public`,
           );
           logger.debug(`Failed to ensure ${serviceName} is publicly invokable: ${err}`);
         });
