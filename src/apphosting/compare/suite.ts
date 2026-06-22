@@ -146,12 +146,14 @@ async function recordVariant(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
+      const start = Date.now();
       const res = await fetch(`${url}${route}`, {
         redirect: "manual" as const,
         headers: { "User-Agent": "FirebaseCompareCrawler/1.0" },
         signal: controller.signal,
         size: 2 * 1024 * 1024,
       });
+      const latencyMs = Date.now() - start;
 
       const contentType = res.headers.get("content-type") || "";
       const isBinary = isBinaryContentType(contentType);
@@ -180,6 +182,7 @@ async function recordVariant(
         headers,
         isBinary,
         body,
+        latencyMs,
       };
     } catch (err) {
       logger.warn(`Failed to record route ${route}: ${err}`);

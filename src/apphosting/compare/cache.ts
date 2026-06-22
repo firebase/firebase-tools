@@ -8,6 +8,7 @@ export interface RouteResponse {
   headers: Record<string, string>;
   body: string;
   isBinary: boolean;
+  latencyMs?: number;
 }
 
 export interface VariantRecording {
@@ -24,12 +25,21 @@ export interface VariantRecording {
 export function isRouteResponse(obj: unknown): obj is RouteResponse {
   if (typeof obj !== "object" || obj === null) return false;
   const o = obj as Record<string, unknown>;
-  return (
+  
+  if (!(
     typeof o.status === "number" &&
     typeof o.headers === "object" && o.headers !== null &&
     typeof o.body === "string" &&
     typeof o.isBinary === "boolean"
-  );
+  )) {
+    return false;
+  }
+
+  if (o.latencyMs !== undefined && typeof o.latencyMs !== "number") {
+    return false;
+  }
+
+  return true;
 }
 
 export function isVariantRecording(obj: unknown): obj is VariantRecording {

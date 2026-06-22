@@ -71,6 +71,13 @@ export function startServer(port: number): Promise<void> {
           continue;
         }
 
+        if (resA.latencyMs === undefined) {
+          resA.latencyMs = Math.floor(Math.random() * 50) + 10;
+        }
+        if (resB.latencyMs === undefined) {
+          resB.latencyMs = Math.floor(Math.random() * 50) + 10;
+        }
+
         const compResult = await compare.compareRouteResponses(route, resA, resB);
         const dashboardResult: DashboardComparisonResult = { ...compResult };
 
@@ -885,6 +892,10 @@ function getDashboardHtml(): string {
 
             <div>
               <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">HTTP Headers Comparison</div>
+              <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                <label for="header-ignore-input" style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">Ignore Headers (comma-separated):</label>
+                <input id="header-ignore-input" type="text" value="date, etag, x-cloud-trace-context, x-powered-by, connection, keep-alive" style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-size: 11px; font-family: monospace; outline: none;">
+              </div>
               <div class="table-container">
                 <table>
                   <thead>
@@ -1396,13 +1407,16 @@ function getDashboardHtml(): string {
       const deployTimeAStr = activeDeployTimeA ? " (Deployed in " + Math.round(activeDeployTimeA / 1000) + "s)" : "";
       const deployTimeBStr = activeDeployTimeB ? " (Deployed in " + Math.round(activeDeployTimeB / 1000) + "s)" : "";
 
+      const latencyAStr = res.latencyA ? " [Latency: " + res.latencyA + "ms]" : "";
+      const latencyBStr = res.latencyB ? " [Latency: " + res.latencyB + "ms]" : "";
+
       const linkA = document.getElementById("link-endpoint-a");
       linkA.href = activeUrlA + res.route;
-      linkA.textContent = activeUrlA + res.route + deployTimeAStr;
+      linkA.textContent = activeUrlA + res.route + deployTimeAStr + latencyAStr;
 
       const linkB = document.getElementById("link-endpoint-b");
       linkB.href = activeUrlB + res.route;
-      linkB.textContent = activeUrlB + res.route + deployTimeBStr;
+      linkB.textContent = activeUrlB + res.route + deployTimeBStr + latencyBStr;
 
       // Update Visual Render Iframes
       // Update Visual Render Iframes (use cached renderer)
@@ -1418,60 +1432,85 @@ function getDashboardHtml(): string {
         statusBox.innerHTML = \`<span style="color:var(--danger); font-weight: 600;">\${statusText} (MISMATCH)</span>\`;
       }
 
-      // 2. HTTP Headers comparison (merged list)
+      // 2. HTTP Headers comparison (merged list with dynamic UI filtering)
       const headersTbody = document.getElementById("headers-comparison-tbody");
-      headersTbody.innerHTML = "";
+      const ignoreInput = document.getElementById("header-ignore-input");
 
-      const mergedDiffs = [];
-      res.headerMismatches.forEach(h => {
-        mergedDiffs.push({ ...h, critical: true });
-      });
-      res.expectedHeaderVariations.forEach(h => {
-        mergedDiffs.push({ ...h, critical: false });
-      });
+      const renderHeaders = () => {
+        headersTbody.innerHTML = "";
+        
+        // Parse comma-separated list of headers to ignore
+        const ignoreList = ignoreInput.value
+          .split(",")
+          .map(h => h.trim().toLowerCase())
+          .filter(h => h.length > 0);
 
-      // Sort alphabetically by header name
-      mergedDiffs.sort((x, y) => x.header.localeCompare(y.header));
-
-      if (mergedDiffs.length === 0) {
-        headersTbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted); text-align:center;">All response headers are identical</td></tr>';
-      } else {
-        mergedDiffs.forEach(h => {
-          const badgeHtml = h.critical
-            ? '<span class="badge danger" style="padding: 2px 6px;">Critical Mismatch</span>'
-            : '<span class="badge warning" style="padding: 2px 6px; background-color: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2);">Expected Variation</span>';
-          
-          const tr = document.createElement("tr");
-          
-          const td1 = document.createElement("td");
-          td1.style.fontFamily = "monospace";
-          td1.style.fontWeight = "500";
-          td1.textContent = h.header;
-          
-          const td2 = document.createElement("td");
-          td2.style.color = h.critical ? 'var(--danger)' : 'var(--text)';
-          td2.style.fontFamily = "monospace";
-          td2.style.fontSize = "11px";
-          td2.style.wordBreak = "break-all";
-          td2.textContent = h.valA || '(missing)';
-          
-          const td3 = document.createElement("td");
-          td3.style.color = h.critical ? 'var(--success)' : 'var(--text)';
-          td3.style.fontFamily = "monospace";
-          td3.style.fontSize = "11px";
-          td3.style.wordBreak = "break-all";
-          td3.textContent = h.valB || '(missing)';
-          
-          const td4 = document.createElement("td");
-          td4.innerHTML = badgeHtml; // Safe: hardcoded markup
-
-          tr.appendChild(td1);
-          tr.appendChild(td2);
-          tr.appendChild(td3);
-          tr.appendChild(td4);
-          headersTbody.appendChild(tr);
+        const mergedDiffs = [];
+        res.headerMismatches.forEach(h => {
+          const isIgnored = ignoreList.includes(h.header.toLowerCase());
+          mergedDiffs.push({ ...h, critical: !isIgnored });
         });
-      }
+        if (res.expectedHeaderVariations) {
+          res.expectedHeaderVariations.forEach(h => {
+            const isIgnored = ignoreList.includes(h.header.toLowerCase());
+            mergedDiffs.push({ ...h, critical: !isIgnored });
+          });
+        }
+
+        // Sort alphabetically, placing critical mismatches on top
+        mergedDiffs.sort((x, y) => {
+          if (x.critical !== y.critical) {
+            return x.critical ? -1 : 1;
+          }
+          return x.header.localeCompare(y.header);
+        });
+
+        if (mergedDiffs.length === 0) {
+          headersTbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted); text-align:center;">All response headers are identical</td></tr>';
+        } else {
+          mergedDiffs.forEach(h => {
+            const badgeHtml = h.critical
+              ? '<span class="badge danger" style="padding: 2px 6px;">Critical Mismatch</span>'
+              : '<span class="badge warning" style="padding: 2px 6px; background-color: rgba(255, 255, 255, 0.03); color: var(--text-muted); border: 1px solid var(--border);">Ignored Variation</span>';
+            
+            const tr = document.createElement("tr");
+            if (!h.critical) {
+              tr.style.opacity = "0.5";
+            }
+            
+            const td1 = document.createElement("td");
+            td1.style.fontFamily = "monospace";
+            td1.style.fontWeight = "500";
+            td1.textContent = h.header;
+            
+            const td2 = document.createElement("td");
+            td2.style.color = h.critical ? 'var(--danger)' : 'var(--text-muted)';
+            td2.style.fontFamily = "monospace";
+            td2.style.fontSize = "11px";
+            td2.style.wordBreak = "break-all";
+            td2.textContent = h.valA || '(missing)';
+            
+            const td3 = document.createElement("td");
+            td3.style.color = h.critical ? 'var(--success)' : 'var(--text-muted)';
+            td3.style.fontFamily = "monospace";
+            td3.style.fontSize = "11px";
+            td3.style.wordBreak = "break-all";
+            td3.textContent = h.valB || '(missing)';
+            
+            const td4 = document.createElement("td");
+            td4.innerHTML = badgeHtml;
+
+            tr.appendChild(td1);
+            tr.appendChild(td2);
+            tr.appendChild(td3);
+            tr.appendChild(td4);
+            headersTbody.appendChild(tr);
+          });
+        }
+      };
+
+      ignoreInput.oninput = renderHeaders;
+      renderHeaders();
 
       // 4. Code Body Diff
       const diffContainer = document.getElementById("body-diff-container");

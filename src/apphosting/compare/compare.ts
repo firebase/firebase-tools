@@ -14,16 +14,10 @@ export interface ComparisonResult {
   isBinary: boolean;
   bodyA?: string;
   bodyB?: string;
+  latencyA?: number;
+  latencyB?: number;
 }
 
-const BEHAVIORAL_HEADERS = [
-  "cache-control",
-  "content-security-policy",
-  "content-type",
-  "content-encoding",
-  "location",
-  "strict-transport-security",
-];
 
 const BINARY_CONTENT_TYPES = [
   "image/",
@@ -52,10 +46,13 @@ export async function compareRoute(
     size: 2 * 1024 * 1024,
   };
 
-  const [resA, resB] = await Promise.all([
-    fetch(`${urlA}${route}`, fetchOptions),
-    fetch(`${urlB}${route}`, fetchOptions),
-  ]);
+  const startA = Date.now();
+  const resA = await fetch(`${urlA}${route}`, fetchOptions);
+  const latencyA = Date.now() - startA;
+
+  const startB = Date.now();
+  const resB = await fetch(`${urlB}${route}`, fetchOptions);
+  const latencyB = Date.now() - startB;
 
   const contentTypeA = resA.headers.get("content-type") || "";
   const contentTypeB = resB.headers.get("content-type") || "";
@@ -73,6 +70,7 @@ export async function compareRoute(
     headers: headersA,
     isBinary: isBinaryA || isBinaryB,
     body: (isBinaryA || isBinaryB) ? (await resA.buffer()).toString("base64") : await resA.text(),
+    latencyMs: latencyA,
   };
 
   const responseB: RouteResponse = {
@@ -80,6 +78,7 @@ export async function compareRoute(
     headers: headersB,
     isBinary: isBinaryA || isBinaryB,
     body: (isBinaryA || isBinaryB) ? (await resB.buffer()).toString("base64") : await resB.text(),
+    latencyMs: latencyB,
   };
 
   return await compareRouteResponses(route, responseA, responseB);
@@ -90,6 +89,7 @@ export interface RouteResponse {
   headers: Record<string, string>;
   body: string;
   isBinary: boolean;
+  latencyMs?: number;
 }
 
 /**
@@ -110,6 +110,8 @@ export async function compareRouteResponses(
     bodySimilarity: 1.0,
     bodyDiff: "",
     isBinary: resA.isBinary || resB.isBinary,
+    latencyA: resA.latencyMs,
+    latencyB: resB.latencyMs,
   };
 
   // 1. Compare Headers
@@ -128,11 +130,7 @@ export async function compareRouteResponses(
     const valA = normalizedHeadersA[key] || "";
     const valB = normalizedHeadersB[key] || "";
     if (valA !== valB) {
-      if (BEHAVIORAL_HEADERS.includes(key.toLowerCase())) {
-        result.headerMismatches.push({ header: key, valA, valB });
-      } else {
-        result.expectedHeaderVariations.push({ header: key, valA, valB });
-      }
+      result.headerMismatches.push({ header: key, valA, valB });
     }
   }
 
