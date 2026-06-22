@@ -8,6 +8,7 @@ import * as slots from "../apphosting/compare/slots";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
 import * as path from "path";
+import * as os from "os";
 import { logger } from "../logger";
 
 export const command = new Command("apphosting:compare-suite")
@@ -21,7 +22,7 @@ export const command = new Command("apphosting:compare-suite")
   .option(
     "--output-dir <outputDir>",
     "directory to output comparison report files",
-    "./compare-report",
+    process.platform === "win32" ? path.join(os.tmpdir(), "firebase-apphosting-compare-report") : "/tmp/firebase-apphosting-compare-report",
   )
   .option("--record-only", "only deploy variants and record their output, skipping diffing")
   .option("--compare-only", "run comparisons based on previously cached recordings, skipping deployment")
