@@ -139,6 +139,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -240,8 +241,14 @@ describe("apphosting", () => {
 
       listBackendsStub.onFirstCall().resolves({
         backends: [
-          { name: "projects/my-project/locations/us-central1/backends/backend-prod" },
-          { name: "projects/my-project/locations/us-central1/backends/backend-staging" },
+          {
+            name: "projects/my-project/locations/us-central1/backends/backend-prod",
+            runtime: { value: "nodejs22" },
+          },
+          {
+            name: "projects/my-project/locations/us-central1/backends/backend-staging",
+            runtime: { value: "nodejs22" },
+          },
         ],
       });
 
@@ -298,6 +305,7 @@ describe("apphosting", () => {
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
             appId: "my-app-id",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -357,6 +365,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -432,6 +441,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -466,6 +476,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
