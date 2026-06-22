@@ -296,6 +296,7 @@ tr:last-child td {
 
 /* Heatmap Styles */
 .heatmap-table {
+  width: auto !important;
   border-collapse: separate;
   border-spacing: 8px;
   font-size: 13px;

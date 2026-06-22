@@ -123,19 +123,19 @@
                 Ignore Different Codebases
               </label>
             </div>
+          </div>
 
-            <!-- Spacer to push Ignored Headers to the right -->
-            <div style="flex: 1;"></div>
-
-            <!-- Ignored Headers Toggle Pill -->
-            <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;" onclick="toggleIgnorePillsCollapse()">
-              <span style="font-weight: 600; color: var(--text-muted);">Ignored Headers (<span id="ignore-count">0</span>)</span>
-              <span id="ignore-collapse-icon" style="font-size: 10px; color: var(--accent); border: 1px solid rgba(59,130,246,0.2); padding: 1px 6px; border-radius: 3px; background: rgba(59,130,246,0.05);">Expand</span>
+          <!-- Dedicated Secondary Row: Ignored Headers Toggle Bar -->
+          <div style="display: flex; padding: 8px 16px; border-top: 1px solid rgba(255,255,255,0.04); align-items: center; justify-content: space-between; background: rgba(255,255,255,0.01); cursor: pointer; user-select: none;" onclick="toggleIgnorePillsCollapse()">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; color: var(--text-muted);">Ignored Response Headers:</span>
+              <span style="background: rgba(59,130,246,0.12); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-weight: 700; font-size: 10px; display: inline-flex; align-items: center;"><span id="ignore-count" style="margin-right: 4px;">0</span>active</span>
             </div>
+            <span id="ignore-collapse-icon" style="font-size: 10px; color: var(--accent); border: 1px solid rgba(59,130,246,0.2); padding: 2px 6px; border-radius: 3px; background: rgba(59,130,246,0.03);">Expand</span>
           </div>
 
           <!-- Collapsible Ignored Headers Capsule Sub-row -->
-          <div id="ignore-pills-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px; max-height: 500px; overflow: hidden; transition: max-height 0.25s ease; background: rgba(0,0,0,0.1); border-top: 1px dashed rgba(255,255,255,0.02); box-sizing: border-box;">
+          <div id="ignore-pills-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px; max-height: 500px; overflow: hidden; transition: max-height 0.25s ease; background: rgba(0,0,0,0.1); box-sizing: border-box;">
              <!-- Populated dynamically via renderIgnorePills() -->
           </div>
 
