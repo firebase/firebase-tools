@@ -17,6 +17,7 @@ export type ObjectUploadMultipartData = {
 type MultipartRequestBody = MultipartRequestBodyPart[];
 
 const LINE_SEPARATOR = `\r\n`;
+const LINE_SEPARATOR_BUFFER = Buffer.from(LINE_SEPARATOR);
 
 /**
  * Returns an array of Buffers constructed by splitting a Buffer on a delimiter.
@@ -202,7 +203,16 @@ function parseMultipartFormDataBodyPart(part: Buffer): MultipartFormDataPart {
   const headerBuffer = sections[0];
   const bodyBuffer = sections[1];
 
-  const dataRaw = bodyBuffer.slice(0, bodyBuffer.byteLength - LINE_SEPARATOR.length);
+  if (
+    bodyBuffer.byteLength < LINE_SEPARATOR_BUFFER.byteLength ||
+    !bodyBuffer
+      .slice(bodyBuffer.byteLength - LINE_SEPARATOR_BUFFER.byteLength)
+      .equals(LINE_SEPARATOR_BUFFER)
+  ) {
+    throw new Error("Failed to parse multipart part: Missing trailing line separator.");
+  }
+
+  const dataRaw = bodyBuffer.slice(0, bodyBuffer.byteLength - LINE_SEPARATOR_BUFFER.byteLength);
 
   const headers = headerBuffer.toString().split(LINE_SEPARATOR);
   let name = "";
