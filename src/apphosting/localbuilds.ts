@@ -331,8 +331,8 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
         `and your deployed app will run on the backend's configured ABIU runtime (${runtimeValue}).`,
     );
 
-    const targetVersion = `${targetMajor}.0.0`;
-    if (!semver.satisfies(targetVersion, enginesNode)) {
+    const targetRange = `^${targetMajor}.0.0`;
+    if (!semver.intersects(targetRange, enginesNode)) {
       logLabeledWarning(
         "apphosting",
         `The Node.js version range specified in your package.json engines ("${enginesNode}") ` +

@@ -336,7 +336,7 @@ describe("localBuild", () => {
       } as any;
 
       expect(() => validateLocalBuildNodeVersion(backend, "./")).to.throw(
-        "Local builds are only supported for backends with ABIU"
+        "Local builds are only supported for backends with ABIU",
       );
     });
 
@@ -350,7 +350,7 @@ describe("localBuild", () => {
 
       expect(logWarningStub).to.have.been.calledWith(
         "apphosting",
-        sinon.match("Unable to extract Node.js major version from the backend runtime")
+        sinon.match("Unable to extract Node.js major version from the backend runtime"),
       );
       expect(execSyncStub).to.not.have.been.called;
     });
@@ -370,7 +370,7 @@ describe("localBuild", () => {
 
       expect(logWarningStub).to.have.been.calledOnceWith(
         "apphosting",
-        sinon.match("local builds do NOT use the \"engines\" field")
+        sinon.match('local builds do NOT use the "engines" field'),
       );
     });
 
@@ -390,8 +390,53 @@ describe("localBuild", () => {
       expect(logWarningStub).to.have.been.calledTwice;
       expect(logWarningStub.secondCall).to.have.been.calledWith(
         "apphosting",
-        sinon.match("does not satisfy your backend's target ABIU runtime version")
+        sinon.match("does not satisfy your backend's target ABIU runtime version"),
       );
+    });
+
+    it("does not warn on minor/patch constraints in engines if target major is satisfied", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+      readJsonStub.returns({
+        engines: { node: "^22.15.0" },
+      });
+
+      validateLocalBuildNodeVersion(backend, "./");
+
+      // Should only log the informational "engines not used for local build execution" warning
+      expect(logWarningStub).to.have.been.calledOnce;
+      expect(logWarningStub.firstCall).to.have.been.calledWith(
+        "apphosting",
+        sinon.match('local builds do NOT use the "engines" field'),
+      );
+    });
+
+    it("handles complex logical OR engines ranges correctly", () => {
+      const backend = {
+        name: "projects/my-project/locations/us-central1/backends/foo",
+        runtime: { value: "nodejs22" },
+      } as any;
+
+      execSyncStub.returns("v22.15.0");
+
+      // Case 1: Overlapping OR range (18 || 22) - Should NOT warn
+      readJsonStub.returns({
+        engines: { node: "18 || 22" },
+      });
+      validateLocalBuildNodeVersion(backend, "./");
+      expect(logWarningStub).to.have.been.calledOnce; // Only informational warning
+      logWarningStub.resetHistory();
+
+      // Case 2: Non-overlapping OR range (18 || 20) - Should warn!
+      readJsonStub.returns({
+        engines: { node: "18 || 20" },
+      });
+      validateLocalBuildNodeVersion(backend, "./");
+      expect(logWarningStub).to.have.been.calledTwice; // Informational + mismatch warning
     });
 
     it("warns if local host Node version doesn't match the target version", () => {
@@ -407,7 +452,9 @@ describe("localBuild", () => {
 
       expect(logWarningStub).to.have.been.calledOnceWith(
         "apphosting",
-        sinon.match("Local Node.js version (v24.10.0) does not match your backend's target ABIU runtime")
+        sinon.match(
+          "Local Node.js version (v24.10.0) does not match your backend's target ABIU runtime",
+        ),
       );
     });
 
@@ -438,7 +485,7 @@ describe("localBuild", () => {
 
       expect(logWarningStub).to.have.been.calledOnceWith(
         "apphosting",
-        sinon.match("Unable to detect your local Node.js version")
+        sinon.match("Unable to detect your local Node.js version"),
       );
     });
   });
