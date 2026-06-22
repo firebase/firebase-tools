@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parity Comparison Dashboard</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="index.css">
+  
+  <!-- App Client Logic -->
+  <script src="index.js" defer></script>
+</head>
+<body>
+
+  <header>
+    <h1><span>Firebase App Hosting Parity Dashboard</span></h1>
+    <div style="font-size: 12px; color: var(--text-muted);" id="connection-status">Connected</div>
+  </header>
+
+  <main>
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div>
+        <div class="section-title">Test Cases</div>
+        <div class="list-group" id="test-cases-list">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div id="variant-selection-section" style="display: none;">
+        <div class="section-title">Compare Variants</div>
+        <div class="compare-select">
+          <label style="font-size:12px; color:var(--text-muted);">Variant A</label>
+          <select id="select-variant-a"></select>
+
+          <label style="font-size:12px; color:var(--text-muted);">Variant B</label>
+          <select id="select-variant-b"></select>
+
+          <button class="btn" onclick="triggerComparison()">Compare</button>
+          <button class="btn" style="background-color: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px;" onclick="showHeatmapView()">Show Heatmap</button>
+        </div>
+      </div>
+
+      <!-- Route Selection Panel in Sidebar -->
+      <div id="routes-card" style="display: none; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+        <div class="section-title">Discovered Routes</div>
+        <div id="routes-container" style="margin-top: 8px; display: flex; flex-direction: column; max-height: 400px; overflow-y: auto;">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="content">
+      
+      <!-- Understanding the Metrics Legend -->
+      <div class="card" id="metrics-legend" style="margin-bottom: 20px;">
+        <div class="card-header" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="document.getElementById('legend-body').style.display = document.getElementById('legend-body').style.display === 'none' ? 'block' : 'none'">
+          <span>Understanding Parity Metrics</span>
+          <span style="font-size: 12px; color: var(--accent);">[Click to Expand]</span>
+        </div>
+        <div id="legend-body" class="panel-body" style="display: none; padding-top: 0; font-size: 13px; color: var(--text-muted);">
+          <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+            <li><strong style="color: var(--text);">Body Similarity</strong>: A percentage representing how identical the HTML/JSON response bodies are. Uses string distance algorithms.</li>
+            <li><strong style="color: var(--text);">Expected Variations</strong>: Certain headers (like <code>Date</code>, <code>Traceparent</code>, <code>Server-Timing</code>) naturally change every request and are excluded from strict parity failure checks.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Global Controls Bar -->
+      <div class="card" style="margin-bottom: 20px; background: rgba(255,255,255,0.01); border: 1px solid var(--border);">
+        <div class="panel-body" style="display: flex; padding: 12px 16px; gap: 24px; align-items: flex-start; flex-wrap: wrap; font-size: 12px;">
+          
+          <!-- Collapsible Ignore Headers capsule list -->
+          <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 300px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;" onclick="toggleIgnorePillsCollapse()">
+              <span style="font-weight: 600; color: var(--text-muted);">Ignored Response Headers (<span id="ignore-count">0</span> active)</span>
+              <span id="ignore-collapse-icon" style="font-size: 10px; color: var(--accent); border: 1px solid rgba(59,130,246,0.2); padding: 1px 6px; border-radius: 3px; background: rgba(59,130,246,0.05);">Collapse</span>
+            </div>
+            <div id="ignore-pills-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; max-height: 500px; overflow: hidden; transition: max-height 0.25s ease;">
+               <!-- Populated dynamically via renderIgnorePills() -->
+            </div>
+          </div>
+
+          <!-- Scoring Mode Selector -->
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+            <label for="select-scoring-mode" style="font-weight: 600; color: var(--text-muted); white-space: nowrap;">Matrix Heatmap Score:</label>
+            <select id="select-scoring-mode" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-family); outline: none; cursor: pointer; font-size: 12px;">
+              <option value="body">Body Similarity Only</option>
+              <option value="headers">Header Parity Only</option>
+              <option value="latency">Response Time Similarity</option>
+              <option value="average">Combined Average (All)</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Dashboard Empty State -->
+      <div id="dashboard-empty-state" class="card" style="flex: 1; align-items: center; justify-content: center; padding: 48px 24px; color: var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px; opacity: 0.5;">
+          <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+          <line x1="3" x2="21" y1="9" y2="9"/>
+          <line x1="9" x2="9" y1="21" y2="9"/>
+        </svg>
+        <div style="font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 8px;">No Test Suite Selected</div>
+        <div style="font-size: 13px; text-align: center; max-width: 380px;">Select a test suite from the sidebar to visualize the joint parity heatmap and compare routing behavior.</div>
+      </div>
+
+      <!-- Heatmap View -->
+      <div class="card" id="heatmap-card" style="display: none; flex: 1; flex-direction: column;">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Joint Parity Heatmap (Click any cell to compare)</span>
+          <label id="filter-codebases-container" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: normal; cursor: pointer; color: var(--text-muted);">
+            <input type="checkbox" id="toggle-filter-codebases" style="cursor: pointer;" onchange="applyMatrixFilter()">
+            Ignore Comparisons for Different Codebases
+          </label>
+        </div>
+        <div id="heatmap-filters-bar" style="display: flex; padding: 10px 16px; gap: 16px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.015);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: var(--text-muted);">Search Variants:</span>
+            <input type="text" id="variant-search-input" placeholder="e.g. Node24" style="background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-family: var(--font-family); font-size: 12px; outline: none; width: 140px;" oninput="applyMetadataFilters()">
+          </div>
+          <div id="heatmap-dynamic-filters" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; flex-wrap: wrap;"></div>
+        </div>
+        <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1; position: relative;">
+          
+          <!-- Loading Spinner Overlay -->
+          <div id="heatmap-spinner" class="spinner-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <div style="margin-top: 12px; font-weight: 500; font-size: 12px; color: var(--text-muted);">Recalculating Parity Heatmap...</div>
+          </div>
+
+          <div id="heatmap-grid-container" style="overflow-x: auto; max-width: 100%; width: 100%; transition: opacity 0.15s ease;"></div>
+        </div>
+      </div>
+
+      <!-- Detailed Comparison View -->
+      <div id="comparison-details" class="details-view" style="display: none;">
+        
+        <!-- Top: Headers & Status Mismatches -->
+        <div class="card details-left">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Parity Breakdown: <span id="route-title-path" style="font-family: 'JetBrains Mono', monospace; color: var(--accent);">/</span></span>
+            <button class="btn" style="padding: 4px 12px; font-size: 12px;" onclick="showHeatmapView()">Back to Heatmap</button>
+          </div>
+          <div class="panel-body">
+            <div style="margin-bottom: 8px;">
+              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Target Endpoints</div>
+              <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                <div>
+                  <span style="font-weight: 600; color: var(--primary);">Variant A:</span>
+                  <a id="link-endpoint-a" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
+                </div>
+                <div>
+                  <span style="font-weight: 600; color: #10b981;">Variant B:</span>
+                  <a id="link-endpoint-b" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Performance & Parity Metrics Row -->
+            <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+              
+              <!-- Tile 1: Status Code Parity -->
+              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Status Code Parity</div>
+                <div id="status-comparison-box" style="font-size: 14px; font-weight: 600; display: flex; align-items: center; min-height: 28px;">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- Tile 2: Variant A Performance -->
+              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant A (Current)</div>
+                <div id="metrics-variant-a" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+              <!-- Tile 3: Variant B Performance -->
+              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant B (Canary)</div>
+                <div id="metrics-variant-b" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
+                  <!-- Populated dynamically -->
+                </div>
+              </div>
+
+            </div>
+
+            <div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">HTTP Headers Comparison</div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Header</th>
+                      <th>Variant A</th>
+                      <th>Variant B</th>
+                      <th>Classification</th>
+                    </tr>
+                  </thead>
+                  <tbody id="headers-comparison-tbody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom: Body Code Diff & Visual Render -->
+        <div class="card details-right">
+          <div class="card-header" style="display: flex; gap: 16px; padding-bottom: 0;">
+            <div id="tab-code-diff" style="cursor: pointer; padding-bottom: 12px; border-bottom: 2px solid var(--accent); color: var(--text);" onclick="switchRightTab('code')">Response Body Diff</div>
+            <div id="tab-visual" style="cursor: pointer; padding-bottom: 12px; color: var(--text-muted);" onclick="switchRightTab('visual')">Visual Render Split-View</div>
+          </div>
+          <div class="panel-body" style="padding: 0; overflow: hidden; position: relative;">
+            
+            <!-- Code Diff Container -->
+            <div id="body-diff-container" style="height: 100%; overflow: auto;">
+              <!-- Code diff rendered here -->
+            </div>
+
+            <!-- Visual Render Split Container -->
+            <div id="visual-render-container" style="display: none; height: 100%; width: 100%; box-sizing: border-box; padding: 12px; gap: 12px; background: #0f172a;">
+              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                  <span>Variant A (Current)</span>
+                  <a id="iframe-link-a" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
+                </div>
+                <iframe id="iframe-a" style="flex: 1; border: none; background: white; width: 100%; height: 100%;"></iframe>
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+                <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+                  <span>Variant B (Canary)</span>
+                  <a id="iframe-link-b" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
+                </div>
+                <iframe id="iframe-b" style="flex: 1; border: none; background: white; width: 100%; height: 100%;"></iframe>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+</body>
+</html>
