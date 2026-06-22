@@ -296,14 +296,19 @@ tr:last-child td {
 
 /* Heatmap Styles */
 .heatmap-table {
+  width: 100%;
+  max-width: 800px;
   border-collapse: separate;
-  border-spacing: 6px;
+  border-spacing: 8px;
   font-size: 13px;
   margin: 20px auto;
+  table-layout: fixed;
 }
 .heatmap-cell {
-  width: 120px;
-  height: 70px;
+  width: auto;
+  min-width: 80px;
+  max-width: 150px;
+  height: 64px;
   text-align: center;
   vertical-align: middle;
   font-weight: 700;
@@ -327,13 +332,14 @@ tr:last-child td {
 }
 
 .heatmap-header-cell {
-  padding: 10px;
+  padding: 8px;
   font-weight: 600;
   color: var(--text-muted);
   font-size: 11px;
   text-align: center;
-  max-width: 140px;
   word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .heatmap-row-label {
   padding-right: 14px;
@@ -341,8 +347,9 @@ tr:last-child td {
   color: var(--text-muted);
   font-size: 11px;
   text-align: right;
-  max-width: 140px;
   word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Unified Diff Panel Styles */
