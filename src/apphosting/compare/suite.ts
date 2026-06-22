@@ -12,7 +12,7 @@ import { Crawler } from "./crawler";
 import * as compare from "./compare";
 import * as reporter from "./reporter";
 import * as poller from "../../operation-poller";
-import { logger } from "../../logger";
+import { logger } from "./logger";
 import { FirebaseError } from "../../error";
 import { sleep } from "../../utils";
 

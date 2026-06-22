@@ -2,7 +2,7 @@ import * as fs from "fs-extra";
 import * as path from "path";
 import * as clc from "colorette";
 import { ComparisonResult } from "./compare";
-import { logger } from "../../logger";
+import { logger } from "./logger";
 
 function escapeHtml(str: string): string {
   return str

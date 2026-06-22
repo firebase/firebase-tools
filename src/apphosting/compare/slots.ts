@@ -3,7 +3,7 @@ import * as poller from "../../operation-poller";
 import { createBackend } from "../backend";
 import { listFirebaseApps, createWebApp, AppPlatform } from "../../management/apps";
 
-import { logger } from "../../logger";
+import { logger } from "./logger";
 import { FirebaseError } from "../../error";
 import { apphostingOrigin } from "../../api";
 

@@ -2,7 +2,7 @@
 import * as express from "express";
 import * as http from "http";
 import * as path from "path";
-import { logger } from "../../logger";
+import { logger } from "./logger";
 import * as cache from "./cache";
 import * as compare from "./compare";
 import * as diff from "diff";

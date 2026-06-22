@@ -1,7 +1,8 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 import * as crypto from "crypto";
-import { logger } from "../../logger";
+import * as os from "os";
+import { logger } from "./logger";
 
 export interface RouteResponse {
   status: number;
@@ -82,7 +83,9 @@ function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
   return error instanceof Error && "code" in error;
 }
 
-const CACHE_DIR = path.resolve(process.cwd(), "compare-cache");
+const CACHE_DIR = process.platform === "win32"
+  ? path.join(os.tmpdir(), "firebase-apphosting-compare-cache")
+  : "/tmp/firebase-apphosting-compare-cache";
 
 function getRecordingPath(testCaseName: string, variantId: string): string {
   const tcHash = crypto.createHash("sha256").update(testCaseName).digest("hex").slice(0, 8);

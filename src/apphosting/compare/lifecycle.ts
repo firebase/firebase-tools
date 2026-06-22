@@ -1,6 +1,6 @@
 import { FirebaseError } from "../../error";
 import * as apphosting from "../../gcp/apphosting";
-import { logger } from "../../logger";
+import { logger } from "./logger";
 
 const ALLOWED_PROJECTS = [
   "aryanf-test",

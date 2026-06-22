@@ -5,7 +5,7 @@ import * as apphosting from "../../gcp/apphosting";
 import { AppHostingYamlConfig } from "../yaml";
 import { getProjectNumber } from "../../getProjectNumber";
 import { serviceAccountsForBackend, grantSecretAccess, toMulti } from "../secrets";
-import { logger } from "../../logger";
+import { logger } from "./logger";
 
 export interface SecretMapping {
   originalName: string;
