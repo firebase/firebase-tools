@@ -51,7 +51,8 @@ async function deployToBackend(
   bucketName: string, // Kept for backwards compatibility but unused
   useLocalBuild: boolean,
   runtimeVersion?: string,
-): Promise<void> {
+): Promise<number> {
+  const startTime = Date.now();
   if (runtimeVersion) {
     logger.info(`Patching runtime version for backend ${backendId} to ${runtimeVersion}...`);
     const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
@@ -97,6 +98,10 @@ async function deployToBackend(
     const execAsync = util.promisify(cp.exec);
     const { stdout, stderr } = await execAsync(cmd, { cwd: appPath, maxBuffer: 1024 * 1024 * 100 });
     logger.debug(`Deploy output for ${backendId}:\n${stdout}`);
+    
+    const durationMs = Date.now() - startTime;
+    logger.info(`Deployment for backend ${backendId} completed in ${Math.round(durationMs / 1000)}s.`);
+    return durationMs;
   } catch (err: unknown) {
     const execErr = err as { stdout?: string; stderr?: string };
     logger.error(`Deploy for ${backendId} failed!\nSTDOUT:\n${execErr.stdout || ""}\nSTDERR:\n${execErr.stderr || ""}`);
@@ -252,10 +257,11 @@ export async function runCompareSuite(
         secretsMappings.push(mappings);
       }
 
-      // Deploy variants sequentially
+      // Deploy variants sequentially and measure duration
+      const deploymentTimes: number[] = [];
       for (let i = 0; i < variants.length; i++) {
         const v = variants[i];
-        await deployToBackend(
+        const duration = await deployToBackend(
           projectId,
           location,
           backendIds[i],
@@ -264,6 +270,7 @@ export async function runCompareSuite(
           !!v.localBuild,
           v.runtime,
         );
+        deploymentTimes.push(duration);
       }
 
       logger.info("All rollouts completed successfully!");
@@ -289,6 +296,7 @@ export async function runCompareSuite(
         const record = await recordVariant(testCaseName, v.id || String(i), url, v.path);
         record.localBuild = !!v.localBuild;
         record.runtime = v.runtime;
+        record.deployTimeMs = deploymentTimes[i];
         await cache.saveRecording(record);
         recordings.push(record);
       }

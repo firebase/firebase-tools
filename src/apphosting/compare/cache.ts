@@ -18,6 +18,7 @@ export interface VariantRecording {
   routes: Record<string, RouteResponse>;
   localBuild?: boolean;
   runtime?: string;
+  deployTimeMs?: number;
 }
 
 export function isRouteResponse(obj: unknown): obj is RouteResponse {
@@ -50,6 +51,10 @@ export function isVariantRecording(obj: unknown): obj is VariantRecording {
   }
 
   if (o.runtime !== undefined && typeof o.runtime !== "string") {
+    return false;
+  }
+
+  if (o.deployTimeMs !== undefined && typeof o.deployTimeMs !== "number") {
     return false;
   }
 

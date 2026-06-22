@@ -25,6 +25,8 @@ export interface CompareResponse {
   variantB: string;
   urlA: string;
   urlB: string;
+  deployTimeA?: number;
+  deployTimeB?: number;
   results: DashboardComparisonResult[];
 }
 

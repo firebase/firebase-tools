@@ -1,0 +1,25 @@
+[
+  {
+    "name": "Node Matrix Test",
+    "variants": [
+      {
+        "id": "Local-Node24",
+        "path": "/Users/aryanf/code/firebase/next-sample-1",
+        "localBuild": true,
+        "runtime": "nodejs24"
+      },
+      {
+        "id": "Source-Node24",
+        "path": "/Users/aryanf/code/firebase/next-sample-1",
+        "localBuild": false,
+        "runtime": "nodejs24"
+      },
+      {
+        "id": "Source-Node22",
+        "path": "/Users/aryanf/code/firebase/next-sample-1",
+        "localBuild": false,
+        "runtime": "nodejs22"
+      }
+    ]
+  }
+]

@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Next.js 15.3 Canary Matrix",
+    "variants": [
+      {
+        "id": "Local-Node24",
+        "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3",
+        "runtime": "nodejs24",
+        "localBuild": true
+      },
+      {
+        "id": "Source-Node24",
+        "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3",
+        "runtime": "nodejs24",
+        "localBuild": false
+      }
+    ]
+  }
+]

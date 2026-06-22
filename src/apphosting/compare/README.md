@@ -41,7 +41,7 @@ It takes an array of configurations (variants) and automatically deploys them, d
 2. Run the deployment and recording phase:
 
 ```bash
-FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --project <your-project> --suite-config matrix-test.json --record-only
+FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --project <your-project> --suite-config src/apphosting/compare/matrices/matrix-test.json --record-only
 ```
 
 3. Spin up the visual dashboard to inspect the matrices and diffs:
@@ -52,7 +52,7 @@ FIREBASE_CLI_EXPERIMENTS=apphosting firebase apphosting:compare-suite --serve --
 
 ---
 
-## 🤖 Instructions for AI Agents
+## Instructions for AI Agents
 
 If you are an AI Agent tasked with running differential tests or adding new variants to a matrix, follow these strict guidelines:
 

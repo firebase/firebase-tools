@@ -1,0 +1,19 @@
+[
+  {
+    "name": "Angular 19 Canary Matrix",
+    "variants": [
+      {
+        "id": "Local-Node24",
+        "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19",
+        "runtime": "nodejs24",
+        "localBuild": true
+      },
+      {
+        "id": "Source-Node24",
+        "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19",
+        "runtime": "nodejs24",
+        "localBuild": false
+      }
+    ]
+  }
+]

@@ -93,6 +93,8 @@ export function startServer(port: number): Promise<void> {
         variantB: recB.id,
         urlA: recA.url,
         urlB: recB.url,
+        deployTimeA: recA.deployTimeMs,
+        deployTimeB: recB.deployTimeMs,
         results
       };
       res.json(responsePayload);
@@ -256,7 +258,7 @@ export function startServer(port: number): Promise<void> {
   const server = http.createServer(app);
   server.on("error", reject);
   server.listen(port, () => {
-    logger.info(`\n🚀 Parity Visualization Dashboard running at http://localhost:${port}`);
+    logger.info(`\nParity Visualization Dashboard running at http://localhost:${port}`);
     logger.info("Press Ctrl+C to stop the server.\n");
   });
 
@@ -448,33 +450,29 @@ function getDashboardHtml(): string {
       font-size: 16px;
     }
 
-    /* Routes List */
-    .routes-list {
-      flex: 1;
-      overflow-y: auto;
-    }
-
+    /* Routes List in Sidebar */
     .route-item {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border);
+      padding: 10px 14px;
+      background-color: rgba(255,255,255,0.01);
+      border: 1px solid var(--border);
+      border-radius: 6px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 6px;
       cursor: pointer;
-      transition: background-color 0.2s;
+      transition: all 0.2s ease;
+      margin-bottom: 8px;
     }
 
-    .route-item:hover {
-      background-color: rgba(255,255,255,0.02);
-    }
-
-    .route-item.active {
-      background-color: rgba(59, 130, 246, 0.05);
+    .route-item:hover, .route-item.active {
+      background-color: rgba(59, 130, 246, 0.1);
+      border-color: var(--accent);
     }
 
     .route-path {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
+      font-size: 12px;
+      word-break: break-all;
     }
 
     .badges {
@@ -497,15 +495,20 @@ function getDashboardHtml(): string {
     .details-view {
       flex: 1;
       display: flex;
+      flex-direction: column;
       gap: 20px;
       overflow: hidden;
     }
 
     .details-left {
-      width: 40%;
+      flex: none;
+      height: 350px;
+      min-height: 100px;
+      max-height: 80vh;
+      resize: vertical;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow: auto;
     }
 
     .details-right {
@@ -777,7 +780,7 @@ function getDashboardHtml(): string {
 <body>
 
   <header>
-    <h1>🚀 <span>Firebase App Hosting Parity Dashboard</span></h1>
+    <h1><span>Firebase App Hosting Parity Dashboard</span></h1>
     <div style="font-size: 12px; color: var(--text-muted);" id="connection-status">Connected</div>
   </header>
 
@@ -802,6 +805,14 @@ function getDashboardHtml(): string {
 
           <button class="btn" onclick="triggerComparison()">Compare</button>
           <button class="btn" style="background-color: transparent; border: 1px solid var(--border); color: var(--text); margin-top: 8px;" onclick="showHeatmapView()">Show Heatmap</button>
+        </div>
+      </div>
+
+      <!-- Route Selection Panel in Sidebar -->
+      <div id="routes-card" style="display: none; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+        <div class="section-title">Discovered Routes</div>
+        <div id="routes-container" style="margin-top: 8px; display: flex; flex-direction: column; max-height: 400px; overflow-y: auto;">
+          <!-- Populated dynamically -->
         </div>
       </div>
     </div>
@@ -841,14 +852,6 @@ function getDashboardHtml(): string {
         </div>
         <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1;">
           <div id="heatmap-grid-container" style="overflow-x: auto; max-width: 100%;"></div>
-        </div>
-      </div>
-
-      <!-- Route Selection Panel -->
-      <div class="card routes-list" id="routes-card" style="display: none;">
-        <div class="card-header" id="routes-header">Discovered Routes</div>
-        <div id="routes-container">
-          <!-- Populated dynamically -->
         </div>
       </div>
 
@@ -947,6 +950,8 @@ function getDashboardHtml(): string {
     let comparisonResults = [];
     let activeUrlA = "";
     let activeUrlB = "";
+    let activeDeployTimeA = 0;
+    let activeDeployTimeB = 0;
     let lastMatrixData = null;
 
     // Fetch list of recordings on load
@@ -962,7 +967,7 @@ function getDashboardHtml(): string {
       globalItem.className = "list-item";
       globalItem.style.fontWeight = "bold";
       globalItem.style.color = "var(--accent)";
-      globalItem.textContent = "🌍 GLOBAL MATRIX (All Apps)";
+      globalItem.textContent = "GLOBAL MATRIX (All Apps)";
       globalItem.onclick = () => selectTestCase("GLOBAL", globalItem);
       container.appendChild(globalItem);
 
@@ -1304,7 +1309,7 @@ function getDashboardHtml(): string {
 
       document.getElementById("dashboard-empty-state").style.display = "none";
       document.getElementById("heatmap-card").style.display = "none";
-      document.getElementById("routes-card").style.display = "flex";
+      document.getElementById("routes-card").style.display = "block";
       document.getElementById("comparison-details").style.display = "none";
 
       const res = await fetch(\`/api/compare?testCase=\${encodeURIComponent(activeTestCase)}&variantA=\${encodeURIComponent(varA)}&variantB=\${encodeURIComponent(varB)}\`);
@@ -1312,6 +1317,8 @@ function getDashboardHtml(): string {
       comparisonResults = data.results;
       activeUrlA = data.urlA || "";
       activeUrlB = data.urlB || "";
+      activeDeployTimeA = data.deployTimeA || 0;
+      activeDeployTimeB = data.deployTimeB || 0;
 
       // Populate Discovered Routes List
       const container = document.getElementById("routes-container");
@@ -1339,7 +1346,26 @@ function getDashboardHtml(): string {
             badgeDiv.innerHTML += '<span class="badge warning">Header Diff</span>';
           }
           if (result.bodySimilarity < 1.0) {
-            badgeDiv.innerHTML += \`<span class="badge danger">Body Diff (\${Math.round(result.bodySimilarity * 100)}%)</span>\`;
+            const percent = Math.round(result.bodySimilarity * 100);
+            const badgeClass = percent >= 95 ? "warning" : "danger";
+            let lineDiffText = "";
+            if (result.diffChanges) {
+              let added = 0;
+              let removed = 0;
+              result.diffChanges.forEach((c) => {
+                const lines = c.value.split("\\n");
+                if (lines.length > 1 && lines[lines.length - 1] === "") {
+                  lines.pop();
+                }
+                if (c.added) {
+                  added += lines.length;
+                } else if (c.removed) {
+                  removed += lines.length;
+                }
+              });
+              lineDiffText = " (+" + added + "/-" + removed + ")";
+            }
+            badgeDiv.innerHTML += '<span class="badge ' + badgeClass + '">Similarity: ' + percent + '%' + lineDiffText + '</span>';
           }
         }
 
@@ -1367,13 +1393,16 @@ function getDashboardHtml(): string {
       // Update Endpoint Links & Route Path Title
       document.getElementById("route-title-path").textContent = res.route;
       
+      const deployTimeAStr = activeDeployTimeA ? " (Deployed in " + Math.round(activeDeployTimeA / 1000) + "s)" : "";
+      const deployTimeBStr = activeDeployTimeB ? " (Deployed in " + Math.round(activeDeployTimeB / 1000) + "s)" : "";
+
       const linkA = document.getElementById("link-endpoint-a");
       linkA.href = activeUrlA + res.route;
-      linkA.textContent = activeUrlA + res.route;
+      linkA.textContent = activeUrlA + res.route + deployTimeAStr;
 
       const linkB = document.getElementById("link-endpoint-b");
       linkB.href = activeUrlB + res.route;
-      linkB.textContent = activeUrlB + res.route;
+      linkB.textContent = activeUrlB + res.route + deployTimeBStr;
 
       // Update Visual Render Iframes
       // Update Visual Render Iframes (use cached renderer)
@@ -1485,8 +1514,27 @@ function getDashboardHtml(): string {
         return;
       }
 
+      const diffHeader = document.createElement("div");
+      diffHeader.style.display = "flex";
+      diffHeader.style.justifyContent = "space-between";
+      diffHeader.style.padding = "8px 16px";
+      diffHeader.style.backgroundColor = "var(--bg-panel)";
+      diffHeader.style.borderBottom = "1px solid var(--border)";
+      diffHeader.style.position = "sticky";
+      diffHeader.style.top = "0";
+      diffHeader.style.zIndex = "10";
+      diffHeader.innerHTML = '<div style="font-size: 13px; font-weight: 600; color: var(--text);">Diff Viewer</div>' +
+        '<div style="display: flex; gap: 8px; align-items: center;">' +
+          '<button id="prev-diff" class="btn" style="padding: 4px 8px;">&lt;</button>' +
+          '<span id="diff-counter" style="font-size: 12px; font-family: monospace;">0/0</span>' +
+          '<button id="next-diff" class="btn" style="padding: 4px 8px;">&gt;</button>' +
+        '</div>';
+      diffContainer.appendChild(diffHeader);
+
       const diffView = document.createElement("div");
       diffView.className = "diff-view";
+
+      let diffElements = [];
 
       res.diffChanges.forEach((change) => {
         const lines = change.value.split("\\n");
@@ -1494,27 +1542,118 @@ function getDashboardHtml(): string {
           lines.pop();
         }
 
-        lines.forEach((line) => {
-          const row = document.createElement("div");
-          row.className = "diff-line";
-          if (change.added) row.classList.add("added");
-          if (change.removed) row.classList.add("removed");
+        if (!change.added && !change.removed) {
+          if (lines.length > 10) {
+            const topLines = lines.slice(0, 3);
+            const bottomLines = lines.slice(-3);
+            const hiddenCount = lines.length - 6;
 
-          const prefix = document.createElement("span");
-          prefix.className = "diff-prefix";
-          prefix.textContent = change.added ? "+" : (change.removed ? "-" : " ");
+            const renderLines = (arr) => {
+               arr.forEach(line => {
+                 const row = document.createElement("div"); row.className = "diff-line";
+                 const prefix = document.createElement("span"); prefix.className = "diff-prefix"; prefix.textContent = " ";
+                 const text = document.createElement("span"); text.className = "diff-text"; text.textContent = line;
+                 row.appendChild(prefix); row.appendChild(text);
+                 diffView.appendChild(row);
+               });
+            };
 
-          const text = document.createElement("span");
-          text.className = "diff-text";
-          text.textContent = line;
+            renderLines(topLines);
+            
+            const expandBtn = document.createElement("div");
+            expandBtn.style.cursor = "pointer";
+            expandBtn.style.backgroundColor = "rgba(255,255,255,0.05)";
+            expandBtn.style.padding = "6px 8px";
+            expandBtn.style.textAlign = "center";
+            expandBtn.style.color = "var(--accent)";
+            expandBtn.style.fontSize = "11px";
+            expandBtn.style.margin = "6px 0";
+            expandBtn.style.borderRadius = "4px";
+            expandBtn.style.border = "1px dashed var(--border)";
+            expandBtn.textContent = "Expand " + hiddenCount + " unchanged lines...";
+            
+            const hiddenContainer = document.createElement("div");
+            hiddenContainer.style.display = "none";
+            const middleLines = lines.slice(3, -3);
+            middleLines.forEach(line => {
+               const row = document.createElement("div"); row.className = "diff-line";
+               const prefix = document.createElement("span"); prefix.className = "diff-prefix"; prefix.textContent = " ";
+               const text = document.createElement("span"); text.className = "diff-text"; text.textContent = line;
+               row.appendChild(prefix); row.appendChild(text);
+               hiddenContainer.appendChild(row);
+            });
+            expandBtn.onclick = () => {
+              expandBtn.style.display = "none";
+              hiddenContainer.style.display = "block";
+            };
+            diffView.appendChild(expandBtn);
+            diffView.appendChild(hiddenContainer);
 
-          row.appendChild(prefix);
-          row.appendChild(text);
-          diffView.appendChild(row);
-        });
+            renderLines(bottomLines);
+          } else {
+            lines.forEach(line => {
+               const row = document.createElement("div"); row.className = "diff-line";
+               const prefix = document.createElement("span"); prefix.className = "diff-prefix"; prefix.textContent = " ";
+               const text = document.createElement("span"); text.className = "diff-text"; text.textContent = line;
+               row.appendChild(prefix); row.appendChild(text);
+               diffView.appendChild(row);
+            });
+          }
+        } else {
+          const chunkContainer = document.createElement("div");
+          chunkContainer.style.borderLeft = "2px solid " + (change.added ? "var(--success)" : "var(--danger)");
+          chunkContainer.style.margin = "4px 0";
+          diffElements.push(chunkContainer);
+
+          lines.forEach(line => {
+             const row = document.createElement("div"); row.className = "diff-line";
+             if (change.added) row.classList.add("added");
+             if (change.removed) row.classList.add("removed");
+             
+             const prefix = document.createElement("span"); prefix.className = "diff-prefix"; 
+             prefix.textContent = change.added ? "+" : "-";
+             
+             const text = document.createElement("span"); text.className = "diff-text"; 
+             text.textContent = line;
+             
+             row.appendChild(prefix); row.appendChild(text);
+             chunkContainer.appendChild(row);
+          });
+          diffView.appendChild(chunkContainer);
+        }
       });
 
       diffContainer.appendChild(diffView);
+
+      let currentDiff = 0;
+      const counterEl = document.getElementById("diff-counter");
+      const updateNav = () => {
+        if (!counterEl) return;
+        counterEl.textContent = diffElements.length > 0 ? (currentDiff + 1) + "/" + diffElements.length : "0/0";
+        if (diffElements.length > 0) {
+           diffElements.forEach(el => el.style.backgroundColor = "transparent");
+           diffElements[currentDiff].style.backgroundColor = "rgba(59, 130, 246, 0.1)";
+           diffElements[currentDiff].scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
+      
+      const prevBtn = document.getElementById("prev-diff");
+      if (prevBtn) {
+        prevBtn.onclick = () => {
+           if (diffElements.length === 0) return;
+           currentDiff = (currentDiff - 1 + diffElements.length) % diffElements.length;
+           updateNav();
+        };
+      }
+      const nextBtn = document.getElementById("next-diff");
+      if (nextBtn) {
+        nextBtn.onclick = () => {
+           if (diffElements.length === 0) return;
+           currentDiff = (currentDiff + 1) % diffElements.length;
+           updateNav();
+        };
+      }
+      updateNav();
     }
 
     function switchRightTab(tabId) {
