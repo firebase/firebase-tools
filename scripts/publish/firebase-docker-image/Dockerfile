@@ -1,7 +1,7 @@
 FROM node:lts-alpine AS app-env
 
 # Make sure to get the latest version of npm before doing anything else, to avoid vulnerabilities in npm's bundled dependencies.
-RUN npm install -g npm@latest
+RUN npm install -g npm@24.16.0
 
 # Install Python (for Cloud Functions) and Java (for emulators) and pre-cache emulator dependencies.
 RUN apk update && \
