@@ -77,8 +77,7 @@
         "winston-transport": "^4.4.0",
         "ws": "^7.5.10",
         "yaml": "^2.8.3",
-        "zod": "^3.24.3",
-        "zod-to-json-schema": "^3.24.5"
+        "zod": "^4.0.0"
       },
       "bin": {
         "firebase": "lib/bin/firebase.js"
@@ -4134,15 +4133,6 @@
         "node": ">= 0.6"
       }
     },
-    "node_modules/@modelcontextprotocol/sdk/node_modules/zod": {
-      "version": "4.2.1",
-      "resolved": "https://registry.npmjs.org/zod/-/zod-4.2.1.tgz",
-      "integrity": "sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==",
-      "license": "MIT",
-      "funding": {
-        "url": "https://github.com/sponsors/colinhacks"
-      }
-    },
     "node_modules/@modelcontextprotocol/sdk/node_modules/zod-to-json-schema": {
       "version": "3.25.1",
       "resolved": "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.25.1.tgz",
@@ -6903,6 +6893,15 @@
       "dev": true,
       "engines": {
         "node": ">=12"
+      }
+    },
+    "node_modules/astro/node_modules/zod": {
+      "version": "3.25.76",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
+      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
+      "dev": true,
+      "funding": {
+        "url": "https://github.com/sponsors/colinhacks"
       }
     },
     "node_modules/async": {
@@ -21887,21 +21886,11 @@
       }
     },
     "node_modules/zod": {
-      "version": "3.25.76",
-      "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
-      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
-      "license": "MIT",
+      "version": "4.4.3",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz",
+      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==",
       "funding": {
         "url": "https://github.com/sponsors/colinhacks"
-      }
-    },
-    "node_modules/zod-to-json-schema": {
-      "version": "3.24.5",
-      "resolved": "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.24.5.tgz",
-      "integrity": "sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==",
-      "license": "ISC",
-      "peerDependencies": {
-        "zod": "^3.24.1"
       }
     },
     "node_modules/zwitch": {
@@ -24742,11 +24731,6 @@
             "mime-types": "^3.0.0"
           }
         },
-        "zod": {
-          "version": "4.2.1",
-          "resolved": "https://registry.npmjs.org/zod/-/zod-4.2.1.tgz",
-          "integrity": "sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw=="
-        },
         "zod-to-json-schema": {
           "version": "3.25.1",
           "resolved": "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.25.1.tgz",
@@ -26848,6 +26832,12 @@
           "version": "21.1.1",
           "resolved": "https://registry.npmjs.org/yargs-parser/-/yargs-parser-21.1.1.tgz",
           "integrity": "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==",
+          "dev": true
+        },
+        "zod": {
+          "version": "3.25.76",
+          "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
+          "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
           "dev": true
         }
       }
@@ -37778,15 +37768,9 @@
       }
     },
     "zod": {
-      "version": "3.25.76",
-      "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
-      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
-    },
-    "zod-to-json-schema": {
-      "version": "3.24.5",
-      "resolved": "https://registry.npmjs.org/zod-to-json-schema/-/zod-to-json-schema-3.24.5.tgz",
-      "integrity": "sha512-/AuWwMP+YqiPbsJx5D6TfgRTc4kTLjsh5SOcd4bLsfUg2RcEXrFMJl1DGgdHy2aCfsIA/cr/1JM0xcB2GZji8g==",
-      "requires": {}
+      "version": "4.4.3",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-4.4.3.tgz",
+      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="
     },
     "zwitch": {
       "version": "2.0.4",
