@@ -73,34 +73,7 @@
         </div>
       </div>
 
-      <!-- Global Controls Bar -->
-      <div class="card" style="margin-bottom: 20px; background: rgba(255,255,255,0.01); border: 1px solid var(--border);">
-        <div class="panel-body" style="display: flex; padding: 12px 16px; gap: 24px; align-items: flex-start; flex-wrap: wrap; font-size: 12px;">
-          
-          <!-- Collapsible Ignore Headers capsule list -->
-          <div style="display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 300px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;" onclick="toggleIgnorePillsCollapse()">
-              <span style="font-weight: 600; color: var(--text-muted);">Ignored Response Headers (<span id="ignore-count">0</span> active)</span>
-              <span id="ignore-collapse-icon" style="font-size: 10px; color: var(--accent); border: 1px solid rgba(59,130,246,0.2); padding: 1px 6px; border-radius: 3px; background: rgba(59,130,246,0.05);">Collapse</span>
-            </div>
-            <div id="ignore-pills-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; max-height: 500px; overflow: hidden; transition: max-height 0.25s ease;">
-               <!-- Populated dynamically via renderIgnorePills() -->
-            </div>
-          </div>
 
-          <!-- Scoring Mode Selector -->
-          <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
-            <label for="select-scoring-mode" style="font-weight: 600; color: var(--text-muted); white-space: nowrap;">Matrix Heatmap Score:</label>
-            <select id="select-scoring-mode" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-family); outline: none; cursor: pointer; font-size: 12px;">
-              <option value="body">Body Similarity Only</option>
-              <option value="headers">Header Parity Only</option>
-              <option value="latency">Response Time Similarity</option>
-              <option value="average">Combined Average (All)</option>
-            </select>
-          </div>
-
-        </div>
-      </div>
 
       <!-- Dashboard Empty State -->
       <div id="dashboard-empty-state" class="card" style="flex: 1; align-items: center; justify-content: center; padding: 48px 24px; color: var(--text-muted);">
@@ -117,17 +90,55 @@
       <div class="card" id="heatmap-card" style="display: none; flex: 1; flex-direction: column;">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
           <span>Joint Parity Heatmap (Click any cell to compare)</span>
-          <label id="filter-codebases-container" style="display: none; align-items: center; gap: 6px; font-size: 12px; font-weight: normal; cursor: pointer; color: var(--text-muted);">
-            <input type="checkbox" id="toggle-filter-codebases" style="cursor: pointer;" onchange="applyMatrixFilter()">
-            Ignore Comparisons for Different Codebases
-          </label>
         </div>
-        <div id="heatmap-filters-bar" style="display: flex; padding: 10px 16px; gap: 16px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center; flex-wrap: wrap; background: rgba(255,255,255,0.015);">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="color: var(--text-muted);">Search Variants:</span>
-            <input type="text" id="variant-search-input" placeholder="e.g. Node24" style="background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-family: var(--font-family); font-size: 12px; outline: none; width: 140px;" oninput="applyMetadataFilters()">
+        <div id="heatmap-filters-bar" style="display: flex; flex-direction: column; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.015); font-size: 12px;">
+          
+          <!-- Primary Toolbar Row -->
+          <div style="display: flex; padding: 10px 16px; gap: 16px; align-items: center; flex-wrap: wrap; width: 100%; box-sizing: border-box;">
+            
+            <!-- Search Variants -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: var(--text-muted); font-weight: 600;">Search:</span>
+              <input type="text" id="variant-search-input" placeholder="e.g. Node24" style="background: var(--bg-dark); border: 1px solid var(--border); color: var(--text); padding: 4px 8px; border-radius: 4px; font-family: var(--font-family); font-size: 12px; outline: none; width: 110px;" oninput="applyMetadataFilters()">
+            </div>
+
+            <!-- Scoring Mode -->
+            <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); padding-left: 16px;">
+              <span style="font-weight: 600; color: var(--text-muted);">Score Mode:</span>
+              <select id="select-scoring-mode" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-family); outline: none; cursor: pointer; font-size: 12px;">
+                <option value="body">Body Similarity Only</option>
+                <option value="headers">Header Parity Only</option>
+                <option value="latency">Response Time Similarity</option>
+                <option value="average">Combined Average (All)</option>
+              </select>
+            </div>
+
+            <!-- Dynamic Metadata Filters (Local Build, Runtime) -->
+            <div id="heatmap-dynamic-filters" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; flex-wrap: wrap;"></div>
+
+            <!-- Ignore Codebases (Checkbox) -->
+            <div id="filter-codebases-container" style="display: none; align-items: center; gap: 8px; border-left: 1px solid var(--border); padding-left: 16px;">
+              <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; margin: 0; user-select: none;">
+                <input type="checkbox" id="toggle-filter-codebases" style="cursor: pointer;" onchange="applyMatrixFilter()">
+                Ignore Different Codebases
+              </label>
+            </div>
+
+            <!-- Spacer to push Ignored Headers to the right -->
+            <div style="flex: 1;"></div>
+
+            <!-- Ignored Headers Toggle Pill -->
+            <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;" onclick="toggleIgnorePillsCollapse()">
+              <span style="font-weight: 600; color: var(--text-muted);">Ignored Headers (<span id="ignore-count">0</span>)</span>
+              <span id="ignore-collapse-icon" style="font-size: 10px; color: var(--accent); border: 1px solid rgba(59,130,246,0.2); padding: 1px 6px; border-radius: 3px; background: rgba(59,130,246,0.05);">Expand</span>
+            </div>
           </div>
-          <div id="heatmap-dynamic-filters" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; flex-wrap: wrap;"></div>
+
+          <!-- Collapsible Ignored Headers Capsule Sub-row -->
+          <div id="ignore-pills-wrapper" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px; max-height: 500px; overflow: hidden; transition: max-height 0.25s ease; background: rgba(0,0,0,0.1); border-top: 1px dashed rgba(255,255,255,0.02); box-sizing: border-box;">
+             <!-- Populated dynamically via renderIgnorePills() -->
+          </div>
+
         </div>
         <div class="panel-body" style="align-items: center; justify-content: center; display: flex; flex: 1; position: relative;">
           
