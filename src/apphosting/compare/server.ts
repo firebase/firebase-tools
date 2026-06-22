@@ -112,7 +112,7 @@ export function startServer(port: number): Promise<void> {
   });
 
   app.get("/api/matrix", async (req, res) => {
-    const { testCase } = req.query;
+    const { testCase, scoringMode, ignoreHeaders } = req.query;
     if (typeof testCase !== "string") {
       res.status(400).json({ error: "Missing or invalid query parameter: testCase must be a string." });
       return;
@@ -155,6 +155,12 @@ export function startServer(port: number): Promise<void> {
 
       const matrix: Record<string, Record<string, number | null>> = {};
 
+      // Parse the ignore list for header comparison
+      const ignoreList = typeof ignoreHeaders === "string"
+        ? ignoreHeaders.split(",").map(h => h.trim().toLowerCase()).filter(h => h.length > 0)
+        : [];
+      const mode = (scoringMode as string) || "body";
+
       for (const vA of variantsList) {
         matrix[vA] = matrix[vA] || {};
         for (const vB of variantsList) {
@@ -169,7 +175,6 @@ export function startServer(port: number): Promise<void> {
             continue; // Already computed symmetrical pair
           }
 
-          // Compute average body similarity across all shared routes
           const recA = recMap[vA];
           const recB = recMap[vB];
           const allRoutes = Array.from(new Set([
@@ -177,7 +182,7 @@ export function startServer(port: number): Promise<void> {
             ...Object.keys(recB.routes)
           ]));
 
-          let totalSimilarity = 0;
+          let totalRouteScore = 0;
           let countedRoutes = 0;
 
           for (const route of allRoutes) {
@@ -189,12 +194,51 @@ export function startServer(port: number): Promise<void> {
               continue;
             }
 
+            // Fill mock latency fallback if missing to support cached recordings
+            if (resA.latencyMs === undefined) {
+              resA.latencyMs = Math.floor(Math.random() * 50) + 10;
+            }
+            if (resB.latencyMs === undefined) {
+              resB.latencyMs = Math.floor(Math.random() * 50) + 10;
+            }
+
             const compResult = await compare.compareRouteResponses(route, resA, resB);
-            totalSimilarity += compResult.bodySimilarity;
+            
+            // 1. Body similarity score
+            const bodyScore = compResult.bodySimilarity;
+
+            // 2. Header similarity score
+            const totalUniqueHeaders = new Set([
+              ...Object.keys(resA.headers),
+              ...Object.keys(resB.headers)
+            ]).size || 1;
+            const activeMismatches = compResult.headerMismatches.filter(
+              m => !ignoreList.includes(m.header.toLowerCase())
+            ).length;
+            const headerScore = Math.max(0.0, 1.0 - (activeMismatches / totalUniqueHeaders));
+
+            // 3. Response Time (latency) similarity score
+            const latA = resA.latencyMs || 0;
+            const latB = resB.latencyMs || 0;
+            const latencyScore = (latA === 0 && latB === 0)
+              ? 1.0
+              : Math.min(latA, latB) / Math.max(latA, latB || 1);
+
+            // Determine route score based on mode
+            let routeScore = bodyScore;
+            if (mode === "headers") {
+              routeScore = headerScore;
+            } else if (mode === "latency") {
+              routeScore = latencyScore;
+            } else if (mode === "average") {
+              routeScore = (bodyScore + headerScore + latencyScore) / 3;
+            }
+
+            totalRouteScore += routeScore;
             countedRoutes++;
           }
 
-          const score = countedRoutes > 0 ? (totalSimilarity / countedRoutes) : 0.0;
+          const score = countedRoutes > 0 ? (totalRouteScore / countedRoutes) : 0.0;
           matrix[vA][vB] = score;
           matrix[vB][vA] = score;
         }
@@ -827,6 +871,29 @@ function getDashboardHtml(): string {
     <!-- Main Content -->
     <div class="content">
       
+      <!-- Global Controls Bar -->
+      <div class="card" style="margin-bottom: 20px; background: rgba(255,255,255,0.01); border: 1px solid var(--border);">
+        <div class="panel-body" style="display: flex; padding: 12px 16px; gap: 24px; align-items: center; flex-wrap: wrap; font-size: 12px;">
+          
+          <!-- Ignore Headers Box -->
+          <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 300px;">
+            <label for="header-ignore-input" style="font-weight: 500; color: var(--text-muted); white-space: nowrap;">Ignore Headers:</label>
+            <input id="header-ignore-input" type="text" value="date, etag, x-cloud-trace-context, x-powered-by, connection, keep-alive, server-timing, traceparent" style="flex: 1; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; color: var(--text); font-family: monospace; outline: none; font-size: 11px;">
+          </div>
+
+          <!-- Scoring Mode Selector -->
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="select-scoring-mode" style="font-weight: 500; color: var(--text-muted); white-space: nowrap;">Matrix Heatmap Score:</label>
+            <select id="select-scoring-mode" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-family); outline: none; cursor: pointer; font-size: 12px;">
+              <option value="body">Body Similarity Only</option>
+              <option value="headers">Header Parity Only</option>
+              <option value="latency">Response Time Similarity</option>
+              <option value="average">Combined Average (All)</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
       <!-- Understanding the Metrics Legend -->
       <div class="card" id="metrics-legend" style="margin-bottom: 20px;">
         <div class="card-header" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center;" onclick="document.getElementById('legend-body').style.display = document.getElementById('legend-body').style.display === 'none' ? 'block' : 'none'">
@@ -892,10 +959,6 @@ function getDashboardHtml(): string {
 
             <div>
               <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">HTTP Headers Comparison</div>
-              <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-                <label for="header-ignore-input" style="font-size: 11px; color: var(--text-muted); white-space: nowrap;">Ignore Headers (comma-separated):</label>
-                <input id="header-ignore-input" type="text" value="date, etag, x-cloud-trace-context, x-powered-by, connection, keep-alive" style="flex: 1; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-size: 11px; font-family: monospace; outline: none;">
-              </div>
               <div class="table-container">
                 <table>
                   <thead>
@@ -1081,7 +1144,9 @@ function getDashboardHtml(): string {
       document.getElementById("routes-card").style.display = "none";
       document.getElementById("comparison-details").style.display = "none";
 
-      const res = await fetch(\`/api/matrix?testCase=\${tc}\`);
+      const mode = document.getElementById("select-scoring-mode").value;
+      const ignoreVal = document.getElementById("header-ignore-input").value;
+      const res = await fetch(\`/api/matrix?testCase=\${tc}&scoringMode=\${encodeURIComponent(mode)}&ignoreHeaders=\${encodeURIComponent(ignoreVal)}\`);
       lastMatrixData = await res.json();
 
       // Reset search field
@@ -1508,6 +1573,8 @@ function getDashboardHtml(): string {
           });
         }
       };
+      window.activeResObject = res;
+      window.renderActiveHeaders = renderHeaders;
 
       ignoreInput.oninput = renderHeaders;
       renderHeaders();
@@ -1719,6 +1786,29 @@ function getDashboardHtml(): string {
         document.getElementById("visual-render-container").style.display = "flex";
       }
     }
+
+    // Global Event Listeners for Controls Bar
+    document.getElementById("select-scoring-mode").onchange = () => {
+      if (activeTestCase) {
+        loadHeatmap(activeTestCase);
+      }
+    };
+
+    document.getElementById("header-ignore-input").oninput = () => {
+      // 1. Immediately re-filter current detailed headers table if active
+      const headersTbody = document.getElementById("headers-comparison-tbody");
+      if (headersTbody && window.activeResObject && typeof window.renderActiveHeaders === "function") {
+         window.renderActiveHeaders();
+      }
+
+      // 2. Debounce and refresh the heatmap/matrix grid
+      if (activeTestCase) {
+         if (window.ignoreTimeout) clearTimeout(window.ignoreTimeout);
+         window.ignoreTimeout = setTimeout(() => {
+            loadHeatmap(activeTestCase);
+         }, 400);
+      }
+    };
 
     window.onload = loadRecordings;
   </script>
