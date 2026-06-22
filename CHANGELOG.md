@@ -1,2 +1,0 @@
-- Fixed various issues with Data Connect emulator / deploy by updating binary to version 3.4.13.
-- Temporarily pinned firebase-docker-image to Node 24.16.0 to mitigate https://github.com/nodejs/node/issues/63989.
