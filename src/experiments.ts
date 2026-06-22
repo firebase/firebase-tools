@@ -214,6 +214,13 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  autheventarc: {
+    shortDescription: "Enable experimental Eventarc-based Auth triggers",
+    fullDescription:
+      "Enable support for v2 Eventarc-based Auth triggers (onUserCreated and onUserDeleted)",
+    default: false,
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;

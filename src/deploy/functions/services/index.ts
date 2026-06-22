@@ -207,6 +207,8 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
   "google.firebase.ailogic.v1.beforeGenerate": aiLogicService,
   "google.firebase.ailogic.v1.afterGenerate": aiLogicService,
+  "google.firebase.auth.user.v2.created": noOpService,
+  "google.firebase.auth.user.v2.deleted": noOpService,
 };
 
 export function serviceForEndpoint(endpoint: backend.Endpoint | build.Endpoint): Service {

@@ -10,6 +10,10 @@ import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
+import * as experiments from "../../experiments";
+import { AUTH_EVENTS } from "../../functions/events/v2";
+
+const AUTH_EVENTS_SET = new Set<string>(AUTH_EVENTS);
 
 /**
  * GCF Gen 1 has a max timeout of 540s.
@@ -89,6 +93,11 @@ export function endpointsAreValid(wantBackend: backend.Backend): void {
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
+    if (backend.isEventTriggered(ep)) {
+      if (AUTH_EVENTS_SET.has(ep.eventTrigger.eventType)) {
+        experiments.assertEnabled("autheventarc", "deploy Auth Eventarc triggers");
+      }
+    }
     const service = serviceForEndpoint(ep);
     if (backend.isBlockingTriggered(ep)) {
       if (service.name === "noop") {
