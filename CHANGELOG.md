@@ -1,0 +1,1 @@
+- Fixed various issues with Data Connect emulator / deploy by updating binary to version 3.4.13.
