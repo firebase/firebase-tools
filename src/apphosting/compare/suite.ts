@@ -120,6 +120,84 @@ export interface VariantConfig {
   runtime?: string;
 }
 
+export interface MatrixConfig {
+  localBuild?: boolean[];
+  runtime?: string[];
+}
+
+export interface RawTestCaseConfig {
+  name: string;
+  path?: string;
+  variants?: VariantConfig[];
+  matrix?: MatrixConfig;
+}
+
+/**
+ * Expands a declarative test case configuration (resolving root path inheritance and
+ * generating variants from a combinatorial matrix if defined) into an array of VariantConfigs.
+ */
+export function expandTestCase(cfg: RawTestCaseConfig): VariantConfig[] {
+  const result: VariantConfig[] = [];
+  const rootPath = cfg.path;
+
+  // 1. Handle declarative matrix expansion if defined
+  if (cfg.matrix) {
+    const localBuilds = cfg.matrix.localBuild ?? [false];
+    const runtimes = cfg.matrix.runtime ?? ["nodejs"];
+
+    for (const localBuild of localBuilds) {
+      for (const runtime of runtimes) {
+        const resolvedPath = rootPath;
+        if (!resolvedPath) {
+          throw new FirebaseError(`Test case "${cfg.name}" defines a matrix but is missing a root-level "path".`);
+        }
+
+        // Auto-generate a clean, premium variant ID matching standard conventions
+        const buildTypeStr = localBuild ? "Local" : "Source";
+        let runtimeStr = "";
+        if (runtime === "nodejs" || !runtime) {
+          runtimeStr = "NoABIU";
+        } else if (runtime.startsWith("nodejs")) {
+          runtimeStr = "Node" + runtime.slice(6);
+        } else {
+          runtimeStr = runtime;
+        }
+
+        const variantId = `${buildTypeStr}-${runtimeStr}`;
+
+        result.push({
+          id: variantId,
+          path: resolvedPath,
+          localBuild,
+          runtime,
+        });
+      }
+    }
+  }
+
+  // 2. Handle manual variants list if defined
+  if (cfg.variants) {
+    for (const v of cfg.variants) {
+      const resolvedPath = v.path || rootPath;
+      if (!resolvedPath) {
+        throw new FirebaseError(`Variant "${v.id || "unnamed"}" in test case "${cfg.name}" is missing a "path".`);
+      }
+      result.push({
+        id: v.id,
+        path: resolvedPath,
+        localBuild: v.localBuild,
+        runtime: v.runtime,
+      });
+    }
+  }
+
+  if (result.length === 0) {
+    throw new FirebaseError(`Test case "${cfg.name}" must define either "matrix" or "variants".`);
+  }
+
+  return result;
+}
+
 /**
  *
  */

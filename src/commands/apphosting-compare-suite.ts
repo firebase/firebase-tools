@@ -56,6 +56,11 @@ export const command = new Command("apphosting:compare-suite")
       throw new FirebaseError("Suite config must be a JSON array of test cases.");
     }
 
+    // Resolve and expand all test cases (handling path inheritance and combinatorial matrices)
+    for (const testCase of suite) {
+      testCase.variants = suiteModule.expandTestCase(testCase);
+    }
+
     lifecycle.validateProject(projectId);
 
     // === OPTION A: COMPARE ONLY (NO SLOTS / DEPLOYMENTS) ===

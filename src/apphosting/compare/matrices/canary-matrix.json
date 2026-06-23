@@ -1,47 +1,52 @@
 [
   {
     "name": "Angular 19",
+    "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19",
     "variants": [
-      { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs24", "localBuild": true },
-      { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs24", "localBuild": false },
-      { "id": "Source-Node22", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs22", "localBuild": false },
-      { "id": "Source-NoABIU", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs", "localBuild": false }
+      { "id": "Local-Node24", "runtime": "nodejs24", "localBuild": true },
+      { "id": "Source-Node24", "runtime": "nodejs24", "localBuild": false },
+      { "id": "Source-Node22", "runtime": "nodejs22", "localBuild": false },
+      { "id": "Source-NoABIU", "runtime": "nodejs", "localBuild": false }
     ]
   },
   {
     "name": "Angular 20",
+    "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20",
     "variants": [
-      { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs24", "localBuild": true },
-      { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs24", "localBuild": false },
-      { "id": "Source-Node22", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs22", "localBuild": false },
-      { "id": "Source-NoABIU", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs", "localBuild": false }
+      { "id": "Local-Node24", "runtime": "nodejs24", "localBuild": true },
+      { "id": "Source-Node24", "runtime": "nodejs24", "localBuild": false },
+      { "id": "Source-Node22", "runtime": "nodejs22", "localBuild": false },
+      { "id": "Source-NoABIU", "runtime": "nodejs", "localBuild": false }
     ]
   },
   {
     "name": "Angular 21",
+    "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21",
     "variants": [
-      { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs24", "localBuild": true },
-      { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs24", "localBuild": false },
-      { "id": "Source-Node22", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs22", "localBuild": false },
-      { "id": "Source-NoABIU", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs", "localBuild": false }
+      { "id": "Local-Node24", "runtime": "nodejs24", "localBuild": true },
+      { "id": "Source-Node24", "runtime": "nodejs24", "localBuild": false },
+      { "id": "Source-Node22", "runtime": "nodejs22", "localBuild": false },
+      { "id": "Source-NoABIU", "runtime": "nodejs", "localBuild": false }
     ]
   },
   {
     "name": "Angular 22",
+    "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22",
     "variants": [
-      { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs24", "localBuild": true },
-      { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs24", "localBuild": false },
-      { "id": "Source-Node22", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs22", "localBuild": false },
-      { "id": "Source-NoABIU", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs", "localBuild": false }
+      { "id": "Local-Node24", "runtime": "nodejs24", "localBuild": true },
+      { "id": "Source-Node24", "runtime": "nodejs24", "localBuild": false },
+      { "id": "Source-Node22", "runtime": "nodejs22", "localBuild": false },
+      { "id": "Source-NoABIU", "runtime": "nodejs", "localBuild": false }
     ]
   },
   {
     "name": "Next.js 15.3",
+    "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3",
     "variants": [
-      { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs24", "localBuild": true },
-      { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs24", "localBuild": false },
-      { "id": "Source-Node22", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs22", "localBuild": false },
-      { "id": "Source-NoABIU", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs", "localBuild": false }
+      { "id": "Local-Node24", "runtime": "nodejs24", "localBuild": true },
+      { "id": "Source-Node24", "runtime": "nodejs24", "localBuild": false },
+      { "id": "Source-Node22", "runtime": "nodejs22", "localBuild": false },
+      { "id": "Source-NoABIU", "runtime": "nodejs", "localBuild": false }
     ]
   }
 ]

@@ -1,25 +1,11 @@
 [
   {
     "name": "Node Matrix Test",
+    "path": "/Users/aryanf/code/firebase/next-sample-1",
     "variants": [
-      {
-        "id": "Local-Node24",
-        "path": "/Users/aryanf/code/firebase/next-sample-1",
-        "localBuild": true,
-        "runtime": "nodejs24"
-      },
-      {
-        "id": "Source-Node24",
-        "path": "/Users/aryanf/code/firebase/next-sample-1",
-        "localBuild": false,
-        "runtime": "nodejs24"
-      },
-      {
-        "id": "Source-Node22",
-        "path": "/Users/aryanf/code/firebase/next-sample-1",
-        "localBuild": false,
-        "runtime": "nodejs22"
-      }
+      { "id": "Local-Node24", "localBuild": true, "runtime": "nodejs24" },
+      { "id": "Source-Node24", "localBuild": false, "runtime": "nodejs24" },
+      { "id": "Source-Node22", "localBuild": false, "runtime": "nodejs22" }
     ]
   }
 ]
