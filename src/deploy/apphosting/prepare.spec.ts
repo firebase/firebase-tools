@@ -16,6 +16,7 @@ import prepare, {
   getBackendConfigs,
   injectEnvVarsFromApphostingConfig,
   injectAutoInitEnvVars,
+  injectAngularEnvVars,
 } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
@@ -809,6 +810,201 @@ describe("apphosting", () => {
 
       expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
       expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+    });
+  });
+
+  describe("injectAngularEnvVars", () => {
+    let existsStub: sinon.SinonStub;
+    let readFileSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existsStub = fs.existsSync as sinon.SinonStub;
+      readFileSyncStub = sinon.stub(fs, "readFileSync");
+    });
+
+    it("should do nothing for non-Angular applications", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.returns(false);
+
+      injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+
+      expect(buildEnv["foo"]).to.be.empty;
+      expect(runtimeEnv["foo"]).to.be.empty;
+    });
+
+    it("should inject defaults for Angular applications when headers are missing", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.withArgs(sinon.match("package.json")).returns(
+        JSON.stringify({
+          dependencies: {
+            "@angular/core": "^19.0.0",
+          },
+        }),
+      );
+
+      injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "X-Forwarded-Host,X-Forwarded-Port,X-Forwarded-Proto,X-Forwarded-For",
+        availability: ["RUNTIME"],
+      });
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value: "*.hosted.app,*.run.app,*.firestack.app,localhost",
+        availability: ["RUNTIME"],
+      });
+    });
+
+    it("should accept valid NG_TRUST_PROXY_HEADERS overrides", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "X-Forwarded-Host,X-Forwarded-Proto",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]?.value).to.equal(
+        "X-Forwarded-Host,X-Forwarded-Proto",
+      );
+    });
+
+    it("should throw an error for invalid NG_TRUST_PROXY_HEADERS values", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "X-Forwarded-Host,X-Invalid-Header",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      expect(() =>
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
+      ).to.throw(FirebaseError, "invalid value for NG_TRUST_PROXY_HEADERS");
+    });
+
+    it("should throw an error if NG_TRUST_PROXY_HEADERS explicitly omits RUNTIME availability", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "X-Forwarded-Host",
+            availability: ["BUILD"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      expect(() =>
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
+      ).to.throw(FirebaseError, "must include RUNTIME in its availability");
+    });
+
+    it("should throw an error if NG_ALLOWED_HOSTS explicitly omits RUNTIME availability", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "my.domain.com",
+            availability: ["BUILD"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      expect(() =>
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
+      ).to.throw(FirebaseError, "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability");
+    });
+
+    it("should throw an error if NG_ALLOWED_HOSTS omits availability entirely (replicating the Go preparer slices.Contains(nil) quirk)", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "my.domain.com",
+            // availability is completely omitted (undefined)
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      expect(() =>
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
+      ).to.throw(FirebaseError, "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability");
+    });
+
+    it("should pass if NG_ALLOWED_HOSTS has explicit RUNTIME availability", () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "my.domain.com",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]?.value).to.equal("my.domain.com");
     });
   });
 });

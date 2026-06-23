@@ -198,6 +198,7 @@ export default async function (context: Context, options: Options): Promise<void
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     const rootDir = path.resolve(options.projectRoot || process.cwd());
+    injectAngularEnvVars(cfg, rootDir, buildEnv, runtimeEnv);
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
     const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
@@ -421,5 +422,108 @@ async function prepareLocalBuildScratchDirectory(
     const destPath = path.join(localBuildScratchDir, relativePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(file.name, destPath);
+  }
+}
+
+/**
+ * Checks if the application in a directory is an Angular application.
+ */
+function isAngularApplication(appDir: string): boolean {
+  const packageJsonPath = path.join(appDir, "package.json");
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (deps["@angular/core"] || deps["@angular/ssr"] || deps["@angular/platform-server"]) {
+        return true;
+      }
+    } catch {}
+  }
+  const angularJsonPath = path.join(appDir, "angular.json");
+  if (fs.existsSync(angularJsonPath)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Replicates the Go buildpack preparer's Angular environment variable injection and validation.
+ */
+export function injectAngularEnvVars(
+  cfg: AppHostingSingle,
+  projectRoot: string,
+  buildEnv: Record<string, EnvMap>,
+  runtimeEnv: Record<string, EnvMap>,
+): void {
+  const appDir = path.join(projectRoot, cfg.rootDir || "");
+  if (!isAngularApplication(appDir)) {
+    return;
+  }
+
+  const backendId = cfg.backendId;
+  runtimeEnv[backendId] ??= {};
+  buildEnv[backendId] ??= {};
+
+  const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS";
+  const allowedProxyHeadersValue = "X-Forwarded-Host,X-Forwarded-Port,X-Forwarded-Proto,X-Forwarded-For";
+  const allowedProxyHeaders = new Set([
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-proto",
+    "x-forwarded-for",
+  ]);
+
+  // 1. Validate or Inject NG_TRUST_PROXY_HEADERS
+  const userTrustProxy = runtimeEnv[backendId][ngTrustProxyHeaders];
+  if (userTrustProxy) {
+    const userVal = userTrustProxy.value || "";
+    // Validate the value of the user provided NG_TRUST_PROXY_HEADERS
+    const userList = userVal.split(",");
+    for (const h of userList) {
+      const trimmed = h.trim().toLowerCase();
+      if (trimmed !== "" && !allowedProxyHeaders.has(trimmed)) {
+        throw new FirebaseError(
+          `invalid value for ${ngTrustProxyHeaders} (Angular trust proxy headers): got ${JSON.stringify(userVal)}, must be a subset of ${JSON.stringify(allowedProxyHeadersValue)}`,
+        );
+      }
+    }
+
+    if (userTrustProxy.availability && !userTrustProxy.availability.includes("RUNTIME")) {
+      throw new FirebaseError(
+        `user-defined environment variable ${ngTrustProxyHeaders} must include RUNTIME in its availability`,
+      );
+    }
+  } else {
+    logLabeledBullet(
+      "apphosting",
+      `Angular SSR application detected. Injecting default ${ngTrustProxyHeaders}=${allowedProxyHeadersValue}`,
+    );
+    runtimeEnv[backendId][ngTrustProxyHeaders] = {
+      value: allowedProxyHeadersValue,
+      availability: ["RUNTIME"],
+    };
+  }
+
+  // 2. Validate or Inject NG_ALLOWED_HOSTS
+  // Replicate the Go buildpack preparer's validateAngularEnv behavior exactly:
+  // If the user explicitly defined NG_ALLOWED_HOSTS in their configuration (either BUILD or RUNTIME),
+  // they MUST have explicitly set its availability to include "RUNTIME". If availability was omitted (undefined),
+  // the Go preparer fails the build because slices.Contains(nil, "RUNTIME") evaluates to false!
+  const userAllowedHosts = runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] || buildEnv[backendId]["NG_ALLOWED_HOSTS"];
+  if (userAllowedHosts) {
+    if (!userAllowedHosts.availability || !userAllowedHosts.availability.includes("RUNTIME")) {
+      throw new FirebaseError(
+        `NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability`,
+      );
+    }
+  } else {
+    logLabeledBullet(
+      "apphosting",
+      `Angular SSR application detected. Injecting default NG_ALLOWED_HOSTS=*.hosted.app,*.run.app,*.firestack.app,localhost`,
+    );
+    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
+      value: "*.hosted.app,*.run.app,*.firestack.app,localhost",
+      availability: ["RUNTIME"],
+    };
   }
 }
