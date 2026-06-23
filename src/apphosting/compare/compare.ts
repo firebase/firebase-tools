@@ -19,6 +19,15 @@ export interface ComparisonResult {
 }
 
 
+const BEHAVIORAL_HEADERS = [
+  "cache-control",
+  "content-security-policy",
+  "content-type",
+  "content-encoding",
+  "location",
+  "strict-transport-security",
+];
+
 const BINARY_CONTENT_TYPES = [
   "image/",
   "application/pdf",
@@ -130,7 +139,11 @@ export async function compareRouteResponses(
     const valA = normalizedHeadersA[key] || "";
     const valB = normalizedHeadersB[key] || "";
     if (valA !== valB) {
-      result.headerMismatches.push({ header: key, valA, valB });
+      if (BEHAVIORAL_HEADERS.includes(key.toLowerCase())) {
+        result.headerMismatches.push({ header: key, valA, valB });
+      } else {
+        result.expectedHeaderVariations.push({ header: key, valA, valB });
+      }
     }
   }
 
