@@ -21,6 +21,7 @@ export interface VariantRecording {
   localBuild?: boolean;
   runtime?: string;
   deployTimeMs?: number;
+  path?: string;
 }
 
 export function isRouteResponse(obj: unknown): obj is RouteResponse {

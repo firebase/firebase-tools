@@ -14,6 +14,12 @@ let activeUrlA = "";
 let activeUrlB = "";
 let activeDeployTimeA = 0;
 let activeDeployTimeB = 0;
+let activeLocalBuildA = false;
+let activeLocalBuildB = false;
+let activeRuntimeA = "";
+let activeRuntimeB = "";
+let activePathA = "";
+let activePathB = "";
 let lastMatrixData = null;
 
 // Load settings from localStorage with robust fallbacks
@@ -794,6 +800,12 @@ async function triggerComparison() {
   activeUrlB = data.urlB;
   activeDeployTimeA = data.deployTimeA || 0;
   activeDeployTimeB = data.deployTimeB || 0;
+  activeLocalBuildA = !!data.localBuildA;
+  activeLocalBuildB = !!data.localBuildB;
+  activeRuntimeA = data.runtimeA || "";
+  activeRuntimeB = data.runtimeB || "";
+  activePathA = data.pathA || "";
+  activePathB = data.pathB || "";
 
   // Build routes list in sidebar
   const container = document.getElementById("routes-container");
@@ -863,13 +875,6 @@ function viewRouteDiff(idx, element) {
   const displayAName = formatVariantName(varAName);
   const displayBName = formatVariantName(varBName);
 
-  // Update dynamic labels with actual variant names
-  document.getElementById("label-endpoint-a").textContent = `${displayAName}:`;
-  document.getElementById("label-endpoint-b").textContent = `${displayBName}:`;
-
-  document.getElementById("title-performance-a").textContent = `${displayAName} Performance`;
-  document.getElementById("title-performance-b").textContent = `${displayBName} Performance`;
-
   document.getElementById("th-header-a").textContent = displayAName;
   document.getElementById("th-header-b").textContent = displayBName;
 
@@ -878,14 +883,15 @@ function viewRouteDiff(idx, element) {
 
   // Update Endpoint Links & Route Path Title
   document.getElementById("route-title-path").textContent = res.route;
+  document.getElementById("overview-route-path").textContent = res.route;
   
   const linkA = document.getElementById("link-endpoint-a");
   linkA.href = activeUrlA + res.route;
-  linkA.textContent = activeUrlA + res.route;
+  linkA.textContent = displayAName;
 
   const linkB = document.getElementById("link-endpoint-b");
   linkB.href = activeUrlB + res.route;
-  linkB.textContent = activeUrlB + res.route;
+  linkB.textContent = displayBName;
 
   const iframeLinkA = document.getElementById("iframe-link-a");
   iframeLinkA.href = `/api/render?testCase=${encodeURIComponent(activeTestCase)}&variant=${encodeURIComponent(document.getElementById("select-variant-a").value)}&route=${encodeURIComponent(res.route)}`;
@@ -905,15 +911,102 @@ function viewRouteDiff(idx, element) {
     statusBox.innerHTML = `<span class="badge danger" style="font-size: 12px; padding: 4px 10px; font-weight: 600;">${res.statusA} vs ${res.statusB}</span>`;
   }
 
-  // 2. Variant A Performance Card
-  const latencyA = res.latencyA ? `<span class="badge success" style="font-size: 12px; background: rgba(16, 185, 129, 0.1); color: var(--success); font-family: monospace; padding: 4px 10px;">${res.latencyA}ms</span>` : `<span style="color: var(--text-muted); font-size: 12px;">--</span>`;
-  const deployA = activeDeployTimeA ? `<span class="badge" style="font-size: 12px; background: rgba(59, 130, 246, 0.1); color: var(--accent); font-family: monospace; padding: 4px 10px;">${Math.round(activeDeployTimeA / 1000)}s deploy</span>` : "";
-  document.getElementById("metrics-variant-a").innerHTML = `${latencyA} ${deployA}`;
+  // 2. Request Duration Card
+  const latValA = res.latencyA ? `${res.latencyA}ms` : "--";
+  const latValB = res.latencyB ? `${res.latencyB}ms` : "--";
+  let colorA = "var(--text-muted)", colorB = "var(--text-muted)";
+  let bgA = "rgba(255,255,255,0.03)", bgB = "rgba(255,255,255,0.03)";
+  if (res.latencyA && res.latencyB) {
+    if (res.latencyA < res.latencyB) {
+      colorA = "var(--success)"; bgA = "rgba(16, 185, 129, 0.15)";
+      colorB = "var(--danger)"; bgB = "rgba(239, 68, 68, 0.15)";
+    } else if (res.latencyB < res.latencyA) {
+      colorB = "var(--success)"; bgB = "rgba(16, 185, 129, 0.15)";
+      colorA = "var(--danger)"; bgA = "rgba(239, 68, 68, 0.15)";
+    } else {
+      colorA = "var(--success)"; bgA = "rgba(16, 185, 129, 0.15)";
+      colorB = "var(--success)"; bgB = "rgba(16, 185, 129, 0.15)";
+    }
+  } else if (res.latencyA) {
+    colorA = "var(--success)"; bgA = "rgba(16, 185, 129, 0.15)";
+  } else if (res.latencyB) {
+    colorB = "var(--success)"; bgB = "rgba(16, 185, 129, 0.15)";
+  }
+  document.getElementById("request-duration-box").innerHTML = `
+    <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
+        <span style="font-size: 9px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayAName}">${displayAName}</span>
+        <span class="badge" style="font-size: 12px; font-family: monospace; padding: 4px 10px; background: ${bgA}; color: ${colorA}; text-align: center; font-weight: 600;">${latValA}</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; margin-top: 10px;">vs</div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
+        <span style="font-size: 9px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayBName}">${displayBName}</span>
+        <span class="badge" style="font-size: 12px; font-family: monospace; padding: 4px 10px; background: ${bgB}; color: ${colorB}; text-align: center; font-weight: 600;">${latValB}</span>
+      </div>
+    </div>
+  `;
 
-  // 3. Variant B Performance Card
-  const latencyB = res.latencyB ? `<span class="badge success" style="font-size: 12px; background: rgba(16, 185, 129, 0.1); color: var(--success); font-family: monospace; padding: 4px 10px;">${res.latencyB}ms</span>` : `<span style="color: var(--text-muted); font-size: 12px;">--</span>`;
-  const deployB = activeDeployTimeB ? `<span class="badge" style="font-size: 12px; background: rgba(59, 130, 246, 0.1); color: var(--accent); font-family: monospace; padding: 4px 10px;">${Math.round(activeDeployTimeB / 1000)}s deploy</span>` : "";
-  document.getElementById("metrics-variant-b").innerHTML = `${latencyB} ${deployB}`;
+  // 3. Deployment Duration Card
+  const depValA = activeDeployTimeA ? `${Math.round(activeDeployTimeA / 1000)}s` : "--";
+  const depValB = activeDeployTimeB ? `${Math.round(activeDeployTimeB / 1000)}s` : "--";
+  let depColorA = "var(--text-muted)", depColorB = "var(--text-muted)";
+  let depBgA = "rgba(255,255,255,0.03)", depBgB = "rgba(255,255,255,0.03)";
+  if (activeDeployTimeA && activeDeployTimeB) {
+    if (activeDeployTimeA < activeDeployTimeB) {
+      depColorA = "var(--success)"; depBgA = "rgba(16, 185, 129, 0.15)";
+      depColorB = "var(--danger)"; depBgB = "rgba(239, 68, 68, 0.15)";
+    } else if (activeDeployTimeB < activeDeployTimeA) {
+      depColorB = "var(--success)"; depBgB = "rgba(16, 185, 129, 0.15)";
+      depColorA = "var(--danger)"; depBgA = "rgba(239, 68, 68, 0.15)";
+    } else {
+      depColorA = "var(--success)"; depBgA = "rgba(16, 185, 129, 0.15)";
+      depColorB = "var(--success)"; depBgB = "rgba(16, 185, 129, 0.15)";
+    }
+  } else if (activeDeployTimeA) {
+    depColorA = "var(--success)"; depBgA = "rgba(16, 185, 129, 0.15)";
+  } else if (activeDeployTimeB) {
+    depColorB = "var(--success)"; depBgB = "rgba(16, 185, 129, 0.15)";
+  }
+  document.getElementById("deployment-duration-box").innerHTML = `
+    <div style="display: flex; gap: 12px; align-items: center; width: 100%;">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
+        <span style="font-size: 9px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayAName}">${displayAName}</span>
+        <span class="badge" style="font-size: 12px; font-family: monospace; padding: 4px 10px; background: ${depBgA}; color: ${depColorA}; text-align: center; font-weight: 600;">${depValA}</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); font-weight: 700; margin-top: 10px;">vs</div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
+        <span style="font-size: 9px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayBName}">${displayBName}</span>
+        <span class="badge" style="font-size: 12px; font-family: monospace; padding: 4px 10px; background: ${depBgB}; color: ${depColorB}; text-align: center; font-weight: 600;">${depValB}</span>
+      </div>
+    </div>
+  `;
+
+  // 4. Detailed Specifications Cards
+  document.getElementById("overview-spec-title-a").textContent = displayAName;
+  document.getElementById("overview-spec-build-a").textContent = activeLocalBuildA ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
+  document.getElementById("overview-spec-runtime-a").textContent = activeRuntimeA ? activeRuntimeA : "auto-detected";
+  document.getElementById("overview-spec-path-a").textContent = activePathA ? activePathA : "./";
+  
+  let descA = "";
+  if (activeLocalBuildA) {
+    descA = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. Highlights parity of local bundling speed and artifact output against a production Cloud Run environment.`;
+  } else {
+    descA = `Tests standard Firebase App Hosting source-level deployment with auto-detected runtimes, compiled remotely using Google Cloud Build without local optimization or Universal Maker.`;
+  }
+  document.getElementById("overview-spec-desc-a").textContent = descA;
+
+  document.getElementById("overview-spec-title-b").textContent = displayBName;
+  document.getElementById("overview-spec-build-b").textContent = activeLocalBuildB ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
+  document.getElementById("overview-spec-runtime-b").textContent = activeRuntimeB ? activeRuntimeB : "auto-detected";
+  document.getElementById("overview-spec-path-b").textContent = activePathB ? activePathB : "./";
+  
+  let descB = "";
+  if (activeLocalBuildB) {
+    descB = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. Highlights parity of local bundling speed and artifact output against a production Cloud Run environment.`;
+  } else {
+    descB = `Tests standard Firebase App Hosting source-level deployment with auto-detected runtimes, compiled remotely using Google Cloud Build without local optimization or Universal Maker.`;
+  }
+  document.getElementById("overview-spec-desc-b").textContent = descB;
 
   // 2. HTTP Headers comparison (merged list with dynamic UI filtering)
   const headersTbody = document.getElementById("headers-comparison-tbody");
@@ -1156,9 +1249,13 @@ function viewRouteDiff(idx, element) {
 
 function switchRightTab(tabId) {
   // 1. Reset all tabs styling
-  const tabs = ["overview", "code", "visual"];
+  const tabs = ["overview", "headers", "code", "visual"];
   tabs.forEach(id => {
-    const el = document.getElementById(id === "overview" ? "tab-overview" : (id === "code" ? "tab-code-diff" : "tab-visual"));
+    let elId = "tab-overview";
+    if (id === "headers") elId = "tab-headers";
+    else if (id === "code") elId = "tab-code-diff";
+    else if (id === "visual") elId = "tab-visual";
+    const el = document.getElementById(elId);
     if (el) {
       el.classList.remove("active");
       el.style.borderBottom = "2px solid transparent";
@@ -1168,6 +1265,7 @@ function switchRightTab(tabId) {
 
   // 2. Hide all tab content containers
   document.getElementById("overview-tab-container").style.display = "none";
+  document.getElementById("headers-tab-container").style.display = "none";
   document.getElementById("body-diff-container").style.display = "none";
   document.getElementById("visual-render-container").style.display = "none";
 
@@ -1180,6 +1278,14 @@ function switchRightTab(tabId) {
       el.style.color = "var(--text)";
     }
     document.getElementById("overview-tab-container").style.display = "flex";
+  } else if (tabId === "headers") {
+    const el = document.getElementById("tab-headers");
+    if (el) {
+      el.classList.add("active");
+      el.style.borderBottom = "2px solid var(--accent)";
+      el.style.color = "var(--text)";
+    }
+    document.getElementById("headers-tab-container").style.display = "flex";
   } else if (tabId === "code") {
     const el = document.getElementById("tab-code-diff");
     if (el) {

@@ -104,6 +104,12 @@ export function startServer(port: number): Promise<void> {
         urlB: recB.url,
         deployTimeA: recA.deployTimeMs,
         deployTimeB: recB.deployTimeMs,
+        localBuildA: recA.localBuild,
+        localBuildB: recB.localBuild,
+        runtimeA: recA.runtime,
+        runtimeB: recB.runtime,
+        pathA: recA.path,
+        pathB: recB.path,
         results
       };
       res.json(responsePayload);

@@ -300,6 +300,7 @@ export async function runCompareSuite(
         const record = await recordVariant(testCaseName, v.id || String(i), url, v.path);
         record.localBuild = !!v.localBuild;
         record.runtime = v.runtime;
+        record.path = v.path;
         record.deployTimeMs = deploymentTimes[i];
         await cache.saveRecording(record);
         recordings.push(record);
@@ -317,6 +318,9 @@ export async function runCompareSuite(
     for (let i = 0; i < variants.length; i++) {
       const v = variants[i];
       const record = await cache.loadRecording(testCaseName, v.id || String(i));
+      record.localBuild = record.localBuild ?? v.localBuild;
+      record.runtime = record.runtime || v.runtime;
+      record.path = record.path || v.path;
       recordings.push(record);
     }
   }

@@ -27,6 +27,12 @@ export interface CompareResponse {
   urlB: string;
   deployTimeA?: number;
   deployTimeB?: number;
+  localBuildA?: boolean;
+  localBuildB?: boolean;
+  runtimeA?: string;
+  runtimeB?: string;
+  pathA?: string;
+  pathB?: string;
   results: DashboardComparisonResult[];
 }
 
