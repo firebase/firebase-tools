@@ -156,101 +156,110 @@
 
       <!-- Detailed Comparison View -->
       <div id="comparison-details" class="details-view" style="display: none;">
-        
-        <!-- Top: Headers & Status Mismatches -->
-        <div class="card details-left">
-          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>Parity Breakdown: <span id="route-title-path" style="font-family: 'JetBrains Mono', monospace; color: var(--accent);">/</span></span>
-            <button class="btn" style="padding: 4px 12px; font-size: 12px;" onclick="showHeatmapView()">Back to Heatmap</button>
-          </div>
-          <div class="panel-body">
-            <div style="margin-bottom: 8px;">
-              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Target Endpoints</div>
-              <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
-                <div>
-                  <span id="label-endpoint-a" style="font-weight: 600; color: var(--primary);">Variant A:</span>
-                  <a id="link-endpoint-a" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
-                </div>
-                <div>
-                  <span id="label-endpoint-b" style="font-weight: 600; color: #10b981;">Variant B:</span>
-                  <a id="link-endpoint-b" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
-                </div>
-              </div>
-            </div>
-
-            <!-- Performance & Parity Metrics Row -->
-            <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+        <div class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          
+          <!-- Unified Card Header with Back Button and Tabs -->
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0; border-bottom: 1px solid var(--border);">
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <span style="font-weight: 700;">Parity Breakdown: <span id="route-title-path" style="font-family: 'JetBrains Mono', monospace; color: var(--accent);">/</span></span>
               
-              <!-- Tile 1: Status Code Parity -->
-              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
-                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Status Code Parity</div>
-                <div id="status-comparison-box" style="font-size: 14px; font-weight: 600; display: flex; align-items: center; min-height: 28px;">
-                  <!-- Populated dynamically -->
-                </div>
-              </div>
-
-              <!-- Tile 2: Variant A Performance -->
-              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
-                <div id="title-performance-a" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant A (Current)</div>
-                <div id="metrics-variant-a" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
-                  <!-- Populated dynamically -->
-                </div>
-              </div>
-
-              <!-- Tile 3: Variant B Performance -->
-              <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
-                <div id="title-performance-b" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant B (Canary)</div>
-                <div id="metrics-variant-b" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
-                  <!-- Populated dynamically -->
-                </div>
-              </div>
-
-            </div>
-
-            <div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">HTTP Headers Comparison</div>
-              <div class="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Header</th>
-                      <th id="th-header-a">Variant A</th>
-                      <th id="th-header-b">Variant B</th>
-                      <th>Classification</th>
-                    </tr>
-                  </thead>
-                  <tbody id="headers-comparison-tbody">
-                    <!-- Populated dynamically -->
-                  </tbody>
-                </table>
+              <!-- Tab Headers -->
+              <div style="display: flex; gap: 16px;">
+                <div id="tab-overview" style="cursor: pointer; padding-bottom: 12px; border-bottom: 2px solid var(--accent); color: var(--text); font-weight: 600; font-size: 13px;" onclick="switchRightTab('overview')">Overview</div>
+                <div id="tab-code-diff" style="cursor: pointer; padding-bottom: 12px; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 600; font-size: 13px;" onclick="switchRightTab('code')">Response Body Diff</div>
+                <div id="tab-visual" style="cursor: pointer; padding-bottom: 12px; border-bottom: 2px solid transparent; color: var(--text-muted); font-weight: 600; font-size: 13px;" onclick="switchRightTab('visual')">Visual Render Split-View</div>
               </div>
             </div>
+            <button class="btn" style="padding: 4px 12px; font-size: 12px; margin-bottom: 8px;" onclick="showHeatmapView()">Back to Heatmap</button>
           </div>
-        </div>
 
-        <!-- Bottom: Body Code Diff & Visual Render -->
-        <div class="card details-right">
-          <div class="card-header" style="display: flex; gap: 16px; padding-bottom: 0;">
-            <div id="tab-code-diff" style="cursor: pointer; padding-bottom: 12px; border-bottom: 2px solid var(--accent); color: var(--text);" onclick="switchRightTab('code')">Response Body Diff</div>
-            <div id="tab-visual" style="cursor: pointer; padding-bottom: 12px; color: var(--text-muted);" onclick="switchRightTab('visual')">Visual Render Split-View</div>
-          </div>
-          <div class="panel-body" style="padding: 0; overflow: hidden; position: relative;">
+          <!-- Unified Card Body -->
+          <div class="panel-body" style="padding: 0; overflow: hidden; position: relative; flex: 1; display: flex; flex-direction: column;">
             
-            <!-- Code Diff Container -->
-            <div id="body-diff-container" style="height: 100%; overflow: auto;">
+            <!-- Tab 1: Overview Panel -->
+            <div id="overview-tab-container" style="padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; flex: 1;">
+              
+              <!-- Target Endpoints -->
+              <div style="margin-bottom: 8px;">
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Target Endpoints</div>
+                <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
+                  <div>
+                    <span id="label-endpoint-a" style="font-weight: 600; color: var(--primary);">Variant A:</span>
+                    <a id="link-endpoint-a" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
+                  </div>
+                  <div>
+                    <span id="label-endpoint-b" style="font-weight: 600; color: #10b981;">Variant B:</span>
+                    <a id="link-endpoint-b" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Performance & Parity Metrics Row -->
+              <div style="display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;">
+                
+                <!-- Tile 1: Status Code Parity -->
+                <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                  <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Status Code Parity</div>
+                  <div id="status-comparison-box" style="font-size: 14px; font-weight: 600; display: flex; align-items: center; min-height: 28px;">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+                <!-- Tile 2: Variant A Performance -->
+                <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                  <div id="title-performance-a" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant A (Current)</div>
+                  <div id="metrics-variant-a" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+                <!-- Tile 3: Variant B Performance -->
+                <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
+                  <div id="title-performance-b" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant B (Canary)</div>
+                  <div id="metrics-variant-b" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
+                    <!-- Populated dynamically -->
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- HTTP Headers Comparison Table -->
+              <div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">HTTP Headers Comparison</div>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Header</th>
+                        <th id="th-header-a">Variant A</th>
+                        <th id="th-header-b">Variant B</th>
+                        <th>Classification</th>
+                      </tr>
+                    </thead>
+                    <tbody id="headers-comparison-tbody">
+                      <!-- Populated dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Tab 2: Response Body Diff Panel -->
+            <div id="body-diff-container" style="display: none; height: 100%; overflow: auto; flex: 1; width: 100%;">
               <!-- Code diff rendered here -->
             </div>
 
-            <!-- Visual Render Split Container -->
-            <div id="visual-render-container" style="display: none; height: 100%; width: 100%; box-sizing: border-box; padding: 12px; gap: 12px; background: #0f172a;">
-              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+            <!-- Tab 3: Visual Render Split Panel -->
+            <div id="visual-render-container" style="display: none; height: 100%; width: 100%; box-sizing: border-box; padding: 12px; gap: 12px; background: #0f172a; flex: 1;">
+              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 100%;">
                 <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                   <span id="title-visual-a">Variant A (Current)</span>
                   <a id="iframe-link-a" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
                 </div>
                 <iframe id="iframe-a" style="flex: 1; border: none; background: white; width: 100%; height: 100%;"></iframe>
               </div>
-              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+              <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 100%;">
                 <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
                   <span id="title-visual-b">Variant B (Canary)</span>
                   <a id="iframe-link-b" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
@@ -261,7 +270,6 @@
 
           </div>
         </div>
-
       </div>
 
     </div>

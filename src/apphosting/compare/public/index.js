@@ -1151,29 +1151,50 @@ function viewRouteDiff(idx, element) {
     }
     updateNav();
   }
+  switchRightTab("overview");
 }
 
 function switchRightTab(tabId) {
-  document.getElementById("tab-code-diff").classList.remove("active");
-  document.getElementById("tab-code-diff").style.borderBottom = "none";
-  document.getElementById("tab-code-diff").style.color = "var(--text-muted)";
-  
-  document.getElementById("tab-visual").classList.remove("active");
-  document.getElementById("tab-visual").style.borderBottom = "none";
-  document.getElementById("tab-visual").style.color = "var(--text-muted)";
+  // 1. Reset all tabs styling
+  const tabs = ["overview", "code", "visual"];
+  tabs.forEach(id => {
+    const el = document.getElementById(id === "overview" ? "tab-overview" : (id === "code" ? "tab-code-diff" : "tab-visual"));
+    if (el) {
+      el.classList.remove("active");
+      el.style.borderBottom = "2px solid transparent";
+      el.style.color = "var(--text-muted)";
+    }
+  });
 
+  // 2. Hide all tab content containers
+  document.getElementById("overview-tab-container").style.display = "none";
   document.getElementById("body-diff-container").style.display = "none";
   document.getElementById("visual-render-container").style.display = "none";
 
-  if (tabId === 'code') {
-    document.getElementById("tab-code-diff").classList.add("active");
-    document.getElementById("tab-code-diff").style.borderBottom = "2px solid var(--accent)";
-    document.getElementById("tab-code-diff").style.color = "var(--text)";
+  // 3. Show and activate selected tab
+  if (tabId === "overview") {
+    const el = document.getElementById("tab-overview");
+    if (el) {
+      el.classList.add("active");
+      el.style.borderBottom = "2px solid var(--accent)";
+      el.style.color = "var(--text)";
+    }
+    document.getElementById("overview-tab-container").style.display = "flex";
+  } else if (tabId === "code") {
+    const el = document.getElementById("tab-code-diff");
+    if (el) {
+      el.classList.add("active");
+      el.style.borderBottom = "2px solid var(--accent)";
+      el.style.color = "var(--text)";
+    }
     document.getElementById("body-diff-container").style.display = "block";
-  } else if (tabId === 'visual') {
-    document.getElementById("tab-visual").classList.add("active");
-    document.getElementById("tab-visual").style.borderBottom = "2px solid var(--accent)";
-    document.getElementById("tab-visual").style.color = "var(--text)";
+  } else if (tabId === "visual") {
+    const el = document.getElementById("tab-visual");
+    if (el) {
+      el.classList.add("active");
+      el.style.borderBottom = "2px solid var(--accent)";
+      el.style.color = "var(--text)";
+    }
     document.getElementById("visual-render-container").style.display = "flex";
   }
 }

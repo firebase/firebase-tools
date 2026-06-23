@@ -246,22 +246,10 @@ button.btn:hover {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
   overflow: hidden;
 }
 
-.details-left {
-  flex: none;
-  height: 350px;
-  min-height: 100px;
-  max-height: 80vh;
-  resize: vertical;
-  display: flex;
-  flex-direction: column;
-  overflow: auto;
-}
-
-.details-right {
+.details-view > .card {
   flex: 1;
   display: flex;
   flex-direction: column;
