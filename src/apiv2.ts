@@ -1,9 +1,7 @@
-import { AbortSignal } from "abort-controller";
+import AbortController, { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
 import { ProxyAgent } from "proxy-agent";
-import * as retry from "retry";
-import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
 import util from "util";
 
@@ -13,6 +11,7 @@ import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import * as FormData from "form-data";
+import { sleep } from "./utils";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.
@@ -414,116 +413,106 @@ export class Client {
       fetchOptions.body = JSON.stringify(options.body);
     }
 
-    // TODO(bkendall): Refactor this to use Throttler _or_ refactor Throttle to use `retry`.
-    const operationOptions: retry.OperationOptions = {
-      retries: options.retryCodes?.length ? 1 : 2,
-      minTimeout: 1 * 1000,
-      maxTimeout: 5 * 1000,
-    };
-    if (typeof options.retries === "number") {
-      operationOptions.retries = options.retries;
-    }
-    if (typeof options.retryMinTimeout === "number") {
-      operationOptions.minTimeout = options.retryMinTimeout;
-    }
-    if (typeof options.retryMaxTimeout === "number") {
-      operationOptions.maxTimeout = options.retryMaxTimeout;
-    }
-    const operation = retry.operation(operationOptions);
+    const retries = options.retries ?? (options.retryCodes?.length ? 1 : 2);
+    const minTimeout = options.retryMinTimeout ?? 1000;
+    const maxTimeout = options.retryMaxTimeout ?? 5000;
 
-    return await new Promise<ClientResponse<ResT>>((resolve, reject) => {
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
-      operation.attempt(async (currentAttempt): Promise<void> => {
-        let res: Response;
-        let body: ResT;
+    let currentAttempt = 1;
+    let timeout = minTimeout;
+
+    while (true) {
+      let res: Response;
+      let body: ResT;
+      try {
+        if (currentAttempt > 1) {
+          logger.debug(
+            `*** [apiv2] Attempting the request again. Attempt number ${currentAttempt}`,
+          );
+        }
+        this.logRequest(options);
         try {
-          if (currentAttempt > 1) {
-            logger.debug(
-              `*** [apiv2] Attempting the request again. Attempt number ${currentAttempt}`,
-            );
-          }
-          this.logRequest(options);
-          try {
-            res = await fetch(fetchURL, fetchOptions);
-          } catch (thrown: any) {
-            const err = thrown instanceof Error ? thrown : new Error(thrown);
-            logger.debug(
-              `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
-            );
-            const isAbortError = err.name.includes("AbortError");
-            if (isAbortError) {
-              throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, {
-                original: err,
-              });
-            }
-            throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
-          } finally {
-            // If we succeed or failed, clear the timeout.
-            if (reqTimeout) {
-              clearTimeout(reqTimeout);
-            }
-          }
-
-          if (options.responseType === "json") {
-            const text = await res.text();
-            // Some responses, such as 204 and occasionally 202s don't have
-            // any content. We can't just rely on response code (202 may have conent)
-            // and unfortuantely res.length is unreliable (many requests return zero).
-            if (!text.length) {
-              body = undefined as unknown as ResT;
-            } else {
-              try {
-                body = JSON.parse(text) as ResT;
-              } catch (err: unknown) {
-                // JSON-parse errors are useless. Log the response for better debugging.
-                this.logResponse(res, text, options);
-                throw new FirebaseError(`Unable to parse JSON: ${err}`);
-              }
-            }
-          } else if (options.responseType === "xml") {
-            body = (await res.text()) as unknown as ResT;
-          } else if (options.responseType === "stream") {
-            body = res.body as unknown as ResT;
-          } else {
-            throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
-              exit: 2,
+          res = await fetch(fetchURL, fetchOptions);
+        } catch (thrown: any) {
+          const err = thrown instanceof Error ? thrown : new Error(thrown);
+          logger.debug(
+            `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
+          );
+          const isAbortError = err.name.includes("AbortError");
+          if (isAbortError) {
+            throw new FirebaseError(`Timeout reached making request to ${fetchURL}`, {
+              original: err,
             });
           }
-        } catch (err: unknown) {
-          return err instanceof FirebaseError ? reject(err) : reject(new FirebaseError(`${err}`));
+          throw new FirebaseError(`Failed to make request to ${fetchURL}`, { original: err });
+        } finally {
+          // If we succeed or failed, clear the timeout.
+          if (reqTimeout) {
+            clearTimeout(reqTimeout);
+          }
         }
 
-        this.logResponse(res, body, options);
-
-        if (res.status >= 400) {
-          if (res.status === 401 && this.opts.auth) {
-            // If we get a 401, access token is expired or otherwise invalid.
-            // Throw it away and get a new one. We check for validity before using
-            // tokens, so this should not happen.
-            logger.debug(
-              "Got a 401 Unauthenticated error for a call that required authentication. Refreshing tokens.",
-            );
-            setAccessToken();
-            setAccessToken(await getAccessToken());
-          }
-          if (options.retryCodes?.includes(res.status)) {
-            const err = responseToError({ statusCode: res.status }, body, fetchURL) || undefined;
-            if (operation.retry(err)) {
-              return;
+        if (options.responseType === "json") {
+          const text = await res.text();
+          // Some responses, such as 204 and occasionally 202s don't have
+          // any content. We can't just rely on response code (202 may have content)
+          // and unfortunately res.length is unreliable (many requests return zero).
+          if (!text.length) {
+            body = undefined as unknown as ResT;
+          } else {
+            try {
+              body = JSON.parse(text) as ResT;
+            } catch (err: unknown) {
+              // JSON-parse errors are useless. Log the response for better debugging.
+              this.logResponse(res, text, options);
+              throw new FirebaseError(`Unable to parse JSON: ${err}`);
             }
           }
-          if (!options.resolveOnHTTPError) {
-            return reject(responseToError({ statusCode: res.status }, body, fetchURL));
-          }
+        } else if (options.responseType === "xml") {
+          body = (await res.text()) as unknown as ResT;
+        } else if (options.responseType === "stream") {
+          body = res.body as unknown as ResT;
+        } else {
+          throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
+            exit: 2,
+          });
         }
+      } catch (err: unknown) {
+        throw err instanceof FirebaseError ? err : new FirebaseError(`${err}`);
+      }
 
-        resolve({
-          status: res.status,
-          response: res,
-          body,
-        });
-      });
-    });
+      this.logResponse(res, body, options);
+
+      if (res.status >= 400) {
+        if (res.status === 401 && this.opts.auth) {
+          // If we get a 401, access token is expired or otherwise invalid.
+          // Throw it away and get a new one. We check for validity before using
+          // tokens, so this should not happen.
+          logger.debug(
+            "Got a 401 Unauthenticated error for a call that required authentication. Refreshing tokens.",
+          );
+          setAccessToken();
+          setAccessToken(await getAccessToken());
+        }
+        if (options.retryCodes?.includes(res.status) && currentAttempt <= retries) {
+          logger.debug(
+            `*** [apiv2] Retrying request on status code ${res.status}. Next attempt in ${timeout}ms.`,
+          );
+          await sleep(timeout);
+          currentAttempt++;
+          timeout = Math.min(timeout * 2, maxTimeout);
+          continue;
+        }
+        if (!options.resolveOnHTTPError) {
+          throw responseToError({ statusCode: res.status }, body, fetchURL);
+        }
+      }
+
+      return {
+        status: res.status,
+        response: res,
+        body,
+      };
+    }
   }
 
   private logRequest(options: InternalClientRequestOptions<unknown>): void {
