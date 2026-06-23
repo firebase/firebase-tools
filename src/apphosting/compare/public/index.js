@@ -472,8 +472,8 @@ async function loadHeatmap(tc) {
       const btn = document.createElement("button");
       btn.className = "filter-dropdown-btn";
       
-      // Title casing property name
-      const displayProp = propName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      // Title casing property name (override localBuild to Deployment)
+      const displayProp = propName === "localBuild" ? "Deployment" : propName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
       btn.textContent = `${displayProp}: All`;
       btn.onclick = (e) => toggleDropdown(container, e);
 
@@ -576,7 +576,7 @@ function applyMetadataFilters() {
 
     if (propName) {
       activeFilters[propName] = selectedValues;
-      const displayProp = propName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+      const displayProp = propName === "localBuild" ? "Deployment" : propName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
       if (selectedValues.length === totalCount) {
         labelBtn.textContent = `${displayProp}: All`;
       } else if (selectedValues.length === 0) {
@@ -826,6 +826,23 @@ function viewRouteDiff(idx, element) {
   document.getElementById("comparison-details").style.display = "flex";
 
   const res = comparisonResults[idx];
+
+  // Retrieve actual variant names
+  const varAName = document.getElementById("select-variant-a").value || "Variant A";
+  const varBName = document.getElementById("select-variant-b").value || "Variant B";
+
+  // Update dynamic labels with actual variant names
+  document.getElementById("label-endpoint-a").textContent = `${varAName}:`;
+  document.getElementById("label-endpoint-b").textContent = `${varBName}:`;
+
+  document.getElementById("title-performance-a").textContent = `${varAName} Performance`;
+  document.getElementById("title-performance-b").textContent = `${varBName} Performance`;
+
+  document.getElementById("th-header-a").textContent = varAName;
+  document.getElementById("th-header-b").textContent = varBName;
+
+  document.getElementById("title-visual-a").textContent = `${varAName} Render`;
+  document.getElementById("title-visual-b").textContent = `${varBName} Render`;
 
   // Update Endpoint Links & Route Path Title
   document.getElementById("route-title-path").textContent = res.route;

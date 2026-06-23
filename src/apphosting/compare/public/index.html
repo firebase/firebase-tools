@@ -168,11 +168,11 @@
               <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Target Endpoints</div>
               <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px;">
                 <div>
-                  <span style="font-weight: 600; color: var(--primary);">Variant A:</span>
+                  <span id="label-endpoint-a" style="font-weight: 600; color: var(--primary);">Variant A:</span>
                   <a id="link-endpoint-a" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
                 </div>
                 <div>
-                  <span style="font-weight: 600; color: #10b981;">Variant B:</span>
+                  <span id="label-endpoint-b" style="font-weight: 600; color: #10b981;">Variant B:</span>
                   <a id="link-endpoint-b" href="#" target="_blank" style="color: var(--text); text-decoration: underline; word-break: break-all;"></a>
                 </div>
               </div>
@@ -191,7 +191,7 @@
 
               <!-- Tile 2: Variant A Performance -->
               <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
-                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant A (Current)</div>
+                <div id="title-performance-a" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant A (Current)</div>
                 <div id="metrics-variant-a" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
                   <!-- Populated dynamically -->
                 </div>
@@ -199,7 +199,7 @@
 
               <!-- Tile 3: Variant B Performance -->
               <div class="metrics-tile" style="flex: 1; min-width: 200px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;">
-                <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant B (Canary)</div>
+                <div id="title-performance-b" style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 6px;">Variant B (Canary)</div>
                 <div id="metrics-variant-b" style="display: flex; gap: 8px; align-items: center; min-height: 28px;">
                   <!-- Populated dynamically -->
                 </div>
@@ -214,8 +214,8 @@
                   <thead>
                     <tr>
                       <th>Header</th>
-                      <th>Variant A</th>
-                      <th>Variant B</th>
+                      <th id="th-header-a">Variant A</th>
+                      <th id="th-header-b">Variant B</th>
                       <th>Classification</th>
                     </tr>
                   </thead>
@@ -245,14 +245,14 @@
             <div id="visual-render-container" style="display: none; height: 100%; width: 100%; box-sizing: border-box; padding: 12px; gap: 12px; background: #0f172a;">
               <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
                 <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                  <span>Variant A (Current)</span>
+                  <span id="title-visual-a">Variant A (Current)</span>
                   <a id="iframe-link-a" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
                 </div>
                 <iframe id="iframe-a" style="flex: 1; border: none; background: white; width: 100%; height: 100%;"></iframe>
               </div>
               <div style="flex: 1; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
                 <div style="background: var(--bg-panel); padding: 8px 12px; font-size: 11px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                  <span>Variant B (Canary)</span>
+                  <span id="title-visual-b">Variant B (Canary)</span>
                   <a id="iframe-link-b" href="#" target="_blank" style="color: var(--accent); text-decoration: underline;">Open in new tab</a>
                 </div>
                 <iframe id="iframe-b" style="flex: 1; border: none; background: white; width: 100%; height: 100%;"></iframe>
