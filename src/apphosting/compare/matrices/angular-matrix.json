@@ -1,6 +1,6 @@
 [
   {
-    "name": "Angular 19 Canary Matrix",
+    "name": "Angular 19",
     "variants": [
       {
         "id": "Local-Node24",

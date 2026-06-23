@@ -660,6 +660,7 @@ function renderMatrixTable(variants) {
     const th = document.createElement("th");
     th.className = "heatmap-header-cell";
     th.textContent = v;
+    th.dataset.columnVariant = v;
     thead.appendChild(th);
   });
   table.appendChild(thead);
@@ -672,6 +673,7 @@ function renderMatrixTable(variants) {
     const tdLabel = document.createElement("td");
     tdLabel.className = "heatmap-row-label";
     tdLabel.textContent = vA;
+    tdLabel.dataset.rowVariant = vA;
     tr.appendChild(tdLabel);
 
     variants.forEach((vB) => {
@@ -704,6 +706,21 @@ function renderMatrixTable(variants) {
       const bg = `hsla(${hue}, 70%, 42%, 0.85)`;
       inner.style.backgroundColor = bg;
       inner.title = `Similarity between ${vA} and ${vB}: ${percent}%`;
+
+      // Highlight matching row/column headers on hover
+      inner.onmouseenter = () => {
+        const rowLabel = document.querySelector(`td.heatmap-row-label[data-row-variant="${vA}"]`);
+        if (rowLabel) rowLabel.classList.add("highlighted");
+        const colLabel = document.querySelector(`th.heatmap-header-cell[data-column-variant="${vB}"]`);
+        if (colLabel) colLabel.classList.add("highlighted");
+      };
+
+      inner.onmouseleave = () => {
+        const rowLabel = document.querySelector(`td.heatmap-row-label[data-row-variant="${vA}"]`);
+        if (rowLabel) rowLabel.classList.remove("highlighted");
+        const colLabel = document.querySelector(`th.heatmap-header-cell[data-column-variant="${vB}"]`);
+        if (colLabel) colLabel.classList.remove("highlighted");
+      };
 
       // Clicking a cell triggers the comparison for vA and vB
       inner.onclick = () => {

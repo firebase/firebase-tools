@@ -336,7 +336,7 @@ tr:last-child td {
 .heatmap-table {
   width: auto !important;
   border-collapse: separate;
-  border-spacing: 8px;
+  border-spacing: 2px;
   font-size: 13px;
   margin: 20px auto;
 }
@@ -360,16 +360,18 @@ tr:last-child td {
   justify-content: center;
   font-weight: 700;
   font-size: 12px;
-  border-radius: 8px;
+  border-radius: 3px;
   cursor: pointer;
-  transition: transform 0.1s ease, filter 0.1s ease;
+  transition: transform 0.1s ease, filter 0.1s ease, box-shadow 0.1s ease;
   color: #0f172a;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
   margin: auto;
 }
 .heatmap-cell-inner:hover {
-  transform: scale(1.06);
+  transform: scale(1.08);
   filter: brightness(1.15);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  position: relative;
 }
 .heatmap-cell-inner.de-emphasized {
   opacity: 0.15;
@@ -385,23 +387,32 @@ tr:last-child td {
   padding: 4px;
   font-weight: 600;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
   width: 6.5vw;
   min-width: 44px;
   max-width: 72px;
   word-wrap: break-word;
+  transition: color 0.15s, background-color 0.15s, border-radius 0.15s;
 }
 .heatmap-row-label {
   padding-right: 14px;
   font-weight: 600;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: 12px;
   text-align: right;
   width: 10vw;
   min-width: 70px;
   max-width: 110px;
   word-wrap: break-word;
+  transition: color 0.15s, background-color 0.15s, border-radius 0.15s;
+}
+
+.heatmap-header-cell.highlighted,
+.heatmap-row-label.highlighted {
+  color: var(--accent) !important;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
 }
 
 /* Unified Diff Panel Styles */

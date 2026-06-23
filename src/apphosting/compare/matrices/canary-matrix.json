@@ -1,6 +1,6 @@
 [
   {
-    "name": "Angular 19 Canary Matrix",
+    "name": "Angular 19",
     "variants": [
       { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs24", "localBuild": true },
       { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-19", "runtime": "nodejs24", "localBuild": false },
@@ -9,7 +9,7 @@
     ]
   },
   {
-    "name": "Angular 20 Canary Matrix",
+    "name": "Angular 20",
     "variants": [
       { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs24", "localBuild": true },
       { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-20", "runtime": "nodejs24", "localBuild": false },
@@ -18,7 +18,7 @@
     ]
   },
   {
-    "name": "Angular 21 Canary Matrix",
+    "name": "Angular 21",
     "variants": [
       { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs24", "localBuild": true },
       { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-21", "runtime": "nodejs24", "localBuild": false },
@@ -27,7 +27,7 @@
     ]
   },
   {
-    "name": "Angular 22 Canary Matrix",
+    "name": "Angular 22",
     "variants": [
       { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs24", "localBuild": true },
       { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/angular-reference/angular-22", "runtime": "nodejs24", "localBuild": false },
@@ -36,7 +36,7 @@
     ]
   },
   {
-    "name": "Next.js 15.3 Canary Matrix",
+    "name": "Next.js 15.3",
     "variants": [
       { "id": "Local-Node24", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs24", "localBuild": true },
       { "id": "Source-Node24", "path": "../firebase-apphosting-canary/apps/nextjs-reference/next-15.3", "runtime": "nodejs24", "localBuild": false },

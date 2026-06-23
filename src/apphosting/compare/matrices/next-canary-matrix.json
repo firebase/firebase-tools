@@ -1,6 +1,6 @@
 [
   {
-    "name": "Next.js 15.3 Canary Matrix",
+    "name": "Next.js 15.3",
     "variants": [
       {
         "id": "Local-Node24",
