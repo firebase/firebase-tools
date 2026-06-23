@@ -1,3 +1,12 @@
+function formatVariantName(v) {
+  if (!v) return "";
+  if (v.includes("/")) {
+    const [tcPart, varPart] = v.split("/");
+    return `${tcPart.replace(/\s+/g, "-")} ${varPart.replace(/-/g, " ")}`;
+  }
+  return v.replace(/-/g, " ");
+}
+
 let activeTestCase = "";
 let recordingsData = {};
 let comparisonResults = [];
@@ -361,8 +370,11 @@ async function selectTestCase(tc, element) {
   variants.forEach((v) => {
     const optA = document.createElement("option");
     optA.value = v;
-    optA.textContent = v;
-    const optB = optA.cloneNode(true);
+    optA.textContent = formatVariantName(v);
+    
+    const optB = document.createElement("option");
+    optB.value = v;
+    optB.textContent = formatVariantName(v);
 
     selectA.appendChild(optA);
     selectB.appendChild(optB);
@@ -659,7 +671,7 @@ function renderMatrixTable(variants) {
   variants.forEach((v) => {
     const th = document.createElement("th");
     th.className = "heatmap-header-cell";
-    th.textContent = v;
+    th.textContent = formatVariantName(v);
     th.dataset.columnVariant = v;
     thead.appendChild(th);
   });
@@ -672,7 +684,7 @@ function renderMatrixTable(variants) {
     // Row label
     const tdLabel = document.createElement("td");
     tdLabel.className = "heatmap-row-label";
-    tdLabel.textContent = vA;
+    tdLabel.textContent = formatVariantName(vA);
     tdLabel.dataset.rowVariant = vA;
     tr.appendChild(tdLabel);
 
@@ -848,18 +860,21 @@ function viewRouteDiff(idx, element) {
   const varAName = document.getElementById("select-variant-a").value || "Variant A";
   const varBName = document.getElementById("select-variant-b").value || "Variant B";
 
+  const displayAName = formatVariantName(varAName);
+  const displayBName = formatVariantName(varBName);
+
   // Update dynamic labels with actual variant names
-  document.getElementById("label-endpoint-a").textContent = `${varAName}:`;
-  document.getElementById("label-endpoint-b").textContent = `${varBName}:`;
+  document.getElementById("label-endpoint-a").textContent = `${displayAName}:`;
+  document.getElementById("label-endpoint-b").textContent = `${displayBName}:`;
 
-  document.getElementById("title-performance-a").textContent = `${varAName} Performance`;
-  document.getElementById("title-performance-b").textContent = `${varBName} Performance`;
+  document.getElementById("title-performance-a").textContent = `${displayAName} Performance`;
+  document.getElementById("title-performance-b").textContent = `${displayBName} Performance`;
 
-  document.getElementById("th-header-a").textContent = varAName;
-  document.getElementById("th-header-b").textContent = varBName;
+  document.getElementById("th-header-a").textContent = displayAName;
+  document.getElementById("th-header-b").textContent = displayBName;
 
-  document.getElementById("title-visual-a").textContent = `${varAName} Render`;
-  document.getElementById("title-visual-b").textContent = `${varBName} Render`;
+  document.getElementById("title-visual-a").textContent = `${displayAName} Render`;
+  document.getElementById("title-visual-b").textContent = `${displayBName} Render`;
 
   // Update Endpoint Links & Route Path Title
   document.getElementById("route-title-path").textContent = res.route;
