@@ -321,6 +321,8 @@ export async function runCompareSuite(
       record.localBuild = record.localBuild ?? v.localBuild;
       record.runtime = record.runtime || v.runtime;
       record.path = record.path || v.path;
+      // Upgrade cache file on disk with enriched metadata
+      await cache.saveRecording(record);
       recordings.push(record);
     }
   }

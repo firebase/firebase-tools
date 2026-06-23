@@ -982,29 +982,38 @@ function viewRouteDiff(idx, element) {
   `;
 
   // 4. Detailed Specifications Cards
+  const hasAbiuA = activeRuntimeA && /\d/.test(activeRuntimeA);
+  const hasAbiuB = activeRuntimeB && /\d/.test(activeRuntimeB);
+
   document.getElementById("overview-spec-title-a").textContent = displayAName;
   document.getElementById("overview-spec-build-a").textContent = activeLocalBuildA ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
   document.getElementById("overview-spec-runtime-a").textContent = activeRuntimeA ? activeRuntimeA : "auto-detected";
+  document.getElementById("overview-spec-abiu-a").innerHTML = hasAbiuA 
+    ? `<span style="color: #10b981; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(16,185,129,0.1); border-radius: 4px; border: 1px solid rgba(16,185,129,0.2);">ENABLED</span>`
+    : `<span style="color: #ef4444; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(239,68,68,0.1); border-radius: 4px; border: 1px solid rgba(239,68,68,0.2);">DISABLED</span>`;
   document.getElementById("overview-spec-path-a").textContent = activePathA ? activePathA : "./";
   
   let descA = "";
   if (activeLocalBuildA) {
-    descA = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. Highlights parity of local bundling speed and artifact output against a production Cloud Run environment.`;
+    descA = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. ${hasAbiuA ? "Automatic Base Image Updates (ABIU) are enabled, allowing dynamic OS and runtime security patches to keep your container secure." : "Automatic Base Image Updates (ABIU) are disabled, pinning the build to the standard base image."}`;
   } else {
-    descA = `Tests standard Firebase App Hosting source-level deployment with auto-detected runtimes, compiled remotely using Google Cloud Build without local optimization or Universal Maker.`;
+    descA = `Tests standard Firebase App Hosting source-level deployment compiled remotely using Google Cloud Build. ${hasAbiuA ? "Automatic Base Image Updates (ABIU) are enabled, allowing dynamic OS and runtime security patches to keep your container secure." : "Automatic Base Image Updates (ABIU) are disabled, pinning the build to the standard base image."}`;
   }
   document.getElementById("overview-spec-desc-a").textContent = descA;
 
   document.getElementById("overview-spec-title-b").textContent = displayBName;
   document.getElementById("overview-spec-build-b").textContent = activeLocalBuildB ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
   document.getElementById("overview-spec-runtime-b").textContent = activeRuntimeB ? activeRuntimeB : "auto-detected";
+  document.getElementById("overview-spec-abiu-b").innerHTML = hasAbiuB 
+    ? `<span style="color: #10b981; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(16,185,129,0.1); border-radius: 4px; border: 1px solid rgba(16,185,129,0.2);">ENABLED</span>`
+    : `<span style="color: #ef4444; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(239,68,68,0.1); border-radius: 4px; border: 1px solid rgba(239,68,68,0.2);">DISABLED</span>`;
   document.getElementById("overview-spec-path-b").textContent = activePathB ? activePathB : "./";
   
   let descB = "";
   if (activeLocalBuildB) {
-    descB = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. Highlights parity of local bundling speed and artifact output against a production Cloud Run environment.`;
+    descB = `Tests local artifact generation using the Universal Maker (UM) compilation engine inside a Node container. ${hasAbiuB ? "Automatic Base Image Updates (ABIU) are enabled, allowing dynamic OS and runtime security patches to keep your container secure." : "Automatic Base Image Updates (ABIU) are disabled, pinning the build to the standard base image."}`;
   } else {
-    descB = `Tests standard Firebase App Hosting source-level deployment with auto-detected runtimes, compiled remotely using Google Cloud Build without local optimization or Universal Maker.`;
+    descB = `Tests standard Firebase App Hosting source-level deployment compiled remotely using Google Cloud Build. ${hasAbiuB ? "Automatic Base Image Updates (ABIU) are enabled, allowing dynamic OS and runtime security patches to keep your container secure." : "Automatic Base Image Updates (ABIU) are disabled, pinning the build to the standard base image."}`;
   }
   document.getElementById("overview-spec-desc-b").textContent = descB;
 
