@@ -38,12 +38,46 @@ try {
 } catch (e) {
   isIgnoreCollapsed = false;
 }
-
 function saveSettings() {
   try {
     localStorage.setItem("apphosting_compare_ignore_headers", JSON.stringify(activeIgnoreList));
     localStorage.setItem("apphosting_compare_scoring_mode", activeScoringMode);
     localStorage.setItem("apphosting_compare_ignore_collapsed", String(isIgnoreCollapsed));
+  } catch (e) {}
+}
+
+// Sidebar Collapsible State
+let isSidebarCollapsed = false;
+try {
+  const storedSidebar = localStorage.getItem("apphosting_compare_sidebar_collapsed");
+  if (storedSidebar) {
+    isSidebarCollapsed = storedSidebar === "true";
+  }
+} catch (e) {
+  isSidebarCollapsed = false;
+}
+
+// Restore sidebar collapsed state on load
+document.addEventListener("DOMContentLoaded", () => {
+  if (isSidebarCollapsed) {
+    const sidebar = document.querySelector(".sidebar");
+    const btn = document.getElementById("sidebar-toggle-btn");
+    if (sidebar) sidebar.classList.add("collapsed");
+    if (btn) btn.classList.add("collapsed-active");
+  }
+});
+
+function toggleSidebar() {
+  const sidebar = document.querySelector(".sidebar");
+  const btn = document.getElementById("sidebar-toggle-btn");
+  if (!sidebar || !btn) return;
+
+  sidebar.classList.toggle("collapsed");
+  btn.classList.toggle("collapsed-active");
+
+  isSidebarCollapsed = sidebar.classList.contains("collapsed");
+  try {
+    localStorage.setItem("apphosting_compare_sidebar_collapsed", String(isSidebarCollapsed));
   } catch (e) {}
 }
 

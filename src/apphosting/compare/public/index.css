@@ -54,6 +54,31 @@ main {
   overflow: hidden;
 }
 
+/* Sidebar Toggle Button */
+.sidebar-toggle {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.sidebar-toggle:hover {
+  background: rgba(59, 130, 246, 0.08);
+  color: var(--accent);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+.sidebar-toggle.collapsed-active {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Sidebar */
 .sidebar {
   width: 320px;
@@ -65,6 +90,19 @@ main {
   padding: 20px;
   box-sizing: border-box;
   gap: 24px;
+  transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              padding 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.15s ease,
+              border-right-color 0.25s ease;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  border-right-color: transparent;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .section-title {
