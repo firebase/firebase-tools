@@ -38,11 +38,23 @@ try {
 } catch (e) {
   isIgnoreCollapsed = false;
 }
+
+let activeColorMode = "absolute";
+try {
+  const storedColorMode = localStorage.getItem("apphosting_compare_color_mode");
+  if (storedColorMode) {
+    activeColorMode = storedColorMode;
+  }
+} catch (e) {
+  activeColorMode = "absolute";
+}
+
 function saveSettings() {
   try {
     localStorage.setItem("apphosting_compare_ignore_headers", JSON.stringify(activeIgnoreList));
     localStorage.setItem("apphosting_compare_scoring_mode", activeScoringMode);
     localStorage.setItem("apphosting_compare_ignore_collapsed", String(isIgnoreCollapsed));
+    localStorage.setItem("apphosting_compare_color_mode", activeColorMode);
   } catch (e) {}
 }
 
@@ -79,6 +91,17 @@ function toggleSidebar() {
   try {
     localStorage.setItem("apphosting_compare_sidebar_collapsed", String(isSidebarCollapsed));
   } catch (e) {}
+}
+
+function applyColorMode() {
+  const select = document.getElementById("select-color-mode");
+  if (!select) return;
+  activeColorMode = select.value;
+  saveSettings();
+
+  if (lastMatrixData) {
+    applyMetadataFilters();
+  }
 }
 
 function toggleIgnorePillsCollapse() {
@@ -608,6 +631,25 @@ function renderMatrixTable(variants) {
     return;
   }
 
+  // Calculate min and max similarity for relative coloring
+  let minSim = 1.0;
+  let maxSim = 0.0;
+  let hasDiff = false;
+
+  if (activeColorMode === "relative") {
+    variants.forEach((vA) => {
+      variants.forEach((vB) => {
+        const row = lastMatrixData.matrix[vA];
+        const similarity = row ? (row[vB] || 0.0) : 0.0;
+        if (similarity < minSim) minSim = similarity;
+        if (similarity > maxSim) maxSim = similarity;
+      });
+    });
+    if (maxSim > minSim) {
+      hasDiff = true;
+    }
+  }
+
   const table = document.createElement("table");
   table.className = "heatmap-table";
 
@@ -639,16 +681,27 @@ function renderMatrixTable(variants) {
       const inner = document.createElement("div");
       inner.className = "heatmap-cell-inner";
 
-      const similarity = lastMatrixData.matrix[vA][vB] || 0.0;
+      const row = lastMatrixData.matrix[vA];
+      const similarity = row ? (row[vB] || 0.0) : 0.0;
       const percent = Math.round(similarity * 100);
       inner.textContent = percent + "%";
       inner.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
       inner.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
 
-      // Continuous red-to-green gradient interpolation (0% = HSL 0, 100% = HSL 120)
-      const hue = similarity * 120;
-      const bg = `hsla(${hue}, 70%, 42%, 0.85)`;
+      // Calculate hue based on absolute or relative mode
+      let hue = 120;
+      if (activeColorMode === "relative") {
+        if (hasDiff) {
+          const rel = (similarity - minSim) / (maxSim - minSim);
+          hue = rel * 120;
+        } else {
+          hue = 120; // If all cells have identical similarity, color them green
+        }
+      } else {
+        hue = similarity * 120; // Absolute mode (0% = HSL 0, 100% = HSL 120)
+      }
 
+      const bg = `hsla(${hue}, 70%, 42%, 0.85)`;
       inner.style.backgroundColor = bg;
       inner.title = `Similarity between ${vA} and ${vB}: ${percent}%`;
 
@@ -1086,8 +1139,9 @@ document.getElementById("select-scoring-mode").onchange = () => {
 };
 
 window.onload = async () => {
-  // 1. Set scoring mode dropdown value from localStorage
+  // 1. Set scoring mode and coloring mode dropdown values from localStorage
   document.getElementById("select-scoring-mode").value = activeScoringMode;
+  document.getElementById("select-color-mode").value = activeColorMode;
   
   // 2. Render ignore pills and set collapse state
   renderIgnorePills();

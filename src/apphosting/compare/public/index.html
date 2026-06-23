@@ -121,6 +121,15 @@
               </select>
             </div>
 
+            <!-- Coloring Mode -->
+            <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); padding-left: 16px;">
+              <span style="font-weight: 600; color: var(--text-muted);">Colors:</span>
+              <select id="select-color-mode" onchange="applyColorMode()" style="background: var(--bg-dark); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; color: var(--text); font-family: var(--font-family); outline: none; cursor: pointer; font-size: 12px;">
+                <option value="absolute">Absolute (0-100%)</option>
+                <option value="relative">Relative (Min-Max)</option>
+              </select>
+            </div>
+
             <!-- Dynamic Metadata Filters (Local Build, Runtime) -->
             <div id="heatmap-dynamic-filters" style="display: flex; align-items: center; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; flex-wrap: wrap;"></div>
 
