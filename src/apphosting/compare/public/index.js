@@ -600,27 +600,32 @@ function renderMatrixTable(variants) {
 
     variants.forEach((vB) => {
       const tdCell = document.createElement("td");
-      tdCell.className = "heatmap-cell";
+      tdCell.className = "heatmap-cell-wrapper";
+
+      const inner = document.createElement("div");
+      inner.className = "heatmap-cell-inner";
+
       const similarity = lastMatrixData.matrix[vA][vB] || 0.0;
       const percent = Math.round(similarity * 100);
-      tdCell.textContent = percent + "%";
-      tdCell.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
-      tdCell.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
+      inner.textContent = percent + "%";
+      inner.dataset.codebaseA = vA.includes("/") ? vA.split("/")[0] : "";
+      inner.dataset.codebaseB = vB.includes("/") ? vB.split("/")[0] : "";
 
       // Continuous red-to-green gradient interpolation (0% = HSL 0, 100% = HSL 120)
       const hue = similarity * 120;
       const bg = `hsla(${hue}, 70%, 42%, 0.85)`;
 
-      tdCell.style.backgroundColor = bg;
-      tdCell.title = `Similarity between ${vA} and ${vB}: ${percent}%`;
+      inner.style.backgroundColor = bg;
+      inner.title = `Similarity between ${vA} and ${vB}: ${percent}%`;
 
       // Clicking a cell triggers the comparison for vA and vB
-      tdCell.onclick = () => {
+      inner.onclick = () => {
         document.getElementById("select-variant-a").value = vA;
         document.getElementById("select-variant-b").value = vB;
         triggerComparison();
       };
 
+      tdCell.appendChild(inner);
       tr.appendChild(tdCell);
     });
 
@@ -632,7 +637,7 @@ function renderMatrixTable(variants) {
   // Apply codebase isolation filter if checked
   const isolateCodebases = document.getElementById("toggle-filter-codebases").checked;
   if (activeTestCase === "GLOBAL" && isolateCodebases) {
-    const cells = document.querySelectorAll(".heatmap-cell");
+    const cells = document.querySelectorAll(".heatmap-cell-inner");
     cells.forEach((cell) => {
       const cA = cell.dataset.codebaseA;
       const cB = cell.dataset.codebaseB;

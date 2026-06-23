@@ -302,7 +302,14 @@ tr:last-child td {
   font-size: 13px;
   margin: 20px auto;
 }
-.heatmap-cell {
+.heatmap-cell-wrapper {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  vertical-align: middle;
+  text-align: center;
+}
+.heatmap-cell-inner {
   box-sizing: border-box;
   width: 6.5vw;
   height: 6.5vw;
@@ -310,9 +317,9 @@ tr:last-child td {
   min-height: 44px;
   max-width: 72px;
   max-height: 72px;
-  padding: 0 !important;
-  text-align: center;
-  vertical-align: middle;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
   font-size: 12px;
   border-radius: 8px;
@@ -320,16 +327,17 @@ tr:last-child td {
   transition: transform 0.1s ease, filter 0.1s ease;
   color: #0f172a;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  margin: auto;
 }
-.heatmap-cell:hover {
+.heatmap-cell-inner:hover {
   transform: scale(1.06);
   filter: brightness(1.15);
 }
-.heatmap-cell.de-emphasized {
+.heatmap-cell-inner.de-emphasized {
   opacity: 0.15;
   filter: grayscale(80%);
 }
-.heatmap-cell.de-emphasized:hover {
+.heatmap-cell-inner.de-emphasized:hover {
   opacity: 0.35;
   filter: grayscale(40%);
 }
