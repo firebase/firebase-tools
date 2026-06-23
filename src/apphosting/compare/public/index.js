@@ -988,9 +988,11 @@ function viewRouteDiff(idx, element) {
   document.getElementById("overview-spec-title-a").textContent = displayAName;
   document.getElementById("overview-spec-build-a").textContent = activeLocalBuildA ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
   document.getElementById("overview-spec-runtime-a").textContent = activeRuntimeA ? activeRuntimeA : "auto-detected";
-  document.getElementById("overview-spec-abiu-a").innerHTML = hasAbiuA 
-    ? `<span style="color: #10b981; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(16,185,129,0.1); border-radius: 4px; border: 1px solid rgba(16,185,129,0.2);">ENABLED</span>`
-    : `<span style="color: #ef4444; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(239,68,68,0.1); border-radius: 4px; border: 1px solid rgba(239,68,68,0.2);">DISABLED</span>`;
+  
+  const abiuElA = document.getElementById("overview-spec-abiu-a");
+  abiuElA.textContent = hasAbiuA ? "ENABLED" : "DISABLED";
+  abiuElA.className = hasAbiuA ? "badge success" : "badge danger";
+  
   document.getElementById("overview-spec-path-a").textContent = activePathA ? activePathA : "./";
   
   let descA = "";
@@ -1004,9 +1006,11 @@ function viewRouteDiff(idx, element) {
   document.getElementById("overview-spec-title-b").textContent = displayBName;
   document.getElementById("overview-spec-build-b").textContent = activeLocalBuildB ? "Local Build (Universal Maker)" : "Source Deploy (Cloud Build)";
   document.getElementById("overview-spec-runtime-b").textContent = activeRuntimeB ? activeRuntimeB : "auto-detected";
-  document.getElementById("overview-spec-abiu-b").innerHTML = hasAbiuB 
-    ? `<span style="color: #10b981; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(16,185,129,0.1); border-radius: 4px; border: 1px solid rgba(16,185,129,0.2);">ENABLED</span>`
-    : `<span style="color: #ef4444; font-weight: 700; font-size: 11px; padding: 2px 8px; background: rgba(239,68,68,0.1); border-radius: 4px; border: 1px solid rgba(239,68,68,0.2);">DISABLED</span>`;
+  
+  const abiuElB = document.getElementById("overview-spec-abiu-b");
+  abiuElB.textContent = hasAbiuB ? "ENABLED" : "DISABLED";
+  abiuElB.className = hasAbiuB ? "badge success" : "badge danger";
+  
   document.getElementById("overview-spec-path-b").textContent = activePathB ? activePathB : "./";
   
   let descB = "";
