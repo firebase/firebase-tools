@@ -1,15 +1,24 @@
 import { expect } from "chai";
 import * as nock from "nock";
+import * as sinon from "sinon";
 import * as cloudbilling from "./cloudbilling";
 import { cloudbillingOrigin } from "../api";
 import { Setup } from "../init";
+import * as ensureApiEnabled from "../ensureApiEnabled";
 
 const PROJECT_ID = "test-project";
 
 describe("cloudbilling", () => {
+  let ensureStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
+  });
+
   afterEach(() => {
     nock.cleanAll();
     cloudbilling.clearCache();
+    ensureStub.restore();
   });
 
   describe("checkBillingEnabled", () => {

@@ -2,6 +2,7 @@ import { cloudbillingOrigin } from "../api";
 import { Client } from "../apiv2";
 import { Setup } from "../init";
 import * as utils from "../utils";
+import { ensure } from "../ensureApiEnabled";
 
 const API_VERSION = "v1";
 const client = new Client({ urlPrefix: cloudbillingOrigin(), apiVersion: API_VERSION });
@@ -51,17 +52,21 @@ export function checkBillingEnabled(projectId: string, forceRefresh = false): Pr
       return cached;
     }
   }
-  const promise = client
-    .get<{ billingEnabled: boolean }>(utils.endpoint(["projects", projectId, "billingInfo"]), {
-      retries: 3,
-      retryCodes: [429, 500, 503],
-      headers: { "x-goog-user-project": projectId },
-    })
-    .then((res) => res.body.billingEnabled)
-    .catch((err) => {
-      billingEnabledCache.delete(projectId);
-      throw err;
-    });
+  const promise = (async () => {
+    await ensure(projectId, "cloudbilling.googleapis.com", "billing", true);
+    const res = await client.get<{ billingEnabled: boolean }>(
+      utils.endpoint(["projects", projectId, "billingInfo"]),
+      {
+        retries: 3,
+        retryCodes: [429, 500, 503],
+        headers: { "x-goog-user-project": projectId },
+      },
+    );
+    return res.body.billingEnabled;
+  })().catch((err) => {
+    billingEnabledCache.delete(projectId);
+    throw err;
+  });
 
   billingEnabledCache.set(projectId, promise);
   return promise;
@@ -76,6 +81,7 @@ export async function setBillingAccount(
   projectId: string,
   billingAccountName: string,
 ): Promise<boolean> {
+  await ensure(projectId, "cloudbilling.googleapis.com", "billing", true);
   const res = await client.put<{ billingAccountName: string }, { billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
     {
@@ -96,6 +102,9 @@ export async function setBillingAccount(
  * @return {!Promise<Object[]>}
  */
 export async function listBillingAccounts(projectId?: string): Promise<BillingAccount[]> {
+  if (projectId) {
+    await ensure(projectId, "cloudbilling.googleapis.com", "billing", true);
+  }
   const res = await client.get<{ billingAccounts: BillingAccount[] }>(
     utils.endpoint(["billingAccounts"]),
     {
