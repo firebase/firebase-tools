@@ -226,6 +226,7 @@ export interface SecretEnvVar {
   key: string; // The environment variable this secret is accessible at
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
+  version?: string;
 }
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
@@ -333,9 +334,8 @@ export async function resolveBackend(
   return { backend: toBackend(opts.build, paramValues), envs: paramValues };
 }
 
-// Exported for testing
 /**
- *
+ * Exported for testing
  */
 export function envWithTypes(
   definedParams: params.Param[],
@@ -733,4 +733,40 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
   }
   build.endpoints = newEndpoints;
+}
+
+/**
+ * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
+ * For example, "&API_KEY=other@2" binds the value of /projects/1234/secrets/other/versions/2 to env var API_KEY and the secret param named API_KEY.
+ *
+ * For each binding imported from the .env file,
+ * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
+ */
+export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, string>) {
+  Object.entries(envSecrets).forEach(([key, secretRef]) => {
+    const [resourceId, versionRef] = secretRef.split("@");
+
+    Object.entries(build.endpoints).forEach(([, endpoint]) => {
+      let needEnvInsert = true;
+      endpoint.secretEnvironmentVariables?.forEach((envVar) => {
+        if (envVar.key === key) {
+          needEnvInsert = false;
+          envVar.secret = resourceId;
+          envVar.version = versionRef;
+        }
+      });
+      if (needEnvInsert) {
+        if (!endpoint.secretEnvironmentVariables) {
+          endpoint.secretEnvironmentVariables = [];
+        }
+        endpoint.secretEnvironmentVariables.push({
+          key: key,
+          secret: resourceId === "" ? key : resourceId,
+          projectId: endpoint.project,
+          ...(versionRef !== undefined && { version: versionRef }),
+        });
+      }
+    });
+  });
 }

@@ -20,6 +20,18 @@ import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
 
+describe("partition env helper", () => {
+  it("splits a Record into two based on which keys begin with &", () => {
+    const input = {
+      foo: "bar",
+      "&baz": "quux",
+    } as Record<string, string>;
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = prepare.partitionUserEnvs(input);
+    expect(userEnvs).to.deep.equal({ foo: "bar" });
+    expect(secretRefs).to.deep.equal({ baz: "quux" });
+  });
+});
+
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",

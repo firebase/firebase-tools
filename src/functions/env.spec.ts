@@ -17,6 +17,11 @@ describe("functions/env", () => {
         want: { FOO: "foo" },
       },
       {
+        description: "should parse &key values with trailing spaces",
+        input: "&FOO=foo        ",
+        want: { "&FOO": "foo" },
+      },
+      {
         description: "should parse exported values",
         input: "export FOO=foo",
         want: { FOO: "foo" },
@@ -39,6 +44,15 @@ foo2"
 BAR=bar
 `,
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
+      },
+      {
+        description: "should parse multi-line values without getting confused about &",
+        input: `
+&FOO="foo1
+&foo2"
+BAR=bar
+`,
+        want: { "&FOO": "foo1\n&foo2", BAR: "bar" },
       },
       {
         description: "should parse many double quoted values",

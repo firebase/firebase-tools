@@ -389,6 +389,148 @@ describe("envWithType", () => {
   });
 });
 
+describe("applyEnvSecretOverrides", () => {
+  it("should add the default secret for the keyname to secretEnvironmentVariables if not present", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "" };
+    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "foo",
+        projectId: "test-project",
+      },
+    ]);
+  });
+
+  it("should add the referenced secret to secretEnvironmentVariables if not present", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "bar" };
+    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+      },
+    ]);
+  });
+
+  it("should add the referenced secret and version to secretEnvironmentVariables if not present", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "bar@4" };
+    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+        version: "4",
+      },
+    ]);
+  });
+
+  it("should add the referenced secret and latest (if specified) to secretEnvironmentVariables if not present", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "bar@latest" };
+    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+        version: "latest",
+      },
+    ]);
+  });
+
+  it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "bar@4" };
+    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+        version: "4",
+      },
+    ]);
+  });
+});
+
 describe("applyPrefix", () => {
   const createTestBuild = (): build.Build => ({
     endpoints: {

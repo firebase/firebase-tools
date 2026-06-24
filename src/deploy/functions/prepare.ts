@@ -99,7 +99,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -142,13 +142,19 @@ export async function prepare(
       projectAlias: options.projectAlias,
     };
     proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+    const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const relevantEndpoints = backend
       .allEndpoints(existingBackend)
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
+
+    if (experiments.isEnabled("functionsEnvParams")) {
+      build.applyEnvSecretOverrides(wantBuild, secretRefs);
+    }
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
@@ -248,7 +254,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
       const executablePaths = isDart ? ["bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
@@ -648,6 +654,9 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
 // Genkit almost always requires an API key, so warn if the customer is about to deploy
 // a function and doesn't have one. To avoid repetitive nagging, only warn on the first
 // deploy of the function.
+/**
+ *
+ */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -786,4 +795,25 @@ export async function ensureAllRequiredAPIsEnabled(
       /* silent=*/ false,
     );
   }
+}
+
+/**
+ * Divides the environment variables between normal envs and references to a Secret resource
+ */
+export function partitionUserEnvs(allEnvs: Record<string, string>): {
+  userEnvs: Record<string, string>;
+  secretRefs: Record<string, string>;
+} {
+  const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
+    (accumulatedSplit, [k, v]) => {
+      if (k.startsWith("&")) {
+        accumulatedSplit[0][k.slice(1)] = v;
+      } else {
+        accumulatedSplit[1][k] = v;
+      }
+      return accumulatedSplit;
+    },
+    [{}, {}] as [Record<string, string>, Record<string, string>],
+  );
+  return { userEnvs: userEnvs, secretRefs: secretRefs };
 }
