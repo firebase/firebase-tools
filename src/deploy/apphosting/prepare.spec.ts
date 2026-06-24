@@ -829,7 +829,14 @@ describe("apphosting", () => {
 
       existsStub.returns(false);
 
-      await injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv);
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
 
       expect(buildEnv["foo"]).to.be.empty;
       expect(runtimeEnv["foo"]).to.be.empty;
@@ -849,14 +856,22 @@ describe("apphosting", () => {
         }),
       );
 
-      await injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv);
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
 
       expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
         value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
         availability: ["RUNTIME"],
       });
       expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
-        value: "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com",
+        value:
+          "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com",
         availability: ["RUNTIME"],
       });
     });
@@ -880,7 +895,14 @@ describe("apphosting", () => {
         }),
       );
 
-      await injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv);
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
 
       expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]?.value).to.equal(
         "X-Forwarded-Host,X-Forwarded-Proto",
@@ -907,7 +929,7 @@ describe("apphosting", () => {
       );
 
       await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv)
+        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
       ).to.be.rejectedWith(FirebaseError, "invalid value for NG_TRUST_PROXY_HEADERS");
     });
 
@@ -931,7 +953,7 @@ describe("apphosting", () => {
       );
 
       await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv)
+        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
       ).to.be.rejectedWith(FirebaseError, "must include RUNTIME in its availability");
     });
 
@@ -955,7 +977,7 @@ describe("apphosting", () => {
       );
 
       await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv)
+        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
       ).to.be.rejectedWith(
         FirebaseError,
         "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
@@ -982,7 +1004,7 @@ describe("apphosting", () => {
       );
 
       await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv)
+        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
       ).to.be.rejectedWith(
         FirebaseError,
         "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
@@ -1008,7 +1030,14 @@ describe("apphosting", () => {
         }),
       );
 
-      await injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv);
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
 
       expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]?.value).to.equal("my.domain.com");
     });
