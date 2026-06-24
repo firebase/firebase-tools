@@ -965,7 +965,8 @@ describe("apphosting", () => {
       const runtimeEnv: Record<string, EnvMap> = {
         foo: {
           NG_ALLOWED_HOSTS: {
-            value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com,my-custom-domain.com,MY-CUSTOM-DOMAIN.COM",
+            value:
+              "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com,my-custom-domain.com,MY-CUSTOM-DOMAIN.COM",
             availability: ["RUNTIME"],
           },
         },

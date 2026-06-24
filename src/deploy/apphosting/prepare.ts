@@ -487,20 +487,19 @@ export async function injectAngularEnvVars(
   runtimeEnv[backendId] ??= {};
   buildEnv[backendId] ??= {};
 
-  const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS";
   const allowedProxyHeadersValue =
     "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for";
 
   // 1. Inject NG_TRUST_PROXY_HEADERS
   // If they have defined RUNTIME env vars for the proxy header though we will log a warning that we're overriding it.
-  if (runtimeEnv[backendId][ngTrustProxyHeaders]) {
+  if (runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"]) {
     logLabeledWarning(
       "apphosting",
-      `Overriding user-defined RUNTIME environment variable ${ngTrustProxyHeaders} with default value: ${allowedProxyHeadersValue}`,
+      `Overriding user-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS with default value: ${allowedProxyHeadersValue}`,
     );
   }
 
-  runtimeEnv[backendId][ngTrustProxyHeaders] = {
+  runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"] = {
     value: allowedProxyHeadersValue,
     availability: ["RUNTIME"],
   };
