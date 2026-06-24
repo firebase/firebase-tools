@@ -188,7 +188,18 @@ export default async function (context: Context, options: Options): Promise<void
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
 
-    const backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    let backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    if (!backend) {
+      const location = context.backendLocations[cfg.backendId];
+      if (location) {
+        const apphosting = await import("../../gcp/apphosting");
+        try {
+          backend = await apphosting.getBackend(projectId, location, cfg.backendId);
+        } catch {
+          // Fall through to error handling below
+        }
+      }
+    }
     if (!backend) {
       throw new FirebaseError(`Backend ${cfg.backendId} not found.`);
     }

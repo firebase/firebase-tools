@@ -641,6 +641,59 @@ describe("apphosting", () => {
 
       expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
     });
+
+    it("dynamically fetches the backend from the API if it is not found in the pre-fetched list (e.g., newly created)", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "newly-created-backend",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const buildConfig = {
+        runCommand: "npm run build:prod",
+        env: [],
+      };
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig,
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [],
+      });
+
+      doSetupSourceDeployStub.resolves({ location: "us-central1" });
+      confirmStub.resolves(true);
+      checkboxStub.resolves(["newly-created-backend"]);
+
+      const getBackendStub = sinon.stub(apphosting, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/newly-created-backend",
+        runtime: { value: "nodejs22" },
+      } as any);
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(getBackendStub).to.have.been.calledOnceWith(
+        "my-project",
+        "us-central1",
+        "newly-created-backend",
+      );
+      expect(context.backendLocalBuilds["newly-created-backend"]).to.deep.equal({
+        outputFiles: ["./next/standalone"],
+        localBuildScratchDir: path.join(
+          os.tmpdir(),
+          `apphosting-local-build-newly-created-backend-${expectedPathHash}`,
+        ),
+        buildConfig,
+      });
+    });
   });
 
   describe("getBackendConfigs", () => {
