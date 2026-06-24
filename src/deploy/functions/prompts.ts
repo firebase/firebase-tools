@@ -306,6 +306,12 @@ export async function promptForSecurityChanges(
   }
   for (const [codebase, codebasePlan] of Object.entries(plan)) {
     if (codebasePlan.serviceAccountToDelete) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot opt out of declarative security and delete managed service account ${codebasePlan.serviceAccountToDelete} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
       const msg = `Deploying this code will opt out of declarative security for codebase ${codebase}. All functions which do not specify a custom service account will use a default service account on next deploy. As a cleanup, the managed service account ${codebasePlan.serviceAccountToDelete} will be deleted. Continue?`;
       const confirmed = await confirm({ default: false, message: msg });
       if (!confirmed) {
@@ -314,6 +320,12 @@ export async function promptForSecurityChanges(
     }
 
     if (codebasePlan.serviceAccountToCreate) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot enable declarative security and create managed service account ${codebasePlan.serviceAccountToCreate} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
       const roleNames = await Promise.all(
         (codebasePlan.rolesToAdd || []).map((r) => iam.getRoleName(r)),
       );
@@ -328,6 +340,12 @@ export async function promptForSecurityChanges(
       (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) ||
       (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0)
     ) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot modify declarative security roles for codebase ${codebase} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
       let msg = `Deploying this code will modify the managed service account for codebase ${codebase}.\n`;
       if (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) {
         const addedNames = await Promise.all(

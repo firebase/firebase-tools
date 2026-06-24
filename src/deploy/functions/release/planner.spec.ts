@@ -556,6 +556,39 @@ describe("planner", () => {
       });
       expect(logLabeledBullet).to.not.have.been.called;
     });
+
+    it("does not delete the service account when opting out during a filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["id"] }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.be.undefined;
+    });
+
+    it("deletes the service account when opting out during an unfiltered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
   });
 
   describe("checkForUnsafeUpdate", () => {

@@ -164,13 +164,15 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   let serviceAccountToCreate: string | undefined;
   let serviceAccountToDelete: string | undefined;
 
+  const isFiltered = !!(filters && filters.length > 0 && !deleteAll);
+
   if (requiredRoles) {
     rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
     rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
     if (!existingManagedSA && managedSA) {
       serviceAccountToCreate = managedSA;
     }
-  } else if (existingManagedSA) {
+  } else if (existingManagedSA && !isFiltered) {
     serviceAccountToDelete = existingManagedSA;
   }
 
