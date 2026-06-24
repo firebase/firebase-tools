@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 import * as express from "express";
 import * as clc from "colorette";
@@ -70,6 +71,48 @@ import {
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
+const PYTHON_DISABLE_GUNICORN_ENV = "FIREBASE_FUNCTIONS_EMULATOR_DISABLE_GUNICORN";
+
+// On macOS, gunicorn can trigger fork-safety crashes in Python emulator
+// processes. functions-framework only falls back to Flask in non-debug mode
+// when gunicorn cannot be imported, so the emulator injects this
+// sitecustomize shim to force that fallback without enabling Flask
+// debug/reloader behavior.
+
+const PYTHON_DISABLE_GUNICORN_SHIM = `import builtins
+import os
+
+if os.environ.get("${PYTHON_DISABLE_GUNICORN_ENV}") == "1":
+    _original_import = builtins.__import__
+
+    def _firebase_import_without_gunicorn(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "functions_framework._http.gunicorn":
+            raise ImportError("Gunicorn disabled for local Firebase Functions emulator")
+        return _original_import(name, globals, locals, fromlist, level)
+
+    builtins.__import__ = _firebase_import_without_gunicorn
+`;
+
+let pythonDisableGunicornShimDir: string | undefined;
+
+function getPythonDisableGunicornShimDir(): string {
+  if (!pythonDisableGunicornShimDir) {
+    pythonDisableGunicornShimDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "firebase-tools-python-shim-"),
+    );
+    fs.writeFileSync(
+      path.join(pythonDisableGunicornShimDir, "sitecustomize.py"),
+      PYTHON_DISABLE_GUNICORN_SHIM,
+      "utf8",
+    );
+  }
+
+  return pythonDisableGunicornShimDir;
+}
+
+function prependPythonPath(envs: Record<string, string | undefined>, injectedPath: string): string {
+  return envs.PYTHONPATH ? `${injectedPath}${path.delimiter}${envs.PYTHONPATH}` : injectedPath;
+}
 
 /*
  * The Realtime Database emulator expects the `path` field in its trigger
@@ -123,6 +166,7 @@ export interface FunctionsEmulatorArgs {
   projectDir: string;
   emulatableBackends: EmulatableBackend[];
   debugPort: number | boolean;
+  pythonDisableGunicorn?: boolean;
   account?: Account;
   port?: number;
   host?: string;
@@ -229,6 +273,7 @@ export class FunctionsEmulator implements EmulatorInstance {
   private dynamicBackends: EmulatableBackend[] = [];
   private watchers: chokidar.FSWatcher[] = [];
   private watchCleanups: Array<() => Promise<void>> = [];
+  private pythonDisableGunicornNoticeLogged = false;
 
   debugMode = false;
 
@@ -1737,7 +1782,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     const port = await portfinder.getPortPromise({
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
-    const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
+    const pythonRuntimeEnvs: Record<string, string> = {
       ...process.env,
       ...envs,
       // Required to flush stdout/stderr immediately to the piped channels.
@@ -1746,7 +1791,26 @@ export class FunctionsEmulator implements EmulatorInstance {
       DEBUG: "False",
       HOST: "127.0.0.1",
       PORT: port.toString(),
-    });
+    };
+
+    if (this.args.pythonDisableGunicorn) {
+      pythonRuntimeEnvs[PYTHON_DISABLE_GUNICORN_ENV] = "1";
+      pythonRuntimeEnvs.PYTHONPATH = prependPythonPath(
+        pythonRuntimeEnvs,
+        getPythonDisableGunicornShimDir(),
+      );
+
+      if (!this.pythonDisableGunicornNoticeLogged) {
+        this.logger.logLabeled(
+          "BULLET",
+          "functions",
+          "Python emulator gunicorn disabled; using Flask server in non-debug mode.",
+        );
+        this.pythonDisableGunicornNoticeLogged = true;
+      }
+    }
+
+    const childProcess = runWithVirtualEnv(args, backend.functionsDir, pythonRuntimeEnvs);
 
     return {
       process: childProcess,

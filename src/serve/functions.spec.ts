@@ -80,6 +80,19 @@ describe("FunctionsServer", () => {
     expect(startRegistryStub).to.have.been.calledOnceWith(functionsEmulatorInstance);
   });
 
+  it("should forward pythonDisableGunicorn to the emulator", async () => {
+    const server = new FunctionsServer();
+    const options = {
+      config: { projectDir: "/path/to/project", src: { functions: {} } },
+      pythonDisableGunicorn: true,
+    };
+
+    await server.start(options as any, {});
+
+    const emulatorArgs = functionsEmulatorStub.getCall(0).args[0];
+    expect(emulatorArgs.pythonDisableGunicorn).to.equal(true);
+  });
+
   it("should assign ports correctly when hosting is running", async () => {
     const server = new FunctionsServer();
     const options = {
