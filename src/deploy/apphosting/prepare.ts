@@ -428,16 +428,29 @@ async function prepareLocalBuildScratchDirectory(
 /**
  * Checks if the application in a directory is an Angular application.
  */
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/**
+ * Returns true if the directory contains an Angular application.
+ */
 function isAngularApplication(appDir: string): boolean {
   const packageJsonPath = path.join(appDir, "package.json");
   if (fs.existsSync(packageJsonPath)) {
     try {
-      const pkg = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-      if (deps["@angular/core"] || deps["@angular/ssr"] || deps["@angular/platform-server"]) {
-        return true;
+      const parsed: unknown = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      if (parsed && typeof parsed === "object") {
+        const pkg = parsed as PackageJson;
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        if (deps["@angular/core"] || deps["@angular/ssr"] || deps["@angular/platform-server"]) {
+          return true;
+        }
       }
-    } catch {}
+    } catch (e) {
+      // Ignore JSON parsing or read errors
+    }
   }
   const angularJsonPath = path.join(appDir, "angular.json");
   if (fs.existsSync(angularJsonPath)) {
@@ -465,7 +478,8 @@ export function injectAngularEnvVars(
   buildEnv[backendId] ??= {};
 
   const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS";
-  const allowedProxyHeadersValue = "X-Forwarded-Host,X-Forwarded-Port,X-Forwarded-Proto,X-Forwarded-For";
+  const allowedProxyHeadersValue =
+    "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for";
   const allowedProxyHeaders = new Set([
     "x-forwarded-host",
     "x-forwarded-port",
@@ -474,7 +488,8 @@ export function injectAngularEnvVars(
   ]);
 
   // 1. Validate or Inject NG_TRUST_PROXY_HEADERS
-  const userTrustProxy = runtimeEnv[backendId][ngTrustProxyHeaders];
+  const userTrustProxy =
+    runtimeEnv[backendId][ngTrustProxyHeaders] || buildEnv[backendId][ngTrustProxyHeaders];
   if (userTrustProxy) {
     const userVal = userTrustProxy.value || "";
     // Validate the value of the user provided NG_TRUST_PROXY_HEADERS
@@ -505,11 +520,8 @@ export function injectAngularEnvVars(
   }
 
   // 2. Validate or Inject NG_ALLOWED_HOSTS
-  // Replicate the Go buildpack preparer's validateAngularEnv behavior exactly:
-  // If the user explicitly defined NG_ALLOWED_HOSTS in their configuration (either BUILD or RUNTIME),
-  // they MUST have explicitly set its availability to include "RUNTIME". If availability was omitted (undefined),
-  // the Go preparer fails the build because slices.Contains(nil, "RUNTIME") evaluates to false!
-  const userAllowedHosts = runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] || buildEnv[backendId]["NG_ALLOWED_HOSTS"];
+  const userAllowedHosts =
+    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] || buildEnv[backendId]["NG_ALLOWED_HOSTS"];
   if (userAllowedHosts) {
     if (!userAllowedHosts.availability || !userAllowedHosts.availability.includes("RUNTIME")) {
       throw new FirebaseError(

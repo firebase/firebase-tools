@@ -852,7 +852,7 @@ describe("apphosting", () => {
       injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
 
       expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
-        value: "X-Forwarded-Host,X-Forwarded-Port,X-Forwarded-Proto,X-Forwarded-For",
+        value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
         availability: ["RUNTIME"],
       });
       expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
@@ -906,9 +906,9 @@ describe("apphosting", () => {
         }),
       );
 
-      expect(() =>
-        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
-      ).to.throw(FirebaseError, "invalid value for NG_TRUST_PROXY_HEADERS");
+      expect(() => {
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+      }).to.throw(FirebaseError, "invalid value for NG_TRUST_PROXY_HEADERS");
     });
 
     it("should throw an error if NG_TRUST_PROXY_HEADERS explicitly omits RUNTIME availability", () => {
@@ -930,9 +930,9 @@ describe("apphosting", () => {
         }),
       );
 
-      expect(() =>
-        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
-      ).to.throw(FirebaseError, "must include RUNTIME in its availability");
+      expect(() => {
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+      }).to.throw(FirebaseError, "must include RUNTIME in its availability");
     });
 
     it("should throw an error if NG_ALLOWED_HOSTS explicitly omits RUNTIME availability", () => {
@@ -954,9 +954,12 @@ describe("apphosting", () => {
         }),
       );
 
-      expect(() =>
-        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
-      ).to.throw(FirebaseError, "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability");
+      expect(() => {
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+      }).to.throw(
+        FirebaseError,
+        "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
+      );
     });
 
     it("should throw an error if NG_ALLOWED_HOSTS omits availability entirely (replicating the Go preparer slices.Contains(nil) quirk)", () => {
@@ -978,9 +981,12 @@ describe("apphosting", () => {
         }),
       );
 
-      expect(() =>
-        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv),
-      ).to.throw(FirebaseError, "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability");
+      expect(() => {
+        injectAngularEnvVars(cfg, "/app-dir", buildEnv, runtimeEnv);
+      }).to.throw(
+        FirebaseError,
+        "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
+      );
     });
 
     it("should pass if NG_ALLOWED_HOSTS has explicit RUNTIME availability", () => {
