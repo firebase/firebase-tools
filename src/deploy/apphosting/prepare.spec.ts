@@ -30,6 +30,7 @@ import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
+import * as utils from "../../utils";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -876,13 +877,95 @@ describe("apphosting", () => {
       });
     });
 
-    it("should accept valid NG_TRUST_PROXY_HEADERS overrides", async () => {
+    it("should override user-defined NG_TRUST_PROXY_HEADERS and log a warning if defined as RUNTIME variable", async () => {
       const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
       const buildEnv: Record<string, EnvMap> = { foo: {} };
       const runtimeEnv: Record<string, EnvMap> = {
         foo: {
           NG_TRUST_PROXY_HEADERS: {
-            value: "X-Forwarded-Host,X-Forwarded-Proto",
+            value: "x-forwarded-host,x-forwarded-proto",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      const warningSpy = sinon.spy(utils, "logLabeledWarning");
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.be.undefined;
+      expect(warningSpy).to.have.been.calledWith(
+        "apphosting",
+        sinon.match("Overriding user-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS"),
+      );
+    });
+
+    it("should override user-defined NG_TRUST_PROXY_HEADERS but NOT log a warning if defined as BUILD-only variable", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "x-forwarded-host,x-forwarded-proto",
+            availability: ["BUILD"],
+          },
+        },
+      };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      const warningSpy = sinon.spy(utils, "logLabeledWarning");
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-proto",
+        availability: ["BUILD"],
+      });
+      expect(warningSpy).to.not.have.been.called;
+    });
+
+    it("should merge user-defined RUNTIME NG_ALLOWED_HOSTS with default hosts, deduplicating case-insensitively, preserving the first casing, and leaving buildEnv untouched", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com,my-custom-domain.com,MY-CUSTOM-DOMAIN.COM",
             availability: ["RUNTIME"],
           },
         },
@@ -904,124 +987,25 @@ describe("apphosting", () => {
         runtimeEnv,
       );
 
-      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]?.value).to.equal(
-        "X-Forwarded-Host,X-Forwarded-Proto",
-      );
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value:
+          "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com,MY-CUSTOM-DOMAIN.COM,Another-Domain.com",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_ALLOWED_HOSTS"]).to.be.undefined;
     });
 
-    it("should throw an error for invalid NG_TRUST_PROXY_HEADERS values", async () => {
+    it("should NOT merge user-defined BUILD-only NG_ALLOWED_HOSTS with default hosts, and should leave buildEnv untouched", async () => {
       const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
-      const buildEnv: Record<string, EnvMap> = { foo: {} };
-      const runtimeEnv: Record<string, EnvMap> = {
+      const buildEnv: Record<string, EnvMap> = {
         foo: {
-          NG_TRUST_PROXY_HEADERS: {
-            value: "X-Forwarded-Host,X-Invalid-Header",
-            availability: ["RUNTIME"],
-          },
-        },
-      };
-
-      existsStub.withArgs(sinon.match("package.json")).returns(true);
-      readFileSyncStub.returns(
-        JSON.stringify({
-          dependencies: { "@angular/core": "^19.0.0" },
-        }),
-      );
-
-      await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
-      ).to.be.rejectedWith(FirebaseError, "invalid value for NG_TRUST_PROXY_HEADERS");
-    });
-
-    it("should throw an error if NG_TRUST_PROXY_HEADERS explicitly omits RUNTIME availability", async () => {
-      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
-      const buildEnv: Record<string, EnvMap> = { foo: {} };
-      const runtimeEnv: Record<string, EnvMap> = {
-        foo: {
-          NG_TRUST_PROXY_HEADERS: {
-            value: "X-Forwarded-Host",
+          NG_ALLOWED_HOSTS: {
+            value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com",
             availability: ["BUILD"],
           },
         },
       };
-
-      existsStub.withArgs(sinon.match("package.json")).returns(true);
-      readFileSyncStub.returns(
-        JSON.stringify({
-          dependencies: { "@angular/core": "^19.0.0" },
-        }),
-      );
-
-      await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
-      ).to.be.rejectedWith(FirebaseError, "must include RUNTIME in its availability");
-    });
-
-    it("should throw an error if NG_ALLOWED_HOSTS explicitly omits RUNTIME availability", async () => {
-      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
-      const buildEnv: Record<string, EnvMap> = { foo: {} };
-      const runtimeEnv: Record<string, EnvMap> = {
-        foo: {
-          NG_ALLOWED_HOSTS: {
-            value: "my.domain.com",
-            availability: ["BUILD"],
-          },
-        },
-      };
-
-      existsStub.withArgs(sinon.match("package.json")).returns(true);
-      readFileSyncStub.returns(
-        JSON.stringify({
-          dependencies: { "@angular/core": "^19.0.0" },
-        }),
-      );
-
-      await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
-      );
-    });
-
-    it("should throw an error if NG_ALLOWED_HOSTS omits availability entirely (replicating the Go preparer slices.Contains(nil) quirk)", async () => {
-      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
-      const buildEnv: Record<string, EnvMap> = { foo: {} };
-      const runtimeEnv: Record<string, EnvMap> = {
-        foo: {
-          NG_ALLOWED_HOSTS: {
-            value: "my.domain.com",
-            // availability is completely omitted (undefined)
-          },
-        },
-      };
-
-      existsStub.withArgs(sinon.match("package.json")).returns(true);
-      readFileSyncStub.returns(
-        JSON.stringify({
-          dependencies: { "@angular/core": "^19.0.0" },
-        }),
-      );
-
-      await expect(
-        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
-      ).to.be.rejectedWith(
-        FirebaseError,
-        "NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability",
-      );
-    });
-
-    it("should pass if NG_ALLOWED_HOSTS has explicit RUNTIME availability", async () => {
-      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
-      const buildEnv: Record<string, EnvMap> = { foo: {} };
-      const runtimeEnv: Record<string, EnvMap> = {
-        foo: {
-          NG_ALLOWED_HOSTS: {
-            value: "my.domain.com",
-            availability: ["RUNTIME"],
-          },
-        },
-      };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
 
       existsStub.withArgs(sinon.match("package.json")).returns(true);
       readFileSyncStub.returns(
@@ -1039,7 +1023,15 @@ describe("apphosting", () => {
         runtimeEnv,
       );
 
-      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]?.value).to.equal("my.domain.com");
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value:
+          "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com",
+        availability: ["BUILD"],
+      });
     });
   });
 });

@@ -490,70 +490,50 @@ export async function injectAngularEnvVars(
   const ngTrustProxyHeaders = "NG_TRUST_PROXY_HEADERS";
   const allowedProxyHeadersValue =
     "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for";
-  const allowedProxyHeaders = new Set([
-    "x-forwarded-host",
-    "x-forwarded-port",
-    "x-forwarded-proto",
-    "x-forwarded-for",
-  ]);
 
-  // 1. Validate or Inject NG_TRUST_PROXY_HEADERS
-  const userTrustProxy =
-    runtimeEnv[backendId][ngTrustProxyHeaders] || buildEnv[backendId][ngTrustProxyHeaders];
-  if (userTrustProxy) {
-    const userVal = userTrustProxy.value || "";
-    // Validate the value of the user provided NG_TRUST_PROXY_HEADERS
-    const userList = userVal.split(",");
-    for (const h of userList) {
-      const trimmed = h.trim().toLowerCase();
-      if (trimmed !== "" && !allowedProxyHeaders.has(trimmed)) {
-        throw new FirebaseError(
-          `invalid value for ${ngTrustProxyHeaders} (Angular trust proxy headers): got ${JSON.stringify(userVal)}, must be a subset of ${JSON.stringify(allowedProxyHeadersValue)}`,
-        );
-      }
-    }
-
-    if (userTrustProxy.availability && !userTrustProxy.availability.includes("RUNTIME")) {
-      throw new FirebaseError(
-        `user-defined environment variable ${ngTrustProxyHeaders} must include RUNTIME in its availability`,
-      );
-    }
-  } else {
-    logLabeledBullet(
+  // 1. Inject NG_TRUST_PROXY_HEADERS
+  // If they have defined RUNTIME env vars for the proxy header though we will log a warning that we're overriding it.
+  if (runtimeEnv[backendId][ngTrustProxyHeaders]) {
+    logLabeledWarning(
       "apphosting",
-      `Angular SSR application detected. Injecting default ${ngTrustProxyHeaders}=${allowedProxyHeadersValue}`,
+      `Overriding user-defined RUNTIME environment variable ${ngTrustProxyHeaders} with default value: ${allowedProxyHeadersValue}`,
     );
-    runtimeEnv[backendId][ngTrustProxyHeaders] = {
-      value: allowedProxyHeadersValue,
-      availability: ["RUNTIME"],
-    };
   }
 
-  // 2. Validate or Inject NG_ALLOWED_HOSTS
-  const userAllowedHosts =
-    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] || buildEnv[backendId]["NG_ALLOWED_HOSTS"];
-  if (userAllowedHosts) {
-    if (!userAllowedHosts.availability || !userAllowedHosts.availability.includes("RUNTIME")) {
-      throw new FirebaseError(
-        `NG_ALLOWED_HOSTS environment variable must be set with RUNTIME availability`,
-      );
-    }
-  } else {
-    const projectNumber = await getProjectNumber({ project: projectId });
-    const sharedDomain = "hosted.app";
-    const allowedHostsValue = [
-      `${backendId}-${projectNumber}.${location}.run.app`,
-      `${backendId}--${projectId}.${location}.${sharedDomain}`,
-      `${backendId}--${projectId}.web.app`,
-      `${backendId}--${projectId}.firebaseapp.com`,
-    ].join(",");
-    logLabeledBullet(
-      "apphosting",
-      `Angular SSR application detected. Injecting default NG_ALLOWED_HOSTS=${allowedHostsValue}`,
-    );
-    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
-      value: allowedHostsValue,
-      availability: ["RUNTIME"],
-    };
-  }
+  runtimeEnv[backendId][ngTrustProxyHeaders] = {
+    value: allowedProxyHeadersValue,
+    availability: ["RUNTIME"],
+  };
+
+  // 2. Inject/Merge NG_ALLOWED_HOSTS
+  const projectNumber = await getProjectNumber({ project: projectId });
+  const sharedDomain = "hosted.app";
+  const defaultHosts = [
+    `${backendId}-${projectNumber}.${location}.run.app`,
+    `${backendId}--${projectId}.${location}.${sharedDomain}`,
+    `${backendId}--${projectId}.web.app`,
+    `${backendId}--${projectId}.firebaseapp.com`,
+  ];
+
+  const defaultHostsLower = new Set(defaultHosts.map((h) => h.toLowerCase()));
+  const userAllowedHosts = runtimeEnv[backendId]["NG_ALLOWED_HOSTS"];
+  const userHosts =
+    userAllowedHosts?.value
+      ?.split(",")
+      .map((h) => h.trim())
+      .filter(Boolean) || [];
+
+  const additionalHosts = userHosts.filter((h) => {
+    const lower = h.toLowerCase();
+    if (defaultHostsLower.has(lower)) return false;
+    defaultHostsLower.add(lower);
+    return true;
+  });
+
+  const allowedHostsValue = [...defaultHosts, ...additionalHosts].join(",");
+
+  runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
+    value: allowedHostsValue,
+    availability: ["RUNTIME"],
+  };
 }
