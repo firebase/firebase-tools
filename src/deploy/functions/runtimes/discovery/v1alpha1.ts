@@ -87,12 +87,29 @@ export type WireExtension = {
   events: string[];
 };
 
+export type WireLifecycleHook = {
+  task?: {
+    function?: string;
+    body?: unknown;
+  };
+  callable?: {
+    function?: string;
+    body?: unknown;
+  };
+  http?: {
+    url?: string;
+    function?: string;
+    body?: unknown;
+  };
+};
+
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
+  lifecycleHooks?: Record<string, WireLifecycleHook>;
 }
 
 /** Returns a Build from a v1alpha1 Manifest. */
@@ -110,6 +127,7 @@ export function buildFromV1Alpha1(
     requiredAPIs: "array",
     endpoints: "object",
     extensions: "object",
+    lifecycleHooks: "object",
   });
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
@@ -127,6 +145,47 @@ export function buildFromV1Alpha1(
       assertBuildExtension(me, id);
       const be: build.DynamicExtension = parseExtensionForBuild(me);
       bd.extensions[id] = be;
+    }
+  }
+  if (manifest.lifecycleHooks) {
+    bd.lifecycleHooks = {};
+    for (const id of Object.keys(manifest.lifecycleHooks)) {
+      if (id !== "afterInstall" && id !== "afterUpdate") {
+        throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
+      }
+      const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
+      let actionType: "http" | "callable" | "taskQueue";
+      let target: string | undefined;
+      let body: unknown;
+
+      if (hook.task) {
+        actionType = "taskQueue";
+        target = hook.task.function;
+        body = hook.task.body;
+      } else if (hook.callable) {
+        actionType = "callable";
+        target = hook.callable.function;
+        body = hook.callable.body;
+      } else if (hook.http) {
+        actionType = "http";
+        target = hook.http.url || hook.http.function;
+        body = hook.http.body;
+      } else {
+        throw new FirebaseError(
+          `No action (task, callable, or http) specified for lifecycle hook "${id}"`,
+        );
+      }
+
+      if (typeof target !== "string" || !target) {
+        throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
+      }
+
+      bd.lifecycleHooks[id] = {
+        eventType: id,
+        actionType,
+        target,
+        body,
+      };
     }
   }
   return bd;

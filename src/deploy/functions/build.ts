@@ -10,6 +10,8 @@ import { defineSecret } from "firebase-functions/params";
 
 export const REGION_TBD = "REGION_TBD";
 
+export type LifecycleHook = backend.LifecycleHook;
+
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
@@ -17,6 +19,7 @@ export interface Build {
   params: params.Param[];
   runtime?: Runtime;
   extensions?: Record<string, DynamicExtension>;
+  lifecycleHooks?: Record<string, LifecycleHook>;
 }
 
 /**
@@ -588,6 +591,9 @@ export function toBackend(
 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
+  if (build.lifecycleHooks) {
+    bkend.lifecycleHooks = build.lifecycleHooks;
+  }
   return bkend;
 }
 
