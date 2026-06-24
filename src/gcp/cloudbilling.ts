@@ -29,11 +29,31 @@ export async function isBillingEnabled(setup: Setup): Promise<boolean> {
   return setup.isBillingEnabled;
 }
 
+const billingEnabledCache: Map<string, boolean> = new Map();
+
+/**
+ * Reset the billing enabled cache.
+ * @internal
+ */
+export function clearCache(): void {
+  billingEnabledCache.clear();
+}
+
 /**
  * Returns whether or not project has billing enabled.
- * @param projectId
+ * @param projectId The project ID.
+ * @param forceRefresh Whether to force a refresh by bypassing the cache.
  */
-export async function checkBillingEnabled(projectId: string): Promise<boolean> {
+export async function checkBillingEnabled(
+  projectId: string,
+  forceRefresh = false,
+): Promise<boolean> {
+  if (!forceRefresh) {
+    const cached = billingEnabledCache.get(projectId);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
   const res = await client.get<{ billingEnabled: boolean }>(
     utils.endpoint(["projects", projectId, "billingInfo"]),
     {
@@ -41,7 +61,9 @@ export async function checkBillingEnabled(projectId: string): Promise<boolean> {
       retryCodes: [429, 500, 503],
     },
   );
-  return res.body.billingEnabled;
+  const enabled = res.body.billingEnabled;
+  billingEnabledCache.set(projectId, enabled);
+  return enabled;
 }
 
 /**
@@ -60,7 +82,9 @@ export async function setBillingAccount(
     },
     { retryCodes: [429, 500, 503] },
   );
-  return res.body.billingEnabled;
+  const enabled = res.body.billingEnabled;
+  billingEnabledCache.set(projectId, enabled);
+  return enabled;
 }
 
 /**
