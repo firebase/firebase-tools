@@ -199,9 +199,6 @@ export default async function (context: Context, options: Options): Promise<void
 
     const rootDir = path.resolve(options.projectRoot || process.cwd());
     const location = context.backendLocations[cfg.backendId];
-    if (!location) {
-      throw new FirebaseError(`Failed to find location for backend ${cfg.backendId}.`);
-    }
     await injectAngularEnvVars(cfg, rootDir, projectId, location, buildEnv, runtimeEnv);
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
@@ -473,13 +470,17 @@ export async function injectAngularEnvVars(
   cfg: AppHostingSingle,
   projectRoot: string,
   projectId: string,
-  location: string,
+  location: string | undefined,
   buildEnv: Record<string, EnvMap>,
   runtimeEnv: Record<string, EnvMap>,
 ): Promise<void> {
   const appDir = path.join(projectRoot, cfg.rootDir || "");
   if (!isAngularApplication(appDir)) {
     return;
+  }
+
+  if (!location) {
+    throw new FirebaseError(`Failed to find location for backend ${cfg.backendId}.`);
   }
 
   const backendId = cfg.backendId;
