@@ -84,7 +84,7 @@ export async function discoverSecurityDetails(
   let existingManagedSA: string | undefined;
   let existingEtag: string | undefined;
   if (firstHave) {
-    existingEtag = firstHave.labels?.["firebase-declarative-roles-etag"];
+    existingEtag = firstHave.labels?.["firebase-declarative-security-etag"];
     existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
       ? firstHave.serviceAccount
       : undefined;
@@ -115,7 +115,7 @@ export async function discoverSecurityDetails(
         endpoint.serviceAccount = "default";
       }
       if (endpoint.labels) {
-        delete endpoint.labels["firebase-declarative-roles-etag"];
+        delete endpoint.labels["firebase-declarative-security-etag"];
       }
     }
     return {
@@ -136,7 +136,7 @@ export async function discoverSecurityDetails(
   for (const endpoint of backend.allEndpoints(want)) {
     endpoint.serviceAccount = managedSA;
     endpoint.labels = endpoint.labels || {};
-    endpoint.labels["firebase-declarative-roles-etag"] = newEtag;
+    endpoint.labels["firebase-declarative-security-etag"] = newEtag;
   }
 
   if (existingEtag && existingEtag === newEtag) {

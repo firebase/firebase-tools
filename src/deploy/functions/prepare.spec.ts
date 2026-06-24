@@ -1160,7 +1160,7 @@ describe("prepare", () => {
       expect(result.managedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(result.newEtag).to.be.a("string");
       expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
-      expect(e.labels?.["firebase-declarative-roles-etag"]).to.equal(result.newEtag);
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
     });
 
     it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
@@ -1168,7 +1168,7 @@ describe("prepare", () => {
         ...ENDPOINT,
         serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
         labels: {
-          "firebase-declarative-roles-etag": "salt-etag",
+          "firebase-declarative-security-etag": "salt-etag",
         },
       };
       const want = backend.of(e);
@@ -1182,7 +1182,7 @@ describe("prepare", () => {
       expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(result.existingEtag).to.equal("salt-etag");
       expect(e.serviceAccount).to.equal("default");
-      expect(e.labels?.["firebase-declarative-roles-etag"]).to.be.undefined;
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
     });
 
     it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {
@@ -1202,12 +1202,12 @@ describe("prepare", () => {
         backend.of({
           ...eCustom,
           serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
-          labels: { "firebase-declarative-roles-etag": "salt-etag" },
+          labels: { "firebase-declarative-security-etag": "salt-etag" },
         }),
         backend.of({
           ...eManaged,
           serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
-          labels: { "firebase-declarative-roles-etag": "salt-etag" },
+          labels: { "firebase-declarative-security-etag": "salt-etag" },
         }),
       );
 
