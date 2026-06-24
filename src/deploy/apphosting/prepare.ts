@@ -198,7 +198,11 @@ export default async function (context: Context, options: Options): Promise<void
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
     const rootDir = path.resolve(options.projectRoot || process.cwd());
-    injectAngularEnvVars(cfg, rootDir, buildEnv, runtimeEnv);
+    const location = context.backendLocations[cfg.backendId];
+    if (!location) {
+      throw new FirebaseError(`Failed to find location for backend ${cfg.backendId}.`);
+    }
+    await injectAngularEnvVars(cfg, rootDir, projectId, location, buildEnv, runtimeEnv);
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
     const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
@@ -465,12 +469,14 @@ function isAngularApplication(appDir: string): boolean {
 /**
  * Replicates the Go buildpack preparer's Angular environment variable injection and validation.
  */
-export function injectAngularEnvVars(
+export async function injectAngularEnvVars(
   cfg: AppHostingSingle,
   projectRoot: string,
+  projectId: string,
+  location: string,
   buildEnv: Record<string, EnvMap>,
   runtimeEnv: Record<string, EnvMap>,
-): void {
+): Promise<void> {
   const appDir = path.join(projectRoot, cfg.rootDir || "");
   if (!isAngularApplication(appDir)) {
     return;
@@ -532,12 +538,20 @@ export function injectAngularEnvVars(
       );
     }
   } else {
+    const projectNumber = await getProjectNumber({ project: projectId });
+    const sharedDomain = "hosted.app";
+    const allowedHostsValue = [
+      `${backendId}-${projectNumber}.${location}.run.app`,
+      `${backendId}--${projectId}.${location}.${sharedDomain}`,
+      `${backendId}--${projectId}.web.app`,
+      `${backendId}--${projectId}.firebaseapp.com`,
+    ].join(",");
     logLabeledBullet(
       "apphosting",
-      `Angular SSR application detected. Injecting default NG_ALLOWED_HOSTS=*.hosted.app,*.run.app,*.firestack.app,localhost`,
+      `Angular SSR application detected. Injecting default NG_ALLOWED_HOSTS=${allowedHostsValue}`,
     );
     runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
-      value: "*.hosted.app,*.run.app,*.firestack.app,localhost",
+      value: allowedHostsValue,
       availability: ["RUNTIME"],
     };
   }
