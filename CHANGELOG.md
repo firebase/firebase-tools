@@ -1,3 +1,4 @@
 - Upgrade `zod` to v4 and drop the deprecated `zod-to-json-schema` dependency in favor of zod v4's built-in `z.toJSONSchema()`.
 - Updated the Firebase Data Connect local toolkit to v3.4.14, which includes the following changes:
   - Fix linter warnings in generated Kotlin SDK files.
+- Fixed an intermittent "Premature close" error during login and API requests by retrying once without keep-alive. (#10692)
