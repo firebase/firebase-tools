@@ -72,15 +72,11 @@ export async function setBillingAccount(
  * @return {!Promise<Object[]>}
  */
 export async function listBillingAccounts(projectId?: string): Promise<BillingAccount[]> {
-  const headers: Record<string, string> = {};
-  if (projectId) {
-    headers["x-goog-user-project"] = projectId;
-  }
   const res = await client.get<{ billingAccounts: BillingAccount[] }>(
     utils.endpoint(["billingAccounts"]),
     {
       retryCodes: [429, 500, 503],
-      headers,
+      headers: projectId ? { "x-goog-user-project": projectId } : undefined,
     },
   );
   return res.body.billingAccounts || [];
