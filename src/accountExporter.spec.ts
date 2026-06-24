@@ -35,6 +35,7 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
+      mfaInfo?: any[];
       providerUserInfo?: {
         providerId: string;
         rawId: string;
@@ -288,6 +289,38 @@ describe("accountExporter", () => {
       userList[0].customAttributes =
         '{ "customBoolean": true, "customString": "test", "customInt": 99 }';
       userList[1].customAttributes = '{ "customBoolean": true }';
+      nock("https://www.googleapis.com")
+        .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
+          maxResults: 3,
+          targetProjectId: "test-project-id",
+        })
+        .reply(200, {
+          users: userList.slice(0, 3),
+        });
+      await serialExportUsers("test-project-id", {
+        format: "JSON",
+        batchSize: 3,
+        writeStream: writeStream,
+      });
+      expect(spyWrite.getCall(0).args[0]).to.eq(JSON.stringify(userList[0], null, 2));
+      expect(spyWrite.getCall(1).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[1], null, 2),
+      );
+      expect(spyWrite.getCall(2).args[0]).to.eq(
+        "," + os.EOL + JSON.stringify(userList[2], null, 2),
+      );
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should export a user's mfaInfo for JSON formats", async () => {
+      userList[0].mfaInfo = [
+        {
+          mfaEnrollmentId: "enrollment-id-1",
+          displayName: "My SMS MFA",
+          phoneInfo: "+11111111111",
+          enrolledAt: "2026-06-24T00:00:00Z",
+        },
+      ];
       nock("https://www.googleapis.com")
         .post("/identitytoolkit/v3/relyingparty/downloadAccount", {
           maxResults: 3,
