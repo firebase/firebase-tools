@@ -3,10 +3,13 @@ import { expect } from "chai";
 import * as fs from "fs-extra";
 
 import * as init from "./index";
+import * as sdk from "./sdk";
 import { Config } from "../../../config";
 import { RCData } from "../../../rc";
 import * as provison from "../../../dataconnect/provisionCloudSql";
 import * as cloudbilling from "../../../gcp/cloudbilling";
+import * as ensureApis from "../../../dataconnect/ensureApis";
+import * as client from "../../../dataconnect/client";
 
 const MOCK_RC: RCData = { projects: {}, targets: {}, etags: {} };
 
@@ -20,11 +23,15 @@ describe("init dataconnect", () => {
     let provisionCSQLStub: sinon.SinonStub;
     let askWriteProjectFileStub: sinon.SinonStub;
     let ensureSyncStub: sinon.SinonStub;
+    let sdkActuateStub: sinon.SinonStub;
 
     beforeEach(() => {
       provisionCSQLStub = sandbox.stub(provison, "setupCloudSql");
       ensureSyncStub = sandbox.stub(fs, "ensureFileSync");
+      sdkActuateStub = sandbox.stub(sdk, "actuate").resolves();
       sandbox.stub(cloudbilling, "isBillingEnabled").resolves(true);
+      sandbox.stub(ensureApis, "ensureApis").resolves();
+      sandbox.stub(client, "listSchemas").resolves([]);
     });
 
     afterEach(() => {
@@ -47,6 +54,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
+          "dataconnect/seed_data.gql",
           "dataconnect/schema/schema.gql",
           "dataconnect/example/connector.yaml",
           "dataconnect/example/queries.gql",
@@ -62,6 +70,7 @@ describe("init dataconnect", () => {
         expectedSource: "not-dataconnect",
         expectedFiles: [
           "not-dataconnect/dataconnect.yaml",
+          "not-dataconnect/seed_data.gql",
           // Populate the default template.
           "not-dataconnect/schema/schema.gql",
           "not-dataconnect/example/connector.yaml",
@@ -126,6 +135,7 @@ describe("init dataconnect", () => {
         expectedSource: "dataconnect",
         expectedFiles: [
           "dataconnect/dataconnect.yaml",
+          "dataconnect/seed_data.gql",
           "dataconnect/schema/schema.gql",
           "dataconnect/example/connector.yaml",
           "dataconnect/example/queries.gql",
@@ -179,7 +189,8 @@ describe("init dataconnect", () => {
             projectId: "test-project",
             rcfile: MOCK_RC,
             config: c.config.src,
-            featureInfo: { dataconnect: c.requiredInfo },
+            featureInfo: { dataconnect: c.requiredInfo, dataconnectSdk: { apps: [] } },
+            instructions: [],
           },
           c.config,
           {},
@@ -190,6 +201,7 @@ describe("init dataconnect", () => {
         }
         expect(askWriteProjectFileStub.args.map((a) => a[0])).to.deep.equal(c.expectedFiles);
         expect(provisionCSQLStub.called).to.equal(c.expectCSQLProvisioning);
+        expect(sdkActuateStub.called).to.be.true;
       });
     }
   });
@@ -231,16 +243,17 @@ describe("init dataconnect", () => {
 });
 
 function mockConfig(data: Record<string, any> = {}): Config {
-  return new Config(data, {});
+  return new Config(data, { projectDir: "." });
 }
 function mockRequiredInfo(info: Partial<init.RequiredInfo> = {}): init.RequiredInfo {
   return {
-    analyticsFlow: "test",
+    flow: "test",
     appDescription: "",
     serviceId: "test-service",
     locationId: "europe-north3",
     cloudSqlInstanceId: "csql-instance",
     cloudSqlDatabase: "csql-db",
+    shouldProvisionCSQL: true,
     ...info,
   };
 }

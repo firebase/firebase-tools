@@ -23,7 +23,6 @@ describe("dataplaneClient", () => {
   describe("executeGraphQL", () => {
     it("should make a POST request to the executeGraphql endpoint", async () => {
       const requestBody: types.ExecuteGraphqlRequest = {
-        name: "test",
         query: "query { users { id } }",
       };
       const expectedResponse = { data: { users: [{ id: "1" }] } };
@@ -41,7 +40,6 @@ describe("dataplaneClient", () => {
   describe("executeGraphQLRead", () => {
     it("should make a POST request to the executeGraphqlRead endpoint", async () => {
       const requestBody: types.ExecuteGraphqlRequest = {
-        name: "test",
         query: "query { users { id } }",
       };
       const expectedResponse = { data: { users: [{ id: "1" }] } };

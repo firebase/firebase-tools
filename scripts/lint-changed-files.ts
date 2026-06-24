@@ -29,9 +29,9 @@ function main(): void {
 
   const otherArgs = process.argv.slice(2);
 
-  let cmpBranch = "master";
+  let cmpBranch = "main";
   if (process.env.CI) {
-    cmpBranch = "origin/master";
+    cmpBranch = "origin/main";
   }
 
   const gitOutput = execSync(`git diff --name-status ${cmpBranch}`, { cwd: root })

@@ -1,7 +1,12 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+
 import * as utils from "./utils";
+import { FirebaseError } from "./error";
 
 describe("utils", () => {
   describe("consoleUrl", () => {
@@ -573,6 +578,130 @@ describe("utils", () => {
       const obj1 = { a: 1, b: 2 };
       const obj2 = { b: 2, a: 1 };
       expect(utils.deepEqual(obj1, obj2)).to.be.true;
+    });
+  });
+
+  describe("resolveWithin", () => {
+    let baseDir: string;
+
+    beforeEach(() => {
+      baseDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-pathutils-"));
+    });
+
+    it("returns absolute path when subpath is inside base (relative)", () => {
+      const p = utils.resolveWithin(baseDir, "sub/dir");
+      expect(p).to.equal(path.join(baseDir, "sub/dir"));
+    });
+
+    it("returns base when subpath normalizes to base (e.g., nested/..)", () => {
+      const p = utils.resolveWithin(baseDir, "nested/..");
+      expect(p).to.equal(baseDir);
+    });
+
+    it("throws when subpath escapes base using ..", () => {
+      expect(() => utils.resolveWithin(baseDir, "../outside")).to.throw(FirebaseError);
+    });
+
+    it("throws with custom message when provided", () => {
+      expect(() => utils.resolveWithin(baseDir, "../outside", "Custom error"))
+        .to.throw(FirebaseError)
+        .with.property("message")
+        .that.matches(/Custom error/);
+    });
+
+    it("throws when absolute subpath is outside base", () => {
+      const outside = fs.mkdtempSync(path.join(os.tmpdir(), "fb-pathutils-out-"));
+      expect(() => utils.resolveWithin(baseDir, outside)).to.throw(FirebaseError);
+    });
+
+    it("allows absolute subpath when inside base", () => {
+      const inside = path.join(baseDir, "child");
+      const p = utils.resolveWithin(baseDir, inside);
+      expect(p).to.equal(inside);
+    });
+  });
+
+  describe("murmurHashV3", () => {
+    it("should return identical hashes to reference values for basic strings", () => {
+      expect(utils.murmurHashV3("Hello World")).to.equal(427197390);
+      expect(utils.murmurHashV3("abc")).to.equal(3017643002);
+      expect(utils.murmurHashV3("")).to.equal(0);
+    });
+
+    it("should handle custom seed values correctly", () => {
+      expect(utils.murmurHashV3("Hello World", 12345)).to.equal(389305035);
+    });
+
+    it("should handle string and Uint8Array keys identically", () => {
+      const keyStr = "Hello World";
+      const keyBytes = new TextEncoder().encode(keyStr);
+      expect(utils.murmurHashV3(keyBytes)).to.equal(utils.murmurHashV3(keyStr));
+    });
+  });
+
+  describe("formatFilesize", () => {
+    it("should correctly format byte values to human readable strings", () => {
+      expect(utils.formatFilesize(0)).to.equal("0 Bytes");
+      expect(utils.formatFilesize(-500)).to.equal("0 Bytes");
+      expect(utils.formatFilesize(500)).to.equal("500 Bytes");
+      expect(utils.formatFilesize(1024)).to.equal("1 KB");
+      expect(utils.formatFilesize(1234567)).to.equal("1.18 MB");
+      expect(utils.formatFilesize(1234567890)).to.equal("1.15 GB");
+      expect(utils.formatFilesize(Math.pow(1024, 5) * 2.5)).to.equal("2.5 PB");
+    });
+  });
+
+  describe("pLimit", () => {
+    it("should limit concurrent promise executions", async () => {
+      const limit = utils.pLimit(2);
+      let active = 0;
+      let maxActive = 0;
+
+      const tasks = Array.from({ length: 5 }, () =>
+        limit(async () => {
+          active++;
+          maxActive = Math.max(maxActive, active);
+          await new Promise((res) => setTimeout(res, 10));
+          active--;
+        }),
+      );
+
+      await Promise.all(tasks);
+      expect(maxActive).to.equal(2);
+    });
+
+    it("should throw when given invalid concurrency values", () => {
+      expect(() => utils.pLimit(0)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(-5)).to.throw(FirebaseError);
+      expect(() => utils.pLimit(2.5)).to.throw(FirebaseError);
+    });
+
+    it("should recover correctly when a queued task throws synchronously", async () => {
+      const limit = utils.pLimit(1);
+
+      // Task 1 will hang for 20ms
+      const t1 = limit(() => new Promise((res) => setTimeout(res, 20)));
+      // Task 2 will throw synchronously
+      const t2 = limit(() => {
+        throw new Error("Sync error");
+      });
+      // Task 3 should run successfully after t1 and t2 finish
+      const t3 = limit(() => Promise.resolve("Recovered"));
+
+      await expect(t1).to.be.fulfilled;
+      await expect(t2).to.be.rejectedWith("Sync error");
+      await expect(t3).to.eventually.equal("Recovered");
+    });
+  });
+
+  describe("stringDistance", () => {
+    it("should correctly compute Levenshtein distance between two strings", () => {
+      expect(utils.stringDistance("", "")).to.equal(0);
+      expect(utils.stringDistance("a", "")).to.equal(1);
+      expect(utils.stringDistance("", "a")).to.equal(1);
+      expect(utils.stringDistance("abc", "abc")).to.equal(0);
+      expect(utils.stringDistance("kitten", "sitting")).to.equal(3);
+      expect(utils.stringDistance("flaw", "lawn")).to.equal(2);
     });
   });
 });

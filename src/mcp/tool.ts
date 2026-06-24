@@ -1,20 +1,25 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import type { FirebaseMcpServer } from "./index";
-import { Config } from "../config";
-import { RC } from "../rc";
+import { McpContext, ServerFeature } from "./types";
 import { cleanSchema } from "./util";
+import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 
-export interface ServerToolContext {
-  projectId: string;
-  accountEmail: string | null;
-  config: Config;
-  host: FirebaseMcpServer;
-  rc: RC;
-}
+export type ServerToolMeta = {
+  /** Set this on a tool if it cannot work without a Firebase project directory. */
+  optionalProjectDir?: boolean;
+  /** Set this on a tool if it *always* requires a project to work. */
+  requiresProject?: boolean;
+  /** Set this on a tool if it *always* requires a signed-in user to work. */
+  requiresAuth?: boolean;
+  /** Tools are grouped by feature. --only can configure what tools is available. */
+  feature?: string;
+  /** UI metadata for the tool. */
+  ui?: {
+    resourceUri: string;
+  };
+};
 
-export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
+export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
@@ -36,28 +41,35 @@ export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
       // system, such as your project.
       openWorldHint?: boolean;
     };
-    _meta?: {
-      /** Set this on a tool if it *always* requires a project to work. */
-      requiresProject?: boolean;
-      /** Set this on a tool if it *always* requires a signed-in user to work. */
-      requiresAuth?: boolean;
-      /** Set this on a tool if it uses Gemini in Firebase API in any way. */
-      requiresGemini?: boolean;
-      /** Tools are grouped by feature. --only can configure what tools is available. */
-      feature?: string;
-    };
+    _meta?: ServerToolMeta;
   };
-  fn: (input: z.infer<InputSchema>, ctx: ServerToolContext) => Promise<CallToolResult>;
+  fn: (input: z.infer<InputSchema>, ctx: McpContext) => Promise<CallToolResult>;
+  isAvailable: (ctx: McpContext) => Promise<boolean>;
 }
 
 export function tool<InputSchema extends ZodTypeAny>(
+  feature: ServerFeature,
   options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema"> & {
     inputSchema: InputSchema;
+    isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
   fn: ServerTool<InputSchema>["fn"],
 ): ServerTool {
+  const { isAvailable, ...mcpOptions } = options;
+
   return {
-    mcp: { ...options, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: {
+      ...mcpOptions,
+      inputSchema: cleanSchema(
+        z.toJSONSchema(options.inputSchema, { target: "draft-7", io: "input" }),
+      ),
+    },
     fn,
+    isAvailable: (ctx: McpContext) => {
+      // default to the feature level availability check, but allow override
+      // We resolve this at runtime to allow for easier testing/mocking
+      const isAvailableFunc = isAvailable || getDefaultFeatureAvailabilityCheck(feature);
+      return isAvailableFunc(ctx);
+    },
   };
 }

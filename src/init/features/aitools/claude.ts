@@ -41,7 +41,7 @@ export const claude: AIToolModule = {
       }
       existingConfig.mcpServers.firebase = {
         command: "npx",
-        args: ["-y", "firebase-tools", "experimental:mcp", "--dir", projectPath],
+        args: ["-y", "firebase-tools", "mcp", "--dir", projectPath],
       };
       config.writeProjectFile(MCP_CONFIG_PATH, JSON.stringify(existingConfig, null, 2));
       mcpUpdated = true;

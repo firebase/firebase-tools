@@ -36,10 +36,13 @@ type DatabaseMultiple = ({
 }> &
   Deployable)[];
 
+type DataAccessMode = "MONGODB_COMPATIBLE" | "FIRESTORE_NATIVE";
+
 type FirestoreSingle = {
   database?: string;
   location?: string;
   edition?: string;
+  dataAccessMode?: DataAccessMode;
   rules?: string;
   indexes?: string;
 } & Deployable;
@@ -166,21 +169,17 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
-export type FunctionConfig = {
-  // Optional: Directory containing the Cloud Functions source code.
-  // Defaults to "functions" if not specified.
-  source?: string;
+type FunctionConfigBase = {
   // Optional: Directory containing the .env files for this codebase.
   // Defaults to the same directory as source if not specified.
   configDir?: string;
   // Optional: List of glob patterns for files and directories to ignore during deployment.
   // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];
-  // Optional: The Node.js runtime version to use for Cloud Functions.
-  // Example: "nodejs18", "nodejs20". Must be a supported runtime version.
+  // Optional: The Node.js/Python runtime version to use for Cloud Functions.
+  // Example: "nodejs20", "python312". Must be a supported runtime version.
   runtime?: ActiveRuntime;
   // Optional: A unique identifier for this functions codebase when using multiple codebases.
-  // Allows organizing functions into separate deployment units within the same project.
   // Must be unique across all codebases in firebase.json.
   codebase?: string;
   // Optional: Applies a prefix to all function IDs (and secret names) discovered for this codebase.
@@ -188,6 +187,35 @@ export type FunctionConfig = {
   // cannot start or end with a dash; maximum length 30 characters.
   prefix?: string;
 } & Deployable;
+
+export type LocalFunctionConfig = FunctionConfigBase & {
+  // Directory containing the Cloud Functions source code.
+  source: string;
+  // Optional: When true, prevents the Firebase CLI from fetching and including legacy
+  // Runtime Config values for this codebase during deployment. This has no effect on
+  // remote sources, which never use runtime config. Defaults to false for backward compatibility.
+  disallowLegacyRuntimeConfig?: boolean;
+  // Forbid remoteSource when local source is provided
+  remoteSource?: never;
+};
+
+export type RemoteFunctionConfig = FunctionConfigBase & {
+  // Deploy functions from a remote Git repository.
+  remoteSource: {
+    // The URL of the Git repository.
+    repository: string;
+    // The git ref (tag, branch, or commit hash) to deploy.
+    ref: string;
+    // The directory within the repository containing the functions source.
+    dir?: string;
+  };
+  // Required for remote sources
+  runtime: ActiveRuntime;
+  // Forbid local source when remoteSource is provided
+  source?: never;
+};
+
+export type FunctionConfig = LocalFunctionConfig | RemoteFunctionConfig;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];
 
@@ -212,6 +240,7 @@ export type EmulatorsConfig = {
     host?: string;
     port?: number;
     websocketPort?: number;
+    edition?: string;
   };
   functions?: {
     host?: string;
@@ -287,16 +316,26 @@ export type AppHostingSingle = {
   rootDir: string;
   ignore: string[];
   alwaysDeployFromSource?: boolean;
+  localBuild?: boolean;
 };
 
 export type AppHostingMultiple = AppHostingSingle[];
 
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
+export interface AuthConfig {
+  providers?: {
+    anonymous?: boolean;
+    emailPassword?: boolean;
+    googleSignIn?: {
+      oAuthBrandDisplayName?: string;
+      supportEmail?: string;
+      authorizedRedirectUris?: string[];
+    };
+  };
+}
+
 export type FirebaseConfig = {
-  /**
-   * @TJS-format uri
-   */
   $schema?: string;
   database?: DatabaseConfig;
   firestore?: FirestoreConfig;
@@ -308,4 +347,5 @@ export type FirebaseConfig = {
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;
   apphosting?: AppHostingConfig;
+  auth?: AuthConfig;
 };

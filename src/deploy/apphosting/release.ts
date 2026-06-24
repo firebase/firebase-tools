@@ -11,54 +11,79 @@ import {
   logLabeledWarning,
 } from "../../utils";
 import { Context } from "./args";
+import { FirebaseError } from "../../error";
 
 /**
  * Orchestrates rollouts for the backends targeted for deployment.
+ *
+ * This step executes the actual "release" phase of the deployment. It takes the
+ * potentially uploaded source code (or linked repository commits) and triggers
+ * the App Hosting rollout API. It tracks the progress of the rollouts and reports
+ * success or failure to the user.
+ * @param context - The deployment context containing backend configs, locations, and storage URIs.
+ * @param options - CLI options.
  */
 export default async function (context: Context, options: Options): Promise<void> {
-  if (context.backendConfigs.size === 0) {
+  let backendIds = Object.keys(context.backendConfigs);
+
+  const missingBackends = backendIds.filter(
+    (id) => !context.backendLocations[id] || !context.backendStorageUris[id],
+  );
+  if (missingBackends.length > 0) {
+    logLabeledWarning(
+      "apphosting",
+      `Failed to find metadata for backend(s) ${backendIds.join(", ")}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
+    );
+    backendIds = backendIds.filter((id) => !missingBackends.includes(id));
+  }
+
+  if (backendIds.length === 0) {
     return;
   }
+
   const projectId = needProjectId(options);
-  const rollouts = [];
-  const backendIds = [];
-  for (const backendId of context.backendConfigs.keys()) {
-    const config = context.backendConfigs.get(backendId);
-    const location = context.backendLocations.get(backendId);
-    const storageUri = context.backendStorageUris.get(backendId);
-    if (!config || !location || !storageUri) {
-      logLabeledWarning(
-        "apphosting",
-        `Failed to find metadata for backend ${backendId}. Please contact support with the contents of your firebase-debug.log to report your issue.`,
-      );
-      continue;
-    }
-    backendIds.push(backendId);
-    rollouts.push(
-      orchestrateRollout({
-        projectId,
-        location,
-        backendId,
-        buildInput: {
-          source: {
-            archive: {
-              userStorageUri: storageUri,
-              rootDirectory: config.rootDir,
-            },
+  const rollouts = backendIds.map((backendId) => {
+    const localBuild = context.backendLocalBuilds[backendId];
+    const userStorageUri = context.backendStorageUris[backendId];
+    const rootDirectory = context.backendConfigs[backendId].rootDir;
+
+    const source = localBuild
+      ? {
+          locallyBuilt: {
+            userStorageUri,
+            rootDirectory,
+            runCommand: localBuild.buildConfig?.runCommand,
+            env: localBuild.buildConfig?.env,
           },
-        },
-      }),
-    );
-  }
+        }
+      : {
+          archive: {
+            userStorageUri,
+            rootDirectory,
+          },
+        };
+
+    return orchestrateRollout({
+      projectId,
+      backendId,
+      location: context.backendLocations[backendId],
+      buildInput: {
+        config: localBuild?.buildConfig,
+        source,
+      },
+    });
+  });
 
   logLabeledBullet(
     "apphosting",
     `You may also track the rollout(s) at:\n\t${consoleOrigin()}/project/${projectId}/apphosting`,
   );
   const rolloutsSpinner = ora(
-    `Starting rollout(s) for backend(s) ${Array.from(context.backendConfigs.keys()).join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
+    `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  rolloutsSpinner.stop();
+  let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
     if (res.status === "fulfilled") {
@@ -66,9 +91,14 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledSuccess("apphosting", `Rollout for backend ${backendIds[i]} complete!`);
       logLabeledSuccess("apphosting", `Your backend is now deployed at:\n\thttps://${backend.uri}`);
     } else {
+      failed = true;
       logLabeledWarning("apphosting", `Rollout for backend ${backendIds[i]} failed.`);
-      logLabeledError("apphosting", res.reason);
+      logLabeledError("apphosting", `${res.reason}`);
     }
   }
-  rolloutsSpinner.stop();
+  if (failed) {
+    throw new FirebaseError(
+      "One or more rollouts failed. Please review the errors above and try again.",
+    );
+  }
 }

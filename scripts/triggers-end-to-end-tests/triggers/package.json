@@ -8,12 +8,15 @@
   "dependencies": {
     "@firebase/database-compat": "0.1.2",
     "@google-cloud/pubsub": "^3.0.1",
-    "firebase": "^9.9.0",
+    "firebase": "^10.9.0",
     "firebase-admin": "^11.0.0",
     "firebase-functions": "^5.1.0"
   },
   "devDependencies": {
     "firebase-functions-test": "^0.2.0"
+  },
+  "overrides": {
+    "protobufjs": "7.5.5"
   },
   "private": true
 }

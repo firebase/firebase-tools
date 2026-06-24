@@ -1,10 +1,10 @@
 import fetch from "node-fetch";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent, isFirebaseMcp } from "./env";
 const pkg = require("../package.json");
 
 type cliEventNames =
@@ -13,6 +13,8 @@ type cliEventNames =
   | "product_init"
   | "product_init_mcp"
   | "dataconnect_init"
+  | "dataconnect_deploy"
+  | "dataconnect_cloud_sql"
   | "error"
   | "login"
   | "api_enabled"
@@ -27,7 +29,10 @@ type cliEventNames =
   | "mcp_list_tools"
   | "mcp_client_connected"
   | "mcp_list_prompts"
-  | "mcp_get_prompt";
+  | "mcp_get_prompt"
+  | "mcp_read_resource"
+  | "mcp_list_resources"
+  | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -62,9 +67,7 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return (
-    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
-  );
+  return (!!process.env.IS_FIREBASE_CLI || isFirebaseMcp()) && !!configstore.get("usage");
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
@@ -84,6 +87,9 @@ const GA4_USER_PROPS = {
   },
   is_firebase_studio: {
     value: isFirebaseStudio().toString(),
+  },
+  ai_agent: {
+    value: detectAIAgent(),
   },
 };
 
@@ -340,7 +346,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   if (!property.currentSession) {
     let clientId: string | undefined = configstore.get(property.clientIdKey);
     if (!clientId) {
-      clientId = uuidV4();
+      clientId = randomUUID();
       configstore.set(property.clientIdKey, clientId);
     }
     property.currentSession = {

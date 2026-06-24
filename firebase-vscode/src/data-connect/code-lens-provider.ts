@@ -1,11 +1,14 @@
 import * as vscode from "vscode";
-import { Kind, parse } from "graphql";
-import { OperationLocation } from "./types";
+import { ExecutableDefinitionNode, Kind, parse } from "graphql";
 import { Disposable } from "vscode";
+import * as path from "path";
+import { isSchemaFile } from "./file-utils";
 
 import { Signal } from "@preact/signals-core";
 import { dataConnectConfigs, firebaseRC } from "./config";
 import { EmulatorsController } from "../core/emulators";
+import { ExecutionInput, GenerateOperationInput } from "./execution/execution";
+import { findCommentsBlocks } from "../utils/find_comments";
 
 export enum InstanceType {
   LOCAL = "local",
@@ -71,64 +74,100 @@ export class OperationCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded and emulator to be running
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    if (!fdcConfigs) {
       return [];
     }
-
-    const codeLenses: vscode.CodeLens[] = [];
+    const projectId = this.watch(firebaseRC)?.tryReadValue?.projects.default;
 
     const documentText = document.getText();
     // TODO: replace w/ online-parser to work with malformed documents
     const documentNode = parse(documentText);
+    const definitions: ExecutableDefinitionNode[] = [];
+    for (const def of documentNode.definitions) {
+      switch (def.kind) {
+        case Kind.OPERATION_DEFINITION:
+        case Kind.FRAGMENT_DEFINITION:
+          definitions.push(def);
+          break;
+        default:
+          // No code lenses for schema files
+          return [];
+      }
+    }
 
-    for (let i = 0; i < documentNode.definitions.length; i++) {
-      const x = documentNode.definitions[i];
-      if (x.kind === Kind.OPERATION_DEFINITION && x.loc) {
-        const line = x.loc.startToken.line - 1;
-        const range = new vscode.Range(line, 0, line, 0);
-        const position = new vscode.Position(line, 0);
-        const operationLocation: OperationLocation = {
-          document: documentText,
-          documentPath: document.fileName,
-          position: position,
-        };
-        const service = fdcConfigs.findEnclosingServiceForPath(
-          document.fileName,
-        );
-        if (service) {
-          // For demo purposes only
-          // codeLenses.push(
-          //   new vscode.CodeLens(range, {
-          //     title: `$(play) Refine Operation`,
-          //     command: "firebase.dataConnect.refineOperation",
-          //     tooltip:
-          //       "Execute the operation (⌘+enter or Ctrl+Enter)",
-          //     arguments: [x, operationLocation, InstanceType.LOCAL],
-          //   }),
-          // );
-
+    const codeLenses: vscode.CodeLens[] = [];
+    for (let i = 0; i < definitions.length; i++) {
+      const x = definitions[i];
+      if (!x.loc) {
+        throw new Error("Definition has no location");
+      }
+      if (x.kind !== Kind.OPERATION_DEFINITION) {
+        continue;
+      }
+      // startToken.line is 1-indexed, range is 0-indexed
+      const line = x.loc.startToken.line - 1;
+      const range = new vscode.Range(line, 0, line, 0);
+      const position = new vscode.Position(line, 0);
+      const service = fdcConfigs.findEnclosingServiceForPath(document.fileName);
+      if (service) {
+        {
+          const arg: ExecutionInput = {
+            operationAst: x,
+            document: documentText,
+            documentPath: document.fileName,
+            position: position,
+            instance: InstanceType.LOCAL,
+          };
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Run (local)`,
+              title: `$(play) Run (Emulator)`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.LOCAL],
+              arguments: [arg],
             }),
           );
+        }
 
+        if (projectId) {
+          const arg: ExecutionInput = {
+            operationAst: x,
+            document: documentText,
+            documentPath: document.fileName,
+            position: position,
+            instance: InstanceType.PRODUCTION,
+          };
           codeLenses.push(
             new vscode.CodeLens(range, {
-              title: `$(play) Run (Production – Project: ${rc.projects.default})`,
+              title: `$(play) Run (Production – Project: ${projectId})`,
               command: "firebase.dataConnect.executeOperation",
               tooltip: "Execute the operation (⌘+enter or Ctrl+Enter)",
-              arguments: [x, operationLocation, InstanceType.PRODUCTION],
+              arguments: [arg],
             }),
           );
         }
       }
     }
 
+    const comments = findCommentsBlocks(documentText, definitions);
+    for (let i = 0; i < comments.length; i++) {
+      const c = comments[i];
+      const range = new vscode.Range(c.startLine, 0, c.startLine, 0);
+      const arg: GenerateOperationInput = {
+        projectId,
+        document: document,
+        description: c.text,
+        insertPosition: c.endIndex + 1,
+        existingQuery: c.queryDoc?.loc ? documentText.substring(c.endIndex + 1, c.queryDoc.loc.endToken.end) : '',
+      };
+      codeLenses.push(
+        new vscode.CodeLens(range, {
+          title: c.queryDoc ? `$(sparkle) Refine Operation` : `$(sparkle) Generate Operation`,
+          command: "firebase.dataConnect.generateOperation",
+          tooltip: "Generate the operation (⌘+enter or Ctrl+Enter)",
+          arguments: [arg],
+        }),
+      );
+    }
     return codeLenses;
   }
 }
@@ -147,8 +186,15 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     const codeLenses: vscode.CodeLens[] = [];
 
+    const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
+
+    if (!isSchemaFile(fdcConfigs, document.fileName)) {
+      return [];
+    }
+
+    const documentText = document.getText();
     // TODO: replace w/ online-parser to work with malformed documents
-    const documentNode = parse(document.getText());
+    const documentNode = parse(documentText);
 
     for (const x of documentNode.definitions) {
       if (x.kind === Kind.OBJECT_TYPE_DEFINITION && x.loc) {
@@ -156,41 +202,37 @@ export class SchemaCodeLensProvider extends ComputedCodeLensProvider {
         const range = new vscode.Range(line, 0, line, 0);
         const documentPath = document.fileName;
 
-        // Add only at top of document
-        // if (line === 0) {
-        //   codeLenses.push(
-        //     new vscode.CodeLens(range, {
-        //       title: `Generate Schema`,
-        //       command: "firebase.dataConnect.generateSchema",
-        //       tooltip: "Generate a new schema",
-        //       arguments: [document.getText(), documentPath],
-        //     }),
-        //   );
-        // }
+        const isTable = x.directives?.some((d) => d.name.value === "table");
+        const isView = x.directives?.some((d) => d.name.value === "view");
 
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: `$(database) Add data`,
-            command: "firebase.dataConnect.schemaAddData",
-            tooltip: "Generate a mutation to add data of this type",
-            arguments: [x, documentPath],
-          }),
-        );
+        if (isTable) {
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `$(database) Add data`,
+              command: "firebase.dataConnect.schemaAddData",
+              tooltip: "Generate a mutation to add data of this type",
+              arguments: [x, documentPath],
+            }),
+          );
+        }
 
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: `$(database) Read data`,
-            command: "firebase.dataConnect.schemaReadData",
-            tooltip: "Generate a query to read data of this type",
-            arguments: [documentNode, x, documentPath],
-          }),
-        );
+        if (isTable || isView) {
+          codeLenses.push(
+            new vscode.CodeLens(range, {
+              title: `$(database) Read data`,
+              command: "firebase.dataConnect.schemaReadData",
+              tooltip: "Generate a query to read data of this type",
+              arguments: [documentNode, x, documentPath],
+            }),
+          );
+        }
       }
     }
 
     return codeLenses;
   }
 }
+
 /**
  * CodeLensProvider for Configure SDK in Connector.yaml
  */
@@ -201,8 +243,7 @@ export class ConfigureSdkCodeLensProvider extends ComputedCodeLensProvider {
   ): vscode.CodeLens[] {
     // Wait for configs to be loaded
     const fdcConfigs = this.watch(dataConnectConfigs)?.tryReadValue;
-    const rc = this.watch(firebaseRC)?.tryReadValue;
-    if (!fdcConfigs || !rc) {
+    if (!fdcConfigs) {
       return [];
     }
 

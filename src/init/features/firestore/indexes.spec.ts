@@ -22,6 +22,7 @@ describe("firestore indexes", () => {
       const setup: Setup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       const inputStub = sandbox.stub(prompt, "input").resolves("firestore.indexes.json");
@@ -47,6 +48,7 @@ describe("firestore indexes", () => {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
         projectId: "test-project",
+        instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
       const listIndexesStub = sandbox.stub(FirestoreApi.prototype, "listIndexes").resolves([]);

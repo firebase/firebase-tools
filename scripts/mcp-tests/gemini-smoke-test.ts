@@ -15,7 +15,7 @@ await client.connect(
   new StdioClientTransport({
     command: "../../lib/bin/firebase.js",
     args: [
-      "experimental:mcp",
+      "mcp",
       "--only",
       "firestore,dataconnect,messaging,remoteconfig,crashlytics,auth,storage,apphosting",
     ],

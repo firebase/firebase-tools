@@ -116,7 +116,7 @@ export async function getConfig(cwd: string): Promise<NuxtOptions> {
  * Utility method used during project initialization.
  */
 export function init(setup: any, config: any) {
-  execSync(`npx --yes nuxi@"${supportedRange}" init ${setup.hosting.source}`, {
+  execSync(`npx --yes nuxi@"${supportedRange}" init ${setup.featureInfo.hosting.source}`, {
     stdio: "inherit",
     cwd: config.projectDir,
   });

@@ -59,7 +59,7 @@ function writeDBRules(rules: string, filename: string, config: Config): void {
 }
 
 async function createDefaultDatabaseInstance(project: string): Promise<DatabaseInstance> {
-  const selectedLocation = await select({
+  const selectedLocation = await select<DatabaseLocation>({
     message: "Please choose the location for your default Realtime Database instance:",
     choices: [
       { name: "us-central1", value: DatabaseLocation.US_CENTRAL1 },
@@ -110,7 +110,7 @@ async function initializeDatabaseInstance(projectId: string): Promise<DatabaseIn
   await ensure(projectId, rtdbManagementOrigin(), "database", false);
   logger.info();
 
-  const instance = await getDefaultDatabaseInstance({ project: projectId });
+  const instance = await getDefaultDatabaseInstance(projectId);
   if (instance !== "") {
     return await getDatabaseInstanceDetails(projectId, instance);
   }

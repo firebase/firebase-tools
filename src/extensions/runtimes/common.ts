@@ -9,6 +9,7 @@ import {
   DEFAULT_CODEBASE,
   configForCodebase,
   normalizeAndValidate,
+  requireLocal,
 } from "../../functions/projectConfig";
 import { Build, DynamicExtension } from "../../deploy/functions/build";
 import { EndpointFilter as Filter } from "../../deploy/functions/functionsDeployHelper";
@@ -221,13 +222,14 @@ export async function getCodebaseRuntime(options: Options): Promise<string> {
     config,
     (options.codebase as string) || DEFAULT_CODEBASE,
   );
-  const sourceDirName = codebaseConfig.source;
+  const localCfg = requireLocal(codebaseConfig);
+  const sourceDirName = localCfg.source;
   const sourceDir = options.config.path(sourceDirName);
   const delegateContext: functionRuntimes.DelegateContext = {
     projectId: "", // not needed to determine the runtime in the function below
     sourceDir,
     projectDir: options.config.projectDir,
-    runtime: codebaseConfig.runtime,
+    runtime: localCfg.runtime,
   };
   let delegate: functionRuntimes.RuntimeDelegate;
   try {

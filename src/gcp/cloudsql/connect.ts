@@ -34,39 +34,21 @@ export async function execute(
     );
   }
   let connector: Connector;
-  let pool: pg.Pool;
+  let authType: AuthTypes;
   switch (user.type) {
     case "CLOUD_IAM_USER": {
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.IAM;
       break;
     }
     case "CLOUD_IAM_SERVICE_ACCOUNT": {
       connector = new Connector();
+      authType = AuthTypes.IAM;
       // Currently, this only works with Application Default credentials
       // https://github.com/GoogleCloudPlatform/cloud-sql-nodejs-connector/issues/61 is an open
       // FR to add support for OAuth2 tokens.
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-        authType: AuthTypes.IAM,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        database: opts.databaseId,
-      });
       break;
     }
     default: {
@@ -77,47 +59,74 @@ export async function execute(
       connector = new Connector({
         auth: new FBToolsAuthClient(),
       });
-      const clientOpts = await connector.getOptions({
-        instanceConnectionName: connectionName,
-        ipType: IpAddressTypes.PUBLIC,
-      });
-      pool = new pg.Pool({
-        ...clientOpts,
-        user: opts.username,
-        password: opts.password,
-        database: opts.databaseId,
-      });
+      authType = AuthTypes.PASSWORD;
       break;
     }
   }
-
-  const cleanUpFn = async () => {
-    conn.release();
-    await pool.end();
-    connector.close();
+  const connectionOpts = {
+    instanceConnectionName: connectionName,
+    ipType: instance.ipAddresses.some((ip) => ip.type === "PRIMARY")
+      ? IpAddressTypes.PUBLIC
+      : IpAddressTypes.PRIVATE,
+    authType: authType,
   };
 
-  const conn = await pool.connect();
+  let pool: pg.Pool | undefined;
+  let conn: pg.PoolClient | undefined;
   const results: pg.QueryResult[] = [];
-  logFn(`Logged in as ${opts.username}`);
-  if (opts.transaction) {
-    sqlStatements.unshift("BEGIN;");
-    sqlStatements.push("COMMIT;");
-  }
-  for (const s of sqlStatements) {
-    logFn(`> ${s}`);
+  try {
+    pool = new pg.Pool({
+      ...(await connector.getOptions(connectionOpts)),
+      password: opts.password,
+      user: opts.username,
+      database: opts.databaseId,
+    });
+    // Absorb any 'error' events emitted on the pool after pool.end() is called.
+    // @google-cloud/cloud-sql-connector >=1.7.0 calls socket.destroy(err) during
+    // Connector.close(), which schedules an 'error' event via process.nextTick.
+    // If no listener is attached at that point Node escalates it to an uncaught
+    // exception, masking a successful operation.
+    pool.on("error", (err) => {
+      logger.debug("[cloudsql] pool error (ignored during teardown):", err);
+    });
+    conn = await pool.connect();
+    logFn(`Logged in as ${opts.username}`);
+    if (opts.transaction) {
+      sqlStatements.unshift("BEGIN;");
+      sqlStatements.push("COMMIT;");
+    }
+    for (const s of sqlStatements) {
+      logFn(`> ${s}`);
+      try {
+        results.push(await conn.query(s));
+      } catch (err) {
+        logFn(`Rolling back transaction due to error ${err}}`);
+        await conn.query("ROLLBACK;");
+        throw new FirebaseError(`Error executing SQL statement: ${s}: ${err}`);
+      }
+    }
+    logFn(``);
+  } finally {
+    if (conn) {
+      try {
+        conn.release();
+      } catch (err) {
+        logger.debug("[cloudsql] error releasing connection during cleanup:", err);
+      }
+    }
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (err) {
+        logger.debug("[cloudsql] error ending pool during cleanup:", err);
+      }
+    }
     try {
-      results.push(await conn.query(s));
+      connector.close();
     } catch (err) {
-      logFn(`Rolling back transaction due to error ${err}}`);
-      await conn.query("ROLLBACK;");
-      await cleanUpFn();
-      throw new FirebaseError(`Error executing ${err}`);
+      logger.debug("[cloudsql] error closing connector during cleanup:", err);
     }
   }
-
-  await cleanUpFn();
-  logFn(``);
   return results;
 }
 

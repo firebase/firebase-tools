@@ -17,7 +17,9 @@ import { FirebaseError } from "../../error";
 import { AppHostingSingle } from "../../firebaseConfig";
 import { ensureApiEnabled } from "../../gcp/apphosting";
 import { isBillingEnabled } from "../../gcp/cloudbilling";
+import { Options } from "../../options";
 import { input, select } from "../../prompt";
+
 import { readTemplateSync } from "../../templates";
 import * as utils from "../../utils";
 import { logBullet } from "../../utils";
@@ -27,8 +29,12 @@ const APPHOSTING_YAML_TEMPLATE = readTemplateSync("init/apphosting/apphosting.ya
 /**
  * Set up an apphosting.yaml file for a new App Hosting project.
  */
-export async function doSetup(setup: Setup, config: Config): Promise<void> {
+export async function doSetup(setup: Setup, config: Config, options: Options): Promise<void> {
+  // Use dynamicImport to bypass Node ESM linkage cycles during mocha test loading.
+  const { dynamicImport } = eval("require")("../../dynamicImport");
+
   const projectId = setup.projectId as string;
+
   if (!(await isBillingEnabled(setup))) {
     throw new FirebaseError(
       `Firebase App Hosting requires billing to be enabled on your project. To upgrade, visit the following URL: https://console.firebase.google.com/project/${projectId}/usage/details`,
@@ -85,6 +91,9 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       utils.logWarning(`Firebase web app not set`);
     }
 
+    const prompts = await dynamicImport("./apphosting/prompts");
+    const runtime = await prompts.resolveRuntime(projectId, location, options.nonInteractive);
+
     const createBackendSpinner = ora("Creating your new backend...").start();
     const backend = await createBackend(
       projectId,
@@ -93,7 +102,10 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
       /* serviceAccount= */ null,
       /* repository= */ undefined,
       webApp?.id,
+      /* rootDir= */ "/",
+      runtime,
     );
+
     createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   }
 
@@ -101,13 +113,20 @@ export async function doSetup(setup: Setup, config: Config): Promise<void> {
   backendConfig.rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your firebase.json directory",
+    validate: (input: string) => {
+      const absPath = path.join(config.projectDir, input);
+      if (!existsSync(absPath)) {
+        return `Directory ${absPath} does not exist. Please enter a valid directory.`;
+      }
+      return true;
+    },
   });
 
   upsertAppHostingConfig(backendConfig, config);
   config.writeProjectFile("firebase.json", config.src);
 
   utils.logBullet("Writing default settings to " + clc.bold("apphosting.yaml") + "...");
-  const absRootDir = path.join(process.cwd(), backendConfig.rootDir);
+  const absRootDir = path.join(config.projectDir, backendConfig.rootDir);
   if (!existsSync(absRootDir)) {
     throw new FirebaseError(
       `Failed to write apphosting.yaml file because app root directory ${absRootDir} does not exist. Please try again with a valid directory.`,

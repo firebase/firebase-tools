@@ -244,6 +244,7 @@ export function compareFieldOverride(a: Spec.FieldOverride, b: Spec.FieldOverrid
  *   2) Sort order (if it exists).
  *   3) Array config (if it exists).
  *   4) Vector config (if it exists).
+ *   5) Search config (if it exists).
  */
 function compareIndexField(a: API.IndexField, b: API.IndexField): number {
   if (a.fieldPath !== b.fieldPath) {
@@ -260,6 +261,10 @@ function compareIndexField(a: API.IndexField, b: API.IndexField): number {
 
   if (a.vectorConfig !== b.vectorConfig) {
     return compareVectorConfig(a.vectorConfig, b.vectorConfig);
+  }
+
+  if (a.searchConfig !== b.searchConfig) {
+    return compareSearchConfig(a.searchConfig, b.searchConfig);
   }
 
   return 0;
@@ -358,6 +363,26 @@ function compareVectorConfig(a?: API.VectorConfig, b?: API.VectorConfig): number
     return -1;
   }
   return a.dimension - b.dimension;
+}
+
+function compareSearchConfig(a?: API.SearchConfig, b?: API.SearchConfig): number {
+  if (!a) {
+    if (!b) {
+      return 0;
+    } else {
+      return 1;
+    }
+  } else if (!b) {
+    return -1;
+  }
+  const aTextSpecs = a?.textSpec?.indexSpecs?.length || 0;
+  const bTextSpecs = b?.textSpec?.indexSpecs?.length || 0;
+
+  if (aTextSpecs !== bTextSpecs) {
+    return aTextSpecs - bTextSpecs;
+  }
+
+  return 0;
 }
 
 /**

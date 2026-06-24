@@ -34,11 +34,7 @@ export const command = new Command("firestore:backups:delete <backup>")
       throw new FirebaseError(`Failed to delete the backup ${backupName}`, { original: err });
     }
 
-    if (options.json) {
-      logger.info(JSON.stringify(backup, undefined, 2));
-    } else {
-      logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupName)}`));
-    }
+    logger.info(clc.bold(`Successfully deleted ${clc.yellow(backupName)}`));
 
     return backup;
   });

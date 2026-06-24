@@ -9,14 +9,52 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { handlePreviewToggles } from "../handlePreviewToggles";
 import { logger, useFileLogger } from "../logger";
+
+import { enableExperimentsFromCliEnvVariable } from "../experiments";
+enableExperimentsFromCliEnvVariable();
+
 import * as client from "..";
 import * as fsutils from "../fsutils";
 import * as utils from "../utils";
 
-import { enableExperimentsFromCliEnvVariable } from "../experiments";
 import { fetchMOTD } from "../fetchMOTD";
+
+import { isCommandModule } from "../command";
+import { detectAIAgent } from "../env";
+
+/**
+ * Recursively registers every command in the client tree so that they all
+ * appear in `firebase --help`.
+ *
+ * A node can be both a leaf command and a namespace parent (e.g. `login`,
+ * `target`, `ext`): these are command functions that have their subcommands
+ * attached as properties. We therefore load command functions *and* recurse
+ * into them so the nested subcommands are not skipped.
+ */
+export function loadAllCommands(client: Record<string, unknown>): void {
+  const seen = new Set<unknown>();
+  const loadAll = (obj: Record<string, unknown>) => {
+    if (seen.has(obj)) return;
+    seen.add(obj);
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === "cli") {
+        continue;
+      }
+      if (isCommandModule(value)) {
+        value.load();
+      }
+      if (
+        (typeof value === "object" || typeof value === "function") &&
+        value !== null &&
+        !Array.isArray(value)
+      ) {
+        loadAll(value as Record<string, unknown>);
+      }
+    }
+  };
+  loadAll(client);
+}
 
 export function cli(pkg: any) {
   const updateNotifier = updateNotifierPkg({ pkg });
@@ -37,6 +75,7 @@ export function cli(pkg: any) {
   logger.debug("CLI Version:  ", pkg.version);
   logger.debug("Platform:     ", process.platform);
   logger.debug("Node Version: ", process.version);
+  logger.debug("Detected Agent:", detectAIAgent());
   logger.debug("Time:         ", new Date().toString());
   if (utils.envOverrides.length) {
     logger.debug("Env Overrides:", utils.envOverrides.join(", "));
@@ -44,11 +83,10 @@ export function cli(pkg: any) {
   logger.debug("-".repeat(70));
   logger.debug();
 
-  enableExperimentsFromCliEnvVariable();
   fetchMOTD();
 
   process.on("exit", (code) => {
-    code = process.exitCode || code;
+    code = typeof process.exitCode === "number" ? process.exitCode : code;
     if (!process.env.DEBUG && code < 2 && fsutils.fileExistsSync(logFilename)) {
       fs.unlinkSync(logFilename);
     }
@@ -107,12 +145,26 @@ export function cli(pkg: any) {
     errorOut(err);
   });
 
-  if (!handlePreviewToggles(args)) {
-    // determine if there are any arguments. if not, display help
-    if (!args.length) {
-      client.cli.help();
-    } else {
-      cmd = client.cli.parse(process.argv);
-    }
+  // If this is a help command, load all commands so we can display them.
+  const commandName = args[0];
+  const isHelp =
+    !args.length ||
+    commandName === "help" ||
+    (args.length === 1 && commandName === "ext") ||
+    commandName === "--help";
+  const hasHelpFlag = args.includes("--help") || args.includes("-h");
+
+  if (hasHelpFlag) {
+    client.getCommand(commandName);
+  }
+
+  if (isHelp) {
+    loadAllCommands(client as Record<string, unknown>);
+  }
+  // If there are no args, display help
+  if (!args.length) {
+    client.cli.help();
+  } else {
+    cmd = client.cli.parse(process.argv);
   }
 }

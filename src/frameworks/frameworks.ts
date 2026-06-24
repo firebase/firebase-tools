@@ -24,6 +24,7 @@ export const WebFrameworks: Record<string, Framework> = {
   nuxt2,
   preact,
   svelte,
+  // TODO: replace with "sveltekit" once we confirm it won't cause breakages
   svelekit,
   react,
   vite,

@@ -25,7 +25,7 @@ export const command = new Command("database:instances:create <instanceName>")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   .action(async (instanceName: string, options: any) => {
     const projectId = needProjectId(options);
-    const defaultDatabaseInstance = await getDefaultDatabaseInstance({ project: projectId });
+    const defaultDatabaseInstance = await getDefaultDatabaseInstance(projectId);
     if (defaultDatabaseInstance === "") {
       throw new FirebaseError(MISSING_DEFAULT_INSTANCE_ERROR_MESSAGE);
     }

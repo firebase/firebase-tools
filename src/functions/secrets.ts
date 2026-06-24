@@ -88,6 +88,26 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
 }
 
 /**
+ * Validates that a secret value is valid JSON and throws a helpful error if not.
+ * @param secretName The name of the secret being validated
+ * @param secretValue The value to validate
+ * @throws FirebaseError if the value is not valid JSON
+ */
+export function validateJsonSecret(secretName: string, secretValue: string): void {
+  try {
+    JSON.parse(secretValue);
+  } catch (e: any) {
+    throw new FirebaseError(
+      `Provided value for ${secretName} is not valid JSON: ${e.message}\n\n` +
+        `For complex JSON values, use:\n` +
+        `  firebase functions:secrets:set ${secretName} --data-file <file.json>\n` +
+        `Or pipe from stdin:\n` +
+        `  cat <file.json> | firebase functions:secrets:set ${secretName} --format=json`,
+    );
+  }
+}
+
+/**
  * Ensure secret exists. Optionally prompt user to have non-Firebase managed keys be managed by Firebase.
  */
 export async function ensureSecret(

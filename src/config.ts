@@ -6,7 +6,6 @@ import * as _ from "lodash";
 import * as clc from "colorette";
 import * as fs from "fs-extra";
 import * as path from "path";
-const cjson = require("cjson");
 
 import { detectProjectRoot } from "./detectProjectRoot";
 import { FirebaseError } from "./error";
@@ -17,7 +16,6 @@ import * as utils from "./utils";
 import { getValidator, getErrorMessage } from "./firebaseConfigValidate";
 import { logger } from "./logger";
 import { loadCJSON } from "./loadCJSON";
-const parseBoltRules = require("./parseBoltRules");
 
 export class Config {
   static DEFAULT_FUNCTIONS_SOURCE = "functions";
@@ -34,6 +32,7 @@ export class Config {
     "remoteconfig",
     "dataconnect",
     "apphosting",
+    "auth",
   ];
 
   public options: any;
@@ -69,7 +68,7 @@ export class Config {
     }
 
     // If a top-level key contains a string path pointing to a suported file
-    // type (JSON or Bolt), we read the file.
+    // type (JSON ), we read the file.
     //
     // TODO: This is janky and confusing behavior, we should remove it ASAP.
     Config.MATERIALIZE_TARGETS.forEach((target) => {
@@ -78,15 +77,30 @@ export class Config {
       }
     });
 
-    // Inject default functions source if missing.
+    // Inject default functions source if missing, but only when a given entry has
+    // neither a local source nor a remoteSource configured.
     if (this.get("functions")) {
       if (this.projectDir && fsutils.dirExistsSync(this.path(Config.DEFAULT_FUNCTIONS_SOURCE))) {
-        if (Array.isArray(this.get("functions"))) {
-          if (!this.get("functions.[0].source")) {
-            this.set("functions.[0].source", Config.DEFAULT_FUNCTIONS_SOURCE);
+        const funcs = this.get("functions");
+        if (Array.isArray(funcs)) {
+          // Inject default source for exactly one empty entry (the first empty),
+          // preserving legacy convenience while avoiding ambiguity when multiple are empty.
+          let emptyIdx: number | undefined;
+          for (let i = 0; i < funcs.length; i++) {
+            const hasSource = this.get(`functions.[${i}].source`);
+            const hasRemote = this.get(`functions.[${i}].remoteSource`);
+            if (!hasSource && !hasRemote) {
+              emptyIdx = i;
+              break; // inject into the first empty entry only
+            }
+          }
+          if (emptyIdx !== undefined) {
+            this.set(`functions.[${emptyIdx}].source`, Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         } else {
-          if (!this.get("functions.source")) {
+          const hasSource = this.get("functions.source");
+          const hasRemote = this.get("functions.remoteSource");
+          if (!hasSource && !hasRemote) {
             this.set("functions.source", Config.DEFAULT_FUNCTIONS_SOURCE);
           }
         }
@@ -152,10 +166,9 @@ export class Config {
         return loadCJSON(fullPath);
       /* istanbul ignore-next */
       case ".bolt":
-        if (target === "database") {
-          this.notes.databaseRules = "bolt";
-        }
-        return parseBoltRules(fullPath);
+        throw new FirebaseError(
+          "As of firebase-tools@15.0.0, .bolt rules are no longer supported.",
+        );
       default:
         throw new FirebaseError(
           "Parse Error: " + filePath + " is not of a supported config file type",
@@ -197,7 +210,7 @@ export class Config {
     return outPath;
   }
 
-  readProjectFile(p: string, options: any = {}) {
+  readProjectFile(p: string, options: { json?: boolean; fallback?: any } = {}) {
     options = options || {};
     try {
       const content = fs.readFileSync(this.path(p), "utf8");
@@ -259,6 +272,7 @@ export class Config {
     const shouldWrite = await confirm({
       message: "File " + clc.underline(path) + " already exists. Overwrite?",
       default: !!confirmByDefault,
+      nonInteractive: this.options.nonInteractive,
     });
     if (!shouldWrite) {
       utils.logBullet("Skipping write of " + clc.bold(path));
@@ -282,13 +296,24 @@ export class Config {
     this.writeProjectFile(path, content);
   }
 
-  public static load(options: any, allowMissing?: boolean): Config | null {
+  public static load(options: { cwd?: string; configPath?: string }, allowMissing?: false): Config;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing: true,
+  ): Config | null;
+  public static load(
+    options: { cwd?: string; configPath?: string },
+    allowMissing?: boolean,
+  ): Config | null {
     const pd = detectProjectRoot(options);
     const filename = options.configPath || Config.FILENAME;
     if (pd) {
       try {
         const filePath = path.resolve(pd, path.basename(filename));
-        const data = cjson.load(filePath);
+        let data: unknown = {};
+        if (fs.statSync(filePath).size > 0) {
+          data = loadCJSON(filePath);
+        }
 
         // Validate config against JSON Schema. For now we just print these to debug
         // logs but in a future CLI version they could be warnings and/or errors.

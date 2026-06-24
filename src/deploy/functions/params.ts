@@ -1,6 +1,7 @@
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { checkbox, input, password, select } from "../../prompt";
+import { validateJsonSecret } from "../../functions/secrets";
 import * as build from "./build";
 import { assertExhaustive, partition } from "../../functional";
 import * as secretManager from "../../gcp/secretManager";
@@ -224,6 +225,9 @@ interface SecretParam {
   // A long description of the parameter's purpose and allowed values. If omitted, UX will not
   // provide a description of the parameter
   description?: string;
+
+  // The format of the secret, e.g. "json"
+  format?: string;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -390,15 +394,16 @@ export async function resolveParams(
   }
 
   const [needSecret, needPrompt] = partition(outstanding, (param) => param.type === "secret");
+
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      await handleSecret(param as SecretParam, firebaseConfig.projectId);
+      await handleSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
     }
   }
 
   if (nonInteractive && needPrompt.length > 0) {
-    const envNames = outstanding.map((p) => p.name).join(", ");
+    const envNames = needPrompt.map((p) => p.name).join(", ");
     throw new FirebaseError(
       `In non-interactive mode but have no value for the following environment variables: ${envNames}\n` +
         "To continue, either run `firebase deploy` with an interactive terminal, or add values to a dotenv file. " +
@@ -460,17 +465,35 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
  * to read its environment variables. They are instead provided through GCF's own
  * Secret Manager integration.
  */
-async function handleSecret(secretParam: SecretParam, projectId: string) {
+async function handleSecret(
+  secretParam: SecretParam,
+  projectId: string,
+  nonInteractive?: boolean,
+): Promise<void> {
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
+    if (nonInteractive) {
+      throw new FirebaseError(
+        `In non-interactive mode but have no value for the secret: ${secretParam.name}\n\n` +
+          "Set this secret before deploying:\n" +
+          `\tfirebase functions:secrets:set ${secretParam.name}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+      );
+    }
+    const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
+      secretParam.name
+    }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
+      secretParam.label || secretParam.name
+    }:`;
+
     const secretValue = await password({
-      message: `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
-        secretParam.name
-      }. Enter a value for ${secretParam.label || secretParam.name}:`,
+      message: promptMessage,
     });
+    if (secretParam.format === "json") {
+      validateJsonSecret(secretParam.name, secretValue);
+    }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
-    return secretValue;
+    return;
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
@@ -695,7 +718,7 @@ async function promptResourceString(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }
@@ -723,7 +746,7 @@ async function promptResourceStrings(
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
     case "storage.googleapis.com/Bucket":
-      const buckets = await listBuckets(projectId);
+      const buckets = (await listBuckets(projectId)).map((b) => b.name);
       if (buckets.length === 0) {
         throw notFound;
       }

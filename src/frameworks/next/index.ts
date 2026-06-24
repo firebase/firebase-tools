@@ -8,7 +8,7 @@ import type { DomainLocale } from "next/dist/server/config";
 import type { PagesManifest } from "next/dist/build/webpack/plugins/pages-manifest-plugin";
 import { copy, mkdirp, pathExists, pathExistsSync, readFile } from "fs-extra";
 import { pathToFileURL, parse } from "url";
-import { gte } from "semver";
+import { gte, coerce } from "semver";
 import { IncomingMessage, ServerResponse } from "http";
 import * as clc from "colorette";
 import { chain } from "stream-chain";
@@ -58,6 +58,9 @@ import {
   whichNextConfigFile,
   installEsbuild,
   findEsbuildPath,
+  isUsingAppDirectory,
+  getNextVersionRaw,
+  isNextJsVersionVulnerable,
 } from "./utils";
 import { NODE_VERSION, NPM_COMMAND_TIMEOUT_MILLIES, SHARP_VERSION, I18N_ROOT } from "../constants";
 import type {
@@ -69,6 +72,7 @@ import type {
   MiddlewareManifest,
   ActionManifest,
   CustomBuildOptions,
+  FunctionsConfigManifest,
 } from "./interfaces";
 import {
   MIDDLEWARE_MANIFEST,
@@ -79,6 +83,7 @@ import {
   APP_PATHS_MANIFEST,
   SERVER_REFERENCE_MANIFEST,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
 } from "./constants";
 import { getAllSiteDomains, getDeploymentDomain } from "../../hosting/api";
 import { logger } from "../../logger";
@@ -87,7 +92,7 @@ import { parseStrict } from "../../functions/env";
 const DEFAULT_BUILD_SCRIPT = ["next build"];
 const PUBLIC_DIR = "public";
 
-export const supportedRange = "12 - 15.0";
+export const supportedRange = "12 - 16.0";
 
 export const name = "Next.js";
 export const support = SupportLevel.Preview;
@@ -339,6 +344,33 @@ export async function build(
 
   const wantsBackend = reasonsForBackend.size > 0;
 
+  if (wantsBackend && isUsingAppDirectory(join(dir, distDir))) {
+    const nextVersion = getNextVersionRaw(dir);
+    if (nextVersion && isNextJsVersionVulnerable(nextVersion)) {
+      let message =
+        `Next.js version ${nextVersion} is vulnerable to CVE-2025-66478.\n` +
+        `Please upgrade to a patched version: `;
+
+      const { major } = coerce(nextVersion) || {};
+      if (major === 16) {
+        message += "16.0.7+.";
+      } else if (major === 15) {
+        message += "15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, or 15.5.7+.";
+      } else if (major === 14) {
+        message += "downgrade to a stable Next.js 14.x release.";
+      } else {
+        // Fallback for unexpected cases
+        message +=
+          "15.0.5+, 15.1.9+, 15.2.6+, 15.3.6+, 15.4.8+, 15.5.7+, 16.0.7+ " +
+          "or downgrade to a stable Next.js 14.x release if using canary.";
+      }
+
+      message += `\nSee https://nextjs.org/blog/CVE-2025-66478 for more details.`;
+
+      throw new FirebaseError(message);
+    }
+  }
+
   if (wantsBackend) {
     logger.info("Building a Cloud Function to run this application. This is needed due to:");
     for (const reason of Array.from(reasonsForBackend).slice(
@@ -387,7 +419,7 @@ export async function init(setup: any, config: any) {
   });
   execSync(
     `npx --yes create-next-app@"${supportedRange}" -e hello-world ` +
-      `${setup.hosting.source} --use-npm --${language}`,
+      `${setup.featureInfo.hosting.source} --use-npm --${language}`,
     { stdio: "inherit", cwd: config.projectDir },
   );
 }
@@ -424,6 +456,7 @@ export async function ɵcodegenPublicDirectory(
     pagesManifest,
     appPathRoutesManifest,
     serverReferenceManifest,
+    functionsConfigManifest,
   ] = await Promise.all([
     readJSON<MiddlewareManifest>(join(sourceDir, distDir, "server", MIDDLEWARE_MANIFEST)),
     readJSON<PrerenderManifest>(join(sourceDir, distDir, PRERENDER_MANIFEST)),
@@ -435,11 +468,17 @@ export async function ɵcodegenPublicDirectory(
     readJSON<ActionManifest>(join(sourceDir, distDir, "server", SERVER_REFERENCE_MANIFEST)).catch(
       () => ({ node: {}, edge: {}, encryptionKey: "" }),
     ),
+    readJSON<FunctionsConfigManifest>(
+      join(sourceDir, distDir, "server", FUNCTIONS_CONFIG_MANIFEST),
+    ).catch(() => ({ version: 0, functions: {} })),
   ]);
 
   const appPathRoutesEntries = Object.entries(appPathRoutesManifest);
 
-  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareManifest);
+  const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+    middlewareManifest,
+    functionsConfigManifest,
+  );
 
   const { redirects = [], rewrites = [], headers = [] } = routesManifest;
 
@@ -654,9 +693,12 @@ export async function ɵcodegenFunctionsDirectory(
         logLevel: "error",
         external: productionDeps,
       };
-      if (configFile === "next.config.mjs") {
-        // ensure generated file is .mjs if the config is .mjs
+      if (configFile === "next.config.mjs" || configFile === "next.config.mts") {
+        // ensure generated file is .mjs if the config is .mjs or .mts
         esbuildArgs.format = "esm";
+        esbuildArgs.outfile = join(destDir, "next.config.mjs");
+      } else {
+        esbuildArgs.outfile = join(destDir, "next.config.js");
       }
 
       const bundle = await esbuild.build(esbuildArgs);

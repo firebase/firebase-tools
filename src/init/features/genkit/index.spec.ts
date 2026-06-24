@@ -42,9 +42,7 @@ describe("genkit", () => {
       except: "",
       filteredTargets: [],
       force: false,
-      json: false,
       nonInteractive: false,
-      interactive: false,
       debug: false,
       config: new Config("{}", {}),
       rc: new RC(),
@@ -56,10 +54,10 @@ describe("genkit", () => {
     sandbox.restore();
   });
 
-  describe("doSetup", () => {
+  describe("askQuestions", () => {
     beforeEach(() => {
-      // Mock the behavior of functions.doSetup
-      functionsStub.doSetup.callsFake(async (setup: any) => {
+      // Mock the behavior of functions.askQuestions
+      functionsStub.askQuestions.callsFake(async (setup: any) => {
         setup.functions = {
           source: "functions",
           codebase: "default",
@@ -73,6 +71,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -120,6 +119,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -138,6 +138,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(true);
@@ -163,6 +164,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.onFirstCall().resolves(true).onSecondCall().resolves(false);
@@ -179,6 +181,7 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.onFirstCall().resolves(true).onSecondCall().resolves(false);
@@ -203,13 +206,15 @@ describe("genkit", () => {
       const setup: genkit.GenkitSetup = {
         config: {},
         rcfile: { projects: {}, targets: {}, etags: {} },
+        instructions: [],
       };
       spawnStub.spawnWithOutput.resolves("1.0.0");
       promptStub.confirm.resolves(false);
 
       await genkit.doSetup(setup, cfg, options);
 
-      expect(functionsStub.doSetup.notCalled).to.be.true;
+      expect(functionsStub.askQuestions.notCalled).to.be.true;
+      expect(functionsStub.actuate.notCalled).to.be.true;
     });
   });
 });

@@ -1,5 +1,41 @@
 import * as backend from "../backend";
 import { FirebaseError } from "../../../error";
+import * as build from "../build";
+import {
+  getDatabaseInstanceDetails as getDetails,
+  DatabaseInstance,
+} from "../../../management/database";
+
+const instanceCache = new Map<string, DatabaseInstance>();
+
+/**
+ * Clear the database instance cache. Used for testing.
+ * @internal
+ */
+export function clearCache(): void {
+  instanceCache.clear();
+}
+
+/**
+ * A memoized version of getDatabaseInstanceDetails that avoids repeated calls to the API.
+ *
+ * @param projectId the project ID
+ * @param instanceName the database instance ID
+ */
+export async function getDatabaseInstanceDetails(
+  projectId: string,
+  instanceName: string,
+): Promise<DatabaseInstance> {
+  const key = `${projectId}/${instanceName}`;
+
+  if (instanceCache.has(key)) {
+    return instanceCache.get(key)!;
+  }
+
+  const details = await getDetails(projectId, instanceName);
+  instanceCache.set(key, details);
+  return details;
+}
 
 /**
  * Sets a database event trigger's region to the function region.
@@ -15,4 +51,25 @@ export function ensureDatabaseTriggerRegion(
     throw new FirebaseError("A database trigger location must match the function region.");
   }
   return Promise.resolve();
+}
+
+/**
+ * Get the default region for a Realtime Database event trigger.
+ */
+export async function getDefaultRegion(endpoint: build.Endpoint): Promise<string> {
+  if (!build.isEventTriggered(endpoint)) {
+    throw new FirebaseError("Database getDefaultRegion requires an event-triggered endpoint");
+  }
+  if (endpoint.eventTrigger.region) {
+    return endpoint.eventTrigger.region;
+  }
+
+  const instanceName = endpoint.eventTrigger.eventFilters?.instance;
+  if (instanceName) {
+    const details = await getDatabaseInstanceDetails(endpoint.project, instanceName);
+    if (details.location && details.location !== "-") {
+      return details.location.toLowerCase();
+    }
+  }
+  throw new FirebaseError("Could not resolve database instance location");
 }

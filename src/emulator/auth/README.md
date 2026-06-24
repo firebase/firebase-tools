@@ -119,8 +119,8 @@ npm run generate:auth-api
 ```
 
 For more on what this command does and other useful commands, please refer to
-[`package.json`](https://github.com/firebase/firebase-tools/blob/master/package.json)
-and [`CONTRIBUTING.md`](https://github.com/firebase/firebase-tools/blob/master/CONTRIBUTING.md).
+[`package.json`](https://github.com/firebase/firebase-tools/blob/main/package.json)
+and [`CONTRIBUTING.md`](https://github.com/firebase/firebase-tools/blob/main/CONTRIBUTING.md).
 
 ### Working with OpenAPI documents
 

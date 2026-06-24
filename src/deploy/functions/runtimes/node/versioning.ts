@@ -14,14 +14,14 @@ interface NpmShowResult {
   };
 }
 
-const MIN_SDK_VERSION = "2.0.0";
+const MIN_SDK_VERSION = "3.20.0";
 const NPM_COMMAND_TIMEOUT_MILLIES = 10000;
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
   clc.bold(clc.yellow("functions: ")) +
   "You must have a " +
   clc.bold("firebase-functions") +
-  " version that is at least 2.0.0. Please run " +
+  " version that is at least 3.20.0. Please run " +
   clc.bold("npm i --save firebase-functions@latest") +
   " in the functions folder.";
 

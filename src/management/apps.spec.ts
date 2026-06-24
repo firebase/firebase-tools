@@ -5,6 +5,9 @@ import * as fs from "fs";
 import * as nock from "nock";
 
 import * as api from "../api";
+import * as appUtils from "../appUtils";
+import * as utils from "../utils";
+import * as prompt from "../prompt";
 import {
   AndroidAppMetadata,
   AppPlatform,
@@ -20,6 +23,7 @@ import {
   WebAppMetadata,
   findIntelligentPathForAndroid,
   findIntelligentPathForIOS,
+  getPlatform,
 } from "./apps";
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
@@ -112,6 +116,67 @@ describe("App management", () => {
         FirebaseError,
         "Unexpected platform. Only iOS, Android, and Web apps are supported",
       );
+    });
+  });
+
+  describe("getPlatform", () => {
+    let getPlatformsFromFolderStub: sinon.SinonStub;
+    let promptForDirectoryStub: sinon.SinonStub;
+    let promptSelectStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getPlatformsFromFolderStub = sinon.stub(appUtils, "getPlatformsFromFolder");
+      promptForDirectoryStub = sinon.stub(utils, "promptForDirectory");
+      promptSelectStub = sinon.stub(prompt, "select");
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should return the detected platform when only one is found", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.ANDROID]);
+
+      const platform = await getPlatform("any-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.ANDROID);
+      expect(getPlatformsFromFolderStub.calledOnceWith("any-dir")).to.be.true;
+    });
+
+    it("should prompt the user if multiple platforms are detected", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.ANDROID, appUtils.Platform.IOS]);
+      promptSelectStub.resolves("IOS");
+
+      const platform = await getPlatform("any-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.IOS);
+      expect(promptSelectStub.calledOnce).to.be.true;
+      promptSelectStub.restore();
+    });
+
+    it("should prompt the user if no platforms are detected", async () => {
+      getPlatformsFromFolderStub.withArgs("initial-dir").resolves([]);
+      getPlatformsFromFolderStub.withArgs("android-dir").resolves([appUtils.Platform.ANDROID]);
+      promptForDirectoryStub.resolves("android-dir");
+
+      const platform = await getPlatform("initial-dir", {} as any);
+
+      expect(platform).to.equal(AppPlatform.ANDROID);
+      expect(promptForDirectoryStub.calledOnce).to.be.true;
+    });
+
+    it("should throw an error if a Flutter app is detected", async () => {
+      getPlatformsFromFolderStub.resolves([appUtils.Platform.FLUTTER]);
+
+      let err;
+      try {
+        await getPlatform("any-dir", {} as any);
+      } catch (e: any) {
+        err = e;
+      }
+
+      expect(err).to.be.an.instanceOf(FirebaseError);
+      expect(err.message).to.include("Flutter is not supported");
     });
   });
 

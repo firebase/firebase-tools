@@ -2,9 +2,8 @@ import vscode, { Uri } from "vscode";
 import path from "path";
 import * as fs from "fs";
 
-import { dataConnectConfigs } from "./config";
+import { dataConnectConfigs, ResolvedDataConnectConfig } from "./config";
 import { pluginLogger } from "../logger-wrapper";
-import { parse } from "graphql";
 
 export async function checkIfFileExists(file: Uri) {
   try {
@@ -56,25 +55,22 @@ export function getHighlightedText(): string {
   return editor.document.getText(selectionRange);
 }
 
-export function parseGraphql(content: string) {
-  content = content.replaceAll("```", "");
-  content = content.replaceAll("graphql", "");
-  const documentNode = parse(content);
-  return documentNode.definitions[0];
-}
-
-export function insertToBottomOfActiveFile(text: string) {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
+export async function insertQueryAt(uri: vscode.Uri, at: number, existing: string, replace: string): Promise<void> {
+  const doc = await vscode.workspace.openTextDocument(uri);
+  const text = doc.getText();
+  if (!existing) {
+    if (text[at-1] !== "\n") {
+      replace = "\n" + replace;
+    }
+    const newText = text.slice(0, at) + replace + text.slice(at);
+    await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(newText));
     return;
   }
-  const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
-  const escapedText = text.replace(/\$/g, "\\\$"); // escape $ symbols
-
-  editor.insertSnippet(
-    new vscode.SnippetString(`\n\n${escapedText}`),
-    lastLine.range.end,
-  );
+  if (text.slice(at, at + existing.length) !== existing) {
+    throw new Error("The existing query was updated.");
+  }
+  const newText = text.slice(0, at) + replace + text.slice(at + existing.length);
+  await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(newText));
 }
 
 // given a file path, compile all gql files for the associated connector
@@ -136,4 +132,72 @@ export async function findGqlFiles(dir: string): Promise<string[]> {
     pluginLogger.error(`Failed to find GQL files: ${error}`);
     return [];
   }
+}
+
+/**
+ * Fetches the schema files and returns them in the format expected by the Gemini API.
+ */
+export async function getSchemas(
+  serviceConfig: ResolvedDataConnectConfig,
+): Promise<any[]> {
+  const schemas: any[] = [];
+  const mainSchemaDir = path.join(
+    serviceConfig.path,
+    serviceConfig.mainSchemaDir,
+  );
+  const secondaryDirs = serviceConfig.secondarySchemaDirs.map((dir) =>
+    path.join(serviceConfig.path, dir),
+  );
+
+  const schemaFiles: string[] = [];
+  schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
+  for (const dir of secondaryDirs) {
+    schemaFiles.push(...(await findGqlFiles(dir)));
+  }
+
+  const files = await Promise.all(
+    schemaFiles.map(async (file) => {
+      const content = await fs.promises.readFile(file, "utf-8");
+      return {
+        path: path.basename(file),
+        content: content,
+      };
+    }),
+  );
+
+  if (files.length > 0) {
+    schemas.push({
+      source: {
+        files: files,
+      },
+    });
+  }
+
+  return schemas;
+}
+
+
+/**
+ * Checks if a given file is a schema file based on the provided FDCConfig object.
+ * @param fdcConfigs FDCConfig object
+ * @param fileName The path to the file to check.
+ * @returns true if the file is a schema file, false otherwise.
+ */
+export async function isSchemaFile(fdcConfigs: any, fileName: string): Promise<boolean> {
+    if (!fdcConfigs) {
+      return false;
+    }
+    const service = fdcConfigs.findEnclosingServiceForPath(fileName);
+    if (!service) {
+      return false;
+    }
+
+    const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
+    const secondaryDirs = service.secondarySchemaDirs.map((dir: string) => path.join(service.path, dir));
+    
+    // Only provide schema code lenses for files inside the schema directories.
+    // This avoids parsing non-schema files (e.g. query files) which improves performance.
+    return isPathInside(fileName, mainSchemaDir) || 
+                         secondaryDirs.some((dir: string) => isPathInside(fileName, dir));
+
 }

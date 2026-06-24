@@ -140,6 +140,10 @@ export class StudioView {
   get fdcDeployElement() {
     return $(`vscode-button=${TEXT.DEPLOY_FDC_ENABLED}`);
   }
+
+  get geminiButton() {
+    return $("vscode-button=Build your schema and queries with AI");
+  }
 }
 
 export class SchemaExplorerView {

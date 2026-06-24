@@ -2,7 +2,7 @@ import { execSync } from "child_process";
 
 async function installExtensions() {
   // List of extensions to install
-  const extensions: string[] = ["graphql.vscode-graphql-syntax", "google.geminicodeassist"];
+  const extensions: string[] = ["graphql.vscode-graphql-syntax"];
 
   // Install each extension
   extensions.forEach((extension) => {

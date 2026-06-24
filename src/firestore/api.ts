@@ -15,34 +15,58 @@ import { FirebaseError } from "../error";
 import { Client } from "../apiv2";
 import { PrettyPrint } from "./pretty-print";
 import { optionalValueMatches } from "../functional";
+import { pollOperation } from "../operation-poller";
 
 export class FirestoreApi {
   apiClient = new Client({ urlPrefix: firestoreOrigin(), apiVersion: "v1" });
   printer = new PrettyPrint();
 
   /**
-   * Process indexes by filtering out implicit __name__ fields with ASCENDING order.
-   * Keeps explicit __name__ fields with DESCENDING order.
-   * @param indexes Array of indexes to process
-   * @returns Processed array of indexes with filtered fields
+   * Process indexes by appending the implicit __name__ fields with default order for STANDARD edition database.
+   * No-op if exists __name__ field at the end.
+   * Not called on ENTERPRISE edition databases.
+   * @param index Spec index to process
+   * @return Processed spec index with potential additional __name__ suffix
    */
-  public static processIndexes(indexes: types.Index[]): types.Index[] {
-    return indexes.map((index: types.Index): types.Index => {
-      // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
-      // this matches the direction of the last non-name field in the index.
-      let fields = index.fields;
-      const lastField = index.fields?.[index.fields.length - 1];
-      if (lastField?.fieldPath === "__name__") {
-        const defaultDirection = index.fields?.[index.fields.length - 2]?.order;
-        if (lastField?.order === defaultDirection) {
-          fields = fields.slice(0, -1);
-        }
+  public static processIndex(index: Spec.Index): Spec.Index {
+    // Per https://firebase.google.com/docs/firestore/query-data/index-overview#default_ordering_and_the_name_field
+    // this matches the direction of the last non-name non-vector field in the index.
+    let fields = index.fields;
+    const suffixOrder: types.Order = FirestoreApi.lastIndexFieldOrder(fields);
+    const nameSuffix = { fieldPath: "__name__", order: suffixOrder } as types.IndexField;
+
+    const lastField = index.fields?.[index.fields.length - 1];
+    if (lastField.vectorConfig) {
+      // lastField is vector field, refer to the second from last field
+      const vectorField = lastField;
+      fields = fields.slice(0, -1);
+
+      if (fields.length === 0 || fields?.[fields.length - 1].fieldPath !== "__name__") {
+        fields.push(nameSuffix);
       }
+      fields.push(vectorField);
       return {
         ...index,
         fields,
       };
-    });
+    }
+    if (lastField?.fieldPath !== "__name__") {
+      fields.push(nameSuffix);
+    }
+    return {
+      ...index,
+      fields,
+    };
+  }
+
+  public static lastIndexFieldOrder(fields: types.IndexField[]): types.Order {
+    let lastIndexFieldOrder: types.Order = types.Order.ASCENDING;
+    for (const field of fields) {
+      if (field.order) {
+        lastIndexFieldOrder = field.order;
+      }
+    }
+    return lastIndexFieldOrder;
   }
 
   /**
@@ -212,7 +236,7 @@ export class FirestoreApi {
       return [];
     }
 
-    return FirestoreApi.processIndexes(indexes);
+    return indexes;
   }
 
   /**
@@ -340,7 +364,7 @@ export class FirestoreApi {
 
     index.fields.forEach((field: any) => {
       validator.assertHas(field, "fieldPath");
-      validator.assertHasOneOf(field, ["order", "arrayConfig", "vectorConfig"]);
+      validator.assertHasOneOf(field, ["order", "arrayConfig", "searchConfig", "vectorConfig"]);
 
       if (field.order) {
         validator.assertEnum(field, "order", Object.keys(types.Order));
@@ -353,6 +377,26 @@ export class FirestoreApi {
       if (field.vectorConfig) {
         validator.assertType("vectorConfig.dimension", field.vectorConfig.dimension, "number");
         validator.assertHas(field.vectorConfig, "flat");
+      }
+
+      if (field.searchConfig) {
+        if (field.searchConfig.textSpec) {
+          validator.assertHas(field.searchConfig.textSpec, "indexSpecs");
+          for (const spec of field.searchConfig.textSpec.indexSpecs as unknown[]) {
+            validator.assertHas(spec, "indexType");
+            validator.assertEnum(spec, "indexType", Object.keys(types.TextIndexType));
+            validator.assertHas(spec, "matchType");
+            validator.assertEnum(spec, "matchType", Object.keys(types.TextMatchType));
+          }
+        }
+        // all fields under field.searchConfig.geoSpec are optional
+        if (field.searchConfig.geoSpec?.geoJsonIndexingDisabled !== undefined) {
+          validator.assertType(
+            "searchConfig.geoSpec.geoJsonIndexingDisabled",
+            field.searchConfig.geoSpec.geoJsonIndexingDisabled,
+            "boolean",
+          );
+        }
       }
     });
   }
@@ -559,14 +603,19 @@ export class FirestoreApi {
 
     // TODO(b/439901837): Compare `unique` index configuration when it's supported.
 
-    if (index.fields.length !== spec.fields.length) {
+    let specIdx = spec;
+    if (edition === DatabaseEdition.STANDARD) {
+      specIdx = FirestoreApi.processIndex(specIdx);
+    }
+
+    if (index.fields.length !== specIdx.fields.length) {
       return false;
     }
 
     let i = 0;
     while (i < index.fields.length) {
       const iField = index.fields[i];
-      const sField = spec.fields[i];
+      const sField = specIdx.fields[i];
 
       if (iField.fieldPath !== sField.fieldPath) {
         return false;
@@ -580,8 +629,12 @@ export class FirestoreApi {
         return false;
       }
 
-      // Note: vectorConfig is an object, and using '!==' should not be used.
+      // Note: vectorConfig and searchConfig are objects, and '!==' should not be used.
       if (!utils.deepEqual(iField.vectorConfig, sField.vectorConfig)) {
+        return false;
+      }
+
+      if (!utils.deepEqual(iField.searchConfig, sField.searchConfig)) {
         return false;
       }
 
@@ -699,6 +752,8 @@ export class FirestoreApi {
             f.arrayConfig = field.arrayConfig;
           } else if (field.vectorConfig) {
             f.vectorConfig = field.vectorConfig;
+          } else if (field.searchConfig) {
+            f.searchConfig = field.searchConfig;
           } else if (field.mode === types.Mode.ARRAY_CONTAINS) {
             f.arrayConfig = types.ArrayConfig.CONTAINS;
           } else {
@@ -773,14 +828,22 @@ export class FirestoreApi {
       databaseEdition: req.databaseEdition,
       deleteProtectionState: req.deleteProtectionState,
       pointInTimeRecoveryEnablement: req.pointInTimeRecoveryEnablement,
+      realtimeUpdatesMode: req.realtimeUpdatesMode,
+      firestoreDataAccessMode: req.firestoreDataAccessMode,
+      mongodbCompatibleDataAccessMode: req.mongodbCompatibleDataAccessMode,
       cmekConfig: req.cmekConfig,
     };
     const options = { queryParams: { databaseId: req.databaseId } };
-    const res = await this.apiClient.post<types.DatabaseReq, { response?: types.DatabaseResp }>(
-      url,
-      payload,
-      options,
-    );
+    const res = await this.apiClient.post<
+      types.DatabaseReq,
+      { name: string; response?: types.DatabaseResp }
+    >(url, payload, options);
+    await pollOperation({
+      apiOrigin: firestoreOrigin(),
+      apiVersion: "v1",
+      operationResourceName: res.body.name,
+      masterTimeout: 600000,
+    });
     const database = res.body.response;
     if (!database) {
       throw new FirebaseError("Not found");
@@ -836,6 +899,32 @@ export class FirestoreApi {
   }
 
   /**
+   * Bulk delete documents from a Firestore database.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param collectionIds the collection IDs to delete.
+   */
+  async bulkDeleteDocuments(
+    project: string,
+    databaseId: string,
+    collectionIds: string[],
+  ): Promise<types.BulkDeleteDocumentsResponse> {
+    const name = `/projects/${project}/databases/${databaseId}`;
+    const url = `${name}:bulkDeleteDocuments`;
+    const payload: types.BulkDeleteDocumentsRequest = {
+      name,
+      collectionIds,
+    };
+    const res = await this.apiClient.post<
+      types.BulkDeleteDocumentsRequest,
+      types.BulkDeleteDocumentsResponse
+    >(url, payload);
+    return {
+      name: res.body?.name,
+    };
+  }
+
+  /**
    * Restore a Firestore Database from a backup.
    * @param project the Firebase project id.
    * @param databaseId the ID of the Firestore Database to be restored into
@@ -865,5 +954,106 @@ export class FirestoreApi {
     }
 
     return database;
+  }
+
+  /**
+   * Clone one Firestore Database to another.
+   * @param project the source project ID
+   * @param pitrSnapshot Source database PITR snapshot specification
+   * @param databaseId ID of the target database
+   * @param encryptionConfig the encryption configuration of the new database
+   */
+  async cloneDatabase(
+    project: string,
+    pitrSnapshot: types.PITRSnapshot,
+    databaseId: string,
+    encryptionConfig?: types.EncryptionConfig,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases:clone`;
+    const payload: types.CloneDatabaseReq = {
+      databaseId,
+      pitrSnapshot,
+      encryptionConfig,
+    };
+    const options = { queryParams: { databaseId: databaseId } };
+    const res = await this.apiClient.post<types.CloneDatabaseReq, types.Operation>(
+      url,
+      payload,
+      options,
+    );
+    const lro = res.body;
+    if (!lro) {
+      throw new FirebaseError("Not found");
+    }
+
+    return lro;
+  }
+
+  /**
+   * List the long-running Firestore operations.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param limit The maximum number of operations to list.
+   */
+  async listOperations(
+    project: string,
+    databaseId: string,
+    limit: number,
+  ): Promise<types.ListOperationsResponse> {
+    const url = `/projects/${project}/databases/${databaseId}/operations`;
+    const res = await this.apiClient.get<types.ListOperationsResponse>(url, {
+      queryParams: {
+        pageSize: limit,
+      },
+    });
+    return res.body;
+  }
+
+  /**
+   * Retrieves the information related to the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async describeOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<types.Operation> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}`;
+    const res = await this.apiClient.get<types.Operation>(url);
+    return res.body;
+  }
+
+  /**
+   * Cancels the LRO with the given name.
+   * @param project the Firebase project id.
+   * @param databaseId the id of the Firestore Database.
+   * @param operationName the name of the LRO.
+   */
+  async cancelOperation(
+    project: string,
+    databaseId: string,
+    operationName: string,
+  ): Promise<{ success: boolean }> {
+    const url = `/projects/${project}/databases/${databaseId}/operations/${operationName}:cancel`;
+    try {
+      const res = await this.apiClient.post<void, void>(url);
+      return { success: res.status === 200 };
+    } catch (error) {
+      // For the cases when the user is trying to cancel an operation that has
+      // already completed, the response is not very useful. The error message is
+      // "Precondition check failed.". And one has to parse the details of the error
+      // stack to find out the real reason. We try to improve the error message here.
+      const reason = "Cannot cancel an operation that is completed.";
+      const details = (error as any).context?.body?.error?.details || [];
+      for (const detail of details) {
+        if (detail.detail?.includes(reason)) {
+          throw new FirebaseError(reason);
+        }
+      }
+      // If we weren't able to provide a better reason, rethrow the original error.
+      throw error;
+    }
   }
 }

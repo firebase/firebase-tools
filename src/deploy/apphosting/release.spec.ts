@@ -1,7 +1,7 @@
 import * as sinon from "sinon";
 import * as rollout from "../../apphosting/rollout";
+import * as backend from "../../apphosting/backend";
 import { Config } from "../../config";
-import { AppHostingSingle } from "../../firebaseConfig";
 import { RC } from "../../rc";
 import { Context } from "./args";
 import release from "./release";
@@ -13,40 +13,13 @@ const BASE_OPTS = {
   except: "",
   force: false,
   nonInteractive: false,
-  interactive: false,
   debug: false,
   filteredTargets: [],
   rc: new RC(),
-  json: false,
 };
-
-function initializeContext(): Context {
-  return {
-    backendConfigs: new Map<string, AppHostingSingle>([
-      [
-        "foo",
-        {
-          backendId: "foo",
-          rootDir: "/",
-          ignore: [],
-        },
-      ],
-    ]),
-    backendLocations: new Map<string, string>([["foo", "us-central1"]]),
-    backendStorageUris: new Map<string, string>([
-      ["foo", "gs://firebaseapphosting-sources-us-central1/foo-1234.zip"],
-    ]),
-  };
-}
 
 describe("apphosting", () => {
   let orchestrateRolloutStub: sinon.SinonStub;
-
-  beforeEach(() => {
-    orchestrateRolloutStub = sinon
-      .stub(rollout, "orchestrateRollout")
-      .throws("Unexpected orchestrateRollout call");
-  });
 
   afterEach(() => {
     sinon.verifyAndRestore();
@@ -67,11 +40,88 @@ describe("apphosting", () => {
     };
 
     it("does not block rollouts of other backends if one rollout fails", async () => {
-      const context = initializeContext();
+      const context: Context = {
+        backendConfigs: {
+          foo: {
+            backendId: "foo",
+            rootDir: "/",
+            ignore: [],
+          },
+        },
+        backendLocations: { foo: "us-central1" },
+        backendStorageUris: {
+          foo: "gs://firebaseapphosting-sources-us-central1/foo-1234.zip",
+        },
+        backendLocalBuilds: {},
+      };
+
+      orchestrateRolloutStub = sinon
+        .stub(rollout, "orchestrateRollout")
+        .throws("Unexpected orchestrateRollout call");
+
       orchestrateRolloutStub.onFirstCall().rejects();
       orchestrateRolloutStub.onSecondCall().resolves();
 
       await expect(release(context, opts)).to.eventually.not.rejected;
+    });
+
+    it("correctly passes buildInput for local builds", async () => {
+      const context: Context = {
+        backendConfigs: {
+          fooLocalBuild: {
+            backendId: "fooLocalBuild",
+            rootDir: "/root",
+            ignore: [],
+            localBuild: true,
+          },
+        },
+        backendLocations: { fooLocalBuild: "us-central1" },
+        backendStorageUris: {
+          fooLocalBuild: "gs://bucket/foo-local-build.tar.gz",
+        },
+        backendLocalBuilds: {
+          fooLocalBuild: {
+            outputFiles: ["./dist"],
+            localBuildScratchDir: "/root/.local_build_fooLocalBuild",
+            buildConfig: {
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+            },
+          },
+        },
+      };
+
+      const orchestrateRolloutStub = sinon.stub(rollout, "orchestrateRollout").resolves();
+      sinon.stub(backend, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/fooLocalBuild",
+        servingLocality: "GLOBAL_ACCESS",
+        labels: {},
+        createTime: "2023-01-01T00:00:00Z",
+        updateTime: "2023-01-01T00:00:00Z",
+        uri: "foo.apphosting.com",
+      });
+
+      await release(context, opts);
+
+      expect(orchestrateRolloutStub).to.be.calledWith({
+        projectId: "my-project",
+        backendId: "fooLocalBuild",
+        location: "us-central1",
+        buildInput: {
+          config: {
+            runCommand: "npm run build",
+            env: [{ variable: "VAR1", value: "VALUE1" }],
+          },
+          source: {
+            locallyBuilt: {
+              userStorageUri: "gs://bucket/foo-local-build.tar.gz",
+              rootDirectory: "/root",
+              runCommand: "npm run build",
+              env: [{ variable: "VAR1", value: "VALUE1" }],
+            },
+          },
+        },
+      });
     });
   });
 });

@@ -1,76 +1,46 @@
-export interface CloudAICompanionMessage {
-  content: string;
-  author: string;
+import { Schema } from "../dataconnect/types";
+export { Schema };
+
+export type Role = "USER" | "MODEL";
+
+export interface TextChunk {
+  text: string;
 }
 
-export interface CloudAICompanionInput {
-  preamble?: string;
-  messages: CloudAICompanionMessage[];
+export interface CodeChunk {
+  code: string;
+  languageCode?: string;
 }
 
-export interface ExperienceContext {
-  experience?: string;
-  agent?: string;
-  task?: string;
+export interface Part {
+  textChunk?: TextChunk;
+  codeChunk?: CodeChunk;
 }
 
-export interface FdcRequestInfo {
-  serviceId?: string;
-  fdcServiceName: string;
-  requiresQuery: boolean;
+export interface ChatMessage {
+  role: Role;
+  parts: Part[];
 }
 
-export interface ClientContext {
-  name?: string;
-  additionalContext: {
-    "@type": string;
-    fdcInfo: FdcRequestInfo;
-  };
+export interface GenerationStatus {
+  state: "STATE_UNSPECIFIED" | "ANALYZING_SCHEMA" | "GENERATING_LOGIC" | "COMPLETED";
+  message?: string;
 }
 
-export interface CloudAICompanionRequest {
-  messageId?: string;
-  topic?: string;
-  input: CloudAICompanionInput;
-
-  // product context -- required
-  experienceContext: ExperienceContext;
-
-  // Client context (e.g. IDE name, version, etc)
-  clientContext?: ClientContext;
+export interface GenerateResponse {
+  status?: GenerationStatus;
+  part?: Part;
 }
 
-/** Experience specific response types */
-
-export interface GenerateOperationResponse {
-  output: { messages: CloudAICompanionMessage[] };
-  outputDataContext: { additionalcontext: { "@type:": string } };
+export interface GenerateSchemaRequest {
+  name: string;
+  prompt: string;
 }
 
-export interface GenerateSchemaResponse {
-  output: { messages: { content: string }[] };
-  displayContext: {
-    additionalContext: {
-      "@type": string;
-      firebaseFdcDisplayContext: { schemaSyntaxError: string };
-    };
-  };
+export interface GenerateOperationRequest {
+  name: string;
+  prompt: string;
+  schemas?: Schema[];
 }
 
-export interface ChatExperienceResponse {
-  output: { messages: CloudAICompanionMessage[] };
-  outputDataContext: {
-    additionalContext: { "@type": string };
-    attributionContext: {
-      citationMetadata: {
-        citations: {
-          startIndex: number;
-          endIndex: number;
-          url: string;
-          title: string;
-          license: string;
-        }[];
-      };
-    };
-  };
-}
+export type GenerateRequest = GenerateSchemaRequest | GenerateOperationRequest;

@@ -35,3 +35,74 @@ body {
     margin-bottom: 1em;
   }
 }
+
+.error-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-medium);
+  margin-bottom: var(--space-large);
+  border-left: 2px solid var(--vscode-errorForeground);
+  padding-left: var(--space-medium);
+}
+
+.error-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xsmall);
+}
+
+.error-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+  color: var(--vscode-errorForeground);
+  font-weight: bold;
+}
+
+.error-path {
+  font-size: 0.9em;
+  opacity: 0.8;
+  margin-left: calc(16px + var(--space-small)); // Align with message text
+
+  kbd {
+    background-color: var(--vscode-keybindingLabel-background);
+    color: var(--vscode-keybindingLabel-foreground);
+    border: 1px solid var(--vscode-keybindingLabel-border);
+    border-bottom-color: var(--vscode-keybindingLabel-bottomBorder);
+    border-radius: 3px;
+    padding: 0 3px;
+  }
+}
+
+.debug-details,
+.workarounds {
+  margin-left: calc(16px + var(--space-small));
+  margin-top: var(--space-small);
+
+  label {
+    display: block;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-bottom: var(--space-xsmall);
+    opacity: 0.8;
+  }
+
+  pre {
+    margin: 0;
+    padding: var(--space-small);
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--vscode-panel-border);
+  }
+}
+
+.error-code {
+  font-family: monospace;
+  background-color: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 0.85em;
+  font-weight: normal;
+}

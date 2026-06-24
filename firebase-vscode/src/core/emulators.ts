@@ -21,8 +21,11 @@ export class EmulatorsController implements Disposable {
 
     // called by emulator UI
     this.subscriptions.push(
-      broker.on("runStartEmulators", () => {
-        this.setEmulatorsStarting();
+      broker.on("runStartEmulators", async () => {
+        if (await this.areEmulatorsRunning()) {
+          return;
+        }
+        this.startEmulators();
       }),
     );
 
@@ -42,7 +45,7 @@ export class EmulatorsController implements Disposable {
 
     // Subscription to trigger emulator exports when button is clicked.
     this.subscriptions.push(broker.on("runEmulatorsExport", () => {
-      vscode.commands.executeCommand("firebase.emulators.exportData")
+      vscode.commands.executeCommand("firebase.emulators.exportData");
     }));
   }
 
@@ -143,6 +146,12 @@ export class EmulatorsController implements Disposable {
     this.notifyEmulatorStateChanged();
   }
 
+  public async areEmulatorsRunning(): Promise<boolean> {
+    // Check if any emulators are running
+    // It may have been terminated without VS Code knowing.
+    return (await this.findRunningCliEmulators())?.status === "running";
+  }
+
   async findRunningCliEmulators(): Promise<
     { status: EmulatorsStatus; infos?: RunningEmulatorInfo }
   > {
@@ -163,7 +172,7 @@ export class EmulatorsController implements Disposable {
     const hubClient = this.getHubClient();
     if (hubClient) {
       await hubClient.clearDataConnectData();
-      vscode.window.showInformationMessage(`Data Connect emulator data has been cleared.`);
+      vscode.window.showInformationMessage(`SQL Connect emulator data has been cleared.`);
     }
   }
 
@@ -173,27 +182,19 @@ export class EmulatorsController implements Disposable {
     const hubClient = this.getHubClient();
     if (hubClient) {
       // TODO: Make exportDir configurable
-      await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
+      await hubClient.postExport({path: exportDir, initiatedBy: "SQL Connect VSCode extension"});
       vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);
     }
   }
 
   private getHubClient(): EmulatorHubClient | undefined {
     const projectId = firebaseRC.value?.tryReadValue?.projects?.default;
-    // TODO: think about what to without projectID, in potentially a logged out mode
-    const hubClient = new EmulatorHubClient(projectId!);
+    const hubClient = new EmulatorHubClient(projectId);
     if (hubClient.foundHub()) {
       return hubClient;
     } else {
       this.setEmulatorsStopped();
     }
-  }
-
-  public async areEmulatorsRunning(): Promise<boolean> {
-    if (this.emulators.status === "running") {
-      return true;
-    }
-    return (await this.findRunningCliEmulators())?.status === "running";
   }
 
   /** FDC specific functions */
