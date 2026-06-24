@@ -1,12 +1,12 @@
 {
   "name": "firebase-tools",
-  "version": "15.22.1",
+  "version": "15.22.2",
   "lockfileVersion": 2,
   "requires": true,
   "packages": {
     "": {
       "name": "firebase-tools",
-      "version": "15.22.1",
+      "version": "15.22.2",
       "license": "MIT",
       "dependencies": {
         "@apphosting/common": "^0.0.8",
