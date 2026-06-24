@@ -448,8 +448,11 @@ function isAngularApplication(appDir: string): boolean {
           return true;
         }
       }
-    } catch (e) {
-      // Ignore JSON parsing or read errors
+    } catch (e: unknown) {
+      logLabeledWarning(
+        "apphosting",
+        `Failed to parse package.json in ${appDir}: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
   const angularJsonPath = path.join(appDir, "angular.json");
