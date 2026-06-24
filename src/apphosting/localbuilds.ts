@@ -332,7 +332,7 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
     );
 
     const targetRange = `^${targetMajor}.0.0`;
-    if (!semver.intersects(targetRange, enginesNode)) {
+    if (semver.validRange(enginesNode) && !semver.intersects(targetRange, enginesNode)) {
       logLabeledWarning(
         "apphosting",
         `The Node.js version range specified in your package.json engines ("${enginesNode}") ` +
