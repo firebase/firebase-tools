@@ -39,6 +39,7 @@ export async function checkBillingEnabled(projectId: string): Promise<boolean> {
     {
       retries: 3,
       retryCodes: [429, 500, 503],
+      headers: { "x-goog-user-project": projectId },
     },
   );
   return res.body.billingEnabled;
@@ -58,7 +59,10 @@ export async function setBillingAccount(
     {
       billingAccountName: billingAccountName,
     },
-    { retryCodes: [429, 500, 503] },
+    {
+      retryCodes: [429, 500, 503],
+      headers: { "x-goog-user-project": projectId },
+    },
   );
   return res.body.billingEnabled;
 }
@@ -67,10 +71,17 @@ export async function setBillingAccount(
  * Lists the billing accounts that the current authenticated user has permission to view.
  * @return {!Promise<Object[]>}
  */
-export async function listBillingAccounts(): Promise<BillingAccount[]> {
+export async function listBillingAccounts(projectId?: string): Promise<BillingAccount[]> {
+  const headers: Record<string, string> = {};
+  if (projectId) {
+    headers["x-goog-user-project"] = projectId;
+  }
   const res = await client.get<{ billingAccounts: BillingAccount[] }>(
     utils.endpoint(["billingAccounts"]),
-    { retryCodes: [429, 500, 503] },
+    {
+      retryCodes: [429, 500, 503],
+      headers,
+    },
   );
   return res.body.billingAccounts || [];
 }
