@@ -40,7 +40,7 @@ async function openBillingAccount(projectId: string, url: string, open: boolean)
       "Press enter when finished upgrading your project to continue setting up your extension.",
     default: true,
   });
-  return cloudbilling.checkBillingEnabled(projectId);
+  return cloudbilling.checkBillingEnabled(projectId, true);
 }
 
 /**

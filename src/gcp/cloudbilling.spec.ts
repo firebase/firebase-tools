@@ -9,6 +9,7 @@ const PROJECT_ID = "test-project";
 describe("cloudbilling", () => {
   afterEach(() => {
     nock.cleanAll();
+    cloudbilling.clearCache();
   });
 
   describe("checkBillingEnabled", () => {
@@ -43,6 +44,36 @@ describe("cloudbilling", () => {
         .reply(404, { error: { message: "Not Found" } });
 
       await expect(cloudbilling.checkBillingEnabled(PROJECT_ID)).to.be.rejectedWith("Not Found");
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should cache the result and not call API again", async () => {
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, { billingEnabled: true });
+
+      const [result1, result2] = await Promise.all([
+        cloudbilling.checkBillingEnabled(PROJECT_ID),
+        cloudbilling.checkBillingEnabled(PROJECT_ID),
+      ]);
+      expect(result1).to.be.true;
+      expect(result2).to.be.true;
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should force refresh if forceRefresh is true", async () => {
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, { billingEnabled: true });
+
+      await cloudbilling.checkBillingEnabled(PROJECT_ID);
+
+      nock(cloudbillingOrigin())
+        .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
+        .reply(200, { billingEnabled: false });
+
+      const result2 = await cloudbilling.checkBillingEnabled(PROJECT_ID, true);
+      expect(result2).to.be.false;
       expect(nock.isDone()).to.be.true;
     });
   });
@@ -117,6 +148,20 @@ describe("cloudbilling", () => {
         cloudbilling.setBillingAccount(PROJECT_ID, billingAccountName),
       ).to.be.rejectedWith("Permission Denied");
       expect(nock.isDone()).to.be.true;
+    });
+
+    it("should update the cache", async () => {
+      nock(cloudbillingOrigin())
+        .put(`/v1/projects/${PROJECT_ID}/billingInfo`, {
+          billingAccountName: billingAccountName,
+        })
+        .reply(200, { billingEnabled: true });
+
+      await cloudbilling.setBillingAccount(PROJECT_ID, billingAccountName);
+      expect(nock.isDone()).to.be.true;
+
+      const result = await cloudbilling.checkBillingEnabled(PROJECT_ID);
+      expect(result).to.be.true;
     });
   });
 

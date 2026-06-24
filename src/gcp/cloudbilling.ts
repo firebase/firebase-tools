@@ -29,20 +29,42 @@ export async function isBillingEnabled(setup: Setup): Promise<boolean> {
   return setup.isBillingEnabled;
 }
 
+const billingEnabledCache: Map<string, Promise<boolean>> = new Map();
+
+/**
+ * Reset the billing enabled cache.
+ * @internal
+ */
+export function clearCache(): void {
+  billingEnabledCache.clear();
+}
+
 /**
  * Returns whether or not project has billing enabled.
- * @param projectId
+ * @param projectId The project ID.
+ * @param forceRefresh Whether to force a refresh by bypassing the cache.
  */
-export async function checkBillingEnabled(projectId: string): Promise<boolean> {
-  const res = await client.get<{ billingEnabled: boolean }>(
-    utils.endpoint(["projects", projectId, "billingInfo"]),
-    {
+export function checkBillingEnabled(projectId: string, forceRefresh = false): Promise<boolean> {
+  if (!forceRefresh) {
+    const cached = billingEnabledCache.get(projectId);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
+  const promise = client
+    .get<{ billingEnabled: boolean }>(utils.endpoint(["projects", projectId, "billingInfo"]), {
       retries: 3,
       retryCodes: [429, 500, 503],
       headers: { "x-goog-user-project": projectId },
-    },
-  );
-  return res.body.billingEnabled;
+    })
+    .then((res) => res.body.billingEnabled)
+    .catch((err) => {
+      billingEnabledCache.delete(projectId);
+      throw err;
+    });
+
+  billingEnabledCache.set(projectId, promise);
+  return promise;
 }
 
 /**
@@ -64,7 +86,9 @@ export async function setBillingAccount(
       headers: { "x-goog-user-project": projectId },
     },
   );
-  return res.body.billingEnabled;
+  const enabled = res.body.billingEnabled;
+  billingEnabledCache.set(projectId, Promise.resolve(enabled));
+  return enabled;
 }
 
 /**
