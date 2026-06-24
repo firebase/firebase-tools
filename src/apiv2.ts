@@ -5,6 +5,8 @@ import { ProxyAgent } from "proxy-agent";
 import * as retry from "retry";
 import AbortController from "abort-controller";
 import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
+import * as http from "http";
+import * as https from "https";
 import util from "util";
 
 import * as auth from "./auth";
@@ -155,6 +157,39 @@ function proxyURIFromEnv(): string | undefined {
     process.env.http_proxy ||
     undefined
   );
+}
+
+// Some networks (and recent Node.js security releases) interact badly with
+// node-fetch's keep-alive handling: a reused/closed keep-alive socket surfaces
+// as an "Invalid response body ...: Premature close" error while the response
+// body is being read, even though the response is otherwise valid. Retrying the
+// request once without keep-alive (Connection: close) reliably works around it.
+// See https://github.com/firebase/firebase-tools/issues/10692 and
+// https://github.com/node-fetch/node-fetch/issues/1767.
+const httpAgentNoKeepAlive = new http.Agent({ keepAlive: false });
+const httpsAgentNoKeepAlive = new https.Agent({ keepAlive: false });
+function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
+  return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
+}
+
+function isPrematureCloseError(err: unknown): boolean {
+  for (const candidate of [err, (err as { original?: unknown } | undefined)?.original]) {
+    if (!candidate) {
+      continue;
+    }
+    const e = candidate as { code?: string; errno?: string; message?: string };
+    const code = e.code || e.errno;
+    const message = typeof e.message === "string" ? e.message : "";
+    if (
+      code === "ERR_STREAM_PREMATURE_CLOSE" ||
+      code === "ECONNRESET" ||
+      /premature close/i.test(message) ||
+      /socket hang up/i.test(message)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type ClientOptions = {
@@ -408,8 +443,18 @@ export class Client {
       fetchOptions.signal = signal;
     }
 
-    if (typeof options.body === "string" || isStream(options.body)) {
+    // A request can only be safely retried if its body can be sent again.
+    // FormData is a single-use stream, so serialize it to a Buffer up front (the
+    // CLI only sends small string forms this way, e.g. the OAuth token request).
+    // Raw streams cannot be replayed and therefore disable the keep-alive retry.
+    let bodyReplayable = true;
+    if (typeof options.body === "string" || Buffer.isBuffer(options.body)) {
       fetchOptions.body = options.body;
+    } else if (options.body instanceof FormData) {
+      fetchOptions.body = options.body.getBuffer();
+    } else if (isStream(options.body)) {
+      fetchOptions.body = options.body;
+      bodyReplayable = false;
     } else if (options.body !== undefined) {
       fetchOptions.body = JSON.stringify(options.body);
     }
@@ -430,6 +475,10 @@ export class Client {
       operationOptions.maxTimeout = options.retryMaxTimeout;
     }
     const operation = retry.operation(operationOptions);
+
+    // Tracks whether we've already downgraded this request to a non-keep-alive
+    // connection in response to a "Premature close" error (retried at most once).
+    let disabledKeepAlive = false;
 
     return await new Promise<ClientResponse<ResT>>((resolve, reject) => {
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
@@ -490,6 +539,27 @@ export class Client {
             });
           }
         } catch (err: unknown) {
+          // Work around a node-fetch/Node.js keep-alive bug that surfaces as a
+          // "Premature close" error: retry the request once without keep-alive.
+          if (
+            !disabledKeepAlive &&
+            bodyReplayable &&
+            !proxyURIFromEnv() &&
+            isPrematureCloseError(err)
+          ) {
+            disabledKeepAlive = true;
+            fetchOptions.agent = noKeepAliveAgent;
+            // Use a fresh Headers instance so we don't mutate the shared options.
+            const closeHeaders = new Headers(fetchOptions.headers);
+            closeHeaders.set("Connection", "close");
+            fetchOptions.headers = closeHeaders;
+            logger.debug(
+              `*** [apiv2] retrying ${fetchURL} without keep-alive after a premature close error`,
+            );
+            if (operation.retry(err instanceof Error ? err : new Error(`${err}`))) {
+              return;
+            }
+          }
           return err instanceof FirebaseError ? reject(err) : reject(new FirebaseError(`${err}`));
         }
 
