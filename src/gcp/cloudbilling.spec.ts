@@ -49,12 +49,13 @@ describe("cloudbilling", () => {
         .get(`/v1/projects/${PROJECT_ID}/billingInfo`)
         .reply(200, { billingEnabled: true });
 
-      const result1 = await cloudbilling.checkBillingEnabled(PROJECT_ID);
+      const [result1, result2] = await Promise.all([
+        cloudbilling.checkBillingEnabled(PROJECT_ID),
+        cloudbilling.checkBillingEnabled(PROJECT_ID),
+      ]);
       expect(result1).to.be.true;
-      expect(nock.isDone()).to.be.true;
-
-      const result2 = await cloudbilling.checkBillingEnabled(PROJECT_ID);
       expect(result2).to.be.true;
+      expect(nock.isDone()).to.be.true;
     });
 
     it("should force refresh if forceRefresh is true", async () => {

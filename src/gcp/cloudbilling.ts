@@ -29,7 +29,7 @@ export async function isBillingEnabled(setup: Setup): Promise<boolean> {
   return setup.isBillingEnabled;
 }
 
-const billingEnabledCache: Map<string, boolean> = new Map();
+const billingEnabledCache: Map<string, Promise<boolean>> = new Map();
 
 /**
  * Reset the billing enabled cache.
@@ -44,26 +44,26 @@ export function clearCache(): void {
  * @param projectId The project ID.
  * @param forceRefresh Whether to force a refresh by bypassing the cache.
  */
-export async function checkBillingEnabled(
-  projectId: string,
-  forceRefresh = false,
-): Promise<boolean> {
+export function checkBillingEnabled(projectId: string, forceRefresh = false): Promise<boolean> {
   if (!forceRefresh) {
     const cached = billingEnabledCache.get(projectId);
     if (cached !== undefined) {
       return cached;
     }
   }
-  const res = await client.get<{ billingEnabled: boolean }>(
-    utils.endpoint(["projects", projectId, "billingInfo"]),
-    {
+  const promise = client
+    .get<{ billingEnabled: boolean }>(utils.endpoint(["projects", projectId, "billingInfo"]), {
       retries: 3,
       retryCodes: [429, 500, 503],
-    },
-  );
-  const enabled = res.body.billingEnabled;
-  billingEnabledCache.set(projectId, enabled);
-  return enabled;
+    })
+    .then((res) => res.body.billingEnabled)
+    .catch((err) => {
+      billingEnabledCache.delete(projectId);
+      throw err;
+    });
+
+  billingEnabledCache.set(projectId, promise);
+  return promise;
 }
 
 /**
@@ -83,7 +83,7 @@ export async function setBillingAccount(
     { retryCodes: [429, 500, 503] },
   );
   const enabled = res.body.billingEnabled;
-  billingEnabledCache.set(projectId, enabled);
+  billingEnabledCache.set(projectId, Promise.resolve(enabled));
   return enabled;
 }
 
