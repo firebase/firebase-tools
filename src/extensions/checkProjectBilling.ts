@@ -99,7 +99,7 @@ async function setUpBillingAccount(projectId: string) {
  * @param {string} projectId
  */
 export async function enableBilling(projectId: string): Promise<void> {
-  const billingAccounts = await cloudbilling.listBillingAccounts();
+  const billingAccounts = await cloudbilling.listBillingAccounts(projectId);
   if (billingAccounts) {
     const accounts = billingAccounts.filter((account) => account.open);
     return accounts.length > 0
