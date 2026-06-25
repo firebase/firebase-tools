@@ -133,6 +133,26 @@ function getPythonDisableGunicornShimDir(): string {
   return pythonDisableGunicornShimDir;
 }
 
+function cleanupPythonDisableGunicornShimDir(logDebug: (message: string) => void): void {
+  if (!pythonDisableGunicornShimDir) {
+    return;
+  }
+
+  try {
+    fs.rmSync(pythonDisableGunicornShimDir, { recursive: true });
+    pythonDisableGunicornShimDir = undefined;
+  } catch (e: any) {
+    if (e?.code === "ENOENT") {
+      pythonDisableGunicornShimDir = undefined;
+      return;
+    }
+
+    logDebug(
+      `Failed to clean up python-disable-gunicorn shim dir ${pythonDisableGunicornShimDir}: ${e}`,
+    );
+  }
+}
+
 function prependPythonPath(envs: Record<string, string | undefined>, injectedPath: string): string {
   return envs.PYTHONPATH ? `${injectedPath}${path.delimiter}${envs.PYTHONPATH}` : injectedPath;
 }
@@ -639,6 +659,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (this.destroyServer) {
       await this.destroyServer();
     }
+
+    cleanupPythonDisableGunicornShimDir((message) => this.logger.log("DEBUG", message));
   }
 
   async discoverTriggers(
