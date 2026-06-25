@@ -99,9 +99,9 @@ export class Fabricator {
     const changesets = Object.values(plan);
 
     // Phase 1: Creates and Updates
-    const scraperV1 = new SourceTokenScraper();
-    const scraperV2 = new SourceTokenScraper();
     const createAndUpdatePromises = changesets.map((changes) => {
+      const scraperV1 = new SourceTokenScraper();
+      const scraperV2 = new SourceTokenScraper();
       return this.applyUpserts(changes, scraperV1, scraperV2);
     });
     const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
@@ -662,6 +662,8 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  // We use createRunFunction and updateRunFunction specifically to deploy Dart functions
+  // directly over to Cloud Run! This avoids cluttering normal Gen 2 Node function hooks.
   async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
     const storageSource = this.sources[endpoint.codebase!]?.storage;
     if (!storageSource) {
@@ -692,7 +694,20 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "create"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
@@ -722,7 +737,19 @@ export class Fabricator {
       })
       .catch(rethrowAs(endpoint, "update"));
 
-    await this.setInvoker(endpoint);
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    // We check for null vs undefined to respect settings people make on the Google Console.
+    // If it's omitted (undefined), we don't touch policies. If it is explicitly null, we make it public.
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    }
+
+    if (invoker) {
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
   }
 
   async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
@@ -738,23 +765,6 @@ export class Fabricator {
         }
       })
       .catch(rethrowAs(endpoint, "delete"));
-  }
-
-  async setInvoker(endpoint: backend.Endpoint): Promise<void> {
-    if (backend.isHttpsTriggered(endpoint)) {
-      const invoker = endpoint.httpsTrigger.invoker || ["public"];
-      if (!invoker.includes("private")) {
-        await this.executor
-          .run(() =>
-            run.setInvokerUpdate(
-              endpoint.project,
-              `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`,
-              invoker,
-            ),
-          )
-          .catch(rethrowAs(endpoint, "set invoker"));
-      }
-    }
   }
 
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {

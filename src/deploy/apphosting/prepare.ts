@@ -1,4 +1,9 @@
+import * as crypto from "crypto";
+import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
+import * as fsAsync from "../../fsAsync";
+import { resolveIgnorePatterns } from "./util";
 import {
   doSetupSourceDeploy,
   ensureAppHostingComputeServiceAccount,
@@ -154,7 +159,12 @@ export default async function (context: Context, options: Options): Promise<void
       ) as AppHostingSingle[];
       for (const cfg of selectedBackends) {
         logLabeledBullet("apphosting", `Creating a new backend ${cfg.backendId}...`);
-        const { location } = await doSetupSourceDeploy(projectId, cfg.backendId);
+        const { location } = await doSetupSourceDeploy(
+          projectId,
+          cfg.backendId,
+          options.nonInteractive,
+          cfg.rootDir,
+        );
         context.backendConfigs[cfg.backendId] = cfg;
         context.backendLocations[cfg.backendId] = location;
       }
@@ -187,25 +197,34 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    // Generate a static 8-character hash of the Workspace Root directory path to guarantee
+    // 100% sibling folder build isolation on the same machine, while preserving predictability.
+    const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
+    const localBuildScratchDir = path.join(
+      os.tmpdir(),
+      `apphosting-local-build-${cfg.backendId}-${pathHash}`,
+    );
+
     try {
-      const { outputFiles, annotations, buildConfig } = await localBuild(
-        options.projectRoot || "./",
-        "nextjs",
+      await prepareLocalBuildScratchDirectory(rootDir, localBuildScratchDir, cfg);
+
+      const { outputFiles, buildConfig } = await localBuild(
+        projectId,
+        localBuildScratchDir,
         buildEnv[cfg.backendId] || {},
+        {
+          nonInteractive: options.nonInteractive,
+          allowLocalBuildSecrets: !!options.allowLocalBuildSecrets,
+        },
       );
-      if (outputFiles.length !== 1) {
-        throw new FirebaseError(
-          `Local build for backend ${cfg.backendId} failed: No output files found.`,
-        );
-      }
       context.backendLocalBuilds[cfg.backendId] = {
-        // TODO(9114): This only works for nextjs.
-        buildDir: outputFiles[0],
+        outputFiles,
+        localBuildScratchDir,
         buildConfig: {
           ...buildConfig,
           env: mergeEnvVars(buildConfig.env || [], runtimeEnv[cfg.backendId] || {}),
         },
-        annotations,
       };
     } catch (e: unknown) {
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -365,5 +384,42 @@ async function ensureAppHostingServiceAgentRoles(
       "apphosting",
       `Unable to verify App Hosting service agent permissions for ${p4saEmail}. If you encounter a PERMISSION_DENIED error during rollout, please ensure the service agent has the "Storage Object Viewer" role.`,
     );
+  }
+}
+
+/**
+ * Prepares the scratch directory for local builds by copying non-ignored files.
+ *
+ * NOTE ON FILE FILTERING:
+ * For local builds, we apply all ignore filtering (user firebase.json ignores and .gitignore)
+ * BEFORE the build runs, right here during the directory copying phase. This creates a clean,
+ * isolated scratch workspace in the `.local_build_<backendId>` folder that contains exactly the same
+ * source files that would be uploaded to Cloud Build.
+ */
+async function prepareLocalBuildScratchDirectory(
+  rootDir: string,
+  localBuildScratchDir: string,
+  cfg: AppHostingSingle,
+): Promise<void> {
+  // Resolve ignores for local builds, including default node_modules ignore
+  const ignore = resolveIgnorePatterns(cfg);
+
+  // Purge the temporary workspace if it already exists to guarantee a perfectly clean build environment,
+  // eliminating stale artifacts from any previous interrupted runs.
+  fs.rmSync(localBuildScratchDir, { recursive: true, force: true });
+  fs.mkdirSync(localBuildScratchDir, { recursive: true });
+
+  // Copy files respecting ignores
+  const filesToCopy = await fsAsync.readdirRecursive({
+    path: rootDir,
+    ignoreStrings: ignore,
+    supportGitIgnore: true,
+  });
+
+  for (const file of filesToCopy) {
+    const relativePath = path.relative(rootDir, file.name);
+    const destPath = path.join(localBuildScratchDir, relativePath);
+    fs.mkdirSync(path.dirname(destPath), { recursive: true });
+    fs.copyFileSync(file.name, destPath);
   }
 }

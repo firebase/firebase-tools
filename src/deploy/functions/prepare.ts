@@ -12,6 +12,7 @@ import * as runtimes from "./runtimes";
 import * as supported from "./runtimes/supported";
 import * as validate from "./validate";
 import * as ensure from "./ensure";
+import { serviceForEndpoint, FALLBACK_DEPLOYMENT_REGION } from "./services";
 import {
   functionsOrigin,
   artifactRegistryDomain,
@@ -38,7 +39,8 @@ import { needProjectId, needProjectNumber } from "../../projectUtils";
 import { logger } from "../../logger";
 import { ensureTriggerRegions } from "./triggerRegionHelper";
 import { ensureServiceAgentRoles, ensureGenkitMonitoringRoles } from "./checkIam";
-import { FirebaseError } from "../../error";
+import { FirebaseError, getErrStack } from "../../error";
+
 import {
   configForCodebase,
   normalizeAndValidate,
@@ -50,7 +52,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive } from "../../functional";
+import { assertExhaustive, partition } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -116,6 +118,8 @@ export async function prepare(
     context.filters,
   );
 
+  const existingBackend = await backend.existingBackend(context);
+
   // == Phase 1.5 Prepare extensions found in codebases if any
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
@@ -140,6 +144,11 @@ export async function prepare(
     proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const envs = { ...userEnvs, ...firebaseEnvs };
+
+    const relevantEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((e) => e.codebase === codebase || e.codebase === undefined);
+    await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
@@ -271,19 +280,23 @@ export async function prepare(
   // ===Phase 4. Fill in details and validate endpoints. We run the check for ALL endpoints - we think it's useful for
   // validations to fail even for endpoints that aren't being deployed so any errors are caught early.
   payload.functions = {};
+  // Resolve default regions for backends we want before grouping endpoints by codebase.
+  // This way, endpoints aren't incorrectly grouped together under the REGION_TBD region if the
+  // region is unresolved for multiple codebases.
+
   const haveBackends = groupEndpointsByCodebase(
     wantBackends,
-    backend.allEndpoints(await backend.existingBackend(context)),
+    backend.allEndpoints(existingBackend),
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
     payload.functions[codebase] = { wantBackend, haveBackend };
   }
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    await resolveDefaultRegions(wantBackend, haveBackend);
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
     resolveCpuAndConcurrency(wantBackend);
+    resolveDefaultTimeout(wantBackend);
     validate.endpointsAreValid(wantBackend);
     inferBlockingDetails(wantBackend);
   }
@@ -292,7 +305,7 @@ export async function prepare(
   const wantBackend = backend.merge(...Object.values(wantBackends));
   const haveBackend = backend.merge(...Object.values(haveBackends));
 
-  await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend);
+  await ensureAllRequiredAPIsEnabled(projectNumber, wantBackend, options);
   await warnIfNewGenkitFunctionIsMissingSecrets(wantBackend, haveBackend, options);
   warnIfDartBackendHasUnsupportedTriggers(wantBackend);
 
@@ -332,80 +345,53 @@ export async function prepare(
   applyBackendHashToBackends(wantBackends, context);
 }
 
-function moveEndpointToRegion(
-  backend: backend.Backend,
-  endpoint: backend.Endpoint,
-  region: string,
-) {
-  endpoint.region = region;
-  backend.endpoints[region] = backend.endpoints[region] || {};
-  backend.endpoints[region][endpoint.id] = endpoint;
-  delete backend.endpoints[build.REGION_TBD][endpoint.id];
-  if (Object.keys(backend.endpoints[build.REGION_TBD]).length === 0) {
-    delete backend.endpoints[build.REGION_TBD];
-  }
-}
-
 /**
- * Verifies that we don't have a peculiar edge case where we cannot know what region a default endpoint was in.
- * This is only possible in insane edge cases (esp since you can only have multi-region functions for HTTPS and
- * regional AI Logic functions) where a customer HAD specified multiple regions in a function and then deleted
- * the regions annotation entirely and we don't know which to delete and which to keep.
+ * Resolves default regions for endpoints in a Build before it is converted to a Backend.
+ * This allows the VPC connector string to be built with the correct region in build.ts.
  */
-export function matchRegionsForExisting(want: backend.Backend, have: backend.Backend): void {
-  for (const [id, wantE] of Object.entries(want.endpoints[build.REGION_TBD] || {})) {
-    let matching: backend.Endpoint | undefined;
-    for (const region of Object.keys(have.endpoints)) {
-      if (region === build.REGION_TBD) {
-        continue;
-      }
-      if (have.endpoints[region][id]) {
-        if (matching) {
-          throw new FirebaseError(
-            `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
-          );
-        }
-        matching = have.endpoints[region][id];
-      }
-    }
-
-    if (!matching) {
-      continue;
-    }
-
-    moveEndpointToRegion(want, wantE, matching.region);
-  }
-}
-
-/**
- * Resolves regions for endpoints that were not specified in the build.
- * This is an improvement from old logic where everything was hard-coded to us-central1. Now,
- * we can move defaults to adjust for regional capacity or automaically match the function
- * to its event source allowing region to be specified less often.
- */
-// N.B. This is async because it will eventually look up backend info
-export async function resolveDefaultRegions(
-  want: backend.Backend,
+export async function resolveDefaultRegionsForBuild(
+  buildObj: build.Build,
   have: backend.Backend,
 ): Promise<void> {
-  matchRegionsForExisting(want, have);
+  for (const [id, endpoint] of Object.entries(buildObj.endpoints)) {
+    if (!endpoint.region?.length || endpoint.region.includes(build.REGION_TBD)) {
+      let resolvedRegion = FALLBACK_DEPLOYMENT_REGION;
 
-  for (const endpoint of Object.values(want.endpoints[build.REGION_TBD] || {})) {
-    // TODO: Start adding dynamic region support per event type to distribute away from us-central1.
-    // Other regions have faster cold start times and will give a better customer experience. Ideas:
-    // 1. NAM5 resources can be put in us-east1 instead.
-    // 2. Regional resources can be placed in that region instead of assuming us-central1 (which is
-    //    the right behavior anyway and only works through legacy support in GCF). E.g. Put the storage
-    //    function in the storage bucket's region. Then we can nudge people to not have us-central1
-    //    be the default.
-    // 3. Functions that have a global resource (e.g. Auth, Test Lab, Pub/Sub, etc.) can be placed in
-    //    a region with higher headroom.
-    // 4. HTTP functions may be defaultable to a different region because it is up to the customer to
-    //    wire up the URL we give them irrespective.
-    // 5. Callable functions could be moved by default, though this will require breaking changes to
-    //    the client SDKs as well.
-    moveEndpointToRegion(want, endpoint, "us-central1");
+      // Match existing endpoints.
+      let matching: backend.Endpoint | undefined;
+      for (const region of Object.keys(have.endpoints)) {
+        if (have.endpoints[region][id]) {
+          if (matching) {
+            throw new FirebaseError(
+              `Cannot resolve default region for function ${id}. It exists in multiple regions. The region must be specified to continue.`,
+            );
+          }
+          matching = have.endpoints[region][id];
+        }
+      }
+
+      if (matching) {
+        resolvedRegion = matching.region;
+      } else {
+        // Match triggers.
+        try {
+          resolvedRegion = await resolveRegionForTrigger(endpoint);
+        } catch (err: any) {
+          logger.debug(
+            `Failed to resolve region for endpoint ${id}. Defaulting to ${FALLBACK_DEPLOYMENT_REGION}.`,
+            getErrStack(err),
+          );
+        }
+      }
+
+      endpoint.region = [resolvedRegion];
+    }
   }
+}
+
+async function resolveRegionForTrigger(endpoint: build.Endpoint): Promise<string> {
+  const service = serviceForEndpoint(endpoint);
+  return await service.getDefaultRegion(endpoint);
 }
 
 /**
@@ -446,6 +432,10 @@ export function inferDetailsFromExisting(
 
     if (typeof wantE.cpu === "undefined" && haveE.cpu) {
       wantE.cpu = haveE.cpu;
+    }
+
+    if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
+      wantE.timeoutSeconds = haveE.timeoutSeconds;
     }
 
     // N.B. concurrency has different defaults based on CPU. If the customer
@@ -542,6 +532,18 @@ export function resolveCpuAndConcurrency(want: backend.Backend): void {
 
     if (!e.concurrency) {
       e.concurrency = e.cpu >= 1 ? backend.DEFAULT_CONCURRENCY : 1;
+    }
+  }
+}
+
+/**
+ * Assigns the default timeout to a function if it is deployed to Cloud Run
+ * and no timeout was specified.
+ */
+export function resolveDefaultTimeout(want: backend.Backend): void {
+  for (const e of backend.allEndpoints(want)) {
+    if (e.platform === "run" && e.timeoutSeconds === undefined) {
+      e.timeoutSeconds = backend.DEFAULT_TIMEOUT_SECONDS;
     }
   }
 }
@@ -678,14 +680,77 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   }
 }
 
-// Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
-// require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
+// Standard built-in Google Cloud APIs that the CLI inherently relies upon or ensures
+// enabled during the normal Cloud Functions deployment lifecycle. This covers:
+// - Core compute & build: cloudfunctions, run, cloudbuild, artifactregistry
+// - Configuration & secrets: runtimeconfig, secretmanager
+// - Async triggers & events: pubsub, eventarc, storage, cloudscheduler, cloudtasks
+const STANDARD_APIS = [
+  "cloudfunctions.googleapis.com",
+  "runtimeconfig.googleapis.com",
+  "cloudbuild.googleapis.com",
+  "artifactregistry.googleapis.com",
+  "run.googleapis.com",
+  "eventarc.googleapis.com",
+  "pubsub.googleapis.com",
+  "storage.googleapis.com",
+  "secretmanager.googleapis.com",
+  "cloudscheduler.googleapis.com",
+  "cloudtasks.googleapis.com",
+];
+
+/**
+ * Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+ * require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
+ * @param projectNumber The GCP project number to inspect and enable APIs on.
+ * @param wantBackend The expected Backend spec containing manifest-declared required APIs.
+ * @param options Deploy execution options for prompting configuration.
+ * @param [options.force] Whether to force confirm interactive prompts.
+ * @param [options.nonInteractive] Whether the CLI is running in non-interactive mode.
+ */
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
-  wantBackend: backend.Backend,
+  wantBackend: backend.Backend = backend.empty(),
+  options: { force?: boolean; nonInteractive?: boolean } = {},
 ): Promise<void> {
+  const requiredApis = Object.values(wantBackend?.requiredAPIs ?? {});
+  const [standardApis, additionalApis] = partition(requiredApis, ({ api }) =>
+    STANDARD_APIS.includes(api),
+  );
+
+  if (additionalApis.length > 0) {
+    const checks = await Promise.all(
+      additionalApis.map(({ api }) =>
+        ensureApiEnabled.check(projectNumber, api, "functions", /* silent=*/ true),
+      ),
+    );
+    const missingApis = additionalApis.filter((_, i) => !checks[i]);
+
+    if (missingApis.length > 0) {
+      const apiList = missingApis
+        .map(({ api, reason }) => ` - ${api}${reason ? `: ${reason}` : ""}`)
+        .join("\n");
+      const confirm = await prompt.confirm({
+        message: `This codebase depends on the following additional API(s) which are currently disabled:\n${apiList}\nWould you like to enable them?`,
+        default: false,
+        force: options.force,
+        nonInteractive: options.nonInteractive,
+      });
+
+      if (!confirm) {
+        throw new FirebaseError("Must enable required APIs to deploy.");
+      }
+
+      await Promise.all(
+        missingApis.map(({ api }) => {
+          return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
+        }),
+      );
+    }
+  }
+
   await Promise.all(
-    Object.values(wantBackend.requiredAPIs).map(({ api }) => {
+    standardApis.map(({ api }) => {
       return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
     }),
   );

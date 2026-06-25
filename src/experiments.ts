@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./utils";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -88,7 +87,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   dartfunctions: {
     shortDescription: "Enable Dart Functions.",
-    public: false,
+    public: true,
     default: false,
   },
 
@@ -148,10 +147,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+
   abiu: {
-    shortDescription: "Enable App Hosting ABIU and runtime selection",
-    default: false,
-    public: false,
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
@@ -184,6 +185,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
   fdcift: {
     shortDescription: "Enable instrumentless trial for SQL Connect",
     default: true,
@@ -202,6 +208,11 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Enable Firebase SQL Connect realtime feature.",
     default: true,
     public: false,
+  },
+  crashlyticsWeb: {
+    shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
+    default: false,
+    public: true,
   },
 });
 
@@ -230,7 +241,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 
