@@ -453,7 +453,7 @@ describe("localBuild", () => {
       expect(logWarningStub).to.have.been.calledOnceWith(
         "apphosting",
         sinon.match(
-          "Local Node.js version (v24.10.0) does not match your backend's target ABIU runtime",
+          "Local Node.js version (v24.10.0) does not match your backend's target Node.js version",
         ),
       );
     });

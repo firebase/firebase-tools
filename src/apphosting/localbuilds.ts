@@ -349,9 +349,8 @@ export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: str
   if (localMajor !== null && localMajor !== targetMajor) {
     logLabeledWarning(
       "apphosting",
-      `Local Node.js version (${localNodeVersion}) does not match your backend's target ABIU runtime major version (Node.js ${targetMajor}). ` +
-        `Because local builds compile code using your host's Node.js version, this mismatch can cause native modules ` +
-        `to be compiled for the wrong version, leading to silent startup crashes in production (running on Node.js ${targetMajor}). ` +
+      `Local Node.js version (${localNodeVersion}) does not match your backend's target Node.js version (Node.js ${targetMajor}). ` +
+        `This mismatch may cause runtime issues. ` +
         `Please switch your local environment to Node.js ${targetMajor} to ensure build-to-run parity.`,
     );
   }
