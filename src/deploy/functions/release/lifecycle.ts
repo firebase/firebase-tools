@@ -1,4 +1,5 @@
 import * as backend from "../backend";
+import * as planner from "./planner";
 import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import * as cloudtasks from "../../../gcp/cloudtasks";
@@ -28,6 +29,8 @@ export function determineDeploymentDelta(
 export async function executeLifecycleHooks(
   wantBackend: backend.Backend,
   haveBackend: backend.Backend,
+  plan?: planner.DeploymentPlan,
+  codebase?: string,
 ): Promise<boolean> {
   const delta = determineDeploymentDelta(wantBackend, haveBackend);
   const hooks = wantBackend.lifecycleHooks || {};
@@ -38,15 +41,39 @@ export async function executeLifecycleHooks(
     return false;
   }
 
-  logger.info(`Executing ${delta} lifecycle hook targeting: ${hook.target}...`);
+  if (delta === "afterUpdate" && plan) {
+    const relevantChangesets = Object.entries(plan)
+      .filter(([key]) => !codebase || key.startsWith(`${codebase}-`))
+      .map(([, c]) => c);
+    const hasResourceModifications = relevantChangesets.some(
+      (changeset) =>
+        changeset.endpointsToCreate.length > 0 ||
+        changeset.endpointsToUpdate.length > 0 ||
+        changeset.endpointsToDelete.length > 0,
+    );
+    if (!hasResourceModifications) {
+      logger.info("No resources modified in codebase. Skipping afterUpdate lifecycle hook.");
+      return false;
+    }
+  }
 
-  if (hook.actionType === "taskQueue") {
-    await executeTaskQueueHook(hook, wantBackend);
+  if (hook.task) {
+    logger.info(`Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`);
+    await executeTaskQueueHook(hook.task, wantBackend);
     return true;
   }
 
-  // Prototype currently supports taskQueue actionType.
-  logger.info(`Skipping hook execution for unsupported actionType: ${hook.actionType}`);
+  if (hook.callable) {
+    logger.info(`Skipping hook execution for unsupported actionType: callable`);
+    return false;
+  }
+
+  if (hook.http) {
+    logger.info(`Skipping hook execution for unsupported actionType: http`);
+    return false;
+  }
+
+  logger.info(`No action specified for lifecycle hook`);
   return false;
 }
 
@@ -54,25 +81,27 @@ export async function executeLifecycleHooks(
  * Executes a taskQueue lifecycle hook by enqueuing a task in Cloud Tasks.
  */
 async function executeTaskQueueHook(
-  hook: backend.LifecycleHook,
+  taskHook: { function: string; body?: Record<string, unknown> },
   wantBackend: backend.Backend,
 ): Promise<void> {
-  const targetEndpoint = findTargetEndpoint(wantBackend, hook.target);
+  const targetEndpoint = findTargetEndpoint(wantBackend, taskHook.function);
   if (!targetEndpoint) {
-    throw new FirebaseError(`Target endpoint "${hook.target}" not found in backend for lifecycle hook.`);
+    throw new FirebaseError(
+      `Target endpoint "${taskHook.function}" not found in backend for lifecycle hook.`,
+    );
   }
 
   if (!backend.isTaskQueueTriggered(targetEndpoint)) {
-    throw new FirebaseError(`Target endpoint "${hook.target}" is not a task queue function.`);
+    throw new FirebaseError(`Target endpoint "${taskHook.function}" is not a task queue function.`);
   }
 
   const queueName = cloudtasks.queueNameForEndpoint(targetEndpoint);
-  const bodyStr = hook.body ? JSON.stringify(hook.body) : "";
+  const bodyStr = taskHook.body ? JSON.stringify(taskHook.body) : "";
   const body = bodyStr ? Buffer.from(bodyStr).toString("base64") : undefined;
 
   const url = targetEndpoint.uri;
   if (!url) {
-    throw new FirebaseError(`Target endpoint "${hook.target}" does not have a trigger URI.`);
+    throw new FirebaseError(`Target endpoint "${taskHook.function}" does not have a trigger URI.`);
   }
 
   const task: cloudtasks.Task = {
@@ -90,10 +119,12 @@ async function executeTaskQueueHook(
 
   try {
     await cloudtasks.enqueueTask(queueName, task);
-    logger.info(`Successfully queued task for lifecycle hook ${hook.target} in queue ${queueName}.`);
+    logger.info(
+      `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
+    );
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.warn(`Failed to enqueue task for lifecycle hook ${hook.target}: ${errorMsg}`);
+    logger.warn(`Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`);
     // Hooks follow idempotent execution contract: log warning but do not fail deploy.
   }
 }

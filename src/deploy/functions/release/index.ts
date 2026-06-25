@@ -115,8 +115,8 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
 
-  for (const { wantBackend: w, haveBackend: h } of Object.values(payload.functions)) {
-    await executeLifecycleHooks(w, h);
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    await executeLifecycleHooks(w, h, plan, codebase);
   }
 
   await setupArtifactCleanupPolicies(

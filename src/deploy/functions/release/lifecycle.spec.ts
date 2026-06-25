@@ -62,10 +62,10 @@ describe("lifecycle", () => {
       });
       wantBackend.lifecycleHooks = {
         afterInstall: {
-          eventType: "afterInstall",
-          actionType: "taskQueue",
-          target: "installHookTask",
-          body: { setupVersion: 1 },
+          task: {
+            function: "installHookTask",
+            body: { setupVersion: 1 },
+          },
         },
       };
       const haveBackend = backend.empty();
@@ -77,7 +77,91 @@ describe("lifecycle", () => {
       expect(queueName).to.equal("projects/myProj/locations/us-central1/queues/installHookTask");
       expect(task.httpRequest.url).to.equal("https://installhooktask-12345.a.run.app");
       expect(task.httpRequest.httpMethod).to.equal("POST");
-      expect(task.httpRequest.body).to.equal(Buffer.from(JSON.stringify({ setupVersion: 1 })).toString("base64"));
+      expect(task.httpRequest.body).to.equal(
+        Buffer.from(JSON.stringify({ setupVersion: 1 })).toString("base64"),
+      );
+    });
+
+    it("enqueues task when afterUpdate TaskQueue hook is configured on subsequent update", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const wantBackend = backend.of({
+        id: "updateHookTask",
+        project: "myProj",
+        region: "us-central1",
+        entryPoint: "updateHookTask",
+        platform: "gcfv2",
+        uri: "https://updatehooktask-12345.a.run.app",
+        taskQueueTrigger: {},
+      });
+      wantBackend.lifecycleHooks = {
+        afterUpdate: {
+          task: {
+            function: "updateHookTask",
+            body: { migrationStep: 2 },
+          },
+        },
+      };
+      const haveBackend = backend.of({
+        id: "existingFunc",
+        project: "myProj",
+        region: "us-central1",
+        entryPoint: "existingFunc",
+        platform: "gcfv2",
+        httpsTrigger: {},
+      });
+
+      const executed = await executeLifecycleHooks(wantBackend, haveBackend);
+      expect(executed).to.be.true;
+      expect(enqueueStub).to.have.been.calledOnce;
+      const [queueName, task] = enqueueStub.firstCall.args;
+      expect(queueName).to.equal("projects/myProj/locations/us-central1/queues/updateHookTask");
+      expect(task.httpRequest.url).to.equal("https://updatehooktask-12345.a.run.app");
+      expect(task.httpRequest.httpMethod).to.equal("POST");
+      expect(task.httpRequest.body).to.equal(
+        Buffer.from(JSON.stringify({ migrationStep: 2 })).toString("base64"),
+      );
+    });
+
+    it("skips afterUpdate hook when deployment plan contains no resource modifications", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const wantBackend = backend.of({
+        id: "updateHookTask",
+        project: "myProj",
+        region: "us-central1",
+        entryPoint: "updateHookTask",
+        platform: "gcfv2",
+        uri: "https://updatehooktask-12345.a.run.app",
+        taskQueueTrigger: {},
+      });
+      wantBackend.lifecycleHooks = {
+        afterUpdate: {
+          task: {
+            function: "updateHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.of({
+        id: "updateHookTask",
+        project: "myProj",
+        region: "us-central1",
+        entryPoint: "updateHookTask",
+        platform: "gcfv2",
+        uri: "https://updatehooktask-12345.a.run.app",
+        taskQueueTrigger: {},
+      });
+
+      const emptyPlan = {
+        "default-us-central1-default": {
+          endpointsToCreate: [],
+          endpointsToUpdate: [],
+          endpointsToDelete: [],
+          endpointsToSkip: [wantBackend.endpoints["us-central1"]["updateHookTask"]],
+        },
+      };
+
+      const executed = await executeLifecycleHooks(wantBackend, haveBackend, emptyPlan, "default");
+      expect(executed).to.be.false;
+      expect(enqueueStub).to.not.have.been.called;
     });
   });
 });

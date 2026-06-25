@@ -426,10 +426,20 @@ export interface RequiredAPI {
 }
 
 export interface LifecycleHook {
-  eventType: "afterInstall" | "afterUpdate";
-  actionType: "http" | "callable" | "taskQueue";
-  target: string;
-  body?: unknown;
+  task?: {
+    function: string;
+    body?: Record<string, unknown>;
+  };
+  callable?: {
+    function: string;
+    body?: Record<string, unknown>;
+  };
+  http?: {
+    function?: string;
+    url?: string;
+    method?: string;
+    body?: unknown;
+  };
 }
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
