@@ -4,6 +4,11 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: write
+  pull-requests: read
+  issues: read
+
 jobs:
   release:
     if: |
@@ -14,25 +19,30 @@ jobs:
        github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.repository.full_name }}
-          ref: refs/pull/${{ github.event.issue.number }}/head
-          fetch-depth: 0
-
-      - name: Push to trigger branch
+      - name: Trigger Kokoro via API
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
+          PR_NUM="${{ github.event.issue.number }}"
+          echo "Fetching SHA for PR $PR_NUM..."
+          SHA=$(gh pr view "$PR_NUM" --json headRefOid -q .headRefOid)
+          echo "PR Head SHA is $SHA"
+          
           if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
-            echo "Build-only mode detected. Creating skip_publish.txt"
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            touch skip_publish.txt
-            git add skip_publish.txt
-            git commit -m "Build and sign only [skip-publish]"
+            TARGET_BRANCH="release-trigger-build-only"
+          else
+            TARGET_BRANCH="release-trigger"
           fi
-          # Push current HEAD to release-trigger branch
-          # This triggers the Kokoro release pipeline
-          git push origin HEAD:refs/heads/release-trigger --force
+          echo "Target branch is $TARGET_BRANCH"
+          
+          # Try to update the branch ref (force-push equivalent via API)
+          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/$TARGET_BRANCH" \
+            -f sha="$SHA" -f force=true >/dev/null 2>&1; then
+            echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
+          else
+            echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."
+            gh api -X POST "/repos/${{ github.repository }}/git/refs" \
+              -f ref="refs/heads/$TARGET_BRANCH" -f sha="$SHA" >/dev/null
+            echo "Successfully created ref refs/heads/$TARGET_BRANCH at $SHA"
+          fi
