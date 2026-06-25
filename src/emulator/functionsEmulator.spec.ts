@@ -135,9 +135,9 @@ describe("FunctionsEmulator", () => {
     mkdtempSync.onFirstCall().returns("/tmp/firebase-tools-python-shim-missing");
     mkdtempSync.onSecondCall().returns("/tmp/firebase-tools-python-shim-recreated");
     sandbox.stub(fs, "writeFileSync");
-    const rmSync = sandbox.stub(fs, "rmSync").throws(
-      Object.assign(new Error("missing"), { code: "ENOENT" }),
-    );
+    const rmSync = sandbox
+      .stub(fs, "rmSync")
+      .throws(Object.assign(new Error("missing"), { code: "ENOENT" }));
 
     const emulator = makeEmulator(true);
     const log = sandbox.stub((emulator as any).logger, "log");
