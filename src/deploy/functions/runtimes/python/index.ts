@@ -1,6 +1,5 @@
 import * as fs from "fs";
 import * as path from "path";
-import fetch from "node-fetch";
 import { promisify } from "util";
 
 import * as portfinder from "portfinder";
