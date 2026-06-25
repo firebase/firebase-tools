@@ -1,10 +1,11 @@
 import { expect } from "chai";
+import { Command as Program } from "commander";
 import * as sinon from "sinon";
 import * as rc from "./rc";
 import * as nock from "nock";
 import { configstore } from "./configstore";
 
-import { Command, validateProjectId } from "./command";
+import { Command, CLIClient, validateProjectId } from "./command";
 import { FirebaseError } from "./error";
 
 describe("Command", () => {
@@ -31,6 +32,32 @@ describe("Command", () => {
         // do nothing
       });
     }).not.to.throw();
+  });
+
+  it("should not mutate its options when registered more than once", () => {
+    command.option("-x, --foobar", "description", "value");
+    command.withForce();
+
+    // A fresh client (commander program) per registration mirrors firebase-tools
+    // being imported as a module and used across multiple CLI invocations, where
+    // each runner re-registers the same cached command instance (see
+    // src/commands/index.ts).
+    const makeClient = () => ({ cli: new Program() }) as unknown as CLIClient;
+
+    // register() used to shift the flags out of each stored option array, so
+    // repeated registration eventually passed `undefined` to commander and threw
+    // `Cannot read properties of undefined (reading 'indexOf')`.
+    expect(() => {
+      command.register(makeClient());
+      command.register(makeClient());
+      command.register(makeClient());
+    }).not.to.throw();
+
+    // The stored option definitions must be preserved across registrations.
+    expect((command as unknown as { options: unknown[][] }).options).to.deep.equal([
+      ["-x, --foobar", "description", "value"],
+      ["-f, --force", "automatically accept all interactive prompts"],
+    ]);
   });
 
   describe("runner", () => {
