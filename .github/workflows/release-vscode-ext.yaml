@@ -6,7 +6,12 @@ on:
 
 jobs:
   release:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/run-release')
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/run-release') &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout PR branch
@@ -17,8 +22,10 @@ jobs:
           fetch-depth: 0
 
       - name: Push to trigger branch
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          if [[ "${{ github.event.comment.body }}" == *"--build-only"* ]]; then
+          if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
             echo "Build-only mode detected. Creating skip_publish.txt"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
