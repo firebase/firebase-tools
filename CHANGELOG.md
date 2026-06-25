@@ -1,0 +1,1 @@
+- Disable 'keep-alive' in `google-auth-library` calls to avoid `Premature close` errors on some Node versions (#10716).
