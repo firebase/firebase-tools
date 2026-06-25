@@ -80,7 +80,10 @@ const PYTHON_DISABLE_GUNICORN_ENV = "FIREBASE_FUNCTIONS_EMULATOR_DISABLE_GUNICOR
 // debug/reloader behavior.
 
 const PYTHON_DISABLE_GUNICORN_SHIM = `import builtins
+import importlib.machinery
+import importlib.util
 import os
+import sys
 
 if os.environ.get("${PYTHON_DISABLE_GUNICORN_ENV}") == "1":
     _original_import = builtins.__import__
@@ -91,6 +94,26 @@ if os.environ.get("${PYTHON_DISABLE_GUNICORN_ENV}") == "1":
         return _original_import(name, globals, locals, fromlist, level)
 
     builtins.__import__ = _firebase_import_without_gunicorn
+
+_firebase_shim_dir = os.path.dirname(__file__)
+_firebase_remaining_paths = [
+    search_path
+    for search_path in sys.path
+    if os.path.abspath(search_path or os.curdir) != os.path.abspath(_firebase_shim_dir)
+]
+_firebase_user_sitecustomize = importlib.machinery.PathFinder.find_spec(
+    "sitecustomize", _firebase_remaining_paths
+)
+if (
+    _firebase_user_sitecustomize
+    and _firebase_user_sitecustomize.loader
+    and _firebase_user_sitecustomize.origin
+    and os.path.abspath(_firebase_user_sitecustomize.origin) != os.path.abspath(__file__)
+):
+    _firebase_user_sitecustomize_module = importlib.util.module_from_spec(
+        _firebase_user_sitecustomize
+    )
+    _firebase_user_sitecustomize.loader.exec_module(_firebase_user_sitecustomize_module)
 `;
 
 let pythonDisableGunicornShimDir: string | undefined;
