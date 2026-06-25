@@ -1,0 +1,31 @@
+name: Release VS Code Extension
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  release:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/run-release')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.repository.full_name }}
+          ref: refs/pull/${{ github.event.issue.number }}/head
+          fetch-depth: 0
+
+      - name: Push to trigger branch
+        run: |
+          if [[ "${{ github.event.comment.body }}" == *"--build-only"* ]]; then
+            echo "Build-only mode detected. Creating skip_publish.txt"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            touch skip_publish.txt
+            git add skip_publish.txt
+            git commit -m "Build and sign only [skip-publish]"
+          fi
+          # Push current HEAD to release-trigger branch
+          # This triggers the Kokoro release pipeline
+          git push origin HEAD:refs/heads/release-trigger --force
