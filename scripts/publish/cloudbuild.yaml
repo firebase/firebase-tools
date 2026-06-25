@@ -134,7 +134,7 @@ steps:
         sleep 60
         echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
-  # Set up the hub credentials for firepit-builder.
+  # Set up the hub and npm credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
     args:
@@ -142,8 +142,9 @@ steps:
       - |
         if [ "${_VERSION}" != "preview" ]; then
           mkdir -vp ~/.config && cp -v hub ~/.config/hub
+          cp -v npmrc ~/.npmrc
         else
-          echo "Skipping hub credentials for firepit-builder for preview."
+          echo "Skipping credentials for firepit-builder for preview."
         fi
 
   # Publish the firepit builds.
