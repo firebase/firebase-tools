@@ -9,20 +9,24 @@ import { validateOptions, serialExportUsers } from "./accountExporter";
 describe("accountExporter", () => {
   describe("validateOptions", () => {
     it("should reject when no format provided", () => {
-      expect(() => validateOptions({}, "output_file")).to.throw();
+      expect(() => {
+        validateOptions({}, "output_file");
+      }).to.throw();
     });
 
     it("should reject when format is not csv or json", () => {
-      expect(() => validateOptions({ format: "txt" }, "output_file")).to.throw();
+      expect(() => {
+        validateOptions({ format: "txt" }, "output_file");
+      }).to.throw();
     });
 
     it("should ignore format param when implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file.csv");
+      const ret = validateOptions({ format: "JSON" }, "output_file.csv") as { format: string };
       expect(ret.format).to.eq("csv");
     });
 
     it("should use format param when not implicitly specified in file name", () => {
-      const ret = validateOptions({ format: "JSON" }, "output_file");
+      const ret = validateOptions({ format: "JSON" }, "output_file") as { format: string };
       expect(ret.format).to.eq("json");
     });
   });
@@ -35,7 +39,7 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
-      mfaInfo?: any[];
+      mfaInfo?: unknown[];
       providerUserInfo?: {
         providerId: string;
         rawId: string;
@@ -57,8 +61,8 @@ describe("accountExporter", () => {
         if (i === 6) {
           userList.push({
             localId: i.toString(),
-            email: "test" + i + "@test.org",
-            displayName: "John Tester" + i,
+            email: `test${i}@test.org`,
+            displayName: `John Tester${i}`,
             disabled: i % 2 === 0,
             providerUserInfo: [
               {
@@ -72,8 +76,8 @@ describe("accountExporter", () => {
         } else {
           userList.push({
             localId: i.toString(),
-            email: "test" + i + "@test.org",
-            displayName: "John Tester" + i,
+            email: `test${i}@test.org`,
+            displayName: `John Tester${i}`,
             disabled: i % 2 === 0,
           });
         }
