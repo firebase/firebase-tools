@@ -113,6 +113,7 @@ if (
     _firebase_user_sitecustomize_module = importlib.util.module_from_spec(
         _firebase_user_sitecustomize
     )
+    sys.modules["sitecustomize"] = _firebase_user_sitecustomize_module
     _firebase_user_sitecustomize.loader.exec_module(_firebase_user_sitecustomize_module)
 `;
 
@@ -138,18 +139,17 @@ function cleanupPythonDisableGunicornShimDir(logDebug: (message: string) => void
     return;
   }
 
+  const shimDir = pythonDisableGunicornShimDir;
+  pythonDisableGunicornShimDir = undefined;
+
   try {
-    fs.rmSync(pythonDisableGunicornShimDir, { recursive: true });
-    pythonDisableGunicornShimDir = undefined;
+    fs.rmSync(shimDir, { recursive: true });
   } catch (e: any) {
     if (e?.code === "ENOENT") {
-      pythonDisableGunicornShimDir = undefined;
       return;
     }
 
-    logDebug(
-      `Failed to clean up python-disable-gunicorn shim dir ${pythonDisableGunicornShimDir}: ${e}`,
-    );
+    logDebug(`Failed to clean up python-disable-gunicorn shim dir ${shimDir}: ${e}`);
   }
 }
 

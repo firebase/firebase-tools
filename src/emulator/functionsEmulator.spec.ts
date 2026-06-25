@@ -69,6 +69,7 @@ describe("FunctionsEmulator", () => {
     expect(shim).to.include("PathFinder.find_spec(");
     expect(shim).to.include('"sitecustomize", _firebase_remaining_paths');
     expect(shim).to.include("module_from_spec");
+    expect(shim).to.include('sys.modules["sitecustomize"] = _firebase_user_sitecustomize_module');
     expect(shim).to.include("exec_module");
     expect(logLabeled).to.have.been.calledOnceWith(
       "BULLET",
@@ -156,10 +157,12 @@ describe("FunctionsEmulator", () => {
     expect(log).to.not.have.been.called;
   });
 
-  it("should log a debug message and continue shutdown when shim dir cleanup fails", async () => {
+  it("should recreate the shim dir after cleanup fails with a non-ENOENT error", async () => {
     sandbox.stub(portfinder, "getPortPromise").resolves(9595);
-    sandbox.stub(functionsPython, "runWithVirtualEnv").returns({} as any);
-    sandbox.stub(fs, "mkdtempSync").returns("/tmp/firebase-tools-python-shim-error");
+    const runWithVirtualEnv = sandbox.stub(functionsPython, "runWithVirtualEnv").returns({} as any);
+    const mkdtempSync = sandbox.stub(fs, "mkdtempSync");
+    mkdtempSync.onFirstCall().returns("/tmp/firebase-tools-python-shim-error");
+    mkdtempSync.onSecondCall().returns("/tmp/firebase-tools-python-shim-recreated");
     sandbox.stub(fs, "writeFileSync");
     const rmSync = sandbox.stub(fs, "rmSync").throws(new Error("permission denied"));
 
@@ -168,10 +171,15 @@ describe("FunctionsEmulator", () => {
 
     await (emulator as any).startPython(makePythonBackend(), {});
     await emulator.stop();
+    await (emulator as any).startPython(makePythonBackend(), {});
 
     expect(rmSync).to.have.been.calledOnceWith("/tmp/firebase-tools-python-shim-error", {
       recursive: true,
     });
+    expect(mkdtempSync).to.have.been.calledTwice;
+    expect(runWithVirtualEnv.secondCall.args[2].PYTHONPATH).to.equal(
+      "/tmp/firebase-tools-python-shim-recreated",
+    );
     expect(log).to.have.been.calledWith(
       "DEBUG",
       sinon.match("Failed to clean up python-disable-gunicorn shim dir"),
