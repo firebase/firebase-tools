@@ -51,6 +51,7 @@ jobs:
         node-version:
           - "22"
           - "24"
+          - "26"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -156,6 +157,7 @@ jobs:
         node-version:
           - "22"
           - "24"
+          - "26"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
