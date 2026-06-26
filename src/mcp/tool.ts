@@ -1,6 +1,5 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, ZodTypeAny } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
 import { McpContext, ServerFeature } from "./types";
 import { cleanSchema } from "./util";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
@@ -20,7 +19,7 @@ export type ServerToolMeta = {
   };
 };
 
-export interface ServerTool<InputSchema extends ZodTypeAny = ZodTypeAny> {
+export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
@@ -59,7 +58,12 @@ export function tool<InputSchema extends ZodTypeAny>(
   const { isAvailable, ...mcpOptions } = options;
 
   return {
-    mcp: { ...mcpOptions, inputSchema: cleanSchema(zodToJsonSchema(options.inputSchema)) },
+    mcp: {
+      ...mcpOptions,
+      inputSchema: cleanSchema(
+        z.toJSONSchema(options.inputSchema, { target: "draft-7", io: "input" }),
+      ),
+    },
     fn,
     isAvailable: (ctx: McpContext) => {
       // default to the feature level availability check, but allow override
