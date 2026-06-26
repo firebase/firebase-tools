@@ -9,6 +9,15 @@ import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
 
 export const REGION_TBD = "REGION_TBD";
+export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
+// prettier-ignore
+export const SECRET_REF_RE = new RegExp(
+  "^" +                                      // start of string
+  "csm:\/\/" +                               // scheme csm://
+  "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" +    // secret ID is a GCP resource ID
+  "(?:\/([-a-z0-9]+))?" +                    // capture an optional GCP label for version
+  "$"                                        // end of string
+);
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -737,7 +746,8 @@ export function applyPrefix(build: Build, prefix: string): void {
 
 /**
  * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
- * For example, "&API_KEY=other@2" binds the value of /projects/1234/secrets/other/versions/2 to env var API_KEY and the secret param named API_KEY.
+ * Secrets references are of the form csm://secretName/version, referencing a Secret in the same project as the Endpoint.
+ * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
  *
  * For each binding imported from the .env file,
  * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
@@ -745,7 +755,14 @@ export function applyPrefix(build: Build, prefix: string): void {
  */
 export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, string>) {
   Object.entries(envSecrets).forEach(([key, secretRef]) => {
-    const [resourceId, versionRef] = secretRef.split("@");
+    const match = SECRET_REF_RE.exec(secretRef);
+    if (!match) {
+      throw new FirebaseError(
+        `Secret reference '${secretRef}' is not a valid Cloud Secret Manager reference.`,
+      );
+    }
+    const resourceId = match[1];
+    const versionRef = match[2];
 
     Object.entries(build.endpoints).forEach(([, endpoint]) => {
       let needEnvInsert = true;

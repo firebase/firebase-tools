@@ -390,7 +390,7 @@ describe("envWithType", () => {
 });
 
 describe("applyEnvSecretOverrides", () => {
-  it("should add the default secret for the keyname to secretEnvironmentVariables if not present", () => {
+  it("throws an error if the secret is in an unknown format", () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -405,15 +405,33 @@ describe("applyEnvSecretOverrides", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, string> = { foo: "" };
-    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
-    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
-      {
-        key: "foo",
-        secret: "foo",
-        projectId: "test-project",
+    const testSecretRefs: Record<string, string> = {
+      foo: "projects/1234/secrets/api_key/versions/2",
+    };
+    expect(() => build.applyEnvSecretOverrides(testBuild, testSecretRefs)).to.throw(
+      /not a valid Cloud Secret Manager reference/,
+    );
+  });
+
+  it("throws an error if the secret references an invalid Cloud resource id", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
       },
-    ]);
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, string> = { foo: "csm://NOCAPS/4" };
+    expect(() => build.applyEnvSecretOverrides(testBuild, testSecretRefs)).to.throw(
+      /not a valid Cloud Secret Manager reference/,
+    );
   });
 
   it("should add the referenced secret to secretEnvironmentVariables if not present", () => {
@@ -431,7 +449,7 @@ describe("applyEnvSecretOverrides", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, string> = { foo: "bar" };
+    const testSecretRefs: Record<string, string> = { foo: "csm://bar" };
     build.applyEnvSecretOverrides(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
@@ -457,7 +475,7 @@ describe("applyEnvSecretOverrides", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, string> = { foo: "bar@4" };
+    const testSecretRefs: Record<string, string> = { foo: "csm://bar/4" };
     build.applyEnvSecretOverrides(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
@@ -484,7 +502,7 @@ describe("applyEnvSecretOverrides", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, string> = { foo: "bar@latest" };
+    const testSecretRefs: Record<string, string> = { foo: "csm://bar/latest" };
     build.applyEnvSecretOverrides(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
@@ -518,7 +536,7 @@ describe("applyEnvSecretOverrides", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, string> = { foo: "bar@4" };
+    const testSecretRefs: Record<string, string> = { foo: "csm://bar/4" };
     build.applyEnvSecretOverrides(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {

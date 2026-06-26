@@ -10,6 +10,7 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
+const RESERVED_KEY_PREFIXES = ["FIREBASE_SECRET_REF"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -46,27 +47,19 @@ const RESERVED_KEYS = [
 const LINE_RE = new RegExp(
   "^" +                      // begin line
   "\\s*" +                   //   leading whitespaces
-  "(?:export)?" +            // Optional 'export' in a non-capture group
+  "(?:export)?" +                       // Optional 'export' in a non-capture group
   "\\s*" +                   //   more whitespaces
-  "(&?[\\w./]+)" +           //   key, possibly beginning with an & for secrets
-  "\\s*=[\\f\\t\\v]*" +      //   separator (=)
+  "([\\w./]+)" +                 //   key
+  "\\s*=[\\f\\t\\v]*" +              //   separator (=)
   "(" +                      //   begin optional value
   "\\s*'(?:\\\\'|[^'])*'|" + //     single quoted or
   '\\s*"(?:\\\\"|[^"])*"|' + //     double quoted or
-  "[^#\\r\\n]*" +            //     unquoted
+  "[^#\\r\\n]*" +           //     unquoted
   ")?" +                     //   end optional value
   "\\s*" +                   //   trailing whitespaces
   "(?:#[^\\n]*)?" +          //   optional comment
   "$",                       // end line
   "gms"                      // flags: global, multiline, dotall
-);
-
-// Regexp to capture a valid reference to a Secret.
-const SECRET_REF_RE = new RegExp(
-  "^" + // begin line
-    "^[a-z]([-a-z0-9]*[a-z0-9])?" + // cloud resource ID
-    "(?:@(.+))?" + // optional reference to a specific version
-    "$", // end line
 );
 
 const ESCAPE_SEQUENCES_TO_CHARACTERS: Record<string, string> = {
@@ -101,24 +94,25 @@ interface ParseResult {
  *
  * Each line should contain key, value pairs, e.g.:
  *
- * SERVICE_URL=https://example.com
+ *   SERVICE_URL=https://example.com
  *
  * Values can be double quoted, e.g.:
  *
- * SERVICE_URL="https://example.com"
+ *   SERVICE_URL="https://example.com"
  *
  * Double quoted values can include newlines, e.g.:
  *
- * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
+ *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
  *
  * or span multiple lines, e.g.:
  *
- * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
- * ABC
- * EFG
- * -----BEGIN PUBLIC KEY-----"
+ *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+ *   ABC
+ *   EFG
+ *   -----BEGIN PUBLIC KEY-----"
  *
  * See test for more examples.
+ *
  * @return {ParseResult} Result containing parsed key, value pairs and errored lines.
  */
 export function parse(data: string): ParseResult {
@@ -184,52 +178,19 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
-  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+  if (
+    RESERVED_PREFIXES.some(
+      (prefix) =>
+        key.startsWith(prefix) && !RESERVED_KEY_PREFIXES.some((known) => key.startsWith(known)),
+    )
+  ) {
     throw new KeyValidationError(
       key,
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
-}
-
-export class SecretValidationError extends Error {
-  constructor(
-    public key: string,
-    public message: string,
-  ) {
-    super(`Failed to validate .env-defined secret ${key}: ${message}`);
-  }
-}
-
-/**
- * Validates string for use as value for an .env-defined &secret
- *
- * The value must reference a valid Cloud resource name, and follow our internal format.
- */
-export function validateSecretRef(key: string, secretRef: string): void {
-  // Empty string is always valid, and means to prompt for secret creation on deploy
-  if (secretRef === "") {
-    return;
-  }
-  // Otherwise, value must be a valid GCP resource ID, possibly followed by @version
-  const match = SECRET_REF_RE.exec(secretRef);
-  if (!match) {
-    throw new SecretValidationError(
-      key,
-      `Secret reference ${secretRef} must be a valid resource ID` +
-        ", with an optional version identifier specified after an @",
-    );
-  }
-  const version = match[2];
-  if (!version) {
-    return;
-  }
-  if (version !== "latest" && !/\A\d+\z/.test(version)) {
-    throw new SecretValidationError(
-      key,
-      `Secret reference ${secretRef} has a version identifier ${version}` +
-        "which is not an integer or the string 'latest'",
-    );
+  if (RESERVED_KEY_PREFIXES.some((prefix) => key === prefix)) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
   }
 }
 
@@ -245,7 +206,7 @@ export function parseStrict(data: string): Record<string, string> {
     throw new FirebaseError(`Invalid dotenv file, error on lines: ${errors.join(",")}`);
   }
 
-  const validationErrors: (KeyValidationError | SecretValidationError)[] = [];
+  const validationErrors: KeyValidationError[] = [];
   for (const key of Object.keys(envs)) {
     try {
       validateKey(key);
@@ -256,17 +217,6 @@ export function parseStrict(data: string): Record<string, string> {
       } else {
         // Unexpected error. Throw.
         throw err;
-      }
-    }
-    if (key.startsWith("&")) {
-      try {
-        validateSecretRef(key, envs[key]);
-      } catch (err: any) {
-        if (err instanceof SecretValidationError) {
-          validationErrors.push(err);
-        } else {
-          throw err;
-        }
       }
     }
   }
@@ -308,6 +258,7 @@ export interface UserEnvsOpts {
 
 /**
  * Checks if user has specified any environment variables for their functions.
+ *
  * @return True if there are any user-specified environment variables
  */
 export function hasUserEnvs(opts: UserEnvsOpts): boolean {
@@ -413,10 +364,11 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * .env files are searched and merged in the following order:
  *
- * 1. .env
- * 2. .env.<project or alias>
+ *   1. .env
+ *   2. .env.<project or alias>
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
+ *
  * @return {Record<string, string>} Environment variables for the project.
  */
 export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
@@ -460,6 +412,7 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
 
 /**
  * Load Firebase-set environment variables.
+ *
  * @return Environment varibles for functions.
  */
 export function loadFirebaseEnvs(

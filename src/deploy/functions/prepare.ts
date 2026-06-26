@@ -152,7 +152,7 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    if (experiments.isEnabled("functionsEnvParams")) {
+    if (experiments.isEnabled("secretEnvParams")) {
       build.applyEnvSecretOverrides(wantBuild, secretRefs);
     }
 
@@ -798,7 +798,9 @@ export async function ensureAllRequiredAPIsEnabled(
 }
 
 /**
- * Divides the environment variables between normal envs and references to a Secret resource
+ * Divides the environment variables between normal envs and references to a Secret resource.
+ * Secret references begin with FIREBASE_SECRET_REF_ and are not provided directly in process.env,
+ * but the Cloud Secret Manager resource they reference is loaded through SecretEnvVars.
  */
 export function partitionUserEnvs(allEnvs: Record<string, string>): {
   userEnvs: Record<string, string>;
@@ -806,8 +808,8 @@ export function partitionUserEnvs(allEnvs: Record<string, string>): {
 } {
   const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
     (accumulatedSplit, [k, v]) => {
-      if (k.startsWith("&")) {
-        accumulatedSplit[0][k.slice(1)] = v;
+      if (k.startsWith(build.SECRET_REF_PREFIX)) {
+        accumulatedSplit[0][k.replace(new RegExp("^" + build.SECRET_REF_PREFIX), "")] = v;
       } else {
         accumulatedSplit[1][k] = v;
       }

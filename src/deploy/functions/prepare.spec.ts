@@ -21,10 +21,10 @@ import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/event
 import { latest } from "./runtimes/supported";
 
 describe("partition env helper", () => {
-  it("splits a Record into two based on which keys begin with &", () => {
+  it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
     const input = {
       foo: "bar",
-      "&baz": "quux",
+      FIREBASE_SECRET_REF_baz: "quux",
     } as Record<string, string>;
     const { userEnvs: userEnvs, secretRefs: secretRefs } = prepare.partitionUserEnvs(input);
     expect(userEnvs).to.deep.equal({ foo: "bar" });
