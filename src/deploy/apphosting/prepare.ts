@@ -27,7 +27,7 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
+import { logLabeledBullet, logLabeledWarning, logLabeledError } from "../../utils";
 import { localBuild } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
@@ -444,15 +444,15 @@ function isAngularApplication(appDir: string): boolean {
       const parsed: unknown = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
       if (parsed && typeof parsed === "object") {
         const pkg = parsed as PackageJson;
-        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-        if (deps["@angular/core"] || deps["@angular/ssr"] || deps["@angular/platform-server"]) {
+        const angularDeps = ["@angular/core", "@angular/ssr", "@angular/platform-server"];
+        if (angularDeps.some((d) => pkg.dependencies?.[d] || pkg.devDependencies?.[d])) {
           return true;
         }
       }
     } catch (e: unknown) {
-      logLabeledWarning(
+      logLabeledError(
         "apphosting",
-        `Failed to parse package.json in ${appDir}: ${e instanceof Error ? e.message : String(e)}`,
+        `error when checking if application is angular: ${e instanceof Error ? e.message : String(e)}`,
       );
     }
   }
@@ -487,52 +487,59 @@ export async function injectAngularEnvVars(
   runtimeEnv[backendId] ??= {};
   buildEnv[backendId] ??= {};
 
-  const allowedProxyHeadersValue =
-    "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for";
+  const allowedProxyHeaders = [
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-proto",
+    "x-forwarded-for",
+  ];
+  const allowedProxyHeadersValue = allowedProxyHeaders.join(",");
 
   // 1. Inject NG_TRUST_PROXY_HEADERS
-  // If they have defined RUNTIME env vars for the proxy header though we will log a warning that we're overriding it.
+  let shouldInjectProxyHeaders = true;
   if (runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"]) {
-    logLabeledWarning(
-      "apphosting",
-      `Overriding user-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS with default value: ${allowedProxyHeadersValue}`,
-    );
+    const userProxyHeadersStr = runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"].value;
+    const userProxyHeaders = userProxyHeadersStr
+      ? userProxyHeadersStr
+          .split(",")
+          .map((h) => h.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
+    const isSubset =
+      userProxyHeaders.length > 0 && userProxyHeaders.every((h) => allowedProxyHeaders.includes(h));
+
+    if (isSubset) {
+      shouldInjectProxyHeaders = false;
+    } else {
+      throw new FirebaseError(
+        `User-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS contains invalid headers. Allowed values: ${allowedProxyHeadersValue}`,
+      );
+    }
   }
 
-  runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"] = {
-    value: allowedProxyHeadersValue,
-    availability: ["RUNTIME"],
-  };
+  if (shouldInjectProxyHeaders) {
+    runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"] = {
+      value: allowedProxyHeadersValue,
+      availability: ["RUNTIME"],
+    };
+  }
 
-  // 2. Inject/Merge NG_ALLOWED_HOSTS
-  const projectNumber = await getProjectNumber({ project: projectId });
-  const sharedDomain = "hosted.app";
-  const defaultHosts = [
-    `${backendId}-${projectNumber}.${location}.run.app`,
-    `${backendId}--${projectId}.${location}.${sharedDomain}`,
-    `${backendId}--${projectId}.web.app`,
-    `${backendId}--${projectId}.firebaseapp.com`,
-  ];
+  // 2. Inject NG_ALLOWED_HOSTS
+  if (!runtimeEnv[backendId]["NG_ALLOWED_HOSTS"]) {
+    const projectNumber = await getProjectNumber({ project: projectId });
+    const sharedDomain = "hosted.app";
+    // TODO: This is missing the custom domains retrieved dynamically by the control plane during Cloud Build creation.
+    const defaultHosts = [
+      `${backendId}-${projectNumber}.${location}.run.app`,
+      `${backendId}--${projectId}.${location}.${sharedDomain}`,
+      `${backendId}--${projectId}.web.app`,
+      `${backendId}--${projectId}.firebaseapp.com`,
+    ];
 
-  const defaultHostsLower = new Set(defaultHosts.map((h) => h.toLowerCase()));
-  const userAllowedHosts = runtimeEnv[backendId]["NG_ALLOWED_HOSTS"];
-  const userHosts =
-    userAllowedHosts?.value
-      ?.split(",")
-      .map((h) => h.trim())
-      .filter(Boolean) || [];
-
-  const additionalHosts = userHosts.filter((h) => {
-    const lower = h.toLowerCase();
-    if (defaultHostsLower.has(lower)) return false;
-    defaultHostsLower.add(lower);
-    return true;
-  });
-
-  const allowedHostsValue = [...defaultHosts, ...additionalHosts].join(",");
-
-  runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
-    value: allowedHostsValue,
-    availability: ["RUNTIME"],
-  };
+    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
+      value: defaultHosts.join(","),
+      availability: ["RUNTIME"],
+    };
+  }
 }
