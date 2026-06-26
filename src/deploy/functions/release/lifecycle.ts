@@ -13,9 +13,7 @@ export type LifecycleDelta = "afterInstall" | "afterUpdate";
  * Determines whether the current deployment represents a fresh codebase deployment
  * (afterInstall) or an update to an existing deployment (afterUpdate).
  */
-export function determineDeploymentDelta(
-  haveBackend: backend.Backend,
-): LifecycleDelta {
+export function determineDeploymentDelta(haveBackend: backend.Backend): LifecycleDelta {
   // If haveBackend has no existing endpoints, this is a fresh installation.
   const hasExistingEndpoints = backend.someEndpoint(haveBackend, () => true);
   if (!hasExistingEndpoints) {
