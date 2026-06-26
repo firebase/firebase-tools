@@ -739,4 +739,18 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
   }
   build.endpoints = newEndpoints;
+
+  if (build.lifecycleHooks) {
+    for (const hook of Object.values(build.lifecycleHooks)) {
+      if (hook.task?.function) {
+        hook.task.function = `${prefix}-${hook.task.function}`;
+      }
+      if (hook.callable?.function) {
+        hook.callable.function = `${prefix}-${hook.callable.function}`;
+      }
+      if (hook.http?.function) {
+        hook.http.function = `${prefix}-${hook.http.function}`;
+      }
+    }
+  }
 }

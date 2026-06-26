@@ -504,4 +504,56 @@ describe("applyPrefix", () => {
       /Function names must start with a letter/,
     );
   });
+
+  it("should prefix target functions in lifecycleHooks", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+      lifecycleHooks: {
+        afterInstall: {
+          task: {
+            function: "func1",
+            body: { foo: "bar" },
+          },
+        },
+        afterUpdate: {
+          callable: {
+            function: "func1",
+          },
+          http: {
+            function: "func1",
+          },
+        },
+      },
+    };
+
+    build.applyPrefix(testBuild, "staging");
+
+    expect(testBuild.lifecycleHooks).to.deep.equal({
+      afterInstall: {
+        task: {
+          function: "staging-func1",
+          body: { foo: "bar" },
+        },
+      },
+      afterUpdate: {
+        callable: {
+          function: "staging-func1",
+        },
+        http: {
+          function: "staging-func1",
+        },
+      },
+    });
+  });
 });

@@ -84,6 +84,7 @@ function validateScheduledTimeout(ep: backend.Endpoint): void {
 
 /** Validate that the configuration for endpoints are valid. */
 export function endpointsAreValid(wantBackend: backend.Backend): void {
+  validateLifecycleHooks(wantBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
@@ -438,4 +439,86 @@ export function checkFiltersIntegrity(
       throw new FirebaseError(`No function matches the filter: ${parts.join(":")}`);
     }
   }
+}
+
+/** Validate that the lifecycle hooks target valid endpoints in the backend. */
+export function validateLifecycleHooks(wantBackend: backend.Backend): void {
+  if (!wantBackend.lifecycleHooks) {
+    return;
+  }
+  const endpoints = backend.allEndpoints(wantBackend);
+  for (const [eventType, hook] of Object.entries(wantBackend.lifecycleHooks)) {
+    if (hook.task) {
+      const targetEndpoint = findAndValidateTargetEndpoint(
+        endpoints,
+        hook.task.function,
+        eventType,
+      );
+      if (!backend.isTaskQueueTriggered(targetEndpoint)) {
+        throw new FirebaseError(
+          `Target endpoint "${hook.task.function}" is not a task queue function for lifecycle hook "${eventType}".`,
+        );
+      }
+    }
+
+    if (hook.callable) {
+      const targetEndpoint = findAndValidateTargetEndpoint(
+        endpoints,
+        hook.callable.function,
+        eventType,
+      );
+      if (!backend.isCallableTriggered(targetEndpoint)) {
+        throw new FirebaseError(
+          `Target endpoint "${hook.callable.function}" is not a callable function for lifecycle hook "${eventType}".`,
+        );
+      }
+    }
+
+    if (hook.http) {
+      const httpHook = hook.http;
+      if (httpHook.function) {
+        const targetEndpoint = findAndValidateTargetEndpoint(
+          endpoints,
+          httpHook.function,
+          eventType,
+        );
+        if (
+          !backend.isHttpsTriggered(targetEndpoint) &&
+          !backend.isCallableTriggered(targetEndpoint)
+        ) {
+          throw new FirebaseError(
+            `Target endpoint "${httpHook.function}" is not an HTTPS or Callable function for lifecycle hook "${eventType}".`,
+          );
+        }
+      }
+      if (httpHook.url) {
+        try {
+          new URL(httpHook.url);
+        } catch (err) {
+          throw new FirebaseError(
+            `Invalid URL "${httpHook.url}" specified for lifecycle hook "${eventType}".`,
+          );
+        }
+      }
+    }
+  }
+}
+
+function findAndValidateTargetEndpoint(
+  endpoints: backend.Endpoint[],
+  functionName: string,
+  eventType: string,
+): backend.Endpoint {
+  const targetEndpoint = endpoints.find((e) => e.id === functionName);
+  if (!targetEndpoint) {
+    throw new FirebaseError(
+      `Target endpoint "${functionName}" not found in backend for lifecycle hook "${eventType}".`,
+    );
+  }
+  if (targetEndpoint.platform === "gcfv1") {
+    throw new FirebaseError(
+      `Target endpoint "${functionName}" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions.`,
+    );
+  }
+  return targetEndpoint;
 }

@@ -494,6 +494,234 @@ describe("validate", () => {
         "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
       );
     });
+
+    describe("validateLifecycleHooks", () => {
+      it("succeeds when no lifecycle hooks are defined", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("succeeds when a task queue hook targets a valid task queue function", () => {
+        const taskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "mytaskfunc",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(taskEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            task: {
+              function: "mytaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a task queue hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            task: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("throws when a task queue hook targets a function that is not a task queue function", () => {
+        const nonTaskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "nontaskfunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(nonTaskEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            task: {
+              function: "nontaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nontaskfunc" is not a task queue function for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("succeeds when a callable hook targets a valid callable function", () => {
+        const callableEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "mycallablefunc",
+          callableTrigger: {},
+        };
+        const want = backend.of(callableEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            callable: {
+              function: "mycallablefunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a callable hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            callable: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("throws when a callable hook targets a function that is not a callable function", () => {
+        const nonCallableEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "noncallablefunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(nonCallableEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            callable: {
+              function: "noncallablefunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "noncallablefunc" is not a callable function for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("succeeds when an http hook targets a valid HTTP function", () => {
+        const httpEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "myhttpfunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(httpEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              function: "myhttpfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when an http hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("throws when an http hook targets a function that is not an HTTP or Callable function", () => {
+        const eventEp: backend.Endpoint = {
+          platform: "gcfv2",
+          id: "eventfunc",
+          region: "us-east1",
+          project: "project",
+          entryPoint: "func",
+          runtime: "nodejs16",
+          eventTrigger: {
+            eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+            retry: false,
+          },
+        };
+        const want = backend.of(eventEp);
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              function: "eventfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "eventfunc" is not an HTTPS or Callable function for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("succeeds when an http hook specifies a valid URL", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              url: "https://example.com/webhook",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a hook specifies an invalid URL", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              url: "not-a-valid-url",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Invalid URL "not-a-valid-url" specified for lifecycle hook "afterInstall"/,
+        );
+      });
+
+      it("throws when a hook targets a GCF Gen 1 function", () => {
+        const v1Ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "v1func",
+          platform: "gcfv1",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(v1Ep);
+        want.lifecycleHooks = {
+          afterInstall: {
+            task: {
+              function: "v1func",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "v1func" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions./,
+        );
+      });
+    });
   });
 
   describe("endpointsAreUnqiue", () => {

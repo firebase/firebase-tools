@@ -3,6 +3,8 @@ import * as planner from "./planner";
 import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
 import * as cloudtasks from "../../../gcp/cloudtasks";
+import * as computeEngine from "../../../gcp/computeEngine";
+import { getProjectNumber } from "../../../getProjectNumber";
 
 export type LifecycleDelta = "afterInstall" | "afterUpdate";
 
@@ -104,12 +106,19 @@ async function executeTaskQueueHook(
     throw new FirebaseError(`Target endpoint "${taskHook.function}" does not have a trigger URI.`);
   }
 
+  const projectNumber = await getProjectNumber({ projectId: targetEndpoint.project });
+  const sa =
+    targetEndpoint.serviceAccount || (await computeEngine.getDefaultServiceAccount(projectNumber));
+
   const task: cloudtasks.Task = {
     httpRequest: {
       url,
       httpMethod: "POST",
       headers: {
         "Content-Type": "application/json",
+      },
+      oidcToken: {
+        serviceAccountEmail: sa,
       },
     },
   };
@@ -122,10 +131,10 @@ async function executeTaskQueueHook(
     logger.info(
       `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
     );
+    logger.info(`View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     logger.warn(`Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`);
-    // Hooks follow idempotent execution contract: log warning but do not fail deploy.
   }
 }
 
@@ -139,4 +148,14 @@ function findTargetEndpoint(
     }
   }
   return undefined;
+}
+
+/**
+ * Generates the Google Cloud Console log URL for the given endpoint.
+ */
+function getCloudConsoleLogUrl(endpoint: backend.Endpoint): string {
+  const { project, region, id } = endpoint;
+  const serviceName = endpoint.runServiceId || id;
+  const query = `resource.type="cloud_run_revision"\nresource.labels.service_name="${serviceName}"\nresource.labels.location="${region}"`;
+  return `https://console.cloud.google.com/logs/query;query=${encodeURIComponent(query)};project=${project}`;
 }

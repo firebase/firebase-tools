@@ -3,12 +3,19 @@ import * as sinon from "sinon";
 import * as backend from "../backend";
 import { determineDeploymentDelta, executeLifecycleHooks } from "./lifecycle";
 import * as cloudtasks from "../../../gcp/cloudtasks";
+import { logger } from "../../../logger";
+import * as getProjectNumber from "../../../getProjectNumber";
+import * as computeEngine from "../../../gcp/computeEngine";
 
 describe("lifecycle", () => {
   let sandbox: sinon.SinonSandbox;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    sandbox.stub(getProjectNumber, "getProjectNumber").resolves("123456");
+    sandbox
+      .stub(computeEngine, "getDefaultServiceAccount")
+      .resolves("123456-compute@developer.gserviceaccount.com");
   });
 
   afterEach(() => {
@@ -51,6 +58,7 @@ describe("lifecycle", () => {
 
     it("enqueues task when afterInstall TaskQueue hook is configured on fresh install", async () => {
       const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const loggerStub = sandbox.stub(logger, "info");
       const wantBackend = backend.of({
         id: "installHookTask",
         project: "myProj",
@@ -79,6 +87,12 @@ describe("lifecycle", () => {
       expect(task.httpRequest.httpMethod).to.equal("POST");
       expect(task.httpRequest.body).to.equal(
         Buffer.from(JSON.stringify({ setupVersion: 1 })).toString("base64"),
+      );
+      expect(task.httpRequest.oidcToken).to.deep.equal({
+        serviceAccountEmail: "123456-compute@developer.gserviceaccount.com",
+      });
+      expect(loggerStub).to.have.been.calledWith(
+        "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-central1%22;project=myProj",
       );
     });
 
@@ -120,6 +134,9 @@ describe("lifecycle", () => {
       expect(task.httpRequest.body).to.equal(
         Buffer.from(JSON.stringify({ migrationStep: 2 })).toString("base64"),
       );
+      expect(task.httpRequest.oidcToken).to.deep.equal({
+        serviceAccountEmail: "123456-compute@developer.gserviceaccount.com",
+      });
     });
 
     it("skips afterUpdate hook when deployment plan contains no resource modifications", async () => {
