@@ -83,7 +83,10 @@ function validateScheduledTimeout(ep: backend.Endpoint): void {
 }
 
 /** Validate that the configuration for endpoints are valid. */
-export function endpointsAreValid(wantBackend: backend.Backend, existingBackend?: backend.Backend): void {
+export function endpointsAreValid(
+  wantBackend: backend.Backend,
+  existingBackend?: backend.Backend,
+): void {
   validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);

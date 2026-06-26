@@ -60,13 +60,19 @@ export async function executeLifecycleHooks(
         changeset.endpointsToDelete.length > 0,
     );
     if (!hasResourceModifications) {
-      logLabeledBullet("functions", "No resources modified in codebase. Skipping afterUpdate lifecycle hook.");
+      logLabeledBullet(
+        "functions",
+        "No resources modified in codebase. Skipping afterUpdate lifecycle hook.",
+      );
       return false;
     }
   }
 
   if (hook.task) {
-    logLabeledBullet("functions", `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`);
+    logLabeledBullet(
+      "functions",
+      `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
+    );
     await executeTaskQueueHook(hook.task, wantBackend);
     return true;
   }
@@ -134,13 +140,20 @@ async function executeTaskQueueHook(
 
   try {
     await cloudtasks.enqueueTask(queueName, task);
-    logLabeledBullet("functions", 
+    logLabeledSuccess(
+      "functions",
       `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
     );
-    logLabeledBullet("functions", `View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`);
+    logLabeledBullet(
+      "functions",
+      `View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`,
+    );
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logLabeledWarning("functions", `Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`);
+    logLabeledWarning(
+      "functions",
+      `Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`,
+    );
   }
 }
 
