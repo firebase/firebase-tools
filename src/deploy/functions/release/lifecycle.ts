@@ -2,6 +2,7 @@ import * as backend from "../backend";
 import * as planner from "./planner";
 import { FirebaseError } from "../../../error";
 import { logger } from "../../../logger";
+import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../../../utils";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as computeEngine from "../../../gcp/computeEngine";
 import { getProjectNumber } from "../../../getProjectNumber";
@@ -54,28 +55,28 @@ export async function executeLifecycleHooks(
         changeset.endpointsToDelete.length > 0,
     );
     if (!hasResourceModifications) {
-      logger.info("No resources modified in codebase. Skipping afterUpdate lifecycle hook.");
+      logLabeledBullet("functions", "No resources modified in codebase. Skipping afterUpdate lifecycle hook.");
       return false;
     }
   }
 
   if (hook.task) {
-    logger.info(`Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`);
+    logLabeledBullet("functions", `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`);
     await executeTaskQueueHook(hook.task, wantBackend);
     return true;
   }
 
   if (hook.callable) {
-    logger.info(`Skipping hook execution for unsupported actionType: callable`);
+    logLabeledBullet("functions", `Skipping hook execution for unsupported actionType: callable`);
     return false;
   }
 
   if (hook.http) {
-    logger.info(`Skipping hook execution for unsupported actionType: http`);
+    logLabeledBullet("functions", `Skipping hook execution for unsupported actionType: http`);
     return false;
   }
 
-  logger.info(`No action specified for lifecycle hook`);
+  logLabeledWarning("functions", `No action specified for lifecycle hook`);
   return false;
 }
 
@@ -128,13 +129,13 @@ async function executeTaskQueueHook(
 
   try {
     await cloudtasks.enqueueTask(queueName, task);
-    logger.info(
+    logLabeledBullet("functions", 
       `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
     );
-    logger.info(`View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`);
+    logLabeledBullet("functions", `View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logger.warn(`Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`);
+    logLabeledWarning("functions", `Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`);
   }
 }
 
