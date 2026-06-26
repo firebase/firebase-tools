@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { MockAgent, setGlobalDispatcher, fetch as undiciFetch } from "undici";
 
-let originalFetch: unknown = undefined;
+let originalFetch: any = undefined;
 
 let mockAgent: MockAgent = new MockAgent();
 mockAgent.disableNetConnect();
@@ -14,7 +14,9 @@ setGlobalDispatcher(mockAgent);
 
 function resetMockAgent() {
   if (mockAgent) {
-    mockAgent.close().catch(() => {});
+    mockAgent.close().catch(() => {
+      /* ignore close errors */
+    });
   }
   mockAgent = new MockAgent();
   mockAgent.disableNetConnect();
