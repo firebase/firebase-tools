@@ -168,7 +168,7 @@ function proxyURIFromEnv(): string | undefined {
 // https://github.com/node-fetch/node-fetch/issues/1767.
 const httpAgentNoKeepAlive = new http.Agent({ keepAlive: false });
 const httpsAgentNoKeepAlive = new https.Agent({ keepAlive: false });
-function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
+export function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
   return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
 }
 
