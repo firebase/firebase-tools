@@ -30,9 +30,9 @@ jobs:
           echo "PR Head SHA is $SHA"
 
           if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
-            TARGET_BRANCH="release-trigger-build-only"
+            TARGET_BRANCH="vscode-release-trigger-build-only"
           else
-            TARGET_BRANCH="release-trigger"
+            TARGET_BRANCH="vscode-release-trigger"
           fi
           echo "Target branch is $TARGET_BRANCH"
 
