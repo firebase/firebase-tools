@@ -42,7 +42,7 @@ describe("Command", () => {
     // being imported as a module and used across multiple CLI invocations, where
     // each runner re-registers the same cached command instance (see
     // src/commands/index.ts).
-    const makeClient = () => ({ cli: new Program() }) as unknown as CLIClient;
+    const makeClient = () => ({ cli: new Program() }) as CLIClient;
 
     // register() used to shift the flags out of each stored option array, so
     // repeated registration eventually passed `undefined` to commander and threw
