@@ -154,6 +154,9 @@ export function buildFromV1Alpha1(
         throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
       }
       const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
+      if (!hook || typeof hook !== "object") {
+        throw new FirebaseError(`Invalid lifecycle hook configuration for "${id}".`);
+      }
       const parsedHook: backend.LifecycleHook = {};
 
       if (hook.task) {

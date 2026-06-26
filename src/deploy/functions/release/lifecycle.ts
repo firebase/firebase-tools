@@ -46,7 +46,12 @@ export async function executeLifecycleHooks(
 
   if (delta === "afterUpdate" && plan) {
     const relevantChangesets = Object.entries(plan)
-      .filter(([key]) => !codebase || key.startsWith(`${codebase}-`))
+      .filter(([key]) => {
+        if (!codebase) return true;
+        if (key.startsWith(`${codebase}-`)) return true;
+        if (codebase === "default" && key.startsWith("-")) return true;
+        return false;
+      })
       .map(([, c]) => c);
     const hasResourceModifications = relevantChangesets.some(
       (changeset) =>

@@ -83,8 +83,8 @@ function validateScheduledTimeout(ep: backend.Endpoint): void {
 }
 
 /** Validate that the configuration for endpoints are valid. */
-export function endpointsAreValid(wantBackend: backend.Backend): void {
-  validateLifecycleHooks(wantBackend);
+export function endpointsAreValid(wantBackend: backend.Backend, existingBackend?: backend.Backend): void {
+  validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
@@ -442,11 +442,17 @@ export function checkFiltersIntegrity(
 }
 
 /** Validate that the lifecycle hooks target valid endpoints in the backend. */
-export function validateLifecycleHooks(wantBackend: backend.Backend): void {
+export function validateLifecycleHooks(
+  wantBackend: backend.Backend,
+  existingBackend?: backend.Backend,
+): void {
   if (!wantBackend.lifecycleHooks) {
     return;
   }
-  const endpoints = backend.allEndpoints(wantBackend);
+  const endpoints = [
+    ...backend.allEndpoints(wantBackend),
+    ...(existingBackend ? backend.allEndpoints(existingBackend) : []),
+  ];
   for (const [eventType, hook] of Object.entries(wantBackend.lifecycleHooks)) {
     if (hook.task) {
       const targetEndpoint = findAndValidateTargetEndpoint(

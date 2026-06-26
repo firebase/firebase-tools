@@ -92,6 +92,7 @@ describe("lifecycle", () => {
         serviceAccountEmail: "123456-compute@developer.gserviceaccount.com",
       });
       expect(loggerStub).to.have.been.calledWith(
+        sinon.match.any,
         "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-central1%22;project=myProj",
       );
     });
