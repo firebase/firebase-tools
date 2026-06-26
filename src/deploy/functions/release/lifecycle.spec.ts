@@ -24,15 +24,13 @@ describe("lifecycle", () => {
 
   describe("determineDeploymentDelta", () => {
     it("returns afterInstall when haveBackend has no endpoints", () => {
-      const wantBackend = backend.empty();
       const haveBackend = backend.empty();
 
-      const delta = determineDeploymentDelta(wantBackend, haveBackend);
+      const delta = determineDeploymentDelta(haveBackend);
       expect(delta).to.equal("afterInstall");
     });
 
     it("returns afterUpdate when haveBackend has existing endpoints", () => {
-      const wantBackend = backend.empty();
       const haveBackend = backend.of({
         id: "myFunc",
         project: "myProj",
@@ -42,7 +40,7 @@ describe("lifecycle", () => {
         httpsTrigger: {},
       });
 
-      const delta = determineDeploymentDelta(wantBackend, haveBackend);
+      const delta = determineDeploymentDelta(haveBackend);
       expect(delta).to.equal("afterUpdate");
     });
   });

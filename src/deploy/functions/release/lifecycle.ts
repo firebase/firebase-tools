@@ -14,7 +14,6 @@ export type LifecycleDelta = "afterInstall" | "afterUpdate";
  * (afterInstall) or an update to an existing deployment (afterUpdate).
  */
 export function determineDeploymentDelta(
-  wantBackend: backend.Backend,
   haveBackend: backend.Backend,
 ): LifecycleDelta {
   // If haveBackend has no existing endpoints, this is a fresh installation.
@@ -35,7 +34,7 @@ export async function executeLifecycleHooks(
   plan?: planner.DeploymentPlan,
   codebase?: string,
 ): Promise<boolean> {
-  const delta = determineDeploymentDelta(wantBackend, haveBackend);
+  const delta = determineDeploymentDelta(haveBackend);
   const hooks = wantBackend.lifecycleHooks || {};
   const hook = hooks[delta];
 
