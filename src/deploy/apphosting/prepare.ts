@@ -28,7 +28,7 @@ import { needProjectId } from "../../projectUtils";
 import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
-import { localBuild } from "../../apphosting/localbuilds";
+import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -187,6 +187,28 @@ export default async function (context: Context, options: Options): Promise<void
       continue;
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
+
+    let backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    if (!backend) {
+      const location = context.backendLocations[cfg.backendId];
+      if (location) {
+        const apphosting = await import("../../gcp/apphosting");
+        try {
+          backend = await apphosting.getBackend(projectId, location, cfg.backendId);
+        } catch {
+          // Fall through to error handling below
+        }
+      }
+    }
+    if (!backend) {
+      throw new FirebaseError(`Backend ${cfg.backendId} not found.`);
+    }
+
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    const appDir = path.join(rootDir, cfg.rootDir || "");
+
+    validateLocalBuildNodeVersion(backend, appDir);
+
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
 
     await injectEnvVarsFromApphostingConfig(
@@ -196,8 +218,6 @@ export default async function (context: Context, options: Options): Promise<void
       runtimeEnv,
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
-
-    const rootDir = path.resolve(options.projectRoot || process.cwd());
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
     const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
