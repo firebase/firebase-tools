@@ -159,19 +159,11 @@ export function buildFromV1Alpha1(
       if (!hook || typeof hook !== "object") {
         throw new FirebaseError(`Invalid lifecycle hook configuration for "${id}".`);
       }
-      const parsedHook: backend.LifecycleHook = {};
-
       if (hook.task) {
         if (typeof hook.task.function !== "string" || !hook.task.function) {
           throw new FirebaseError(
             `Invalid target "${hook.task.function || ""}" for lifecycle hook "${id}"`,
           );
-        }
-        parsedHook.task = {
-          function: hook.task.function,
-        };
-        if (hook.task.body !== undefined) {
-          parsedHook.task.body = hook.task.body as Record<string, unknown>;
         }
       } else if (hook.call) {
         if (typeof hook.call.function !== "string" || !hook.call.function) {
@@ -179,32 +171,10 @@ export function buildFromV1Alpha1(
             `Invalid target "${hook.call.function || ""}" for lifecycle hook "${id}"`,
           );
         }
-        parsedHook.call = {
-          function: hook.call.function,
-        };
-        if (hook.call.params !== undefined) {
-          parsedHook.call.params = hook.call.params as Record<string, unknown>;
-        }
       } else if (hook.http) {
         const target = hook.http.url || hook.http.function;
         if (typeof target !== "string" || !target) {
           throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
-        }
-        parsedHook.http = {};
-        if (hook.http.function) {
-          parsedHook.http.function = hook.http.function;
-        }
-        if (hook.http.url) {
-          parsedHook.http.url = hook.http.url;
-        }
-        if (hook.http.method) {
-          parsedHook.http.method = hook.http.method;
-        }
-        if (hook.http.headers) {
-          parsedHook.http.headers = hook.http.headers as Record<string, string>;
-        }
-        if (hook.http.body !== undefined) {
-          parsedHook.http.body = hook.http.body;
         }
       } else {
         throw new FirebaseError(
@@ -212,7 +182,7 @@ export function buildFromV1Alpha1(
         );
       }
 
-      bd.lifecycleHooks[id] = parsedHook;
+      bd.lifecycleHooks[id] = hook as backend.LifecycleHook;
     }
   }
   return bd;
