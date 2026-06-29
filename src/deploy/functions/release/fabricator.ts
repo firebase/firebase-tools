@@ -55,6 +55,9 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
+
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
@@ -62,6 +65,7 @@ export interface FabricatorArgs {
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
+  projectId: string;
 }
 
 const rethrowAs =
@@ -79,6 +83,7 @@ export class Fabricator {
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
+  projectId: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
@@ -87,6 +92,96 @@ export class Fabricator {
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
+    this.projectId = args.projectId;
+  }
+
+  async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToCreate) {
+      utils.logLabeledBullet(
+        "functions",
+        `Creating managed service account ${plan.serviceAccountToCreate}...`,
+      );
+      const saName = plan.serviceAccountToCreate.split("@")[0];
+      try {
+        await iam.createServiceAccount(
+          this.projectId,
+          saName,
+          `Managed by Firebase CLI for codebase ${codebase}`,
+          `Firebase Functions ${codebase}`,
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
+    }
+    if (plan.rolesToAdd?.length && plan.managedServiceAccount) {
+      utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
+      try {
+        await resourcemanager.addServiceAccountRoles(
+          this.projectId,
+          plan.managedServiceAccount,
+          plan.rolesToAdd,
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
+    } else if (plan.rolesToRemove?.length) {
+      // We didn't add roles so we don't actually know if we have permission to remove them.
+      // We test and fail early to avoid updating functions but failing to keep roles up to date.
+      const iamResult = await iam.testIamPermissions(this.projectId, [
+        "resourcemanager.projects.setIamPolicy",
+      ]);
+      if (!iamResult.passed) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        );
+      }
+    }
+  }
+
+  async removeOldRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToDelete) {
+      utils.logLabeledBullet(
+        "functions",
+        `Deleting managed service account ${plan.serviceAccountToDelete}...`,
+      );
+      try {
+        await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
+      } catch (e) {
+        utils.logLabeledWarning(
+          "functions",
+          `Failed to delete managed service account ${plan.serviceAccountToDelete}: ${(e as Error).message}. You may need to delete it manually.`,
+        );
+      }
+      return;
+    }
+    if (!plan.rolesToRemove?.length) {
+      return;
+    }
+    if (!plan.managedServiceAccount) {
+      return;
+    }
+    utils.logLabeledBullet(
+      "functions",
+      `Revoking unneeded IAM roles from ${plan.managedServiceAccount} for codebase ${codebase}...`,
+    );
+    try {
+      await resourcemanager.removeServiceAccountRoles(
+        this.projectId,
+        plan.managedServiceAccount,
+        plan.rolesToRemove,
+      );
+    } catch (e) {
+      throw new FirebaseError(
+        "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        { original: e as Error },
+      );
+    }
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -96,10 +191,18 @@ export class Fabricator {
       results: [],
     };
 
-    const changesets = Object.values(plan);
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      await this.grantNewRoles(codebasePlan, codebase);
+    }
+
+    // Accumulate all regional changesets across all codebases
+    const allChangesets: planner.Changeset[] = [];
+    for (const codebasePlan of Object.values(plan)) {
+      allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
+    }
 
     // Phase 1: Creates and Updates
-    const createAndUpdatePromises = changesets.map((changes) => {
+    const createAndUpdatePromises = allChangesets.map((changes) => {
       const scraperV1 = new SourceTokenScraper();
       const scraperV2 = new SourceTokenScraper();
       return this.applyUpserts(changes, scraperV1, scraperV2);
@@ -119,13 +222,12 @@ export class Fabricator {
       return acc;
     }, []);
 
-    // Simplify failure check (remove redundant check on createAndUpdateResultsArray)
     const hasFailures = summary.results.some((r) => r.error);
 
     if (hasFailures) {
       utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
 
-      summary.results = changesets.reduce<reporter.DeployResult[]>((accum, changes) => {
+      summary.results = allChangesets.reduce<reporter.DeployResult[]>((accum, changes) => {
         const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
           endpoint,
           durationMs: 0,
@@ -140,7 +242,7 @@ export class Fabricator {
 
     // Phase 2: Deletes
     const deleteResultsArray = await Promise.allSettled(
-      changesets.map((changes) => this.applyDeletes(changes)),
+      allChangesets.map((changes) => this.applyDeletes(changes)),
     );
 
     const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
@@ -155,6 +257,10 @@ export class Fabricator {
     }, []);
 
     summary.results.push(...deleteResults);
+
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      await this.removeOldRoles(codebasePlan, codebase);
+    }
 
     summary.totalTime = timer.stop();
     return summary;

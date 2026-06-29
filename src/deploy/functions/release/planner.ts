@@ -22,14 +22,30 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, Changeset>;
+/**
+ * Represents the comprehensive deployment plan for a single codebase.
+ */
+export interface CodebasePlan {
+  regionalChangesets: Record<string, Changeset>;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: string;
+  managedServiceAccount?: string;
+}
+
+export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
 export interface PlanArgs {
   wantBackend: backend.Backend; // the desired state
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
+  projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
+  existingRoles?: string[];
+  existingManagedSA?: string;
+  managedSA?: string;
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -127,11 +143,39 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 }
 
 /**
- * Create a plan for deploying all functions in one region.
+ * Create a plan for deploying all functions for one codebase.
  */
-export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
-  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
-  let deployment: DeploymentPlan = {};
+export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan> {
+  let {
+    wantBackend,
+    haveBackend,
+    codebase,
+    filters,
+    deleteAll,
+    existingRoles,
+    existingManagedSA,
+    managedSA,
+  } = args;
+
+  const requiredRoles = wantBackend.requiredRoles;
+  const roles = existingRoles || [];
+  let rolesToAdd: string[] | undefined;
+  let rolesToRemove: string[] | undefined;
+  let serviceAccountToCreate: string | undefined;
+  let serviceAccountToDelete: string | undefined;
+
+  const isFiltered = !!(filters && filters.length > 0 && !deleteAll);
+
+  if (requiredRoles?.length) {
+    rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
+    rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
+    if (!existingManagedSA && managedSA) {
+      serviceAccountToCreate = managedSA;
+    }
+  } else if (existingManagedSA && !isFiltered) {
+    serviceAccountToDelete = existingManagedSA;
+  }
+
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
   });
@@ -140,6 +184,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
     return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
+  const regionalChangesets: Record<string, Changeset> = {};
   const regions = new Set([
     ...Object.keys(wantBackend.endpoints),
     ...Object.keys(haveBackend.endpoints),
@@ -151,7 +196,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
       deleteAll,
     );
-    deployment = { ...deployment, ...changesets };
+    Object.assign(regionalChangesets, changesets);
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
@@ -163,7 +208,14 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  return deployment;
+  return {
+    regionalChangesets,
+    rolesToAdd,
+    rolesToRemove,
+    serviceAccountToCreate,
+    serviceAccountToDelete,
+    managedServiceAccount: managedSA,
+  };
 }
 
 /** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */

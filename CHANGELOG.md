@@ -1,0 +1,2 @@
+- Add declarative security support and automated rolling IAM role grants/revocations for 2nd gen Cloud Functions
+- Support setting the Google Cloud Storage (GCS) test results bucket in `apptesting:execute` and `appdistribution:distribute`
