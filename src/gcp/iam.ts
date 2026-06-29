@@ -2,6 +2,10 @@ import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 import * as utils from "../utils";
+import { FirebaseError, getErrStatus } from "../error";
+// Note: build configuration does not support synthetic default imports for JSON files at runtime.
+import * as knownRoles from "./knownRoles.json";
+import * as crypto from "crypto";
 
 const apiClient = new Client({ urlPrefix: iamOrigin(), apiVersion: "v1" });
 
@@ -273,4 +277,72 @@ export function printManualIamConfig(
       );
     }
   }
+}
+
+/**
+ * Returns the human-readable title of an IAM role.
+ * Short-circuits using a local map of known roles for speed, and falls back to the GCP API.
+ */
+export async function getRoleName(role: string): Promise<string> {
+  const map: Record<string, string> = knownRoles;
+  const title = map[role];
+  if (title) {
+    return title;
+  }
+  try {
+    const roleDetails = await getRole(role);
+    return roleDetails.title || role;
+  } catch (err) {
+    return role;
+  }
+}
+
+/**
+ * Generates a unique managed service account name by appending a random number
+ * and checking against GCP until an unused name is found.
+ */
+export async function generateManagedServiceAccountName(
+  projectId: string,
+  prefix: string,
+): Promise<string> {
+  const maxAttempts = 10;
+  for (let i = 0; i < maxAttempts; i++) {
+    const randomSuffix = Math.floor(Math.random() * 10000000000)
+      .toString()
+      .padStart(10, "0");
+
+    const accountId = `${prefix}-${randomSuffix}`;
+    try {
+      await getServiceAccount(projectId, accountId);
+      // If it succeeds, the account exists, so try another
+    } catch (err) {
+      if (getErrStatus(err) === 404) {
+        return accountId;
+      }
+      throw err;
+    }
+  }
+  throw new FirebaseError("Failed to generate a unique service account name after 10 attempts.");
+}
+
+/** Computes a base38 label etag formatted as <random 10 char salt>-<base38 hash>. */
+export function computeRolesEtag(roles: string[], existingSalt?: string): string {
+  const BASE38_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789-_";
+  let salt = existingSalt;
+  if (!salt) {
+    salt = String.fromCharCode(97 + Math.floor(Math.random() * 26)); // a-z
+    for (let i = 0; i < 9; i++) {
+      salt += BASE38_CHARS[Math.floor(Math.random() * 38)];
+    }
+  }
+  const sorted = Array.from(roles).sort();
+  const hashBuffer = crypto
+    .createHash("sha256")
+    .update(salt + sorted.join(","))
+    .digest();
+  let hashStr = "";
+  for (const byte of hashBuffer) {
+    hashStr += BASE38_CHARS[byte % 38];
+  }
+  return `${salt}-${hashStr.substring(0, 52)}`;
 }
