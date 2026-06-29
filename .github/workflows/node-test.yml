@@ -27,7 +27,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "24.18"
+          - "24"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,7 +50,7 @@ jobs:
       matrix:
         node-version:
           - "22"
-          - "24.18"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -68,7 +68,7 @@ jobs:
       - run: npm run test:unit
         working-directory: firebase-vscode
       - uses: codecov/codecov-action@v5
-        if: matrix.node-version == '24.18'
+        if: matrix.node-version == '24'
 
   # vscode_integration:
   #   runs-on: macos-latest
@@ -133,7 +133,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "24.18"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -155,7 +155,7 @@ jobs:
       matrix:
         node-version:
           - "22"
-          - "24.18"
+          - "24"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v3
@@ -177,7 +177,7 @@ jobs:
       - run: npm test -- -- --forbid-only
 
       - uses: codecov/codecov-action@v5
-        if: matrix.node-version == '24.18'
+        if: matrix.node-version == '24'
         with:
           files: ./.coverage/lcov.info
 
@@ -322,7 +322,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "24.18"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
@@ -341,7 +341,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "24.18"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
@@ -360,7 +360,7 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - "24.18"
+          - "24"
 
     steps:
       - uses: actions/checkout@v4
