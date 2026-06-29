@@ -469,47 +469,6 @@ export function validateLifecycleHooks(
         );
       }
     }
-
-    if (hook.callable) {
-      const targetEndpoint = findAndValidateTargetEndpoint(
-        endpoints,
-        hook.callable.function,
-        eventType,
-      );
-      if (!backend.isCallableTriggered(targetEndpoint)) {
-        throw new FirebaseError(
-          `Target endpoint "${hook.callable.function}" is not a callable function for lifecycle hook "${eventType}".`,
-        );
-      }
-    }
-
-    if (hook.http) {
-      const httpHook = hook.http;
-      if (httpHook.function) {
-        const targetEndpoint = findAndValidateTargetEndpoint(
-          endpoints,
-          httpHook.function,
-          eventType,
-        );
-        if (
-          !backend.isHttpsTriggered(targetEndpoint) &&
-          !backend.isCallableTriggered(targetEndpoint)
-        ) {
-          throw new FirebaseError(
-            `Target endpoint "${httpHook.function}" is not an HTTPS or Callable function for lifecycle hook "${eventType}".`,
-          );
-        }
-      }
-      if (httpHook.url) {
-        try {
-          new URL(httpHook.url);
-        } catch (err) {
-          throw new FirebaseError(
-            `Invalid URL "${httpHook.url}" specified for lifecycle hook "${eventType}".`,
-          );
-        }
-      }
-    }
   }
 }
 

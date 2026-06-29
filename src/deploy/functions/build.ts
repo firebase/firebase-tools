@@ -745,12 +745,6 @@ export function applyPrefix(build: Build, prefix: string): void {
       if (hook.task?.function) {
         hook.task.function = `${prefix}-${hook.task.function}`;
       }
-      if (hook.callable?.function) {
-        hook.callable.function = `${prefix}-${hook.callable.function}`;
-      }
-      if (hook.http?.function) {
-        hook.http.function = `${prefix}-${hook.http.function}`;
-      }
     }
   }
 }

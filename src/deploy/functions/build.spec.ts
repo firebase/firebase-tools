@@ -526,14 +526,6 @@ describe("applyPrefix", () => {
             body: { foo: "bar" },
           },
         },
-        afterUpdate: {
-          callable: {
-            function: "func1",
-          },
-          http: {
-            function: "func1",
-          },
-        },
       },
     };
 
@@ -544,14 +536,6 @@ describe("applyPrefix", () => {
         task: {
           function: "staging-func1",
           body: { foo: "bar" },
-        },
-      },
-      afterUpdate: {
-        callable: {
-          function: "staging-func1",
-        },
-        http: {
-          function: "staging-func1",
         },
       },
     });

@@ -74,16 +74,6 @@ export async function executeLifecycleHooks(
     return true;
   }
 
-  if (hook.callable) {
-    logLabeledBullet("functions", `Skipping hook execution for unsupported actionType: callable`);
-    return false;
-  }
-
-  if (hook.http) {
-    logLabeledBullet("functions", `Skipping hook execution for unsupported actionType: http`);
-    return false;
-  }
-
   logLabeledWarning("functions", `No action specified for lifecycle hook`);
   return false;
 }

@@ -92,15 +92,6 @@ export type WireLifecycleHook = {
     function?: string;
     body?: unknown;
   };
-  callable?: {
-    function?: string;
-    body?: unknown;
-  };
-  http?: {
-    url?: string;
-    function?: string;
-    body?: unknown;
-  };
 };
 
 export interface WireManifest {
@@ -164,21 +155,8 @@ export function buildFromV1Alpha1(
             `Invalid target "${hook.task.function || ""}" for lifecycle hook "${id}"`,
           );
         }
-      } else if (hook.callable) {
-        if (typeof hook.callable.function !== "string" || !hook.callable.function) {
-          throw new FirebaseError(
-            `Invalid target "${hook.callable.function || ""}" for lifecycle hook "${id}"`,
-          );
-        }
-      } else if (hook.http) {
-        const target = hook.http.url || hook.http.function;
-        if (typeof target !== "string" || !target) {
-          throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
-        }
       } else {
-        throw new FirebaseError(
-          `No action (task, callable, or http) specified for lifecycle hook "${id}"`,
-        );
+        throw new FirebaseError(`No action (task) specified for lifecycle hook "${id}"`);
       }
 
       bd.lifecycleHooks[id] = hook as backend.LifecycleHook;
