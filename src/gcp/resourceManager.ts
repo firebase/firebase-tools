@@ -145,24 +145,26 @@ export async function removeServiceAccountRoles(
   rolesToRemove: string[],
 ): Promise<Policy> {
   const projectPolicy = await getIamPolicy(projectId);
+  const bindings = projectPolicy.bindings || [];
   const memberName = `serviceAccount:${serviceAccountEmail}`;
   let updated = false;
 
-  for (let i = projectPolicy.bindings.length - 1; i >= 0; i--) {
-    const binding = projectPolicy.bindings[i];
+  for (let i = bindings.length - 1; i >= 0; i--) {
+    const binding = bindings[i];
     if (rolesToRemove.includes(binding.role)) {
       const memberIndex = binding.members.indexOf(memberName);
       if (memberIndex !== -1) {
         binding.members.splice(memberIndex, 1);
         updated = true;
         if (binding.members.length === 0) {
-          projectPolicy.bindings.splice(i, 1);
+          bindings.splice(i, 1);
         }
       }
     }
   }
 
   if (updated) {
+    projectPolicy.bindings = bindings;
     return await setIamPolicy(projectId, projectPolicy, "bindings");
   }
   return projectPolicy;
@@ -178,8 +180,9 @@ export async function getServiceAccountRoles(
   const projectPolicy = await getIamPolicy(projectId);
   const memberName = `serviceAccount:${serviceAccountEmail}`;
   const roles: string[] = [];
+  const bindings = projectPolicy.bindings || [];
 
-  for (const binding of projectPolicy.bindings) {
+  for (const binding of bindings) {
     if (binding.members.includes(memberName)) {
       roles.push(binding.role);
     }

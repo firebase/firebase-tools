@@ -166,7 +166,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
 
   const isFiltered = !!(filters && filters.length > 0 && !deleteAll);
 
-  if (requiredRoles) {
+  if (requiredRoles && requiredRoles.length > 0) {
     rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
     rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
     if (!existingManagedSA && managedSA) {

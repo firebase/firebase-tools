@@ -9,8 +9,16 @@ import * as pricing from "./pricing";
 import * as utils from "../../utils";
 import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
-import { EndpointUpdate, DeploymentPlan } from "./release/planner";
+import { EndpointUpdate } from "./release/planner";
 import * as iam from "../../gcp/iam";
+
+export interface CodebasePlan {
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: string;
+  managedServiceAccount?: string;
+}
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -298,7 +306,7 @@ export async function promptForCleanupPolicyDays(
  * Prompts operators for codebase-wide declarative security changes.
  */
 export async function promptForSecurityChanges(
-  plan: DeploymentPlan,
+  plan: Record<string, CodebasePlan>,
   options: Options,
 ): Promise<void> {
   if (options.force) {
@@ -329,9 +337,14 @@ export async function promptForSecurityChanges(
       const roleNames = await Promise.all(
         (codebasePlan.rolesToAdd || []).map((r) => iam.getRoleName(r)),
       );
-      const msg = `This codebase uses declarative security. It will use the following role(s):\n${roleNames
-        .map((r) => `* ${r}`)
-        .join("\n")}\nContinue?`;
+      let msg = "This codebase uses declarative security. ";
+      if (roleNames.length > 0) {
+        msg += `It will use the following role(s):\n${roleNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\nContinue?`;
+      } else {
+        msg += "It will not use any additional roles. Continue?";
+      }
       const confirmed = await confirm({ default: false, message: msg });
       if (!confirmed) {
         throw new FirebaseError("Deployment canceled by user.");

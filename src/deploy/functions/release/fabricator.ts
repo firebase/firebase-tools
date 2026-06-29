@@ -116,12 +116,12 @@ export class Fabricator {
         );
       }
     }
-    if (plan.rolesToAdd?.length) {
+    if (plan.rolesToAdd?.length && plan.managedServiceAccount) {
       utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
       try {
         await resourcemanager.addServiceAccountRoles(
           this.projectId,
-          plan.managedServiceAccount!,
+          plan.managedServiceAccount,
           plan.rolesToAdd,
         );
       } catch (e) {
@@ -150,10 +150,20 @@ export class Fabricator {
         "functions",
         `Deleting managed service account ${plan.serviceAccountToDelete}...`,
       );
-      await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
+      try {
+        await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
+      } catch (e) {
+        utils.logLabeledWarning(
+          "functions",
+          `Failed to delete managed service account ${plan.serviceAccountToDelete}: ${(e as Error).message}. You may need to delete it manually.`,
+        );
+      }
       return;
     }
     if (!plan.rolesToRemove?.length) {
+      return;
+    }
+    if (!plan.managedServiceAccount) {
       return;
     }
     utils.logLabeledBullet(
@@ -163,7 +173,7 @@ export class Fabricator {
     try {
       await resourcemanager.removeServiceAccountRoles(
         this.projectId,
-        plan.managedServiceAccount!,
+        plan.managedServiceAccount,
         plan.rolesToRemove,
       );
     } catch (e) {
@@ -248,10 +258,9 @@ export class Fabricator {
 
     summary.results.push(...deleteResults);
 
-    const roleRemovalPromises = Object.entries(plan).map(([codebase, codebasePlan]) =>
-      this.removeOldRoles(codebasePlan, codebase),
-    );
-    await Promise.all(roleRemovalPromises);
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      await this.removeOldRoles(codebasePlan, codebase);
+    }
 
     summary.totalTime = timer.stop();
     return summary;

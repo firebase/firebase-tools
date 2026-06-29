@@ -2,7 +2,8 @@ import { resourceManagerOrigin, iamOrigin } from "../api";
 import { logger } from "../logger";
 import { Client } from "../apiv2";
 import * as utils from "../utils";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
+// Note: build configuration does not support synthetic default imports for JSON files at runtime.
 import * as knownRoles from "./knownRoles.json";
 import * as crypto from "crypto";
 
@@ -284,8 +285,9 @@ export function printManualIamConfig(
  */
 export async function getRoleName(role: string): Promise<string> {
   const map: Record<string, string> = knownRoles;
-  if (map[role]) {
-    return map[role];
+  const title = map[role];
+  if (title) {
+    return title;
   }
   try {
     const roleDetails = await getRole(role);
@@ -313,8 +315,8 @@ export async function generateManagedServiceAccountName(
     try {
       await getServiceAccount(projectId, accountId);
       // If it succeeds, the account exists, so try another
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err) {
+      if (getErrStatus(err) === 404) {
         return accountId;
       }
       throw err;
