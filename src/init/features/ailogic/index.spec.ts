@@ -7,6 +7,10 @@ import * as apps from "../../../management/apps";
 import * as provision from "../../../management/provisioning/provision";
 import { Setup } from "../..";
 import { AppPlatform } from "../../../management/apps";
+import {
+  AiLogicOperationMode,
+  ProvisionFirebaseAppOptions,
+} from "../../../management/provisioning/types";
 
 describe("init ailogic", () => {
   let sandbox: sinon.SinonSandbox;
@@ -131,6 +135,13 @@ describe("init ailogic", () => {
 
       sinon.assert.calledWith(parseAppIdStub, "1:123456789:android:abcdef123456");
       sinon.assert.calledOnce(provisionFirebaseAppStub);
+
+      // Verify DEBUG_ONLY operationMode is passed to the provisioning API
+      const provisionCall = provisionFirebaseAppStub.getCall(0);
+      const provisionArgs = provisionCall.args[0] as ProvisionFirebaseAppOptions;
+      expect(provisionArgs.features?.firebaseAiLogicInput).to.deep.equal({
+        operationMode: AiLogicOperationMode.DEBUG_ONLY,
+      });
 
       expect(setup.instructions).to.include(
         "Firebase AI Logic has been enabled for existing ANDROID app: 1:123456789:android:abcdef123456",

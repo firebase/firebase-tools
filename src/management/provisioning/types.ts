@@ -58,9 +58,20 @@ export interface ProvisionProjectOptions {
   // cloudBillingAccountId?: string;
 }
 
+export enum AiLogicOperationMode {
+  OPERATION_MODE_UNSPECIFIED = "OPERATION_MODE_UNSPECIFIED",
+  NO_APP_CHECK_SUPPORT = "NO_APP_CHECK_SUPPORT",
+  DEBUG_ONLY = "DEBUG_ONLY",
+  FULL_APP_CHECK_SUPPORT = "FULL_APP_CHECK_SUPPORT",
+}
+
+export interface FirebaseAiLogicInput {
+  operationMode?: AiLogicOperationMode;
+}
+
 export interface ProvisionFeatureOptions {
   location?: string;
-  firebaseAiLogicInput?: Record<string, unknown>;
+  firebaseAiLogicInput?: FirebaseAiLogicInput;
   firebaseAuthInput?: FirebaseAuthInput;
 }
 
@@ -107,6 +118,6 @@ export interface ProvisionRequest {
     sha256Hashes?: string[];
   };
   webInput?: {};
-  firebaseAiLogicInput?: {};
+  firebaseAiLogicInput?: FirebaseAiLogicInput;
   firebaseAuthInput?: FirebaseAuthInput;
 }

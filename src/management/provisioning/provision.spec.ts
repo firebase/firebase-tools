@@ -13,6 +13,7 @@ import {
   ProvisionAppOptions,
   ProvisionFirebaseAppOptions,
   ProvisionFirebaseAppResponse,
+  AiLogicOperationMode,
 } from "./types";
 import { FirebaseError } from "../../error";
 import { AppPlatform } from "../apps";
@@ -343,8 +344,8 @@ describe("Provision module", () => {
       });
     });
 
-    it("should include AI features when specified", () => {
-      const aiFeatures = { enableAiLogic: true, model: "gemini-pro" };
+    it("should include AI Logic input with operationMode when specified", () => {
+      const aiFeatures = { operationMode: AiLogicOperationMode.DEBUG_ONLY };
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
         app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },
@@ -551,8 +552,8 @@ describe("Provision module", () => {
       expect(result).to.deep.equal(mockResponse);
     });
 
-    it("should provision with AI features enabled", async () => {
-      const aiFeatures = { enableAiLogic: true, model: "gemini-pro" };
+    it("should provision with AI Logic operationMode", async () => {
+      const aiFeatures = { operationMode: AiLogicOperationMode.DEBUG_ONLY };
       const options: ProvisionFirebaseAppOptions = {
         project: { displayName: PROJECT_DISPLAY_NAME },
         app: { platform: AppPlatform.WEB, webAppId: WEB_APP_ID, displayName: PROJECT_DISPLAY_NAME },

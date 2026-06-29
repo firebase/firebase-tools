@@ -7,6 +7,7 @@ import { provisionFirebaseApp } from "../../../management/provisioning/provision
 import {
   ProvisionAppOptions,
   ProvisionFirebaseAppOptions,
+  AiLogicOperationMode,
 } from "../../../management/provisioning/types";
 
 export interface AiLogicInfo {
@@ -124,7 +125,9 @@ export async function actuate(setup: Setup): Promise<void> {
       },
       app: getAppOptions(appInfo, ailogicInfo.displayName),
       features: {
-        firebaseAiLogicInput: {},
+        firebaseAiLogicInput: {
+          operationMode: AiLogicOperationMode.DEBUG_ONLY,
+        },
       },
     };
 
