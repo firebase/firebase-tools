@@ -742,14 +742,20 @@ export function applyPrefix(build: Build, prefix: string): void {
 
   if (build.lifecycleHooks) {
     for (const hook of Object.values(build.lifecycleHooks)) {
-      if (hook.task?.function) {
-        hook.task.function = `${prefix}-${hook.task.function}`;
-      }
-      if (hook.call?.function) {
-        hook.call.function = `${prefix}-${hook.call.function}`;
-      }
-      if (hook.http?.function) {
-        hook.http.function = `${prefix}-${hook.http.function}`;
+      if ("task" in hook) {
+        if (hook.task?.function) {
+          hook.task.function = `${prefix}-${hook.task.function}`;
+        }
+      } else if ("call" in hook) {
+        if (hook.call?.function) {
+          hook.call.function = `${prefix}-${hook.call.function}`;
+        }
+      } else if ("http" in hook) {
+        if (hook.http?.function) {
+          hook.http.function = `${prefix}-${hook.http.function}`;
+        }
+      } else {
+        assertExhaustive(hook);
       }
     }
   }

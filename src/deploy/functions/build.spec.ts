@@ -530,9 +530,6 @@ describe("applyPrefix", () => {
           call: {
             function: "func1",
           },
-          http: {
-            function: "func1",
-          },
         },
       },
     };
@@ -548,9 +545,6 @@ describe("applyPrefix", () => {
       },
       afterUpdate: {
         call: {
-          function: "staging-func1",
-        },
-        http: {
           function: "staging-func1",
         },
       },

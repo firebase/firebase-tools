@@ -425,23 +425,28 @@ export interface RequiredAPI {
   api: string;
 }
 
-export interface LifecycleHook {
-  task?: {
-    function: string;
-    body?: Record<string, unknown>;
-  };
-  call?: {
-    function: string;
-    params?: Record<string, unknown>;
-  };
-  http?: {
-    function?: string;
-    url?: string;
-    method?: string;
-    headers?: Record<string, string>;
-    body?: unknown;
-  };
-}
+export type LifecycleHook =
+  | {
+      task: {
+        function: string;
+        body?: Record<string, unknown>;
+      };
+    }
+  | {
+      call: {
+        function: string;
+        params?: Record<string, unknown>;
+      };
+    }
+  | {
+      http: {
+        function?: string;
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+      };
+    };
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {

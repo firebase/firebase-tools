@@ -4,7 +4,7 @@ import * as backend from "../backend";
 import { determineDeploymentDelta, executeLifecycleHooks } from "./lifecycle";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
-import * as getProjectNumber from "../../../getProjectNumber";
+import * as projects from "../../../management/projects";
 import * as computeEngine from "../../../gcp/computeEngine";
 
 describe("lifecycle", () => {
@@ -12,7 +12,7 @@ describe("lifecycle", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    sandbox.stub(getProjectNumber, "getProjectNumber").resolves("123456");
+    sandbox.stub(projects, "getProject").resolves({ projectNumber: "123456" } as any);
     sandbox
       .stub(computeEngine, "getDefaultServiceAccount")
       .resolves("123456-compute@developer.gserviceaccount.com");
@@ -34,7 +34,7 @@ describe("lifecycle", () => {
       const haveBackend = backend.of({
         id: "myFunc",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "myFunc",
         platform: "gcfv2",
         httpsTrigger: {},
@@ -60,7 +60,7 @@ describe("lifecycle", () => {
       const wantBackend = backend.of({
         id: "installHookTask",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "installHookTask",
         platform: "gcfv2",
         uri: "https://installhooktask-12345.a.run.app",
@@ -80,7 +80,7 @@ describe("lifecycle", () => {
       expect(executed).to.be.true;
       expect(enqueueStub).to.have.been.calledOnce;
       const [queueName, task] = enqueueStub.firstCall.args;
-      expect(queueName).to.equal("projects/myProj/locations/us-central1/queues/installHookTask");
+      expect(queueName).to.equal("projects/myProj/locations/us-east1/queues/installHookTask");
       expect(task.httpRequest.url).to.equal("https://installhooktask-12345.a.run.app");
       expect(task.httpRequest.httpMethod).to.equal("POST");
       expect(task.httpRequest.body).to.equal(
@@ -88,11 +88,43 @@ describe("lifecycle", () => {
       );
       expect(task.httpRequest.oidcToken).to.deep.equal({
         serviceAccountEmail: "123456-compute@developer.gserviceaccount.com",
+        audience: "https://installhooktask-12345.a.run.app",
       });
       expect(loggerStub).to.have.been.calledWith(
         sinon.match.any,
-        "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-central1%22;project=myProj",
+        "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
       );
+    });
+
+    it("enqueues task using the endpoint's configured service account when present", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const wantBackend = backend.of({
+        id: "installHookTask",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "installHookTask",
+        platform: "gcfv2",
+        uri: "https://installhooktask-12345.a.run.app",
+        serviceAccount: "custom-sa@myProj.iam.gserviceaccount.com",
+        taskQueueTrigger: {},
+      });
+      wantBackend.lifecycleHooks = {
+        afterInstall: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.empty();
+
+      const executed = await executeLifecycleHooks(wantBackend, haveBackend);
+      expect(executed).to.be.true;
+      expect(enqueueStub).to.have.been.calledOnce;
+      const [, task] = enqueueStub.firstCall.args;
+      expect(task.httpRequest.oidcToken).to.deep.equal({
+        serviceAccountEmail: "custom-sa@myProj.iam.gserviceaccount.com",
+        audience: "https://installhooktask-12345.a.run.app",
+      });
     });
 
     it("enqueues task when afterUpdate TaskQueue hook is configured on subsequent update", async () => {
@@ -100,7 +132,7 @@ describe("lifecycle", () => {
       const wantBackend = backend.of({
         id: "updateHookTask",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "updateHookTask",
         platform: "gcfv2",
         uri: "https://updatehooktask-12345.a.run.app",
@@ -117,7 +149,7 @@ describe("lifecycle", () => {
       const haveBackend = backend.of({
         id: "existingFunc",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "existingFunc",
         platform: "gcfv2",
         httpsTrigger: {},
@@ -127,7 +159,7 @@ describe("lifecycle", () => {
       expect(executed).to.be.true;
       expect(enqueueStub).to.have.been.calledOnce;
       const [queueName, task] = enqueueStub.firstCall.args;
-      expect(queueName).to.equal("projects/myProj/locations/us-central1/queues/updateHookTask");
+      expect(queueName).to.equal("projects/myProj/locations/us-east1/queues/updateHookTask");
       expect(task.httpRequest.url).to.equal("https://updatehooktask-12345.a.run.app");
       expect(task.httpRequest.httpMethod).to.equal("POST");
       expect(task.httpRequest.body).to.equal(
@@ -135,6 +167,7 @@ describe("lifecycle", () => {
       );
       expect(task.httpRequest.oidcToken).to.deep.equal({
         serviceAccountEmail: "123456-compute@developer.gserviceaccount.com",
+        audience: "https://updatehooktask-12345.a.run.app",
       });
     });
 
@@ -143,7 +176,7 @@ describe("lifecycle", () => {
       const wantBackend = backend.of({
         id: "updateHookTask",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "updateHookTask",
         platform: "gcfv2",
         uri: "https://updatehooktask-12345.a.run.app",
@@ -159,7 +192,7 @@ describe("lifecycle", () => {
       const haveBackend = backend.of({
         id: "updateHookTask",
         project: "myProj",
-        region: "us-central1",
+        region: "us-east1",
         entryPoint: "updateHookTask",
         platform: "gcfv2",
         uri: "https://updatehooktask-12345.a.run.app",
@@ -167,11 +200,11 @@ describe("lifecycle", () => {
       });
 
       const emptyPlan = {
-        "default-us-central1-default": {
+        "default-us-east1-default": {
           endpointsToCreate: [],
           endpointsToUpdate: [],
           endpointsToDelete: [],
-          endpointsToSkip: [wantBackend.endpoints["us-central1"]["updateHookTask"]],
+          endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
         },
       };
 

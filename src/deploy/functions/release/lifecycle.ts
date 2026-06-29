@@ -5,7 +5,8 @@ import { logger } from "../../../logger";
 import { logLabeledBullet, logLabeledSuccess, logLabeledWarning } from "../../../utils";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as computeEngine from "../../../gcp/computeEngine";
-import { getProjectNumber } from "../../../getProjectNumber";
+import { getProject } from "../../../management/projects";
+import { assertExhaustive } from "../../../functional";
 
 export type LifecycleDelta = "afterInstall" | "afterUpdate";
 
@@ -42,6 +43,9 @@ export async function executeLifecycleHooks(
   }
 
   if (delta === "afterUpdate" && plan) {
+    // Filter the deployment plan to only include changesets relevant to the codebase being released.
+    // Changeset keys in the plan are prefixed with the codebase name (e.g. "mycodebase-").
+    // If the codebase is "default", the key may just start with "-" (e.g. "-endpointId").
     const relevantChangesets = Object.entries(plan)
       .filter(([key]) => {
         if (!codebase) return true;
@@ -65,17 +69,20 @@ export async function executeLifecycleHooks(
     }
   }
 
-  if (hook.task) {
+  if ("task" in hook) {
     logLabeledBullet(
       "functions",
       `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
     );
     await executeTaskQueueHook(hook.task, wantBackend);
     return true;
+  } else if ("call" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "call" is not supported.`);
+  } else if ("http" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "http" is not supported.`);
+  } else {
+    assertExhaustive(hook);
   }
-
-  logLabeledWarning("functions", `No action specified for lifecycle hook`);
-  return false;
 }
 
 /**
@@ -105,7 +112,8 @@ async function executeTaskQueueHook(
     throw new FirebaseError(`Target endpoint "${taskHook.function}" does not have a trigger URI.`);
   }
 
-  const projectNumber = await getProjectNumber({ projectId: targetEndpoint.project });
+  const projectMetadata = await getProject(targetEndpoint.project);
+  const projectNumber = projectMetadata.projectNumber;
   const sa =
     targetEndpoint.serviceAccount || (await computeEngine.getDefaultServiceAccount(projectNumber));
 
@@ -118,6 +126,7 @@ async function executeTaskQueueHook(
       },
       oidcToken: {
         serviceAccountEmail: sa,
+        audience: url,
       },
     },
   };
@@ -136,6 +145,8 @@ async function executeTaskQueueHook(
       `View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`,
     );
   } catch (err: unknown) {
+    // We treat lifecycle hook failures as warnings. We don't want to fail
+    // the entire deploy command if a post-deploy hook fails to enqueue.
     const errorMsg = err instanceof Error ? err.message : String(err);
     logLabeledWarning(
       "functions",

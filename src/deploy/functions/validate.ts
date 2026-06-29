@@ -10,6 +10,7 @@ import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
+import { assertExhaustive } from "../../functional";
 
 /**
  * GCF Gen 1 has a max timeout of 540s.
@@ -457,23 +458,28 @@ export function validateLifecycleHooks(
     ...(existingBackend ? backend.allEndpoints(existingBackend) : []),
   ];
   for (const [eventType, hook] of Object.entries(wantBackend.lifecycleHooks)) {
-    if (hook.task) {
+    const keys = Object.keys(hook).filter((k) => ["task", "call", "http"].includes(k));
+    if (keys.length !== 1) {
+      throw new FirebaseError(
+        `Lifecycle hook "${eventType}" must specify exactly one action (task, call, or http).`,
+      );
+    }
+
+    if ("task" in hook) {
       const targetEndpoint = findAndValidateTargetEndpoint(
         endpoints,
         hook.task.function,
         eventType,
       );
       if (!backend.isTaskQueueTriggered(targetEndpoint)) {
-        throw new FirebaseError(
-          `Target endpoint "${hook.task.function}" is not a task queue function for lifecycle hook "${eventType}".`,
-        );
+        throw new FirebaseError(`Lifecycle hook "${eventType}" expects a task queue function.`);
       }
-    }
-    if (hook.call) {
+    } else if ("call" in hook) {
       throw new FirebaseError(`Lifecycle hook action type "call" is not supported in the CLI yet.`);
-    }
-    if (hook.http) {
+    } else if ("http" in hook) {
       throw new FirebaseError(`Lifecycle hook action type "http" is not supported in the CLI yet.`);
+    } else {
+      assertExhaustive(hook);
     }
   }
 }

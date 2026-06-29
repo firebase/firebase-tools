@@ -553,7 +553,7 @@ describe("validate", () => {
           },
         };
         expect(() => validate.endpointsAreValid(want)).to.throw(
-          /Target endpoint "nontaskfunc" is not a task queue function for lifecycle hook "afterInstall"/,
+          /Lifecycle hook "afterInstall" expects a task queue function\./,
         );
       });
 
