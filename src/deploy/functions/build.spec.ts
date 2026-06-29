@@ -526,6 +526,14 @@ describe("applyPrefix", () => {
             body: { foo: "bar" },
           },
         },
+        afterUpdate: {
+          call: {
+            function: "func1",
+          },
+          http: {
+            function: "func1",
+          },
+        },
       },
     };
 
@@ -536,6 +544,14 @@ describe("applyPrefix", () => {
         task: {
           function: "staging-func1",
           body: { foo: "bar" },
+        },
+      },
+      afterUpdate: {
+        call: {
+          function: "staging-func1",
+        },
+        http: {
+          function: "staging-func1",
         },
       },
     });
