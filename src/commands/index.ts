@@ -195,6 +195,9 @@ export function load(client: CLIClient): CLIClient {
     client.internaltesting.frameworks.compose = loadCommand("internaltesting-frameworks-compose");
     client.internaltesting.functions = {};
     client.internaltesting.functions.discover = loadCommand("internaltesting-functions-discover");
+    client.internaltesting.ext = {};
+    client.internaltesting.ext.instances = {};
+    client.internaltesting.ext.instances.get = loadCommand("ext-get");
   }
   if (experiments.isEnabled("apphosting")) {
     client.apphosting = {};

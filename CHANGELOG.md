@@ -1,0 +1,1 @@
+- Adds the internaltesting:ext:instances:get command to retrieve currently running Extensions configurations. This command's behavior is currently unstable and should not be relied on externally. (#10583)
