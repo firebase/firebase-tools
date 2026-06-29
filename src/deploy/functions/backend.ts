@@ -434,9 +434,11 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  requiredRoles?: string[];
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -474,6 +476,7 @@ export function merge(...backends: Backend[]): Backend {
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
+  const requiredRoles = new Set<string>();
   for (const b of backends) {
     for (const { api, reason } of b.requiredAPIs) {
       const reasons = apiToReasons[api] || new Set();
@@ -482,11 +485,21 @@ export function merge(...backends: Backend[]): Backend {
       }
       apiToReasons[api] = reasons;
     }
-    // Mere all environment variables.
+    // Merge all environment variables.
     merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+
+    // Merge requiredRoles
+    if (b.requiredRoles) {
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
+    }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
     merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  if (requiredRoles.size > 0) {
+    merged.requiredRoles = Array.from(requiredRoles);
   }
   return merged;
 }
