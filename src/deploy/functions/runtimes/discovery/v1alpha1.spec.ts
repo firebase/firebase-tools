@@ -1131,6 +1131,60 @@ describe("buildFromV1Alpha", () => {
       expect(parsed).to.deep.equal(expected);
     });
 
+    it("copies valid call lifecycle hooks", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterUpdate: {
+            call: {
+              function: "myCallFunc",
+              params: { foo: "bar" },
+            },
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.lifecycleHooks = {
+        afterUpdate: {
+          call: {
+            function: "myCallFunc",
+            params: { foo: "bar" },
+          },
+        },
+      };
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies valid http lifecycle hooks", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterInstall: {
+            http: {
+              url: "https://example.com/hook",
+              body: "some-body",
+            },
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.lifecycleHooks = {
+        afterInstall: {
+          http: {
+            url: "https://example.com/hook",
+            body: "some-body",
+          },
+        },
+      };
+      expect(parsed).to.deep.equal(expected);
+    });
+
     it("throws on invalid event type", () => {
       const yaml = {
         specVersion: "v1alpha1",
@@ -1178,7 +1232,7 @@ describe("buildFromV1Alpha", () => {
 
       expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
         FirebaseError,
-        /No action \(task\) specified for lifecycle hook "afterInstall"/,
+        /No action \(task, call, or http\) specified for lifecycle hook "afterInstall"/,
       );
     });
   });

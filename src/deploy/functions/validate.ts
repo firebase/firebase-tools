@@ -469,6 +469,12 @@ export function validateLifecycleHooks(
         );
       }
     }
+    if (hook.call) {
+      throw new FirebaseError(`Lifecycle hook action type "call" is not supported in the CLI yet.`);
+    }
+    if (hook.http) {
+      throw new FirebaseError(`Lifecycle hook action type "http" is not supported in the CLI yet.`);
+    }
   }
 }
 

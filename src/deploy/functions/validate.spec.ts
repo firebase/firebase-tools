@@ -576,6 +576,40 @@ describe("validate", () => {
           /Target endpoint "v1func" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions./,
         );
       });
+
+      it("throws when a call hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            call: {
+              function: "myfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "call" is not supported in the CLI yet./,
+        );
+      });
+
+      it("throws when an http hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterInstall: {
+            http: {
+              url: "https://example.com/hook",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "http" is not supported in the CLI yet./,
+        );
+      });
     });
   });
 
