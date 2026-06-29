@@ -57,8 +57,135 @@ import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+
+/**
+ * Discovers and coordinates declarative security details for a codebase.
+ * Mutates want Backend to populate managed service account and etag labels.
+ * Returns existing discovered roles, or undefined if no security changes needed.
+ */
+export async function discoverSecurityDetails(
+  codebase: string,
+  want: backend.Backend,
+  have: backend.Backend,
+  projectId: string,
+): Promise<{
+  existingRoles?: string[];
+  existingEtag?: string;
+  existingManagedSA?: string;
+  managedSA?: string;
+  newEtag?: string;
+}> {
+  const requiredRoles = want.requiredRoles;
+  const firstHave = backend.allEndpoints(have)[0];
+  let existingManagedSA: string | undefined;
+  let existingEtag: string | undefined;
+  if (firstHave) {
+    existingEtag = firstHave.labels?.["firebase-declarative-security-etag"];
+    existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
+      ? firstHave.serviceAccount
+      : undefined;
+  }
+
+  if (!requiredRoles && (!existingManagedSA || !existingEtag)) {
+    return {};
+  }
+
+  if (
+    requiredRoles &&
+    backend.someEndpoint(
+      want,
+      (e) =>
+        typeof e.serviceAccount === "string" &&
+        e.serviceAccount !== "default" &&
+        !e.serviceAccount.startsWith("firebase-fn-"),
+    )
+  ) {
+    throw new FirebaseError(
+      `Cannot use explicit custom service accounts on functions while using declarative security in codebase ${codebase}.`,
+    );
+  }
+
+  if (!requiredRoles && existingManagedSA && existingEtag) {
+    for (const endpoint of backend.allEndpoints(want)) {
+      if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
+        endpoint.serviceAccount = "default";
+      }
+      if (endpoint.labels) {
+        delete endpoint.labels["firebase-declarative-security-etag"];
+      }
+    }
+    return {
+      existingEtag,
+      existingManagedSA,
+    };
+  }
+
+  let managedSA = existingManagedSA;
+  if (!managedSA) {
+    const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
+    managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
+  }
+
+  const existingSalt = existingEtag ? existingEtag.split("-")[0] : undefined;
+  const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
+
+  for (const endpoint of backend.allEndpoints(want)) {
+    endpoint.serviceAccount = managedSA;
+    endpoint.labels = endpoint.labels || {};
+    endpoint.labels["firebase-declarative-security-etag"] = newEtag;
+  }
+
+  if (existingEtag && existingEtag === newEtag) {
+    return {
+      existingRoles: requiredRoles,
+      existingEtag,
+      existingManagedSA,
+      managedSA,
+      newEtag,
+    };
+  }
+
+  const permissionsToTest = ["resourcemanager.projects.setIamPolicy"];
+  if (!existingManagedSA) {
+    permissionsToTest.push("iam.serviceAccounts.create");
+  }
+  const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  if (!iamResult.passed) {
+    if (!existingManagedSA) {
+      throw new FirebaseError(
+        `Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    } else {
+      throw new FirebaseError(
+        `You do not have access to make the policy changes required in codebase ${codebase} deploy. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    }
+  }
+
+  let existingRoles: string[] = [];
+  if (existingManagedSA) {
+    try {
+      existingRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
+        { original: err },
+      );
+    }
+  }
+
+  return {
+    existingRoles,
+    existingEtag,
+    existingManagedSA,
+    managedSA,
+    newEtag,
+  };
+}
 
 /**
  * Prepare functions codebases for deploy.
@@ -290,8 +417,10 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    payload.functions[codebase] = { wantBackend, haveBackend };
+    const security = await discoverSecurityDetails(codebase, wantBackend, haveBackend, projectId);
+    payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
+
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
@@ -680,11 +809,6 @@ export async function warnIfNewGenkitFunctionIsMissingSecrets(
   }
 }
 
-// Standard built-in Google Cloud APIs that the CLI inherently relies upon or ensures
-// enabled during the normal Cloud Functions deployment lifecycle. This covers:
-// - Core compute & build: cloudfunctions, run, cloudbuild, artifactregistry
-// - Configuration & secrets: runtimeconfig, secretmanager
-// - Async triggers & events: pubsub, eventarc, storage, cloudscheduler, cloudtasks
 const STANDARD_APIS = [
   "cloudfunctions.googleapis.com",
   "runtimeconfig.googleapis.com",
@@ -699,15 +823,8 @@ const STANDARD_APIS = [
   "cloudtasks.googleapis.com",
 ];
 
-/**
- * Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
- * require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
- * @param projectNumber The GCP project number to inspect and enable APIs on.
- * @param wantBackend The expected Backend spec containing manifest-declared required APIs.
- * @param options Deploy execution options for prompting configuration.
- * @param [options.force] Whether to force confirm interactive prompts.
- * @param [options.nonInteractive] Whether the CLI is running in non-interactive mode.
- */
+// Enable required APIs. This may come implicitly from triggers (e.g. scheduled triggers
+// require cloudscheduler and, in v1, require pub/sub), use of features (secrets), or explicit dependencies.
 export async function ensureAllRequiredAPIsEnabled(
   projectNumber: string,
   wantBackend: backend.Backend = backend.empty(),
