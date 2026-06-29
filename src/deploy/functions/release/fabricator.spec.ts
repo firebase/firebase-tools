@@ -1778,7 +1778,6 @@ describe("Fabricator", () => {
       };
 
       let resolveCreate: () => void;
-
       const createPromise = new Promise<void>((resolve) => {
         resolveCreate = resolve;
       });
@@ -1830,7 +1829,6 @@ describe("Fabricator", () => {
       };
 
       const scrapers: scraper.SourceTokenScraper[] = [];
-
       sinon
         .stub(fab, "createEndpoint")
         .callsFake((unused: backend.Endpoint, s: scraper.SourceTokenScraper) => {

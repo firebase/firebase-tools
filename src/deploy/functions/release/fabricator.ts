@@ -102,25 +102,45 @@ export class Fabricator {
         `Creating managed service account ${plan.serviceAccountToCreate}...`,
       );
       const saName = plan.serviceAccountToCreate.split("@")[0];
-      await iam.createServiceAccount(
-        this.projectId,
-        saName,
-        `Managed by Firebase CLI for codebase ${codebase}`,
-        `Firebase Functions ${codebase}`,
-      );
+      try {
+        await iam.createServiceAccount(
+          this.projectId,
+          saName,
+          `Managed by Firebase CLI for codebase ${codebase}`,
+          `Firebase Functions ${codebase}`,
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
     }
-    if (
-      !plan.serviceAccountToDelete &&
-      plan.rolesToAdd &&
-      plan.rolesToAdd.length > 0 &&
-      plan.managedServiceAccount
-    ) {
+    if (plan.rolesToAdd?.length) {
       utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
-      await resourcemanager.addServiceAccountRoles(
-        this.projectId,
-        plan.managedServiceAccount,
-        plan.rolesToAdd,
-      );
+      try {
+        await resourcemanager.addServiceAccountRoles(
+          this.projectId,
+          plan.managedServiceAccount!,
+          plan.rolesToAdd,
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
+    } else if (plan.rolesToRemove?.length) {
+      // We didn't add roles so we don't actually know if we have permission to remove them.
+      // We test and fail early to avoid updating functions but failing to keep roles up to date.
+      const iamResult = await iam.testIamPermissions(this.projectId, [
+        "resourcemanager.projects.setIamPolicy",
+      ]);
+      if (!iamResult.passed) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        );
+      }
     }
   }
 
@@ -131,27 +151,25 @@ export class Fabricator {
         `Deleting managed service account ${plan.serviceAccountToDelete}...`,
       );
       await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
-    } else if (plan.rolesToRemove && plan.rolesToRemove.length > 0 && plan.managedServiceAccount) {
-      if (!plan.rolesToAdd || plan.rolesToAdd.length === 0) {
-        const iamResult = await iam.testIamPermissions(this.projectId, [
-          "resourcemanager.projects.setIamPolicy",
-        ]);
-        if (!iamResult.passed) {
-          utils.logLabeledWarning(
-            "functions",
-            `Cannot revoke unneeded IAM roles because you lack permission.`,
-          );
-          return;
-        }
-      }
-      utils.logLabeledBullet(
-        "functions",
-        `Revoking unneeded IAM roles from ${plan.managedServiceAccount} for codebase ${codebase}...`,
-      );
+      return;
+    }
+    if (!plan.rolesToRemove?.length) {
+      return;
+    }
+    utils.logLabeledBullet(
+      "functions",
+      `Revoking unneeded IAM roles from ${plan.managedServiceAccount} for codebase ${codebase}...`,
+    );
+    try {
       await resourcemanager.removeServiceAccountRoles(
         this.projectId,
-        plan.managedServiceAccount,
+        plan.managedServiceAccount!,
         plan.rolesToRemove,
+      );
+    } catch (e) {
+      throw new FirebaseError(
+        "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        { original: e as Error },
       );
     }
   }
@@ -230,9 +248,10 @@ export class Fabricator {
 
     summary.results.push(...deleteResults);
 
-    for (const [codebase, codebasePlan] of Object.entries(plan)) {
-      await this.removeOldRoles(codebasePlan, codebase);
-    }
+    const roleRemovalPromises = Object.entries(plan).map(([codebase, codebasePlan]) =>
+      this.removeOldRoles(codebasePlan, codebase),
+    );
+    await Promise.all(roleRemovalPromises);
 
     summary.totalTime = timer.stop();
     return summary;
