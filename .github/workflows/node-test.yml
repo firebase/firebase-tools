@@ -75,7 +75,7 @@ jobs:
   #   strategy:
   #     matrix:
   #       node-version:
-  #         - "24"
+  #         - "24.18"
 
   #   env:
   #     FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
@@ -126,7 +126,7 @@ jobs:
   #         path: firebase-vscode/src/test/screenshots
 
   #     - uses: codecov/codecov-action@v5
-  #       if: matrix.node-version == '24'
+  #       if: matrix.node-version == '24.18'
 
   agent_evals_build:
     runs-on: ubuntu-latest
@@ -199,7 +199,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "24"
+          - "24.18"
         script:
           - npm run test:client-integration
           - npm run test:emulator
@@ -268,7 +268,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "24"
+          - "24.18"
         script:
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
@@ -284,7 +284,7 @@ jobs:
           # - npm run test:dataconnect-emulator # TODO (joehanley): Figure out why this is failing
           # - npm run test:frameworks
         include:
-          - node-version: "24"
+          - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
       - name: Setup Java JDK
