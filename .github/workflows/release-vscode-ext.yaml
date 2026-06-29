@@ -1,0 +1,50 @@
+name: Release VS Code Extension
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: read
+  issues: read
+
+jobs:
+  release:
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/run-release') &&
+      github.event.issue.user.login == github.event.comment.user.login &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER') &&
+      (github.event.issue.author_association == 'OWNER' ||
+       github.event.issue.author_association == 'MEMBER')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Kokoro via API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          PR_NUM="${{ github.event.issue.number }}"
+          echo "Fetching SHA for PR $PR_NUM..."
+          SHA=$(gh pr view "$PR_NUM" --json headRefOid -q .headRefOid)
+          echo "PR Head SHA is $SHA"
+
+          if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
+            TARGET_BRANCH="vscode-release-trigger-build-only"
+          else
+            TARGET_BRANCH="vscode-release-trigger"
+          fi
+          echo "Target branch is $TARGET_BRANCH"
+
+          # Try to update the branch ref (force-push equivalent via API)
+          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/$TARGET_BRANCH" \
+            -f sha="$SHA" -f force=true >/dev/null 2>&1; then
+            echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
+          else
+            echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."
+            gh api -X POST "/repos/${{ github.repository }}/git/refs" \
+              -f ref="refs/heads/$TARGET_BRANCH" -f sha="$SHA" >/dev/null
+            echo "Successfully created ref refs/heads/$TARGET_BRANCH at $SHA"
+          fi
