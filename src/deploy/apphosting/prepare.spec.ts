@@ -678,7 +678,7 @@ describe("apphosting", () => {
       const getBackendStub = sinon.stub(apphosting, "getBackend").resolves({
         name: "projects/my-project/locations/us-central1/backends/newly-created-backend",
         runtime: { value: "nodejs22" },
-      } as any);
+      } as unknown as apphosting.Backend);
 
       await prepare(context, optsWithLocalBuild);
 
