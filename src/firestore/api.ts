@@ -1006,8 +1006,6 @@ export class FirestoreApi {
         pageSize: limit,
       },
     });
-    console.log(res.body)
-    console.log(res.body.operations)
     return {
       operations: res.body.operations || []
     };
