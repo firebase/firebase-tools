@@ -31,11 +31,9 @@ import {
   getConnectorGQLText,
   insertQueryAt,
   getSchemas,
-  verifySchemaCompiles,
 } from "../file-utils";
 import { dataConnectConfigs, firebaseRC } from "../config";
 import * as gif from "../../../../src/gemini/fdcExperience";
-import { ensureGIFApiTos } from "../../../../src/dataconnect/ensureApis";
 import { configstore } from "../../../../src/configstore";
 import {
   executionAuthParams,
@@ -151,7 +149,7 @@ export function registerExecution(
       !(await emulatorsController.areEmulatorsRunning())
     ) {
       vscode.window.showWarningMessage(
-        "Automatically starting emulator... Please retry `Run local` execution after it's started.",
+        "Automatically starting emulator... Please retry `Run Emulator` execution after it's started.",
         { modal: false },
       );
       analyticsLogger.logger.logUsage(
@@ -304,12 +302,6 @@ export function registerExecution(
 
       if (serviceConfig) {
         schemas = await getSchemas(serviceConfig);
-
-        // Verify that the schema compiles before generating queries
-        const compiles = await verifySchemaCompiles(serviceConfig, arg.projectId);
-        if (!compiles) {
-          return;
-        }
       }
 
       const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
@@ -318,11 +310,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
       const serviceName = await dataConnectService.servicePath(
         arg.document.fileName,
       );
-      if (!(await ensureGIFApiTos(arg.projectId))) {
-        if (!(await showGiFToSModal(arg.projectId))) {
-          return; // ToS isn't accepted.
-        }
-      }
       const res = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -370,45 +357,6 @@ ${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}
     } catch (e: any) {
       vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
     }
-  }
-
-  async function showGiFToSModal(projectId: string): Promise<boolean> {
-    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL);
-    const tos = "Terms of Service";
-    const enable = "Enable";
-    const result = await vscode.window.showWarningMessage(
-      "Gemini in Firebase",
-      {
-        modal: !process.env.VSCODE_TEST_MODE,
-        detail: "Gemini in Firebase helps you write SQL Connect queries.",
-      },
-      enable,
-      tos,
-    );
-    switch (result) {
-      case enable:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_ACKED,
-        );
-        configstore.set("gemini", true);
-        await ensureGIFApiTos(projectId);
-        return true;
-      case tos:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_CLICKED,
-        );
-        vscode.env.openExternal(
-          vscode.Uri.parse(
-            "https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data",
-          ),
-        );
-      default:
-        analyticsLogger.logger.logUsage(
-          DATA_CONNECT_EVENT_NAME.GIF_TOS_MODAL_REJECTED,
-        );
-        break;
-    }
-    return false;
   }
 
   return Disposable.from(

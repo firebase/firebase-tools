@@ -81,4 +81,49 @@ describe("tool", () => {
 
     expect(getDefaultFeatureAvailabilityCheckStub.notCalled).to.be.true;
   });
+
+  describe("inputSchema emission", () => {
+    // Locks in the contract that .optional() and .default() fields are NOT marked
+    // required in the emitted JSON Schema (the `io: "input"` semantics). Without
+    // `io: "input"`, z.toJSONSchema treats defaulted fields as required, which
+    // would break MCP clients that omit them.
+    it("emits only truly required fields in `required` for optional/default props", () => {
+      const testTool = tool(
+        "core",
+        {
+          name: "test_tool",
+          inputSchema: z.object({
+            req: z.string(),
+            opt: z.string().optional(),
+            def: z.string().default("hi"),
+          }),
+        },
+        async () => ({ content: [] }),
+      );
+
+      const schema = testTool.mcp.inputSchema;
+      expect(schema.type).to.equal("object");
+      expect(schema.properties).to.have.keys(["req", "opt", "def"]);
+      expect(schema.required).to.deep.equal(["req"]);
+      expect(schema.properties.def.default).to.equal("hi");
+    });
+
+    it("omits `required` entirely when all fields are optional", () => {
+      const testTool = tool(
+        "core",
+        {
+          name: "test_tool",
+          inputSchema: z.object({
+            opt: z.string().optional(),
+            def: z.number().default(1),
+          }),
+        },
+        async () => ({ content: [] }),
+      );
+
+      const schema = testTool.mcp.inputSchema;
+      expect(schema.properties).to.have.keys(["opt", "def"]);
+      expect(schema.required).to.be.undefined;
+    });
+  });
 });
