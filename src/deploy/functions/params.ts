@@ -120,8 +120,10 @@ type ParamBase<T extends string | number | boolean | string[]> = {
   // Default value. If not provided, a param must be supplied.
   default?: T | build.Expression<T>;
 
-  // default: false
-  immutable?: boolean;
+  // If true, will not be prompted for on deploy if a partial environment file is available.
+  // If so, param will resolve to the default if present or the type's zero value without
+  // being written to .env
+  optional?: boolean;
 
   // Defines how the CLI will prompt for the value of the param if it's not in .env files
   input?: ParamInput<T>;
@@ -240,7 +242,9 @@ type RawParamValue = string | number | boolean | string[];
  * - ParamValues coming from prompting a param will have type fields corresponding to
  *   the type of the Param.
  * - ParamValues coming from Cloud Secrets Manager will have a string type field set
- *   and isSecret = true, telling the Build process not to write the value to .env files.
+ *   and internal = true, telling the Build process not to write the value to .env files.
+ * - ParamValues generated to resolve an optional param will have the corresponding
+ *   type fields and internal = true.
  */
 export class ParamValue {
   // Whether this param value can be sensibly interpreted as a string
@@ -266,8 +270,8 @@ export class ParamValue {
     this.delimiter = ",";
   }
 
-  static fromList(ls: string[], delimiter = ","): ParamValue {
-    const pv = new ParamValue(ls.join(delimiter), false, { list: true });
+  static fromList(ls: string[], delimiter = ",", internal = false): ParamValue {
+    const pv = new ParamValue(ls.join(delimiter), internal, { list: true });
     pv.setDelimiter(delimiter);
     return pv;
   }
@@ -370,6 +374,8 @@ function canSatisfyParam(param: Param, value: RawParamValue): boolean {
  * - a reference to a secret in Cloud Secret Manager, which we validate the existence of and prompt for if missing
  * - a literal value of the same type already defined in one of the .env files with key == param name
  * - the value returned by interactively prompting the user
+ *   - optional params are prompted for only in a clean-field deploy (non-empty .env). otherwise they resolve
+ *     to either the param default or the zero value for the param's type, even if the result would fail validation
  *   - it is an error to have params that need to be prompted if the CLI is running in non-interactive mode
  *   - the default value of the prompt comes from the SDK via param.default, which may be a literal value or a CEL expression
  *   - if the default CEL expression is not resolvable--it depends on a param whose value is not yet known--we throw an error
@@ -384,6 +390,7 @@ export async function resolveParams(
   isEmulator = false,
 ): Promise<Record<string, ParamValue>> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
+  const dotEnvPresent = Object.keys(userEnvs).length !== 0;
 
   // TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
   const [resolved, outstanding] = partition(params, (param) => {
@@ -420,6 +427,10 @@ export async function resolveParams(
       throw new FirebaseError(
         "Parameter " + param.name + " has default value " + paramDefault + " of wrong type",
       );
+    }
+    if (promptable.optional && dotEnvPresent) {
+      paramValues[param.name] = defaultOrZeroValue(param, paramDefault);
+      continue;
     }
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
@@ -510,6 +521,33 @@ async function handleSecret(
       } is in illegal state ${metadata.secretVersion.state}`,
     );
   }
+}
+
+/**
+ * Returns a ParamValue that can be used to fulfill an optional param, containing
+ * the default configured for the param (if any) or a sensible zero value based
+ * on the param's type. Unlike the ParamValues returned by promptParam(), these
+ * have the internal flag set, which prevents them from being written to .env
+ */
+function defaultOrZeroValue(param: Param, resolvedDefault?: RawParamValue) {
+  if (param.type === "string") {
+    const rawValue = resolvedDefault ?? "";
+    return new ParamValue(rawValue.toString(), true, { string: true });
+  } else if (param.type === "int") {
+    const rawValue = resolvedDefault ?? 0;
+    return new ParamValue(rawValue.toString(), true, { number: true });
+  } else if (param.type === "boolean") {
+    const rawValue = resolvedDefault ?? "false";
+    return new ParamValue(rawValue.toString(), true, { boolean: true });
+  } else if (param.type === "list") {
+    const listValue = resolvedDefault ?? [];
+    return ParamValue.fromList(listValue as string[], param.delimiter, true);
+  } else if (param.type === "secret") {
+    throw new FirebaseError(
+      `Somehow ended up trying to interactively prompt for secret parameter ${param.name}, which should never happen.`,
+    );
+  }
+  assertExhaustive(param);
 }
 
 /**
