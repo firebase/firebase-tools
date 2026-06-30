@@ -17,6 +17,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
+import { executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -113,6 +114,10 @@ export async function release(
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
+
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    await executeLifecycleHooks(w, h, plan, codebase);
+  }
 
   await setupArtifactCleanupPolicies(
     options,
