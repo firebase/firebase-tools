@@ -88,10 +88,11 @@ import sys
 if os.environ.get("${PYTHON_DISABLE_GUNICORN_ENV}") == "1":
     _original_import = builtins.__import__
 
-    def _firebase_import_without_gunicorn(name, globals=None, locals=None, fromlist=(), level=0):
+    def _firebase_import_without_gunicorn(*args, **kwargs):
+        name = args[0] if args else kwargs.get("name")
         if name == "functions_framework._http.gunicorn":
             raise ImportError("Gunicorn disabled for local Firebase Functions emulator")
-        return _original_import(name, globals, locals, fromlist, level)
+        return _original_import(*args, **kwargs)
 
     builtins.__import__ = _firebase_import_without_gunicorn
 
