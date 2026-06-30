@@ -39,7 +39,12 @@ describe("accountExporter", () => {
       displayName: string;
       disabled: boolean;
       customAttributes?: string;
-      mfaInfo?: unknown[];
+      mfaInfo?: {
+        mfaEnrollmentId: string;
+        displayName?: string;
+        phoneInfo?: string;
+        enrolledAt?: string;
+      }[];
       providerUserInfo?: {
         providerId: string;
         rawId: string;
