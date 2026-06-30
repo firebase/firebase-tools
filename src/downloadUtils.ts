@@ -28,7 +28,9 @@ export async function downloadToTmp(remoteUrl: string, auth = false): Promise<st
     resolveOnHTTPError: true,
   });
   if (res.status !== 200) {
-    throw new FirebaseError(`download failed, status ${res.status}: ${await res.response.text()}`, {
+    const { streamToString } = require("./utils");
+    const errorText = await streamToString(res.body);
+    throw new FirebaseError(`download failed, status ${res.status}: ${errorText}`, {
       status: res.status,
     });
   }
