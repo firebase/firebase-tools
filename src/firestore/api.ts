@@ -1007,7 +1007,7 @@ export class FirestoreApi {
       },
     });
     return {
-      operations: res.body.operations || []
+      operations: res.body?.operations || [],
     };
   }
 
