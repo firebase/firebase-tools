@@ -187,7 +187,11 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+          set -e
+          VERSION_NUM="$$(cat /workspace/version_number.txt)"
+          REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+          docker build -t "$${REPO}:$${VERSION_NUM}" -t "$${REPO}:latest" -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+          docker push "$${REPO}:$${VERSION_NUM}"
         else
           echo "Skipping docker build for preview version."
         fi
