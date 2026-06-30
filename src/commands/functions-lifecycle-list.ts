@@ -14,6 +14,9 @@ import * as self from "./functions-lifecycle-list";
 
 export async function loadCodebaseBuild(codebase: string, options: Options): Promise<build.Build> {
   const projectId = needProjectId(options);
+  if (!options.config) {
+    throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
+  }
   const fnConfig = normalizeAndValidate(options.config.src.functions);
 
   const hasCodebase = fnConfig.some((c) => c.codebase === codebase);

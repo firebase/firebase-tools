@@ -95,10 +95,6 @@ describe("lifecycle", () => {
         sinon.match.any,
         "View logs for afterInstall at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
       );
-      expect(loggerStub).to.have.been.calledWith(
-        sinon.match.any,
-        "You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterInstall default",
-      );
     });
 
     it("enqueues task using the endpoint's configured service account when present", async () => {

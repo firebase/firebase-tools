@@ -69,21 +69,20 @@ export async function executeLifecycleHooks(
     }
   }
 
-  let success = false;
   try {
     await executeHook(delta, hook, wantBackend);
-    success = true;
+    return true;
   } catch (err: unknown) {
     // We treat lifecycle hook failures as warnings. We don't want to fail
     // the entire deploy command if a post-deploy hook fails to enqueue.
-    success = false;
-  } finally {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logLabeledWarning("functions", `Failed to execute ${delta} lifecycle hook: ${errorMsg}`);
     logLabeledBullet(
       "functions",
       `You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run ${delta} ${codebase ?? "default"}`,
     );
+    return false;
   }
-  return success;
 }
 
 /**
@@ -162,31 +161,25 @@ export async function executeHook(
   backendSpec: backend.Backend,
 ): Promise<backend.Endpoint | undefined> {
   let executedEndpoint: backend.Endpoint | undefined;
-  try {
-    if ("task" in hook) {
-      logLabeledBullet(
-        "functions",
-        `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
-      );
-      executedEndpoint = await executeTaskQueueHook(hook.task, backendSpec);
-    } else if ("call" in hook) {
-      throw new FirebaseError(`Lifecycle hook action type "call" is not supported.`);
-    } else if ("http" in hook) {
-      throw new FirebaseError(`Lifecycle hook action type "http" is not supported.`);
-    } else {
-      assertExhaustive(hook);
-    }
+  if ("task" in hook) {
+    logLabeledBullet(
+      "functions",
+      `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
+    );
+    executedEndpoint = await executeTaskQueueHook(hook.task, backendSpec);
+  } else if ("call" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "call" is not supported.`);
+  } else if ("http" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "http" is not supported.`);
+  } else {
+    assertExhaustive(hook);
+  }
 
-    if (executedEndpoint) {
-      logLabeledBullet(
-        "functions",
-        `View logs for ${delta} at: ${getCloudConsoleLogUrl(executedEndpoint)}`,
-      );
-    }
-  } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    logLabeledWarning("functions", `Failed to execute ${delta} lifecycle hook: ${errorMsg}`);
-    throw err;
+  if (executedEndpoint) {
+    logLabeledBullet(
+      "functions",
+      `View logs for ${delta} at: ${getCloudConsoleLogUrl(executedEndpoint)}`,
+    );
   }
   return executedEndpoint;
 }
