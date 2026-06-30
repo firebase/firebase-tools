@@ -533,7 +533,7 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -600,7 +600,7 @@ export class Fabricator {
     }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
       invoker =
         endpoint.dataConnectGraphqlTrigger.invoker === null
