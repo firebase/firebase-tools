@@ -12,7 +12,6 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
-  appDistributionOrigin,
   realtimeOrigin,
   developerKnowledgeOrigin,
 } from "../api";
@@ -101,7 +100,6 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   functions: functionsOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
-  apptesting: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
   developerknowledge: developerKnowledgeOrigin(),
@@ -117,7 +115,6 @@ const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
   functions: undefined,
   remoteconfig: undefined,
   crashlytics: undefined,
-  apptesting: undefined,
   apphosting: undefined,
   database: undefined,
   developerknowledge: undefined,

@@ -122,14 +122,6 @@ if (isEnabled("genkit")) {
   ];
 }
 
-if (isEnabled("apptesting")) {
-  choices.push({
-    value: "apptesting",
-    name: "App Testing: create a smoke test, enable Cloud APIs (storage, run, & artifactregistry), and add a service account.",
-    checked: false,
-  });
-}
-
 choices.push({
   value: "ailogic",
   name: "AI Logic: Set up Firebase AI Logic with app provisioning",

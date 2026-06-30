@@ -3,7 +3,6 @@ import { ServerPrompt } from "../prompt";
 import { corePrompts } from "./core";
 import { dataconnectPrompts } from "./dataconnect";
 import { crashlyticsPrompts } from "./crashlytics";
-import { apptestingPrompts } from "./apptesting";
 import { firestorePrompts } from "./firestore";
 import { storagePrompts } from "./storage";
 
@@ -17,7 +16,6 @@ const prompts: Record<ServerFeature, ServerPrompt[]> = {
   functions: [],
   remoteconfig: [],
   crashlytics: namespacePrompts(crashlyticsPrompts, "crashlytics"),
-  apptesting: namespacePrompts(apptestingPrompts, "apptesting"),
   apphosting: [],
   database: [],
   developerknowledge: [],
