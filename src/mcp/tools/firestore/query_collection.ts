@@ -39,6 +39,18 @@ export const query_collection = tool(
                 .optional()
                 .describe("The integer value to compare against."),
               double_value: z.number().optional().describe("The double value to compare against."),
+              reference_value: z
+                .string()
+                .optional()
+                .describe(
+                  "A document reference value to compare against. Accepts either a document path (e.g. `users/abc123`) or a full resource name (e.g. `projects/{projectId}/databases/{databaseId}/documents/users/abc123`).",
+                ),
+              timestamp_value: z
+                .string()
+                .optional()
+                .describe(
+                  "A timestamp value to compare against, in RFC 3339/ISO 8601 format (e.g. `2026-05-09T00:00:00Z`).",
+                ),
             })
             .describe("One and only one value may be specified per filters object."),
           field: z.string().describe("the field searching against"),
@@ -99,31 +111,25 @@ export const query_collection = tool(
       from: [{ collectionId: collection_path, allDescendants: false }],
     };
     if (filters) {
+      const fieldFilters = [];
+      for (const f of filters) {
+        const provided = Object.entries(f.compare_value).filter(([, value]) => {
+          return value !== null && value !== undefined;
+        });
+        if (provided.length !== 1) {
+          return mcpError("One and only one value must be specified per filters object.");
+        }
+        const [key, value] = provided[0];
+        fieldFilters.push({
+          fieldFilter: {
+            field: { fieldPath: f.field },
+            op: f.op,
+            value: convertInputToValue(value, key, projectId, database),
+          },
+        });
+      }
       structuredQuery.where = {
-        compositeFilter: {
-          op: "AND",
-          filters: filters.map((f) => {
-            if (
-              f.compare_value.boolean_value &&
-              f.compare_value.double_value &&
-              f.compare_value.integer_value &&
-              f.compare_value.string_array_value &&
-              f.compare_value.string_value
-            ) {
-              throw mcpError("One and only one value may be specified per filters object.");
-            }
-            const out = Object.entries(f.compare_value).filter(([, value]) => {
-              return value !== null && value !== undefined;
-            });
-            return {
-              fieldFilter: {
-                field: { fieldPath: f.field },
-                op: f.op,
-                value: convertInputToValue(out[0][1]),
-              },
-            };
-          }),
-        },
+        compositeFilter: { op: "AND", filters: fieldFilters },
       };
     }
     if (order) {
