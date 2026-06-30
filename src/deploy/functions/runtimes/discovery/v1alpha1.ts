@@ -87,12 +87,31 @@ export type WireExtension = {
   events: string[];
 };
 
+export type WireLifecycleHook = {
+  task?: {
+    function?: string;
+    body?: unknown;
+  };
+  call?: {
+    function?: string;
+    params?: unknown;
+  };
+  http?: {
+    url?: string;
+    function?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  };
+};
+
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
+  lifecycleHooks?: Record<string, WireLifecycleHook>;
 }
 
 /** Returns a Build from a v1alpha1 Manifest. */
@@ -110,6 +129,7 @@ export function buildFromV1Alpha1(
     requiredAPIs: "array",
     endpoints: "object",
     extensions: "object",
+    lifecycleHooks: "object",
   });
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
@@ -127,6 +147,42 @@ export function buildFromV1Alpha1(
       assertBuildExtension(me, id);
       const be: build.DynamicExtension = parseExtensionForBuild(me);
       bd.extensions[id] = be;
+    }
+  }
+  if (manifest.lifecycleHooks) {
+    bd.lifecycleHooks = {};
+    for (const id of Object.keys(manifest.lifecycleHooks)) {
+      if (id !== "afterInstall" && id !== "afterUpdate") {
+        throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
+      }
+      const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
+      if (!hook || typeof hook !== "object") {
+        throw new FirebaseError(`Invalid lifecycle hook configuration for "${id}".`);
+      }
+      if (hook.task) {
+        if (typeof hook.task.function !== "string" || !hook.task.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.task.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.call) {
+        if (typeof hook.call.function !== "string" || !hook.call.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.call.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.http) {
+        const target = hook.http.url || hook.http.function;
+        if (typeof target !== "string" || !target) {
+          throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
+        }
+      } else {
+        throw new FirebaseError(
+          `No action (task, call, or http) specified for lifecycle hook "${id}"`,
+        );
+      }
+
+      bd.lifecycleHooks[id] = hook as backend.LifecycleHook;
     }
   }
   return bd;
