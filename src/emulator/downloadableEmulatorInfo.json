@@ -44,13 +44,13 @@
     }
   },
   "pubsub": {
-    "version": "0.8.33",
-    "expectedSize": 52948835,
-    "expectedChecksum": "7dc33e0c8bb37948228e49a18375d53b",
-    "expectedChecksumSHA256": "93768f8763d85c37f7f6e0f64d10195abaa088f4ff559b7d9fb8a2fc5520848d",
-    "remoteUrl": "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.33.zip",
-    "downloadPathRelativeToCacheDir": "pubsub-emulator-0.8.33.zip",
-    "binaryPathRelativeToCacheDir": "pubsub-emulator-0.8.33/pubsub-emulator/bin/cloud-pubsub-emulator"
+    "version": "0.8.34",
+    "expectedSize": 53008019,
+    "expectedChecksum": "3eb75c292dfa72d48a36428a49bac314",
+    "expectedChecksumSHA256": "062a71d30cbc0cc29de6e55f22ae9fc7eacb02c60272a2c4692826fdb83f0c25",
+    "remoteUrl": "https://storage.googleapis.com/firebase-preview-drop/emulator/pubsub-emulator-0.8.34.zip",
+    "downloadPathRelativeToCacheDir": "pubsub-emulator-0.8.34.zip",
+    "binaryPathRelativeToCacheDir": "pubsub-emulator-0.8.34/pubsub-emulator/bin/cloud-pubsub-emulator"
   },
   "dataconnect": {
     "darwin": {

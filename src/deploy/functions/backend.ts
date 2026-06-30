@@ -425,6 +425,29 @@ export interface RequiredAPI {
   api: string;
 }
 
+export type LifecycleHook =
+  | {
+      task: {
+        function: string;
+        body?: Record<string, unknown>;
+      };
+    }
+  | {
+      call: {
+        function: string;
+        params?: Record<string, unknown>;
+      };
+    }
+  | {
+      http: {
+        function?: string;
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+      };
+    };
+
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
@@ -435,6 +458,7 @@ export interface Backend {
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
   requiredRoles?: string[];
+  lifecycleHooks?: Record<string, LifecycleHook>;
 }
 
 /**
@@ -490,9 +514,10 @@ export function merge(...backends: Backend[]): Backend {
 
     // Merge requiredRoles
     if (b.requiredRoles) {
-      for (const role of b.requiredRoles) {
-        requiredRoles.add(role);
-      }
+      requiredRoles.push(...b.requiredRoles);
+    }
+    if (b.lifecycleHooks) {
+      merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
     }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
@@ -511,7 +536,9 @@ export function merge(...backends: Backend[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 &&
+    Object.keys(backend.endpoints).length === 0 &&
+    Object.keys(backend.lifecycleHooks || {}).length === 0
   );
 }
 
