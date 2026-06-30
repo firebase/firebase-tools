@@ -43,6 +43,8 @@ export function load(client: CLIClient): CLIClient {
   client.appdistribution.testCases = {};
   client.appdistribution.testCases.export = loadCommand("appdistribution-testcases-export");
   client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
+  client.apptesting = {};
+  client.apptesting.execute = loadCommand("apptesting");
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");
