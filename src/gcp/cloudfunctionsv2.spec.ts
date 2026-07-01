@@ -925,6 +925,31 @@ describe("cloudfunctionsv2", () => {
       await cloudfunctionsv2.createFunction(testFunction);
       expect(scope.isDone()).to.be.true;
     });
+
+    it("should preserve a hyphenated entry point in FUNCTION_TARGET", async () => {
+      const testFunction = {
+        ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          entryPoint: "dummystore-bot",
+          environmentVariables: {},
+        },
+      };
+
+      const scope = nock(functionsV2Origin())
+        .post("/v2/projects/project/locations/region/functions", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "dummystore-bot",
+          );
+          return true;
+        })
+        .query({ functionId: "id" })
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.createFunction(testFunction);
+      expect(scope.isDone()).to.be.true;
+    });
   });
 
   describe("updateFunction", () => {
@@ -949,6 +974,31 @@ describe("cloudfunctionsv2", () => {
         .reply(200, { name: "operations/123", done: true });
 
       await cloudfunctionsv2.updateFunction(CLOUD_FUNCTION_V2);
+      expect(scope.isDone()).to.be.true;
+    });
+
+    it("should preserve a hyphenated entry point in FUNCTION_TARGET", async () => {
+      const testFunction = {
+        ...CLOUD_FUNCTION_V2,
+        buildConfig: {
+          ...CLOUD_FUNCTION_V2.buildConfig,
+          entryPoint: "dummystore-bot",
+          environmentVariables: {},
+        },
+      };
+
+      const scope = nock(functionsV2Origin())
+        .patch("/v2/projects/project/locations/region/functions/id", (body) => {
+          expect(body.serviceConfig.environmentVariables).to.have.property(
+            "FUNCTION_TARGET",
+            "dummystore-bot",
+          );
+          return true;
+        })
+        .query(true)
+        .reply(200, { name: "operations/123", done: true });
+
+      await cloudfunctionsv2.updateFunction(testFunction);
       expect(scope.isDone()).to.be.true;
     });
   });
