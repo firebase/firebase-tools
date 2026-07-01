@@ -22,17 +22,27 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-/**
- * Represents the comprehensive deployment plan for a single codebase.
- */
-export interface CodebasePlan {
+export interface BaseCodebasePlan {
   regionalChangesets: Record<string, Changeset>;
+}
+
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
   rolesToAdd?: string[];
   rolesToRemove?: string[];
   serviceAccountToCreate?: string;
-  serviceAccountToDelete?: string;
-  managedServiceAccount?: string;
+  serviceAccountToDelete?: undefined;
 }
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = BaseCodebasePlan & (ActiveSecurityPlan | InactiveSecurityPlan);
 
 export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
@@ -208,14 +218,23 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  return {
-    regionalChangesets,
-    rolesToAdd,
-    rolesToRemove,
-    serviceAccountToCreate,
-    serviceAccountToDelete,
-    managedServiceAccount: managedSA,
-  };
+  if (requiredRoles) {
+    if (!managedSA) {
+      throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", { exit: 1 });
+    }
+    return {
+      regionalChangesets,
+      rolesToAdd,
+      rolesToRemove,
+      serviceAccountToCreate,
+      managedServiceAccount: managedSA,
+    };
+  } else {
+    return {
+      regionalChangesets,
+      serviceAccountToDelete,
+    };
+  }
 }
 
 /** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */

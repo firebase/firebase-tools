@@ -601,6 +601,7 @@ describe("planner", () => {
         codebase,
         projectId: "my-project",
         existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+        managedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
       });
 
       expect(plan.serviceAccountToDelete).to.be.undefined;
