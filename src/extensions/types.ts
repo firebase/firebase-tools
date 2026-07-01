@@ -187,7 +187,7 @@ export interface FunctionResourceProperties {
     scheduleTrigger?: Record<string, string>;
     taskQueueTrigger?: {
       rateLimits?: {
-        maxConcurrentDispatchs?: number;
+        maxConcurrentDispatches?: number;
         maxDispatchesPerSecond?: number;
       };
       retryConfig?: {
@@ -267,6 +267,7 @@ export interface Param {
   immutable?: boolean;
   example?: string;
   advanced?: boolean;
+  resourceType?: string; // Required when type is SELECT_RESOURCE or selectResource
 }
 
 export enum ParamType {
