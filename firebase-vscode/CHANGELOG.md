@@ -2,7 +2,7 @@
 
 ## 2.4.2
 
-- Update internal `firebase-tools` dependency to 15.22.3
+- Update internal `firebase-tools` dependency to 15.22.4
 
 ## 2.4.1
 
