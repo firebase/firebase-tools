@@ -200,11 +200,15 @@ describe("lifecycle", () => {
       });
 
       const emptyPlan = {
-        "default-us-east1-default": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
+        default: {
+          regionalChangesets: {
+            "default-us-east1-default": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
+            },
+          },
         },
       };
 

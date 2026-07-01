@@ -116,7 +116,12 @@ export class Fabricator {
         );
       }
     }
-    if (plan.rolesToAdd?.length && plan.managedServiceAccount) {
+    if (plan.rolesToAdd?.length) {
+      if (!plan.managedServiceAccount) {
+        throw new FirebaseError("Failed to grant IAM roles: managed service account is missing.", {
+          exit: 1,
+        });
+      }
       utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
       try {
         await resourcemanager.addServiceAccountRoles(
@@ -153,9 +158,11 @@ export class Fabricator {
       try {
         await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
       } catch (e) {
-        utils.logLabeledWarning(
-          "functions",
-          `Failed to delete managed service account ${plan.serviceAccountToDelete}: ${(e as Error).message}. You may need to delete it manually.`,
+        throw new FirebaseError(
+          "Failed to delete managed service account " +
+            plan.serviceAccountToDelete +
+            ". Please ask an IAM administrator to delete it manually.",
+          { original: e as Error },
         );
       }
       return;
@@ -164,7 +171,9 @@ export class Fabricator {
       return;
     }
     if (!plan.managedServiceAccount) {
-      return;
+      throw new FirebaseError("Failed to revoke IAM roles: managed service account is missing.", {
+        exit: 1,
+      });
     }
     utils.logLabeledBullet(
       "functions",
@@ -191,6 +200,12 @@ export class Fabricator {
       results: [],
     };
 
+    // We execute role grants/creations sequentially per codebase.
+    // Batching them into a single IAM update is possible but complex due to codebase-aligned logging
+    // and creation dependencies.
+    // Parallelizing them via Promise.all is bad because GCP's Resource Manager API updates project
+    // IAM policies using optimistic concurrency control (etags). Concurrent writes would trigger
+    // 409 etag conflict errors.
     for (const [codebase, codebasePlan] of Object.entries(plan)) {
       await this.grantNewRoles(codebasePlan, codebase);
     }
@@ -258,6 +273,8 @@ export class Fabricator {
 
     summary.results.push(...deleteResults);
 
+    // Similarly to grantNewRoles, we execute role removals sequentially to avoid concurrent
+    // IAM policy update conflicts (409 Conflict / etag mismatch) on GCP.
     for (const [codebase, codebasePlan] of Object.entries(plan)) {
       await this.removeOldRoles(codebasePlan, codebase);
     }
