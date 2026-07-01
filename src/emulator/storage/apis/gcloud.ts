@@ -12,7 +12,7 @@ import { StorageEmulator } from "../index";
 import { EmulatorLogger } from "../../emulatorLogger";
 import { GetObjectResponse, ListObjectsResponse } from "../files";
 import type { Request, Response } from "express";
-import { parseObjectUploadMultipartRequest } from "../multipart";
+import { parseFormDataMultipartRequest, parseObjectUploadMultipartRequest } from "../multipart";
 import { Upload, UploadNotActiveError } from "../upload";
 import { ForbiddenError, NotFoundError } from "../errors";
 import { reqBodyToBuffer } from "../../shared/request";
@@ -367,6 +367,77 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     }
     return sendFileBytes(getObjectResponse.metadata, getObjectResponse.data, req, res);
   });
+
+  gcloudStorageAPI.post(
+    "/:bucketId",
+    (req, res, next) => {
+      adminStorageLayer.createBucket(req.params.bucketId);
+      next();
+    },
+    async (req, res) => {
+      const contentTypeHeader = req.header("content-type");
+      if (!contentTypeHeader?.includes("multipart/form-data")) {
+        return res.status(400).send("Content-Type must be multipart/form-data");
+      }
+
+      try {
+        const bodyBuffer = await reqBodyToBuffer(req);
+
+        const formData = parseFormDataMultipartRequest(contentTypeHeader, bodyBuffer);
+
+        const keyPart = formData.find((p) => p.name === "key");
+        const filePart = formData.find((p) => p.type === "file");
+
+        if (keyPart?.type !== "field" || filePart?.type !== "file") {
+          return res.status(400).send("Missing 'key' or file.");
+        }
+
+        const metadata: IncomingMetadata = {
+          contentType: filePart.contentType,
+          metadata: {},
+        };
+
+        const HEADER_MAP: Record<string, keyof IncomingMetadata> = {
+          "content-type": "contentType",
+          "cache-control": "cacheControl",
+          "content-disposition": "contentDisposition",
+          "content-encoding": "contentEncoding",
+          "content-language": "contentLanguage",
+        };
+        for (const part of formData) {
+          if (part.type === "file" || part.name === "key") continue;
+          const key = part.name.toLowerCase();
+          if (key.startsWith("x-goog-meta-")) {
+            metadata.metadata![key.substring(12)] = part.value;
+          } else if (HEADER_MAP[key]) {
+            (metadata[HEADER_MAP[key]] as string) = part.value.trim();
+          }
+        }
+
+        const upload = uploadService.multipartUpload({
+          bucketId: req.params.bucketId,
+          objectId: keyPart.value,
+          dataRaw: filePart.data,
+          metadata: metadata,
+          authorization: req.header("authorization"),
+        });
+
+        await adminStorageLayer.uploadObject(upload);
+        return res.sendStatus(204);
+      } catch (err) {
+        if (err instanceof ForbiddenError) {
+          return res.sendStatus(403);
+        }
+        if (err instanceof NotFoundError) {
+          return res.sendStatus(404);
+        }
+        if (err instanceof Error) {
+          return res.status(400).send(err.message);
+        }
+        throw err;
+      }
+    },
+  );
 
   gcloudStorageAPI.post(
     "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
