@@ -15,18 +15,19 @@ const GCP_RESOURCE_ID_PATTERN = "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)"
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
     GCP_RESOURCE_ID_PATTERN + // secret ID is a GCP resource ID
-    "(?::([-a-z0-9]+))?" + // capture an optional GCP :label for version
-    "$", // end of string
+    "(?:[:#@]" +              // capture an optional label beginning with :, or capture #/@ to warn the user
+    "([a-z0-9-_]+)" +         // allow letters, numbers, hyphen, underscore.
+    ")?$",                    // end of optional version group end of string
 );
 export const SECRET_REF_LONG_RE = new RegExp(
   "^" + // start of string
     "projects/" + // projects/
-    "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" + // capture project ID
+    GCP_RESOURCE_ID_PATTERN + // capture project ID
     "/secrets/" + // /secrets/
-    "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" + // capture resource ID for secret
-    "(?:/versions/|:" + // optionally: either the character : or the string /versions/
-    "(d+)" + // capture version ID
-    +")?$", // end of group, end of string
+    GCP_RESOURCE_ID_PATTERN + // capture resource ID for secret
+    "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with either the character : or the string /versions/
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore. # and @ indicate a known common mistake to check for
+    ")?$", // end of optional version group, end of string
 );
 
 export type LifecycleHook = backend.LifecycleHook;
@@ -797,9 +798,7 @@ export interface ParsedSecretRef {
  */
 export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
   Object.entries(envSecrets).forEach(([key, secretRef]) => {
-    const projectId = secretRef.projectId;
-    const secretId = secretRef.secretId;
-    const version = secretRef.version;
+    const { projectId, secretId, version } = secretRef
 
     Object.entries(build.endpoints).forEach(([, endpoint]) => {
       if (projectId && projectId !== endpoint.project) {
@@ -832,23 +831,41 @@ export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string,
 }
 
 /**
- *
+ * Parses any of the supported formats used to refer to a Secret in .env:
+ * API_KEY=<secret-id>
+ * API_KEY=<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>/versions/<version>
+ * @return An object populated with project id, secret id, and version, with a field undefined if not provided.
  */
 export function parseSecretRef(ref: string): ParsedSecretRef {
   const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
   if (shortMatch) {
-    return {
+    let output : ParsedSecretRef  = {
       secretId: shortMatch[1],
-      version: shortMatch[2],
     };
+    if (shortMatch[2] !== undefined) {
+      output.version = shortMatch[2]
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(`Malformed secret binding '${ref}'; secret versions are specified with ':'`);
+      }
+    }
+    return output;
   }
   const longMatch = SECRET_REF_LONG_RE.exec(ref);
   if (longMatch) {
-    return {
+    let output : ParsedSecretRef = {
       projectId: longMatch[1],
       secretId: longMatch[2],
-      version: longMatch[3],
     };
+    if (longMatch[3] !== undefined) {
+      output.version = longMatch[3]
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(`Malformed secret binding '${ref}'; secret versions are specified with ':'`);
+      }
+    }
+    return output
   }
   throw new FirebaseError(`Unknown format for secret binding '${ref}'`);
 }
