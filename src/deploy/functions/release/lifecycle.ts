@@ -63,25 +63,25 @@ export async function executeLifecycleHooks(
     if (!hasResourceModifications) {
       logLabeledBullet(
         "functions",
-        "No resources modified in codebase. Skipping afterUpdate lifecycle hook.",
+        `No resources modified for codebase: ${codebase ?? "default"}. Skipping afterUpdate lifecycle hook.`,
       );
       return false;
     }
   }
 
-  if ("task" in hook) {
+  try {
+    await executeHook(delta, hook, wantBackend);
+    return true;
+  } catch (err: unknown) {
+    // We treat lifecycle hook failures as warnings. We don't want to fail
+    // the entire deploy command if a post-deploy hook fails to enqueue.
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logLabeledWarning("functions", `Failed to execute ${delta} lifecycle hook: ${errorMsg}`);
     logLabeledBullet(
       "functions",
-      `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
+      `You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run ${delta} ${codebase ?? "default"}`,
     );
-    await executeTaskQueueHook(hook.task, wantBackend);
-    return true;
-  } else if ("call" in hook) {
-    throw new FirebaseError(`Lifecycle hook action type "call" is not supported.`);
-  } else if ("http" in hook) {
-    throw new FirebaseError(`Lifecycle hook action type "http" is not supported.`);
-  } else {
-    assertExhaustive(hook);
+    return false;
   }
 }
 
@@ -91,7 +91,7 @@ export async function executeLifecycleHooks(
 async function executeTaskQueueHook(
   taskHook: { function: string; body?: Record<string, unknown> },
   wantBackend: backend.Backend,
-): Promise<void> {
+): Promise<backend.Endpoint> {
   const targetEndpoint = backend.findEndpoint(wantBackend, (ep) => ep.id === taskHook.function);
   if (!targetEndpoint) {
     throw new FirebaseError(
@@ -134,25 +134,12 @@ async function executeTaskQueueHook(
     task.httpRequest.body = body;
   }
 
-  try {
-    await cloudtasks.enqueueTask(queueName, task);
-    logLabeledSuccess(
-      "functions",
-      `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
-    );
-    logLabeledBullet(
-      "functions",
-      `View logs for ${taskHook.function} at: ${getCloudConsoleLogUrl(targetEndpoint)}`,
-    );
-  } catch (err: unknown) {
-    // We treat lifecycle hook failures as warnings. We don't want to fail
-    // the entire deploy command if a post-deploy hook fails to enqueue.
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    logLabeledWarning(
-      "functions",
-      `Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`,
-    );
-  }
+  await cloudtasks.enqueueTask(queueName, task);
+  logLabeledSuccess(
+    "functions",
+    `Successfully queued task for lifecycle hook ${taskHook.function} in queue ${queueName}.`,
+  );
+  return targetEndpoint;
 }
 
 /**
@@ -163,4 +150,36 @@ function getCloudConsoleLogUrl(endpoint: backend.Endpoint): string {
   const serviceName = endpoint.runServiceId || id;
   const query = `resource.type="cloud_run_revision"\nresource.labels.service_name="${serviceName}"\nresource.labels.location="${region}"`;
   return `https://console.cloud.google.com/logs/query;query=${encodeURIComponent(query)};project=${project}`;
+}
+
+/**
+ * Executes a specific lifecycle hook in isolation.
+ */
+export async function executeHook(
+  delta: string,
+  hook: backend.LifecycleHook,
+  backendSpec: backend.Backend,
+): Promise<backend.Endpoint | undefined> {
+  let executedEndpoint: backend.Endpoint | undefined;
+  if ("task" in hook) {
+    logLabeledBullet(
+      "functions",
+      `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
+    );
+    executedEndpoint = await executeTaskQueueHook(hook.task, backendSpec);
+  } else if ("call" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "call" is not supported.`);
+  } else if ("http" in hook) {
+    throw new FirebaseError(`Lifecycle hook action type "http" is not supported.`);
+  } else {
+    assertExhaustive(hook);
+  }
+
+  if (executedEndpoint) {
+    logLabeledBullet(
+      "functions",
+      `View logs for ${delta} at: ${getCloudConsoleLogUrl(executedEndpoint)}`,
+    );
+  }
+  return executedEndpoint;
 }
