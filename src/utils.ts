@@ -861,12 +861,15 @@ export function wrappedSafeLoad(source: string): any {
  */
 export function generateId(n = 6): string {
   const letters = "abcdefghijklmnopqrstuvwxyz";
-  const allChars = "01234567890-abcdefghijklmnopqrstuvwxyz";
+  const allChars = "0123456789-abcdefghijklmnopqrstuvwxyz";
+  const lastChars = "0123456789abcdefghijklmnopqrstuvwxyz";
   let id = letters[Math.floor(Math.random() * letters.length)];
-  for (let i = 1; i < n; i++) {
+  for (let i = 1; i < n - 1; i++) {
     const idx = Math.floor(Math.random() * allChars.length);
     id += allChars[idx];
   }
+  id += lastChars[Math.floor(Math.random() * lastChars.length)];
+
   return id;
 }
 
