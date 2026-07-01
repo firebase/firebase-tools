@@ -589,6 +589,22 @@ describe("planner", () => {
         "firebase-fn-123@my-project.iam.gserviceaccount.com",
       );
     });
+
+    it("does not delete the service account when requiredRoles is defined but empty", async () => {
+      const wantBackend = backend.empty();
+      wantBackend.requiredRoles = [];
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.be.undefined;
+    });
   });
 
   describe("checkForUnsafeUpdate", () => {
