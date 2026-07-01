@@ -1,0 +1,1 @@
+- Fixed parsing of `.env` files with Windows (CRLF) line endings so carriage returns no longer leak into multi-line double-quoted values.

@@ -118,7 +118,7 @@ export function parse(data: string): ParseResult {
   const envs: Record<string, string> = {};
   const errors: string[] = [];
 
-  data = data.replace(/\r\n?/, "\n"); // For Windows support.
+  data = data.replace(/\r\n?/g, "\n"); // For Windows support.
   let match;
   while ((match = LINE_RE.exec(data))) {
     let [, k, v] = match;

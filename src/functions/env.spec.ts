@@ -41,6 +41,16 @@ BAR=bar
         want: { FOO: "foo1\nfoo2", BAR: "bar" },
       },
       {
+        description: "should normalize CRLF line endings (Windows)",
+        input: "FOO=foo\r\nBAR=bar\r\nBAZ=baz\r\n",
+        want: { FOO: "foo", BAR: "bar", BAZ: "baz" },
+      },
+      {
+        description: "should normalize CRLF inside double quoted, multi-line values (Windows)",
+        input: 'FOO="foo1\r\nfoo2\r\nfoo3"\r\nBAR=bar\r\n',
+        want: { FOO: "foo1\nfoo2\nfoo3", BAR: "bar" },
+      },
+      {
         description: "should parse many double quoted values",
         input: 'FOO="foo"\nBAR="bar"',
         want: { FOO: "foo", BAR: "bar" },
