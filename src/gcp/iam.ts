@@ -284,7 +284,7 @@ export function printManualIamConfig(
  * Short-circuits using a local map of known roles for speed, and falls back to the GCP API.
  */
 export async function getRoleName(role: string): Promise<string> {
-  const map: Record<string, string> = knownRoles;
+  const map: Record<string, string | undefined> = knownRoles;
   const title = map[role];
   if (title) {
     return title;
@@ -321,6 +321,7 @@ export async function generateManagedServiceAccountName(
       }
       throw err;
     }
+    await utils.sleep(200);
   }
   throw new FirebaseError("Failed to generate a unique service account name after 10 attempts.");
 }

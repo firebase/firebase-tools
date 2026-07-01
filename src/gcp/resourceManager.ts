@@ -73,6 +73,8 @@ export async function addServiceAccountToRoles(
     getIamPolicy(projectId),
   ]);
 
+  projectPolicy.bindings = projectPolicy.bindings || [];
+
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
@@ -116,6 +118,8 @@ export async function serviceAccountHasRoles(
       : getServiceAccount(projectId, serviceAccountName),
     getIamPolicy(projectId),
   ]);
+
+  projectPolicy.bindings = projectPolicy.bindings || [];
 
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
