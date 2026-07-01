@@ -10,6 +10,7 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
+const RESERVED_KEY_PREFIXES = ["FIREBASE_SECRET_REF"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -177,11 +178,19 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
-  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+  if (
+    RESERVED_PREFIXES.some(
+      (prefix) =>
+        key.startsWith(prefix) && !RESERVED_KEY_PREFIXES.some((known) => key.startsWith(known)),
+    )
+  ) {
     throw new KeyValidationError(
       key,
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
+  }
+  if (RESERVED_KEY_PREFIXES.some((prefix) => key === prefix)) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
   }
 }
 

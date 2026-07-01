@@ -214,6 +214,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  secretEnvParams: {
+    shortDescription:
+      "Enable experimental support for storing references to Secrets in the .env for a Functions deploy.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
