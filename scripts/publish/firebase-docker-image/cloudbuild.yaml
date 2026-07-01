@@ -14,20 +14,22 @@ steps:
     args:
       - "-c"
       - |
+        set -e
+        VERSION_NUM="$$(cat /workspace/version_number.txt)"
+        REPO="us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
         if [ "${_REPO_NAME}" = "staging" ]; then
-          RANDOM_HASH=$(tr -dc 'a-f0-9' < /dev/urandom | head -c 16)
-          docker build \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:$(cat /workspace/version_number.txt) \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:latest \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:no-new-use-public-image-$${RANDOM_HASH} \
-            -f ./Dockerfile .
+          RANDOM_HASH="$$(tr -dc 'a-f0-9' < /dev/urandom | head -c 16)"
+          EXTRA_TAG="no-new-use-public-image-$${RANDOM_HASH}"
         else
-          docker build \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:$(cat /workspace/version_number.txt) \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:latest \
-            -t us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase:public-image-$(cat /workspace/version_number.txt) \
-            -f ./Dockerfile .
+          EXTRA_TAG="public-image-$${VERSION_NUM}"
         fi
+        docker build \
+          -t "$${REPO}:$${VERSION_NUM}" \
+          -t "$${REPO}:latest" \
+          -t "$${REPO}:$${EXTRA_TAG}" \
+          -f ./Dockerfile .
+        docker push "$${REPO}:$${VERSION_NUM}"
+        docker push "$${REPO}:$${EXTRA_TAG}"
 
 images:
   - "us-docker.pkg.dev/${_TARGET_PROJECT_ID}/${_REPO_NAME}/firebase"
