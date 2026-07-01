@@ -12,13 +12,23 @@ import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
 import * as iam from "../../gcp/iam";
 
-export interface CodebasePlan {
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
   rolesToAdd?: string[];
   rolesToRemove?: string[];
   serviceAccountToCreate?: string;
-  serviceAccountToDelete?: string;
-  managedServiceAccount?: string;
+  serviceAccountToDelete?: undefined;
 }
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = ActiveSecurityPlan | InactiveSecurityPlan;
 
 /**
  * Checks if a deployment will create any functions with a failure policy
