@@ -654,11 +654,10 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
   }
 }
 
-// Genkit almost always requires an API key, so warn if the customer is about to deploy
-// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
-// deploy of the function.
 /**
- *
+ * Genkit almost always requires an API key, so warn if the customer is about to deploy
+ * a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+ * deploy of the function.
  */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
