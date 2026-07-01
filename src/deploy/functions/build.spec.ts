@@ -442,7 +442,7 @@ describe("envWithType", () => {
   });
 });
 
-describe("applyEnvSecretOverrides", () => {
+describe("applyEnvSecretBindings", () => {
   it("throws an error if the secret explicitly references a different project ID", () => {
     const testBuild: build.Build = {
       endpoints: {
@@ -464,7 +464,7 @@ describe("applyEnvSecretOverrides", () => {
         secretId: "bar",
       },
     };
-    expect(() => build.applyEnvSecretOverrides(testBuild, testSecretRefs)).to.throw(
+    expect(() => build.applyEnvSecretBindings(testBuild, testSecretRefs)).to.throw(
       /unsupported cross-project secret/,
     );
   });
@@ -490,7 +490,7 @@ describe("applyEnvSecretOverrides", () => {
         secretId: "bar",
       },
     };
-    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -522,7 +522,7 @@ describe("applyEnvSecretOverrides", () => {
         version: "4",
       },
     };
-    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -555,7 +555,7 @@ describe("applyEnvSecretOverrides", () => {
         version: "latest",
       },
     };
-    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",
@@ -595,7 +595,7 @@ describe("applyEnvSecretOverrides", () => {
         version: "4",
       },
     };
-    build.applyEnvSecretOverrides(testBuild, testSecretRefs);
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
     expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
         key: "foo",

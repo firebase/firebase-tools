@@ -796,11 +796,13 @@ export interface ParsedSecretRef {
  * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
-export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
-  Object.entries(envSecrets).forEach(([key, secretRef]) => {
+export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
+  for (const key in envSecrets) {
+    const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
 
-    Object.entries(build.endpoints).forEach(([, endpoint]) => {
+    for (const endpointName in build.endpoints) {
+      const endpoint = build.endpoints[endpointName]; 
       if (projectId && projectId !== endpoint.project) {
         throw new FirebaseError(
           `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,

@@ -156,7 +156,7 @@ export async function prepare(
       const parsedSecretRefs = Object.fromEntries(
         Object.entries(secretRefs).map(([k, v]) => [k, build.parseSecretRef(v)]),
       ) as Record<string, build.ParsedSecretRef>;
-      build.applyEnvSecretOverrides(wantBuild, parsedSecretRefs);
+      build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
     }
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
