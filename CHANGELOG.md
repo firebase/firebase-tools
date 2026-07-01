@@ -1,1 +1,2 @@
-- Upgrade `zod` to v4 and drop the deprecated `zod-to-json-schema` dependency in favor of zod v4's built-in `z.toJSONSchema()`.
+- Fixes `auth:export` and `auth:import` dropping `mfaInfo` data for users with Multi-Factor Authentication enabled.
+- Updated Pub/Sub emulator to version 0.8.34

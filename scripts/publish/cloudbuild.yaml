@@ -134,7 +134,7 @@ steps:
         sleep 60
         echo "Package firebase-tools@$(cat /workspace/version_number.txt) is now available on npm."
 
-  # Set up the hub credentials for firepit-builder.
+  # Set up the hub and npm credentials for firepit-builder.
   - name: "gcr.io/$PROJECT_ID/firepit-builder"
     entrypoint: "bash"
     args:
@@ -142,8 +142,9 @@ steps:
       - |
         if [ "${_VERSION}" != "preview" ]; then
           mkdir -vp ~/.config && cp -v hub ~/.config/hub
+          cp -v npmrc ~/.npmrc
         else
-          echo "Skipping hub credentials for firepit-builder for preview."
+          echo "Skipping credentials for firepit-builder for preview."
         fi
 
   # Publish the firepit builds.
@@ -187,7 +188,11 @@ steps:
       - "-c"
       - |
         if [ "${_VERSION}" != "preview" ]; then
-          docker build -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:$(cat /workspace/version_number.txt) -t us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase:latest -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+          set -e
+          VERSION_NUM="$$(cat /workspace/version_number.txt)"
+          REPO="us-docker.pkg.dev/${_ARTIFACT_REGISTRY_PROJECT}/us/firebase"
+          docker build -t "$${REPO}:$${VERSION_NUM}" -t "$${REPO}:latest" -f ./firebase-docker-image/Dockerfile ./firebase-docker-image
+          docker push "$${REPO}:$${VERSION_NUM}"
         else
           echo "Skipping docker build for preview version."
         fi
