@@ -5,26 +5,54 @@ import { FirebaseError } from "../../error";
 
 describe("parseSecretRef", () => {
   it("can parse short form secrets", () => {
-    expect(build.parseSecretRef("foo")).to.deep.equal({secretId: "foo"});
-    expect(build.parseSecretRef("foo:11")).to.deep.equal({secretId: "foo", version: "11"});
-    expect(build.parseSecretRef("foo:latest")).to.deep.equal({secretId: "foo", version: "latest"});
-    expect(build.parseSecretRef("foo:golden")).to.deep.equal({secretId: "foo", version: "golden"});
-    expect(build.parseSecretRef("gcp-allows-numbers-1234:labels_allow_underscores")).to.deep.equal({secretId: "gcp-allows-numbers-1234", version: "labels_allow_underscores"});
+    expect(build.parseSecretRef("foo")).to.deep.equal({ secretId: "foo" });
+    expect(build.parseSecretRef("foo:11")).to.deep.equal({ secretId: "foo", version: "11" });
+    expect(build.parseSecretRef("foo:latest")).to.deep.equal({
+      secretId: "foo",
+      version: "latest",
+    });
+    expect(build.parseSecretRef("foo:golden")).to.deep.equal({
+      secretId: "foo",
+      version: "golden",
+    });
+    expect(build.parseSecretRef("gcp-allows-numbers-1234:labels_allow_underscores")).to.deep.equal({
+      secretId: "gcp-allows-numbers-1234",
+      version: "labels_allow_underscores",
+    });
   });
 
   it("can parse long form secrets", () => {
-    expect(build.parseSecretRef("projects/my-project-1234/secrets/foo")).to.deep.equal({projectId: "my-project-1234", secretId: "foo"});
-    expect(build.parseSecretRef("projects/my-project-1234/secrets/foo:1")).to.deep.equal({projectId: "my-project-1234", secretId: "foo", version: "1"});
-    expect(build.parseSecretRef("projects/my-project-1234/secrets/foo/versions/latest")).to.deep.equal({projectId: "my-project-1234", secretId: "foo", version: "latest"});
+    expect(build.parseSecretRef("projects/my-project-1234/secrets/foo")).to.deep.equal({
+      projectId: "my-project-1234",
+      secretId: "foo",
+    });
+    expect(build.parseSecretRef("projects/my-project-1234/secrets/foo:1")).to.deep.equal({
+      projectId: "my-project-1234",
+      secretId: "foo",
+      version: "1",
+    });
+    expect(
+      build.parseSecretRef("projects/my-project-1234/secrets/foo/versions/latest"),
+    ).to.deep.equal({ projectId: "my-project-1234", secretId: "foo", version: "latest" });
   });
 
   it("errors on bad formats", () => {
-    expect(() => {build.parseSecretRef("")}).to.throw(FirebaseError, /Unknown format/);
-    expect(() => {build.parseSecretRef("b@d:characters")}).to.throw(FirebaseError, /Unknown format/);
-    expect(() => {build.parseSecretRef("UPPERCASE")}).to.throw(FirebaseError, /Unknown format/);
+    expect(() => {
+      build.parseSecretRef("");
+    }).to.throw(FirebaseError, /Unknown format/);
+    expect(() => {
+      build.parseSecretRef("b@d:characters");
+    }).to.throw(FirebaseError, /Unknown format/);
+    expect(() => {
+      build.parseSecretRef("UPPERCASE");
+    }).to.throw(FirebaseError, /Unknown format/);
 
-    expect(() => {build.parseSecretRef("foo@4")}).to.throw(FirebaseError, /Malformed secret/);
-    expect(() => {build.parseSecretRef("projects/my-project-1234/secrets/foo#latest")}).to.throw(FirebaseError, /Malformed secret/);
+    expect(() => {
+      build.parseSecretRef("foo@4");
+    }).to.throw(FirebaseError, /Malformed secret/);
+    expect(() => {
+      build.parseSecretRef("projects/my-project-1234/secrets/foo#latest");
+    }).to.throw(FirebaseError, /Malformed secret/);
   });
 });
 

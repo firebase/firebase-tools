@@ -15,9 +15,9 @@ const GCP_RESOURCE_ID_PATTERN = "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)"
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
     GCP_RESOURCE_ID_PATTERN + // secret ID is a GCP resource ID
-    "(?:[:#@]" +              // capture an optional label beginning with :, or capture #/@ to warn the user
-    "([a-z0-9-_]+)" +         // allow letters, numbers, hyphen, underscore.
-    ")?$",                    // end of optional version group end of string
+    "(?:[:#@]" + // capture an optional label beginning with :, or capture #/@ to warn the user
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore.
+    ")?$", // end of optional version group end of string
 );
 export const SECRET_REF_LONG_RE = new RegExp(
   "^" + // start of string
@@ -798,7 +798,7 @@ export interface ParsedSecretRef {
  */
 export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
   Object.entries(envSecrets).forEach(([key, secretRef]) => {
-    const { projectId, secretId, version } = secretRef
+    const { projectId, secretId, version } = secretRef;
 
     Object.entries(build.endpoints).forEach(([, endpoint]) => {
       if (projectId && projectId !== endpoint.project) {
@@ -842,30 +842,34 @@ export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string,
 export function parseSecretRef(ref: string): ParsedSecretRef {
   const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
   if (shortMatch) {
-    let output : ParsedSecretRef  = {
+    const output: ParsedSecretRef = {
       secretId: shortMatch[1],
     };
     if (shortMatch[2] !== undefined) {
-      output.version = shortMatch[2]
+      output.version = shortMatch[2];
       if (ref.includes("#") || ref.includes("@")) {
-        throw new FirebaseError(`Malformed secret binding '${ref}'; secret versions are specified with ':'`);
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
       }
     }
     return output;
   }
   const longMatch = SECRET_REF_LONG_RE.exec(ref);
   if (longMatch) {
-    let output : ParsedSecretRef = {
+    const output: ParsedSecretRef = {
       projectId: longMatch[1],
       secretId: longMatch[2],
     };
     if (longMatch[3] !== undefined) {
-      output.version = longMatch[3]
+      output.version = longMatch[3];
       if (ref.includes("#") || ref.includes("@")) {
-        throw new FirebaseError(`Malformed secret binding '${ref}'; secret versions are specified with ':'`);
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
       }
     }
-    return output
+    return output;
   }
   throw new FirebaseError(`Unknown format for secret binding '${ref}'`);
 }
