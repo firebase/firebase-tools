@@ -347,6 +347,38 @@ export async function setInvokerUpdate(
 }
 
 /**
+ * Ensures a service is publicly invokable by granting allUsers the invoker role.
+ * Unlike setInvokerUpdate this is additive: it preserves any invoker members the
+ * user already added and is a no-op when allUsers already has the role, so it can
+ * re-assert public access without overwriting deliberate IAM changes.
+ * @param serviceName Fully qualified name of the Service.
+ * @throws {@link FirebaseError} when the IAM policy fails to be read or set.
+ */
+export async function ensureInvokerPublic(serviceName: string): Promise<void> {
+  const invokerRole = "roles/run.invoker";
+  const currentPolicy: IamPolicy = await exports.getIamPolicy(serviceName);
+  const currentInvokerBinding = currentPolicy.bindings?.find(
+    (binding) => binding.role === invokerRole,
+  );
+  if (currentInvokerBinding?.members?.includes("allUsers")) {
+    return;
+  }
+
+  const bindings = (currentPolicy.bindings || []).filter((binding) => binding.role !== invokerRole);
+  bindings.push({
+    role: invokerRole,
+    members: [...(currentInvokerBinding?.members || []), "allUsers"],
+  });
+
+  const policy: iam.Policy = {
+    bindings: bindings,
+    etag: currentPolicy.etag || "",
+    version: 3,
+  };
+  await exports.setIamPolicy(serviceName, policy);
+}
+
+/**
  * Fetches recent logs for a given Cloud Run service using the Cloud Logging API.
  * @param projectId The Google Cloud project ID.
  * @param serviceId The resource name of the Cloud Run service.
