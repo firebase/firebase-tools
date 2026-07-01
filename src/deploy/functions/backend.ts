@@ -514,7 +514,9 @@ export function merge(...backends: Backend[]): Backend {
 
     // Merge requiredRoles
     if (b.requiredRoles) {
-      requiredRoles.push(...b.requiredRoles);
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
     }
     if (b.lifecycleHooks) {
       merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
