@@ -549,6 +549,7 @@ describe("promptForSecurityChanges", () => {
       codebase: {
         regionalChangesets: {},
         serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
         rolesToAdd: ["roles/viewer"],
       },
     };
@@ -562,6 +563,7 @@ describe("promptForSecurityChanges", () => {
       codebase: {
         regionalChangesets: {},
         serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
         rolesToAdd: ["roles/viewer"],
       },
     };
@@ -606,6 +608,7 @@ describe("promptForSecurityChanges", () => {
       codebase: {
         regionalChangesets: {},
         serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
         rolesToAdd: ["roles/viewer"],
       },
     };
@@ -620,6 +623,7 @@ describe("promptForSecurityChanges", () => {
       codebase: {
         regionalChangesets: {},
         serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
         rolesToAdd: ["roles/viewer"],
       },
     };
