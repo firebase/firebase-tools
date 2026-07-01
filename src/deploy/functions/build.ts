@@ -828,8 +828,8 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
           ...(version !== undefined && { version: version }),
         });
       }
-    });
-  });
+    };
+  };
 }
 
 /**
