@@ -4,10 +4,12 @@ import * as nock from "nock";
 import { functionsOrigin } from "../api";
 
 import * as backend from "../deploy/functions/backend";
+import * as build from "../deploy/functions/build";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../functions/events/v1";
 import * as cloudfunctions from "./cloudfunctions";
 import * as projectConfig from "../functions/projectConfig";
 import { BLOCKING_LABEL, CODEBASE_LABEL, HASH_LABEL } from "../functions/constants";
+import * as tf from "../functions/iac/terraform";
 
 describe("cloudfunctions", () => {
   const FUNCTION_NAME: backend.TargetIds = {
@@ -24,6 +26,14 @@ describe("cloudfunctions", () => {
     runtime: "nodejs16",
     codebase: projectConfig.DEFAULT_CODEBASE,
     state: "ACTIVE",
+  };
+
+  const BUILD_ENDPOINT: Omit<build.Endpoint, "httpsTrigger"> = {
+    platform: "gcfv1",
+    region: ["region"],
+    project: "project",
+    entryPoint: "function",
+    runtime: "nodejs16",
   };
 
   const CLOUD_FUNCTION: Omit<cloudfunctions.CloudFunction, cloudfunctions.OutputOnlyFields> = {
@@ -48,6 +58,296 @@ describe("cloudfunctions", () => {
   after(() => {
     expect(nock.isDone()).to.be.true;
     nock.enableNetConnect();
+  });
+
+  describe("terraformFromEndpoint", () => {
+    const BUCKET: tf.Expression = tf.expr("bucket");
+    const ARCHIVE: tf.Expression = tf.expr("archive");
+
+    it("should reject non-gcfv1 endpoints", () => {
+      expect(() => {
+        cloudfunctions.terraformFromEndpoint(
+          "id",
+          { ...BUILD_ENDPOINT, platform: "gcfv2", httpsTrigger: {} },
+          BUCKET,
+          ARCHIVE,
+        );
+      }).to.throw("Cannot create 1st gen function terraform for endpoint id with platform gcfv2");
+    });
+
+    it("should reject invalid runtimes", () => {
+      expect(() => {
+        cloudfunctions.terraformFromEndpoint(
+          "id",
+          { ...BUILD_ENDPOINT, runtime: "invalid" as any, httpsTrigger: {} },
+          BUCKET,
+          ARCHIVE,
+        );
+      }).to.throw(
+        "Cannot create 1st gen function terraform for endpoint id with invalid runtime invalid",
+      );
+    });
+
+    it("should return just compute resource if no invoker is present", () => {
+      const endpoint: build.Endpoint = {
+        platform: "gcfv1",
+        region: [],
+        project: "project",
+        entryPoint: "function",
+        runtime: "nodejs16",
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          eventFilters: { resource: "projects/p/topics/t" },
+          retry: false,
+        },
+      };
+
+      const actual = cloudfunctions.terraformFromEndpoint("id", endpoint, BUCKET, ARCHIVE);
+
+      expect(actual.length).to.equal(1);
+
+      const hcl = actual.map((b) => tf.blockToString(b)).join("\n\n");
+      expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
+  name                  = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime               = "nodejs16"
+  entry_point           = "function"
+  source_archive_bucket = bucket
+  source_archive_object = archive
+  project               = var.project
+  region                = var.location
+  docker_repository     = "ARTIFACT_REGISTRY"
+  labels                = {}
+
+  event_trigger {
+    event_type = "google.pubsub.topic.publish"
+    resource = "projects/p/topics/t"
+  }
+}`);
+    });
+
+    it("should return compute and permissions resources if invoker is present", () => {
+      const actual = cloudfunctions.terraformFromEndpoint(
+        "id",
+        { ...BUILD_ENDPOINT, region: ["europe-west1"], httpsTrigger: { invoker: ["public"] } },
+        BUCKET,
+        ARCHIVE,
+      );
+
+      expect(actual.length).to.equal(2);
+
+      const hcl = actual.map((b) => tf.blockToString(b)).join("\n\n");
+      expect(hcl).to.equal(`resource "google_cloudfunctions_function" "id" {
+  name                         = var.extension_id == null ? "id" : "ext-\${var.extension_id}-id"
+  runtime                      = "nodejs16"
+  entry_point                  = "function"
+  source_archive_bucket        = bucket
+  source_archive_object        = archive
+  trigger_http                 = true
+  project                      = var.project
+  region                       = "europe-west1"
+  docker_repository            = "ARTIFACT_REGISTRY"
+  labels                       = {}
+  https_trigger_security_level = "SECURE_ALWAYS"
+}
+
+resource "google_cloudfunctions_function_iam_binding" "id" {
+  role           = "roles/cloudfunctions.invoker"
+  members        = ["allUsers"]
+  cloud_function = google_cloudfunctions_function.id.name
+  region         = google_cloudfunctions_function.id.region
+  project        = google_cloudfunctions_function.id.project
+}`);
+    });
+  });
+
+  describe("functionTerraform", () => {
+    const BUCKET: tf.Expression = tf.expr("bucket");
+    const ARCHIVE: tf.Expression = tf.expr("archive");
+
+    it("should handle different region formats", () => {
+      // String region
+      let endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        region: ["europe-west1"],
+        httpsTrigger: {},
+      };
+      let actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.equal("europe-west1");
+
+      // Empty array region
+      endpoint = { ...BUILD_ENDPOINT, region: [], httpsTrigger: {} };
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "var.location",
+      });
+
+      // Single element array region
+      endpoint = {
+        ...BUILD_ENDPOINT,
+        region: ["asia-east1"],
+        httpsTrigger: {},
+      };
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["region"]).to.equal("asia-east1");
+
+      // Multi element array region
+      endpoint = {
+        ...BUILD_ENDPOINT,
+        region: ["us-central1", "us-east1"],
+        httpsTrigger: {},
+      };
+      actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["for_each"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: `toset(["us-central1","us-east1"])`,
+      });
+      expect(actual.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "each.value",
+      });
+    });
+
+    it("should handle VPC connectivity", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "my-connector",
+          egressSettings: "ALL_TRAFFIC",
+        },
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+
+      expect(actual.attributes["vpc_connector"]).to.equal(
+        "projects/${var.project}/locations/region/connectors/my-connector",
+      );
+      expect(actual.attributes["vpc_connector_egress_settings"]).to.equal("ALL_TRAFFIC");
+    });
+
+    it("should handle full VPC connector string", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        vpc: {
+          connector: "projects/p/locations/l/connectors/c",
+        },
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+
+      expect(actual.attributes["vpc_connector"]).to.equal("projects/p/locations/l/connectors/c");
+    });
+
+    it("should throw for unsupported trigger types", () => {
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...BUILD_ENDPOINT, scheduleTrigger: { schedule: "* * * * *" } },
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Scheduled functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...BUILD_ENDPOINT, taskQueueTrigger: {} },
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Task queue functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...BUILD_ENDPOINT, blockingTrigger: { eventType: "some.event" } },
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Blocking functions are not supported in terraform yet");
+
+      expect(() =>
+        cloudfunctions.functionTerraform(
+          "id",
+          { ...BUILD_ENDPOINT, dataConnectGraphqlTrigger: {} },
+          BUCKET,
+          ARCHIVE,
+        ),
+      ).to.throw("Data connector functions are not supported in terraform yet");
+    });
+
+    it("should support secret environment variables", () => {
+      const endpoint: build.Endpoint = {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: {},
+        secretEnvironmentVariables: [{ key: "API_KEY", secret: "MY_SECRET", projectId: "project" }],
+      };
+      const actual = cloudfunctions.functionTerraform("id", endpoint, BUCKET, ARCHIVE);
+      expect(actual.attributes["secret_environment_variables"]).to.deep.equal([
+        { key: "API_KEY", secret: "MY_SECRET", project: tf.expr("var.project"), version: "latest" },
+      ]);
+    });
+  });
+
+  describe("invokerTerraform", () => {
+    it("should return null if not https or callable", () => {
+      const endpoint: build.Endpoint = {
+        platform: "gcfv1",
+        region: ["region"],
+        project: "project",
+        entryPoint: "function",
+        runtime: "nodejs16",
+        eventTrigger: {
+          eventType: "google.pubsub.topic.publish",
+          retry: false,
+        },
+      };
+
+      expect(cloudfunctions.invokerTerraform("id", endpoint)).to.be.null;
+    });
+
+    it("should handle public invoker", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["public"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal(["allUsers"]);
+    });
+
+    it("should handle private invoker", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["private"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal([]);
+    });
+
+    it("should handle array of custom service accounts", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        httpsTrigger: { invoker: ["foo@", "bar@baz.com"] },
+      });
+      expect(actual?.attributes["members"]).to.deep.equal([
+        "serviceAccount:foo@${var.project}.iam.gserviceaccount.com",
+        "serviceAccount:bar@baz.com",
+      ]);
+    });
+
+    it("should use for_each when deployed to multiple regions", () => {
+      const actual = cloudfunctions.invokerTerraform("id", {
+        ...BUILD_ENDPOINT,
+        region: ["us-central1", "us-east1"],
+        httpsTrigger: { invoker: ["public"] },
+      });
+      expect(actual?.attributes["for_each"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "google_cloudfunctions_function.id",
+      });
+      expect(actual?.attributes["region"]).to.deep.equal({
+        "@type": "HCLExpression",
+        value: "each.value.region",
+      });
+    });
   });
 
   describe("functionFromEndpoint", () => {
