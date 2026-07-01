@@ -153,7 +153,10 @@ export async function prepare(
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
     if (experiments.isEnabled("secretEnvParams")) {
-      build.applyEnvSecretOverrides(wantBuild, secretRefs);
+      const parsedSecretRefs = Object.fromEntries(
+        Object.entries(secretRefs).map(([k, v]) => [k, build.parseSecretRef(v)]),
+      ) as Record<string, build.ParsedSecretRef>;
+      build.applyEnvSecretOverrides(wantBuild, parsedSecretRefs);
     }
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({

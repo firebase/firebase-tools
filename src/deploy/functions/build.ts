@@ -11,12 +11,22 @@ import { defineSecret } from "firebase-functions/params";
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
 // prettier-ignore
-export const SECRET_REF_RE = new RegExp(
-  "^" +                                      // start of string
-  "csm:\/\/" +                               // scheme csm://
-  "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" +    // secret ID is a GCP resource ID
-  "(?:\/([-a-z0-9]+))?" +                    // capture an optional GCP label for version
-  "$"                                        // end of string
+const GCP_RESOURCE_ID_PATTERN = "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)"
+export const SECRET_REF_SHORT_RE = new RegExp(
+  "^" + // start of string
+    GCP_RESOURCE_ID_PATTERN + // secret ID is a GCP resource ID
+    "(?::([-a-z0-9]+))?" + // capture an optional GCP :label for version
+    "$", // end of string
+);
+export const SECRET_REF_LONG_RE = new RegExp(
+  "^" + // start of string
+    "projects/" + // projects/
+    "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" + // capture project ID
+    "/secrets/" + // /secrets/
+    "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)" + // capture resource ID for secret
+    "(?:/versions/|:" + // optionally: either the character : or the string /versions/
+    "(d+)" + // capture version ID
+    +")?$", // end of group, end of string
 );
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
@@ -744,6 +754,12 @@ export function applyPrefix(build: Build, prefix: string): void {
   build.endpoints = newEndpoints;
 }
 
+export interface ParsedSecretRef {
+  projectId?: string;
+  secretId: string;
+  version?: string;
+}
+
 /**
  * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
  * Secrets references are of the form csm://secretName/version, referencing a Secret in the same project as the Endpoint.
@@ -753,24 +769,25 @@ export function applyPrefix(build: Build, prefix: string): void {
  * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
-export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, string>) {
+export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
   Object.entries(envSecrets).forEach(([key, secretRef]) => {
-    const match = SECRET_REF_RE.exec(secretRef);
-    if (!match) {
-      throw new FirebaseError(
-        `Secret reference '${secretRef}' is not a valid Cloud Secret Manager reference.`,
-      );
-    }
-    const resourceId = match[1];
-    const versionRef = match[2];
+    const projectId = secretRef.projectId;
+    const secretId = secretRef.secretId;
+    const version = secretRef.version;
 
     Object.entries(build.endpoints).forEach(([, endpoint]) => {
+      if (projectId && projectId !== endpoint.project) {
+        throw new FirebaseError(
+          `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
+        );
+      }
+
       let needEnvInsert = true;
       endpoint.secretEnvironmentVariables?.forEach((envVar) => {
         if (envVar.key === key) {
           needEnvInsert = false;
-          envVar.secret = resourceId;
-          envVar.version = versionRef;
+          envVar.secret = secretId;
+          envVar.version = version;
         }
       });
       if (needEnvInsert) {
@@ -779,11 +796,33 @@ export function applyEnvSecretOverrides(build: Build, envSecrets: Record<string,
         }
         endpoint.secretEnvironmentVariables.push({
           key: key,
-          secret: resourceId === "" ? key : resourceId,
+          secret: secretId === "" ? key : secretId,
           projectId: endpoint.project,
-          ...(versionRef !== undefined && { version: versionRef }),
+          ...(version !== undefined && { version: version }),
         });
       }
     });
   });
+}
+
+/**
+ *
+ */
+export function parseSecretRef(ref: string): ParsedSecretRef {
+  const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
+  if (shortMatch) {
+    return {
+      secretId: shortMatch[1],
+      version: shortMatch[2],
+    };
+  }
+  const longMatch = SECRET_REF_LONG_RE.exec(ref);
+  if (longMatch) {
+    return {
+      projectId: longMatch[1],
+      secretId: longMatch[2],
+      version: longMatch[3],
+    };
+  }
+  throw new FirebaseError(`Unknown format for secret binding '${ref}'`);
 }
