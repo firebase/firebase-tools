@@ -19,6 +19,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
 import { runtimeIsLanguage } from "../runtimes/supported";
+import { executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -133,6 +134,10 @@ export async function release(
       "Dart functions may not yet be visible in the Firebase Console. " +
         `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
     );
+  }
+
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    await executeLifecycleHooks(w, h, plan, codebase);
   }
 
   await setupArtifactCleanupPolicies(
