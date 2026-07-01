@@ -220,7 +220,9 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   }
   if (requiredRoles) {
     if (!managedSA) {
-      throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", { exit: 1 });
+      throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
+        exit: 1,
+      });
     }
     return {
       regionalChangesets,
