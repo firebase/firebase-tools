@@ -193,7 +193,8 @@ export function buildFromV1Alpha1(
   return bd;
 }
 
-const ROLE_REGEX = /^((projects|organizations)\/[a-zA-Z0-9_-]+\/)?roles\/[a-zA-Z0-9_.-]+$/;
+const ROLE_REGEX =
+  /^(roles\/[a-zA-Z0-9_\.\-]+|projects\/[a-zA-Z0-9\-]+\/roles\/[a-zA-Z0-9_\.\-]+|organizations\/[0-9]+\/roles\/[a-zA-Z0-9_\.\-]+)$/;
 
 function parseRequiredRoles(manifest: WireManifest): string[] {
   const roles: string[] = manifest.requiredRoles || [];
