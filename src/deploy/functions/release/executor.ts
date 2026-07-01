@@ -26,6 +26,7 @@ function parseErrorCode(err: any): number {
     err.status ||
     err.code ||
     err.context?.response?.statusCode ||
+    err.original?.status ||
     err.original?.code ||
     err.original?.context?.response?.statusCode
   );
