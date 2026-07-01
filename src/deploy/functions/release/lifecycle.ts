@@ -92,7 +92,7 @@ async function executeTaskQueueHook(
   taskHook: { function: string; body?: Record<string, unknown> },
   wantBackend: backend.Backend,
 ): Promise<void> {
-  const targetEndpoint = findTargetEndpoint(wantBackend, taskHook.function);
+  const targetEndpoint = backend.findEndpoint(wantBackend, (ep) => ep.id === taskHook.function);
   if (!targetEndpoint) {
     throw new FirebaseError(
       `Target endpoint "${taskHook.function}" not found in backend for lifecycle hook.`,
@@ -153,18 +153,6 @@ async function executeTaskQueueHook(
       `Failed to enqueue task for lifecycle hook ${taskHook.function}: ${errorMsg}`,
     );
   }
-}
-
-function findTargetEndpoint(
-  backendSpec: backend.Backend,
-  targetId: string,
-): backend.Endpoint | undefined {
-  for (const endpoint of backend.allEndpoints(backendSpec)) {
-    if (endpoint.id === targetId) {
-      return endpoint;
-    }
-  }
-  return undefined;
 }
 
 /**
