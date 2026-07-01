@@ -120,11 +120,11 @@ type ParamBase<T extends string | number | boolean | string[]> = {
   // Default value. If not provided, a param must be supplied.
   default?: T | build.Expression<T>;
 
-  // default: false
-  immutable?: boolean;
-
   // Defines how the CLI will prompt for the value of the param if it's not in .env files
   input?: ParamInput<T>;
+
+  // Reject the empty string and empty array as valid input.
+  nonEmpty?: boolean;
 };
 
 /**
@@ -571,6 +571,7 @@ async function promptList(
       prompt,
       param.input,
       resolvedDefault,
+      param.nonEmpty,
       (res: string[]) => res,
     );
   } else if (isTextInput(param.input)) {
@@ -580,15 +581,21 @@ async function promptList(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<string[]>(prompt, param.input, resolvedDefault, (res: string): string[] => {
-      return res.split(param.delimiter || ",");
-    });
+    return promptText<string[]>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.nonEmpty,
+      (res: string): string[] => {
+        return res.split(param.delimiter || ",");
+      },
+    );
   } else if (isResourceInput(param.input)) {
     prompt = `Select values for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptResourceStrings(prompt, param.input, projectId);
+    return promptResourceStrings(prompt, param.input, projectId, param.nonEmpty);
   } else {
     assertExhaustive(param.input);
   }
@@ -619,7 +626,7 @@ async function promptBooleanParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+    return promptText<boolean>(prompt, param.input, resolvedDefault, false, isTruthyInput);
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
   } else {
@@ -643,7 +650,7 @@ async function promptStringParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptResourceString(prompt, param.input, projectId, resolvedDefault);
+    return promptResourceString(prompt, param.input, projectId, param.nonEmpty, resolvedDefault);
   } else if (isMultiSelectInput(param.input)) {
     throw new FirebaseError("Non-list params cannot have multi selector inputs");
   } else if (isSelectInput(param.input)) {
@@ -658,7 +665,13 @@ async function promptStringParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    return promptText<string>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.nonEmpty,
+      (res: string) => res,
+    );
   } else {
     assertExhaustive(param.input);
   }
@@ -693,7 +706,7 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
+    return promptText<number>(prompt, param.input, resolvedDefault, false, (res: string) => {
       if (isNaN(+res)) {
         return { message: `"${res}" could not be converted to a number.` };
       }
@@ -713,6 +726,7 @@ async function promptResourceString(
   prompt: string,
   input: ResourceInput,
   projectId: string,
+  disallowEmpty: boolean | undefined,
   resolvedDefault?: string,
 ): Promise<string> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
@@ -734,7 +748,13 @@ async function promptResourceString(
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
+      return promptText<string>(
+        prompt,
+        { text: {} },
+        resolvedDefault,
+        disallowEmpty,
+        (res: string) => res,
+      );
   }
 }
 
@@ -742,6 +762,7 @@ async function promptResourceStrings(
   prompt: string,
   input: ResourceInput,
   projectId: string,
+  disallowEmpty: boolean | undefined,
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -757,12 +778,20 @@ async function promptResourceStrings(
           }),
         },
       };
-      return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
+      return promptSelectMultiple<string>(
+        prompt,
+        forgedInput,
+        undefined,
+        disallowEmpty,
+        (res: string[]) => res,
+      );
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
+      return promptText<string[]>(prompt, { text: {} }, undefined, disallowEmpty, (res: string) =>
+        res.split(","),
+      );
   }
 }
 
@@ -775,6 +804,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   textInput: TextInput<T>,
   resolvedDefault: T | undefined,
+  disallowEmpty: boolean | undefined,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await input({
@@ -788,8 +818,12 @@ async function promptText<T extends RawParamValue>(
         textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, textInput, resolvedDefault, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
     }
+  }
+  if (disallowEmpty && res === "") {
+    logger.error(`Input cannot be the empty string, retrying...`);
+    return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
   // is wrong--it will return the type of the default if selected. Remove this
@@ -797,7 +831,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, textInput, resolvedDefault, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
   }
   return converted;
 }
@@ -831,6 +865,7 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
+  disallowEmpty: boolean | undefined,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
@@ -847,7 +882,11 @@ async function promptSelectMultiple<T extends string>(
   const converted = converter(response);
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptSelectMultiple<T>(prompt, input, resolvedDefault, converter);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
+  }
+  if (disallowEmpty && Array.isArray(converted) && converted.length === 0) {
+    logger.error(`Input cannot be empty, retrying...`);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
   }
   return converted;
 }
