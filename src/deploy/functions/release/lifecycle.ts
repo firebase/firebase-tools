@@ -43,22 +43,14 @@ export async function executeLifecycleHooks(
   }
 
   if (delta === "afterUpdate" && plan) {
-    // Filter the deployment plan to only include changesets relevant to the codebase being released.
-    // Changeset keys in the plan are prefixed with the codebase name (e.g. "mycodebase-").
-    // If the codebase is "default", the key may just start with "-" (e.g. "-endpointId").
-    const relevantChangesets = Object.entries(plan)
-      .filter(([key]) => {
-        if (!codebase) return true;
-        if (key.startsWith(`${codebase}-`)) return true;
-        if (codebase === "default" && key.startsWith("-")) return true;
-        return false;
-      })
-      .map(([, c]) => c);
-    const hasResourceModifications = relevantChangesets.some(
-      (changeset) =>
-        changeset.endpointsToCreate.length > 0 ||
-        changeset.endpointsToUpdate.length > 0 ||
-        changeset.endpointsToDelete.length > 0,
+    const codebasePlans = codebase ? [plan[codebase]].filter(Boolean) : Object.values(plan);
+    const hasResourceModifications = codebasePlans.some((codebasePlan) =>
+      Object.values(codebasePlan.regionalChangesets).some(
+        (changeset) =>
+          changeset.endpointsToCreate.length > 0 ||
+          changeset.endpointsToUpdate.length > 0 ||
+          changeset.endpointsToDelete.length > 0,
+      ),
     );
     if (!hasResourceModifications) {
       logLabeledBullet(
