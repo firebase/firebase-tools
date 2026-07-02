@@ -1,0 +1,1 @@
+- Fixed an issue where App Store ID was always prompted for even when unnecessary.
