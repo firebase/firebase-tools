@@ -1,4 +1,4 @@
-import type { ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
+import type { ReadResourceResult } from "@modelcontextprotocol/server";
 import { McpContext } from "./types";
 
 export interface ServerResource {

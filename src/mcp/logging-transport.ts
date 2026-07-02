@@ -1,5 +1,5 @@
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
+import { JSONRPCMessage } from "@modelcontextprotocol/server";
+import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { appendFileSync } from "fs";
 import { appendFile } from "fs/promises";
 

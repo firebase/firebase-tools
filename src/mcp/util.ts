@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { dump } from "js-yaml";
 import * as experiments from "../experiments";
 import { ServerFeature } from "./types";

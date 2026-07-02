@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { dump, DumpOptions } from "js-yaml";
 import { z } from "zod";
 import { batchGetEvents, listEvents } from "../../../crashlytics/events";
