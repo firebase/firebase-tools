@@ -236,6 +236,20 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should handle non-JSON error responses gracefully even when responseType is json", async () => {
+      const xml =
+        "<?xml version='1.0' encoding='UTF-8'?><Error><Code>BillingDisabled</Code></Error>";
+      nock("https://example.com").get("/path/to/foo").reply(403, xml);
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /BillingDisabled/);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should error with a FirebaseError if an error happens", async () => {
       nock("https://example.com").get("/path/to/foo").replyWithError("boom");
 
