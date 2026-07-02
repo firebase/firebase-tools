@@ -51,6 +51,7 @@ export class FunctionsServer {
       emulatableBackends: this.backends,
       projectAlias: options.projectAlias,
       account,
+      pythonDisableGunicorn: Boolean(options.pythonDisableGunicorn),
       ...partialArgs,
       // Non-optional; parseInspectionPort will set to false if missing.
       debugPort: parseInspectionPort(options),

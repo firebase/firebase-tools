@@ -34,6 +34,10 @@ export const FLAG_INSPECT_FUNCTIONS = "--inspect-functions [port]";
 export const DESC_INSPECT_FUNCTIONS =
   "emulate Cloud Functions in debug mode with the node inspector on the given port (9229 if not specified)";
 
+export const FLAG_PYTHON_DISABLE_GUNICORN = "--python-disable-gunicorn";
+export const DESC_PYTHON_DISABLE_GUNICORN =
+  "run Python Functions emulator processes without gunicorn, using the Flask server in non-debug mode";
+
 export const FLAG_IMPORT = "--import [dir]";
 export const DESC_IMPORT = "import emulator data from a previous export (see emulators:export)";
 
