@@ -50,7 +50,7 @@ describe("getDefaultFeatureAvailabilityCheck", () => {
 
   // Test all other features that rely on checkFeatureActive
   const featuresThatUseCheckActive = SERVER_FEATURES.filter(
-    (f) => f !== "core" && f !== "crashlytics" && f !== "apptesting" && f !== "developerknowledge",
+    (f) => f !== "core" && f !== "crashlytics" && f !== "developerknowledge",
   );
 
   for (const feature of featuresThatUseCheckActive) {

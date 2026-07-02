@@ -195,10 +195,6 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-  apptesting: {
-    shortDescription: "Adds experimental App Testing feature",
-    public: true,
-  },
   fdcwebhooks: {
     shortDescription: "Enable Firebase SQL Connect webhooks feature.",
     default: true,

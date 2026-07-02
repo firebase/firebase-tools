@@ -2,7 +2,6 @@ import { ONEMCP_SERVERS } from "../onemcp/index";
 import { ServerTool } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { appHostingTools } from "./apphosting/index";
-import { apptestingTools } from "./apptesting/index";
 import { authTools } from "./auth/index";
 import { coreTools } from "./core/index";
 import { crashlyticsTools } from "./crashlytics/index";
@@ -30,7 +29,6 @@ function addFeaturePrefix(feature: string, tools: ServerTool[]): ServerTool[] {
 
 const tools: Record<ServerFeature, ServerTool[]> = {
   apphosting: addFeaturePrefix("apphosting", appHostingTools),
-  apptesting: addFeaturePrefix("apptesting", apptestingTools),
   auth: addFeaturePrefix("auth", authTools),
   core: addFeaturePrefix("firebase", coreTools),
   crashlytics: addFeaturePrefix("crashlytics", crashlyticsTools),

@@ -40,7 +40,6 @@ export interface SetupInfo {
   dataconnectResolver?: features.DataconnectResolverInfo;
   dataconnectSource?: features.DataconnectSource;
   storage?: features.StorageInfo;
-  apptesting?: features.ApptestingInfo;
   ailogic?: features.AiLogicInfo;
   hosting?: features.HostingInfo;
   auth?: features.AuthInfo;
@@ -111,11 +110,6 @@ const featuresList: Feature[] = [
   { name: "hosting:github", doSetup: features.hostingGithub },
   { name: "genkit", doSetup: features.genkit },
   { name: "apphosting", displayName: "App Hosting", doSetup: features.apphosting },
-  {
-    name: "apptesting",
-    askQuestions: features.apptestingAskQuestions,
-    actuate: features.apptestingAcutate,
-  },
   {
     name: "ailogic",
     askQuestions: features.aiLogicAskQuestions,
