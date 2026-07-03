@@ -183,27 +183,35 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
-    it("should not retry a PATCH request after a premature close error", async () => {
+    it("should not retry when retryOnPrematureClose is false", async () => {
       nock("https://example.com").patch("/path/to/foo").once().replyWithError({
         message:
           "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
         code: "ERR_STREAM_PREMATURE_CLOSE",
       });
+      // If a retry fires, this second interceptor would be consumed
+      const retryScope = nock("https://example.com")
+        .patch("/path/to/foo")
+        .once()
+        .reply(200, { ok: true });
 
       const c = new Client({ urlPrefix: "https://example.com" });
-      const r = c.request({
-        method: "PATCH",
-        path: "/path/to/foo",
-        body: { foo: "bar" },
-        retries: 1,
-        retryMinTimeout: 10,
-        retryMaxTimeout: 15,
-      });
-      await expect(r).to.eventually.be.rejectedWith(FirebaseError);
-      expect(nock.isDone()).to.be.true;
+      await expect(
+        c.request({
+          method: "PATCH",
+          path: "/path/to/foo",
+          body: { foo: "bar" },
+          retries: 1,
+          retryMinTimeout: 10,
+          retryMaxTimeout: 15,
+          retryOnPrematureClose: false,
+        }),
+      ).to.eventually.be.rejectedWith(FirebaseError);
+      expect(retryScope.isDone()).to.be.false; // proves no retry occurred
+      nock.cleanAll();
     });
 
-    it("should still retry a POST request after a premature close error", async () => {
+    it("should retry a request by default after a premature close error", async () => {
       nock("https://example.com").post("/path/to/foo").once().replyWithError({
         message:
           "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",

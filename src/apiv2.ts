@@ -97,6 +97,8 @@ interface ClientHandlingOptions {
   retryMinTimeout?: number;
   /** Maximum timeout between retries. Defaults to 5s. */
   retryMaxTimeout?: number;
+  /** Set to false to disable the premature-close keep-alive retry for this request. Defaults to true. */
+  retryOnPrematureClose?: boolean;
 }
 
 export type ClientRequestOptions<T> = RequestOptions<T> & ClientVerbOptions;
@@ -170,10 +172,6 @@ const httpAgentNoKeepAlive = new http.Agent({ keepAlive: false });
 const httpsAgentNoKeepAlive = new https.Agent({ keepAlive: false });
 export function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
   return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
-}
-
-function isIdempotentMethod(method: HttpMethod): boolean {
-  return ["GET", "HEAD", "OPTIONS", "DELETE", "PUT", "POST"].includes(method);
 }
 
 function isPrematureCloseError(err: unknown): boolean {
@@ -550,7 +548,7 @@ export class Client {
             bodyReplayable &&
             !proxyURIFromEnv() &&
             isPrematureCloseError(err) &&
-            isIdempotentMethod(options.method)
+            options.retryOnPrematureClose !== false
           ) {
             disabledKeepAlive = true;
             fetchOptions.agent = noKeepAliveAgent;
