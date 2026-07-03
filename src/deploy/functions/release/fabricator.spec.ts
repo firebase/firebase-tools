@@ -899,9 +899,8 @@ describe("Fabricator", () => {
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
 
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
-      await expect(
-        retryingFab.updateV2Function(ep, new scraper.SourceTokenScraper()),
-      ).to.eventually.be.undefined;
+      await expect(retryingFab.updateV2Function(ep, new scraper.SourceTokenScraper())).to.eventually
+        .be.undefined;
       expect(gcfv2.updateFunction).to.have.been.calledTwice;
     });
 
