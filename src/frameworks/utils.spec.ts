@@ -183,9 +183,12 @@ describe("Frameworks utils", () => {
 
     it("should also buffer a chunked (unknown-length) body for replay", async () => {
       // A chunked request (no content-length) is buffered too, so it remains
-      // replayable via req.rawBody when the dev server 404s and we cascade. See
-      // issue #5986.
-      nock("http://localhost:8999").post("/api", "chunked-payload").reply(404);
+      // replayable via req.rawBody when the dev server 404s and we cascade, and
+      // it is forwarded to the dev server as a fixed-length body. See issue #5986.
+      nock("http://localhost:8999")
+        .post("/api", "chunked-payload")
+        .matchHeader("content-length", "15")
+        .reply(404);
 
       const app = express();
       app.use(simpleProxy("http://localhost:8999"));

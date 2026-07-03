@@ -224,8 +224,7 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
           return;
         }
         (originalReq as RequestWithRawBody).rawBody = rawBody;
-        // We forward a fixed-length Buffer; drop chunked framing so it can't
-        // conflict with the content-length Node sets from the buffer.
+        opts.headers["content-length"] = rawBody.length.toString();
         delete opts.headers["transfer-encoding"];
       }
       const req = httpRequest(opts, (response) => {
