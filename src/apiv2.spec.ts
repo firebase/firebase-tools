@@ -183,6 +183,47 @@ describe("apiv2", () => {
       expect(nock.isDone()).to.be.true;
     });
 
+    it("should not retry a PATCH request after a premature close error", async () => {
+      nock("https://example.com").patch("/path/to/foo").once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "PATCH",
+        path: "/path/to/foo",
+        body: { foo: "bar" },
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should still retry a POST request after a premature close error", async () => {
+      nock("https://example.com").post("/path/to/foo").once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+      nock("https://example.com").post("/path/to/foo").once().reply(200, { ok: true });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/path/to/foo",
+        body: { foo: "bar" },
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.status).to.equal(200);
+      expect(nock.isDone()).to.be.true;
+    });
+
     it("should not allow resolving on http error when streaming", async () => {
       const c = new Client({ urlPrefix: "https://example.com" });
       const r = c.request<unknown, NodeJS.ReadableStream>({

@@ -172,6 +172,10 @@ export function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
   return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
 }
 
+function isIdempotentMethod(method: HttpMethod): boolean {
+  return ["GET", "HEAD", "OPTIONS", "DELETE", "PUT", "POST"].includes(method);
+}
+
 function isPrematureCloseError(err: unknown): boolean {
   for (const candidate of [err, (err as { original?: unknown } | undefined)?.original]) {
     if (!candidate) {
@@ -545,7 +549,8 @@ export class Client {
             !disabledKeepAlive &&
             bodyReplayable &&
             !proxyURIFromEnv() &&
-            isPrematureCloseError(err)
+            isPrematureCloseError(err) &&
+            isIdempotentMethod(options.method)
           ) {
             disabledKeepAlive = true;
             fetchOptions.agent = noKeepAliveAgent;
