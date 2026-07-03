@@ -1,9 +1,21 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import * as http from "http";
+import * as express from "express";
+import * as nock from "nock";
+import * as supertest from "supertest";
+import { once } from "events";
+import { AddressInfo } from "net";
 import { resolve, join } from "path";
 
-import { warnIfCustomBuildScript, isUrl, getNodeModuleBin, conjoinOptions } from "./utils";
+import {
+  warnIfCustomBuildScript,
+  isUrl,
+  getNodeModuleBin,
+  conjoinOptions,
+  simpleProxy,
+} from "./utils";
 
 describe("Frameworks utils", () => {
   describe("getNodeModuleBin", () => {
@@ -133,6 +145,84 @@ describe("Frameworks utils", () => {
       expect(conjoinOptions(options, customConjuntion, defaultSeparator)).to.equal(
         `${options[0]}${defaultSeparator} ${options[1]}${defaultSeparator} ${customConjuntion} ${options[2]}`,
       );
+    });
+  });
+
+  describe("simpleProxy", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
+    it("should buffer the request body and expose it on req.rawBody when cascading", async () => {
+      // Regression test for https://github.com/firebase/firebase-tools/issues/5986
+      // When the dev server 404s, simpleProxy cascades (calls next) and the
+      // consumed POST body must remain available on req.rawBody for the next
+      // handler (e.g. a Cloud Functions rewrite).
+      nock("http://localhost:8999").post("/api", "payload").reply(404);
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((req, res) => {
+        res.json({ rawBody: (req as any).rawBody?.toString() });
+      });
+
+      return supertest(app).post("/api").send("payload").expect(200, { rawBody: "payload" });
+    });
+
+    it("should pipe through a non-404 response without cascading", async () => {
+      nock("http://localhost:8999").post("/api", "payload").reply(200, "handled");
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((_req, res) => {
+        res.status(500).send("should not cascade");
+      });
+
+      return supertest(app).post("/api").send("payload").expect(200, "handled");
+    });
+
+    it("should also buffer a chunked (unknown-length) body for replay", async () => {
+      // A chunked request (no content-length) is buffered too, so it remains
+      // replayable via req.rawBody when the dev server 404s and we cascade. See
+      // issue #5986.
+      nock("http://localhost:8999").post("/api", "chunked-payload").reply(404);
+
+      const app = express();
+      app.use(simpleProxy("http://localhost:8999"));
+      app.use((req, res) => {
+        res.json({ rawBody: (req as any).rawBody?.toString() });
+      });
+
+      const server = http.createServer(app).listen(0);
+      await once(server, "listening");
+      const { port } = server.address() as AddressInfo;
+      try {
+        const responseBody = await new Promise<string>((resolveBody, rejectBody) => {
+          const clientReq = http.request(
+            {
+              host: "127.0.0.1",
+              port,
+              method: "POST",
+              path: "/api",
+              headers: { "Transfer-Encoding": "chunked" },
+            },
+            (res) => {
+              const chunks: Buffer[] = [];
+              res.on("data", (c: Buffer) => chunks.push(c));
+              res.on("end", () => resolveBody(Buffer.concat(chunks).toString()));
+            },
+          );
+          clientReq.on("error", rejectBody);
+          // Two writes => chunked transfer with no content-length.
+          clientReq.write("chunked-");
+          clientReq.write("payload");
+          clientReq.end();
+        });
+        expect(JSON.parse(responseBody)).to.deep.equal({ rawBody: "chunked-payload" });
+        expect(nock.isDone()).to.equal(true);
+      } finally {
+        server.close();
+      }
     });
   });
 });

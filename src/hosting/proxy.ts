@@ -11,6 +11,18 @@ import { logger } from "../logger";
 
 const REQUIRED_VARY_VALUES = ["Accept-Encoding", "Authorization", "Cookie"];
 
+/**
+ * An IncomingMessage whose body was already read and buffered upstream so it can
+ * be replayed here. `simpleProxy` (the web-frameworks dev-server proxy) sets this
+ * when it forwards a request to the framework dev server, because that drains the
+ * original stream; without it, a request that 404-cascades from the framework to
+ * a function rewrite would arrive with a stale content-length and no body and
+ * time out. See `simpleProxy` in ../frameworks/utils.ts.
+ */
+export interface RequestWithRawBody extends IncomingMessage {
+  rawBody?: Buffer;
+}
+
 function makeVary(vary: string | null = ""): string {
   if (!vary) {
     return "Accept-Encoding, Authorization, Cookie";
@@ -57,10 +69,21 @@ export function proxyRequestHandler(
     const u = new URL(url + req.url);
     const c = new Client({ urlPrefix: u.origin, auth: false });
 
-    let passThrough: PassThrough | undefined;
+    let body: PassThrough | Buffer | undefined;
     if (req.method && !["GET", "HEAD"].includes(req.method)) {
-      passThrough = new PassThrough();
-      req.pipe(passThrough);
+      // If an upstream proxy already consumed the request stream (e.g. a web
+      // framework dev server) it stashes the body on req.rawBody so we can
+      // replay it. Piping the already-drained stream here would send 0 bytes
+      // while still advertising the original content-length, hanging the request
+      // until timeout. See https://github.com/firebase/firebase-tools/issues/5986
+      const rawBody = (req as RequestWithRawBody).rawBody;
+      if (rawBody !== undefined) {
+        body = rawBody;
+      } else {
+        const passThrough = new PassThrough();
+        req.pipe(passThrough);
+        body = passThrough;
+      }
     }
 
     const headers = new Headers({
@@ -74,6 +97,14 @@ export function proxyRequestHandler(
     // Skip particular header keys:
     // - using x-forwarded-host, don't need to keep `host` in the headers.
     const headersToSkip = new Set(["host"]);
+    if (Buffer.isBuffer(body)) {
+      // A replayed Buffer is a fixed-length body; let node-fetch set
+      // content-length from it and drop the original request's framing headers,
+      // which would otherwise be stale or conflict (content-length alongside
+      // transfer-encoding: chunked).
+      headersToSkip.add("content-length");
+      headersToSkip.add("transfer-encoding");
+    }
     for (const key of Object.keys(req.headers)) {
       if (headersToSkip.has(key)) {
         continue;
@@ -101,7 +132,7 @@ export function proxyRequestHandler(
         resolveOnHTTPError: true,
         responseType: "stream",
         redirect: "manual",
-        body: passThrough,
+        body,
         timeout: 60000,
         compress: false,
       });
