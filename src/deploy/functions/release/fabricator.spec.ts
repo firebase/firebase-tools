@@ -881,6 +881,30 @@ describe("Fabricator", () => {
       );
     });
 
+    it("does not deadlock when updateFunction receives a retryable 409 on the first attempt", async () => {
+      // Regression test for: a 409 retry re-entering getToken() while the
+      // scraper is still FETCHING would await a promise that only the poller
+      // could resolve — but the poller never ran because the request failed.
+      // The fix calls scraper.abort() inside the closure catch so the promise
+      // is settled before the executor's backoff fires and the closure re-runs.
+      const retryingFab = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: new executor.QueueExecutor({ retries: 1, backoff: 10, maxBackoff: 10 }),
+      });
+
+      const err409 = new Error("unable to queue the operation");
+      (err409 as any).status = 409;
+      gcfv2.updateFunction.onFirstCall().rejects(err409);
+      gcfv2.updateFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      await expect(
+        retryingFab.updateV2Function(ep, new scraper.SourceTokenScraper()),
+      ).to.eventually.be.undefined;
+      expect(gcfv2.updateFunction).to.have.been.calledTwice;
+    });
+
     it("throws on set invoker failure", async () => {
       gcfv2.updateFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
