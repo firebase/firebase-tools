@@ -2,6 +2,10 @@ import { FirebaseError } from "../../../error";
 import { assertExhaustive } from "../../../functional";
 import { logger } from "../../../logger";
 
+// How long a concurrent getToken() call will wait for the first deploy's poller
+// to produce a token before giving up and proceeding without one.
+const SOURCE_TOKEN_FETCH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
 interface TokenFetchResult {
   token?: string;
@@ -35,7 +39,20 @@ export class SourceTokenScraper {
       this.fetchState = "FETCHING";
       return undefined;
     } else if (this.fetchState === "FETCHING") {
-      const tokenResult = await this.promise;
+      // Race the token promise against a deadline so a lost token producer
+      // (e.g. a failed deploy that didn't call abort()) degrades to a
+      // token-less deploy rather than hanging the process forever.
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<TokenFetchResult>((resolve) => {
+        timeoutHandle = setTimeout(() => {
+          logger.warn(
+            "Timed out waiting for a source token. Proceeding without one, which may slow the deploy.",
+          );
+          resolve({ aborted: true });
+        }, SOURCE_TOKEN_FETCH_TIMEOUT_MS);
+      });
+      const tokenResult = await Promise.race([this.promise, timeoutPromise]);
+      clearTimeout(timeoutHandle);
       if (tokenResult.aborted) {
         this.promise = new Promise((resolve) => (this.resolve = resolve));
         return undefined;
