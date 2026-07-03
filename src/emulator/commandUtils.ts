@@ -9,7 +9,7 @@ import * as path from "path";
 import { Constants } from "./constants";
 import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
-import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
+import { Emulators, ALL_SERVICE_EMULATORS, isEmulator } from "./types";
 import { FirebaseError } from "../error";
 import { getError } from "../error";
 import { EmulatorRegistry } from "./registry";
@@ -64,6 +64,10 @@ export const DESC_TEST_CONFIG =
 export const FLAG_TEST_PARAMS = "--test-params <params.env file>";
 export const DESC_TEST_PARAMS =
   "A .env file containing test param values for your emulated extension.";
+
+export const FLAG_HOST = "--host-overrides <hosts>";
+export const DESC_HOST =
+  'emulator specific host/port overrides (e.g. "--host-overrides firestore:8080,auth:127.0.0.1:9199")';
 
 export const DEFAULT_CONFIG = new Config(
   {
@@ -151,6 +155,9 @@ export async function errorMissingProject(options: any): Promise<void> {
  * uses the emulator suite.
  */
 export async function beforeEmulatorCommand(options: any): Promise<any> {
+  if (options.hostOverrides) {
+    options.hostOverrides = parseHostOverrides(options.hostOverrides);
+  }
   const optionsWithDefaultConfig = {
     ...options,
     config: DEFAULT_CONFIG,
@@ -255,6 +262,84 @@ export function setExportOnExitOptions(options: ExportOnExitOptions): void {
     }
   }
   return;
+}
+
+export interface EmulatorHostOverrides {
+  [emulator: string]: { host?: string; port?: number };
+}
+
+export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides {
+  const emulatorHostOverrides: EmulatorHostOverrides = {};
+
+  const overrides = hostOverrides.split(",");
+  for (const override of overrides) {
+    const colonIndex = override.indexOf(":");
+    if (colonIndex === -1) {
+      throw new FirebaseError(
+        `Invalid --host-overrides value "${override}". Emulator overrides must be in the format <emulator>:<port> or <emulator>:<host>:<port>.`,
+      );
+    }
+
+    const emulatorName = override.substring(0, colonIndex);
+    if (!isEmulator(emulatorName)) {
+      throw new FirebaseError(
+        `Invalid --host-overrides value. "${emulatorName}" is not a valid emulator name. Valid emulators are: ${Object.values(
+          Emulators,
+        ).join(", ")}`,
+      );
+    }
+
+    const hostOverride = override.substring(colonIndex + 1);
+    if (hostOverride.length === 0) {
+      throw new FirebaseError(
+        `Invalid --host-overrides value "${override}". Emulator overrides must be in the format <emulator>:<port> or <emulator>:<host>:<port>.`,
+      );
+    }
+
+    let host: string | undefined;
+    let port: number;
+
+    const colonCount = (hostOverride.match(/:/g) || []).length;
+    if (colonCount > 1) {
+      // IPv6 with host:port
+      const ipv6WHostPortMatch = hostOverride.match(/^\[(.*)\]:(\d+)$/);
+      if (!ipv6WHostPortMatch) {
+        throw new FirebaseError(
+          `Invalid --host-overrides value "${override}". IPv6 addresses must be enclosed in brackets with a port (e.g. [::1]:8080)`,
+        );
+      }
+      host = ipv6WHostPortMatch[1];
+      port = parseInt(ipv6WHostPortMatch[2], 10);
+    } else if (colonCount === 1) {
+      // host:port
+      const [hostString, portString] = hostOverride.split(":");
+      if (!/^\d+$/.test(portString)) {
+        throw new FirebaseError(
+          `Invalid --host-overrides value "${override}". Port must be a number.`,
+        );
+      }
+      host = hostString;
+      port = parseInt(portString, 10);
+    } else {
+      // Only a port
+      if (!/^\d+$/.test(hostOverride)) {
+        throw new FirebaseError(
+          `Invalid --host-overrides value "${override}". Port must be a number, or specify host and port as <emulator>:<host>:<port>.`,
+        );
+      }
+      port = parseInt(hostOverride, 10);
+    }
+
+    if (isNaN(port)) {
+      throw new FirebaseError(
+        `Invalid --host-overrides value "${override}". Port must be a number.`,
+      );
+    }
+
+    emulatorHostOverrides[emulatorName] = host ? { host, port } : { port };
+  }
+
+  return emulatorHostOverrides;
 }
 
 function processKillSignal(
