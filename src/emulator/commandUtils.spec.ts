@@ -120,4 +120,79 @@ describe("commandUtils", () => {
       }).someUnrelatedOption,
     ).to.eql("isHere");
   });
+
+  describe("parseHostOverrides", () => {
+    it("should throw error on missing colon or empty override", () => {
+      expect(() => commandUtils.parseHostOverrides("firestore")).to.throw(
+        FirebaseError,
+        "Emulator overrides must be in the format <emulator>:<port> or <emulator>:<host>:<port>",
+      );
+      expect(() => commandUtils.parseHostOverrides("firestore:")).to.throw(
+        FirebaseError,
+        "Emulator overrides must be in the format <emulator>:<port> or <emulator>:<host>:<port>",
+      );
+    });
+
+    it("should parse single host override with port only", () => {
+      expect(commandUtils.parseHostOverrides("firestore:8080")).to.deep.equal({
+        firestore: { port: 8080 },
+      });
+    });
+
+    it("should parse single host override with host and port", () => {
+      expect(commandUtils.parseHostOverrides("firestore:127.0.0.1:8080")).to.deep.equal({
+        firestore: { host: "127.0.0.1", port: 8080 },
+      });
+      expect(commandUtils.parseHostOverrides("firestore:localhost:8080")).to.deep.equal({
+        firestore: { host: "localhost", port: 8080 },
+      });
+    });
+
+    it("should parse multiple host overrides", () => {
+      expect(
+        commandUtils.parseHostOverrides(
+          "firestore:8080,auth:127.0.0.1:9199,database:localhost:8085",
+        ),
+      ).to.deep.equal({
+        firestore: { port: 8080 },
+        auth: { host: "127.0.0.1", port: 9199 },
+        database: { host: "localhost", port: 8085 },
+      });
+    });
+
+    it("should parse IPv6 addresses enclosed in brackets with port", () => {
+      expect(commandUtils.parseHostOverrides("firestore:[::1]:8080")).to.deep.equal({
+        firestore: { host: "::1", port: 8080 },
+      });
+    });
+
+    it("should throw error on host-only override without a port", () => {
+      expect(() => commandUtils.parseHostOverrides("firestore:127.0.0.1")).to.throw(
+        FirebaseError,
+        "Port must be a number, or specify host and port as <emulator>:<host>:<port>",
+      );
+      expect(() => commandUtils.parseHostOverrides("firestore:localhost")).to.throw(
+        FirebaseError,
+        "Port must be a number, or specify host and port as <emulator>:<host>:<port>",
+      );
+    });
+
+    it("should throw error on invalid emulator name", () => {
+      expect(() => commandUtils.parseHostOverrides("non_existent_emulator:8080")).to.throw(
+        FirebaseError,
+        "is not a valid emulator name",
+      );
+    });
+
+    it("should throw error on non-numeric port", () => {
+      expect(() => commandUtils.parseHostOverrides("firestore:not_a_number")).to.throw(
+        FirebaseError,
+        "Port must be a number",
+      );
+      expect(() => commandUtils.parseHostOverrides("firestore:localhost:not_a_number")).to.throw(
+        FirebaseError,
+        "Port must be a number",
+      );
+    });
+  });
 });
