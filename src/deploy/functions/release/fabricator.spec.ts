@@ -339,6 +339,24 @@ describe("Fabricator", () => {
       await fab.createV1Function(ep1, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerCreate).to.not.have.been.called;
     });
+
+    it("does not deadlock when createFunction receives a retryable 409 on the first attempt", async () => {
+      const retryingFab = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: new executor.QueueExecutor({ retries: 1, backoff: 10, maxBackoff: 10 }),
+      });
+
+      const err409 = new Error("unable to queue the operation");
+      (err409 as any).status = 409;
+      gcf.createFunction.onFirstCall().rejects(err409);
+      gcf.createFunction.resolves({ name: "op", type: "create", done: false });
+      poller.pollOperation.resolves();
+
+      const ep = endpoint({ scheduleTrigger: {} });
+      await expect(retryingFab.createV1Function(ep, new scraper.SourceTokenScraper())).to.eventually
+        .be.undefined;
+      expect(gcf.createFunction).to.have.been.calledTwice;
+    });
   });
 
   describe("updateV1Function", () => {
@@ -426,6 +444,24 @@ describe("Fabricator", () => {
 
       await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
       expect(gcf.setInvokerUpdate).to.not.have.been.called;
+    });
+
+    it("does not deadlock when updateFunction receives a retryable 409 on the first attempt", async () => {
+      const retryingFab = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: new executor.QueueExecutor({ retries: 1, backoff: 10, maxBackoff: 10 }),
+      });
+
+      const err409 = new Error("unable to queue the operation");
+      (err409 as any).status = 409;
+      gcf.updateFunction.onFirstCall().rejects(err409);
+      gcf.updateFunction.resolves({ name: "op", type: "update", done: false });
+      poller.pollOperation.resolves();
+
+      const ep = endpoint({ httpsTrigger: {} });
+      await expect(retryingFab.updateV1Function(ep, new scraper.SourceTokenScraper())).to.eventually
+        .be.undefined;
+      expect(gcf.updateFunction).to.have.been.calledTwice;
     });
   });
 
