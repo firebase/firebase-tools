@@ -155,7 +155,7 @@ export async function errorMissingProject(options: any): Promise<void> {
  * uses the emulator suite.
  */
 export async function beforeEmulatorCommand(options: any): Promise<any> {
-  if (options.hostOverrides) {
+  if (typeof options.hostOverrides === "string") {
     options.hostOverrides = parseHostOverrides(options.hostOverrides);
   }
   const optionsWithDefaultConfig = {
@@ -271,7 +271,10 @@ export interface EmulatorHostOverrides {
 export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides {
   const emulatorHostOverrides: EmulatorHostOverrides = {};
 
-  const overrides = hostOverrides.split(",");
+  const overrides = hostOverrides
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
   for (const override of overrides) {
     const colonIndex = override.indexOf(":");
     if (colonIndex === -1) {
@@ -280,7 +283,7 @@ export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides
       );
     }
 
-    const emulatorName = override.substring(0, colonIndex);
+    const emulatorName = override.substring(0, colonIndex).trim();
     if (!isEmulator(emulatorName)) {
       throw new FirebaseError(
         `Invalid --host-overrides value. "${emulatorName}" is not a valid emulator name. Valid emulators are: ${Object.values(
@@ -289,7 +292,7 @@ export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides
       );
     }
 
-    const hostOverride = override.substring(colonIndex + 1);
+    const hostOverride = override.substring(colonIndex + 1).trim();
     if (hostOverride.length === 0) {
       throw new FirebaseError(
         `Invalid --host-overrides value "${override}". Emulator overrides must be in the format <emulator>:<port> or <emulator>:<host>:<port>.`,
@@ -312,7 +315,7 @@ export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides
       port = parseInt(ipv6WHostPortMatch[2], 10);
     } else if (colonCount === 1) {
       // host:port
-      const [hostString, portString] = hostOverride.split(":");
+      const [hostString, portString] = hostOverride.split(":").map((s) => s.trim());
       if (!/^\d+$/.test(portString)) {
         throw new FirebaseError(
           `Invalid --host-overrides value "${override}". Port must be a number.`,
@@ -330,9 +333,9 @@ export function parseHostOverrides(hostOverrides: string): EmulatorHostOverrides
       port = parseInt(hostOverride, 10);
     }
 
-    if (isNaN(port)) {
+    if (isNaN(port) || port < 1 || port > 65535) {
       throw new FirebaseError(
-        `Invalid --host-overrides value "${override}". Port must be a number.`,
+        `Invalid --host-overrides value "${override}". Port must be a valid number between 1 and 65535.`,
       );
     }
 
