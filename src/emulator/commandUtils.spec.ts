@@ -194,5 +194,16 @@ describe("commandUtils", () => {
         "Port must be a number",
       );
     });
+
+    it("should throw error on zero, negative, or out-of-range port", () => {
+      expect(() => commandUtils.parseHostOverrides("firestore:0")).to.throw(
+        FirebaseError,
+        "Port must be a valid number between 1 and 65535",
+      );
+      expect(() => commandUtils.parseHostOverrides("firestore:65536")).to.throw(
+        FirebaseError,
+        "Port must be a valid number between 1 and 65535",
+      );
+    });
   });
 });
