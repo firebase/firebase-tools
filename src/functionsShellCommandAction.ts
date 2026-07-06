@@ -21,7 +21,7 @@ import { needProjectId } from "./projectUtils";
 const serveFunctions = new FunctionsServer();
 
 export const initializeFunctionsShellContext = (
-  context: Record<string, any>,
+  context: Record<string, unknown>,
   emulator: shell.FunctionsEmulatorShell,
 ) => {
   for (const trigger of emulator.triggers) {
