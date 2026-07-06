@@ -535,8 +535,7 @@ describe("checkIam", () => {
       assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [CUSTOM_SA, DEFAULT_COMPUTE_SA]);
     });
 
-    it("should use custom service account when default compute is unavailable", async () => {
-      gceStub.resolves(DEFAULT_COMPUTE_SA);
+    it("should not call getDefaultServiceAccount when all endpoints have custom SAs", async () => {
       getIamStub.resolves({
         etag: "etag",
         version: 3,
@@ -563,9 +562,95 @@ describe("checkIam", () => {
         backend.empty(),
       );
 
+      expect(gceStub).to.not.have.been.called;
       const policy = setIamStub.firstCall.args[1];
       assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
       assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
+    });
+
+    it("should grant run and eventarc roles to a custom SA added in a subsequent deploy", async () => {
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      });
+      setIamStub.resolves({});
+      const existingFn: backend.Endpoint = {
+        id: "existingFn",
+        entryPoint: "existingFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.firebase.firebasealerts.alerts.v1.published",
+          eventFilters: { alertype: "crashlytics.newFatalIssue" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+      const newFn: backend.Endpoint = {
+        id: "newFn",
+        entryPoint: "newFn",
+        platform: "gcfv2",
+        serviceAccount: CUSTOM_SA,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      storageStub.resolves(STORAGE_RES);
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(existingFn, newFn),
+        backend.of(existingFn),
+      );
+
+      expect(setIamStub).to.have.been.calledOnce;
+      const policy = setIamStub.firstCall.args[1];
+      assertRunAndEventarcMembers(policy, [CUSTOM_SA]);
+      assertRunAndEventarcMembersExclude(policy, DEFAULT_COMPUTE_SA);
+    });
+
+    it("should not grant run.invoker or eventarc.eventReceiver to HTTPS function SAs", async () => {
+      storageStub.resolves(STORAGE_RES);
+      getIamStub.resolves({
+        etag: "etag",
+        version: 3,
+        bindings: [BINDING],
+      });
+      setIamStub.resolves({});
+      const httpsFn: backend.Endpoint = {
+        id: "httpsFn",
+        entryPoint: "httpsFn",
+        platform: "gcfv2",
+        serviceAccount: CUSTOM_SA,
+        httpsTrigger: {},
+        ...SPEC,
+      };
+      const eventFn: backend.Endpoint = {
+        id: "eventFn",
+        entryPoint: "eventFn",
+        platform: "gcfv2",
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "my-bucket" },
+          retry: false,
+        },
+        ...SPEC,
+      };
+
+      await checkIam.ensureServiceAgentRoles(
+        projectId,
+        projectNumber,
+        backend.of(httpsFn, eventFn),
+        backend.empty(),
+      );
+
+      expect(setIamStub).to.have.been.calledOnce;
+      const policy = setIamStub.firstCall.args[1];
+      assertRunAndEventarcMembersExclude(policy, CUSTOM_SA);
     });
   });
 
@@ -927,7 +1012,7 @@ describe("checkIam", () => {
     });
   });
 
-  it("should add the pubsub publisher role for a new v2 storage function with v2 deployed functions", async () => {
+  it("should add the pubsub publisher role and SA roles for a new v2 storage function with v2 deployed functions", async () => {
     const newIamPolicy = {
       etag: "etag",
       version: 3,
@@ -936,6 +1021,14 @@ describe("checkIam", () => {
         {
           role: "roles/pubsub.publisher",
           members: [`serviceAccount:${STORAGE_RES.email_address}`],
+        },
+        {
+          role: checkIam.RUN_INVOKER_ROLE,
+          members: [`serviceAccount:${DEFAULT_COMPUTE_SA}`],
+        },
+        {
+          role: checkIam.EVENTARC_EVENT_RECEIVER_ROLE,
+          members: [`serviceAccount:${DEFAULT_COMPUTE_SA}`],
         },
       ],
     };
@@ -1034,7 +1127,13 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should not add bindings for a new v2 alerts function with v2 deployed functions", async () => {
+  it("should grant run and eventarc roles to default SA for new alerts function with v2 deployed functions", async () => {
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves({});
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1065,8 +1164,8 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(getIamStub).to.not.have.been.called;
-    expect(setIamStub).to.not.have.been.called;
+    expect(setIamStub).to.have.been.calledOnce;
+    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
   });
 
   it("should add the default bindings for a new v2 remote config function without v2 deployed functions", async () => {
@@ -1121,7 +1220,13 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should not add bindings for a new v2 remote config function with v2 deployed functions", async () => {
+  it("should grant run and eventarc roles to default SA for new remote config function with v2 deployed functions", async () => {
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves({});
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1152,8 +1257,8 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(getIamStub).to.not.have.been.called;
-    expect(setIamStub).to.not.have.been.called;
+    expect(setIamStub).to.have.been.calledOnce;
+    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
   });
 
   it("should add the default bindings for a new v2 test lab function without v2 deployed functions", async () => {
@@ -1208,7 +1313,13 @@ describe("checkIam", () => {
     expect(setIamStub).to.have.been.calledWith(projectNumber, newIamPolicy, "bindings");
   });
 
-  it("should not add bindings for a new v2 test lab function with v2 deployed functions", async () => {
+  it("should grant run and eventarc roles to default SA for new test lab function with v2 deployed functions", async () => {
+    getIamStub.resolves({
+      etag: "etag",
+      version: 3,
+      bindings: [BINDING],
+    });
+    setIamStub.resolves({});
     const wantFn: backend.Endpoint = {
       id: "wantFn",
       entryPoint: "wantFn",
@@ -1239,7 +1350,7 @@ describe("checkIam", () => {
       backend.of(haveFn),
     );
 
-    expect(getIamStub).to.not.have.been.called;
-    expect(setIamStub).to.not.have.been.called;
+    expect(setIamStub).to.have.been.calledOnce;
+    assertRunAndEventarcMembers(setIamStub.firstCall.args[1], [DEFAULT_COMPUTE_SA]);
   });
 });

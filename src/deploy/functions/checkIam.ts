@@ -174,9 +174,18 @@ export async function resolveRuntimeServiceAccounts(
 ): Promise<string[]> {
   const serviceAccounts = endpoints.map((endpoint) => endpoint.serviceAccount || "");
   const needsDefault = serviceAccounts.includes("");
-  const defaultSa = needsDefault ? await gce.getDefaultServiceAccount(projectNumber) : null;
+  let defaultSa: string | null = null;
+  if (needsDefault) {
+    defaultSa = await gce.getDefaultServiceAccount(projectNumber);
+    if (!defaultSa) {
+      throw new FirebaseError(
+        "Could not determine the default compute service account for project " +
+          `${projectNumber}. Ensure the Compute Engine API is enabled.`,
+      );
+    }
+  }
 
-  const resolved = serviceAccounts.map((sa) => (sa === "" ? defaultSa! : sa)).filter((sa) => !!sa);
+  const resolved = serviceAccounts.map((sa) => (sa === "" ? (defaultSa as string) : sa));
 
   return [...new Set(resolved)];
 }
@@ -269,12 +278,16 @@ export async function ensureServiceAgentRoles(
   const requiredBindings = [...flattenArray(nestedRequiredBindings)];
   if (haveServices.length === 0) {
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
-    const runtimeServiceAccounts = await resolveRuntimeServiceAccounts(
-      projectNumber,
-      backend.allEndpoints(want),
-    );
-    requiredBindings.push(...obtainComputeServiceAgentBindings(runtimeServiceAccounts));
   }
+  const newEventEndpoints = backend
+    .allEndpoints(want)
+    .filter(backend.isEventTriggered)
+    .filter(backend.missingEndpoint(have));
+  const runtimeServiceAccounts = await resolveRuntimeServiceAccounts(
+    projectNumber,
+    newEventEndpoints,
+  );
+  requiredBindings.push(...obtainComputeServiceAgentBindings(runtimeServiceAccounts));
   if (requiredBindings.length === 0) {
     return;
   }
