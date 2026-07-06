@@ -711,15 +711,21 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<number>(prompt, param.input, resolvedDefault, param.input.text.nonEmpty, (res: string) => {
-      if (isNaN(+res)) {
-        return { message: `"${res}" could not be converted to a number.` };
-      }
-      if (res.includes(".")) {
-        return { message: `${res} is not an integer value.` };
-      }
-      return +res;
-    });
+    return promptText<number>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      },
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Numeric params cannot have Cloud Resource selector inputs");
   } else {
@@ -808,7 +814,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   textInput: TextInput<T>,
   resolvedDefault: T | undefined,
-  disallowEmpty: boolean = false,
+  disallowEmpty = false,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await input({
@@ -869,7 +875,7 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
-  disallowEmpty: boolean = false,
+  disallowEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
