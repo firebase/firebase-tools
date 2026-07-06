@@ -4,9 +4,11 @@ import * as path from "path";
 import * as tar from "tar";
 import * as tmp from "tmp";
 import { FirebaseError } from "../../error";
+import { logger } from "../../logger";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fsAsync from "../../fsAsync";
 import { logLabeledWarning } from "../../utils";
+import { CLOUD_RUN_SIZE_LIMIT_BYTES } from "../../apphosting/constants";
 
 /**
  * Creates a temporary tarball of the project source or build artifacts.
@@ -23,6 +25,7 @@ export async function createLocalBuildTarArchive(
   config: AppHostingSingle,
   rootDir: string,
   outputFiles: string[],
+  sizeLimitBytes: number = CLOUD_RUN_SIZE_LIMIT_BYTES,
 ): Promise<string> {
   const tmpFile = tmp.fileSync({ prefix: `${config.backendId}-`, postfix: ".tar.gz" }).name;
 
@@ -73,6 +76,16 @@ export async function createLocalBuildTarArchive(
     },
     allFiles,
   );
+
+  const stats = fs.statSync(tmpFile);
+  if (config.localBuild && stats.size > sizeLimitBytes) {
+    const sizeInMB = stats.size / (1024 * 1024);
+    const limitInMB = sizeLimitBytes / (1024 * 1024);
+    logger.warn(
+      `The final build artifact is larger than ${limitInMB.toFixed(0)}MB (current size: ${sizeInMB.toFixed(2)}MB). Please reduce the size of your build artifacts.`,
+    );
+  }
+
   return tmpFile;
 }
 
