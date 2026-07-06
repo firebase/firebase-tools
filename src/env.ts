@@ -10,11 +10,16 @@ export function isFirebaseStudio() {
 
 let isFirebaseMcpFlag = false;
 export function isFirebaseMcp() {
-  return isFirebaseMcpFlag;
+  return isFirebaseMcpFlag || process.env.IS_FIREBASE_MCP === "true";
 }
 
 export function setFirebaseMcp(value: boolean) {
   isFirebaseMcpFlag = value;
+  if (value) {
+    process.env.IS_FIREBASE_MCP = "true";
+  } else {
+    delete process.env.IS_FIREBASE_MCP;
+  }
 }
 
 // Detect if the CLI was invoked by a coding agent, based on well-known env vars.
@@ -22,8 +27,9 @@ export function setFirebaseMcp(value: boolean) {
 // See: https://github.com/vercel/vercel/tree/main/packages/detect-agent
 export function detectAIAgent(): string {
   // 1. Standardized standard
-  if (process.env.AI_AGENT) {
-    return process.env.AI_AGENT.trim();
+  const aiAgent = process.env.AI_AGENT?.trim();
+  if (aiAgent) {
+    return aiAgent;
   }
 
   // 2. Specific agents (ordered as requested)

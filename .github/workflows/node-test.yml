@@ -29,10 +29,12 @@ jobs:
         node-version:
           - "24"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v3
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -52,8 +54,11 @@ jobs:
           - "22"
           - "24"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -67,7 +72,7 @@ jobs:
         working-directory: firebase-vscode
       - run: npm run test:unit
         working-directory: firebase-vscode
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # ratchet:codecov/codecov-action@v5
         if: matrix.node-version == '24'
 
   # vscode_integration:
@@ -75,12 +80,10 @@ jobs:
   #   strategy:
   #     matrix:
   #       node-version:
-  #         - "24"
+  #         - "24.18"
 
   #   env:
   #     FIREBASE_EMULATORS_PATH: ${{ github.workspace }}/emulator-cache
-  #     # This overrides the binary which runs firebase commands in the extension tasks such as emulator start.
-  #     # Currently, CI fails to start with npx so we change it to the global firebase binary.
   #     FIREBASE_BINARY: firebase
 
   #   steps:
@@ -126,7 +129,7 @@ jobs:
   #         path: firebase-vscode/src/test/screenshots
 
   #     - uses: codecov/codecov-action@v5
-  #       if: matrix.node-version == '24'
+  #       if: matrix.node-version == '24.18'
 
   agent_evals_build:
     runs-on: ubuntu-latest
@@ -135,8 +138,11 @@ jobs:
         node-version:
           - "24"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -157,15 +163,18 @@ jobs:
           - "22"
           - "24"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache ESLint
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # ratchet:actions/cache@v4
         with:
           path: .eslintcache
           key: eslint-${{ runner.os }}-node${{ matrix.node-version }}-${{ hashFiles('**/*.ts', '**/*.js') }}
@@ -176,7 +185,7 @@ jobs:
       - run: npm ci
       - run: npm test -- -- --forbid-only
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # ratchet:codecov/codecov-action@v5
         if: matrix.node-version == '24'
         with:
           files: ./.coverage/lcov.info
@@ -199,7 +208,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "24"
+          - "24.18"
         script:
           - npm run test:client-integration
           - npm run test:emulator
@@ -209,33 +218,36 @@ jobs:
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
           - npm run test:import-export
           - npm run test:storage-deploy
-          - npm run test:storage-emulator-integration
           - npm run test:triggers-end-to-end
           - npm run test:triggers-end-to-end:inspect
           # - npm run test:dataconnect-deploy
           - npm run test:dataconnect-emulator
+          - npm run test:functions-discover
         include:
-          - node-version: "24"
-            script: "npm run test:functions-discover"
+          - node-version: "22"
+            script: "npm run test:storage-emulator-integration"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
       - name: Setup Java JDK
-        uses: actions/setup-java@v3.3.0
+        uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142 # ratchet:actions/setup-java@v3.3.0
         with:
           java-version: 21
           distribution: temurin
       - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1.7.2
+        uses: browser-actions/setup-chrome@facf10a55b9caf92e0cc749b4f82bf8220989148 # ratchet:browser-actions/setup-chrome@v1.7.2
         with:
           install-dependencies: true
           install-chromedriver: true
       - name: Cache firebase emulators
-        uses: actions/cache@v3
+        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # ratchet:actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -268,7 +280,7 @@ jobs:
       fail-fast: false
       matrix:
         node-version:
-          - "24"
+          - "24.18"
         script:
           - npm run test:hosting
           # - npm run test:hosting-rewrites # Long-running test that might conflict across test runs. Run this manually.
@@ -284,24 +296,27 @@ jobs:
           # - npm run test:dataconnect-emulator # TODO (joehanley): Figure out why this is failing
           # - npm run test:frameworks
         include:
-          - node-version: "24"
+          - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
       - name: Setup Java JDK
-        uses: actions/setup-java@v3.3.0
+        uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142 # ratchet:actions/setup-java@v3.3.0
         with:
           java-version: 21
           distribution: temurin
 
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
 
       - name: Cache firebase emulators
-        uses: actions/cache@v3
+        uses: actions/cache@6f8efc29b200d32929f49075959781ed54ec270c # ratchet:actions/cache@v3
         with:
           path: ${{ env.FIREBASE_EMULATORS_PATH }}
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
@@ -325,9 +340,12 @@ jobs:
           - "24"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g npm@11.9
@@ -344,9 +362,12 @@ jobs:
           - "24"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g npm@11.9
@@ -363,9 +384,12 @@ jobs:
           - "24"
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
+        with:
+          # Ignored since the GITHUB_TOKEN needs to be persisted for this workflow.
+          persist-credentials: true # zizmor: ignore[artipacked]
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610 # ratchet:actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
