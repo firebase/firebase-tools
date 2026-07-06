@@ -1,5 +1,5 @@
 import * as http from "http";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
@@ -55,7 +55,7 @@ export class RuntimeWorker {
     readonly extensionLogInfo: ExtensionLogInfo,
     readonly timeoutSeconds?: number,
   ) {
-    this.id = uuid.v4();
+    this.id = randomUUID();
     this.triggerKey = triggerId || FREE_WORKER_KEY;
     this.runtime = runtime;
 

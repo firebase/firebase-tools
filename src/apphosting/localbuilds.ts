@@ -1,14 +1,15 @@
 import * as childProcess from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
-import { Availability, BuildConfig, Env } from "../gcp/apphosting";
+import * as semver from "semver";
+import { Availability, Backend, BuildConfig, Env } from "../gcp/apphosting";
 
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
-import { wrappedSafeLoad } from "../utils";
+import { wrappedSafeLoad, logLabeledWarning } from "../utils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
 
 interface UniversalMakerOutput {
@@ -21,10 +22,15 @@ interface UniversalMakerOutput {
 
 /**
  * Runs the Universal Maker binary to build the project.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the copied source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
-export async function runUniversalMaker(projectRoot: string): Promise<AppHostingBuildOutput> {
+export async function runUniversalMaker(
+  projectRoot: string,
+  addedEnv?: NodeJS.ProcessEnv,
+): Promise<AppHostingBuildOutput> {
   const universalMakerBinary = await getOrDownloadUniversalMaker();
-  executeUniversalMakerBinary(universalMakerBinary, projectRoot);
+  executeUniversalMakerBinary(universalMakerBinary, projectRoot, addedEnv);
   return processUniversalMakerOutput(projectRoot);
 }
 
@@ -32,12 +38,19 @@ export async function runUniversalMaker(projectRoot: string): Promise<AppHosting
  * Orchestrates the Universal Maker binary execution, including setting up temporary
  * output directories, injecting FAH-specific environment variables, and handling
  * binary-level execution errors (e.g., permission issues).
+ * @param universalMakerBinary - The absolute path to the Universal Maker executable.
+ * @param projectRoot - The path to the temporary scratch directory containing the project source files.
+ * @param addedEnv - The resolved environment variables to inject into the build process.
  */
-function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: string): void {
+function executeUniversalMakerBinary(
+  universalMakerBinary: string,
+  projectRoot: string,
+  addedEnv?: NodeJS.ProcessEnv,
+): void {
   try {
-    const bundleOutput = path.join(projectRoot, "bundle_output");
-    fs.removeSync(bundleOutput);
-    fs.ensureDirSync(bundleOutput);
+    const targetAppHosting = path.join(projectRoot, ".apphosting");
+    fs.removeSync(targetAppHosting);
+    fs.ensureDirSync(targetAppHosting);
 
     const res = childProcess.spawnSync(
       universalMakerBinary,
@@ -46,18 +59,24 @@ function executeUniversalMakerBinary(universalMakerBinary: string, projectRoot: 
         cwd: projectRoot,
         env: {
           ...process.env,
+          ...addedEnv,
           X_GOOGLE_TARGET_PLATFORM: "fah",
-          FIREBASE_OUTPUT_BUNDLE_DIR: bundleOutput,
+          FIREBASE_OUTPUT_BUNDLE_DIR: targetAppHosting,
         },
         stdio: "pipe",
       },
     );
 
+    const failed = !!res.error || res.status !== 0;
+
+    // If UM fails, log results to stdout and hide otherwise.
+    const log = (msg: string) => (failed ? logger.info(msg) : logger.debug(msg));
+
     if (res.stdout) {
-      logger.debug("[Universal Maker stdout]:\n" + res.stdout.toString());
+      log("[Universal Maker stdout]:\n" + res.stdout.toString());
     }
     if (res.stderr) {
-      logger.debug("[Universal Maker stderr]:\n" + res.stderr.toString());
+      log("[Universal Maker stderr]:\n" + res.stderr.toString());
     }
 
     if (res.error) {
@@ -98,14 +117,7 @@ function parseBundleYaml(
   };
 
   const runCommand = bundleData?.runConfig?.runCommand ?? defaultRunCommand;
-  const outputFiles = bundleData?.outputFiles?.serverApp?.include;
-
-  if (!outputFiles) {
-    throw new FirebaseError(
-      "Failed to resolve build artifacts. Ensure Universal Maker produced a valid bundle.yaml with outputFiles.",
-    );
-  }
-
+  const outputFiles = bundleData?.outputFiles?.serverApp?.include ?? [];
   return { runCommand, outputFiles };
 }
 
@@ -125,24 +137,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   const outputRaw = fs.readFileSync(outputFilePath, "utf-8");
   fs.unlinkSync(outputFilePath); // Clean up temporary metadata file
 
-  const bundleOutput = path.join(projectRoot, "bundle_output");
-  const targetAppHosting = path.join(projectRoot, ".apphosting");
-
-  // Universal Maker has a bug where it accidentally empties bundle.yaml if we tell it to output directly to .apphosting.
-  // To avoid this, we output to bundle_output first, and then safely move the files over.
-  if (fs.existsSync(bundleOutput)) {
-    fs.ensureDirSync(targetAppHosting);
-    const files = fs.readdirSync(bundleOutput);
-    for (const file of files) {
-      const dest = path.join(targetAppHosting, file);
-      if (fs.existsSync(dest)) {
-        fs.removeSync(dest);
-      }
-      fs.moveSync(path.join(bundleOutput, file), dest);
-    }
-    fs.removeSync(bundleOutput);
-  }
-
   let umOutput: UniversalMakerOutput;
   try {
     umOutput = JSON.parse(outputRaw) as UniversalMakerOutput;
@@ -157,10 +151,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
   );
 
   return {
-    metadata: {
-      language: umOutput.language,
-      runtime: umOutput.runtime,
-    },
     runConfig: {
       runCommand: finalRunCommand,
       environmentVariables: Object.entries(umOutput.envVars || {})
@@ -180,8 +170,6 @@ function processUniversalMakerOutput(projectRoot: string): AppHostingBuildOutput
 }
 
 export interface AppHostingBuildOutput {
-  metadata: Record<string, string | number | boolean>;
-
   runConfig: {
     runCommand?: string;
     environmentVariables?: Array<{
@@ -205,7 +193,7 @@ export interface AppHostingBuildOutput {
  * It detects the framework (though currently defaults/assumes 'nextjs' in some contexts),
  * generates the necessary build artifacts, and returns metadata about the build.
  * @param projectId - The project ID to use for resolving secrets.
- * @param projectRoot - The root directory of the project to build.
+ * @param projectRoot - The path to the temporary scratch directory (e.g., .local_build_<backendId>) containing the project source files.
  * @param env - The environment configuration map to resolve and inject into the build.
  * @return A promise that resolves to the build output, including:
  *          - `outputFiles`: Paths to the generated build artifacts.
@@ -219,7 +207,6 @@ export async function localBuild(
   options?: { nonInteractive?: boolean; allowLocalBuildSecrets?: boolean },
 ): Promise<{
   outputFiles: string[];
-  annotations: Record<string, string>;
   buildConfig: BuildConfig;
 }> {
   const hasBuildAvailableSecrets = Object.values(env).some(
@@ -243,33 +230,8 @@ export async function localBuild(
     }
   }
 
-  // We need to inject the environment variables into the process.env
-  // because the build adapter uses them to build the app.
-  // We'll restore the original process.env after the build is done.
-  const originalEnv = { ...process.env };
-
   const addedEnv = await toProcessEnv(projectId, env);
-  for (const [key, value] of Object.entries(addedEnv)) {
-    process.env[key] = value;
-  }
-
-  let apphostingBuildOutput: AppHostingBuildOutput;
-  try {
-    apphostingBuildOutput = await runUniversalMaker(projectRoot);
-  } finally {
-    for (const key in process.env) {
-      if (!(key in originalEnv)) {
-        delete process.env[key];
-      }
-    }
-    for (const [key, value] of Object.entries(originalEnv)) {
-      process.env[key] = value;
-    }
-  }
-
-  const annotations: Record<string, string> = Object.fromEntries(
-    Object.entries(apphostingBuildOutput.metadata).map(([key, value]) => [key, String(value)]),
-  );
+  const apphostingBuildOutput = await runUniversalMaker(projectRoot, addedEnv);
 
   const discoveredEnv: Env[] | undefined =
     apphostingBuildOutput.runConfig.environmentVariables?.map(
@@ -282,7 +244,6 @@ export async function localBuild(
 
   return {
     outputFiles: apphostingBuildOutput.outputFiles?.serverApp.include ?? [],
-    annotations,
     buildConfig: {
       runCommand: apphostingBuildOutput.runConfig.runCommand,
       env: discoveredEnv ?? [],
@@ -291,21 +252,106 @@ export async function localBuild(
 }
 
 async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.ProcessEnv> {
-  const entries = await Promise.all(
-    Object.entries(env).map(async ([key, value]) => {
-      if (value.availability && !value.availability.includes("BUILD")) {
-        return null;
-      }
+  const buildVars = Object.entries(env).filter(([, value]) => {
+    return !value.availability || value.availability.includes("BUILD");
+  });
 
-      if (value.secret) {
-        const resolvedValue = await loadSecret(projectId, value.secret);
-        return [key, resolvedValue];
-      } else {
-        return [key, value.value || ""];
-      }
+  const resolvedEntries = await Promise.all(
+    buildVars.map(async ([key, value]) => {
+      const resolvedValue = value.secret
+        ? await loadSecret(projectId, value.secret)
+        : value.value || "";
+      return [key, resolvedValue];
     }),
   );
 
-  const filteredEntries = entries.filter((entry): entry is [string, string] => entry !== null);
-  return Object.fromEntries(filteredEntries) as NodeJS.ProcessEnv;
+  return Object.fromEntries(resolvedEntries) as NodeJS.ProcessEnv;
+}
+
+/**
+ * Validates that the local Node.js environment and project configuration are
+ * compatible with the target backend's ABIU runtime settings.
+ *
+ * This performs three checks:
+ * 1. Confirms the backend has ABIU enabled (local builds are only supported on ABIU runtimes).
+ * 2. Warns if the host machine's Node.js major version differs from the target ABIU major version.
+ * 3. Warns if the package.json engines.node range does not satisfy the target ABIU version.
+ */
+export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: string): void {
+  const runtimeValue = backend.runtime?.value ?? "";
+  const isLegacyRuntime = runtimeValue === "" || runtimeValue === "nodejs";
+  const abiuEnabled = !isLegacyRuntime && !backend.automaticBaseImageUpdatesDisabled;
+
+  // 1. Block non-ABIU runtimes
+  if (!abiuEnabled) {
+    throw new FirebaseError(
+      `Local builds are only supported for backends with ABIU (Automatic Base Image Updates) enabled. ` +
+        `Your backend is currently configured with a non-ABIU runtime ("${runtimeValue || "unspecified"}"). ` +
+        `Please update your backend to a versioned runtime (e.g., nodejs22) to enable local builds.`,
+      { exit: 1 },
+    );
+  }
+
+  const targetMajorMatch = runtimeValue.match(/^nodejs(\d+)$/);
+  if (!targetMajorMatch) {
+    logLabeledWarning(
+      "apphosting",
+      `Unable to extract Node.js major version from the backend runtime ("${runtimeValue}"). ` +
+        `Skipping local Node.js version compatibility checks.`,
+    );
+    return;
+  }
+
+  const targetMajor = parseInt(targetMajorMatch[1], 10);
+
+  // Get the local Node.js version that will be used to build the app
+  let localNodeVersion: string;
+  try {
+    localNodeVersion = childProcess.execSync("node -v", { encoding: "utf8" }).trim();
+  } catch {
+    logLabeledWarning(
+      "apphosting",
+      `Unable to detect your local Node.js version (is 'node' installed and in your PATH?). ` +
+        `Skipping local Node.js version compatibility checks.`,
+    );
+    return;
+  }
+
+  // Check package.json engines
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  const packageJson = fs.readJsonSync(packageJsonPath, { throws: false });
+  const enginesNode = packageJson?.engines?.node;
+
+  if (enginesNode) {
+    logLabeledWarning(
+      "apphosting",
+      `Your package.json specifies Node.js engine "${enginesNode}". ` +
+        `Please note that local builds do NOT use the "engines" field to resolve or download Node.js. ` +
+        `Instead, your local build uses your host machine's active Node.js version (${localNodeVersion}) to compile the app, ` +
+        `and your deployed app will run on the backend's configured ABIU runtime (${runtimeValue}).`,
+    );
+
+    const targetRange = `^${targetMajor}.0.0`;
+    if (semver.validRange(enginesNode) && !semver.intersects(targetRange, enginesNode)) {
+      logLabeledWarning(
+        "apphosting",
+        `The Node.js version range specified in your package.json engines ("${enginesNode}") ` +
+          `does not satisfy your backend's target ABIU runtime version (Node.js ${targetMajor}). ` +
+          `Please update your package.json engines to align with your backend configuration.`,
+      );
+    }
+  }
+
+  // 2. Check local vs target ABIU runtime version
+  const localMajorMatch = localNodeVersion.match(/^v?(\d+)/);
+  const localMajor = localMajorMatch ? parseInt(localMajorMatch[1], 10) : null;
+
+  if (localMajor !== null && localMajor !== targetMajor) {
+    logLabeledWarning(
+      "apphosting",
+      `Local Node.js version (${localNodeVersion}) does not match your backend's target Node.js version (Node.js ${targetMajor}). ` +
+        `This mismatch may cause runtime issues. ` +
+        `Please switch your local environment to Node.js ${targetMajor} to ensure build-to-run parity.`,
+    );
+  }
 }
