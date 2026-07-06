@@ -680,9 +680,8 @@ describe("cloudfunctions", () => {
         });
       // setIamPolicy is intentionally not mocked — any call to it would throw via nock
 
-      await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", ["public"], true),
-      ).to.not.be.rejected;
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["public"], true)).to.not
+        .be.rejected;
     });
 
     it("should skip setIamPolicy with private invoker when a binding already exists", async () => {
