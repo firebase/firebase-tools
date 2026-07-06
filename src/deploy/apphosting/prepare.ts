@@ -27,8 +27,8 @@ import { Options } from "../../options";
 import { needProjectId } from "../../projectUtils";
 import { getProjectNumber } from "../../getProjectNumber";
 import { checkbox, confirm } from "../../prompt";
-import { logLabeledBullet, logLabeledWarning } from "../../utils";
-import { localBuild } from "../../apphosting/localbuilds";
+import { logLabeledBullet, logLabeledWarning, logLabeledError } from "../../utils";
+import { localBuild, validateLocalBuildNodeVersion } from "../../apphosting/localbuilds";
 import { Context } from "./args";
 import { FirebaseError } from "../../error";
 import * as managementApps from "../../management/apps";
@@ -187,6 +187,28 @@ export default async function (context: Context, options: Options): Promise<void
       continue;
     }
     experiments.assertEnabled("apphostinglocalbuilds", "locally build App Hosting backends");
+
+    let backend = backends.find((b) => parseBackendName(b.name).id === cfg.backendId);
+    if (!backend) {
+      const location = context.backendLocations[cfg.backendId];
+      if (location) {
+        const apphosting = await import("../../gcp/apphosting");
+        try {
+          backend = await apphosting.getBackend(projectId, location, cfg.backendId);
+        } catch {
+          // Fall through to error handling below
+        }
+      }
+    }
+    if (!backend) {
+      throw new FirebaseError(`Backend ${cfg.backendId} not found.`);
+    }
+
+    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    const appDir = path.join(rootDir, cfg.rootDir || "");
+
+    validateLocalBuildNodeVersion(backend, appDir);
+
     logLabeledBullet("apphosting", `Starting local build for backend ${cfg.backendId}`);
 
     await injectEnvVarsFromApphostingConfig(
@@ -197,7 +219,8 @@ export default async function (context: Context, options: Options): Promise<void
     );
     await injectAutoInitEnvVars(cfg, backends, buildEnv, runtimeEnv);
 
-    const rootDir = path.resolve(options.projectRoot || process.cwd());
+    const location = context.backendLocations[cfg.backendId];
+    await injectAngularEnvVars(cfg, rootDir, projectId, location, buildEnv, runtimeEnv);
     // Generate a static 8-character hash of the Workspace Root directory path to guarantee
     // 100% sibling folder build isolation on the same machine, while preserving predictability.
     const pathHash = crypto.createHash("md5").update(rootDir).digest("hex").substring(0, 8);
@@ -421,5 +444,123 @@ async function prepareLocalBuildScratchDirectory(
     const destPath = path.join(localBuildScratchDir, relativePath);
     fs.mkdirSync(path.dirname(destPath), { recursive: true });
     fs.copyFileSync(file.name, destPath);
+  }
+}
+
+/**
+ * Checks if the application in a directory is an Angular application.
+ */
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/**
+ * Returns true if the directory contains an Angular application.
+ */
+function isAngularApplication(appDir: string): boolean {
+  const packageJsonPath = path.join(appDir, "package.json");
+  if (fs.existsSync(packageJsonPath)) {
+    try {
+      const parsed: unknown = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+      if (parsed && typeof parsed === "object") {
+        const pkg = parsed as PackageJson;
+        const angularDeps = ["@angular/core", "@angular/ssr", "@angular/platform-server"];
+        if (angularDeps.some((d) => pkg.dependencies?.[d] || pkg.devDependencies?.[d])) {
+          return true;
+        }
+      }
+    } catch (e: unknown) {
+      logLabeledError(
+        "apphosting",
+        `error when checking if application is angular: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  }
+  const angularJsonPath = path.join(appDir, "angular.json");
+  if (fs.existsSync(angularJsonPath)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Replicates the Go buildpack preparer's Angular environment variable injection and validation.
+ */
+export async function injectAngularEnvVars(
+  cfg: AppHostingSingle,
+  projectRoot: string,
+  projectId: string,
+  location: string | undefined,
+  buildEnv: Record<string, EnvMap>,
+  runtimeEnv: Record<string, EnvMap>,
+): Promise<void> {
+  const appDir = path.join(projectRoot, cfg.rootDir || "");
+  if (!isAngularApplication(appDir)) {
+    return;
+  }
+
+  if (!location) {
+    throw new FirebaseError(`Failed to find location for backend ${cfg.backendId}.`);
+  }
+
+  const backendId = cfg.backendId;
+  runtimeEnv[backendId] ??= {};
+  buildEnv[backendId] ??= {};
+
+  const allowedProxyHeaders = [
+    "x-forwarded-host",
+    "x-forwarded-port",
+    "x-forwarded-proto",
+    "x-forwarded-for",
+  ];
+  const allowedProxyHeadersValue = allowedProxyHeaders.join(",");
+
+  // 1. Inject NG_TRUST_PROXY_HEADERS
+  let shouldInjectProxyHeaders = true;
+  if (runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"]) {
+    const userProxyHeadersStr = runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"].value;
+    const userProxyHeaders = userProxyHeadersStr
+      ? userProxyHeadersStr
+          .split(",")
+          .map((h) => h.trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+
+    const isSubset =
+      userProxyHeaders.length > 0 && userProxyHeaders.every((h) => allowedProxyHeaders.includes(h));
+
+    if (isSubset) {
+      shouldInjectProxyHeaders = false;
+    } else {
+      throw new FirebaseError(
+        `User-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS contains invalid headers. Allowed values: ${allowedProxyHeadersValue}`,
+      );
+    }
+  }
+
+  if (shouldInjectProxyHeaders) {
+    runtimeEnv[backendId]["NG_TRUST_PROXY_HEADERS"] = {
+      value: allowedProxyHeadersValue,
+      availability: ["RUNTIME"],
+    };
+  }
+
+  // 2. Inject NG_ALLOWED_HOSTS
+  if (!runtimeEnv[backendId]["NG_ALLOWED_HOSTS"]) {
+    const projectNumber = await getProjectNumber({ project: projectId });
+    const sharedDomain = "hosted.app";
+    // TODO: This is missing the custom domains retrieved dynamically by the control plane during Cloud Build creation.
+    const defaultHosts = [
+      `${backendId}-${projectNumber}.${location}.run.app`,
+      `${backendId}--${projectId}.${location}.${sharedDomain}`,
+      `${backendId}--${projectId}.web.app`,
+      `${backendId}--${projectId}.firebaseapp.com`,
+    ];
+
+    runtimeEnv[backendId]["NG_ALLOWED_HOSTS"] = {
+      value: defaultHosts.join(","),
+      availability: ["RUNTIME"],
+    };
   }
 }

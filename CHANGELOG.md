@@ -1,1 +1,2 @@
-- Updated Pub/Sub emulator to version 0.8.33.
+- Add `functions:lifecycle:list` and `functions:lifecycle:run` commands to view and run
+  lifecycle hooks in isolation.

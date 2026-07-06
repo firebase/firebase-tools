@@ -10,6 +10,8 @@ import { defineSecret } from "firebase-functions/params";
 
 export const REGION_TBD = "REGION_TBD";
 
+export type LifecycleHook = backend.LifecycleHook;
+
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
@@ -17,6 +19,8 @@ export interface Build {
   params: params.Param[];
   runtime?: Runtime;
   extensions?: Record<string, DynamicExtension>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Record<string, LifecycleHook>;
 }
 
 /**
@@ -588,6 +592,12 @@ export function toBackend(
 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
+  if (build.requiredRoles) {
+    bkend.requiredRoles = build.requiredRoles;
+  }
+  if (build.lifecycleHooks) {
+    bkend.lifecycleHooks = build.lifecycleHooks;
+  }
   return bkend;
 }
 
@@ -733,4 +743,24 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
   }
   build.endpoints = newEndpoints;
+
+  if (build.lifecycleHooks) {
+    for (const hook of Object.values(build.lifecycleHooks)) {
+      if ("task" in hook) {
+        if (hook.task?.function) {
+          hook.task.function = `${prefix}-${hook.task.function}`;
+        }
+      } else if ("call" in hook) {
+        if (hook.call?.function) {
+          hook.call.function = `${prefix}-${hook.call.function}`;
+        }
+      } else if ("http" in hook) {
+        if (hook.http?.function) {
+          hook.http.function = `${prefix}-${hook.http.function}`;
+        }
+      } else {
+        assertExhaustive(hook);
+      }
+    }
+  }
 }

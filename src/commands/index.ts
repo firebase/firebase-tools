@@ -161,6 +161,9 @@ export function load(client: CLIClient): CLIClient {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
+  client.functions.lifecycle = {};
+  client.functions.lifecycle.list = loadCommand("functions-lifecycle-list");
+  client.functions.lifecycle.run = loadCommand("functions-lifecycle-run");
   if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
@@ -205,6 +208,7 @@ export function load(client: CLIClient): CLIClient {
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
     client.apphosting.secrets = {};
     client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
+    client.apphosting.secrets.revokeaccess = loadCommand("apphosting-secrets-revokeaccess");
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");

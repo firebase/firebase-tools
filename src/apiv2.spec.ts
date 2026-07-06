@@ -2,6 +2,7 @@ import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as nock from "nock";
 import AbortController from "abort-controller";
+import * as FormData from "form-data";
 const proxySetup = require("proxy");
 
 import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
@@ -106,6 +107,79 @@ describe("apiv2", () => {
         retryMaxTimeout: 15,
       });
       expect(r.status).to.equal(503);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should retry without keep-alive after a premature close error", async () => {
+      nock("https://example.com").get("/path/to/foo").once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+      nock("https://example.com").get("/path/to/foo").once().reply(200, { foo: "bar" });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.body).to.deep.equal({ foo: "bar" });
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should give up if the connection keeps closing prematurely", async () => {
+      nock("https://example.com").get("/path/to/foo").twice().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/path/to/foo: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = c.request({
+        method: "GET",
+        path: "/path/to/foo",
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      await expect(r).to.eventually.be.rejectedWith(FirebaseError, /Failed to make request/);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should resend a multipart body when retrying after a premature close", async () => {
+      const sentBodies: string[] = [];
+      const capture = (b: unknown): boolean => {
+        sentBodies.push(typeof b === "string" ? b : JSON.stringify(b));
+        return true;
+      };
+      nock("https://example.com").post("/upload", capture).once().replyWithError({
+        message:
+          "Invalid response body while trying to fetch https://example.com/upload: Premature close",
+        code: "ERR_STREAM_PREMATURE_CLOSE",
+      });
+      nock("https://example.com").post("/upload", capture).once().reply(200, { ok: true });
+
+      const form = new FormData();
+      form.append("code", "secret-code-123");
+
+      const c = new Client({ urlPrefix: "https://example.com" });
+      const r = await c.request({
+        method: "POST",
+        path: "/upload",
+        body: form,
+        headers: form.getHeaders(),
+        retries: 1,
+        retryMinTimeout: 10,
+        retryMaxTimeout: 15,
+      });
+      expect(r.status).to.equal(200);
+      // Both the original attempt and the retry must carry the full body.
+      expect(sentBodies).to.have.length(2);
+      expect(sentBodies[0]).to.contain("secret-code-123");
+      expect(sentBodies[1]).to.contain("secret-code-123");
       expect(nock.isDone()).to.be.true;
     });
 
