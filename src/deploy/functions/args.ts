@@ -9,8 +9,8 @@ import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args
 export interface CodebasePayload {
   wantBackend: backend.Backend;
   haveBackend: backend.Backend;
-  existingRoles?: string[];
-  existingEtag?: string;
+  haveRoles?: string[];
+  haveRolesEtag?: string;
   existingManagedSA?: string;
   managedSA?: string;
 }

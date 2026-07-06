@@ -1281,8 +1281,12 @@ describe("prepare", () => {
       want.requiredRoles = ["roles/viewer"];
       const have = backend.empty();
 
-      await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
-        .rejected;
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Cannot use explicit custom service accounts on functions while using declarative security/,
+      );
     });
 
     it("should throw error if user lacks IAM operator permissions", async () => {
