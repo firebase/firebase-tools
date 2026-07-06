@@ -93,6 +93,11 @@ exports.Script_ShellJS = async function() {
   const isWin = process.platform === "win32";
   const args = normalizeShellScriptArgs(process.argv.slice(2));
 
+  if (!args[0]) {
+    process.stderr.write("shell.js: no command provided\n");
+    process.exit(1);
+  }
+
   appendToPath(isWin, [
     __dirname,
     path.join(process.cwd(), "node_modules/.bin")

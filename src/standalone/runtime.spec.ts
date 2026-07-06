@@ -39,15 +39,25 @@ describe("standalone runtime", () => {
   });
 
   describe("Script_ShellJS", () => {
-    it("uses normalized shell args when invoking node commands", async () => {
-      const originalArgv = process.argv;
-      const fakeChild = { on: sandbox.stub().returnsThis() };
-      const forkStub = sandbox.stub(childProcess, "fork").returns(fakeChild as any);
-      const spawnStub = sandbox.stub(childProcess, "spawn").returns(fakeChild as any);
+    let originalArgv: string[];
+    let fakeChild: { on: sinon.SinonStub };
+    let forkStub: sinon.SinonStub;
+    let spawnStub: sinon.SinonStub;
 
+    beforeEach(() => {
+      originalArgv = process.argv;
+      fakeChild = { on: sandbox.stub().returnsThis() };
+      forkStub = sandbox.stub(childProcess, "fork").returns(fakeChild as any);
+      spawnStub = sandbox.stub(childProcess, "spawn").returns(fakeChild as any);
       (globalThis as any).appendToPath = sandbox.stub();
       (globalThis as any).getSafeCrossPlatformPath = sandbox.stub().resolvesArg(1);
+    });
 
+    afterEach(() => {
+      process.argv = originalArgv;
+    });
+
+    it("forks a relative node script with normalized args", async () => {
       process.argv = [
         process.execPath,
         "shell.js",
@@ -56,11 +66,7 @@ describe("standalone runtime", () => {
         `${process.execPath} ./script.js --flag value`,
       ];
 
-      try {
-        await runtime.Script_ShellJS();
-      } finally {
-        process.argv = originalArgv;
-      }
+      await runtime.Script_ShellJS();
 
       expect(forkStub).to.have.been.calledOnceWithExactly(
         "./script.js",
@@ -72,6 +78,56 @@ describe("standalone runtime", () => {
         },
       );
       expect(spawnStub).not.to.have.been.called;
+    });
+
+    it("resolves non-relative node script paths via getSafeCrossPlatformPath", async () => {
+      const resolvedPath = "/resolved/path/to/script.js";
+      (globalThis as any).getSafeCrossPlatformPath = sandbox.stub().resolves(resolvedPath);
+
+      process.argv = [
+        process.execPath,
+        "shell.js",
+        "-c",
+        "--",
+        `${process.execPath} script.js --flag value`,
+      ];
+
+      await runtime.Script_ShellJS();
+
+      expect(forkStub).to.have.been.calledOnceWithExactly(
+        resolvedPath,
+        ["--flag", "value"],
+        {
+          env: process.env,
+          cwd: process.cwd(),
+          stdio: "inherit",
+        },
+      );
+      expect(spawnStub).not.to.have.been.called;
+    });
+
+    it("spawns non-node runtimes via shell", async () => {
+      process.argv = [
+        process.execPath,
+        "shell.js",
+        "-c",
+        "--",
+        "npm install --save-dev typescript",
+      ];
+
+      await runtime.Script_ShellJS();
+
+      expect(spawnStub).to.have.been.calledOnceWithExactly(
+        "npm",
+        ["install", "--save-dev", "typescript"],
+        {
+          env: process.env,
+          cwd: process.cwd(),
+          stdio: "inherit",
+          shell: true,
+        },
+      );
+      expect(forkStub).not.to.have.been.called;
     });
   });
 });

@@ -669,7 +669,7 @@ async function createRuntimeBinaries() {
 node "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")}  %*`,
 
     /* Runtime scripts */
-    "shell.js": `${appendToPath.toString()}\n${getSafeCrossPlatformPath.toString()}\nconst normalizeShellScriptArgs = ${runtime.normalizeShellScriptArgs.toString()};\n(${runtime.Script_ShellJS.toString()})()`,
+    "shell.js": `${appendToPath.toString()}\n${getSafeCrossPlatformPath.toString()}\n${runtime.normalizeShellScriptArgs.toString()}\n(${runtime.Script_ShellJS.toString()})()`,
     "node.js": `(${runtime.Script_NodeJS.toString()})()`,
 
     /* Config files */
