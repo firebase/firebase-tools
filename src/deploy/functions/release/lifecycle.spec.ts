@@ -6,6 +6,7 @@ import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
 import * as projects from "../../../management/projects";
 import * as computeEngine from "../../../gcp/computeEngine";
+import * as utils from "../../../utils";
 
 describe("lifecycle", () => {
   let sandbox: sinon.SinonSandbox;
@@ -92,7 +93,7 @@ describe("lifecycle", () => {
       });
       expect(loggerStub).to.have.been.calledWith(
         sinon.match.any,
-        "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
+        "View logs for afterInstall at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
       );
     });
 
@@ -211,6 +212,46 @@ describe("lifecycle", () => {
       const executed = await executeLifecycleHooks(wantBackend, haveBackend, emptyPlan, "default");
       expect(executed).to.be.false;
       expect(enqueueStub).to.not.have.been.called;
+    });
+
+    it("logs a warning and suggest run command when task enqueue fails", async () => {
+      sandbox.stub(cloudtasks, "enqueueTask").rejects(new Error("Queue full"));
+      const warningStub = sandbox.stub(utils, "logLabeledWarning");
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+      const wantBackend = backend.of({
+        id: "installHookTask",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "installHookTask",
+        platform: "gcfv2",
+        uri: "https://installhooktask-12345.a.run.app",
+        taskQueueTrigger: {},
+        codebase: "my-codebase",
+      });
+      wantBackend.lifecycleHooks = {
+        afterInstall: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.empty();
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "my-codebase",
+      );
+      expect(executed).to.be.false;
+      expect(warningStub).to.have.been.calledWith(
+        "functions",
+        "Failed to execute afterInstall lifecycle hook: Queue full",
+      );
+      expect(bulletStub).to.have.been.calledWith(
+        "functions",
+        "You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterInstall my-codebase",
+      );
     });
   });
 });
