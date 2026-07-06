@@ -336,17 +336,19 @@ export async function setInvokerCreate(
 }
 
 /**
- * Gets the current IAM policy on function update,
- * overrides the current invoker role with the supplied invoker members
+ * Sets the invoker role on a function during an update.
+ * When onlyIfUnset is true, skips the IAM write if a binding already exists.
  * @param projectId id of the project
  * @param fnName function name
  * @param invoker an array of invoker strings
- * @throws {@link FirebaseError} on an empty invoker, when the IAM Polciy fails to be grabbed or set
+ * @param onlyIfUnset when true, leaves an existing invoker binding untouched
+ * @throws {@link FirebaseError} on an empty invoker, when the IAM Policy fails to be grabbed or set
  */
 export async function setInvokerUpdate(
   projectId: string,
   fnName: string,
   invoker: string[],
+  onlyIfUnset: boolean,
 ): Promise<void> {
   if (invoker.length === 0) {
     throw new FirebaseError("Invoker cannot be an empty array");
@@ -354,9 +356,15 @@ export async function setInvokerUpdate(
   const invokerMembers = proto.getInvokerMembers(invoker, projectId);
   const invokerRole = "roles/cloudfunctions.invoker";
   const currentPolicy = await getIamPolicy(fnName);
+
   const currentInvokerBinding = currentPolicy.bindings?.find(
     (binding) => binding.role === invokerRole,
   );
+
+  if (onlyIfUnset && currentInvokerBinding) {
+    return;
+  }
+
   if (
     currentInvokerBinding &&
     JSON.stringify(currentInvokerBinding.members.sort()) === JSON.stringify(invokerMembers.sort())
