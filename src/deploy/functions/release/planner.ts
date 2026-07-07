@@ -53,7 +53,7 @@ export interface PlanArgs {
   projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
-  existingRoles?: string[];
+  haveRoles?: string[];
   existingManagedSA?: string;
   managedSA?: string;
 }
@@ -162,13 +162,13 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     codebase,
     filters,
     deleteAll,
-    existingRoles,
+    haveRoles,
     existingManagedSA,
     managedSA,
   } = args;
 
   const requiredRoles = wantBackend.requiredRoles;
-  const roles = existingRoles || [];
+  const roles = haveRoles || [];
   let rolesToAdd: string[] | undefined;
   let rolesToRemove: string[] | undefined;
   let serviceAccountToCreate: string | undefined;

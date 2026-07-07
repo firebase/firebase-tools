@@ -45,7 +45,7 @@ export async function release(
   const plan: planner.DeploymentPlan = {};
   for (const [
     codebase,
-    { wantBackend, haveBackend, existingRoles, existingManagedSA, managedSA },
+    { wantBackend, haveBackend, haveRoles, existingManagedSA, managedSA },
   ] of Object.entries(payload.functions)) {
     plan[codebase] = await planner.createDeploymentPlan({
       codebase,
@@ -53,7 +53,7 @@ export async function release(
       haveBackend,
       projectId: context.projectId,
       filters: context.filters,
-      existingRoles,
+      haveRoles,
       existingManagedSA,
       managedSA,
     });
