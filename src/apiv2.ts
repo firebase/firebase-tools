@@ -11,6 +11,7 @@ import { FirebaseError } from "./error";
 import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
+import { streamToString } from "./streamUtils";
 import * as FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
@@ -711,7 +712,6 @@ class UndiciResponseCompat {
     if (!this.body) {
       return "";
     }
-    const { streamToString } = require("./utils");
     return streamToString(this.body);
   }
 }
