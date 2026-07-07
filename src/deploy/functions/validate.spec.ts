@@ -512,7 +512,7 @@ describe("validate", () => {
         };
         const want = backend.of(taskEp);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "mytaskfunc",
             },
@@ -527,14 +527,14 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "nonexistent",
             },
           },
         };
         expect(() => validate.endpointsAreValid(want)).to.throw(
-          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterInstall"/,
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterFirstDeploy"/,
         );
       });
 
@@ -546,14 +546,14 @@ describe("validate", () => {
         };
         const want = backend.of(nonTaskEp);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "nontaskfunc",
             },
           },
         };
         expect(() => validate.endpointsAreValid(want)).to.throw(
-          /Lifecycle hook "afterInstall" expects a task queue function\./,
+          /Lifecycle hook "afterFirstDeploy" expects a task queue function\./,
         );
       });
 
@@ -566,7 +566,7 @@ describe("validate", () => {
         };
         const want = backend.of(v1Ep);
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "v1func",
             },
@@ -583,7 +583,7 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             call: {
               function: "myfunc",
             },
@@ -600,7 +600,7 @@ describe("validate", () => {
           id: "myfunc",
         });
         want.lifecycleHooks = {
-          afterInstall: {
+          afterFirstDeploy: {
             http: {
               url: "https://example.com/hook",
             },

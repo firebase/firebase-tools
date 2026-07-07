@@ -742,13 +742,13 @@ describe("applyPrefix", () => {
       params: [],
       requiredAPIs: [],
       lifecycleHooks: {
-        afterInstall: {
+        afterFirstDeploy: {
           task: {
             function: "func1",
             body: { foo: "bar" },
           },
         },
-        afterUpdate: {
+        afterRedeploy: {
           call: {
             function: "func1",
           },
@@ -759,13 +759,13 @@ describe("applyPrefix", () => {
     build.applyPrefix(testBuild, "staging");
 
     expect(testBuild.lifecycleHooks).to.deep.equal({
-      afterInstall: {
+      afterFirstDeploy: {
         task: {
           function: "staging-func1",
           body: { foo: "bar" },
         },
       },
-      afterUpdate: {
+      afterRedeploy: {
         call: {
           function: "staging-func1",
         },
