@@ -125,13 +125,10 @@ export async function createServiceAccountKey(
   const response = await apiClient.post<
     { keyAlgorithm: string; privateKeyType: string },
     ServiceAccountKey
-  >(
-    `/projects/${projectId}/serviceAccounts/${email}/keys`,
-    {
-      keyAlgorithm: "KEY_ALG_UNSPECIFIED",
-      privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
-    },
-  );
+  >(`/projects/${projectId}/serviceAccounts/${email}/keys`, {
+    keyAlgorithm: "KEY_ALG_UNSPECIFIED",
+    privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+  });
   return response.body;
 }
 
