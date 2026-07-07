@@ -46,6 +46,8 @@ const gcfV2PollerOptions: Omit<poller.OperationPollerOptions, "operationResource
   maxBackoff: 10_000,
 };
 
+const HELLO_WORLD_GCS_URL = "gs://firebase-preview-drop/dart/hello_world.zip";
+
 const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResourceName"> = {
   apiOrigin: eventarcOrigin(),
   apiVersion: "v1",
@@ -231,12 +233,57 @@ export class Fabricator {
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
     } else if (endpoint.platform === "run") {
+      if (backend.isCallableTriggered(endpoint)) {
+        await this.reserveCallableUrl(endpoint);
+      }
       await this.createRunFunction(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
 
     await this.setTrigger(endpoint);
+  }
+
+  async reserveCallableUrl(endpoint: backend.Endpoint): Promise<void> {
+    this.logOpStart("reserving URL", endpoint);
+    // We must pass platform: "gcfv2" to pass the check in functionFromEndpoint.
+    // We also force the runtime to nodejs20 since that corresponds to our hello world zip
+    // and is a guaranteed supported runtime.
+    const apiFunction = gcfV2.functionFromEndpoint({
+      ...endpoint,
+      platform: "gcfv2",
+      runtime: "nodejs20",
+    });
+    // Hardcode the GCS URL to the "Hello World" placeholder
+    apiFunction.buildConfig.source = {
+      storageSource: {
+        bucket: HELLO_WORLD_GCS_URL.split("/")[2],
+        object: HELLO_WORLD_GCS_URL.split("/").slice(3).join("/"),
+      },
+    };
+
+    // Create the function to reserve the URL.
+    // We expect this to fail with ALREADY_EXISTS if the user has already deployed this function.
+    // That's fine, we just want to ensure the URL is reserved.
+    await this.functionExecutor
+      .run(async () => {
+        try {
+          const op: { name: string } = await gcfV2.createFunction(apiFunction);
+          await poller.pollOperation<gcfV2.OutputCloudFunction>({
+            ...gcfV2PollerOptions,
+            pollerName: `reserve-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: () => Promise.resolve(), // No token scraping needed for this
+          });
+        } catch (err: any) {
+          if (err.status === 409) {
+            // Already exists, which is fine.
+            return;
+          }
+          throw err;
+        }
+      })
+      .catch(rethrowAs(endpoint, "reserve URL" as any));
   }
 
   async updateEndpoint(
