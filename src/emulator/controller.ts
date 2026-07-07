@@ -32,6 +32,7 @@ import { EmulatorLogger, Verbosity } from "./emulatorLogger";
 import { EmulatorHubClient } from "./hubClient";
 import { confirm } from "../prompt";
 import {
+  EmulatorHostOverrides,
   FLAG_EXPORT_ON_EXIT_NAME,
   JAVA_DEPRECATION_WARNING,
   MIN_SUPPORTED_JAVA_MAJOR_VERSION,
@@ -263,6 +264,7 @@ function findExportMetadata(importPath: string): ExportMetadata | undefined {
 interface EmulatorOptions extends Options {
   extDevEnv?: Record<string, string>;
   logVerbosity?: "DEBUG" | "INFO" | "QUIET" | "SILENT";
+  hostOverrides?: EmulatorHostOverrides;
 }
 
 /**
@@ -1069,7 +1071,10 @@ function getListenConfig(
   options: EmulatorOptions,
   emulator: Exclude<Emulators, Emulators.EXTENSIONS>,
 ): EmulatorListenConfig {
-  let host = options.config.src.emulators?.[emulator]?.host || Constants.getDefaultHost();
+  let host =
+    options?.hostOverrides?.[emulator]?.host ||
+    options.config.src.emulators?.[emulator]?.host ||
+    Constants.getDefaultHost();
   if (host === "localhost" && utils.isRunningInWSL()) {
     // HACK(https://github.com/firebase/firebase-tools-ui/issues/332): Use IPv4
     // 127.0.0.1 instead of localhost. This, combined with the hack in
@@ -1081,9 +1086,13 @@ function getListenConfig(
   }
 
   const portVal = options.config.src.emulators?.[emulator]?.port;
+  const overridePort = options?.hostOverrides?.[emulator]?.port;
   let port: number;
   let portFixed: boolean;
-  if (portVal) {
+  if (overridePort !== undefined) {
+    port = overridePort;
+    portFixed = true;
+  } else if (portVal) {
     port = parseInt(`${portVal}`, 10);
     portFixed = true;
   } else {
