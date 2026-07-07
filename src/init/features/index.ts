@@ -44,11 +44,6 @@ export {
 } from "./dataconnect/resolver";
 export { doSetup as apphosting } from "./apphosting";
 export { doSetup as genkit } from "./genkit";
-export {
-  askQuestions as apptestingAskQuestions,
-  RequiredInfo as ApptestingInfo,
-  actuate as apptestingAcutate,
-} from "./apptesting";
 export { doSetup as aitools } from "./aitools";
 export {
   askQuestions as aiLogicAskQuestions,

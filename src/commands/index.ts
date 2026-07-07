@@ -45,9 +45,6 @@ export function load(client: CLIClient): CLIClient {
   client.appdistribution.testCases.import = loadCommand("appdistribution-testcases-import");
   client.apptesting = {};
   client.apptesting.execute = loadCommand("apptesting");
-  if (experiments.isEnabled("apptesting")) {
-    client.apptesting.wata = loadCommand("apptesting-wata");
-  }
   client.apps = {};
   client.apps.create = loadCommand("apps-create");
   client.apps.list = loadCommand("apps-list");

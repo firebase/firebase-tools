@@ -1,7 +1,6 @@
 import { McpContext, ServerFeature } from "../types";
 import { checkFeatureActive } from "../util";
 import { isCrashlyticsAvailable } from "./crashlytics/availability";
-import { isAppTestingAvailable } from "./apptesting/availability";
 
 const DEFAULT_AVAILABILITY_CHECKS: Record<ServerFeature, (ctx: McpContext) => Promise<boolean>> = {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -24,7 +23,6 @@ const DEFAULT_AVAILABILITY_CHECKS: Record<ServerFeature, (ctx: McpContext) => Pr
   crashlytics: isCrashlyticsAvailable,
   apphosting: (ctx: McpContext): Promise<boolean> =>
     checkFeatureActive("apphosting", ctx.projectId, { config: ctx.config }),
-  apptesting: isAppTestingAvailable,
   database: (ctx: McpContext): Promise<boolean> =>
     checkFeatureActive("database", ctx.projectId, { config: ctx.config }),
 };
