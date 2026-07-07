@@ -255,7 +255,9 @@ jobs:
 
       - run: npm i -g npm@9.5
       - run: npm ci
-      - run: echo ${{ secrets.service_account_json_base64 }} | base64 -d > ./scripts/service-account.json
+      - run: echo "$SERVICE_ACCOUNT_JSON_BASE64" | base64 -d > ./scripts/service-account.json
+        env:
+          SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.service_account_json_base64 }}
       - run: ${{ matrix.script }}
 
       - name: Print debug logs
@@ -322,7 +324,9 @@ jobs:
           key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('emulator-cache/**') }}
         continue-on-error: true
 
-      - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
+      - run: echo "$SERVICE_ACCOUNT_JSON_BASE64" > tmp.txt
+        env:
+          SERVICE_ACCOUNT_JSON_BASE64: ${{ secrets.service_account_json_base64 }}
       - run: certutil -decode tmp.txt scripts/service-account.json
       - run: npm i -g npm@9.5
       - run: npm ci

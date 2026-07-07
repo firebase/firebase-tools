@@ -5,12 +5,17 @@ on:
     types: [created]
 
 permissions:
-  contents: write
-  pull-requests: read
-  issues: read
+  contents: read
 
 jobs:
   release:
+    permissions:
+      # Required to update release branches
+      contents: write
+      # Required to view pull requests info
+      pull-requests: read
+      # Required to check comments on issues/pull requests
+      issues: read
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/run-release') &&
@@ -25,10 +30,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_NUM: ${{ github.event.issue.number }}
         run: |
-          PR_NUM="${{ github.event.issue.number }}"
           echo "Fetching SHA for PR $PR_NUM..."
-          SHA=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefOid -q .headRefOid)
+          SHA=$(gh pr view "$PR_NUM" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
           echo "PR Head SHA is $SHA"
 
           if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
@@ -39,12 +44,12 @@ jobs:
           echo "Target branch is $TARGET_BRANCH"
 
           # Try to update the branch ref (force-push equivalent via API)
-          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/$TARGET_BRANCH" \
+          if gh api -X PATCH "/repos/$GITHUB_REPOSITORY/git/refs/heads/$TARGET_BRANCH" \
             -f sha="$SHA" -F force=true >/dev/null 2>&1; then
             echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
           else
             echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."
-            gh api -X POST "/repos/${{ github.repository }}/git/refs" \
+            gh api -X POST "/repos/$GITHUB_REPOSITORY/git/refs" \
               -f ref="refs/heads/$TARGET_BRANCH" -f sha="$SHA" >/dev/null
             echo "Successfully created ref refs/heads/$TARGET_BRANCH at $SHA"
           fi
