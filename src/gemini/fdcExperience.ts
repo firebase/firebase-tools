@@ -14,10 +14,10 @@ import {
 const apiClient = new Client({ urlPrefix: dataconnectOrigin(), auth: true });
 
 export const PROMPT_GENERATE_CONNECTOR =
-  'Generate at least one create (insert/upsert), delete, update, get (read by key), and list operation for each table defined in the schema. For user-specific data, use the \'auth.uid\' server value (e.g., id_expr: "auth.uid") or correct filters to secure user-owned data and require authentication using @auth(level: USER). For public accessible data, use @auth(level: PUBLIC, insecureReason: "why is it OK to be public?")';
+  'Generate at least one create (insert/upsert), delete, update, get (read by key), and list operation for each table defined in the schema. For user-specific data, use the \'auth.uid\' server value (e.g., id_expr: "auth.uid") or correct filters to secure user-owned data and require authentication using @auth(level: USER). For publicly accessible data, use @auth(level: PUBLIC, insecureReason: "why is it OK to be public?")';
 
 export const PROMPT_GENERATE_SEED_DATA =
-  "Create a single mutation wrapped in a @transaction to populate the database with seed data. The mutation should call the insertMany action (e.g., table_insertMany) for all tables/entities defined in the schema, using made up fake data. Generate appropriate fake records (3 to 5 per table) conforming to the schema and including proper relationships/foreign keys.";
+  "Create a single mutation wrapped in a @transaction to populate the database with seed data. The mutation should call the insertMany action (e.g., table_insertMany) for all tables/entities defined in the schema, using fake data. Generate appropriate fake records (3 to 5 per table) conforming to the schema and including proper relationships/foreign keys.";
 
 // For debugging purposes
 function logCurl(method: string, path: string, body: GenerateRequest): void {
