@@ -16,7 +16,7 @@ export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
     GCP_RESOURCE_ID_PATTERN + // secret ID is a GCP resource ID
     "(?:[:#@]" + // capture an optional label beginning with :, or capture #/@ to warn the user
-    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore.
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
     ")?$", // end of optional version group end of string
 );
 export const SECRET_REF_LONG_RE = new RegExp(
@@ -25,8 +25,8 @@ export const SECRET_REF_LONG_RE = new RegExp(
     GCP_RESOURCE_ID_PATTERN + // capture project ID
     "/secrets/" + // /secrets/
     GCP_RESOURCE_ID_PATTERN + // capture resource ID for secret
-    "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with either the character : or the string /versions/
-    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore. # and @ indicate a known common mistake to check for
+    "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with ":", "/versions/", or a mistake (#/@) to warn for
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
     ")?$", // end of optional version group, end of string
 );
 
