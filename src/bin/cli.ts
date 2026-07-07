@@ -147,12 +147,13 @@ export function cli(pkg: any) {
 
   // If this is a help command, load all commands so we can display them.
   const commandName = args[0];
+  const hasHelpFlag = args.includes("--help") || args.includes("-h");
   const isHelp =
     !args.length ||
     commandName === "help" ||
     (args.length === 1 && commandName === "ext") ||
-    commandName === "--help";
-  const hasHelpFlag = args.includes("--help") || args.includes("-h");
+    commandName === "--help" ||
+    hasHelpFlag;
 
   if (hasHelpFlag) {
     client.getCommand(commandName);
@@ -160,6 +161,8 @@ export function cli(pkg: any) {
 
   if (isHelp) {
     loadAllCommands(client as Record<string, unknown>);
+    const { setupProgressiveHelp } = require("./progressiveHelp");
+    setupProgressiveHelp(client);
   }
   // If there are no args, display help
   if (!args.length) {

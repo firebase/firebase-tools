@@ -11,6 +11,25 @@ export const command = new Command("help [command]")
   .action(function (commandName) {
     // @ts-ignore
     const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
+    if (commandName && commandName.startsWith("deploy:")) {
+      const targetName = commandName.split(":")[1];
+      const { TARGETS } = require("../deploy");
+      const target = TARGETS[targetName];
+      if (target && target.detailedHelp) {
+        logger.info();
+        logger.info(clc.bold(`Detailed deploy information for ${targetName}:`));
+        logger.info();
+        logger.info(target.detailedHelp);
+        logger.info();
+        return;
+      } else {
+        logger.warn();
+        utils.logWarning(`No detailed deploy information found for target: ${targetName}`);
+        logger.info(`Run ${clc.bold("firebase deploy --help")} to see valid deploy targets.`);
+        logger.info();
+        return;
+      }
+    }
     const cmd = commandName ? client.getCommand(commandName) : undefined;
     if (cmd) {
       cmd.outputHelp();
