@@ -249,6 +249,7 @@ export interface SecretEnvVar {
   key: string; // The environment variable this secret is accessible at
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
+  allowVersionPinning?: boolean;
   version?: string;
 }
 
@@ -797,12 +798,13 @@ export interface ParsedSecretRef {
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
 export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
-  for (const key in envSecrets) {
+  for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
+    const secretPinsVersion = typeof secretRef.version !== "undefined";
 
-    for (const endpointName in build.endpoints) {
-      const endpoint = build.endpoints[endpointName]; 
+    for (const endpointName of Object.keys(build.endpoints)) {
+      const endpoint = build.endpoints[endpointName];
       if (projectId && projectId !== endpoint.project) {
         throw new FirebaseError(
           `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
@@ -815,6 +817,7 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
           needEnvInsert = false;
           envVar.secret = secretId;
           envVar.version = version;
+          envVar.allowVersionPinning = secretPinsVersion;
         }
       });
       if (needEnvInsert) {
@@ -825,11 +828,12 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
           key: key,
           secret: secretId === "" ? key : secretId,
           projectId: endpoint.project,
+          allowVersionPinning: secretPinsVersion,
           ...(version !== undefined && { version: version }),
         });
       }
-    };
-  };
+    }
+  }
 }
 
 /**

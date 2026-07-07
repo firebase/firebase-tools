@@ -223,13 +223,14 @@ export function versionInUse(
   return false;
 }
 
+export type SecretForPruning = Required<Omit<backend.SecretEnvVar, "allowVersionPinning">>;
 /**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
   projectInfo: ProjectInfo,
   endpoints: backend.Endpoint[],
-): Promise<Required<backend.SecretEnvVar>[]> {
+): Promise<SecretForPruning[]> {
   const { projectId, projectNumber } = projectInfo;
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
   const prunedSecrets: Set<string> = new Set();
@@ -244,7 +245,7 @@ export async function pruneSecrets(
   }
 
   // Prune all project-scoped secrets in use.
-  const secrets: Required<backend.SecretEnvVar>[] = [];
+  const secrets: SecretForPruning[] = [];
   for (const secret of of(endpoints)) {
     if (!secret.version) {
       // All bets are off if secret version isn't available in the endpoint definition.
@@ -254,7 +255,10 @@ export async function pruneSecrets(
     if (secret.projectId === projectId || secret.projectId === projectNumber) {
       // We already know that secret.version isn't empty, but TS can't figure it out for some reason.
       if (secret.version) {
-        secrets.push({ ...secret, version: secret.version });
+        secrets.push({
+          ...secret,
+          version: secret.version,
+        });
       }
     }
   }

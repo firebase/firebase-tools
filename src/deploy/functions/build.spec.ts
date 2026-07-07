@@ -496,11 +496,12 @@ describe("applyEnvSecretBindings", () => {
         key: "foo",
         secret: "bar",
         projectId: "test-project",
+        allowVersionPinning: false,
       },
     ]);
   });
 
-  it("should add the referenced secret and version to secretEnvironmentVariables if not present", () => {
+  it("should add the referenced secret and version (with pinning sentinel) to secretEnvironmentVariables if not present", () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
@@ -529,6 +530,7 @@ describe("applyEnvSecretBindings", () => {
         secret: "bar",
         projectId: "test-project",
         version: "4",
+        allowVersionPinning: true,
       },
     ]);
   });
@@ -562,6 +564,7 @@ describe("applyEnvSecretBindings", () => {
         secret: "bar",
         projectId: "test-project",
         version: "latest",
+        allowVersionPinning: true,
       },
     ]);
   });
@@ -602,6 +605,7 @@ describe("applyEnvSecretBindings", () => {
         secret: "bar",
         projectId: "test-project",
         version: "4",
+        allowVersionPinning: true,
       },
     ]);
   });
