@@ -149,29 +149,28 @@ const HELP = `Interactively configure the current directory as a Firebase projec
 
 This command will create or update 'firebase.json' and '.firebaserc' configuration files in the current directory.
 
-To initialize a specific Firebase feature, run 'firebase init [feature]'. Valid features are:
+To initialize specific Firebase features, run 'firebase init [features...]'. Valid features are:
 ${[...featureNames]
   .sort()
   .map((n) => `\n  - ${n}`)
   .join("")}`;
 
-export const command = new Command("init [feature]")
+export const command = new Command("init [features...]")
   .description("interactively configure the current directory as a Firebase project directory")
   .help(HELP)
   .action(initAction);
 
 /**
  * Init command action
- * @param feature Feature to init (e.g., hosting, functions)
+ * @param features Features to init (e.g., hosting, functions)
  * @param options Command options
  */
-export async function initAction(feature: string, options: Options): Promise<void> {
-  if (feature && !featureNames.includes(feature)) {
+export async function initAction(features: string[], options: Options): Promise<void> {
+  const invalidFeatures = features.filter((f) => !featureNames.includes(f));
+  if (invalidFeatures.length > 0) {
     return utils.reject(
-      clc.bold(feature) +
-        " is not a supported feature; must be one of " +
-        featureNames.join(", ") +
-        ".",
+      `Invalid features: ${invalidFeatures.map((f) => clc.bold(f)).join(", ")}. ` +
+        `Valid features are: ${featureNames.join(", ")}.`,
     );
   }
 
@@ -228,9 +227,9 @@ export async function initAction(feature: string, options: Options): Promise<voi
     }
   }
 
-  if (feature) {
+  if (features.length > 0) {
     setup.featureArg = true;
-    setup.features = [feature];
+    setup.features = Array.from(new Set(features));
   } else {
     setup.features = await checkbox<string>({
       message:
@@ -243,7 +242,7 @@ export async function initAction(feature: string, options: Options): Promise<voi
             "Must select at least one feature. Use " +
             clc.bold(clc.underline("SPACEBAR")) +
             " to select features, or specify a feature by running " +
-            clc.bold("firebase init [feature_name]")
+            clc.bold("firebase init [features...]")
           );
         }
         return true;
@@ -255,7 +254,7 @@ export async function initAction(feature: string, options: Options): Promise<voi
       "Must select at least one feature. Use " +
         clc.bold(clc.underline("SPACEBAR")) +
         " to select features, or specify a feature by running " +
-        clc.bold("firebase init [feature_name]"),
+        clc.bold("firebase init [features...]"),
     );
   }
 
