@@ -1235,7 +1235,7 @@ describe("prepare", () => {
       const result = await prepare.discoverSecurityDetails("default", want, have, "project");
 
       expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
-      expect(result.existingEtag).to.equal("salt-etag");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
       expect(e.serviceAccount).to.equal("default");
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
     });
@@ -1281,8 +1281,12 @@ describe("prepare", () => {
       want.requiredRoles = ["roles/viewer"];
       const have = backend.empty();
 
-      await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
-        .rejected;
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Cannot use explicit custom service accounts on functions while using declarative security/,
+      );
     });
 
     it("should throw error if user lacks IAM operator permissions", async () => {
