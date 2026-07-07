@@ -588,7 +588,7 @@ async function promptList(
       prompt,
       param.input,
       resolvedDefault,
-      false, // by default, the empty list is valid input for a ListParam
+      false, // enforceNonEmpty
       (res: string): string[] => {
         return res.split(param.delimiter || ",");
       },
@@ -630,8 +630,13 @@ async function promptBooleanParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    // the nonEmpty flag is meaningless if prompting for boolean params
-    return promptText<boolean>(prompt, param.input, resolvedDefault, false, isTruthyInput);
+    return promptText<boolean>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      false, // enforceNonEmpty
+      isTruthyInput,
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
   } else {
@@ -762,7 +767,7 @@ async function promptResourceString(
         prompt,
         { text: {} },
         resolvedDefault,
-        true, // resource selectors always require nonempty input
+        true, // enforceNonEmpty
         (res: string) => res,
       );
   }
@@ -772,7 +777,7 @@ async function promptResourceStrings(
   prompt: string,
   input: ResourceInput,
   projectId: string,
-  disallowEmpty?: boolean,
+  enforceNonEmpty?: boolean,
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -792,14 +797,14 @@ async function promptResourceStrings(
         prompt,
         forgedInput,
         undefined,
-        disallowEmpty,
+        enforceNonEmpty,
         (res: string[]) => res,
       );
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string[]>(prompt, { text: {} }, undefined, disallowEmpty, (res: string) =>
+      return promptText<string[]>(prompt, { text: {} }, undefined, enforceNonEmpty, (res: string) =>
         res.split(","),
       );
   }
@@ -814,7 +819,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   textInput: TextInput<T>,
   resolvedDefault: T | undefined,
-  disallowEmpty = false,
+  enforceNonEmpty = false,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await input({
@@ -828,12 +833,12 @@ async function promptText<T extends RawParamValue>(
         textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
     }
   }
-  if (disallowEmpty && res === "") {
+  if (enforceNonEmpty && res === "") {
     logger.error(`Input cannot be the empty string, retrying...`);
-    return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
   // is wrong--it will return the type of the default if selected. Remove this
@@ -841,7 +846,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, textInput, resolvedDefault, disallowEmpty, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }
@@ -875,7 +880,7 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
-  disallowEmpty = false,
+  enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
@@ -892,11 +897,11 @@ async function promptSelectMultiple<T extends string>(
   const converted = converter(response);
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
-  if (disallowEmpty && Array.isArray(converted) && converted.length === 0) {
+  if (enforceNonEmpty && Array.isArray(converted) && converted.length === 0) {
     logger.error(`Input cannot be empty, retrying...`);
-    return promptSelectMultiple<T>(prompt, input, resolvedDefault, disallowEmpty, converter);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }
