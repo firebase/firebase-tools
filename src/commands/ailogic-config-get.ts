@@ -1,0 +1,82 @@
+import { Command } from "../command";
+import { requirePermissions } from "../requirePermissions";
+import { needProjectId } from "../projectUtils";
+import * as ailogic from "../gcp/ailogic";
+import { logger } from "../logger";
+import { FirebaseError } from "../error";
+
+import { Options } from "../options";
+
+export const command = new Command("ailogic:config:get [path]")
+  .description("read AI Logic configuration")
+  .before(requirePermissions, ["firebasevertexai.config.get", "serviceusage.services.get"])
+  .action(async (path: string | undefined, options: Options) => {
+    const projectId = needProjectId(options);
+
+    await ailogic.ensureAILogicApiEnabled(projectId, options);
+    const config = await ailogic.getConfig(projectId);
+
+    const authOnly = config.trafficFilter?.firebaseAuthRequired ?? false;
+    const templateOnly = config.trafficFilter?.templateOnly ?? false;
+    const monitoringState = config.telemetryConfig?.mode === "ALL";
+    const sampleRatePercent =
+      config.telemetryConfig?.samplingRate !== undefined
+        ? Math.round(config.telemetryConfig.samplingRate * 100)
+        : 100;
+
+    const enabledProviders = await ailogic.listProviders(projectId);
+    const hasDeveloperApi = enabledProviders.includes("gemini-developer-api");
+    const hasAgentPlatform = enabledProviders.includes("agent-platform-gemini-api");
+
+    const configObj = {
+      providers: {
+        "gemini-developer-api": hasDeveloperApi,
+        "agent-platform-gemini-api": hasAgentPlatform,
+      },
+      security: {
+        "auth-only": authOnly,
+        "template-only": templateOnly,
+      },
+      monitoring: {
+        state: monitoringState,
+        "sample-rate-percentage": sampleRatePercent,
+      },
+    };
+
+    if (path) {
+      const validPaths = [
+        "providers",
+        "providers.gemini-developer-api",
+        "providers.agent-platform-gemini-api",
+        "security",
+        "security.auth-only",
+        "security.template-only",
+        "monitoring",
+        "monitoring.state",
+        "monitoring.sample-rate-percentage",
+      ];
+      if (!validPaths.includes(path)) {
+        throw new FirebaseError(
+          `Unknown configuration path: ${path}\n\nValid paths:\n\n` +
+            [
+              "security.auth-only",
+              "security.template-only",
+              "monitoring.state",
+              "monitoring.sample-rate-percentage",
+            ]
+              .map((p) => `  ${p}`)
+              .join("\n"),
+        );
+      }
+      const parts = path.split(".");
+      let val: any = configObj;
+      for (const part of parts) {
+        val = val[part];
+      }
+      logger.info(typeof val === "object" ? JSON.stringify(val, null, 2) : String(val));
+      return val;
+    } else {
+      logger.info(JSON.stringify(configObj, null, 2));
+      return configObj;
+    }
+  });

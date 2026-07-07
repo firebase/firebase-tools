@@ -1,1 +1,2 @@
+- Added Firebase AI Logic CLI commands under the `firebase ailogic` namespace to enable/disable backends, manage consolidated settings configuration, deploy/manage server prompt templates, and register before/after generate-content triggers.
 - Updated Pub/Sub emulator to version 0.8.34

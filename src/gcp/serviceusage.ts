@@ -70,3 +70,45 @@ export async function generateServiceIdentityAndPoll(
     headers: { "x-goog-user-project": `${projectNumber}` },
   });
 }
+
+/**
+ * Disables a service on the project.
+ */
+export async function disableService(
+  projectId: string,
+  service: string,
+): Promise<LongRunningOperation<unknown>> {
+  try {
+    const res = await apiClient.post<unknown, unknown>(
+      `projects/${projectId}/services/${service}:disable`,
+      /* body=*/ {},
+      { headers: { "x-goog-user-project": `${projectId}` } },
+    );
+    return res.body as LongRunningOperation<unknown>;
+  } catch (err: unknown) {
+    throw new FirebaseError(`Error disabling service ${service}.`, {
+      original: err as Error,
+    });
+  }
+}
+
+/**
+ * Calls disableService and polls till the operation is complete.
+ */
+export async function disableServiceAndPoll(
+  projectId: string,
+  service: string,
+  prefix: string,
+): Promise<void> {
+  utils.logLabeledBullet(prefix, `disabling service ${bold(service)}...`);
+  const op = await disableService(projectId, service);
+  if (op.done) {
+    return;
+  }
+
+  await poller.pollOperation<void>({
+    ...serviceUsagePollerOptions,
+    operationResourceName: op.name,
+    headers: { "x-goog-user-project": `${projectId}` },
+  });
+}

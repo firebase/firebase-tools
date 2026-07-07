@@ -239,3 +239,14 @@ function cacheEnabledAPI(projectId: string, apiName: string) {
   cache[projectId][apiName] = true;
   configstore.set(API_ENABLEMENT_CACHE_KEY, cache);
 }
+
+export function uncacheEnabledAPI(projectId: string, apiName: string): void {
+  const cache = (configstore.get(API_ENABLEMENT_CACHE_KEY) || {}) as Record<
+    string,
+    Record<string, true>
+  >;
+  if (cache[projectId]) {
+    delete cache[projectId][apiName];
+    configstore.set(API_ENABLEMENT_CACHE_KEY, cache);
+  }
+}

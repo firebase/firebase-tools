@@ -14,7 +14,44 @@ export const command = new Command("help [command]")
     const cmd = commandName ? client.getCommand(commandName) : undefined;
     if (cmd) {
       cmd.outputHelp();
-    } else if (commandName) {
+      return;
+    }
+
+    if (commandName) {
+      const keys = commandName.split(":");
+      let current = client;
+      let matched = true;
+      for (const key of keys) {
+        if (!current || typeof current !== "object") {
+          matched = false;
+          break;
+        }
+        const nextKey = Object.keys(current).find((k) => k.toLowerCase() === key.toLowerCase());
+        if (nextKey) {
+          current = current[nextKey];
+        } else {
+          matched = false;
+          break;
+        }
+      }
+
+      if (matched && current && typeof current === "object") {
+        const prefix = commandName + ":";
+        const subcmds = client.cli.commands.filter((c: any) => c._name.startsWith(prefix));
+        if (subcmds.length > 0) {
+          logger.info();
+          logger.info(clc.bold(`Commands under ${clc.green(commandName)}:`));
+          logger.info();
+          for (const subcmd of subcmds) {
+            logger.info(`  ${clc.bold(subcmd._name.padEnd(45))} ${subcmd._description}`);
+          }
+          logger.info();
+          return;
+        }
+      }
+    }
+
+    if (commandName) {
       logger.warn();
       utils.logWarning(
         clc.bold(commandName) + " is not a valid command. See below for valid commands",
