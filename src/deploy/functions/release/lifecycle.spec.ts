@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as backend from "../backend";
-import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks, hasLifecycleHooks } from "./lifecycle";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
 import * as projects from "../../../management/projects";
@@ -43,6 +43,31 @@ describe("lifecycle", () => {
 
       const event = determineDeploymentEvent(haveBackend);
       expect(event).to.equal("afterRedeploy");
+    });
+  });
+
+  describe("hasLifecycleHooks", () => {
+    it("returns false when lifecycleHooks is undefined", () => {
+      const b = backend.empty();
+      expect(hasLifecycleHooks(b)).to.be.false;
+    });
+
+    it("returns false when lifecycleHooks is empty", () => {
+      const b = backend.empty();
+      b.lifecycleHooks = {};
+      expect(hasLifecycleHooks(b)).to.be.false;
+    });
+
+    it("returns true when lifecycleHooks has configured hooks", () => {
+      const b = backend.empty();
+      b.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "myTask",
+          },
+        },
+      };
+      expect(hasLifecycleHooks(b)).to.be.true;
     });
   });
 

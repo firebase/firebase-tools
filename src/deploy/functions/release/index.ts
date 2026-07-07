@@ -19,7 +19,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
 import { runtimeIsLanguage } from "../runtimes/supported";
-import { executeLifecycleHooks } from "./lifecycle";
+import { executeLifecycleHooks, hasLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -132,12 +132,19 @@ export async function release(
     utils.logLabeledBullet(
       "functions",
       "Dart functions may not yet be visible in the Firebase Console. " +
-        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+      `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
     );
   }
 
-  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
-    await executeLifecycleHooks(w, h, plan, codebase);
+  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
+
+  // Only execute lifecycle hooks when all deployments are successful.
+  if (allErrors.length === 0) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      await executeLifecycleHooks(w, h, plan, codebase);
+    }
   }
 
   await setupArtifactCleanupPolicies(
@@ -146,8 +153,13 @@ export async function release(
     Object.keys(wantBackend.endpoints),
   );
 
-  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
+    if (hasLifecycleHooks(wantBackend)) {
+      utils.logLabeledWarning(
+        "functions",
+        "Lifecycle hooks were configured but not executed because one or more function deployments failed.",
+      );
+    }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     logger.debug("Functions deploy failed.");
     for (const error of allErrors) {
@@ -222,7 +234,7 @@ async function setupArtifactCleanupPolicies(
   utils.logLabeledBullet(
     "functions",
     `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
-      `Images older than ${daysToKeep} days will be automatically deleted.`,
+    `Images older than ${daysToKeep} days will be automatically deleted.`,
   );
 
   const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
@@ -238,15 +250,15 @@ async function setupArtifactCleanupPolicies(
     utils.logLabeledWarning(
       "functions",
       `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
-        `${locationsWithErrors.join(", ")}.` +
-        "This could result in a small monthly bill as container images accumulate over time.",
+      `${locationsWithErrors.join(", ")}.` +
+      "This could result in a small monthly bill as container images accumulate over time.",
     );
     utils.logLabeledWarning(
       "functions",
       `Functions successfully deployed but could not set up cleanup policy in ` +
-        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
-        `Pass the --force option to automatically set up a cleanup policy or ` +
-        "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+      `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
+      `Pass the --force option to automatically set up a cleanup policy or ` +
+      "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
     );
   }
 }
