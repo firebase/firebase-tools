@@ -2067,6 +2067,7 @@ describe("Fabricator", () => {
         "test-project",
         "firebase-fn-123@my-proj.iam.gserviceaccount.com",
         ["roles/viewer"],
+        true,
       );
     });
 

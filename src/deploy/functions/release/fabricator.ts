@@ -128,6 +128,7 @@ export class Fabricator {
           this.projectId,
           plan.managedServiceAccount,
           plan.rolesToAdd,
+          true, // skipAccountLookup
         );
       } catch (e) {
         throw new FirebaseError(
