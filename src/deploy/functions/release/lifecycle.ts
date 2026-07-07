@@ -8,19 +8,19 @@ import * as computeEngine from "../../../gcp/computeEngine";
 import { getProject } from "../../../management/projects";
 import { assertExhaustive } from "../../../functional";
 
-export type LifecycleDelta = "afterInstall" | "afterUpdate";
+export type DeploymentEvent = "afterFirstDeploy" | "afterRedeploy";
 
 /**
  * Determines whether the current deployment represents a fresh codebase deployment
- * (afterInstall) or an update to an existing deployment (afterUpdate).
+ * (afterFirstDeploy) or an update to an existing deployment (afterRedeploy).
  */
-export function determineDeploymentDelta(haveBackend: backend.Backend): LifecycleDelta {
+export function determineDeploymentEvent(haveBackend: backend.Backend): DeploymentEvent {
   // If haveBackend has no existing endpoints, this is a fresh installation.
   const hasExistingEndpoints = backend.someEndpoint(haveBackend, () => true);
   if (!hasExistingEndpoints) {
-    return "afterInstall";
+    return "afterFirstDeploy";
   }
-  return "afterUpdate";
+  return "afterRedeploy";
 }
 
 /**
@@ -33,16 +33,16 @@ export async function executeLifecycleHooks(
   plan?: planner.DeploymentPlan,
   codebase?: string,
 ): Promise<boolean> {
-  const delta = determineDeploymentDelta(haveBackend);
+  const event = determineDeploymentEvent(haveBackend);
   const hooks = wantBackend.lifecycleHooks || {};
-  const hook = hooks[delta];
+  const hook = hooks[event];
 
   if (!hook) {
-    logger.debug(`No lifecycle hook configured for event: ${delta}`);
+    logger.debug(`No lifecycle hook configured for event: ${event}`);
     return false;
   }
 
-  if (delta === "afterUpdate" && plan) {
+  if (event === "afterRedeploy" && plan) {
     const codebasePlans = codebase ? [plan[codebase]].filter(Boolean) : Object.values(plan);
     const hasResourceModifications = codebasePlans.some((codebasePlan) =>
       Object.values(codebasePlan.regionalChangesets).some(
@@ -55,23 +55,23 @@ export async function executeLifecycleHooks(
     if (!hasResourceModifications) {
       logLabeledBullet(
         "functions",
-        `No resources modified for codebase: ${codebase ?? "default"}. Skipping afterUpdate lifecycle hook.`,
+        `No resources modified for codebase: ${codebase ?? "default"}. Skipping afterRedeploy lifecycle hook.`,
       );
       return false;
     }
   }
 
   try {
-    await executeHook(delta, hook, wantBackend);
+    await executeHook(event, hook, wantBackend);
     return true;
   } catch (err: unknown) {
     // We treat lifecycle hook failures as warnings. We don't want to fail
     // the entire deploy command if a post-deploy hook fails to enqueue.
     const errorMsg = err instanceof Error ? err.message : String(err);
-    logLabeledWarning("functions", `Failed to execute ${delta} lifecycle hook: ${errorMsg}`);
+    logLabeledWarning("functions", `Failed to execute ${event} lifecycle hook: ${errorMsg}`);
     logLabeledBullet(
       "functions",
-      `You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run ${delta} ${codebase ?? "default"}`,
+      `You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run ${event} ${codebase ?? "default"}`,
     );
     return false;
   }
@@ -148,7 +148,7 @@ function getCloudConsoleLogUrl(endpoint: backend.Endpoint): string {
  * Executes a specific lifecycle hook in isolation.
  */
 export async function executeHook(
-  delta: string,
+  event: DeploymentEvent,
   hook: backend.LifecycleHook,
   backendSpec: backend.Backend,
 ): Promise<backend.Endpoint | undefined> {
@@ -156,7 +156,7 @@ export async function executeHook(
   if ("task" in hook) {
     logLabeledBullet(
       "functions",
-      `Executing ${delta} lifecycle hook targeting: ${hook.task.function}...`,
+      `Executing ${event} lifecycle hook targeting: ${hook.task.function}...`,
     );
     executedEndpoint = await executeTaskQueueHook(hook.task, backendSpec);
   } else if ("call" in hook) {
@@ -170,7 +170,7 @@ export async function executeHook(
   if (executedEndpoint) {
     logLabeledBullet(
       "functions",
-      `View logs for ${delta} at: ${getCloudConsoleLogUrl(executedEndpoint)}`,
+      `View logs for ${event} at: ${getCloudConsoleLogUrl(executedEndpoint)}`,
     );
   }
   return executedEndpoint;
