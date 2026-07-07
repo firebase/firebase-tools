@@ -148,6 +148,23 @@ describe("accountImporter", () => {
         }),
       ).to.not.have.property("error");
     });
+
+    it("should not reject when mfaInfo is present in user json", () => {
+      expect(
+        validateUserJson({
+          localId: "123",
+          email: "test@test.org",
+          mfaInfo: [
+            {
+              mfaEnrollmentId: "enrollment-id-1",
+              displayName: "My SMS MFA",
+              phoneInfo: "+11111111111",
+              enrolledAt: "2026-06-24T00:00:00Z",
+            },
+          ],
+        }),
+      ).to.not.have.property("error");
+    });
   });
 
   describe("serialImportUsers", () => {

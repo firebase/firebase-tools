@@ -234,5 +234,35 @@ describe("iam", () => {
         expect(nock.isDone()).to.be.true;
       });
     });
+
+    describe("getRoleName", () => {
+      it("should return human readable title from known roles map", async () => {
+        const name = await iam.getRoleName("roles/bigquery.dataEditor");
+
+        expect(name).to.equal("BigQuery Data Editor");
+      });
+
+      it("should fall back to getRole API for unknown roles", async () => {
+        nock("https://iam.googleapis.com")
+          .get("/v1/roles/roles/customRole")
+          .reply(200, { name: "roles/customRole", title: "My Custom Role" });
+
+        const name = await iam.getRoleName("roles/customRole");
+        expect(name).to.equal("My Custom Role");
+        expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("generateManagedServiceAccountName", () => {
+      it("should return first account Id if it does not exist (404)", async () => {
+        nock("https://iam.googleapis.com")
+          .get(new RegExp(`/v1/projects/${PROJECT_ID}/serviceAccounts/firebase-fn-.*`))
+          .reply(404);
+
+        const name = await iam.generateManagedServiceAccountName(PROJECT_ID, "firebase-fn");
+        expect(name).to.match(/^firebase-fn-\d{10}$/);
+        expect(nock.isDone()).to.be.true;
+      });
+    });
   });
 });
