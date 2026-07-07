@@ -8,8 +8,8 @@ export const help =
   "  --only functions:group.subgroup (scoped by export group)\n" +
   "  --only functions:codebase:func (scoped by codebase and function)";
 export const detailedHelp =
-  "Cloud Functions for Firebase deploys functions source code from the functions directory.\n\n" +
-  "Configuration format in firebase.json:\n" +
+  "Cloud Functions deploys functions source code from your local codebases.\n\n" +
+  "Single codebase configuration in firebase.json:\n" +
   "{\n" +
   '  "functions": {\n' +
   '    "source": "functions",\n' +
@@ -20,4 +20,19 @@ export const detailedHelp =
   '      "npm --prefix \\"$RESOURCE_DIR\\" run build"\n' +
   "    ]\n" +
   "  }\n" +
+  "}\n\n" +
+  "Multiple codebases configuration:\n" +
+  "{\n" +
+  '  "functions": [\n' +
+  "    {\n" +
+  '      "source": "functions-backend",\n' +
+  '      "codebase": "backend",\n' +
+  '      "runtime": "nodejs20"\n' +
+  "    },\n" +
+  "    {\n" +
+  '      "source": "functions-frontend",\n' +
+  '      "codebase": "frontend",\n' +
+  '      "runtime": "nodejs22"\n' +
+  "    }\n" +
+  "  ]\n" +
   "}";

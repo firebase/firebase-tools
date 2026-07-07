@@ -5,12 +5,19 @@ export { release } from "./release";
 export const help =
   "Deploys blocking functions and configuration settings for Firebase Authentication.";
 export const detailedHelp =
-  "Authentication configures blocking Cloud Functions and Auth configuration.\n\n" +
+  "Firebase Authentication configures identity providers and sign-in methods.\n\n" +
   "Configuration format in firebase.json:\n" +
   "{\n" +
   '  "auth": {\n' +
-  '    "blockingFunctions": {\n' +
-  '      "beforeCreate": "beforeCreateFunction"\n' +
+  '    "providers": {\n' +
+  '      "anonymous": true,\n' +
+  '      "emailPassword": true,\n' +
+  '      "googleSignIn": {\n' +
+  '        "authorizedRedirectUris": [\n' +
+  '          "https://my-app.firebaseapp.com/__/auth/handler"\n' +
+  "        ],\n" +
+  '        "supportEmail": "support@example.com"\n' +
+  "      }\n" +
   "    }\n" +
   "  }\n" +
   "}";

@@ -10,10 +10,17 @@ export const help =
   "  --only dataconnect:serviceId:connectorId\n" +
   "  --only dataconnect:serviceId:schema";
 export const detailedHelp =
-  "Data Connect deploys services, GraphQL schemas, and connectors.\n\n" +
-  "Configuration format in firebase.json:\n" +
+  "Firebase Data Connect deploys services, GraphQL schemas, and connectors.\n\n" +
+  "Single service configuration in firebase.json:\n" +
   "{\n" +
   '  "dataconnect": {\n' +
   '    "source": "dataconnect"\n' +
   "  }\n" +
+  "}\n\n" +
+  "Multiple services configuration:\n" +
+  "{\n" +
+  '  "dataconnect": [\n' +
+  '    { "source": "dataconnect-service-1" },\n' +
+  '    { "source": "dataconnect-service-2" }\n' +
+  "  ]\n" +
   "}";

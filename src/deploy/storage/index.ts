@@ -8,15 +8,16 @@ export const help =
   "Deploys security rules for Cloud Storage buckets defined in your project's firebase.json.";
 export const detailedHelp =
   "Cloud Storage deploys security rules to Storage buckets.\n\n" +
-  "Configuration format in firebase.json:\n" +
+  "Single bucket configuration in firebase.json:\n" +
   "{\n" +
   '  "storage": {\n' +
   '    "rules": "storage.rules"\n' +
   "  }\n" +
   "}\n\n" +
-  "For multiple buckets configuration, use an array of objects:\n" +
+  "Multiple buckets configuration (requires bucket name and rules file):\n" +
   "{\n" +
   '  "storage": [\n' +
-  '    { "bucket": "my-app.appspot.com", "rules": "storage.rules" }\n' +
+  '    { "bucket": "my-app-bucket-1", "rules": "storage-1.rules" },\n' +
+  '    { "bucket": "my-app-bucket-2", "rules": "storage-2.rules", "target": "my-storage-target" }\n' +
   "  ]\n" +
   "}";

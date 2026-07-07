@@ -6,7 +6,7 @@ export const help =
   "Deploys assets, redirects, rewrites, and headers configuration from your project's firebase.json.";
 export const detailedHelp =
   "Firebase Hosting deploys web assets, redirects, rewrites, and header configurations.\n\n" +
-  "Configuration format in firebase.json:\n" +
+  "Single site configuration in firebase.json:\n" +
   "{\n" +
   '  "hosting": {\n' +
   '    "public": "public",\n' +
@@ -19,4 +19,17 @@ export const detailedHelp =
   '      { "source": "**", "destination": "/index.html" }\n' +
   "    ]\n" +
   "  }\n" +
+  "}\n\n" +
+  "Multiple sites configuration (by site ID or deploy target):\n" +
+  "{\n" +
+  '  "hosting": [\n' +
+  "    {\n" +
+  '      "site": "my-site-id",\n' +
+  '      "public": "dist"\n' +
+  "    },\n" +
+  "    {\n" +
+  '      "target": "my-site-target",\n' +
+  '      "public": "build"\n' +
+  "    }\n" +
+  "  ]\n" +
   "}";
