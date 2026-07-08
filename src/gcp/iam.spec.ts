@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
 import * as iam from "./iam";
