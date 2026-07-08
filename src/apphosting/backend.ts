@@ -25,12 +25,10 @@ import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
-import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";
-
-const DEFAULT_RUNTIME = "nodejs";
+import { resolveRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -83,7 +81,6 @@ export async function doSetup(
   primaryRegion?: string,
   rootDir?: string,
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -130,20 +127,7 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
-  if (runtime === undefined && isEnabled("abiu")) {
-    if (nonInteractive) {
-      runtime = DEFAULT_RUNTIME;
-    } else {
-      runtime = await select({
-        message: "Which runtime do you want to use?",
-        choices: [
-          { name: "Node.js (default)", value: DEFAULT_RUNTIME },
-          { name: "Node.js 22", value: "nodejs22" },
-        ],
-        default: DEFAULT_RUNTIME,
-      });
-    }
-  }
+  runtime = await resolveRuntime(projectId, location, nonInteractive, runtime);
 
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
@@ -164,7 +148,6 @@ export async function doSetup(
     webApp?.id,
     rootDir,
     runtime,
-    automaticBaseImageUpdatesDisabled,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -229,6 +212,8 @@ export async function doSetup(
 export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
+  nonInteractive: boolean,
+  rootDir: string = "/",
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,
@@ -241,8 +226,19 @@ export async function doSetupSourceDeploy(
   }
   webAppSpinner.stop();
 
+  const runtime = await resolveRuntime(projectId, location, nonInteractive);
+
   const createBackendSpinner = ora("Creating your new backend...").start();
-  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  const backend = await createBackend(
+    projectId,
+    location,
+    backendId,
+    null,
+    undefined,
+    webApp?.id,
+    rootDir,
+    runtime,
+  );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   return {
     backend,
@@ -383,7 +379,6 @@ export async function createBackend(
   webAppId: string | undefined,
   rootDir = "/",
   runtime?: string,
-  automaticBaseImageUpdatesDisabled?: boolean,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -397,9 +392,12 @@ export async function createBackend(
     labels: deploymentTool.labels(),
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
-    runtime: { value: runtime ?? "" },
-    automaticBaseImageUpdatesDisabled,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);

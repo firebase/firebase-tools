@@ -2,9 +2,7 @@
  * Webhook send API used to notify VSCode of states within
  */
 
-import fetch from "node-fetch";
 import { logger } from "../logger";
-import { AbortSignal } from "node-fetch/externals";
 
 export enum VSCODE_MESSAGE {
   EMULATORS_STARTED = "EMULATORS_STARTED",
@@ -33,11 +31,11 @@ export async function sendVSCodeMessage(body: WebhookBody) {
         "x-mantle-admin": "all",
       },
       body: jsonBody,
-      signal: AbortSignal.timeout(3000) as unknown as AbortSignal, // necessary due to https://github.com/node-fetch/node-fetch/issues/1652
+      signal: AbortSignal.timeout(3000),
     });
   } catch (e) {
     logger.debug(
-      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.`,
+      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.`,
     );
   }
 }

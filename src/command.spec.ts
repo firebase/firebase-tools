@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as rc from "./rc";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
 import { Command, validateProjectId } from "./command";
@@ -168,6 +168,78 @@ describe("Command", () => {
         projectNumber: undefined,
         project: "default-project",
       });
+    });
+  });
+
+  it("should handle comma separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore,hosting,auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore hosting auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space and commas separated values in 'only' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          only: options.only,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      only: "firestore, hosting,  auth",
+    });
+
+    expect(result).to.deep.eq({
+      only: "firestore,hosting,auth",
+    });
+  });
+
+  it("should normalize space and commas separated values in 'except' options", async () => {
+    const run = command
+      .action((options) => {
+        return {
+          except: options.except,
+        };
+      })
+      .runner();
+
+    const result = await run({
+      except: "firestore, hosting,  auth",
+    });
+
+    expect(result).to.deep.eq({
+      except: "firestore,hosting,auth",
     });
   });
 });

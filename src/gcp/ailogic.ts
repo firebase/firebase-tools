@@ -1,13 +1,14 @@
 import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
-import {
-  AI_LOGIC_BEFORE_GENERATE_CONTENT,
-  AI_LOGIC_AFTER_GENERATE_CONTENT,
-  type AILogicEndpoint,
-} from "../deploy/functions/services/ailogic";
+import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
+import { getErrStatus } from "../error";
 
 export const API_VERSION = "v1beta";
+
+export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
+  "google.firebase.ailogic.v1.beforeGenerate" as const;
+export const AI_LOGIC_AFTER_GENERATE_CONTENT = "google.firebase.ailogic.v1.afterGenerate" as const;
 
 export const AI_LOGIC_EVENTS_TO_TRIGGER = {
   [AI_LOGIC_BEFORE_GENERATE_CONTENT]: "before-generate-content",
@@ -118,7 +119,7 @@ export async function deleteTrigger(
   projectId: string,
   location: string,
   triggerId: string,
-  allowMissing = false,
+  allowMissing = true,
   validateOnly = false,
   etag?: string,
 ): Promise<void> {
@@ -181,8 +182,10 @@ export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise
   try {
     return await createTrigger(endpoint.project, location, triggerId, triggerBody);
   } catch (err: unknown) {
-    if (err && typeof err === "object" && "status" in err && err.status === 409) {
-      return await updateTrigger(endpoint.project, location, triggerId, triggerBody);
+    if (getErrStatus(err) === 409) {
+      return await updateTrigger(endpoint.project, location, triggerId, triggerBody, [
+        "cloudFunction",
+      ]);
     }
     throw err;
   }

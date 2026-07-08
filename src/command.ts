@@ -339,6 +339,26 @@ export class Command {
       options.configPath = getInheritedOption(options, "config");
     }
 
+    const onlyOption = getInheritedOption(options, "only");
+    if (onlyOption) {
+      // Handle cases where PowerShell replaces commas with spaces.
+      // see https://github.com/firebase/firebase-tools/issues/7506
+      options.only = onlyOption
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .join(",");
+    }
+
+    const exceptOption = getInheritedOption(options, "except");
+    if (exceptOption) {
+      // Handle cases where PowerShell replaces commas with spaces.
+      // see https://github.com/firebase/firebase-tools/issues/7506
+      options.except = exceptOption
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .join(",");
+    }
+
     try {
       options.config = Config.load(options);
     } catch (e: any) {

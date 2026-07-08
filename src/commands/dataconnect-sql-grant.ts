@@ -27,10 +27,10 @@ export const command = new Command("dataconnect:sql:grant")
     "-E, --email <email>",
     "The email of the user or service account we would like to grant the role to.",
   )
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .before(requirePermissions, ["firebasedataconnect.services.list"])
   .before(requireAuth)

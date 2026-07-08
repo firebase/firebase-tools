@@ -24,7 +24,7 @@ let stdinUsedFor: string | undefined = undefined;
 
 export const command = new Command("dataconnect:execute [file] [operationName]")
   .description(
-    "execute a Data Connect query or mutation. If FIREBASE_DATACONNECT_EMULATOR_HOST is set (such as during 'firebase emulator:exec', executes against the emulator instead.",
+    "execute a SQL Connect query or mutation. If FIREBASE_DATACONNECT_EMULATOR_HOST is set (such as during 'firebase emulator:exec', executes against the emulator instead.",
   )
   .option(
     "--service <serviceId>",

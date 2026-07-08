@@ -148,7 +148,7 @@ describe("askQuestions", () => {
       await askQuestions(setup, config, options);
     } catch (err: any) {
       expect(err.message).to.equal(
-        `No Firebase Data Connect workspace found. Run ${clc.bold(
+        `No Firebase SQL Connect workspace found. Run ${clc.bold(
           "firebase init dataconnect",
         )} to set up a service and main schema.`,
       );
@@ -341,7 +341,7 @@ describe("actuate", () => {
     expect(writeProjectFileStub.calledTwice).to.be.true;
     const writtenYamlPath = writeProjectFileStub.getCall(0).args[0];
     const writtenYamlContents = writeProjectFileStub.getCall(0).args[1];
-    const parsedYaml = yaml.load(writtenYamlContents);
+    const parsedYaml = yaml.load(writtenYamlContents) as DataConnectYaml;
     expect(writtenYamlPath).to.equal("../service/dataconnect.yaml");
     expect(parsedYaml.schemas).to.have.lengthOf(2);
     const writtenSchemaPath = writeProjectFileStub.getCall(1).args[0];
@@ -368,7 +368,7 @@ type Query {
     expect(writeProjectFileStub.calledTwice).to.be.true;
     const writtenYamlPath = writeProjectFileStub.getCall(0).args[0];
     const writtenYamlContents = writeProjectFileStub.getCall(0).args[1];
-    const parsedYaml = yaml.load(writtenYamlContents);
+    const parsedYaml = yaml.load(writtenYamlContents) as DataConnectYaml;
     expect(writtenYamlPath).to.equal("../service/dataconnect.yaml");
     expect(parsedYaml.schemas).to.have.lengthOf(2);
     const writtenSchemaPath = writeProjectFileStub.getCall(1).args[0];

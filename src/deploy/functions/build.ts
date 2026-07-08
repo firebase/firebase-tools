@@ -1,6 +1,5 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../api";
 import * as params from "./params";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
@@ -9,6 +8,10 @@ import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
 
+export const REGION_TBD = "REGION_TBD";
+
+export type LifecycleHook = backend.LifecycleHook;
+
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
   requiredAPIs: RequiredApi[];
@@ -16,6 +19,8 @@ export interface Build {
   params: params.Param[];
   runtime?: Runtime;
   extensions?: Record<string, DynamicExtension>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Record<string, LifecycleHook>;
 }
 
 /**
@@ -72,8 +77,8 @@ export interface HttpsTrigger {
 }
 
 export interface DataConnectGraphqlTrigger {
-  // Which service account should be able to trigger this function in addition to the Firebase Data Connect P4SA.
-  // No value means that only the Firebase Data Connect P4SA can trigger this function.
+  // Which service account should be able to trigger this function in addition to the Firebase SQL Connect P4SA.
+  // No value means that only the Firebase SQL Connect P4SA can trigger this function.
   // For more context, see go/cf3-http-access-control
   invoker?: Array<ServiceAccount | Expression<string>> | null;
   // The file path relative to the Firebase project directory where the GraphQL schema is stored.
@@ -256,8 +261,8 @@ export type Endpoint = Triggered & {
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
   serviceAccount?: ServiceAccount | Expression<string> | null;
 
-  // defaults to ["us-central1"], overridable in firebase-tools with
-  //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
+  // Defaults to REGION_TBD. The deployment region is resolved dynamically at deploy-time
+  // based on event trigger sources or matching existing functions, falling back to "us-central1".
   region?: ListField;
 
   // The Cloud project associated with this endpoint.
@@ -473,7 +478,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion()];
+      regions = [REGION_TBD];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {
@@ -587,6 +592,12 @@ export function toBackend(
 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
+  if (build.requiredRoles) {
+    bkend.requiredRoles = build.requiredRoles;
+  }
+  if (build.lifecycleHooks) {
+    bkend.lifecycleHooks = build.lifecycleHooks;
+  }
   return bkend;
 }
 
@@ -732,4 +743,24 @@ export function applyPrefix(build: Build, prefix: string): void {
     }
   }
   build.endpoints = newEndpoints;
+
+  if (build.lifecycleHooks) {
+    for (const hook of Object.values(build.lifecycleHooks)) {
+      if ("task" in hook) {
+        if (hook.task?.function) {
+          hook.task.function = `${prefix}-${hook.task.function}`;
+        }
+      } else if ("call" in hook) {
+        if (hook.call?.function) {
+          hook.call.function = `${prefix}-${hook.call.function}`;
+        }
+      } else if ("http" in hook) {
+        if (hook.http?.function) {
+          hook.http.function = `${prefix}-${hook.http.function}`;
+        }
+      } else {
+        assertExhaustive(hook);
+      }
+    }
+  }
 }

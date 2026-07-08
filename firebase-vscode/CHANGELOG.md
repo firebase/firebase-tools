@@ -1,5 +1,39 @@
 ## NEXT
 
+## 2.4.1
+
+- Update internal `firebase-tools` dependency to 15.21.0
+- [Changed] Rename "Run (local)" code lens to "Run (Emulator)".
+- [Fixed] Fix auth issue from Generate Operation button by skipping unnecessary schema compilation check.
+- [Fixed] 'Configure emulator' link hover does not hint it's clickable.
+
+## 2.4.0
+
+- Update internal `firebase-tools` dependency to 15.20.0
+- [Changed] Replace generateSchema and generateQuery backends with the new fdc AgentService API.
+- [Added] Improved error handling and status updates for query generation
+- [Added] Local schema aware query generation
+
+## 2.3.3
+
+- Update internal `firebase-tools` dependency to 15.19.0
+
+## 2.3.2
+
+- Update internal `firebase-tools` dependency to 15.18.0
+
+## 2.3.1
+
+- Update internal `firebase-tools` dependency to 15.16.0
+
+## 2.3.0
+
+- Rename product from Firebase Data Connect to Firebase SQL Connect.
+
+## 2.2.3
+
+- Update internal `firebase-tools` dependency to 15.13.0
+
 ## 2.2.2
 
 - Update internal `firebase-tools` dependency to 15.12.0

@@ -58,6 +58,18 @@ export interface Backend {
   automaticBaseImageUpdatesDisabled?: boolean;
 }
 
+export interface SupportedRuntime {
+  name: string;
+  runtimeId: string;
+  automaticBaseImageUpdatesSupported: boolean;
+  deprecateTime?: string;
+  decommissionTime?: string;
+}
+
+export interface ListSupportedRuntimesResponse {
+  supportedRuntimes: SupportedRuntime[];
+}
+
 export interface ManagedResource {
   runService: { service: string };
 }
@@ -130,9 +142,18 @@ export interface BuildConfig {
   runCommand?: string;
 }
 
+export interface LocallyBuiltSource {
+  userStorageUri?: string;
+  rootDirectory?: string;
+  description?: string;
+  runCommand?: string;
+  env?: Env[];
+}
+
 interface BuildSource {
   codebase?: CodebaseSource;
   archive?: ArchiveSource;
+  locallyBuilt?: LocallyBuiltSource;
 }
 
 interface CodebaseSource {
@@ -709,6 +730,18 @@ export async function listLocations(projectId: string): Promise<Location[]> {
     pageToken = response.body.nextPageToken;
   } while (pageToken);
   return locations;
+}
+
+/**
+ * Lists supported runtimes for a given project and location.
+ */
+export async function listSupportedRuntimes(
+  projectId: string,
+  location: string,
+): Promise<SupportedRuntime[]> {
+  const name = `projects/${projectId}/locations/${location}/supportedRuntimes`;
+  const res = await client.get<ListSupportedRuntimesResponse>(name);
+  return res.body.supportedRuntimes || [];
 }
 
 /**

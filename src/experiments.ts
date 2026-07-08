@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./utils";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -86,6 +85,11 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
     default: false,
   },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: true,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -143,16 +147,18 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+
   abiu: {
-    shortDescription: "Enable App Hosting ABIU and runtime selection",
-    default: false,
-    public: false,
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -179,8 +185,13 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
   fdcift: {
-    shortDescription: "Enable instrumentless trial for Data Connect",
+    shortDescription: "Enable instrumentless trial for SQL Connect",
     default: true,
     public: false,
   },
@@ -189,14 +200,19 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcwebhooks: {
-    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
     default: true,
     public: false,
   },
   fdcrealtime: {
-    shortDescription: "Enable Firebase Data Connect realtime feature.",
-    default: false,
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
     public: false,
+  },
+  crashlyticsWeb: {
+    shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
+    default: false,
+    public: true,
   },
 });
 
@@ -225,7 +241,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 

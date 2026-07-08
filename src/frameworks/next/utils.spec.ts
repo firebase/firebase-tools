@@ -12,6 +12,8 @@ import {
   IMAGES_MANIFEST,
   APP_PATH_ROUTES_MANIFEST,
   ESBUILD_VERSION,
+  FUNCTIONS_CONFIG_MANIFEST,
+  MIDDLEWARE_MANIFEST,
 } from "./constants";
 
 import {
@@ -34,6 +36,8 @@ import {
   getNonStaticServerComponents,
   getAppMetadataFromMetaFiles,
   isUsingNextImageInAppDirectory,
+  isUsingNextImageInServerComponent,
+  isUsingNextImageInClientComponent,
   getNextVersion,
   getNextVersionRaw,
   getRoutesWithServerAction,
@@ -73,8 +77,13 @@ import {
   clientReferenceManifestWithImage,
   clientReferenceManifestWithoutImage,
   serverReferenceManifest,
+  middlewareV3ManifestWhenUsed,
+  functionsConfigManifestWhenUsed,
+  middlewareV3ManifestWhenNotUsed,
+  functionsConfigManifestWhenNotUsed,
+  middlewareV3ManifestWithDeprecatedMiddleware,
+  pathsWithCustomRoutesInternalPrefix,
 } from "./testing";
-import { pathsWithCustomRoutesInternalPrefix } from "./testing/i18n";
 
 describe("Next.js utils", () => {
   describe("whichNextConfigFile", () => {
@@ -290,24 +299,66 @@ describe("Next.js utils", () => {
     beforeEach(() => (sandbox = sinon.createSandbox()));
     afterEach(() => sandbox.restore());
 
-    it("should return true if using middleware in development", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(true);
-      expect(await isUsingMiddleware("", true)).to.be.true;
+    describe("development", () => {
+      it("should return true if using middleware", async () => {
+        sandbox.stub(fsExtra, "pathExists").resolves(true);
+        expect(await isUsingMiddleware("", true)).to.be.true;
+      });
+
+      it("should return false if not using middleware", async () => {
+        sandbox.stub(fsExtra, "pathExists").resolves(false);
+        expect(await isUsingMiddleware("", true)).to.be.false;
+      });
     });
 
-    it("should return false if not using middleware in development", async () => {
-      sandbox.stub(fsExtra, "pathExists").resolves(false);
-      expect(await isUsingMiddleware("", true)).to.be.false;
+    describe("production (v2)", () => {
+      it("should return true if using middleware", async () => {
+        sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return false if not using middleware", async () => {
+        sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
+        expect(await isUsingMiddleware("", false)).to.be.false;
+      });
     });
 
-    it("should return true if using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenUsed);
-      expect(await isUsingMiddleware("", false)).to.be.true;
-    });
+    describe("production (v3)", () => {
+      it("should return true if using middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWhenUsed);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenUsed);
 
-    it("should return false if not using middleware in production", async () => {
-      sandbox.stub(fsExtra, "readJSON").resolves(middlewareV2ManifestWhenNotUsed);
-      expect(await isUsingMiddleware("", false)).to.be.false;
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return true if using deprecated middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWithDeprecatedMiddleware);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenNotUsed);
+
+        expect(await isUsingMiddleware("", false)).to.be.true;
+      });
+
+      it("should return false if not using middleware", async () => {
+        const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+        readJsonStub
+          .withArgs(sinon.match(MIDDLEWARE_MANIFEST))
+          .resolves(middlewareV3ManifestWhenNotUsed);
+        readJsonStub
+          .withArgs(sinon.match(FUNCTIONS_CONFIG_MANIFEST))
+          .resolves(functionsConfigManifestWhenNotUsed);
+
+        expect(await isUsingMiddleware("", false)).to.be.false;
+      });
     });
   });
 
@@ -338,9 +389,124 @@ describe("Next.js utils", () => {
 
       expect(await isUsingImageOptimization("", "")).to.be.false;
     });
+
+    it("should detect image optimization via prerendered HTML when using 'use client' components", async () => {
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      readJsonStub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithoutImage);
+      readJsonStub.withArgs(IMAGES_MANIFEST).resolves(imagesManifest);
+
+      // App directory exists
+      sandbox.stub(fsUtils, "fileExistsSync").returns(true);
+
+      // No image in client-reference-manifest (use client scenario)
+      sandbox.stub(glob, "sync").returns([]);
+
+      // Prerendered HTML contains data-nimg from next/image
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves(
+          '<!DOCTYPE html><html><body><img alt="test" data-nimg="1" src="/_next/image?url=test" /></body></html>',
+        );
+
+      expect(await isUsingImageOptimization("", "")).to.be.true;
+    });
+
+    it("should return false when prerendered HTML has no data-nimg", async () => {
+      const readJsonStub = sandbox.stub(frameworksUtils, "readJSON");
+      readJsonStub.withArgs(EXPORT_MARKER).resolves(exportMarkerWithoutImage);
+
+      // App directory exists
+      sandbox.stub(fsUtils, "fileExistsSync").returns(true);
+
+      // No image in client-reference-manifest
+      sandbox.stub(glob, "sync").returns([]);
+
+      // Prerendered HTML without next/image usage
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves("<!DOCTYPE html><html><body><h1>Hello</h1></body></html>");
+
+      expect(await isUsingImageOptimization("", "")).to.be.false;
+    });
+  });
+
+  describe("isUsingNextImageInClientComponent", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should return true when prerendered HTML contains data-nimg", async () => {
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves(
+          '<img alt="logo" loading="lazy" width="100" height="24" decoding="async" data-nimg="1" style="color:transparent" src="/_next/image?url=test" />',
+        );
+
+      expect(await isUsingNextImageInClientComponent("", "")).to.be.true;
+    });
+
+    it("should return true when data-nimg=fill is used", async () => {
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/page.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves('<img alt="bg" data-nimg="fill" src="/_next/image?url=bg" />');
+
+      expect(await isUsingNextImageInClientComponent("", "")).to.be.true;
+    });
+
+    it("should return false when no HTML files exist", async () => {
+      sandbox.stub(glob, "glob").resolves([]);
+
+      expect(await isUsingNextImageInClientComponent("", "")).to.be.false;
+    });
+
+    it("should return false when HTML has no data-nimg", async () => {
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves("<!DOCTYPE html><html><body><img src='/photo.jpg' /></body></html>");
+
+      expect(await isUsingNextImageInClientComponent("", "")).to.be.false;
+    });
   });
 
   describe("isUsingNextImageInAppDirectory", () => {
+    let sandbox: sinon.SinonSandbox;
+    beforeEach(() => (sandbox = sinon.createSandbox()));
+    afterEach(() => sandbox.restore());
+
+    it("should return true when server component uses next/image", async () => {
+      sandbox
+        .stub(glob, "sync")
+        .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
+      sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithImage);
+      sandbox.stub(glob, "glob").resolves([]);
+
+      expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+    });
+
+    it("should return true when only client component uses next/image", async () => {
+      sandbox.stub(glob, "sync").returns([]);
+      sandbox.stub(glob, "glob").resolves(["/path-to-app/.next/server/app/index.html"]);
+      sandbox
+        .stub(fsPromises, "readFile")
+        .resolves('<img alt="test" data-nimg="1" src="/_next/image?url=test" />');
+
+      expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+    });
+
+    it("should return false when neither path finds next/image", async () => {
+      sandbox.stub(glob, "sync").returns([]);
+      sandbox.stub(glob, "glob").resolves([]);
+
+      expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+    });
+  });
+
+  describe("isUsingNextImageInServerComponent", () => {
     describe("Next.js >= 13.4.10", () => {
       let sandbox: sinon.SinonSandbox;
       beforeEach(() => (sandbox = sinon.createSandbox()));
@@ -352,7 +518,7 @@ describe("Next.js utils", () => {
           .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
         sandbox.stub(fsPromises, "readFile").resolves(pageClientReferenceManifestWithImage);
 
-        expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+        expect(await isUsingNextImageInServerComponent("", "")).to.be.true;
       });
 
       it("should return false when not using next/image in the app directory", async () => {
@@ -361,12 +527,12 @@ describe("Next.js utils", () => {
           .stub(glob, "sync")
           .returns(["/path-to-app/.next/server/app/page_client-reference-manifest.js"]);
 
-        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+        expect(await isUsingNextImageInServerComponent("", "")).to.be.false;
 
         globStub.restore();
         sandbox.stub(glob, "sync").returns([]);
 
-        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+        expect(await isUsingNextImageInServerComponent("", "")).to.be.false;
       });
     });
 
@@ -381,14 +547,14 @@ describe("Next.js utils", () => {
           .stub(glob, "sync")
           .returns(["/path-to-app/.next/server/client-reference-manifest.js"]);
 
-        expect(await isUsingNextImageInAppDirectory("", "")).to.be.true;
+        expect(await isUsingNextImageInServerComponent("", "")).to.be.true;
       });
 
       it("should return false when not using next/image in the app directory", async () => {
         sandbox.stub(fsPromises, "readFile").resolves(clientReferenceManifestWithoutImage);
         sandbox.stub(glob, "sync").returns([]);
 
-        expect(await isUsingNextImageInAppDirectory("", "")).to.be.false;
+        expect(await isUsingNextImageInServerComponent("", "")).to.be.false;
       });
     });
   });
@@ -477,32 +643,82 @@ describe("Next.js utils", () => {
   });
 
   describe("getMiddlewareMatcherRegexes", () => {
-    it("should return regexes when using version 1", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenUsed);
+    describe("middleware version 1", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV1ManifestWhenUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      for (const regex of middlewareMatcherRegexes) {
-        expect(regex).to.be.an.instanceOf(RegExp);
-      }
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
+
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV1ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
     });
 
-    it("should return empty array when using version 1 but not using middleware", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV1ManifestWhenNotUsed);
+    describe("middleware version 2", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV2ManifestWhenUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      expect(middlewareMatcherRegexes).to.eql([]);
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
+
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV2ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
     });
 
-    it("should return regexes when using version 2", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenUsed);
+    describe("middleware version 3", () => {
+      it("should return regexes", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWhenUsed,
+          functionsConfigManifestWhenUsed,
+        );
 
-      for (const regex of middlewareMatcherRegexes) {
-        expect(regex).to.be.an.instanceOf(RegExp);
-      }
-    });
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+      });
 
-    it("should return empty array when using version 2 but not using middleware", () => {
-      const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(middlewareV2ManifestWhenNotUsed);
+      it("should return empty array when unused", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWhenNotUsed,
+          functionsConfigManifestWhenNotUsed,
+        );
 
-      expect(middlewareMatcherRegexes).to.eql([]);
+        expect(middlewareMatcherRegexes).to.eql([]);
+      });
+
+      it("should return regexes from deprecated manifest", () => {
+        const middlewareMatcherRegexes = getMiddlewareMatcherRegexes(
+          middlewareV3ManifestWithDeprecatedMiddleware,
+          functionsConfigManifestWhenNotUsed,
+        );
+
+        for (const regex of middlewareMatcherRegexes) {
+          expect(regex).to.be.an.instanceOf(RegExp);
+        }
+        expect(middlewareMatcherRegexes).to.have.length(1);
+      });
     });
   });
 

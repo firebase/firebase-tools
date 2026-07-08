@@ -46,6 +46,24 @@ describe("toBackend", () => {
     }
   });
 
+  it("defaults region to REGION_TBD if not specified", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv1",
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {});
+    expect(Object.keys(backend.endpoints).length).to.equal(1);
+    const endpointDef = Object.values(backend.endpoints)[0];
+    if (endpointDef) {
+      expect(endpointDef.func.region).to.equal(build.REGION_TBD);
+    }
+  });
+
   it("doesn't populate if omit is set on the build", () => {
     const desiredBuild: build.Build = build.of({
       func: {
@@ -485,5 +503,51 @@ describe("applyPrefix", () => {
     expect(() => build.applyPrefix(testBuild, "1abc")).to.throw(
       /Function names must start with a letter/,
     );
+  });
+
+  it("should prefix target functions in lifecycleHooks", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func1: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+      lifecycleHooks: {
+        afterFirstDeploy: {
+          task: {
+            function: "func1",
+            body: { foo: "bar" },
+          },
+        },
+        afterRedeploy: {
+          call: {
+            function: "func1",
+          },
+        },
+      },
+    };
+
+    build.applyPrefix(testBuild, "staging");
+
+    expect(testBuild.lifecycleHooks).to.deep.equal({
+      afterFirstDeploy: {
+        task: {
+          function: "staging-func1",
+          body: { foo: "bar" },
+        },
+      },
+      afterRedeploy: {
+        call: {
+          function: "staging-func1",
+        },
+      },
+    });
   });
 });

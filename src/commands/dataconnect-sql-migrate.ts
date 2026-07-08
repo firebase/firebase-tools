@@ -13,11 +13,11 @@ import { mainSchema, mainSchemaYaml } from "../dataconnect/types";
 type MigrateOptions = Options & { service?: string; location?: string };
 
 export const command = new Command("dataconnect:sql:migrate")
-  .description("migrate your CloudSQL database's schema to match your local Data Connect schema")
-  .option("--service <serviceId>", "the serviceId of the Data Connect service")
+  .description("migrate your CloudSQL database's schema to match your local SQL Connect schema")
+  .option("--service <serviceId>", "the serviceId of the SQL Connect service")
   .option(
     "--location <location>",
-    "the location of the Data Connect service. Only needed if service ID is used in multiple locations.",
+    "the location of the SQL Connect service. Only needed if service ID is used in multiple locations.",
   )
   .before(requirePermissions, [
     "firebasedataconnect.services.list",
@@ -53,7 +53,7 @@ export const command = new Command("dataconnect:sql:migrate")
     if (diffs.length) {
       logLabeledSuccess(
         "dataconnect",
-        `Database schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your Data Connect service.`,
+        `Database schema sucessfully migrated! Run 'firebase deploy' to deploy your new schema to your SQL Connect service.`,
       );
     } else {
       logLabeledSuccess("dataconnect", "Database schema is already up to date!");

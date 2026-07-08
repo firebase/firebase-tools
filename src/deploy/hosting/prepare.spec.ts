@@ -29,6 +29,12 @@ describe("hosting prepare", () => {
     trackingStub = sinon.stub(tracking);
     backendStub = sinon.stub(backend);
     loggerStub = sinon.stub(utils, "logLabeledBullet");
+    hostingStub.getSite.resolves({
+      name: "projects/project/sites/site",
+      defaultUrl: "https://site.web.app",
+      appId: "app-id",
+      labels: {},
+    });
 
     // We're intentionally using pointer references so that editing site
     // edits the results of hostingConfig() and changes firebase.json
@@ -145,6 +151,34 @@ describe("hosting prepare", () => {
         },
       ],
     });
+  });
+
+  it("throws error if site does not exist in project", async () => {
+    hostingStub.getSite.rejects(new Error(`could not find site "site" for project "project"`));
+
+    const context: Context = {
+      projectId: "project",
+    };
+
+    await expect(prepare(context, options)).to.eventually.be.rejectedWith(
+      `could not find site "site" for project "project"`,
+    );
+  });
+
+  it("passes if site belongs to project", async () => {
+    hostingStub.getSite.resolves({
+      name: "projects/project/sites/site",
+      defaultUrl: "https://site.web.app",
+      appId: "app-id",
+      labels: {},
+    });
+    hostingStub.createVersion.resolves("version");
+
+    const context: Context = {
+      projectId: "project",
+    };
+
+    await expect(prepare(context, options)).to.eventually.be.fulfilled;
   });
 
   describe("unsafePins", () => {

@@ -244,6 +244,7 @@ const Commands: { [s in DownloadableEmulators]: DownloadableEmulatorCommand } = 
       "host",
       "rules",
       "websocket_port",
+      "database-edition",
       "functions_emulator",
       "seed_from_export",
       "project_id",
