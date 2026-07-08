@@ -132,7 +132,7 @@ export async function release(
     utils.logLabeledBullet(
       "functions",
       "Dart functions may not yet be visible in the Firebase Console. " +
-      `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
+        `View them in the Cloud Console at https://console.cloud.google.com/run/services?project=${context.projectId}`,
     );
   }
 
@@ -161,7 +161,7 @@ export async function release(
       if (w.lifecycleHooks?.[event]) {
         utils.logLabeledWarning(
           "functions",
-          `Lifecycle hook (${event}) for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+          `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
         );
       }
     }
@@ -239,7 +239,7 @@ async function setupArtifactCleanupPolicies(
   utils.logLabeledBullet(
     "functions",
     `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
-    `Images older than ${daysToKeep} days will be automatically deleted.`,
+      `Images older than ${daysToKeep} days will be automatically deleted.`,
   );
 
   const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
@@ -255,15 +255,15 @@ async function setupArtifactCleanupPolicies(
     utils.logLabeledWarning(
       "functions",
       `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
-      `${locationsWithErrors.join(", ")}.` +
-      "This could result in a small monthly bill as container images accumulate over time.",
+        `${locationsWithErrors.join(", ")}.` +
+        "This could result in a small monthly bill as container images accumulate over time.",
     );
     utils.logLabeledWarning(
       "functions",
       `Functions successfully deployed but could not set up cleanup policy in ` +
-      `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
-      `Pass the --force option to automatically set up a cleanup policy or ` +
-      "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
     );
   }
 }
