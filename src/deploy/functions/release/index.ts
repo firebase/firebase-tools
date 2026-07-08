@@ -19,7 +19,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
 import { runtimeIsLanguage } from "../runtimes/supported";
-import { executeLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -136,8 +136,15 @@ export async function release(
     );
   }
 
-  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
-    await executeLifecycleHooks(w, h, plan, codebase);
+  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
+
+  // Only execute lifecycle hooks when all deployments are successful.
+  if (allErrors.length === 0) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      await executeLifecycleHooks(w, h, plan, codebase);
+    }
   }
 
   await setupArtifactCleanupPolicies(
@@ -146,8 +153,18 @@ export async function release(
     Object.keys(wantBackend.endpoints),
   );
 
-  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      const event = determineDeploymentEvent(h);
+      if (w.lifecycleHooks?.[event]) {
+        utils.logLabeledWarning(
+          "functions",
+          `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+        );
+      }
+    }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     logger.debug("Functions deploy failed.");
     for (const error of allErrors) {
