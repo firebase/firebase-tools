@@ -279,12 +279,10 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    if (experiments.isEnabled("secretEnvParams")) {
-      const parsedSecretRefs = Object.fromEntries(
-        Object.entries(secretRefs).map(([k, v]) => [k, build.parseSecretRef(v)]),
-      ) as Record<string, build.ParsedSecretRef>;
-      build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
-    }
+    const parsedSecretRefs = Object.fromEntries(
+      Object.entries(secretRefs).map(([k, v]) => [k, build.parseSecretRef(v)]),
+    ) as Record<string, build.ParsedSecretRef>;
+    build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
       build: wantBuild,
@@ -940,7 +938,7 @@ export function partitionUserEnvs(allEnvs: Record<string, string>): {
   const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
     (accumulatedSplit, [k, v]) => {
       if (k.startsWith(build.SECRET_REF_PREFIX)) {
-        accumulatedSplit[0][k.replace(new RegExp("^" + build.SECRET_REF_PREFIX), "")] = v;
+        accumulatedSplit[0][k.replace(build.SECRET_REF_PREFIX, "")] = v;
       } else {
         accumulatedSplit[1][k] = v;
       }
