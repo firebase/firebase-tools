@@ -228,6 +228,19 @@ interface SecretParam {
 
   // The format of the secret, e.g. "json"
   format?: string;
+
+  // The resource name of the backing Secret in Cloud Secret Manager. 
+  // Defaults to `name` if not present.
+  resourceId?: string;
+
+  // The version of the backing Secret to use. Can be an index, "latest",
+  // or a previously configured version alias. Functions will resolve the version to
+  // the current latest version if not present.
+  version?: string;
+
+  // Internal use only. Populated with whether or not a corresponding FIREBASE_SECRET_REF_
+  // key was found in the local .env files.
+  inLocalEnvironment?: boolean;
 }
 
 export type Param = StringParam | IntParam | BooleanParam | ListParam | SecretParam;
@@ -382,8 +395,9 @@ export async function resolveParams(
   userEnvs: Record<string, ParamValue>,
   nonInteractive?: boolean,
   isEmulator = false,
-): Promise<Record<string, ParamValue>> {
+): Promise<{paramValues: Record<string, ParamValue>, secretRefs: Record<string, string>}> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
+  const secretRefs: Record<string, string> = {};
 
   // TODO(vsfan@): should we ever reject param values from .env files based on the appearance of the string?
   const [resolved, outstanding] = partition(params, (param) => {
@@ -398,7 +412,7 @@ export async function resolveParams(
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      await handleSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
+      secretRefs[param.name] = await ensureSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
     }
   }
 
@@ -424,7 +438,7 @@ export async function resolveParams(
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
 
-  return paramValues;
+  return {paramValues: paramValues, secretRefs: secretRefs};
 }
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
@@ -458,18 +472,20 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
- * in Cloud Secrets Manager. If not present, we currently ask the user to
- * create a corresponding one using functions:secret:set.
- * Firebase-tools is not responsible for providing secret values to the Functions
- * runtime environment, since having viewer permissions on a function is enough
- * to read its environment variables. They are instead provided through GCF's own
- * Secret Manager integration.
+ * in Cloud Secrets Manager.
+ * 
+ * @returns a Functions-formatted reference (e.g "foo:latest") to a Secret
+ * resource which has been verified to exist/have just been created
  */
-async function handleSecret(
+async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
   nonInteractive?: boolean,
-): Promise<void> {
+): Promise<string> {
+  const resourceId = secretParam.resourceId || secretParam.name;
+  const version = secretParam.version || "latest";
+  let secretAlreadyExisted = false;
+
   const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
   if (!metadata.secret) {
     if (nonInteractive) {
@@ -493,7 +509,6 @@ async function handleSecret(
     }
     await secretManager.createSecret(projectId, secretParam.name, secretLabels());
     await secretManager.addVersion(projectId, secretParam.name, secretValue);
-    return;
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
@@ -509,7 +524,15 @@ async function handleSecret(
         secretParam.label || secretParam.name
       } is in illegal state ${metadata.secretVersion.state}`,
     );
+  } else {
+    secretAlreadyExisted = true;
   }
+
+  if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
+
+  }
+
+  return `${resourceId}:${version}`;
 }
 
 /**

@@ -347,7 +347,7 @@ interface ResolveBackendOpts {
  */
 export async function resolveBackend(
   opts: ResolveBackendOpts,
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
+): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue>, newSecretRefs: Record<string, string> }> {
   const paramValues = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
@@ -356,7 +356,7 @@ export async function resolveBackend(
     opts.isEmulator,
   );
 
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues, newSecretRefs: {} };
 }
 
 /**
@@ -806,6 +806,14 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
     const secretPinsVersion = typeof secretRef.version !== "undefined";
+
+    for (const secret of build.params.filter(param => param.type === "secret")) {
+      if (secret.name.toLowerCase() === key.toLowerCase()) {
+        secret.resourceId = secretId;
+        secret.version = version;
+        secret.inLocalEnvironment = true;
+      }
+    }
 
     for (const endpointName of Object.keys(build.endpoints)) {
       const endpoint = build.endpoints[endpointName];

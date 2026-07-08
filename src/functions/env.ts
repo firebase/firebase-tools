@@ -445,3 +445,24 @@ export function writeResolvedParams(
 
   writeUserEnvs(toWrite, userEnvOpt);
 }
+
+/**
+ * Writes newly defined secret bindings to the appropriate env file.
+ */
+export function writeResolvedSecretRefs(
+  resolvedSecretRefs: Readonly<Record<string, string>>,
+  haveSecretRefs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const secretName of Object.keys(resolvedSecretRefs)) {
+    const resolvedRef = resolvedSecretRefs[secretName];
+    if (!Object.prototype.hasOwnProperty.call(haveSecretRefs, secretName)) {
+      const reservedKey = "FIREBASE_SECRET_REF_" + secretName.toUpperCase();
+      toWrite[reservedKey] = resolvedRef;
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
+}
