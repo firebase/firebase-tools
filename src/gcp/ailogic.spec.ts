@@ -1,11 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import * as serviceUsage from "./serviceusage";
+import * as cloudbilling from "./cloudbilling";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
   AILogicEndpoint,
 } from "../deploy/functions/services/ailogic";
+import { FirebaseError } from "../error";
 
 describe("ailogic", () => {
   const mockEndpointBase = {
@@ -140,6 +144,122 @@ describe("ailogic", () => {
           },
         },
       );
+    });
+  });
+
+  describe("providers", () => {
+    let ensureStub: sinon.SinonStub;
+    let disableStub: sinon.SinonStub;
+    let uncacheStub: sinon.SinonStub;
+    let checkStub: sinon.SinonStub;
+    let billingStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      ensureStub = sinon.stub(ensureApiEnabled, "ensure");
+      disableStub = sinon.stub(serviceUsage, "disableServiceAndPoll");
+      uncacheStub = sinon.stub(ensureApiEnabled, "uncacheEnabledAPI");
+      checkStub = sinon.stub(ensureApiEnabled, "check");
+      billingStub = sinon.stub(cloudbilling, "checkBillingEnabled");
+    });
+
+    afterEach(() => {
+      ensureStub.restore();
+      disableStub.restore();
+      uncacheStub.restore();
+      checkStub.restore();
+      billingStub.restore();
+    });
+
+    it("should enable gemini-developer-api", async () => {
+      ensureStub.resolves();
+
+      await ailogic.enableProvider("my-project", "gemini-developer-api");
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(ensureStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+      expect(ensureStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should enable agent-platform-gemini-api if billing is enabled", async () => {
+      ensureStub.resolves();
+      billingStub.resolves(true);
+
+      await ailogic.enableProvider("my-project", "agent-platform-gemini-api");
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(ensureStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "aiplatform.googleapis.com",
+        "ailogic",
+      );
+      expect(ensureStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should reject enabling agent-platform-gemini-api if billing is disabled", async () => {
+      ensureStub.resolves();
+      billingStub.resolves(false);
+
+      await expect(
+        ailogic.enableProvider("my-project", "agent-platform-gemini-api"),
+      ).to.be.rejectedWith(FirebaseError, /must be on the Blaze/);
+
+      expect(ensureStub).to.not.have.been.called;
+    });
+
+    it("should disable gemini-developer-api and disable proxy if agent-platform-gemini-api is also disabled", async () => {
+      disableStub.resolves();
+      checkStub.resolves(false); // agent-platform-gemini-api is disabled
+
+      await ailogic.disableProvider("my-project", "gemini-developer-api");
+
+      expect(disableStub).to.have.been.calledTwice;
+      expect(disableStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+      expect(disableStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+      expect(uncacheStub).to.have.been.calledTwice;
+    });
+
+    it("should disable gemini-developer-api but NOT disable proxy if agent-platform-gemini-api is enabled", async () => {
+      disableStub.resolves();
+      checkStub.resolves(true); // agent-platform-gemini-api is enabled
+
+      await ailogic.disableProvider("my-project", "gemini-developer-api");
+
+      expect(disableStub).to.have.been.calledOnce;
+      expect(disableStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+      expect(uncacheStub).to.have.been.calledOnce;
+    });
+
+    it("should list enabled providers", async () => {
+      checkStub.onFirstCall().resolves(true); // gemini-developer-api is enabled
+      checkStub.onSecondCall().resolves(true); // agent-platform-gemini-api API is enabled
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal(["gemini-developer-api", "agent-platform-gemini-api"]);
     });
   });
 });

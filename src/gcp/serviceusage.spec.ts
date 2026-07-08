@@ -28,4 +28,22 @@ describe("serviceusage", () => {
       expect(pollerStub).to.not.be.called;
     });
   });
+
+  describe("disableServiceAndPoll", () => {
+    it("does not poll if disableService responds with a completed operation", async () => {
+      postStub.onFirstCall().resolves({ body: { done: true } });
+      await serviceUsage.disableServiceAndPoll(projectNumber, service, prefix);
+      expect(pollerStub).to.not.be.called;
+    });
+
+    it("polls if disableService responds with an uncompleted operation", async () => {
+      postStub.onFirstCall().resolves({ body: { done: false, name: "operation-name" } });
+      pollerStub.onFirstCall().resolves({});
+      await serviceUsage.disableServiceAndPoll(projectNumber, service, prefix);
+      expect(pollerStub).to.have.been.calledOnce;
+      expect(pollerStub).to.have.been.calledWithMatch({
+        operationResourceName: "operation-name",
+      });
+    });
+  });
 });
