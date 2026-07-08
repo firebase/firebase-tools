@@ -1,3 +1,4 @@
+- Added support for a two-phase non-interactive authentication flow to `firebase login` using `login [auth_code]`, allowing headless tools and agents to log in.
 - Fixed an issue in `apps:create` where App Store ID was always prompted for even when unnecessary.
 - Add `functions:lifecycle:list` and `functions:lifecycle:run` commands to view and run
   lifecycle hooks in isolation.
