@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "../../../test/helpers/nock";
 import * as api from "../../../api";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 import { update_template } from "./update_template";

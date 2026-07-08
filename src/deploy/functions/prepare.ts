@@ -73,8 +73,8 @@ export async function discoverSecurityDetails(
   have: backend.Backend,
   projectId: string,
 ): Promise<{
-  existingRoles?: string[];
-  existingEtag?: string;
+  haveRoles?: string[];
+  haveRolesEtag?: string;
   existingManagedSA?: string;
   managedSA?: string;
   newEtag?: string;
@@ -82,15 +82,15 @@ export async function discoverSecurityDetails(
   const requiredRoles = want.requiredRoles;
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
-  let existingEtag: string | undefined;
+  let haveRolesEtag: string | undefined;
   if (firstHave) {
-    existingEtag = firstHave.labels?.["firebase-declarative-security-etag"];
+    haveRolesEtag = firstHave.labels?.["firebase-declarative-security-etag"];
     existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
       ? firstHave.serviceAccount
       : undefined;
   }
 
-  if (!requiredRoles && (!existingManagedSA || !existingEtag)) {
+  if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
     return {};
   }
 
@@ -109,7 +109,7 @@ export async function discoverSecurityDetails(
     );
   }
 
-  if (!requiredRoles && existingManagedSA && existingEtag) {
+  if (!requiredRoles && existingManagedSA && haveRolesEtag) {
     for (const endpoint of backend.allEndpoints(want)) {
       if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
         endpoint.serviceAccount = "default";
@@ -119,7 +119,7 @@ export async function discoverSecurityDetails(
       }
     }
     return {
-      existingEtag,
+      haveRolesEtag,
       existingManagedSA,
     };
   }
@@ -130,7 +130,7 @@ export async function discoverSecurityDetails(
     managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
   }
 
-  const existingSalt = existingEtag ? existingEtag.split("-")[0] : undefined;
+  const existingSalt = haveRolesEtag ? haveRolesEtag.split("-")[0] : undefined;
   const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
 
   for (const endpoint of backend.allEndpoints(want)) {
@@ -139,10 +139,10 @@ export async function discoverSecurityDetails(
     endpoint.labels["firebase-declarative-security-etag"] = newEtag;
   }
 
-  if (existingEtag && existingEtag === newEtag) {
+  if (haveRolesEtag && haveRolesEtag === newEtag) {
     return {
-      existingRoles: requiredRoles,
-      existingEtag,
+      haveRoles: requiredRoles,
+      haveRolesEtag,
       existingManagedSA,
       managedSA,
       newEtag,
@@ -166,10 +166,10 @@ export async function discoverSecurityDetails(
     }
   }
 
-  let existingRoles: string[] = [];
+  let haveRoles: string[] = [];
   if (existingManagedSA) {
     try {
-      existingRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+      haveRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
     } catch (err: any) {
       throw new FirebaseError(
         `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
@@ -179,8 +179,8 @@ export async function discoverSecurityDetails(
   }
 
   return {
-    existingRoles,
-    existingEtag,
+    haveRoles,
+    haveRolesEtag,
     existingManagedSA,
     managedSA,
     newEtag,
