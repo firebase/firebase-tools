@@ -1,8 +1,6 @@
 import { URLSearchParams } from "url";
 import { decode as decodeJwt, sign as signJwt, JwtHeader } from "jsonwebtoken";
 import * as express from "express";
-import fetch from "node-fetch";
-import AbortController from "abort-controller";
 import { ExegesisContext } from "exegesis-express";
 import {
   toUnixTimestamp,
@@ -3262,10 +3260,22 @@ async function fetchBlockingFunction(
   let text: string;
   try {
     const signal = controller.signal as any;
-    signal.reason = "";
-    signal.throwIfAborted = () => {
-      throw new FirebaseError("Aborted");
-    };
+    try {
+      if (!("reason" in signal)) {
+        signal.reason = "";
+      }
+    } catch (e) {
+      // Ignore if read-only
+    }
+    try {
+      if (!("throwIfAborted" in signal)) {
+        signal.throwIfAborted = () => {
+          throw new FirebaseError("Aborted");
+        };
+      }
+    } catch (e) {
+      // Ignore if read-only
+    }
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
