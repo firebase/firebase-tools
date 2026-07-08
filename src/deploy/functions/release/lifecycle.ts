@@ -24,13 +24,6 @@ export function determineDeploymentEvent(haveBackend: backend.Backend): Deployme
 }
 
 /**
- * Checks if the backend specification has any lifecycle hooks configured.
- */
-export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
-  return !!(backendSpec.lifecycleHooks && Object.keys(backendSpec.lifecycleHooks).length > 0);
-}
-
-/**
  * Validates and executes matching lifecycle hooks for the deployed codebase.
  * Returns true if a hook was executed, false otherwise.
  */

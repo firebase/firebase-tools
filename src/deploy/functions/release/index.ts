@@ -19,7 +19,7 @@ import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
 import { runtimeIsLanguage } from "../runtimes/supported";
-import { executeLifecycleHooks, hasLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -154,11 +154,16 @@ export async function release(
   );
 
   if (allErrors.length) {
-    if (hasLifecycleHooks(wantBackend)) {
-      utils.logLabeledWarning(
-        "functions",
-        "Lifecycle hooks were configured but not executed because one or more function deployments failed.",
-      );
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      const event = determineDeploymentEvent(h);
+      if (w.lifecycleHooks?.[event]) {
+        utils.logLabeledWarning(
+          "functions",
+          `Lifecycle hook (${event}) for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+        );
+      }
     }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     logger.debug("Functions deploy failed.");

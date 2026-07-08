@@ -171,7 +171,7 @@ describe("release/index", () => {
       httpsTrigger: {},
     });
     wantBackend.lifecycleHooks = {
-      afterRedeploy: {
+      afterFirstDeploy: {
         task: {
           function: "someTask",
         },
@@ -209,7 +209,7 @@ describe("release/index", () => {
     // Assert that skipped hooks warning was logged
     expect(logLabeledWarningStub).to.have.been.calledWith(
       "functions",
-      "Lifecycle hooks were configured but not executed because one or more function deployments failed.",
+      'Lifecycle hook (afterFirstDeploy) for codebase "codebase1" was configured but not executed because one or more function deployments failed.',
     );
   });
 });
