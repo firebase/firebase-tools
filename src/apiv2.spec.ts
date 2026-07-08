@@ -1,8 +1,9 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
-import * as nock from "nock";
-import AbortController from "abort-controller";
+import * as sinon from "sinon";
 import * as FormData from "form-data";
+import * as auth from "./auth";
+import nock from "./test/helpers/nock";
 const proxySetup = require("proxy");
 
 import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
@@ -10,6 +11,18 @@ import { FirebaseError } from "./error";
 import { streamToString, stringToStream } from "./utils";
 
 describe("apiv2", () => {
+  let authStub: sinon.SinonStub | undefined;
+  before(() => {
+    if (typeof (auth.getAccessToken as any).restore !== "function") {
+      authStub = sinon.stub(auth, "getAccessToken").resolves({ access_token: "owner" } as any);
+    }
+  });
+  after(() => {
+    if (authStub) {
+      authStub.restore();
+    }
+  });
+
   beforeEach(() => {
     // The api module has package variables that we don't want sticking around.
     delete require.cache[require.resolve("./apiv2")];
@@ -150,17 +163,39 @@ describe("apiv2", () => {
     });
 
     it("should resend a multipart body when retrying after a premature close", async () => {
-      const sentBodies: string[] = [];
-      const capture = (b: unknown): boolean => {
-        sentBodies.push(typeof b === "string" ? b : JSON.stringify(b));
+      let body1: string | undefined;
+      let body2: string | undefined;
+
+      const bodyToStr = (b: unknown): string => {
+        if (b instanceof Uint8Array || Buffer.isBuffer(b)) {
+          return Buffer.from(b).toString("utf8");
+        } else if (typeof b === "string") {
+          return b;
+        } else {
+          return JSON.stringify(b);
+        }
+      };
+
+      const capture1 = (b: unknown): boolean => {
+        if (body1 === undefined) {
+          body1 = bodyToStr(b);
+        }
         return true;
       };
-      nock("https://example.com").post("/upload", capture).once().replyWithError({
+
+      const capture2 = (b: unknown): boolean => {
+        if (body2 === undefined) {
+          body2 = bodyToStr(b);
+        }
+        return true;
+      };
+
+      nock("https://example.com").post("/upload", capture1).once().replyWithError({
         message:
           "Invalid response body while trying to fetch https://example.com/upload: Premature close",
         code: "ERR_STREAM_PREMATURE_CLOSE",
       });
-      nock("https://example.com").post("/upload", capture).once().reply(200, { ok: true });
+      nock("https://example.com").post("/upload", capture2).once().reply(200, { ok: true });
 
       const form = new FormData();
       form.append("code", "secret-code-123");
@@ -177,9 +212,10 @@ describe("apiv2", () => {
       });
       expect(r.status).to.equal(200);
       // Both the original attempt and the retry must carry the full body.
-      expect(sentBodies).to.have.length(2);
-      expect(sentBodies[0]).to.contain("secret-code-123");
-      expect(sentBodies[1]).to.contain("secret-code-123");
+      expect(body1).to.not.be.undefined;
+      expect(body2).to.not.be.undefined;
+      expect(body1).to.contain("secret-code-123");
+      expect(body2).to.contain("secret-code-123");
       expect(nock.isDone()).to.be.true;
     });
 
@@ -633,7 +669,11 @@ describe("apiv2", () => {
           new Promise((resolve) => proxyServer.close(resolve)),
           new Promise((resolve) => targetServer.close(resolve)),
         ]);
-        process.env.HTTP_PROXY = oldProxy;
+        if (oldProxy === undefined) {
+          delete process.env.HTTP_PROXY;
+        } else {
+          process.env.HTTP_PROXY = oldProxy;
+        }
       });
 
       it("should be able to make a basic GET request", async () => {

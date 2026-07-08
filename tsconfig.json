@@ -27,5 +27,8 @@
   ],
   "exclude": [
     "src/dynamicImport.js"
-  ]
+  ],
+  "ts-node": {
+    "transpileOnly": true
+  }
 }

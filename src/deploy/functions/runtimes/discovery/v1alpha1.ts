@@ -157,7 +157,7 @@ export function buildFromV1Alpha1(
   if (manifest.lifecycleHooks) {
     bd.lifecycleHooks = {};
     for (const id of Object.keys(manifest.lifecycleHooks)) {
-      if (id !== "afterInstall" && id !== "afterUpdate") {
+      if (id !== "afterFirstDeploy" && id !== "afterRedeploy") {
         throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
       }
       const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
