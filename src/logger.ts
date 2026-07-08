@@ -197,10 +197,16 @@ export function useFileLogger(logFile?: string): string {
   return logFileName;
 }
 
+let consoleLoggersConfigured = false;
+
 /**
  * Sets up logging to the command line.
  */
 export function useConsoleLoggers(): void {
+  if (consoleLoggersConfigured) {
+    return;
+  }
+  consoleLoggersConfigured = true;
   if (process.env.DEBUG) {
     logger.add(
       new winston.transports.Console({

@@ -17,12 +17,17 @@ import { Options } from "../options";
 import * as experiments from "../experiments";
 import * as clc from "colorette";
 
+interface DeployTarget {
+  help?: string;
+  detailedHelp?: string;
+}
+
 function getDeployHelp(): string {
   const boldFn = (str: string) => clc.bold(str);
 
   let targetHelp = "Deploy targets include:\n\n";
   for (const [targetName, target] of Object.entries(TARGETS)) {
-    const desc = (target as any).help || `Deploy ${targetName} resources`;
+    const desc = (target as DeployTarget).help || `Deploy ${targetName} resources`;
     const formattedDesc = desc
       .split("\n")
       .map((line: string, i: number) => {

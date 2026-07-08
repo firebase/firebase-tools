@@ -2,8 +2,7 @@ export { prepare } from "./prepare";
 export { deploy } from "./deploy";
 export { release } from "./release";
 
-export const help =
-  "Deploys blocking functions and configuration settings for Firebase Authentication.";
+export const help = "Deploys configuration settings for Firebase Authentication providers.";
 export const detailedHelp =
   "Firebase Authentication configures identity providers and sign-in methods.\n\n" +
   "Configuration format in firebase.json:\n" +

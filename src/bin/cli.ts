@@ -160,6 +160,8 @@ export function cli(pkg: any) {
   }
 
   if (isHelp) {
+    const { useConsoleLoggers } = require("../logger");
+    useConsoleLoggers();
     loadAllCommands(client as Record<string, unknown>);
     const { setupProgressiveHelp } = require("./progressiveHelp");
     setupProgressiveHelp(client);

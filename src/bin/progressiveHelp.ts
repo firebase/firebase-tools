@@ -1,5 +1,6 @@
 import * as clc from "colorette";
 import { CLIClient } from "../command";
+import { logger } from "../logger";
 
 const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
   appdistribution: "manage App Distribution resources",
@@ -20,6 +21,12 @@ const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
   target: "manage deploy targets",
 };
 
+interface CommanderCommand {
+  helpInformation: (this: CommanderCommand) => string;
+  commands: CommanderCommand[];
+  name(): string;
+}
+
 /**
  * Patches a command's helpInformation method to filter the subcommand list.
  *
@@ -27,11 +34,15 @@ const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
  * contain another colon in the remainder are displayed.
  * For the root command (prefix = ""), only commands without a colon are displayed.
  */
-function patchHelpInformation(cmd: any, prefix: string, program: any): void {
+function patchHelpInformation(
+  cmd: CommanderCommand,
+  prefix: string,
+  program: CommanderCommand,
+): void {
   const originalHelpInformation = cmd.helpInformation;
 
-  cmd.helpInformation = function (this: any) {
-    const filteredCommands = program.commands.filter((subCmd: any) => {
+  cmd.helpInformation = function (this: CommanderCommand) {
+    const filteredCommands = program.commands.filter((subCmd: CommanderCommand) => {
       const name = subCmd.name();
       if (prefix === "") {
         return !name.includes(":");
@@ -83,26 +94,27 @@ export function setupProgressiveHelp(client: CLIClient): void {
       });
 
       nsCmd.on("--help", () => {
-        console.log();
-        console.log("To see more about a specific command, run:");
-        console.log(`  ${clc.bold("firebase " + ns + ":<command> --help")}`);
+        logger.info();
+        logger.info("To see more about a specific command, run:");
+        logger.info(`  ${clc.bold("firebase " + ns + ":<command> --help")}`);
       });
     }
   }
 
   // 3. Patch helpInformation on the main program and all commands/namespaces
-  patchHelpInformation(program, "", program);
+  const progTyped = program as unknown as CommanderCommand;
+  patchHelpInformation(progTyped, "", progTyped);
   for (const cmd of program.commands) {
     const name = cmd.name();
     if (allNamespaces.has(name)) {
-      patchHelpInformation(cmd, name, program);
+      patchHelpInformation(cmd as unknown as CommanderCommand, name, progTyped);
     }
   }
 
   // 4. Register instruction listener on the main program
   program.on("--help", () => {
-    console.log();
-    console.log("To see more about a specific namespace or command, run:");
-    console.log(`  ${clc.bold("firebase <namespace|command> --help")}`);
+    logger.info();
+    logger.info("To see more about a specific namespace or command, run:");
+    logger.info(`  ${clc.bold("firebase <namespace|command> --help")}`);
   });
 }

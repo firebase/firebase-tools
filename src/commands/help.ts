@@ -13,8 +13,9 @@ export const command = new Command("help [command]")
     const client = this.client; // eslint-disable-line @typescript-eslint/no-invalid-this
     if (commandName && commandName.startsWith("deploy:")) {
       const targetName = commandName.split(":")[1];
-      const { TARGETS } = require("../deploy");
-      const target = TARGETS[targetName];
+      const { TARGETS, VALID_DEPLOY_TARGETS } = require("../deploy") as typeof import("../deploy");
+      const isValidTarget = (VALID_DEPLOY_TARGETS as readonly string[]).includes(targetName);
+      const target = isValidTarget ? TARGETS[targetName as keyof typeof TARGETS] : undefined;
       if (target && target.detailedHelp) {
         logger.info();
         logger.info(clc.bold(`Detailed deploy information for ${targetName}:`));
