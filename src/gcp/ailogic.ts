@@ -236,6 +236,21 @@ export interface Config {
   telemetryConfig?: TelemetryConfig;
 }
 
+export interface Template {
+  name: string;
+  templateString: string;
+  displayName?: string;
+  etag?: string;
+  locked?: boolean;
+}
+
+export interface ListTemplatesResponse {
+  templates?: Template[];
+  nextPageToken?: string;
+}
+
+export type TemplateOutputOnlyFields = "name" | "etag";
+
 // Developer-facing config paths that `ailogic:config:set` can write.
 export const WRITABLE_CONFIG_PATHS = [
   "security.auth-only",
@@ -273,6 +288,105 @@ export function parseProviderType(value: string): ProviderType {
     );
   }
   return value;
+}
+
+/**
+ * Gets a Template.
+ */
+export async function getTemplate(
+  projectId: string,
+  location: string,
+  templateId: string,
+): Promise<Template> {
+  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
+  const res = await client.get<Template>(name);
+  return res.body;
+}
+
+/**
+ * Updates a Template (upsert).
+ */
+export async function updateTemplate(
+  projectId: string,
+  location: string,
+  templateId: string,
+  template: DeepOmit<Template, TemplateOutputOnlyFields>,
+  allowMissing = true,
+): Promise<Template> {
+  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
+  const queryParams: Record<string, string> = {
+    allowMissing: allowMissing ? "true" : "false",
+  };
+  const res = await client.patch<DeepOmit<Template, TemplateOutputOnlyFields>, Template>(
+    name,
+    template,
+    { queryParams },
+  );
+  return res.body;
+}
+
+/**
+ * Deletes a Template.
+ */
+export async function deleteTemplate(
+  projectId: string,
+  location: string,
+  templateId: string,
+): Promise<void> {
+  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
+  await client.delete<void>(name);
+}
+
+/**
+ * Locks a Template.
+ */
+export async function lockTemplate(
+  projectId: string,
+  location: string,
+  templateId: string,
+): Promise<Template> {
+  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
+  const template = { locked: true };
+  const res = await client.patch<Partial<Template>, Template>(name, template, {
+    queryParams: { updateMask: "locked" },
+  });
+  return res.body;
+}
+
+/**
+ * Unlocks a Template.
+ */
+export async function unlockTemplate(
+  projectId: string,
+  location: string,
+  templateId: string,
+): Promise<Template> {
+  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
+  const template = { locked: false };
+  const res = await client.patch<Partial<Template>, Template>(name, template, {
+    queryParams: { updateMask: "locked" },
+  });
+  return res.body;
+}
+
+/**
+ * Lists Templates, slurping all pages.
+ */
+export async function listTemplates(projectId: string, location: string): Promise<Template[]> {
+  const parent = `projects/${projectId}/locations/${location}`;
+  let pageToken: string | undefined;
+  const templates: Template[] = [];
+
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const res = await client.get<ListTemplatesResponse>(`${parent}/templates`, { queryParams });
+    if (res.body.templates) {
+      templates.push(...res.body.templates);
+    }
+    pageToken = res.body.nextPageToken;
+  } while (pageToken);
+
+  return templates;
 }
 
 /**

@@ -210,6 +210,141 @@ describe("ailogic", () => {
     });
   });
 
+  describe("templates", () => {
+    let getStub: sinon.SinonStub;
+    let patchStub: sinon.SinonStub;
+    let deleteStub: sinon.SinonStub;
+    let postStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getStub = sinon.stub(ailogic.client, "get");
+      patchStub = sinon.stub(ailogic.client, "patch");
+      deleteStub = sinon.stub(ailogic.client, "delete");
+      postStub = sinon.stub(ailogic.client, "post");
+    });
+
+    afterEach(() => {
+      getStub.restore();
+      patchStub.restore();
+      deleteStub.restore();
+      postStub.restore();
+    });
+
+    it("should get template", async () => {
+      const mockTemplate: ailogic.Template = {
+        name: "projects/my-project/locations/global/templates/temp-1",
+        templateString: "hello",
+      };
+      getStub.resolves({ body: mockTemplate });
+
+      const template = await ailogic.getTemplate("my-project", "global", "temp-1");
+
+      expect(getStub).to.have.been.calledWith(
+        "projects/my-project/locations/global/templates/temp-1",
+      );
+      expect(template).to.deep.equal(mockTemplate);
+    });
+
+    it("should update template", async () => {
+      const mockTemplate: ailogic.Template = {
+        name: "projects/my-project/locations/global/templates/temp-1",
+        templateString: "hello",
+      };
+      patchStub.resolves({ body: mockTemplate });
+
+      const template = await ailogic.updateTemplate("my-project", "global", "temp-1", {
+        templateString: "hello",
+      });
+
+      expect(patchStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1",
+        { templateString: "hello" },
+        {
+          queryParams: {
+            allowMissing: "true",
+          },
+        },
+      );
+      expect(template).to.deep.equal(mockTemplate);
+    });
+
+    it("should delete template", async () => {
+      deleteStub.resolves({});
+
+      await ailogic.deleteTemplate("my-project", "global", "temp-1");
+
+      expect(deleteStub).to.have.been.calledWith(
+        "projects/my-project/locations/global/templates/temp-1",
+      );
+    });
+
+    it("should lock template", async () => {
+      const mockTemplate: ailogic.Template = {
+        name: "projects/my-project/locations/global/templates/temp-1",
+        templateString: "hello",
+        locked: true,
+      };
+      patchStub.resolves({ body: mockTemplate });
+
+      const template = await ailogic.lockTemplate("my-project", "global", "temp-1");
+
+      expect(patchStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1",
+        { locked: true },
+        {
+          queryParams: {
+            updateMask: "locked",
+          },
+        },
+      );
+      expect(template).to.deep.equal(mockTemplate);
+    });
+
+    it("should unlock template", async () => {
+      const mockTemplate: ailogic.Template = {
+        name: "projects/my-project/locations/global/templates/temp-1",
+        templateString: "hello",
+        locked: false,
+      };
+      patchStub.resolves({ body: mockTemplate });
+
+      const template = await ailogic.unlockTemplate("my-project", "global", "temp-1");
+
+      expect(patchStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1",
+        { locked: false },
+        {
+          queryParams: {
+            updateMask: "locked",
+          },
+        },
+      );
+      expect(template).to.deep.equal(mockTemplate);
+    });
+
+    it("should list templates slurping all pages", async () => {
+      getStub.onFirstCall().resolves({
+        body: {
+          templates: [{ name: "t1", templateString: "t1" }],
+          nextPageToken: "next",
+        },
+      });
+      getStub.onSecondCall().resolves({
+        body: {
+          templates: [{ name: "t2", templateString: "t2" }],
+        },
+      });
+
+      const templates = await ailogic.listTemplates("my-project", "global");
+
+      expect(getStub).to.have.been.calledTwice;
+      expect(templates).to.deep.equal([
+        { name: "t1", templateString: "t1" },
+        { name: "t2", templateString: "t2" },
+      ]);
+    });
+  });
+
   describe("providers", () => {
     let ensureStub: sinon.SinonStub;
     let disableStub: sinon.SinonStub;
