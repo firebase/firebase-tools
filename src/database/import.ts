@@ -6,7 +6,6 @@ import * as StreamObject from "stream-json/streamers/StreamObject";
 
 import { URL } from "url";
 import { Client, ClientResponse } from "../apiv2";
-import { FetchError } from "node-fetch";
 import { FirebaseError } from "../error";
 import { pLimit, Limit } from "../utils";
 
@@ -240,8 +239,9 @@ export default class DatabaseImporter {
       } catch (err: any) {
         const isTimeoutErr =
           err instanceof FirebaseError &&
-          err.original instanceof FetchError &&
-          err.original.code === "ETIMEDOUT";
+          (err.original?.name === "AbortError" ||
+            (err.original as any)?.code === "ETIMEDOUT" ||
+            (err.original as any)?.cause?.code === "ETIMEDOUT");
         if (isTimeoutErr) {
           // RTDB connection timeouts are transient and can be retried
           await new Promise((res) => setTimeout(res, this.nonFatalRetryTimeout));

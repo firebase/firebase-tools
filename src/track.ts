@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { randomUUID } from "crypto";
 import { getGlobalDefaultAccount } from "./auth";
 
