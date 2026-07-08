@@ -5,6 +5,7 @@ import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
 import { FirebaseError, getErrStatus } from "../error";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as serviceUsage from "./serviceusage";
+import * as rules from "./rules";
 import { bold } from "colorette";
 import * as cloudbilling from "./cloudbilling";
 import * as iam from "./iam";
@@ -215,6 +216,27 @@ export async function deleteBlockingFunction(endpoint: AILogicEndpoint): Promise
   await deleteTrigger(endpoint.project, location, triggerId, true);
 }
 
+export interface GenerativeLanguageConfig {
+  apiKey?: string;
+}
+
+export interface TrafficFilter {
+  templateOnly?: boolean;
+  firebaseAuthRequired?: boolean;
+}
+
+export interface TelemetryConfig {
+  mode?: "MODE_UNSPECIFIED" | "NONE" | "ALL";
+  samplingRate?: number;
+}
+
+export interface Config {
+  name: string;
+  generativeLanguageConfig?: GenerativeLanguageConfig;
+  trafficFilter?: TrafficFilter;
+  telemetryConfig?: TelemetryConfig;
+}
+
 export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";
 
 export const PROVIDER_TYPES: ProviderType[] = ["gemini-developer-api", "gemini-agent-platform-api"];
@@ -234,6 +256,32 @@ export function parseProviderType(value: string): ProviderType {
     );
   }
   return value;
+}
+
+/**
+ * Gets the AI Logic Config singleton.
+ */
+export async function getConfig(projectId: string): Promise<Config> {
+  const name = `projects/${projectId}/locations/global/config`;
+  const res = await client.get<Config>(name);
+  return res.body;
+}
+
+/**
+ * Updates the AI Logic Config singleton.
+ */
+export async function updateConfig(
+  projectId: string,
+  config: Partial<Config>,
+  updateMask?: string[],
+): Promise<Config> {
+  const name = `projects/${projectId}/locations/global/config`;
+  const queryParams: Record<string, string> = {};
+  if (updateMask && updateMask.length > 0) {
+    queryParams.updateMask = updateMask.join(",");
+  }
+  const res = await client.patch<Partial<Config>, Config>(name, config, { queryParams });
+  return res.body;
 }
 
 /**
@@ -349,6 +397,77 @@ export async function listProviders(projectId: string): Promise<ProviderType[]> 
   }
 
   return enabled;
+}
+
+/**
+ *
+ */
+export function generateRulesContent(authOnly: boolean, templateOnly: boolean): string {
+  const condition = authOnly ? "request.auth != null" : "true";
+
+  return `rules_version = '2';
+service firebase.vertexai {
+  match /projects/{project}/locations/{location} {
+    match /templates/{template} {
+      allow read: if ${condition};
+    }
+    match /models/{model} {
+      allow read: if ${templateOnly ? "false" : condition};
+    }
+  }
+}`;
+}
+
+export interface SecurityRulesConfig {
+  authOnly: boolean;
+  templateOnly: boolean;
+}
+
+/**
+ * Gets security rules settings by fetching and parsing the active release.
+ */
+export async function getSecurityRules(projectId: string): Promise<SecurityRulesConfig> {
+  const releases = await rules.listAllReleases(projectId);
+  const rulesetName = await rules.getLatestRulesetName(projectId, "firebase.vertexai", releases);
+  if (!rulesetName) {
+    return { authOnly: false, templateOnly: false };
+  }
+  const files = await rules.getRulesetContent(rulesetName);
+  const vertexFile = files.find((f) => f.name === "vertexai.rules");
+  if (!vertexFile) {
+    return { authOnly: false, templateOnly: false };
+  }
+  const content = vertexFile.content;
+  const authOnly = content.includes("request.auth != null");
+  const templateOnly = content.includes("allow read: if false");
+  return { authOnly, templateOnly };
+}
+
+/**
+ * Deploys new security rules.
+ */
+export async function updateSecurityRules(
+  projectId: string,
+  authOnly: boolean,
+  templateOnly: boolean,
+): Promise<void> {
+  const content = generateRulesContent(authOnly, templateOnly);
+  const files = [
+    {
+      name: "vertexai.rules",
+      content,
+    },
+  ];
+  const rulesetName = await rules.createRuleset(projectId, files);
+  await rules.updateOrCreateRelease(projectId, rulesetName, "firebase.vertexai");
+}
+
+/**
+ * Returns whether the Firebase AI Logic API is enabled on the project, without prompting to enable it.
+ * Read-only commands use this to report state instead of forcing enablement.
+ */
+export async function isAILogicApiEnabled(projectId: string): Promise<boolean> {
+  return ensureApiEnabled.check(projectId, "firebasevertexai.googleapis.com", "ailogic", true);
 }
 
 /**
