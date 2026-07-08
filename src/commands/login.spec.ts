@@ -20,7 +20,7 @@ describe("login", () => {
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
-    (loginCommand as any).befores = []; // Bypass pre-action hooks
+    (loginCommand as unknown as { befores: unknown[] }).befores = []; // Bypass pre-action hooks
 
     configstoreGetStub = sandbox.stub(configstore, "get");
     configstoreSetStub = sandbox.stub(configstore, "set");

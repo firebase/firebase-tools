@@ -49,7 +49,7 @@ export const command = new Command("login [auth_code]")
         configstore.delete("tempLoginState");
 
         logger.info();
-        if (typeof result.user !== "string") {
+        if (typeof result.user === "object" && result.user && result.user.email) {
           utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
         } else {
           utils.logSuccess("Success! Logged in");
@@ -141,7 +141,7 @@ export const command = new Command("login [auth_code]")
     auth.recordCredentials(result);
 
     logger.info();
-    if (typeof result.user !== "string") {
+    if (typeof result.user === "object" && result.user && result.user.email) {
       utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
     } else {
       // Shouldn't really happen, but the JWT library that parses our results may

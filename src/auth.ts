@@ -524,8 +524,13 @@ export async function loginRemotelyComplete(
 
     void trackGA4("login", { method: "google_remote" });
 
+    const decoded = jwt.decode(tokens.id_token!, { json: true });
+    if (!decoded || typeof decoded === "string") {
+      throw new FirebaseError("Invalid ID token received.");
+    }
+
     return {
-      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
+      user: decoded as unknown as User,
       tokens: tokens,
       scopes: SCOPES,
     };
