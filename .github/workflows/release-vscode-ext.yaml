@@ -21,30 +21,85 @@ jobs:
        github.event.issue.author_association == 'MEMBER')
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Kokoro via API
+      - name: Fetch PR Details
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           PR_NUM="${{ github.event.issue.number }}"
           echo "Fetching SHA for PR $PR_NUM..."
           SHA=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefOid -q .headRefOid)
-          echo "PR Head SHA is $SHA"
+          echo "SHA=$SHA" >> $GITHUB_ENV
 
-          if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
-            TARGET_BRANCH="vscode-release-trigger-build-only"
+          if [[ "${{ github.event.comment.body }}" == *"--build-only"* ]]; then
+            echo "TARGET_BRANCH=vscode-release-trigger-build-only" >> $GITHUB_ENV
+            echo "BUILD_ONLY=true" >> $GITHUB_ENV
           else
-            TARGET_BRANCH="vscode-release-trigger"
+            echo "TARGET_BRANCH=vscode-release-trigger" >> $GITHUB_ENV
+            echo "BUILD_ONLY=false" >> $GITHUB_ENV
           fi
-          echo "Target branch is $TARGET_BRANCH"
 
-          # Try to update the branch ref (force-push equivalent via API)
-          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/$TARGET_BRANCH" \
-            -f sha="$SHA" -F force=true >/dev/null 2>&1; then
-            echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 21
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            firebase-vscode/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd firebase-vscode
+          npm ci
+
+      - name: Build VSIX extension
+        run: |
+          cd firebase-vscode
+          # If the build starts OOMing, we might need to use a larger runner 
+          # or investigate if the limit can be safely increased slightly.
+          NODE_OPTIONS="--max-old-space-size=6144" npm run pkg
+
+      - name: Write skip publish flag (if build-only)
+        if: env.BUILD_ONLY == 'true'
+        run: |
+          echo "true" > firebase-vscode/skip_publish.txt
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_DEVELOPER_GCP_SA_KEY }}
+
+      - name: Upload to GCS
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: firebase-vscode/*.vsix
+          destination: firemat-preview-drop/vsix/${{ env.SHA }}
+          parent: false
+
+      - name: Upload skip publish flag to GCS (if build-only)
+        if: env.BUILD_ONLY == 'true'
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: firebase-vscode/skip_publish.txt
+          destination: firemat-preview-drop/vsix/${{ env.SHA }}
+          parent: false
+
+      - name: Update trigger branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/${{ env.TARGET_BRANCH }}" \
+            -f sha="${{ env.SHA }}" -F force=true >/dev/null 2>&1; then
+            echo "Successfully updated ref refs/heads/${{ env.TARGET_BRANCH }} to ${{ env.SHA }}"
           else
-            echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."
+            echo "Ref refs/heads/${{ env.TARGET_BRANCH }} not found. Creating it..."
             gh api -X POST "/repos/${{ github.repository }}/git/refs" \
-              -f ref="refs/heads/$TARGET_BRANCH" -f sha="$SHA" >/dev/null
-            echo "Successfully created ref refs/heads/$TARGET_BRANCH at $SHA"
+              -f ref="refs/heads/${{ env.TARGET_BRANCH }}" -f sha="${{ env.SHA }}" >/dev/null
+            echo "Successfully created ref refs/heads/${{ env.TARGET_BRANCH }} at ${{ env.SHA }}"
           fi
