@@ -7,6 +7,8 @@ import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as computeEngine from "../../../gcp/computeEngine";
 import { getProject } from "../../../management/projects";
 import { assertExhaustive } from "../../../functional";
+import { Options } from "../../../options";
+import * as prompts from "../prompts";
 
 export type DeploymentEvent = "afterFirstDeploy" | "afterRedeploy";
 
@@ -24,6 +26,13 @@ export function determineDeploymentEvent(haveBackend: backend.Backend): Deployme
 }
 
 /**
+ * Checks if the backend specification has any lifecycle hooks configured.
+ */
+export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
+  return !!(backendSpec.lifecycleHooks && Object.keys(backendSpec.lifecycleHooks).length > 0);
+}
+
+/**
  * Validates and executes matching lifecycle hooks for the deployed codebase.
  * Returns true if a hook was executed, false otherwise.
  */
@@ -32,8 +41,27 @@ export async function executeLifecycleHooks(
   haveBackend: backend.Backend,
   plan?: planner.DeploymentPlan,
   codebase?: string,
+  options?: Options,
+  isPartialFailure?: boolean,
 ): Promise<boolean> {
-  const event = determineDeploymentEvent(haveBackend);
+  if (!hasLifecycleHooks(wantBackend)) {
+    return false;
+  }
+
+  let event: DeploymentEvent | undefined;
+  if (isPartialFailure) {
+    event = await prompts.promptForLifecycleEvent(codebase ?? "default", wantBackend, options);
+    if (!event) {
+      logLabeledBullet(
+        "functions",
+        `Skipping lifecycle hooks for codebase "${codebase ?? "default"}". You can retry a lifecycle hook in isolation by running: firebase functions:lifecycle:run <event> ${codebase ?? "default"}`,
+      );
+      return false;
+    }
+  } else {
+    event = determineDeploymentEvent(haveBackend);
+  }
+
   const hooks = wantBackend.lifecycleHooks || {};
   const hook = hooks[event];
 

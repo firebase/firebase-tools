@@ -2,7 +2,7 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { confirm, number } from "../../prompt";
+import { confirm, number, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
@@ -11,6 +11,7 @@ import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
 import * as iam from "../../gcp/iam";
+import { DeploymentEvent } from "./release/lifecycle";
 
 export interface ActiveSecurityPlan {
   managedServiceAccount: string;
@@ -393,4 +394,36 @@ export async function promptForSecurityChanges(
       }
     }
   }
+}
+
+/**
+ * Prompts the user to select which lifecycle hook to execute when a partial deployment retry is detected.
+ */
+export async function promptForLifecycleEvent(
+  codebase: string,
+  wantBackend: backend.Backend,
+  options?: Options,
+): Promise<DeploymentEvent | undefined> {
+  const hooks = wantBackend.lifecycleHooks || {};
+  const choices: { name: string; value: DeploymentEvent | "skip" }[] = [];
+  if (hooks.afterFirstDeploy) {
+    choices.push({ name: "afterFirstDeploy", value: "afterFirstDeploy" });
+  }
+  if (hooks.afterRedeploy) {
+    choices.push({ name: "afterRedeploy", value: "afterRedeploy" });
+  }
+  choices.push({ name: "skip (default)", value: "skip" });
+
+  if (choices.length === 1) {
+    return undefined;
+  }
+
+  const selection = await select<DeploymentEvent | "skip">({
+    message: `We detected a partially failed deployment for codebase "${codebase}". Which lifecycle hook would you like to run?`,
+    choices,
+    default: "skip",
+    nonInteractive: options?.nonInteractive,
+  });
+
+  return selection === "skip" ? undefined : selection;
 }

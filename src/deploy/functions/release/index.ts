@@ -125,13 +125,13 @@ export async function release(
   printTriggerUrls(wantBackend, projectNumber);
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
+  const isPartialFailure = allErrors.length > 0 && allErrors.length < summary.results.length;
 
-  // Only execute lifecycle hooks when all deployments are successful.
-  if (allErrors.length === 0) {
+  if (allErrors.length === 0 || isPartialFailure) {
     for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
       payload.functions,
     )) {
-      await executeLifecycleHooks(w, h, plan, codebase);
+      await executeLifecycleHooks(w, h, plan, codebase, options, isPartialFailure);
     }
   }
 
@@ -142,15 +142,17 @@ export async function release(
   );
 
   if (allErrors.length) {
-    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
-      payload.functions,
-    )) {
-      const event = determineDeploymentEvent(h);
-      if (w.lifecycleHooks?.[event]) {
-        utils.logLabeledWarning(
-          "functions",
-          `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
-        );
+    if (!isPartialFailure) {
+      for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+        payload.functions,
+      )) {
+        const event = determineDeploymentEvent(h);
+        if (w.lifecycleHooks?.[event]) {
+          utils.logLabeledWarning(
+            "functions",
+            `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+          );
+        }
       }
     }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };

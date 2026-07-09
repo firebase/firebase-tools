@@ -1,7 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as backend from "../backend";
-import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks, hasLifecycleHooks } from "./lifecycle";
+import * as prompts from "../prompts";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
 import * as projects from "../../../management/projects";
@@ -43,6 +44,31 @@ describe("lifecycle", () => {
 
       const event = determineDeploymentEvent(haveBackend);
       expect(event).to.equal("afterRedeploy");
+    });
+  });
+
+  describe("hasLifecycleHooks", () => {
+    it("returns false when lifecycleHooks is undefined", () => {
+      const b = backend.empty();
+      expect(hasLifecycleHooks(b)).to.be.false;
+    });
+
+    it("returns false when lifecycleHooks is empty", () => {
+      const b = backend.empty();
+      b.lifecycleHooks = {};
+      expect(hasLifecycleHooks(b)).to.be.false;
+    });
+
+    it("returns true when lifecycleHooks has configured hooks", () => {
+      const b = backend.empty();
+      b.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "myTask",
+          },
+        },
+      };
+      expect(hasLifecycleHooks(b)).to.be.true;
     });
   });
 
@@ -255,6 +281,101 @@ describe("lifecycle", () => {
       expect(bulletStub).to.have.been.calledWith(
         "functions",
         "You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterFirstDeploy my-codebase",
+      );
+    });
+
+    it("prompts user and executes selected hook when partial deployment failure is flagged", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const promptStub = sandbox
+        .stub(prompts, "promptForLifecycleEvent")
+        .resolves("afterFirstDeploy");
+      const wantBackend = backend.of(
+        {
+          id: "fn1",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "fn1",
+          platform: "gcfv2",
+          httpsTrigger: {},
+        },
+        {
+          id: "installHookTask",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "installHookTask",
+          platform: "gcfv2",
+          uri: "https://installhooktask-12345.a.run.app",
+          taskQueueTrigger: {},
+        },
+      );
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.empty();
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "default",
+        undefined,
+        true,
+      );
+      expect(promptStub).to.have.been.calledOnceWith("default", wantBackend, sinon.match.any);
+      expect(executed).to.be.true;
+      expect(enqueueStub).to.have.been.calledOnce;
+    });
+
+    it("skips execution when user selects skip in partial deployment failure prompt", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const promptStub = sandbox.stub(prompts, "promptForLifecycleEvent").resolves(undefined);
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+      const wantBackend = backend.of(
+        {
+          id: "fn1",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "fn1",
+          platform: "gcfv2",
+          httpsTrigger: {},
+        },
+        {
+          id: "installHookTask",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "installHookTask",
+          platform: "gcfv2",
+          uri: "https://installhooktask-12345.a.run.app",
+          taskQueueTrigger: {},
+        },
+      );
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.empty();
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "default",
+        undefined,
+        true,
+      );
+      expect(promptStub).to.have.been.calledOnce;
+      expect(executed).to.be.false;
+      expect(enqueueStub).to.not.have.been.called;
+      expect(bulletStub).to.have.been.calledWith(
+        "functions",
+        sinon.match(/Skipping lifecycle hooks for codebase "default"/),
       );
     });
   });

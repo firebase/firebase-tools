@@ -212,4 +212,77 @@ describe("release/index", () => {
       'Lifecycle hook "afterFirstDeploy" for codebase "codebase1" was configured but not executed because one or more function deployments failed.',
     );
   });
+
+  it("should run lifecycle hooks with isPartialFailure=true when only SOME deployments fail", async () => {
+    const context = {
+      projectId: "test-project",
+      config: {},
+      sources: {},
+      firebaseConfig: { locationId: "us-central1" },
+    } as any;
+
+    const options = {
+      projectId: "test-project",
+      projectNumber: "123456",
+    } as any;
+
+    const wantBackend = backend.of(
+      {
+        id: "fn1",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        entryPoint: "fn1",
+        httpsTrigger: {},
+      },
+      {
+        id: "fn2",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv2",
+        entryPoint: "fn2",
+        httpsTrigger: {},
+      },
+    );
+
+    const payload = {
+      functions: {
+        codebase1: {
+          wantBackend,
+          haveBackend: backend.empty(),
+        },
+      },
+    } as any;
+
+    // Simulate partial failure (1 succeeded, 1 failed out of 2)
+    fabricatorStub.resolves({
+      totalTime: 120,
+      results: [
+        {
+          endpoint: payload.functions.codebase1.wantBackend.endpoints["us-central1"]["fn1"],
+          durationMs: 120,
+        },
+        {
+          endpoint: payload.functions.codebase1.wantBackend.endpoints["us-central1"]["fn2"],
+          durationMs: 120,
+          error: new Error("Failed to deploy function fn2"),
+        },
+      ],
+    });
+
+    await expect(release(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "There was an error deploying functions",
+    );
+
+    // Assert that lifecycle hooks WERE executed with isPartialFailure=true
+    expect(executeLifecycleHooksStub).to.have.been.calledOnceWith(
+      wantBackend,
+      backend.empty(),
+      sinon.match.any,
+      "codebase1",
+      options,
+      true,
+    );
+  });
 });
