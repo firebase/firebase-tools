@@ -477,7 +477,7 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
- * in Cloud Secrets Manager.
+ * in Cloud Secrets Manager. Assist the user with secret creation if not present.
  * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
  * resource which has been verified to exist/have just been created
  */
@@ -486,7 +486,7 @@ async function ensureSecret(
   projectId: string,
   nonInteractive?: boolean,
 ): Promise<string> {
-  const resourceId = secretParam.resourceId || secretParam.name;
+  let resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
 
@@ -499,10 +499,22 @@ async function ensureSecret(
           `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
     }
+    if (experiments.isEnabled("secretEnvParams")) {
+      // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
+      resourceId = await input({
+        default: secretParam.name,
+        message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
+        validate: (id) => {
+          if (new RegExp(`^${build.GCP_SECRET_ID_PATTERN}$`).test(id)) {
+            return true;
+          }
+          return "GCP Secret identifiers must contain only letters, numbers, underscores, and hyphens.";
+        },
+      });
+    }
     const promptMessage = `The value for this secret (${secretParam.name}) will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
       secretParam.label || secretParam.name
     }:`;
-
     const secretValue = await password({
       message: promptMessage,
     });
@@ -530,7 +542,8 @@ async function ensureSecret(
     secretAlreadyExisted = true;
   }
 
-  const secretRefString = `${resourceId}:${version}`;
+  const secretRefString =
+    typeof version === "undefined" ? "resourceId" : `${resourceId}:${version}`;
   if (experiments.isEnabled("secretEnvParams")) {
     if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
       logger.info(

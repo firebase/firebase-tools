@@ -13,7 +13,7 @@ export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
 // prettier-ignore
 const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
-const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
+export const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
     GCP_SECRET_ID_PATTERN + // capture secret ID
