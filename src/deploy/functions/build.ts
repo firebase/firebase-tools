@@ -1,6 +1,7 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as params from "./params";
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { FirebaseConfig } from "./args";
@@ -11,10 +12,11 @@ import { defineSecret } from "firebase-functions/params";
 export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
 // prettier-ignore
-const GCP_RESOURCE_ID_PATTERN = "([a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)"
+const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
+const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
-    GCP_RESOURCE_ID_PATTERN + // secret ID is a GCP resource ID
+    GCP_SECRET_ID_PATTERN + // capture secret ID
     "(?:[:#@]" + // capture an optional label beginning with :, or capture #/@ to warn the user
     "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
     ")?$", // end of optional version group end of string
@@ -22,9 +24,9 @@ export const SECRET_REF_SHORT_RE = new RegExp(
 export const SECRET_REF_LONG_RE = new RegExp(
   "^" + // start of string
     "projects/" + // projects/
-    GCP_RESOURCE_ID_PATTERN + // capture project ID
+    GCP_PROJECT_ID_PATTERN + // capture project ID
     "/secrets/" + // /secrets/
-    GCP_RESOURCE_ID_PATTERN + // capture resource ID for secret
+    GCP_SECRET_ID_PATTERN + // capture secret ID
     "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with ":", "/versions/", or a mistake (#/@) to warn for
     "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
     ")?$", // end of optional version group, end of string
@@ -803,11 +805,19 @@ export interface ParsedSecretRef {
  * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
-export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, ParsedSecretRef>) {
+export function applyEnvSecretBindings(
+  build: Build,
+  envSecrets: Record<string, ParsedSecretRef>,
+): void {
+  if (envSecrets.empty) {
+    return;
+  }
+  logger.debug(
+    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...`,
+  );
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
-    const secretPinsVersion = typeof secretRef.version !== "undefined";
 
     for (const secret of build.params.filter((param) => param.type === "secret")) {
       if (secret.name === key) {
@@ -824,27 +834,22 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
           `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
         );
       }
-
-      let needEnvInsert = true;
+      let notFound = true;
       endpoint.secretEnvironmentVariables?.forEach((envVar) => {
         if (envVar.key === key) {
-          needEnvInsert = false;
+          notFound = false;
           envVar.secret = secretId;
-          envVar.version = version;
-          envVar.allowVersionPinning = secretPinsVersion;
+          if (typeof secretRef.version !== "undefined") {
+            envVar.version = version;
+            envVar.allowVersionPinning = true;
+          }
+          logger.debug(`Merged secret: ${JSON.stringify(envVar)}`);
         }
       });
-      if (needEnvInsert) {
-        if (!endpoint.secretEnvironmentVariables) {
-          endpoint.secretEnvironmentVariables = [];
-        }
-        endpoint.secretEnvironmentVariables.push({
-          key: key,
-          secret: secretId === "" ? key : secretId,
-          projectId: endpoint.project,
-          allowVersionPinning: secretPinsVersion,
-          ...(version !== undefined && { version: version }),
-        });
+      if (notFound) {
+        logger.warn(
+          `.env files contain a secret binding ${key} which has not been configured as a secret param via defineSecret().`,
+        );
       }
     }
   }

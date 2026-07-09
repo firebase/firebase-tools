@@ -44,7 +44,12 @@ describe("parseSecretRef", () => {
       build.parseSecretRef("b@d:characters");
     }).to.throw(FirebaseError, /Unknown format/);
     expect(() => {
-      build.parseSecretRef("UPPERCASE");
+      build.parseSecretRef("nested:version:delimiters");
+    }).to.throw(FirebaseError, /Unknown format/);
+    expect(() => {
+      build.parseSecretRef(
+        "projects/my-project-1234/secrets/foo/versions/latest/versions/laterest",
+      );
     }).to.throw(FirebaseError, /Unknown format/);
 
     expect(() => {
@@ -469,8 +474,8 @@ describe("applyEnvSecretBindings", () => {
     );
   });
 
-  it("should add the referenced secret to secretEnvironmentVariables if not present", () => {
-    const testBuild: build.Build = {
+  it("should not add the referenced secret to secretEnvironmentVariables if not present", () => {
+    const testBuildEmpty: build.Build = {
       endpoints: {
         func: {
           region: "us-central1",
@@ -484,25 +489,7 @@ describe("applyEnvSecretBindings", () => {
       params: [],
       requiredAPIs: [],
     };
-    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
-      foo: {
-        projectId: "test-project",
-        secretId: "bar",
-      },
-    };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
-    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
-      {
-        key: "foo",
-        secret: "bar",
-        projectId: "test-project",
-        allowVersionPinning: false,
-      },
-    ]);
-  });
-
-  it("should add the referenced secret and version (with pinning sentinel) to secretEnvironmentVariables if not present", () => {
-    const testBuild: build.Build = {
+    const testBuildDifferent: build.Build = {
       endpoints: {
         func: {
           region: "us-central1",
@@ -511,6 +498,13 @@ describe("applyEnvSecretBindings", () => {
           runtime: "nodejs18",
           entryPoint: "func1",
           httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "baz",
+              secret: "baz",
+              projectId: "test-project",
+            },
+          ],
         },
       },
       params: [],
@@ -520,56 +514,59 @@ describe("applyEnvSecretBindings", () => {
       foo: {
         projectId: "test-project",
         secretId: "bar",
-        version: "4",
       },
     };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
-    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+    build.applyEnvSecretBindings(testBuildEmpty, testSecretRefs);
+    expect(testBuildEmpty.endpoints["func"].secretEnvironmentVariables).to.be.undefined;
+    build.applyEnvSecretBindings(testBuildDifferent, testSecretRefs);
+    expect(testBuildDifferent.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
       {
-        key: "foo",
-        secret: "bar",
+        key: "baz",
+        secret: "baz",
         projectId: "test-project",
-        version: "4",
-        allowVersionPinning: true,
-      },
-    ]);
-  });
-
-  it("should add the referenced secret and latest (if specified) to secretEnvironmentVariables if not present", () => {
-    const testBuild: build.Build = {
-      endpoints: {
-        func: {
-          region: "us-central1",
-          project: "test-project",
-          platform: "gcfv2",
-          runtime: "nodejs18",
-          entryPoint: "func1",
-          httpsTrigger: {},
-        },
-      },
-      params: [],
-      requiredAPIs: [],
-    };
-    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
-      foo: {
-        projectId: "test-project",
-        secretId: "bar",
-        version: "latest",
-      },
-    };
-    build.applyEnvSecretBindings(testBuild, testSecretRefs);
-    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
-      {
-        key: "foo",
-        secret: "bar",
-        projectId: "test-project",
-        version: "latest",
-        allowVersionPinning: true,
       },
     ]);
   });
 
   it("should override a secret in secretEnvironmentVariables with the .env reference with the same key", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      foo: {
+        projectId: "test-project",
+        secretId: "bar",
+      },
+    };
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+      },
+    ]);
+  });
+
+  it("should override a secret in secretEnvironmentVariables with the .env reference/version with the same key", () => {
     const testBuild: build.Build = {
       endpoints: {
         func: {
