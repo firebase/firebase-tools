@@ -167,6 +167,8 @@ export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 export const aiLogicProxyOrigin = () =>
   utils.envOverride("AI_LOGIC_PROXY_URL", "https://firebasevertexai.googleapis.com");
+export const appCheckOrigin = () =>
+  utils.envOverride("FIREBASE_APP_CHECK_URL", "https://firebaseappcheck.googleapis.com");
 
 export const appTestingOrigin = () =>
   utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");

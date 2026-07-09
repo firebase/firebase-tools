@@ -224,6 +224,22 @@ export function load(client: CLIClient): CLIClient {
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
   }
+  client.appcheck = {};
+  client.appcheck.apps = {};
+  client.appcheck.apps.list = loadCommand("appcheck-apps-list");
+  client.appcheck.services = {};
+  client.appcheck.services.list = loadCommand("appcheck-services-list");
+  client.appcheck.services.get = loadCommand("appcheck-services-get");
+  client.appcheck.services.set = loadCommand("appcheck-services-set");
+  client.appcheck.providers = {};
+  client.appcheck.providers.list = loadCommand("appcheck-providers-list");
+  client.appcheck.providers.get = loadCommand("appcheck-providers-get");
+  client.appcheck.providers.set = loadCommand("appcheck-providers-set");
+  client.appcheck.debug = {};
+  client.appcheck.debug.create = loadCommand("appcheck-debug-create");
+  client.appcheck.debug.list = loadCommand("appcheck-debug-list");
+  client.appcheck.debug.delete = loadCommand("appcheck-debug-delete");
+
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");
