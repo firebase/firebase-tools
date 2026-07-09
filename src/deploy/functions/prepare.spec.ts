@@ -1318,7 +1318,7 @@ describe("prepare", () => {
         ]),
       ).to.be.rejectedWith(
         FirebaseError,
-        /Cannot deploy a partial codebase when enrolling or unenrolling from declarative security/,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
     });
 
@@ -1342,7 +1342,7 @@ describe("prepare", () => {
         ]),
       ).to.be.rejectedWith(
         FirebaseError,
-        /Cannot deploy a partial codebase when enrolling or unenrolling from declarative security/,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
       );
     });
   });
