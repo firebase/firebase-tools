@@ -24,13 +24,14 @@ jobs:
       - name: Fetch PR Details
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-          PR_NUM="${{ github.event.issue.number }}"
-          echo "Fetching SHA for PR $PR_NUM..."
-          SHA=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefOid -q .headRefOid)
+          echo "Fetching SHA for PR $PR_NUMBER..."
+          SHA=$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
           echo "SHA=$SHA" >> $GITHUB_ENV
 
-          if [[ "${{ github.event.comment.body }}" == *"--build-only"* ]]; then
+          if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
             echo "TARGET_BRANCH=vscode-release-trigger-build-only" >> $GITHUB_ENV
             echo "BUILD_ONLY=true" >> $GITHUB_ENV
           else
@@ -39,14 +40,14 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           ref: ${{ env.SHA }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
         with:
-          node-version: 21
+          node-version: 20
           cache: "npm"
           cache-dependency-path: |
             package-lock.json
@@ -61,8 +62,6 @@ jobs:
       - name: Build VSIX extension
         run: |
           cd firebase-vscode
-          # If the build starts OOMing, we might need to use a larger runner 
-          # or investigate if the limit can be safely increased slightly.
           NODE_OPTIONS="--max-old-space-size=6144" npm run pkg
 
       - name: Write skip publish flag (if build-only)
@@ -71,12 +70,12 @@ jobs:
           echo "true" > firebase-vscode/skip_publish.txt
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@71fee32a0bb7e97b4d33d548e7d957010649d8fa # v2.1.3
         with:
           credentials_json: ${{ secrets.FIREBASE_DEVELOPER_GCP_SA_KEY }}
 
       - name: Upload to GCS
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@e485962f2bef914ac9c3bdd571f821f0ba7946c4 # v2.2.0
         with:
           path: firebase-vscode/*.vsix
           destination: firemat-preview-drop/vsix/${{ env.SHA }}
@@ -84,7 +83,7 @@ jobs:
 
       - name: Upload skip publish flag to GCS (if build-only)
         if: env.BUILD_ONLY == 'true'
-        uses: google-github-actions/upload-cloud-storage@v2
+        uses: google-github-actions/upload-cloud-storage@e485962f2bef914ac9c3bdd571f821f0ba7946c4 # v2.2.0
         with:
           path: firebase-vscode/skip_publish.txt
           destination: firemat-preview-drop/vsix/${{ env.SHA }}
@@ -93,13 +92,15 @@ jobs:
       - name: Update trigger branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ env.SHA }}
+          TARGET_BRANCH: ${{ env.TARGET_BRANCH }}
         run: |
-          if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/${{ env.TARGET_BRANCH }}" \
-            -f sha="${{ env.SHA }}" -F force=true >/dev/null 2>&1; then
-            echo "Successfully updated ref refs/heads/${{ env.TARGET_BRANCH }} to ${{ env.SHA }}"
+          if gh api -X PATCH "/repos/$GITHUB_REPOSITORY/git/refs/heads/$TARGET_BRANCH" \
+            -f sha="$SHA" -F force=true >/dev/null 2>&1; then
+            echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
           else
-            echo "Ref refs/heads/${{ env.TARGET_BRANCH }} not found. Creating it..."
-            gh api -X POST "/repos/${{ github.repository }}/git/refs" \
-              -f ref="refs/heads/${{ env.TARGET_BRANCH }}" -f sha="${{ env.SHA }}" >/dev/null
-            echo "Successfully created ref refs/heads/${{ env.TARGET_BRANCH }} at ${{ env.SHA }}"
+            echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."
+            gh api -X POST "/repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$TARGET_BRANCH" -f sha="$SHA" >/dev/null
+            echo "Successfully created ref refs/heads/$TARGET_BRANCH at $SHA"
           fi
