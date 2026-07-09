@@ -345,10 +345,12 @@ interface ResolveBackendOpts {
  * Resolves user-defined parameters inside a Build and generates a Backend.
  * Callers are responsible for persisting resolved env vars.
  */
-export async function resolveBackend(
-  opts: ResolveBackendOpts,
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue>, newSecretRefs: Record<string, string> }> {
-  const paramValues = await params.resolveParams(
+export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
+  backend: backend.Backend;
+  envs: Record<string, params.ParamValue>;
+  secretRefs: Record<string, string>;
+}> {
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
@@ -356,7 +358,7 @@ export async function resolveBackend(
     opts.isEmulator,
   );
 
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues, newSecretRefs: {} };
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
 
 /**
@@ -807,8 +809,8 @@ export function applyEnvSecretBindings(build: Build, envSecrets: Record<string, 
     const { projectId, secretId, version } = secretRef;
     const secretPinsVersion = typeof secretRef.version !== "undefined";
 
-    for (const secret of build.params.filter(param => param.type === "secret")) {
-      if (secret.name.toLowerCase() === key.toLowerCase()) {
+    for (const secret of build.params.filter((param) => param.type === "secret")) {
+      if (secret.name === key) {
         secret.resourceId = secretId;
         secret.version = version;
         secret.inLocalEnvironment = true;

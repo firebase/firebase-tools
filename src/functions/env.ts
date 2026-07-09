@@ -94,25 +94,24 @@ interface ParseResult {
  *
  * Each line should contain key, value pairs, e.g.:
  *
- *   SERVICE_URL=https://example.com
+ * SERVICE_URL=https://example.com
  *
  * Values can be double quoted, e.g.:
  *
- *   SERVICE_URL="https://example.com"
+ * SERVICE_URL="https://example.com"
  *
  * Double quoted values can include newlines, e.g.:
  *
- *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
+ * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
  *
  * or span multiple lines, e.g.:
  *
- *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
- *   ABC
- *   EFG
- *   -----BEGIN PUBLIC KEY-----"
+ * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+ * ABC
+ * EFG
+ * -----BEGIN PUBLIC KEY-----"
  *
  * See test for more examples.
- *
  * @return {ParseResult} Result containing parsed key, value pairs and errored lines.
  */
 export function parse(data: string): ParseResult {
@@ -258,7 +257,6 @@ export interface UserEnvsOpts {
 
 /**
  * Checks if user has specified any environment variables for their functions.
- *
  * @return True if there are any user-specified environment variables
  */
 export function hasUserEnvs(opts: UserEnvsOpts): boolean {
@@ -364,11 +362,10 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * .env files are searched and merged in the following order:
  *
- *   1. .env
- *   2. .env.<project or alias>
+ * 1. .env
+ * 2. .env.<project or alias>
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
- *
  * @return {Record<string, string>} Environment variables for the project.
  */
 export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
@@ -412,7 +409,6 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
 
 /**
  * Load Firebase-set environment variables.
- *
  * @return Environment varibles for functions.
  */
 export function loadFirebaseEnvs(
@@ -448,6 +444,7 @@ export function writeResolvedParams(
 
 /**
  * Writes newly defined secret bindings to the appropriate env file.
+ * Does not overwrite secrets that already exist anywhere in the .env chain.
  */
 export function writeResolvedSecretRefs(
   resolvedSecretRefs: Readonly<Record<string, string>>,

@@ -286,7 +286,11 @@ export async function prepare(
       build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
     }
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+    const {
+      backend: wantBackend,
+      envs: resolvedEnvs,
+      secretRefs: resolvedSecretRefs,
+    } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
       userEnvs,
@@ -295,6 +299,7 @@ export async function prepare(
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;

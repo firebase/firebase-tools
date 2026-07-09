@@ -9,6 +9,7 @@ import { listBuckets } from "../../gcp/storage";
 import { isCelExpression, resolveExpression } from "./cel";
 import { FirebaseConfig } from "./args";
 import { labels as secretLabels } from "../../gcp/secretManager";
+import * as experiments from "../../experiments";
 
 // A convenience type containing options for Prompt's select
 interface ListItem {
@@ -229,7 +230,7 @@ interface SecretParam {
   // The format of the secret, e.g. "json"
   format?: string;
 
-  // The resource name of the backing Secret in Cloud Secret Manager. 
+  // The resource name of the backing Secret in Cloud Secret Manager.
   // Defaults to `name` if not present.
   resourceId?: string;
 
@@ -395,7 +396,7 @@ export async function resolveParams(
   userEnvs: Record<string, ParamValue>,
   nonInteractive?: boolean,
   isEmulator = false,
-): Promise<{paramValues: Record<string, ParamValue>, secretRefs: Record<string, string>}> {
+): Promise<{ paramValues: Record<string, ParamValue>; secretRefs: Record<string, string> }> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
   const secretRefs: Record<string, string> = {};
 
@@ -412,7 +413,11 @@ export async function resolveParams(
   // The functions emulator will handle secrets
   if (!isEmulator) {
     for (const param of needSecret) {
-      secretRefs[param.name] = await ensureSecret(param as SecretParam, firebaseConfig.projectId, nonInteractive);
+      secretRefs[param.name] = await ensureSecret(
+        param as SecretParam,
+        firebaseConfig.projectId,
+        nonInteractive,
+      );
     }
   }
 
@@ -438,7 +443,7 @@ export async function resolveParams(
     paramValues[param.name] = await promptParam(param, firebaseConfig.projectId, paramDefault);
   }
 
-  return {paramValues: paramValues, secretRefs: secretRefs};
+  return { paramValues: paramValues, secretRefs: secretRefs };
 }
 
 function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValue> {
@@ -473,8 +478,7 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
 /**
  * Handles a SecretParam by checking for the presence of a corresponding secret
  * in Cloud Secrets Manager.
- * 
- * @returns a Functions-formatted reference (e.g "foo:latest") to a Secret
+ * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
  * resource which has been verified to exist/have just been created
  */
 async function ensureSecret(
@@ -486,18 +490,16 @@ async function ensureSecret(
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
 
-  const metadata = await secretManager.getSecretMetadata(projectId, secretParam.name, "latest");
+  const metadata = await secretManager.getSecretMetadata(projectId, resourceId, "latest");
   if (!metadata.secret) {
     if (nonInteractive) {
       throw new FirebaseError(
-        `In non-interactive mode but have no value for the secret: ${secretParam.name}\n\n` +
+        `In non-interactive mode but have no value for the secret ${secretParam.name}: ${resourceId}\n\n` +
           "Set this secret before deploying:\n" +
-          `\tfirebase functions:secrets:set ${secretParam.name}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
+          `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
     }
-    const promptMessage = `This secret will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${
-      secretParam.name
-    }. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
+    const promptMessage = `The value for this secret (${secretParam.name}) will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
       secretParam.label || secretParam.name
     }:`;
 
@@ -507,8 +509,8 @@ async function ensureSecret(
     if (secretParam.format === "json") {
       validateJsonSecret(secretParam.name, secretValue);
     }
-    await secretManager.createSecret(projectId, secretParam.name, secretLabels());
-    await secretManager.addVersion(projectId, secretParam.name, secretValue);
+    await secretManager.createSecret(projectId, resourceId, secretLabels());
+    await secretManager.addVersion(projectId, resourceId, secretValue);
   } else if (!metadata.secretVersion) {
     throw new FirebaseError(
       `Cloud Secret Manager has no latest version of the secret defined by param ${
@@ -528,11 +530,16 @@ async function ensureSecret(
     secretAlreadyExisted = true;
   }
 
-  if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
-
+  const secretRefString = `${resourceId}:${version}`;
+  if (experiments.isEnabled("secretEnvParams")) {
+    if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
+      logger.info(
+        `Onetime (firebase-tools x.y.z+): storing a reference to existing secret ${secretParam.name}=${secretRefString} in .env files.`,
+      );
+    }
   }
 
-  return `${resourceId}:${version}`;
+  return secretRefString;
 }
 
 /**
