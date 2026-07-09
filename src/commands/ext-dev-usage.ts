@@ -1,4 +1,4 @@
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { Command } from "../command";

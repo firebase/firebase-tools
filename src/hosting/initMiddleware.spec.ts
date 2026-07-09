@@ -1,10 +1,10 @@
 import { createGunzip, gzipSync } from "zlib";
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import * as http from "http";
 import nock from "../test/helpers/nock";
 import * as portfinder from "portfinder";
-import * as supertest from "supertest";
+import supertest from "supertest";
 
 import { initMiddleware } from "./initMiddleware";
 import { streamToString } from "../utils";

@@ -3,7 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { randomBytes } from "crypto";
 import * as _ from "lodash";
-import * as express from "express";
+import express from "express";
 import { CloudFunction } from "firebase-functions";
 
 import * as backend from "../deploy/functions/backend";

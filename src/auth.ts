@@ -1,8 +1,8 @@
 import * as clc from "colorette";
-import * as FormData from "form-data";
+import FormData from "form-data";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
-import * as opn from "open";
+import opn from "open";
 import * as portfinder from "portfinder";
 import * as url from "url";
 

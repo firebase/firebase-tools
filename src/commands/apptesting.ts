@@ -1,7 +1,7 @@
 import { requireAuth } from "../requireAuth";
 import { Command } from "../command";
 import { parseTestFiles, pluralizeTests } from "../apptesting/parseTestFiles";
-import * as ora from "ora";
+import ora from "ora";
 import { TestCaseInvocation } from "../apptesting/types";
 import { FirebaseError, getError } from "../error";
 import { AppDistributionClient } from "../appdistribution/client";

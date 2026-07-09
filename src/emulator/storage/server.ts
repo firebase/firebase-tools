@@ -1,5 +1,5 @@
-import * as cors from "cors";
-import * as express from "express";
+import cors from "cors";
+import express from "express";
 import { EmulatorLogger } from "../emulatorLogger";
 import { Emulators } from "../types";
 import * as bodyParser from "body-parser";

@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import nock from "../test/helpers/nock";
-import * as chaiAsPromised from "chai-as-promised";
+import chaiAsPromised from "chai-as-promised";
 
 import { listEvents, batchGetEvents } from "./events";
 import { FirebaseError } from "../error";

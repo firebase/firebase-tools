@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";

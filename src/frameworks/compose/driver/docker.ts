@@ -1,6 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 
 import { AppBundle, Driver, Hook } from "../interfaces";
 import { BUNDLE_PATH, genHookScript } from "./hooks";

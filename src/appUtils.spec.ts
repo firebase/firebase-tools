@@ -1,4 +1,4 @@
-import * as mockfs from "mock-fs";
+import mockfs from "mock-fs";
 import { expect } from "chai";
 import {
   extractAppIdentifiersFlutter,

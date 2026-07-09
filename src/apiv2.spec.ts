@@ -1,7 +1,7 @@
 import { createServer, Server } from "http";
 import { expect } from "chai";
 import * as sinon from "sinon";
-import * as FormData from "form-data";
+import FormData from "form-data";
 import * as auth from "./auth";
 import nock from "./test/helpers/nock";
 const proxySetup = require("proxy");

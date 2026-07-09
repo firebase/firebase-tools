@@ -22,8 +22,7 @@ export async function getConfig(cwd: string) {
     const { astroConfig } = await resolveConfig({ root: cwd }, "build");
     config = astroConfig;
   } else {
-    const { openConfig }: typeof import("astro/dist/core/config/config") =
-      await dynamicImport(configPath);
+    const { openConfig } = (await dynamicImport(configPath)) as any;
     const logging: any = undefined; // TODO figure out the types here
     const { astroConfig } = await openConfig({ cmd: "build", cwd, logging });
     config = astroConfig;

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as mockfs from "mock-fs";
+import mockfs from "mock-fs";
 import { isCrashlyticsAvailable } from "./availability";
 import { McpContext } from "../../types";
 import { Config } from "../../../config";

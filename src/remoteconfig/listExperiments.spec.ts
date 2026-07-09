@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import nock from "../test/helpers/nock";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 import { remoteConfigApiOrigin } from "../api";
 import { FirebaseError } from "../error";

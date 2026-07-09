@@ -1,6 +1,6 @@
 import { STATUS_CODES } from "http";
 import { inspect } from "util";
-import * as supertest from "supertest";
+import supertest from "supertest";
 import { expect, AssertionError } from "chai";
 import { IdpJwtPayload } from "../operations";
 import { OobRecord, PhoneVerificationRecord, Tenant, UserInfo } from "../state";

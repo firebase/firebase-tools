@@ -3,7 +3,7 @@ import { Client } from "../apiv2";
 import { logger } from "../logger";
 import { FirebaseError, getError } from "../error";
 import { ListRolloutOptions, ListRollouts, RemoteConfigRollout } from "./interfaces";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 const TIMEOUT = 30000;
 

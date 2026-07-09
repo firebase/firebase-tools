@@ -11,7 +11,7 @@ import {
   checkInstanceNameAvailable,
   getDatabaseInstanceDetails,
 } from "../../management/database";
-import * as ora from "ora";
+import ora from "ora";
 import { ensure } from "../../ensureApiEnabled";
 import { getDefaultDatabaseInstance } from "../../getDefaultDatabaseInstance";
 import { FirebaseError } from "../../error";

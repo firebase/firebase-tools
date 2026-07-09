@@ -8,7 +8,7 @@ import * as utils from "../utils";
 import * as apphosting from "../gcp/apphosting";
 import { printBackendsTable } from "./apphosting-backends-list";
 import { deleteBackendAndPoll, chooseBackends } from "../apphosting/backend";
-import * as ora from "ora";
+import ora from "ora";
 
 export const command = new Command("apphosting:backends:delete <backend>")
   .description("delete a Firebase App Hosting backend")

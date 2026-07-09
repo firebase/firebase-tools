@@ -1,5 +1,5 @@
 import { Command } from "../command";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import * as experiments from "../experiments";
 import { partition } from "../functional";
 import { logger } from "../logger";

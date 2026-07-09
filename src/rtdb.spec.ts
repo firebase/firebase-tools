@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
-import * as sinonChai from "sinon-chai";
+import sinonChai from "sinon-chai";
 
 import * as apiv2 from "./apiv2";
 import { Client } from "./apiv2";

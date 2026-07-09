@@ -1,7 +1,7 @@
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import { Command } from "../command";
 import * as clc from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";

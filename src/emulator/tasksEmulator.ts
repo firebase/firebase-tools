@@ -1,11 +1,11 @@
-import * as express from "express";
+import express from "express";
 
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { createDestroyer } from "../utils";
 import { EmulatorLogger } from "./emulatorLogger";
 import { TaskQueue } from "./taskQueue";
-import * as cors from "cors";
+import cors from "cors";
 
 export interface TasksEmulatorArgs {
   port?: number;

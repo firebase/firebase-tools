@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import * as clc from "colorette";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as semver from "semver";
 
 import { logger } from "../../../../logger";
