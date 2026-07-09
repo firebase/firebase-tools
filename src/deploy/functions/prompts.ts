@@ -10,6 +10,25 @@ import * as utils from "../../utils";
 import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
+import * as iam from "../../gcp/iam";
+
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: undefined;
+}
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = ActiveSecurityPlan | InactiveSecurityPlan;
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -291,4 +310,87 @@ export async function promptForCleanupPolicyDays(
     validate: (days) =>
       !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
   });
+}
+
+/**
+ * Prompts operators for codebase-wide declarative security changes.
+ */
+export async function promptForSecurityChanges(
+  plan: Record<string, CodebasePlan>,
+  options: Options,
+): Promise<void> {
+  if (options.force) {
+    return;
+  }
+  for (const [codebase, codebasePlan] of Object.entries(plan)) {
+    if (codebasePlan.serviceAccountToDelete) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot opt out of declarative security and delete managed service account ${codebasePlan.serviceAccountToDelete} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      const msg = `Deploying this code will opt out of declarative security for codebase ${codebase}. All functions which do not specify a custom service account will use a default service account on next deploy. As a cleanup, the managed service account ${codebasePlan.serviceAccountToDelete} will be deleted. Continue?`;
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+
+    if (codebasePlan.serviceAccountToCreate) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot enable declarative security and create managed service account ${codebasePlan.serviceAccountToCreate} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      const roleNames = await Promise.all(
+        (codebasePlan.rolesToAdd || []).map((r) => iam.getRoleName(r)),
+      );
+      let msg = "This codebase uses declarative security. ";
+      if (roleNames.length > 0) {
+        msg += `It will use the following role(s):\n${roleNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\nContinue?`;
+      } else {
+        msg += "It will not use any additional roles. Continue?";
+      }
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    } else if (
+      (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) ||
+      (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0)
+    ) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot modify declarative security roles for codebase ${codebase} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      let msg = `Deploying this code will modify the managed service account for codebase ${codebase}.\n`;
+      if (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) {
+        const addedNames = await Promise.all(
+          codebasePlan.rolesToAdd.map((r) => iam.getRoleName(r)),
+        );
+        msg += `All functions in this codebase will be granted the following new role(s):\n${addedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      if (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0) {
+        const removedNames = await Promise.all(
+          codebasePlan.rolesToRemove.map((r) => iam.getRoleName(r)),
+        );
+        msg += `All functions in this codebase will lose access to the following role(s):\n${removedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      msg += "Continue?";
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+  }
 }

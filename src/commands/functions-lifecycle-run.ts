@@ -12,9 +12,9 @@ export const command = new Command("functions:lifecycle:run <hookName> <codebase
   .description("run a specific lifecycle hook in isolation")
   .before(requirePermissions, ["cloudfunctions.functions.list", "run.services.list"])
   .action(async (hookName: string, codebase: string, options: Options) => {
-    if (hookName !== "afterInstall" && hookName !== "afterUpdate") {
+    if (hookName !== "afterFirstDeploy" && hookName !== "afterRedeploy") {
       throw new FirebaseError(
-        `Invalid hook name "${hookName}". Supported hooks are "afterInstall" and "afterUpdate".`,
+        `Invalid hook name "${hookName}". Supported hooks are "afterFirstDeploy" and "afterRedeploy".`,
       );
     }
 
