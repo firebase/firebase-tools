@@ -124,13 +124,9 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
 
-  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
-  const isPartialFailure = allErrors.length > 0 && allErrors.length < summary.results.length;
-
-  if (allErrors.length === 0 || isPartialFailure) {
-    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
-      payload.functions,
-    )) {
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    const { errors, isPartialFailure } = getCodebaseDeployStats(codebase, w, h, summary);
+    if (errors.length === 0 || isPartialFailure) {
       await executeLifecycleHooks(w, h, plan, codebase, options, isPartialFailure);
     }
   }
@@ -141,11 +137,13 @@ export async function release(
     Object.keys(wantBackend.endpoints),
   );
 
+  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
-    if (!isPartialFailure) {
-      for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
-        payload.functions,
-      )) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      const { results, errors } = getCodebaseDeployStats(codebase, w, h, summary);
+      if (errors.length > 0 && errors.length === results.length) {
         const event = determineDeploymentEvent(h);
         if (w.lifecycleHooks?.[event]) {
           utils.logLabeledWarning(
@@ -193,6 +191,31 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
   }
+}
+
+interface CodebaseDeployStats {
+  results: reporter.DeployResult[];
+  errors: reporter.DeployResult[];
+  isPartialFailure: boolean;
+}
+
+function getCodebaseDeployStats(
+  codebase: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+  summary: reporter.Summary,
+): CodebaseDeployStats {
+  const cb = codebase || "default";
+  const results = summary.results.filter(
+    (r) =>
+      (r.endpoint.codebase ?? "default") === cb ||
+      !!wantBackend.endpoints[r.endpoint.region]?.[r.endpoint.id] ||
+      !!haveBackend.endpoints[r.endpoint.region]?.[r.endpoint.id],
+  );
+  const errors = results.filter((r) => r.error);
+  const isPartialFailure = errors.length > 0 && errors.length < results.length;
+
+  return { results, errors, isPartialFailure };
 }
 
 /**
