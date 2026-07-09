@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as readline from "readline";

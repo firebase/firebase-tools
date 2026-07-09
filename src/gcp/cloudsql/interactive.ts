@@ -1,9 +1,9 @@
 import * as pg from "pg";
-import * as ora from "ora";
+import ora from "ora";
 import * as clc from "colorette";
 import { logger } from "../../logger";
 import { confirm } from "../../prompt";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 // Not comprehensive list, used for best offer prompting.
 const destructiveSqlKeywords = ["DROP", "DELETE"];

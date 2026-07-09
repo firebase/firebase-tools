@@ -6,7 +6,7 @@ import * as client from "../dataconnect/client";
 import { logger } from "../logger";
 import { requirePermissions } from "../requirePermissions";
 import { ensureApis } from "../dataconnect/ensureApis";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 // TODO: Update this command to also list secondary schema information.
 export const command = new Command("dataconnect:services:list")

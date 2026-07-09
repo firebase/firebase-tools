@@ -1,6 +1,6 @@
 import * as chai from "chai";
 import nock from "../test/helpers/nock";
-import * as chaiAsPromised from "chai-as-promised";
+import chaiAsPromised from "chai-as-promised";
 
 import { CrashlyticsReport, getReport, simplifyReport } from "./reports";
 import { FirebaseError } from "../error";

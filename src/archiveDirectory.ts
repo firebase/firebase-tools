@@ -1,4 +1,4 @@
-import * as archiver from "archiver";
+import archiver from "archiver";
 import { formatFilesize } from "./utils";
 import * as fs from "fs";
 import * as path from "path";

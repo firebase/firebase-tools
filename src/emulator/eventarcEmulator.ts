@@ -1,4 +1,4 @@
-import * as express from "express";
+import express from "express";
 
 import { Constants } from "./constants";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
@@ -9,7 +9,7 @@ import { CloudEvent } from "./events/types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { cloudEventFromProtoToJson } from "./eventarcEmulatorUtils";
-import * as cors from "cors";
+import cors from "cors";
 
 interface EmulatedEventTrigger {
   projectId: string;

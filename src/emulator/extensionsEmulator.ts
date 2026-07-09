@@ -1,9 +1,9 @@
 import * as clc from "colorette";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 import * as planner from "../deploy/extensions/planner";
 import { enableApiURI } from "../ensureApiEnabled";

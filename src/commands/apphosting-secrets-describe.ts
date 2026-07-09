@@ -6,7 +6,7 @@ import { requireAuth } from "../requireAuth";
 import { listSecretVersions } from "../gcp/secretManager";
 import * as secretManager from "../gcp/secretManager";
 import { requirePermissions } from "../requirePermissions";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 export const command = new Command("apphosting:secrets:describe <secretName>")
   .description("get metadata for secret and its versions")

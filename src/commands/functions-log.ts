@@ -1,4 +1,4 @@
-import * as opn from "open";
+import opn from "open";
 import * as qs from "querystring";
 
 import { Command } from "../command";

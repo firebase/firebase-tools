@@ -1,9 +1,9 @@
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Constants } from "./constants";
 import { SPLAT } from "triple-beam";
-import * as WebSocket from "ws";
+import WebSocket = require("ws");
 import { LogEntry } from "winston";
-import * as TransportStream from "winston-transport";
+import TransportStream from "winston-transport";
 import { logger } from "../logger";
 import { stripVTControlCharacters } from "node:util";
 

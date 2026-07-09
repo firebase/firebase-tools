@@ -8,7 +8,7 @@ import { actuate, askQuestions } from "./functions";
 import { Options } from "../../options";
 import { RC } from "../../rc";
 import * as experiments from "../../experiments";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import * as initSpawn from "../spawn";
 
 const TEST_SOURCE_DEFAULT = "functions";

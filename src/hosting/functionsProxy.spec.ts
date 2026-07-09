@@ -1,9 +1,9 @@
 import { cloneDeep } from "lodash";
 import { expect } from "chai";
-import * as express from "express";
+import express from "express";
 import nock from "../test/helpers/nock";
 import * as sinon from "sinon";
-import * as supertest from "supertest";
+import supertest from "supertest";
 
 import { functionsProxy, FunctionsProxyOptions } from "./functionsProxy";
 import { EmulatorRegistry } from "../emulator/registry";

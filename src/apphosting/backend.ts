@@ -24,7 +24,7 @@ import * as deploymentTool from "../deploymentTool";
 import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
-import * as ora from "ora";
+import ora from "ora";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
 import { isEnabled } from "../experiments";

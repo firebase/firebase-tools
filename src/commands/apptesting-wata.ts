@@ -4,7 +4,7 @@ import { requireConfig } from "../requireConfig";
 import { logger } from "../logger";
 import * as clc from "colorette";
 import { parseTestFiles } from "../apptesting/parseTestFiles";
-import * as ora from "ora";
+import ora from "ora";
 import { invokeTests, pollInvocationStatus } from "../apptesting/invokeTests";
 import { ExecutionMetadata } from "../apptesting/types";
 import { FirebaseError } from "../error";

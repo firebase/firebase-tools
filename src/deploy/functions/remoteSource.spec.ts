@@ -2,8 +2,8 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
 import * as path from "path";
-import * as mockfs from "mock-fs";
-import * as archiver from "archiver";
+import mockfs from "mock-fs";
+import archiver from "archiver";
 import { Writable } from "stream";
 
 import { getRemoteSource, requireFunctionsYaml } from "./remoteSource";

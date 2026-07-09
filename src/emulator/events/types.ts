@@ -6,7 +6,7 @@
  * We can't import some of them because they are marked "internal".
  */
 import { Resource } from "firebase-functions";
-import * as express from "express";
+import express from "express";
 
 /**
  * Wire formal for v1beta1 EventFlow.

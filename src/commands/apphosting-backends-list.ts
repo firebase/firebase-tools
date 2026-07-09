@@ -7,7 +7,7 @@ import { requireAuth } from "../requireAuth";
 import { Options } from "../options";
 import * as apphosting from "../gcp/apphosting";
 import { isEnabled } from "../experiments";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 export const command = new Command("apphosting:backends:list")
   .description("list Firebase App Hosting backends")

@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as open from "open";
+import open from "open";
 
 import { FirebaseError } from "../error";
 import * as api from "../api";

@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 import * as sort from "./api-sort";
 import * as types from "./api-types";

@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import * as opn from "open";
+import opn from "open";
 
 import * as cloudbilling from "../gcp/cloudbilling";
 import { FirebaseError } from "../error";

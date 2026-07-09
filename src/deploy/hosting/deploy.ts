@@ -4,7 +4,7 @@ import { listFiles } from "../../listFiles";
 import { logger } from "../../logger";
 import { envOverride, logLabeledBullet, logLabeledSuccess } from "../../utils";
 import { bold, cyan } from "colorette";
-import * as ora from "ora";
+import ora from "ora";
 import { Context, HostingDeploy } from "./context";
 import { Options } from "../../options";
 import { dirExistsSync } from "../../fsutils";

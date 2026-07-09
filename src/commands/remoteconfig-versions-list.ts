@@ -6,7 +6,7 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
 import { datetimeString } from "../utils";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 

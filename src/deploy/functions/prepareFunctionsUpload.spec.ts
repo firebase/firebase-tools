@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as hashModule from "./cache/hash";
-import * as archiver from "archiver";
+import archiver from "archiver";
 import * as os from "os";
 import * as path from "path";
 import * as fs from "fs";

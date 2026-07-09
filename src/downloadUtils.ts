@@ -1,7 +1,7 @@
 import { URL } from "url";
 import * as crypto from "crypto";
 import * as fs from "fs-extra";
-import * as ProgressBar from "progress";
+import ProgressBar from "progress";
 import * as tmp from "tmp";
 
 import { Client } from "./apiv2";

@@ -1,4 +1,4 @@
-import * as Chain from "stream-chain";
+import Chain from "stream-chain";
 import * as clc from "colorette";
 import * as Filter from "stream-json/filters/Filter";
 import * as stream from "stream";

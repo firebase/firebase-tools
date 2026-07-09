@@ -4,7 +4,7 @@ import * as yaml from "yaml";
 import * as clc from "colorette";
 
 import * as fs from "../fsutils";
-import { NodeType } from "yaml/dist/nodes/Node";
+
 import * as prompt from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import { AppHostingYamlConfig, EnvMap, toEnvList } from "./yaml";
@@ -175,7 +175,7 @@ export function findEnv(document: yaml.Document, variable: string): Env | undefi
     return undefined;
   }
   const envs = document.get("env") as yaml.YAMLSeq;
-  for (const env of envs.items as Array<NodeType<Env>>) {
+  for (const env of envs.items as any) {
     if ((env.get("variable") as unknown) === variable) {
       return env.toJSON() as Env;
     }
@@ -189,7 +189,7 @@ export function upsertEnv(document: yaml.Document, env: Env): void {
     document.set("env", document.createNode([env]));
     return;
   }
-  const envs = document.get("env") as yaml.YAMLSeq<NodeType<Env>>;
+  const envs = document.get("env") as yaml.YAMLSeq<any>;
 
   // The type system in this library is... not great at propagating type info
   const envYaml = document.createNode(env);

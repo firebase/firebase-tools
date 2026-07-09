@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { remoteConfigApiOrigin } from "../api";
 import nock from "../test/helpers/nock";
-import * as Table from "cli-table3";
+import Table from "cli-table3";
 import * as util from "util";
 
 import * as rcExperiment from "./getExperiment";

@@ -1,6 +1,6 @@
 import { expect, use } from "chai";
 import * as sinon from "sinon";
-import * as chaiAsPromised from "chai-as-promised";
+import chaiAsPromised from "chai-as-promised";
 
 use(chaiAsPromised);
 

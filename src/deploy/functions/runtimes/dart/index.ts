@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
-import * as spawn from "cross-spawn";
+import spawn from "cross-spawn";
 import { ChildProcess } from "child_process";
 
 import * as runtimes from "..";

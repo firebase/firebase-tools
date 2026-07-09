@@ -12,7 +12,7 @@ import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
 import { streamToString } from "./streamUtils";
-import * as FormData from "form-data";
+import FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
 // build/output format.

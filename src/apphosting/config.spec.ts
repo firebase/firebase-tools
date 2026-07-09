@@ -7,7 +7,7 @@ import * as csmImport from "../gcp/secretManager";
 import * as promptImport from "../prompt";
 import * as dialogs from "./secrets/dialogs";
 import * as config from "./config";
-import { NodeType } from "yaml/dist/nodes/Node";
+
 import { AppHostingYamlConfig, toEnvList } from "./yaml";
 import { FirebaseError } from "../error";
 
@@ -59,7 +59,7 @@ describe("config", () => {
 
   describe("get/setEnv", () => {
     it("sets new envs", () => {
-      const doc = new yaml.Document<NodeType<config.Config>>();
+      const doc = new yaml.Document<any>();
       const env: config.Env = {
         variable: "VARIABLE",
         value: "value",
@@ -76,7 +76,7 @@ describe("config", () => {
     });
 
     it("overwrites envs", () => {
-      const doc = new yaml.Document<NodeType<config.Config>>();
+      const doc = new yaml.Document<any>();
       const env: config.Env = {
         variable: "VARIABLE",
         value: "value",
@@ -111,7 +111,7 @@ env:
     secret: api-key
 `;
 
-      const doc = yaml.parseDocument(rawDoc) as yaml.Document<NodeType<config.Config>>;
+      const doc = yaml.parseDocument(rawDoc) as yaml.Document<any>;
       config.upsertEnv(doc, {
         variable: "GOOGLE_API_KEY",
         secret: "api-key",

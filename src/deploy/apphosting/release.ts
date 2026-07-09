@@ -1,4 +1,4 @@
-import * as ora from "ora";
+import ora from "ora";
 import { consoleOrigin } from "../../api";
 import { getBackend } from "../../apphosting/backend";
 import { orchestrateRollout } from "../../apphosting/rollout";
