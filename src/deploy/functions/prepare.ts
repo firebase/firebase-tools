@@ -102,7 +102,8 @@ export async function discoverSecurityDetails(
 
   if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
     throw new FirebaseError(
-      `Cannot deploy a partial codebase when enrolling or unenrolling from declarative security`,
+      "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
+      "codebase when opting into or out of declartive secuirty (starting or no longer using `requireRoles`)"
     );
   }
 
@@ -730,11 +731,11 @@ export async function loadCodebases(
     if (firebaseJsonRuntime && !supported.isRuntime(firebaseJsonRuntime as string)) {
       throw new FirebaseError(
         `Functions codebase ${codebase} has invalid runtime ` +
-          `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
-          (Object.keys(supported.RUNTIMES) as supported.Runtime[])
-            .filter((runtime) => !supported.isDecommissioned(runtime))
-            .map((s) => `- ${s}`)
-            .join("\n"),
+        `${firebaseJsonRuntime} specified in firebase.json. Valid values are: \n` +
+        (Object.keys(supported.RUNTIMES) as supported.Runtime[])
+          .filter((runtime) => !supported.isDecommissioned(runtime))
+          .map((s) => `- ${s}`)
+          .join("\n"),
       );
     }
     const runtimeDelegate = await runtimes.getRuntimeDelegate(delegateContext);
@@ -787,8 +788,8 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
     logLabeledWarning(
       "functions",
       `The following Dart functions use triggers that are not yet supported for production deployment: ${unsupported.map((ep) => ep.id).join(", ")}. ` +
-        "They will be deployed but may not work as expected. " +
-        "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
+      "They will be deployed but may not work as expected. " +
+      "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
 }
