@@ -53,7 +53,7 @@ describe("functions:lifecycle commands", () => {
         endpoints: {},
         params: [],
         lifecycleHooks: {
-          afterInstall: {
+          afterFirstDeploy: {
             task: {
               function: "myTask",
             },
@@ -78,7 +78,7 @@ describe("functions:lifecycle commands", () => {
       };
       const mockBackend = backend.empty();
 
-      await expect(lifecycle.executeHook("afterInstall", hook, mockBackend)).to.be.rejectedWith(
+      await expect(lifecycle.executeHook("afterFirstDeploy", hook, mockBackend)).to.be.rejectedWith(
         FirebaseError,
         'Lifecycle hook action type "call" is not supported.',
       );
@@ -106,7 +106,7 @@ describe("functions:lifecycle commands", () => {
         const loggerStub = sandbox.stub(logger, "info");
         const mockBuild = {
           lifecycleHooks: {
-            afterInstall: {
+            afterFirstDeploy: {
               task: {
                 function: "myTask",
                 body: { foo: "bar" },
@@ -119,7 +119,7 @@ describe("functions:lifecycle commands", () => {
         const { command: listCommand } = require("./functions-lifecycle-list");
         await listCommand.runner()("my-codebase", options);
 
-        expect(loggerStub).to.have.been.calledWith(sinon.match("Event: afterInstall"));
+        expect(loggerStub).to.have.been.calledWith(sinon.match("Event: afterFirstDeploy"));
         expect(loggerStub).to.have.been.calledWith(sinon.match("Action: Task"));
         expect(loggerStub).to.have.been.calledWith(sinon.match("Target Function: myTask"));
       });
@@ -142,7 +142,7 @@ describe("functions:lifecycle commands", () => {
         const { command: runCommand } = require("./functions-lifecycle-run");
         await expect(runCommand.runner()("invalidHook", "my-codebase", options)).to.be.rejectedWith(
           FirebaseError,
-          'Invalid hook name "invalidHook". Supported hooks are "afterInstall" and "afterUpdate".',
+          'Invalid hook name "invalidHook". Supported hooks are "afterFirstDeploy" and "afterRedeploy".',
         );
       });
 
@@ -151,10 +151,10 @@ describe("functions:lifecycle commands", () => {
 
         const { command: runCommand } = require("./functions-lifecycle-run");
         await expect(
-          runCommand.runner()("afterInstall", "my-codebase", options),
+          runCommand.runner()("afterFirstDeploy", "my-codebase", options),
         ).to.be.rejectedWith(
           FirebaseError,
-          'No lifecycle hook "afterInstall" configured for codebase "my-codebase".',
+          'No lifecycle hook "afterFirstDeploy" configured for codebase "my-codebase".',
         );
       });
 
@@ -162,7 +162,7 @@ describe("functions:lifecycle commands", () => {
         const mockHook = { task: { function: "myTask" } };
         loadCodebaseBuildStub.resolves({
           lifecycleHooks: {
-            afterInstall: mockHook,
+            afterFirstDeploy: mockHook,
           },
         });
 
@@ -171,10 +171,10 @@ describe("functions:lifecycle commands", () => {
         const executeHookStub = sandbox.stub(lifecycle, "executeHook").resolves();
 
         const { command: runCommand } = require("./functions-lifecycle-run");
-        await runCommand.runner()("afterInstall", "my-codebase", options);
+        await runCommand.runner()("afterFirstDeploy", "my-codebase", options);
 
         expect(executeHookStub).to.have.been.calledWith(
-          "afterInstall",
+          "afterFirstDeploy",
           mockHook,
           mockExistingBackend,
         );

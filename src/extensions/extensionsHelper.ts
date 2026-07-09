@@ -3,8 +3,8 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
-import fetch from "node-fetch";
 import * as path from "path";
+import { Readable } from "stream";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
@@ -751,8 +751,10 @@ async function fetchExtensionSource(
   )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
-    if (response.ok) {
-      await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
+    if (response.ok && response.body) {
+      await Readable.fromWeb(response.body as any)
+        .pipe(createUnzipTransform(tempDirectory.name))
+        .promise();
     }
   } catch (err) {
     throw new FirebaseError(archiveErrorMessage);
