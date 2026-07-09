@@ -297,7 +297,9 @@ export async function prepare(
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
-    functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+    if (experiments.isEnabled("secretEnvParams")) {
+      functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
