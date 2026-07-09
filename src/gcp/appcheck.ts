@@ -131,7 +131,7 @@ export async function getService(projectId: string, service: string): Promise<Ap
  */
 export async function listServices(projectId: string): Promise<AppCheckService[]> {
   const res = await client.get<{ services?: Service[] }>(`projects/${projectId}/services`);
-  return (res.body.services ?? []).map(toAppCheckService);
+  return (res.body?.services ?? []).map(toAppCheckService);
 }
 
 /**
@@ -185,7 +185,7 @@ export async function listDebugTokens(projectId: string, appId: string): Promise
   const res = await client.get<{ debugTokens?: DebugToken[] }>(
     `projects/${projectId}/apps/${appId}/debugTokens`,
   );
-  return res.body.debugTokens ?? [];
+  return res.body?.debugTokens ?? [];
 }
 
 /**
@@ -422,7 +422,8 @@ export function parseTokenTtl(ttl: string): string {
   const value = Number(match[1]);
   const unit = match[2] ?? "s";
   const multipliers: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
-  return `${value * multipliers[unit]}s`;
+  // The App Check API expects an integer number of seconds.
+  return `${Math.round(value * multipliers[unit])}s`;
 }
 
 /** Formats a Duration string ("3600s") as a short human label ("1h"). */

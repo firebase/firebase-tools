@@ -115,6 +115,11 @@ describe("gcp/appcheck", () => {
       expect(appcheck.parseTokenTtl("3600")).to.equal("3600s");
     });
 
+    it("rounds to an integer number of seconds", () => {
+      expect(appcheck.parseTokenTtl("1.5s")).to.equal("2s");
+      expect(appcheck.parseTokenTtl("0.5m")).to.equal("30s");
+    });
+
     it("throws on an invalid duration", () => {
       expect(() => appcheck.parseTokenTtl("soon")).to.throw(FirebaseError, /Invalid token TTL/);
     });

@@ -6,6 +6,7 @@ import * as ensureApiEnabled from "../ensureApiEnabled";
 import { listFirebaseApps, AppPlatform } from "../management/apps";
 import * as clc from "colorette";
 import { logger } from "../logger";
+import { getErrMsg } from "../error";
 import * as Table from "cli-table3";
 
 import { Options } from "../options";
@@ -34,14 +35,37 @@ export const command = new Command("appcheck:providers:list")
       apps = apps.filter((a) => a.appId === appFilter);
     }
 
+    // Probe every app's providers in parallel; a single failing app degrades to
+    // an "(error)" row instead of breaking the whole command.
+    const perApp = await Promise.all(
+      apps.map(async (app) => {
+        try {
+          const configured = await appcheck.listConfiguredProviders(
+            projectId,
+            app.appId,
+            app.platform,
+          );
+          return { app, configured };
+        } catch (err: unknown) {
+          logger.debug(
+            `Failed to list App Check providers for app ${app.appId}: ${getErrMsg(err)}`,
+          );
+          return { app, configured: null };
+        }
+      }),
+    );
+
     const table = new Table({
       head: ["App ID", "Platform", "Provider", "Token TTL"],
       style: { head: ["green"] },
     });
     const results: Array<{ appId: string; provider: appcheck.ProviderType; tokenTtl?: string }> =
       [];
-    for (const app of apps) {
-      const configured = await appcheck.listConfiguredProviders(projectId, app.appId, app.platform);
+    for (const { app, configured } of perApp) {
+      if (configured === null) {
+        table.push([clc.bold(app.appId), app.platform, clc.red("(error)"), "-"]);
+        continue;
+      }
       if (configured.length === 0) {
         table.push([clc.bold(app.appId), app.platform, clc.dim("(not configured)"), "-"]);
         continue;

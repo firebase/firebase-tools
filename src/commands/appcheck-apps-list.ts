@@ -6,6 +6,7 @@ import * as ensureApiEnabled from "../ensureApiEnabled";
 import { listFirebaseApps, AppPlatform, AppMetadata } from "../management/apps";
 import * as clc from "colorette";
 import { logger } from "../logger";
+import { getErrMsg } from "../error";
 import * as Table from "cli-table3";
 
 import { Options } from "../options";
@@ -28,8 +29,17 @@ export const command = new Command("appcheck:apps:list")
       if (!appCheckEnabled) {
         return "(App Check not enabled)";
       }
-      const configured = await appcheck.getConfiguredProviders(projectId, app.appId, app.platform);
-      return configured.length > 0 ? configured.join(", ") : "(not configured)";
+      try {
+        const configured = await appcheck.getConfiguredProviders(
+          projectId,
+          app.appId,
+          app.platform,
+        );
+        return configured.length > 0 ? configured.join(", ") : "(not configured)";
+      } catch (err: unknown) {
+        logger.debug(`Failed to get App Check providers for app ${app.appId}: ${getErrMsg(err)}`);
+        return "(unknown)";
+      }
     }
 
     const rows = await Promise.all(

@@ -3,8 +3,10 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as appcheck from "../gcp/appcheck";
 import * as ensureApiEnabled from "../ensureApiEnabled";
+import { listFirebaseApps, AppPlatform } from "../management/apps";
 import * as clc from "colorette";
 import { logger } from "../logger";
+import { FirebaseError } from "../error";
 
 import { Options } from "../options";
 
@@ -24,6 +26,13 @@ export const command = new Command("appcheck:providers:get <appId> <provider>")
     if (!isEnabled) {
       logger.info(clc.bold(`Firebase App Check is not enabled on project ${projectId}.`));
       return null;
+    }
+
+    // getProviderConfig treats a 404 as "not configured", so validate the app
+    // exists first to avoid misreporting an unknown app as unconfigured.
+    const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+    if (!apps.some((a) => a.appId === appId)) {
+      throw new FirebaseError(`App ${clc.bold(appId)} was not found in project ${projectId}.`);
     }
 
     const config = await appcheck.getProviderConfig(projectId, appId, providerType);
