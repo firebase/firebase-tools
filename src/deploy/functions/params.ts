@@ -490,7 +490,7 @@ async function ensureSecret(
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
 
-  const metadata = await secretManager.getSecretMetadata(projectId, resourceId, "latest");
+  const metadata = await secretManager.getSecretMetadata(projectId, resourceId, version);
   if (!metadata.secret) {
     if (nonInteractive) {
       throw new FirebaseError(

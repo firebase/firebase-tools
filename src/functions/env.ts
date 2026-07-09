@@ -459,9 +459,10 @@ export function writeResolvedSecretRefs(
   const toWrite: Record<string, string> = {};
 
   for (const secretName of Object.keys(resolvedSecretRefs)) {
-    const resolvedRef = resolvedSecretRefs[secretName];
-    if (!Object.prototype.hasOwnProperty.call(haveSecretRefs, secretName)) {
-      const reservedKey = "FIREBASE_SECRET_REF_" + secretName.toUpperCase();
+    const uppercaseName = secretName.toUpperCase();
+    const resolvedRef = resolvedSecretRefs[uppercaseName];
+    if (!Object.prototype.hasOwnProperty.call(haveSecretRefs, uppercaseName)) {
+      const reservedKey = "FIREBASE_SECRET_REF_" + uppercaseName;
       toWrite[reservedKey] = resolvedRef;
     }
   }

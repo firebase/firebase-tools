@@ -819,11 +819,11 @@ export function applyEnvSecretBindings(
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
 
-    for (const secret of build.params.filter((param) => param.type === "secret")) {
-      if (secret.name === key) {
-        secret.resourceId = secretId;
-        secret.version = version;
-        secret.inLocalEnvironment = true;
+    for (const secretParam of build.params.filter((param) => param.type === "secret")) {
+      if (secretParam.name.toUpperCase() === key) {
+        secretParam.resourceId = secretId;
+        secretParam.version = version;
+        secretParam.inLocalEnvironment = true;
       }
     }
 
