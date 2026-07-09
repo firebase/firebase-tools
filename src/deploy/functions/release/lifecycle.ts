@@ -54,7 +54,7 @@ export async function executeLifecycleHooks(
     if (!event) {
       logLabeledBullet(
         "functions",
-        `Skipping lifecycle hooks for codebase "${codebase ?? "default"}". You can retry a lifecycle hook in isolation by running: firebase functions:lifecycle:run <event> ${codebase ?? "default"}`,
+        `Skipping lifecycle hooks for codebase "${codebase ?? "default"}".`,
       );
       return false;
     }
