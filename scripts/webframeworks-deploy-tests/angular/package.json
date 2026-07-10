@@ -44,5 +44,21 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.0.0",
     "typescript": "~5.7.3"
+  },
+  "overrides": {
+    "protobufjs": "^7.6.3",
+    "protobufjs-cli": "^2.6.0",
+    "@grpc/grpc-js": "^1.10.10",
+    "undici": "^6.24.0",
+    "fast-xml-parser": "^5.7.0",
+    "uuid": "^14.0.0"
+  },
+  "resolutions": {
+    "protobufjs": "^7.6.3",
+    "protobufjs-cli": "^2.6.0",
+    "@grpc/grpc-js": "^1.10.10",
+    "undici": "^6.24.0",
+    "fast-xml-parser": "^5.7.0",
+    "uuid": "^14.0.0"
   }
 }

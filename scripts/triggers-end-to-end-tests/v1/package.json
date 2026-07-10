@@ -14,7 +14,20 @@
     "firebase-functions-test": "^0.2.0"
   },
   "overrides": {
-    "protobufjs": "7.5.5"
+    "protobufjs": "^7.6.3",
+    "protobufjs-cli": "^2.6.0",
+    "@grpc/grpc-js": "^1.10.10",
+    "undici": "^6.24.0",
+    "fast-xml-parser": "^5.7.0",
+    "uuid": "^14.0.0"
   },
-  "private": true
+  "private": true,
+  "resolutions": {
+    "protobufjs": "^7.6.3",
+    "protobufjs-cli": "^2.6.0",
+    "@grpc/grpc-js": "^1.10.10",
+    "undici": "^6.24.0",
+    "fast-xml-parser": "^5.7.0",
+    "uuid": "^14.0.0"
+  }
 }
