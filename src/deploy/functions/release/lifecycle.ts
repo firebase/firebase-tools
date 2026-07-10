@@ -43,9 +43,7 @@ export function isRecoveredFromPartialDeploy(
   const wantEndpoints = backend.allEndpoints(wantBackend);
   const haveEndpoints = backend.allEndpoints(haveBackend);
 
-  const wantHashes = new Set(
-    wantEndpoints.map((ep) => ep.hash).filter((h): h is string => !!h),
-  );
+  const wantHashes = new Set(wantEndpoints.map((ep) => ep.hash).filter((h): h is string => !!h));
   if (!wantHashes.size) {
     return false;
   }

@@ -411,5 +411,118 @@ describe("lifecycle", () => {
         "You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterFirstDeploy my-codebase",
       );
     });
+
+    it("prompts user and executes selected hook when recovering from a partial deployment", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const promptStub = sandbox
+        .stub(prompts, "promptForLifecycleEvent")
+        .resolves("afterFirstDeploy");
+      const wantBackend = backend.of(
+        {
+          id: "fn1",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "fn1",
+          platform: "gcfv2" as const,
+          httpsTrigger: {},
+          hash: "shared-hash",
+        },
+        {
+          id: "installHookTask",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "installHookTask",
+          platform: "gcfv2" as const,
+          uri: "https://installhooktask-12345.a.run.app",
+          taskQueueTrigger: {},
+          hash: "shared-hash",
+        },
+      );
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.of({
+        id: "fn1",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn1",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+        hash: "shared-hash",
+      });
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "default",
+        undefined,
+      );
+      expect(promptStub).to.have.been.calledOnceWith("default", wantBackend, sinon.match.any);
+      expect(executed).to.be.true;
+      expect(enqueueStub).to.have.been.calledOnce;
+    });
+
+    it("skips execution when user selects skip in partial deployment recovery prompt", async () => {
+      const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
+      const promptStub = sandbox.stub(prompts, "promptForLifecycleEvent").resolves(undefined);
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+      const wantBackend = backend.of(
+        {
+          id: "fn1",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "fn1",
+          platform: "gcfv2" as const,
+          httpsTrigger: {},
+          hash: "shared-hash",
+        },
+        {
+          id: "installHookTask",
+          project: "myProj",
+          region: "us-east1",
+          entryPoint: "installHookTask",
+          platform: "gcfv2" as const,
+          uri: "https://installhooktask-12345.a.run.app",
+          taskQueueTrigger: {},
+          hash: "shared-hash",
+        },
+      );
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.of({
+        id: "fn1",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "fn1",
+        platform: "gcfv2" as const,
+        httpsTrigger: {},
+        hash: "shared-hash",
+      });
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "default",
+        undefined,
+      );
+      expect(promptStub).to.have.been.calledOnce;
+      expect(executed).to.be.false;
+      expect(enqueueStub).to.not.have.been.called;
+      expect(bulletStub).to.have.been.calledWith(
+        "functions",
+        sinon.match(/Skipping lifecycle hooks for codebase "default"/),
+      );
+    });
   });
 });
