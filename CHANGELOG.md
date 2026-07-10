@@ -1,0 +1,1 @@
+- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
