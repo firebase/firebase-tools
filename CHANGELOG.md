@@ -1,1 +1,2 @@
-- Updated Pub/Sub emulator to version 0.8.34
+- Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
+- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.

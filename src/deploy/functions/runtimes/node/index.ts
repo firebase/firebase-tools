@@ -4,7 +4,6 @@ import * as path from "path";
 import * as portfinder from "portfinder";
 import * as semver from "semver";
 import * as spawn from "cross-spawn";
-import fetch from "node-fetch";
 import { ChildProcess } from "child_process";
 
 import { FirebaseError } from "../../../../error";

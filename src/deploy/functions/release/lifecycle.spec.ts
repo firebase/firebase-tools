@@ -1,11 +1,12 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as backend from "../backend";
-import { determineDeploymentDelta, executeLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
 import * as cloudtasks from "../../../gcp/cloudtasks";
 import { logger } from "../../../logger";
 import * as projects from "../../../management/projects";
 import * as computeEngine from "../../../gcp/computeEngine";
+import * as utils from "../../../utils";
 
 describe("lifecycle", () => {
   let sandbox: sinon.SinonSandbox;
@@ -22,15 +23,15 @@ describe("lifecycle", () => {
     sandbox.restore();
   });
 
-  describe("determineDeploymentDelta", () => {
-    it("returns afterInstall when haveBackend has no endpoints", () => {
+  describe("determineDeploymentEvent", () => {
+    it("returns afterFirstDeploy when haveBackend has no endpoints", () => {
       const haveBackend = backend.empty();
 
-      const delta = determineDeploymentDelta(haveBackend);
-      expect(delta).to.equal("afterInstall");
+      const event = determineDeploymentEvent(haveBackend);
+      expect(event).to.equal("afterFirstDeploy");
     });
 
-    it("returns afterUpdate when haveBackend has existing endpoints", () => {
+    it("returns afterRedeploy when haveBackend has existing endpoints", () => {
       const haveBackend = backend.of({
         id: "myFunc",
         project: "myProj",
@@ -40,8 +41,8 @@ describe("lifecycle", () => {
         httpsTrigger: {},
       });
 
-      const delta = determineDeploymentDelta(haveBackend);
-      expect(delta).to.equal("afterUpdate");
+      const event = determineDeploymentEvent(haveBackend);
+      expect(event).to.equal("afterRedeploy");
     });
   });
 
@@ -54,7 +55,7 @@ describe("lifecycle", () => {
       expect(executed).to.be.false;
     });
 
-    it("enqueues task when afterInstall TaskQueue hook is configured on fresh install", async () => {
+    it("enqueues task when afterFirstDeploy TaskQueue hook is configured on fresh install", async () => {
       const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
       const loggerStub = sandbox.stub(logger, "info");
       const wantBackend = backend.of({
@@ -67,7 +68,7 @@ describe("lifecycle", () => {
         taskQueueTrigger: {},
       });
       wantBackend.lifecycleHooks = {
-        afterInstall: {
+        afterFirstDeploy: {
           task: {
             function: "installHookTask",
             body: { setupVersion: 1 },
@@ -92,7 +93,7 @@ describe("lifecycle", () => {
       });
       expect(loggerStub).to.have.been.calledWith(
         sinon.match.any,
-        "View logs for installHookTask at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
+        "View logs for afterFirstDeploy at: https://console.cloud.google.com/logs/query;query=resource.type%3D%22cloud_run_revision%22%0Aresource.labels.service_name%3D%22installHookTask%22%0Aresource.labels.location%3D%22us-east1%22;project=myProj",
       );
     });
 
@@ -109,7 +110,7 @@ describe("lifecycle", () => {
         taskQueueTrigger: {},
       });
       wantBackend.lifecycleHooks = {
-        afterInstall: {
+        afterFirstDeploy: {
           task: {
             function: "installHookTask",
           },
@@ -127,7 +128,7 @@ describe("lifecycle", () => {
       });
     });
 
-    it("enqueues task when afterUpdate TaskQueue hook is configured on subsequent update", async () => {
+    it("enqueues task when afterRedeploy TaskQueue hook is configured on subsequent update", async () => {
       const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
       const wantBackend = backend.of({
         id: "updateHookTask",
@@ -139,7 +140,7 @@ describe("lifecycle", () => {
         taskQueueTrigger: {},
       });
       wantBackend.lifecycleHooks = {
-        afterUpdate: {
+        afterRedeploy: {
           task: {
             function: "updateHookTask",
             body: { migrationStep: 2 },
@@ -171,7 +172,7 @@ describe("lifecycle", () => {
       });
     });
 
-    it("skips afterUpdate hook when deployment plan contains no resource modifications", async () => {
+    it("skips afterRedeploy hook when deployment plan contains no resource modifications", async () => {
       const enqueueStub = sandbox.stub(cloudtasks, "enqueueTask").resolves();
       const wantBackend = backend.of({
         id: "updateHookTask",
@@ -183,7 +184,7 @@ describe("lifecycle", () => {
         taskQueueTrigger: {},
       });
       wantBackend.lifecycleHooks = {
-        afterUpdate: {
+        afterRedeploy: {
           task: {
             function: "updateHookTask",
           },
@@ -200,17 +201,61 @@ describe("lifecycle", () => {
       });
 
       const emptyPlan = {
-        "default-us-east1-default": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
+        default: {
+          regionalChangesets: {
+            "default-us-east1-default": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [wantBackend.endpoints["us-east1"]["updateHookTask"]],
+            },
+          },
         },
       };
 
       const executed = await executeLifecycleHooks(wantBackend, haveBackend, emptyPlan, "default");
       expect(executed).to.be.false;
       expect(enqueueStub).to.not.have.been.called;
+    });
+
+    it("logs a warning and suggest run command when task enqueue fails", async () => {
+      sandbox.stub(cloudtasks, "enqueueTask").rejects(new Error("Queue full"));
+      const warningStub = sandbox.stub(utils, "logLabeledWarning");
+      const bulletStub = sandbox.stub(utils, "logLabeledBullet");
+      const wantBackend = backend.of({
+        id: "installHookTask",
+        project: "myProj",
+        region: "us-east1",
+        entryPoint: "installHookTask",
+        platform: "gcfv2",
+        uri: "https://installhooktask-12345.a.run.app",
+        taskQueueTrigger: {},
+        codebase: "my-codebase",
+      });
+      wantBackend.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "installHookTask",
+          },
+        },
+      };
+      const haveBackend = backend.empty();
+
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        undefined,
+        "my-codebase",
+      );
+      expect(executed).to.be.false;
+      expect(warningStub).to.have.been.calledWith(
+        "functions",
+        "Failed to execute afterFirstDeploy lifecycle hook: Queue full",
+      );
+      expect(bulletStub).to.have.been.calledWith(
+        "functions",
+        "You can retry the lifecycle hook in isolation by running: firebase functions:lifecycle:run afterFirstDeploy my-codebase",
+      );
     });
   });
 });

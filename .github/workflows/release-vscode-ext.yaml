@@ -28,7 +28,7 @@ jobs:
         run: |
           PR_NUM="${{ github.event.issue.number }}"
           echo "Fetching SHA for PR $PR_NUM..."
-          SHA=$(gh pr view "$PR_NUM" --json headRefOid -q .headRefOid)
+          SHA=$(gh pr view "$PR_NUM" --repo "${{ github.repository }}" --json headRefOid -q .headRefOid)
           echo "PR Head SHA is $SHA"
 
           if [[ "$COMMENT_BODY" == *"--build-only"* ]]; then
@@ -40,7 +40,7 @@ jobs:
 
           # Try to update the branch ref (force-push equivalent via API)
           if gh api -X PATCH "/repos/${{ github.repository }}/git/refs/heads/$TARGET_BRANCH" \
-            -f sha="$SHA" -f force=true >/dev/null 2>&1; then
+            -f sha="$SHA" -F force=true >/dev/null 2>&1; then
             echo "Successfully updated ref refs/heads/$TARGET_BRANCH to $SHA"
           else
             echo "Ref refs/heads/$TARGET_BRANCH not found. Creating it..."

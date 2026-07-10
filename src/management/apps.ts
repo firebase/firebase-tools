@@ -95,9 +95,11 @@ https://firebase.google.com/docs/flutter/setup
 async function initiateIosAppCreation(options: CreateIosAppOptions): Promise<IosAppMetadata> {
   if (!options.nonInteractive) {
     options.displayName = options.displayName || (await getDisplayName());
+    const promptAppStoreId = !options.bundleId;
     options.bundleId = options.bundleId || (await input("Please specify your iOS app bundle ID:"));
-    options.appStoreId =
-      options.appStoreId || (await input("Please specify your iOS app App Store ID:"));
+    if (promptAppStoreId && !options.appStoreId) {
+      options.appStoreId = await input("Please specify your iOS app App Store ID:");
+    }
   }
   if (!options.bundleId) {
     throw new FirebaseError("Bundle ID for iOS app cannot be empty");

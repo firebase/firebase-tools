@@ -109,6 +109,7 @@ export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
+  requiredRoles?: string[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
   lifecycleHooks?: Record<string, WireLifecycleHook>;
@@ -127,6 +128,7 @@ export function buildFromV1Alpha1(
     specVersion: "string",
     params: "array",
     requiredAPIs: "array",
+    requiredRoles: "array",
     endpoints: "object",
     extensions: "object",
     lifecycleHooks: "object",
@@ -134,6 +136,9 @@ export function buildFromV1Alpha1(
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
+  if (manifest.requiredRoles) {
+    bd.requiredRoles = parseRequiredRoles(manifest);
+  }
   for (const id of Object.keys(manifest.endpoints)) {
     const me: WireEndpoint = manifest.endpoints[id];
     assertBuildEndpoint(me, id);
@@ -152,7 +157,7 @@ export function buildFromV1Alpha1(
   if (manifest.lifecycleHooks) {
     bd.lifecycleHooks = {};
     for (const id of Object.keys(manifest.lifecycleHooks)) {
-      if (id !== "afterInstall" && id !== "afterUpdate") {
+      if (id !== "afterFirstDeploy" && id !== "afterRedeploy") {
         throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
       }
       const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
@@ -188,8 +193,25 @@ export function buildFromV1Alpha1(
   return bd;
 }
 
+const ROLE_REGEX =
+  /^(roles\/[a-zA-Z0-9_\.\-]+|projects\/[a-zA-Z0-9\-]+\/roles\/[a-zA-Z0-9_\.\-]+|organizations\/[0-9]+\/roles\/[a-zA-Z0-9_\.\-]+)$/;
+
+function parseRequiredRoles(manifest: WireManifest): string[] {
+  const roles: string[] = manifest.requiredRoles || [];
+  for (const role of roles) {
+    if (typeof role !== "string") {
+      throw new FirebaseError(`Invalid role "${JSON.stringify(role)}". Expected string`);
+    }
+    if (!ROLE_REGEX.test(role)) {
+      throw new FirebaseError(`Invalid IAM role format "${role}".`);
+    }
+  }
+  return Array.from(new Set(roles)); // Deduplicate as requested
+}
+
 function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
   const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
+
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
