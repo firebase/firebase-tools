@@ -92,6 +92,7 @@ describe("Fabricator", () => {
     tasks.upsertQueue.rejects(new Error("unexpected tasks.upsertQueue"));
     tasks.createQueue.rejects(new Error("unexpected tasks.createQueue"));
     tasks.updateQueue.rejects(new Error("unexpected tasks.updateQueue"));
+    tasks.disableQueue.rejects(new Error("unexpected tasks.disableQueue"));
     tasks.deleteQueue.rejects(new Error("unexpected tasks.deleteQueue"));
     tasks.setEnqueuer.rejects(new Error("unexpected tasks.setEnqueuer"));
     tasks.setIamPolicy.rejects(new Error("unexpected tasks.setIamPolicy"));
@@ -1215,19 +1216,16 @@ describe("Fabricator", () => {
       const ep = endpoint({
         taskQueueTrigger: {},
       }) as backend.Endpoint & backend.TaskQueueTriggered;
-      tasks.updateQueue.resolves();
+      tasks.disableQueue.resolves();
       await fab.disableTaskQueue(ep);
-      expect(tasks.updateQueue).to.have.been.calledWith({
-        name: tasks.queueNameForEndpoint(ep),
-        state: "DISABLED",
-      });
+      expect(tasks.disableQueue).to.have.been.calledWith(tasks.queueNameForEndpoint(ep));
     });
 
     it("wraps errors", async () => {
       const ep = endpoint({
         taskQueueTrigger: {},
       }) as backend.Endpoint & backend.TaskQueueTriggered;
-      tasks.updateQueue.rejects(new Error("Not today"));
+      tasks.disableQueue.rejects(new Error("Not today"));
       await expect(fab.disableTaskQueue(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "disable task queue",

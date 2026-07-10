@@ -1042,12 +1042,8 @@ export class Fabricator {
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {
-    const update = {
-      name: cloudtasks.queueNameForEndpoint(endpoint),
-      state: "DISABLED" as cloudtasks.State,
-    };
     await this.executor
-      .run(() => cloudtasks.updateQueue(update))
+      .run(() => cloudtasks.disableQueue(cloudtasks.queueNameForEndpoint(endpoint)))
       .catch(rethrowAs(endpoint, "disable task queue"));
   }
 
