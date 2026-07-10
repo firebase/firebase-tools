@@ -9,7 +9,7 @@ import { logBullet, logWarning } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
-const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
+const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
 const RESERVED_PREFIX_ALLOWLIST = ["FIREBASE_SECRET_REF_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase

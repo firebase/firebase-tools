@@ -825,7 +825,7 @@ export function applyEnvSecretBindings(
         );
       }
       let notFound = true;
-      endpoint.secretEnvironmentVariables?.forEach((envVar) => {
+      for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
         if (envVar.key === key) {
           notFound = false;
           envVar.secret = secretId;
@@ -835,7 +835,7 @@ export function applyEnvSecretBindings(
           }
           logger.debug(`Merged secret: ${JSON.stringify(envVar)}`);
         }
-      });
+      }
       if (notFound) {
         logger.warn(
           `.env files contain a secret binding ${key} which has not been configured as a secret param via defineSecret().`,

@@ -52,7 +52,7 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition } from "../../functional";
+import { assertExhaustive, partition, mapObject } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -279,9 +279,9 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    const parsedSecretRefs = Object.fromEntries(
-      Object.entries(secretRefs).map(([k, v]) => [k, build.parseSecretRef(v)]),
-    ) as Record<string, build.ParsedSecretRef>;
+    const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+      build.parseSecretRef(unparsed),
+    );
     build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
 
     const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
