@@ -406,20 +406,19 @@ export async function promptForLifecycleEvent(
 ): Promise<DeploymentEvent | undefined> {
   const hooks = wantBackend.lifecycleHooks || {};
   const choices: { name: string; value: DeploymentEvent | "skip" }[] = [];
-  if (hooks.afterFirstDeploy) {
-    choices.push({ name: "afterFirstDeploy", value: "afterFirstDeploy" });
-  }
-  if (hooks.afterRedeploy) {
-    choices.push({ name: "afterRedeploy", value: "afterRedeploy" });
-  }
-  choices.push({ name: "skip (default)", value: "skip" });
 
-  if (choices.length === 1) {
+  for (const hookName of Object.keys(hooks)) {
+    choices.push({ name: hookName, value: hookName as DeploymentEvent });
+  }
+
+  if (choices.length === 0) {
     return undefined;
   }
 
+  choices.push({ name: "skip (default)", value: "skip" });
+
   const selection = await select<DeploymentEvent | "skip">({
-    message: `We detected a partially failed deployment for codebase "${codebase}". Which lifecycle hook would you like to run?`,
+    message: `We cannot determine whether this deployment is a first deploy or a redeploy for codebase "${codebase}" because it is recovering from a previous partial failure.`,
     choices,
     default: "skip",
     nonInteractive: options?.nonInteractive,
