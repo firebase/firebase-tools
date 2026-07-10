@@ -542,8 +542,7 @@ async function ensureSecret(
     secretAlreadyExisted = true;
   }
 
-  const secretRefString =
-    typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
+  const secretRefString = typeof version === "undefined" ? resourceId : `${resourceId}:${version}`;
   if (experiments.isEnabled("secretEnvParams")) {
     if (!secretParam.inLocalEnvironment && secretAlreadyExisted) {
       logger.info(
