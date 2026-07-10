@@ -367,7 +367,12 @@ describe("lifecycle", () => {
         },
       };
 
-      const executed = await executeLifecycleHooks(wantBackend, haveBackend, emptyPlan, "default");
+      const executed = await executeLifecycleHooks(
+        wantBackend,
+        haveBackend,
+        emptyPlan /* plan */,
+        "default" /* codebase */,
+      );
       expect(executed).to.be.false;
       expect(enqueueStub).to.not.have.been.called;
     });
@@ -398,8 +403,8 @@ describe("lifecycle", () => {
       const executed = await executeLifecycleHooks(
         wantBackend,
         haveBackend,
-        undefined,
-        "my-codebase",
+        undefined /* plan */,
+        "my-codebase" /* codebase */,
       );
       expect(executed).to.be.false;
       expect(warningStub).to.have.been.calledWith(
@@ -458,9 +463,9 @@ describe("lifecycle", () => {
       const executed = await executeLifecycleHooks(
         wantBackend,
         haveBackend,
-        undefined,
-        "default",
-        undefined,
+        undefined /* plan */,
+        "default" /* codebase */,
+        undefined /* options */,
       );
       expect(promptStub).to.have.been.calledOnceWith("default", wantBackend, sinon.match.any);
       expect(executed).to.be.true;
@@ -512,9 +517,9 @@ describe("lifecycle", () => {
       const executed = await executeLifecycleHooks(
         wantBackend,
         haveBackend,
-        undefined,
-        "default",
-        undefined,
+        undefined /* plan */,
+        "default" /* codebase */,
+        undefined /* options */,
       );
       expect(promptStub).to.have.been.calledOnce;
       expect(executed).to.be.false;
