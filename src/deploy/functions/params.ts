@@ -588,7 +588,7 @@ async function promptList(
       prompt,
       param.input,
       resolvedDefault,
-      false, // enforceNonEmpty
+      param.input.text.nonEmpty,
       (res: string): string[] => {
         return res.split(param.delimiter || ",");
       },
@@ -796,7 +796,7 @@ async function promptResourceStrings(
       return promptSelectMultiple<string>(
         prompt,
         forgedInput,
-        undefined,
+        undefined, // resolvedDefault
         enforceNonEmpty,
         (res: string[]) => res,
       );
@@ -804,8 +804,12 @@ async function promptResourceStrings(
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string[]>(prompt, { text: {} }, undefined, enforceNonEmpty, (res: string) =>
-        res.split(","),
+      return promptText<string[]>(
+        prompt,
+        { text: {} }, // textInput
+        undefined, // resolvedDefault
+        enforceNonEmpty,
+        (res: string) => res.split(","),
       );
   }
 }
@@ -837,7 +841,7 @@ async function promptText<T extends RawParamValue>(
     }
   }
   if (enforceNonEmpty && res === "") {
-    logger.error(`Input cannot be the empty string, retrying...`);
+    logger.error(`A non-empty value is required, retrying......`);
     return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
@@ -900,7 +904,7 @@ async function promptSelectMultiple<T extends string>(
     return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
   if (enforceNonEmpty && Array.isArray(converted) && converted.length === 0) {
-    logger.error(`Input cannot be empty, retrying...`);
+    logger.error(`A non-empty value is required, retrying...`);
     return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
