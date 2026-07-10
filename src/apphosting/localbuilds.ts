@@ -1,14 +1,15 @@
 import * as childProcess from "child_process";
 import * as fs from "fs-extra";
 import * as path from "path";
-import { Availability, BuildConfig, Env } from "../gcp/apphosting";
+import * as semver from "semver";
+import { Availability, Backend, BuildConfig, Env } from "../gcp/apphosting";
 
 import { EnvMap } from "./yaml";
 import { loadSecret } from "./secrets/index";
 import { confirm } from "../prompt";
 import { FirebaseError, getErrMsg } from "../error";
 import { logger } from "../logger";
-import { wrappedSafeLoad } from "../utils";
+import { wrappedSafeLoad, logLabeledWarning } from "../utils";
 import { getOrDownloadUniversalMaker } from "./universalMakerDownload";
 
 interface UniversalMakerOutput {
@@ -265,4 +266,92 @@ async function toProcessEnv(projectId: string, env: EnvMap): Promise<NodeJS.Proc
   );
 
   return Object.fromEntries(resolvedEntries) as NodeJS.ProcessEnv;
+}
+
+/**
+ * Validates that the local Node.js environment and project configuration are
+ * compatible with the target backend's ABIU runtime settings.
+ *
+ * This performs three checks:
+ * 1. Confirms the backend has ABIU enabled (local builds are only supported on ABIU runtimes).
+ * 2. Warns if the host machine's Node.js major version differs from the target ABIU major version.
+ * 3. Warns if the package.json engines.node range does not satisfy the target ABIU version.
+ */
+export function validateLocalBuildNodeVersion(backend: Backend, projectRoot: string): void {
+  const runtimeValue = backend.runtime?.value ?? "";
+  const isLegacyRuntime = runtimeValue === "" || runtimeValue === "nodejs";
+  const abiuEnabled = !isLegacyRuntime && !backend.automaticBaseImageUpdatesDisabled;
+
+  // 1. Block non-ABIU runtimes
+  if (!abiuEnabled) {
+    throw new FirebaseError(
+      `Local builds are only supported for backends with ABIU (Automatic Base Image Updates) enabled. ` +
+        `Your backend is currently configured with a non-ABIU runtime ("${runtimeValue || "unspecified"}"). ` +
+        `Please update your backend to a versioned runtime (e.g., nodejs22) to enable local builds.`,
+      { exit: 1 },
+    );
+  }
+
+  const targetMajorMatch = runtimeValue.match(/^nodejs(\d+)$/);
+  if (!targetMajorMatch) {
+    logLabeledWarning(
+      "apphosting",
+      `Unable to extract Node.js major version from the backend runtime ("${runtimeValue}"). ` +
+        `Skipping local Node.js version compatibility checks.`,
+    );
+    return;
+  }
+
+  const targetMajor = parseInt(targetMajorMatch[1], 10);
+
+  // Get the local Node.js version that will be used to build the app
+  let localNodeVersion: string;
+  try {
+    localNodeVersion = childProcess.execSync("node -v", { encoding: "utf8" }).trim();
+  } catch {
+    logLabeledWarning(
+      "apphosting",
+      `Unable to detect your local Node.js version (is 'node' installed and in your PATH?). ` +
+        `Skipping local Node.js version compatibility checks.`,
+    );
+    return;
+  }
+
+  // Check package.json engines
+  const packageJsonPath = path.join(projectRoot, "package.json");
+  const packageJson = fs.readJsonSync(packageJsonPath, { throws: false });
+  const enginesNode = packageJson?.engines?.node;
+
+  if (enginesNode) {
+    logLabeledWarning(
+      "apphosting",
+      `Your package.json specifies Node.js engine "${enginesNode}". ` +
+        `Please note that local builds do NOT use the "engines" field to resolve or download Node.js. ` +
+        `Instead, your local build uses your host machine's active Node.js version (${localNodeVersion}) to compile the app, ` +
+        `and your deployed app will run on the backend's configured ABIU runtime (${runtimeValue}).`,
+    );
+
+    const targetRange = `^${targetMajor}.0.0`;
+    if (semver.validRange(enginesNode) && !semver.intersects(targetRange, enginesNode)) {
+      logLabeledWarning(
+        "apphosting",
+        `The Node.js version range specified in your package.json engines ("${enginesNode}") ` +
+          `does not satisfy your backend's target ABIU runtime version (Node.js ${targetMajor}). ` +
+          `Please update your package.json engines to align with your backend configuration.`,
+      );
+    }
+  }
+
+  // 2. Check local vs target ABIU runtime version
+  const localMajorMatch = localNodeVersion.match(/^v?(\d+)/);
+  const localMajor = localMajorMatch ? parseInt(localMajorMatch[1], 10) : null;
+
+  if (localMajor !== null && localMajor !== targetMajor) {
+    logLabeledWarning(
+      "apphosting",
+      `Local Node.js version (${localNodeVersion}) does not match your backend's target Node.js version (Node.js ${targetMajor}). ` +
+        `This mismatch may cause runtime issues. ` +
+        `Please switch your local environment to Node.js ${targetMajor} to ensure build-to-run parity.`,
+    );
+  }
 }
