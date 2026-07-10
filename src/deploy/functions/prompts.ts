@@ -398,6 +398,7 @@ export async function promptForSecurityChanges(
 
 /**
  * Prompts the user to select which lifecycle hook to execute when a partial deployment retry is detected.
+ * If no hooks are defined, then the prompt will be skipped.
  */
 export async function promptForLifecycleEvent(
   codebase: string,
