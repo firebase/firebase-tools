@@ -17,8 +17,8 @@ export type DeploymentEvent = "afterFirstDeploy" | "afterRedeploy";
  * (afterFirstDeploy) or an update to an existing deployment (afterRedeploy).
  */
 export function determineDeploymentEvent(haveBackend: backend.Backend): DeploymentEvent {
-  // If haveBackend has no existing endpoints, this is a fresh installation.
-  const hasExistingEndpoints = backend.someEndpoint(haveBackend, () => true);
+  // If haveBackend has no existing active endpoints, this is a fresh installation.
+  const hasExistingEndpoints = backend.someEndpoint(haveBackend, (ep) => ep.state !== "FAILED");
   if (!hasExistingEndpoints) {
     return "afterFirstDeploy";
   }
@@ -33,6 +33,46 @@ export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
 }
 
 /**
+ * Detects if the codebase is recovering from a previous partially successful deploy
+ * that requires prompting the user to select the appropriate lifecycle event.
+ */
+export function isRecoveredFromPartialDeploy(
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+): boolean {
+  const wantEndpoints = backend.allEndpoints(wantBackend);
+  const haveEndpoints = backend.allEndpoints(haveBackend);
+
+  const wantHashes = new Set(
+    wantEndpoints.map((ep) => ep.hash).filter((h): h is string => !!h),
+  );
+  if (!wantHashes.size) {
+    return false;
+  }
+
+  // 1. We know a previous deploy was a partial success if haveBackend includes the same hash
+  // but wantBackend includes different functions.
+  const hasSameHash = haveEndpoints.some((ep) => ep.hash && wantHashes.has(ep.hash));
+  if (!hasSameHash) {
+    return false;
+  }
+
+  // 2. If there are no net new functions, we know this was an update.
+  // If there are net new functions we know this might be a first deploy (it could also be
+  // an update if the user defined new functions and had a partial failure deploying them).
+  const hasNetNewFunctions = wantEndpoints.some(
+    (wantEp) =>
+      !backend.findEndpoint(
+        haveBackend,
+        (haveEp) =>
+          haveEp.id === wantEp.id && haveEp.region === wantEp.region && haveEp.state !== "FAILED",
+      ),
+  );
+
+  return hasNetNewFunctions;
+}
+
+/**
  * Validates and executes matching lifecycle hooks for the deployed codebase.
  * Returns true if a hook was executed, false otherwise.
  */
@@ -42,14 +82,13 @@ export async function executeLifecycleHooks(
   plan?: planner.DeploymentPlan,
   codebase?: string,
   options?: Options,
-  isPartialFailure?: boolean,
 ): Promise<boolean> {
   if (!hasLifecycleHooks(wantBackend)) {
     return false;
   }
 
   let event: DeploymentEvent | undefined;
-  if (isPartialFailure) {
+  if (isRecoveredFromPartialDeploy(wantBackend, haveBackend)) {
     event = await prompts.promptForLifecycleEvent(codebase ?? "default", wantBackend, options);
     if (!event) {
       logLabeledBullet(

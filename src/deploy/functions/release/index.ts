@@ -125,9 +125,9 @@ export async function release(
   printTriggerUrls(wantBackend, projectNumber);
 
   for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
-    const { errors, isPartialFailure } = getCodebaseDeployStats(codebase, w, h, summary);
-    if (errors.length === 0 || isPartialFailure) {
-      await executeLifecycleHooks(w, h, plan, codebase, options, isPartialFailure);
+    const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+    if (errors.length === 0) {
+      await executeLifecycleHooks(w, h, plan, codebase, options);
     }
   }
 
@@ -142,8 +142,8 @@ export async function release(
     for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
       payload.functions,
     )) {
-      const { results, errors } = getCodebaseDeployStats(codebase, w, h, summary);
-      if (errors.length > 0 && errors.length === results.length) {
+      const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+      if (errors.length > 0) {
         const event = determineDeploymentEvent(h);
         if (w.lifecycleHooks?.[event]) {
           utils.logLabeledWarning(
@@ -196,7 +196,6 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
 interface CodebaseDeployStats {
   results: reporter.DeployResult[];
   errors: reporter.DeployResult[];
-  isPartialFailure: boolean;
 }
 
 function getCodebaseDeployStats(
@@ -213,9 +212,8 @@ function getCodebaseDeployStats(
       !!haveBackend.endpoints[r.endpoint.region]?.[r.endpoint.id],
   );
   const errors = results.filter((r) => r.error);
-  const isPartialFailure = errors.length > 0 && errors.length < results.length;
 
-  return { results, errors, isPartialFailure };
+  return { results, errors };
 }
 
 /**

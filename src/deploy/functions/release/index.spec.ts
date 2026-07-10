@@ -213,7 +213,7 @@ describe("release/index", () => {
     );
   });
 
-  it("should run lifecycle hooks with isPartialFailure=true when only SOME deployments fail", async () => {
+  it("should NOT run lifecycle hooks when only SOME deployments fail", async () => {
     const context = {
       projectId: "test-project",
       config: {},
@@ -275,14 +275,7 @@ describe("release/index", () => {
       "There was an error deploying functions",
     );
 
-    // Assert that lifecycle hooks WERE executed with isPartialFailure=true
-    expect(executeLifecycleHooksStub).to.have.been.calledOnceWith(
-      wantBackend,
-      backend.empty(),
-      sinon.match.any,
-      "codebase1",
-      options,
-      true,
-    );
+    // Assert that lifecycle hooks were NOT executed
+    expect(executeLifecycleHooksStub).to.not.have.been.called;
   });
 });
