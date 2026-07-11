@@ -49,13 +49,32 @@ export async function release(
       if (options.message) {
         otherReleaseOpts.message = options.message;
       }
-      const release = await api.createRelease(
-        deploy.config.site,
-        context.hostingChannel || "live",
-        deploy.version,
-        otherReleaseOpts,
-      );
-      logger.debug("[hosting] release:", release);
+      try {
+        const release = await api.createRelease(
+          deploy.config.site,
+          context.hostingChannel || "live",
+          deploy.version,
+          otherReleaseOpts,
+        );
+        logger.debug("[hosting] release:", release);
+      } catch (err: unknown) {
+        // A 400 "<version> is the current active version" means the channel is
+        // already serving this version, so the deploy has effectively succeeded.
+        // Treat it as success instead of failing the whole command (#10730).
+        if (
+          !(
+            err instanceof FirebaseError &&
+            err.status === 400 &&
+            /is the current active version/i.test(err.message)
+          )
+        ) {
+          throw err;
+        }
+        logger.debug(
+          `[hosting] version is already the active release for ${deploy.config.site}, skipping:`,
+          err.message,
+        );
+      }
       utils.logLabeledSuccess(`hosting[${deploy.config.site}]`, "release complete");
     }),
   );
