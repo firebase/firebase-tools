@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "dependencies": {
     "firebase-functions": "^6.4.0",
-    "firebase-admin": "^11.2.0",
+    "firebase-admin": "^13.10.0",
     "@firebase/a-test-pkg": "0.0.1"
   },
   "engines": {
