@@ -33,10 +33,11 @@ export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
 }
 
 /**
- * Detects if the codebase is recovering from a previous partially successful deploy
- * that requires prompting the user to select the appropriate lifecycle event.
+ * Detects if this deployment is a redeploy of a partially successful but identical previous deployment.
+ * This will be true only if the hashes for both backends are the same but the specified endpoints are different.
+ * Note: If any code or comment modification was made between deploys, the hash will change, so this check won't detect it as an identical recovery deployment.
  */
-export function isRecoveredFromPartialDeploy(
+export function isRecoveryDeployment(
   wantBackend: backend.Backend,
   haveBackend: backend.Backend,
 ): boolean {
@@ -45,6 +46,8 @@ export function isRecoveredFromPartialDeploy(
 
   const wantHashes = new Set(wantEndpoints.map((ep) => ep.hash).filter((h): h is string => !!h));
   if (!wantHashes.size) {
+    // If there are no endpoint hashes in wantBackend (e.g. deleting all functions or missing hashes),
+    // we cannot reliably compare hashes to detect recovery, so we return false.
     return false;
   }
 
@@ -55,9 +58,9 @@ export function isRecoveredFromPartialDeploy(
     return false;
   }
 
-  // 2. If there are no net new functions, we know this was an update.
-  // If there are net new functions we know this might be a first deploy (it could also be
-  // an update if the user defined new functions and had a partial failure deploying them).
+  // 2. If we have existing endpoints in haveBackend with matching hashes, but wantBackend contains net new functions,
+  // we know the current deployment is re-attempting a previous deployment with the same source code specification
+  // that failed to deploy all endpoints successfully.
   const hasNetNewFunctions = wantEndpoints.some(
     (wantEp) =>
       !backend.findEndpoint(
@@ -86,7 +89,7 @@ export async function executeLifecycleHooks(
   }
 
   let event: DeploymentEvent | undefined;
-  if (isRecoveredFromPartialDeploy(wantBackend, haveBackend)) {
+  if (isRecoveryDeployment(wantBackend, haveBackend)) {
     event = await prompts.promptForLifecycleEvent(codebase ?? "default", wantBackend, options);
     if (!event) {
       logLabeledBullet(

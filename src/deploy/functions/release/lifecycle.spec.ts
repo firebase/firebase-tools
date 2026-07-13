@@ -5,7 +5,7 @@ import {
   determineDeploymentEvent,
   executeLifecycleHooks,
   hasLifecycleHooks,
-  isRecoveredFromPartialDeploy,
+  isRecoveryDeployment,
 } from "./lifecycle";
 import * as prompts from "../prompts";
 import * as cloudtasks from "../../../gcp/cloudtasks";
@@ -29,7 +29,7 @@ describe("lifecycle", () => {
     sandbox.restore();
   });
 
-  describe("isRecoveredFromPartialDeploy", () => {
+  describe("isRecoveryDeployment", () => {
     it("returns false if wantBackend endpoints have no hashes", () => {
       const wantBackend = backend.of({
         id: "fn1",
@@ -40,7 +40,7 @@ describe("lifecycle", () => {
         httpsTrigger: {},
       });
       const haveBackend = backend.empty();
-      expect(isRecoveredFromPartialDeploy(wantBackend, haveBackend)).to.be.false;
+      expect(isRecoveryDeployment(wantBackend, haveBackend)).to.be.false;
     });
 
     it("returns false if haveBackend does not include the same hash", () => {
@@ -56,7 +56,7 @@ describe("lifecycle", () => {
       const haveEndpoint: backend.Endpoint = { ...wantEndpoint, hash: "hash-old" };
       const wantBackend = backend.of(wantEndpoint);
       const haveBackend = backend.of(haveEndpoint);
-      expect(isRecoveredFromPartialDeploy(wantBackend, haveBackend)).to.be.false;
+      expect(isRecoveryDeployment(wantBackend, haveBackend)).to.be.false;
     });
 
     it("returns false if haveBackend includes the same hash but there are no net new functions", () => {
@@ -82,7 +82,7 @@ describe("lifecycle", () => {
       const haveEndpoint2: backend.Endpoint = { ...wantEndpoint2, hash: "hash-old" };
       const wantBackend = backend.of(wantEndpoint1, wantEndpoint2);
       const haveBackend = backend.of(haveEndpoint1, haveEndpoint2);
-      expect(isRecoveredFromPartialDeploy(wantBackend, haveBackend)).to.be.false;
+      expect(isRecoveryDeployment(wantBackend, haveBackend)).to.be.false;
     });
 
     it("returns true if haveBackend includes the same hash and there are net new functions", () => {
@@ -107,7 +107,7 @@ describe("lifecycle", () => {
       const haveEndpoint1: backend.Endpoint = { ...wantEndpoint1 };
       const wantBackend = backend.of(wantEndpoint1, wantEndpoint2);
       const haveBackend = backend.of(haveEndpoint1);
-      expect(isRecoveredFromPartialDeploy(wantBackend, haveBackend)).to.be.true;
+      expect(isRecoveryDeployment(wantBackend, haveBackend)).to.be.true;
     });
 
     it("returns true if haveBackend includes the same hash and net new function exists in haveBackend only in FAILED state", () => {
@@ -133,7 +133,7 @@ describe("lifecycle", () => {
       const haveEndpoint2: backend.Endpoint = { ...wantEndpoint2, state: "FAILED" };
       const wantBackend = backend.of(wantEndpoint1, wantEndpoint2);
       const haveBackend = backend.of(haveEndpoint1, haveEndpoint2);
-      expect(isRecoveredFromPartialDeploy(wantBackend, haveBackend)).to.be.true;
+      expect(isRecoveryDeployment(wantBackend, haveBackend)).to.be.true;
     });
   });
 
