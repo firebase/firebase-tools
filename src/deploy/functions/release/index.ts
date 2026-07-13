@@ -124,14 +124,10 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
 
-  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
-
-  // Only execute lifecycle hooks when all deployments are successful.
-  if (allErrors.length === 0) {
-    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
-      payload.functions,
-    )) {
-      await executeLifecycleHooks(w, h, plan, codebase);
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+    if (errors.length === 0) {
+      await executeLifecycleHooks(w, h, plan, codebase, options);
     }
   }
 
@@ -141,16 +137,20 @@ export async function release(
     Object.keys(wantBackend.endpoints),
   );
 
+  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
     for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
       payload.functions,
     )) {
-      const event = determineDeploymentEvent(h);
-      if (w.lifecycleHooks?.[event]) {
-        utils.logLabeledWarning(
-          "functions",
-          `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
-        );
+      const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+      if (errors.length > 0) {
+        const event = determineDeploymentEvent(h);
+        if (w.lifecycleHooks?.[event]) {
+          utils.logLabeledWarning(
+            "functions",
+            `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+          );
+        }
       }
     }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
@@ -191,6 +191,29 @@ export function printTriggerUrls(results: backend.Backend, projectNumber: string
     }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
   }
+}
+
+interface CodebaseDeployStats {
+  results: reporter.DeployResult[];
+  errors: reporter.DeployResult[];
+}
+
+function getCodebaseDeployStats(
+  codebase: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+  summary: reporter.Summary,
+): CodebaseDeployStats {
+  const cb = codebase || "default";
+  const results = summary.results.filter(
+    (r) =>
+      (r.endpoint.codebase ?? "default") === cb ||
+      !!wantBackend.endpoints[r.endpoint.region]?.[r.endpoint.id] ||
+      !!haveBackend.endpoints[r.endpoint.region]?.[r.endpoint.id],
+  );
+  const errors = results.filter((r) => r.error);
+
+  return { results, errors };
 }
 
 /**
