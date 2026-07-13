@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as backend from "../backend";
 import {
-  determineDeploymentEvent,
+  determineLifecycleEvent,
   executeLifecycleHooks,
   hasLifecycleHooks,
   isRecoveryDeployment,
@@ -137,11 +137,11 @@ describe("lifecycle", () => {
     });
   });
 
-  describe("determineDeploymentEvent", () => {
+  describe("determineLifecycleEvent", () => {
     it("returns afterFirstDeploy when haveBackend has no endpoints", () => {
       const haveBackend = backend.empty();
 
-      const event = determineDeploymentEvent(haveBackend);
+      const event = determineLifecycleEvent(haveBackend);
       expect(event).to.equal("afterFirstDeploy");
     });
 
@@ -156,7 +156,7 @@ describe("lifecycle", () => {
         state: "FAILED",
       });
 
-      const event = determineDeploymentEvent(haveBackend);
+      const event = determineLifecycleEvent(haveBackend);
       expect(event).to.equal("afterFirstDeploy");
     });
 
@@ -170,7 +170,7 @@ describe("lifecycle", () => {
         httpsTrigger: {},
       });
 
-      const event = determineDeploymentEvent(haveBackend);
+      const event = determineLifecycleEvent(haveBackend);
       expect(event).to.equal("afterRedeploy");
     });
   });
