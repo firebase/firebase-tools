@@ -10,5 +10,8 @@
   },
   "engines": {
     "node": "20"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
   }
 }

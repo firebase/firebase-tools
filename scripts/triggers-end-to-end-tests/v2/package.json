@@ -12,5 +12,8 @@
   "devDependencies": {
     "firebase-functions-test": "^3.5.0"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
 }
