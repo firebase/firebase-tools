@@ -11,7 +11,7 @@ import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
 import * as iam from "../../gcp/iam";
-import { DeploymentEvent } from "./release/lifecycle";
+import { LifecycleEvent } from "./backend";
 
 export interface ActiveSecurityPlan {
   managedServiceAccount: string;
@@ -404,12 +404,12 @@ export async function promptForLifecycleEvent(
   codebase: string,
   wantBackend: backend.Backend,
   options?: Options,
-): Promise<DeploymentEvent | undefined> {
+): Promise<LifecycleEvent | undefined> {
   const hooks = wantBackend.lifecycleHooks || {};
-  const choices: { name: string; value: DeploymentEvent | "skip" }[] = [];
+  const choices: { name: string; value: LifecycleEvent | "skip" }[] = [];
 
   for (const hookName of Object.keys(hooks)) {
-    choices.push({ name: hookName, value: hookName as DeploymentEvent });
+    choices.push({ name: hookName, value: hookName as LifecycleEvent });
   }
 
   if (choices.length === 0) {
@@ -418,7 +418,7 @@ export async function promptForLifecycleEvent(
 
   choices.push({ name: "skip (default)", value: "skip" });
 
-  const selection = await select<DeploymentEvent | "skip">({
+  const selection = await select<LifecycleEvent | "skip">({
     message: `We cannot determine whether this deployment is a first deploy or a redeploy for codebase "${codebase}" because it is recovering from a previous partial failure.`,
     choices,
     default: "skip",

@@ -18,7 +18,7 @@ import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
-import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
+import { determineLifecycleEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -144,7 +144,7 @@ export async function release(
     )) {
       const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
       if (errors.length > 0) {
-        const event = determineDeploymentEvent(h);
+        const event = determineLifecycleEvent(h);
         if (w.lifecycleHooks?.[event]) {
           utils.logLabeledWarning(
             "functions",
