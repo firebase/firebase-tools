@@ -1,5 +1,4 @@
 import { capitalize, includes } from "lodash";
-import { FetchError, Headers } from "node-fetch";
 import { IncomingMessage, ServerResponse } from "http";
 import { PassThrough } from "stream";
 import { Request, RequestHandler, Response } from "express";
@@ -137,51 +136,64 @@ export function proxyRequestHandler(
         compress: false,
       });
     } catch (err: any) {
+      logger.error("[PROXY ERROR]", err);
       const isAbortError =
         err instanceof FirebaseError && err.original?.name.includes("AbortError");
       const isTimeoutError =
         err instanceof FirebaseError &&
-        err.original instanceof FetchError &&
-        err.original.code === "ETIMEDOUT";
+        ((err.original as any)?.code === "ETIMEDOUT" ||
+          (err.original as any)?.cause?.code === "ETIMEDOUT");
       const isSocketTimeoutError =
         err instanceof FirebaseError &&
-        err.original instanceof FetchError &&
-        err.original.code === "ESOCKETTIMEDOUT";
+        ((err.original as any)?.code === "ESOCKETTIMEDOUT" ||
+          (err.original as any)?.cause?.code === "ESOCKETTIMEDOUT");
       if (isAbortError || isTimeoutError || isSocketTimeoutError) {
         res.statusCode = 504;
         return res.end("Timed out waiting for function to respond.\n");
       }
       res.statusCode = 500;
       return res.end(`An internal error occurred while proxying for ${rewriteIdentifier}\n`);
+    } finally {
+      if (passThrough) {
+        passThrough.resume();
+      }
+    }
+
+    const resHeaders: Record<string, string | string[]> = {};
+    for (const [key, value] of (proxyRes.response.headers as any).entries()) {
+      resHeaders[key.toLowerCase()] = value;
     }
 
     if (proxyRes.status === 404) {
-      // x-cascade is not a string[].
-      const cascade = proxyRes.response.headers.get("x-cascade");
-      if (options.forceCascade || (cascade && cascade.toUpperCase() === "PASS")) {
+      const cascade = resHeaders["x-cascade"];
+      if (
+        options.forceCascade ||
+        (typeof cascade === "string" && cascade.toUpperCase() === "PASS")
+      ) {
         return next();
       }
     }
 
     // default to private cache
-    if (!proxyRes.response.headers.get("cache-control")) {
-      proxyRes.response.headers.set("cache-control", "private");
+    if (!resHeaders["cache-control"]) {
+      resHeaders["cache-control"] = "private";
     }
 
     // don't allow cookies to be set on non-private cached responses
-    const cc = proxyRes.response.headers.get("cache-control");
-    if (cc && !cc.includes("private")) {
-      proxyRes.response.headers.delete("set-cookie");
+    const cc = resHeaders["cache-control"];
+    if (typeof cc === "string" && !cc.includes("private")) {
+      delete resHeaders["set-cookie"];
     }
 
-    proxyRes.response.headers.set("vary", makeVary(proxyRes.response.headers.get("vary")));
+    const vary = resHeaders["vary"];
+    resHeaders["vary"] = makeVary(typeof vary === "string" ? vary : null);
 
     // Fix the location header that `node-fetch` attempts to helpfully fix:
     // https://github.com/node-fetch/node-fetch/blob/4abbfd231f4bce7dbe65e060a6323fc6917fd6d9/src/index.js#L117-L120
     // Filed a bug in `node-fetch` to either document the change or fix it:
     // https://github.com/node-fetch/node-fetch/issues/1086
-    const location = proxyRes.response.headers.get("location");
-    if (location) {
+    const location = resHeaders["location"];
+    if (typeof location === "string" && location) {
       // If parsing the URL fails, it may be because the location header
       // isn't a helpeful resolved URL (if node-fetch changes behavior). This
       // try is a preventative measure to ensure such a change shouldn't break
@@ -192,7 +204,7 @@ export function proxyRequestHandler(
         // "fixed" header is the same as the origin of the outbound request.
         if (locationURL.origin === u.origin) {
           const unborkedLocation = location.replace(locationURL.origin, "");
-          proxyRes.response.headers.set("location", unborkedLocation);
+          resHeaders["location"] = unborkedLocation;
         }
       } catch (e: any) {
         logger.debug(
@@ -201,11 +213,20 @@ export function proxyRequestHandler(
       }
     }
 
-    for (const [key, value] of Object.entries(proxyRes.response.headers.raw())) {
-      res.setHeader(key, value as string[]);
+    for (const key of Object.keys(resHeaders)) {
+      const value = resHeaders[key];
+      if (key === "set-cookie") {
+        if (typeof (proxyRes.response.headers as any).getSetCookie === "function") {
+          res.setHeader(key, (proxyRes.response.headers as any).getSetCookie());
+        } else {
+          res.setHeader(key, value);
+        }
+      } else {
+        res.setHeader(key, value);
+      }
     }
     res.statusCode = proxyRes.status;
-    proxyRes.response.body.pipe(res);
+    proxyRes.body.pipe(res);
   };
 }
 

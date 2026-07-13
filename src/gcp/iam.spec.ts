@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import { resourceManagerOrigin } from "../api";
 import * as iam from "./iam";
@@ -156,6 +156,20 @@ describe("iam", () => {
           });
 
         const account = await iam.getServiceAccount(PROJECT_ID, ACCOUNT_ID);
+
+        expect(account.email).to.equal(EMAIL);
+        expect(nock.isDone()).to.be.true;
+      });
+
+      it("should get a service account when passed a full email address", async () => {
+        nock("https://iam.googleapis.com")
+          .get(`/v1/projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`)
+          .reply(200, {
+            name: `projects/${PROJECT_ID}/serviceAccounts/${EMAIL}`,
+            email: EMAIL,
+          });
+
+        const account = await iam.getServiceAccount(PROJECT_ID, EMAIL);
 
         expect(account.email).to.equal(EMAIL);
         expect(nock.isDone()).to.be.true;

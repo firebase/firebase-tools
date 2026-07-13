@@ -1,3 +1,3 @@
-- Add `functions:lifecycle:list` and `functions:lifecycle:run` commands to view and run
-  lifecycle hooks in isolation.
+- Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
+- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
 - Fixed a Hosting emulator timeout when a web frameworks request with a body falls through to a function rewrite. (#10760)
