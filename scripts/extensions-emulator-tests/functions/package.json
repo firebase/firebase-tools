@@ -10,5 +10,8 @@
     "firebase-functions": "^5.1.0",
     "fs-extra": "^5.0.0"
   },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
   "private": true
 }

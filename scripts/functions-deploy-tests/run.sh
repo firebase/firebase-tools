@@ -7,6 +7,6 @@ set -e # Immediately exit on failure
 # Create a secret for testing if it doesn't exist
 firebase functions:secrets:get TOP --project $GCLOUD_PROJECT || (echo secret | firebase functions:secrets:set --data-file=- TOP --project $GCLOUD_PROJECT -f)
 
-(cd scripts/functions-deploy-tests/functions && npm i)
+(cd scripts/functions-deploy-tests/functions && npm i --legacy-peer-deps)
 
 mocha scripts/functions-deploy-tests/tests.ts
