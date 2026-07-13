@@ -3,6 +3,7 @@ import type { ReadOptions } from "fs-extra";
 import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
+import { Readable } from "stream";
 import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 import { satisfies as semverSatisfied } from "semver";
@@ -161,14 +162,22 @@ export function proxyResponse(
   return proxiedRes;
 }
 
-/**
- * Read a request stream into a Buffer so a consumed request body can be replayed
- * to a downstream handler.
- */
-async function bufferRequestBody(req: IncomingMessage): Promise<Buffer> {
+// Matches the gen2/Cloud Run ingress limit; caps the buffer so it can't OOM.
+export const MAX_REQUEST_BODY_BYTES = 32 * 1024 * 1024;
+
+/** Read a request stream into a Buffer, throwing once it exceeds maxBytes. */
+export async function bufferRequestBody(req: Readable): Promise<Buffer> {
   const chunks: Buffer[] = [];
+  let total = 0;
   for await (const chunk of req) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : (chunk as Buffer));
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > MAX_REQUEST_BODY_BYTES) {
+      throw new FirebaseError(`Request body exceeds the ${MAX_REQUEST_BODY_BYTES} byte limit`, {
+        status: 413,
+      });
+    }
+    chunks.push(buf);
   }
   return Buffer.concat(chunks);
 }
@@ -181,6 +190,9 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
     firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
+    // A client that disconnects mid-request leaves a socket whose writes fail with
+    // EPIPE/ECONNRESET; handle the error so a broken client can't crash the emulator.
+    originalRes.on("error", (err) => logger.debug("Response stream error:", method, path, err));
     if (!method || !path) {
       originalRes.end();
       return;
@@ -217,10 +229,22 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
         try {
           rawBody = await bufferRequestBody(originalReq);
         } catch (err) {
-          // Client aborted / stream errored mid-upload. End gracefully rather
-          // than hanging the response.
+          if (err instanceof FirebaseError && err.status === 413) {
+            // Reject oversized payloads like the function ingress does.
+            originalRes.statusCode = 413;
+            originalRes.end();
+            return;
+          }
+
           logger.debug("Error buffering request body:", method, path, err);
-          originalRes.end();
+          if (originalRes.writable) {
+            originalRes.statusCode = 400;
+            originalRes.end();
+          } else {
+            // if the client is already gone, writing would EPIPE (handled by the
+            // response error handler above), so tear the response down instead.
+            originalRes.destroy();
+          }
           return;
         }
         (originalReq as RequestWithRawBody).rawBody = rawBody;
