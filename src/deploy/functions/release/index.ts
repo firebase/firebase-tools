@@ -13,11 +13,12 @@ import * as executor from "./executor";
 import * as prompts from "../prompts";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
+
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
 import * as artifacts from "../../../functions/artifacts";
-import { executeLifecycleHooks } from "./lifecycle";
+import { determineDeploymentEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -40,42 +41,48 @@ export async function release(
     return;
   }
 
-  let plan: planner.DeploymentPlan = {};
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    plan = {
-      ...plan,
-      ...planner.createDeploymentPlan({
-        codebase,
-        wantBackend,
-        haveBackend,
-        filters: context.filters,
-      }),
-    };
+  const plan: planner.DeploymentPlan = {};
+  for (const [
+    codebase,
+    { wantBackend, haveBackend, haveRoles, existingManagedSA, managedSA },
+  ] of Object.entries(payload.functions)) {
+    plan[codebase] = await planner.createDeploymentPlan({
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId: context.projectId,
+      filters: context.filters,
+      haveRoles,
+      existingManagedSA,
+      managedSA,
+    });
   }
 
-  const fnsToDelete = Object.values(plan)
+  await prompts.promptForSecurityChanges(plan, options);
+
+  const allRegionalChanges = Object.values(plan)
+    .map((codebasePlan) => Object.values(codebasePlan.regionalChangesets))
+    .reduce(reduceFlat, []);
+
+  const fnsToDelete = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
   const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
-    for (const change of Object.values(plan)) {
-      change.endpointsToDelete = [];
+    for (const changes of allRegionalChanges) {
+      changes.endpointsToDelete = [];
     }
   }
 
-  const fnsToUpdate = Object.values(plan)
+  const fnsToUpdate = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToUpdate)
     .reduce(reduceFlat, []);
   const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
-  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
-  // to update or customers have confirmed they want to update unsafely
-  for (const key of Object.keys(plan)) {
-    plan[key].endpointsToUpdate = [];
-  }
-  for (const eu of fnsToUpdateSafe) {
-    const e = eu.endpoint;
-    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
-    plan[key].endpointsToUpdate.push(eu);
+  const safeEndpoints = new Set(fnsToUpdateSafe.map((eu) => eu.endpoint));
+  for (const changes of allRegionalChanges) {
+    changes.endpointsToUpdate = changes.endpointsToUpdate.filter((eu) =>
+      safeEndpoints.has(eu.endpoint),
+    );
   }
 
   const throttlerOptions = {
@@ -94,6 +101,7 @@ export async function release(
   };
 
   const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
+
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
     runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
@@ -101,6 +109,7 @@ export async function release(
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
     projectNumber: projectNumber,
+    projectId: context.projectId,
   });
 
   const summary = await fab.applyPlan(plan);
@@ -115,8 +124,15 @@ export async function release(
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
   printTriggerUrls(wantBackend, projectNumber);
 
-  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
-    await executeLifecycleHooks(w, h, plan, codebase);
+  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
+
+  // Only execute lifecycle hooks when all deployments are successful.
+  if (allErrors.length === 0) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      await executeLifecycleHooks(w, h, plan, codebase);
+    }
   }
 
   await setupArtifactCleanupPolicies(
@@ -125,8 +141,18 @@ export async function release(
     Object.keys(wantBackend.endpoints),
   );
 
-  const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      const event = determineDeploymentEvent(h);
+      if (w.lifecycleHooks?.[event]) {
+        utils.logLabeledWarning(
+          "functions",
+          `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+        );
+      }
+    }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     logger.debug("Functions deploy failed.");
     for (const error of allErrors) {
