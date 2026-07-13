@@ -69,6 +69,7 @@ export function proxyRequestHandler(
     const c = new Client({ urlPrefix: u.origin, auth: false });
 
     let body: PassThrough | Buffer | undefined;
+    let passThrough: PassThrough | undefined;
     if (req.method && !["GET", "HEAD"].includes(req.method)) {
       // If an upstream proxy already consumed the request stream (e.g. a web
       // framework dev server) it stashes the body on req.rawBody so we can
@@ -79,7 +80,7 @@ export function proxyRequestHandler(
       if (rawBody !== undefined) {
         body = rawBody;
       } else {
-        const passThrough = new PassThrough();
+        passThrough = new PassThrough();
         req.pipe(passThrough);
         body = passThrough;
       }
