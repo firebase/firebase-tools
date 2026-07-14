@@ -10,13 +10,11 @@ import { assertExhaustive } from "../../../functional";
 import { Options } from "../../../options";
 import * as prompts from "../prompts";
 
-export type DeploymentEvent = "afterFirstDeploy" | "afterRedeploy";
-
 /**
  * Determines whether the current deployment represents a fresh codebase deployment
  * (afterFirstDeploy) or an update to an existing deployment (afterRedeploy).
  */
-export function determineDeploymentEvent(haveBackend: backend.Backend): DeploymentEvent {
+export function determineLifecycleEvent(haveBackend: backend.Backend): backend.LifecycleEvent {
   // If haveBackend has no existing active endpoints, this is a fresh installation.
   const hasExistingEndpoints = backend.someEndpoint(haveBackend, (ep) => ep.state !== "FAILED");
   if (!hasExistingEndpoints) {
@@ -88,7 +86,7 @@ export async function executeLifecycleHooks(
     return false;
   }
 
-  let event: DeploymentEvent | undefined;
+  let event: backend.LifecycleEvent | undefined;
   if (isRecoveryDeployment(wantBackend, haveBackend)) {
     event = await prompts.promptForLifecycleEvent(codebase ?? "default", wantBackend, options);
     if (!event) {
@@ -99,7 +97,7 @@ export async function executeLifecycleHooks(
       return false;
     }
   } else {
-    event = determineDeploymentEvent(haveBackend);
+    event = determineLifecycleEvent(haveBackend);
   }
 
   const hooks = wantBackend.lifecycleHooks || {};
@@ -216,7 +214,7 @@ function getCloudConsoleLogUrl(endpoint: backend.Endpoint): string {
  * Executes a specific lifecycle hook in isolation.
  */
 export async function executeHook(
-  event: DeploymentEvent,
+  event: backend.LifecycleEvent,
   hook: backend.LifecycleHook,
   backendSpec: backend.Backend,
 ): Promise<backend.Endpoint | undefined> {
