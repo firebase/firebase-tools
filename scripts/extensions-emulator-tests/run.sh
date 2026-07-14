@@ -5,7 +5,7 @@ source scripts/set-default-credentials.sh
 
 (
   cd scripts/extensions-emulator-tests/functions
-  npm install --legacy-peer-deps
+  npm install
 )
 
 mocha scripts/extensions-emulator-tests/tests.ts
