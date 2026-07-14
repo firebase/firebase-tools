@@ -395,6 +395,7 @@ export async function resolveParams(
   firebaseConfig: FirebaseConfig,
   userEnvs: Record<string, ParamValue>,
   nonInteractive?: boolean,
+  force?: boolean,
   isEmulator = false,
 ): Promise<{ paramValues: Record<string, ParamValue>; secretRefs: Record<string, string> }> {
   const paramValues: Record<string, ParamValue> = populateDefaultParams(firebaseConfig);
@@ -417,6 +418,7 @@ export async function resolveParams(
         param as SecretParam,
         firebaseConfig.projectId,
         nonInteractive,
+        force,
       );
     }
   }
@@ -485,6 +487,7 @@ async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
   nonInteractive?: boolean,
+  force?: boolean,
 ): Promise<string> {
   let resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
@@ -499,18 +502,24 @@ async function ensureSecret(
           `\tfirebase functions:secrets:set ${resourceId}${secretParam.format === "json" ? " --format=json --data-file <file.json>" : ""}`,
       );
     }
-    if (experiments.isEnabled("secretEnvParams")) {
-      // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
-      resourceId = await input({
-        default: secretParam.name,
-        message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
-        validate: (id) => {
-          if (new RegExp(`^${build.GCP_SECRET_ID_PATTERN}$`).test(id)) {
-            return true;
-          }
-          return "GCP Secret identifiers must contain only letters, numbers, underscores, and hyphens.";
-        },
-      });
+    if (experiments.isEnabled("secretEnvParams") && typeof secretParam.resourceId === "undefined") {
+      if (force) {
+        logger.info(
+          `--force: Using default resource ID while creating secreat ${secretParam.name}`,
+        );
+      } else {
+        // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
+        resourceId = await input({
+          default: secretParam.name,
+          message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
+          validate: (id) => {
+            if (new RegExp(`^${build.GCP_SECRET_ID_PATTERN}$`).test(id)) {
+              return true;
+            }
+            return "GCP Secret identifiers must contain only letters, numbers, underscores, and hyphens.";
+          },
+        });
+      }
     }
     const promptMessage = `The value for this secret (${secretParam.name}) will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
       secretParam.label || secretParam.name
