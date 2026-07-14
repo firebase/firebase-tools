@@ -6,3 +6,5 @@
 - Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
 - Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
 - Fixed `dataconnect:execute` command help text. The right env var should be FIREBASE_DATA_CONNECT_EMULATOR_HOST, with an underscore between DATA and CONNECT.
+- Updated the Firebase SQL Connect local toolkit to v3.4.16, which includes the following changes:
+  - Updated the Golang dependency version to 1.25.12.
