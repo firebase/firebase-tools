@@ -187,7 +187,7 @@ describe("Frameworks utils", () => {
       // ECONNRESET and leaves the response un-writable. Writing to the dead socket
       // throws EPIPE and crashes the emulator, so simpleProxy attaches a response
       // error handler and destroys the response instead of writing to it.
-      const req = new Readable({ read() {} });
+      const req = new Readable({ read: () => undefined });
       Object.assign(req, { method: "POST", url: "/api", headers: {} });
       let errorHandlerAttached = false;
       let ended = false;
@@ -221,7 +221,7 @@ describe("Frameworks utils", () => {
     it("should respond 400 when the body errors but the client is still connected", async () => {
       // A malformed/truncated body errors while the socket is still writable — the
       // client can receive a proper 400 rather than a silent teardown.
-      const req = new Readable({ read() {} });
+      const req = new Readable({ read: () => undefined });
       Object.assign(req, { method: "POST", url: "/api", headers: {} });
       let ended = false;
       let destroyed = false;
