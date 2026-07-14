@@ -5,7 +5,6 @@
     "module": "commonjs",
     "strict": true,
     "outDir": "lib",
-    "rootDir": "src",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "incremental": true,
