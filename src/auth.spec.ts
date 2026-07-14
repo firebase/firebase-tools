@@ -5,6 +5,7 @@ import {
   assertAccount,
   getAdditionalAccounts,
   getAllAccounts,
+  getCallbackUrl,
   getGlobalDefaultAccount,
   getProjectDefaultAccount,
   selectAccount,
@@ -37,6 +38,24 @@ describe("auth", () => {
   afterEach(() => {
     fakeConfigStore = {};
     sandbox.restore();
+  });
+
+  describe("getCallbackUrl", () => {
+    it("uses the provided host for the loopback redirect", () => {
+      // The Google login flow passes 127.0.0.1: an IP literal is expected by
+      // Google's OAuth loopback flow, and on dual-stack hosts "localhost" can
+      // resolve to ::1 while the listener holds the port on 127.0.0.1, hanging
+      // `firebase login`.
+      expect(getCallbackUrl(9005, "127.0.0.1")).to.equal("http://127.0.0.1:9005");
+    });
+
+    it("defaults to localhost when no host is provided", () => {
+      expect(getCallbackUrl(9005)).to.equal("http://localhost:9005");
+    });
+
+    it("falls back to the OOB redirect when no port is provided", () => {
+      expect(getCallbackUrl()).to.equal("urn:ietf:wg:oauth:2.0:oob");
+    });
   });
 
   describe("no accounts", () => {
