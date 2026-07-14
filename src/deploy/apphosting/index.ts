@@ -5,7 +5,7 @@ import release from "./release";
 export { prepare, deploy, release };
 
 export const help =
-  "Deploys Next.js / Angular / Astro app backends. Supports configuration in apphosting.yaml.";
+  "Deploys framework-centered web apps. See https://firebase.google.com/docs/app-hosting/frameworks-tooling#web-frameworks-and-app-hosting for a full list of supported frameworks.";
 export const detailedHelp =
   "App Hosting deploys Frameworks-based web application backends.\n\n" +
   "Single backend configuration in firebase.json:\n" +

@@ -8,6 +8,6 @@ export const detailedHelp =
   "Configuration format in firebase.json:\n" +
   "{\n" +
   '  "extensions": {\n' +
-  '    "storage-resize-images": "extensions/storage-resize-images.env"\n' +
+  '    "my-extension-instance-id": "firebase/storage-resize-images@^0.1.0"\n' +
   "  }\n" +
   "}";

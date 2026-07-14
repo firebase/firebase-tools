@@ -3,7 +3,7 @@ export { deploy } from "./deploy";
 export { release } from "./release";
 
 export const help =
-  "Deploys assets, redirects, rewrites, and headers configuration from your project's firebase.json.";
+  "Deploys static web apps to Firebase Hosting, including assets, redirects, rewrites and headers.";
 export const detailedHelp =
   "Firebase Hosting deploys web assets, redirects, rewrites, and header configurations.\n\n" +
   "Single site configuration in firebase.json:\n" +

@@ -197,6 +197,8 @@ export function useFileLogger(logFile?: string): string {
   return logFileName;
 }
 
+// Guard to ensure console transports are only added once. If called multiple times,
+// it prevents Winston from registering duplicate console loggers which would cause double-logging.
 let consoleLoggersConfigured = false;
 
 /**

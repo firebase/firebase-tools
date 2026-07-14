@@ -9,7 +9,8 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { logger, useFileLogger } from "../logger";
+import { logger, useFileLogger, useConsoleLoggers } from "../logger";
+import { setupProgressiveHelp } from "./progressiveHelp";
 
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 enableExperimentsFromCliEnvVariable();
@@ -160,10 +161,12 @@ export function cli(pkg: any) {
   }
 
   if (isHelp) {
-    const { useConsoleLoggers } = require("../logger");
+    // Console loggers must be explicitly enabled here because the Commander help display logic
+    // prints information and exits early, skipping standard action hooks where console loggers
+    // are normally initialized. Without this, our custom help hooks (which use logger.info)
+    // will be silent since Winston would have no transports registered.
     useConsoleLoggers();
     loadAllCommands(client as Record<string, unknown>);
-    const { setupProgressiveHelp } = require("./progressiveHelp");
     setupProgressiveHelp(client);
   }
   // If there are no args, display help

@@ -4,7 +4,7 @@ export { release } from "./release";
 
 export const help = "Deploys security rules defined in your project's firebase.json.";
 export const detailedHelp =
-  "Realtime Database deploys rules and indexes to database instances.\n\n" +
+  "Realtime Database deploys rules to database instances.\n\n" +
   "Single database configuration in firebase.json:\n" +
   "{\n" +
   '  "database": {\n' +
@@ -15,6 +15,6 @@ export const detailedHelp =
   "{\n" +
   '  "database": [\n' +
   '    { "target": "my-db-target", "rules": "rules.rules" },\n' +
-  '    { "database": "my-database-id", "rules": "rules.rules", "indexes": "database.indexes.json" }\n' +
+  '    { "database": "my-database-id", "rules": "rules.rules" }\n' +
   "  ]\n" +
   "}";

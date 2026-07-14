@@ -21,7 +21,7 @@ const NAMESPACE_DESCRIPTIONS: Record<string, string> = {
   target: "manage deploy targets",
 };
 
-interface CommanderCommand {
+export interface CommanderCommand {
   helpInformation: (this: CommanderCommand) => string;
   commands: CommanderCommand[];
   name(): string;
@@ -83,7 +83,10 @@ export function setupProgressiveHelp(client: CLIClient): void {
     }
   }
 
-  // 2. Register dummy commands for missing namespaces
+  // 2. Register dummy commands for missing intermediate namespaces (e.g. "hosting", "database").
+  // This allows Commander to parse them as valid subcommands, intercepting direct executions of
+  // namespaces (e.g. `firebase hosting`) so we can trigger a fallback action that prints their
+  // specific progressive help.
   for (const ns of allNamespaces) {
     if (!existingNames.has(ns)) {
       const description = NAMESPACE_DESCRIPTIONS[ns] || `manage ${ns} resources`;

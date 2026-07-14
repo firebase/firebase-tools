@@ -1,55 +1,63 @@
 import { expect } from "chai";
-import { setupProgressiveHelp } from "./progressiveHelp";
+import { setupProgressiveHelp, CommanderCommand } from "./progressiveHelp";
+import { CLIClient } from "../command";
+import { CommanderStatic } from "commander";
+
+interface MockCommand extends CommanderCommand {
+  _name: string;
+  _description: string;
+  commands: MockCommand[];
+  capturedCommands: MockCommand[];
+  description(desc: string): MockCommand;
+  action(cb: () => void): MockCommand;
+  on(event: string, callback: () => void): MockCommand;
+  command(name: string): MockCommand;
+}
 
 describe("progressiveHelp", () => {
-  let mockProgram: any;
-  let mockClient: any;
+  let mockProgram: MockCommand;
+  let mockClient: CLIClient;
 
   beforeEach(() => {
-    mockProgram = {
-      commands: [] as any[],
-      capturedCommands: [] as any[],
-      command(name: string) {
-        const cmd = {
-          _name: name,
-          _description: "",
-          commands: [] as any[],
-          capturedCommands: [] as any[],
-          _args: [] as any[],
-          _aliases: [] as any[],
-          options: [] as any[],
-          helpInformation: function (this: any) {
-            this.capturedCommands = [...this.commands];
-            return "";
-          },
-          description(desc: string) {
-            this._description = desc;
-            return this;
-          },
-          action() {
-            return this;
-          },
-          on() {
-            return this;
-          },
-          name() {
-            return this._name;
-          },
-        };
-        mockProgram.commands.push(cmd);
-        return cmd;
-      },
-      on() {
-        return this;
-      },
-      helpInformation: function (this: any) {
-        this.capturedCommands = [...this.commands];
-        return "";
-      },
+    const createMockCommand = (name: string): MockCommand => {
+      const cmd = {
+        _name: name,
+        _description: "",
+        commands: [] as MockCommand[],
+        capturedCommands: [] as MockCommand[],
+        name() {
+          return this._name;
+        },
+        description(desc: string) {
+          this._description = desc;
+          return this;
+        },
+        action() {
+          return this;
+        },
+        on() {
+          return this;
+        },
+        helpInformation: function (this: CommanderCommand) {
+          const self = this as unknown as MockCommand;
+          self.capturedCommands = [...self.commands];
+          return "";
+        },
+        command(childName: string) {
+          const childCmd = createMockCommand(childName);
+          this.commands.push(childCmd);
+          return childCmd;
+        },
+      };
+      return cmd;
     };
 
+    mockProgram = createMockCommand("firebase");
+
     mockClient = {
-      cli: mockProgram,
+      cli: mockProgram as unknown as CommanderStatic,
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      errorOut: () => {},
     };
   });
 
@@ -62,7 +70,7 @@ describe("progressiveHelp", () => {
 
     setupProgressiveHelp(mockClient);
 
-    const registeredNames = mockProgram.commands.map((cmd: any) => cmd.name());
+    const registeredNames = mockProgram.commands.map((cmd: MockCommand) => cmd.name());
 
     // Should register "firestore" and "firestore:databases"
     expect(registeredNames).to.include("firestore");
@@ -81,23 +89,17 @@ describe("progressiveHelp", () => {
 
     // 1. Test root program filtering
     mockProgram.helpInformation();
-    // Filtered root commands should be deploy & firestore (no colons)
-    expect(mockProgram.capturedCommands).to.have.lengthOf(2);
-    expect(mockProgram.capturedCommands[0].name()).to.equal("deploy");
-    expect(mockProgram.capturedCommands[1].name()).to.equal("firestore");
+    const rootNames = mockProgram.capturedCommands.map((c) => c.name());
+    expect(rootNames).to.have.members(["deploy", "firestore"]);
 
     // 2. Test "firestore" namespace filtering
     firestore.helpInformation();
-    // Under firestore namespace, should be firestore:delete and firestore:databases
-    expect(firestore.capturedCommands).to.have.lengthOf(2);
-    expect(firestore.capturedCommands[0].name()).to.equal("firestore:delete");
-    expect(firestore.capturedCommands[1].name()).to.equal("firestore:databases");
+    const firestoreNames = firestore.capturedCommands.map((c) => c.name());
+    expect(firestoreNames).to.have.members(["firestore:delete", "firestore:databases"]);
 
     // 3. Test "firestore:databases" namespace filtering
     fDatabases.helpInformation();
-    // Under firestore:databases namespace, should be firestore:databases:create and firestore:databases:list
-    expect(fDatabases.capturedCommands).to.have.lengthOf(2);
-    expect(fDatabases.capturedCommands[0].name()).to.equal("firestore:databases:create");
-    expect(fDatabases.capturedCommands[1].name()).to.equal("firestore:databases:list");
+    const dbNames = fDatabases.capturedCommands.map((c) => c.name());
+    expect(dbNames).to.have.members(["firestore:databases:create", "firestore:databases:list"]);
   });
 });
