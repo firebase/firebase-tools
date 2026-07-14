@@ -813,8 +813,14 @@ export function applyEnvSecretBindings(
     return;
   }
   logger.debug(
-    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...`,
+    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...)}`,
   );
+  for (const endpointName of Object.keys(build.endpoints)) {
+    logger.debug(
+      `${endpointName} declared secrets: ${JSON.stringify(build.endpoints[endpointName].secretEnvironmentVariables)}`,
+    );
+  }
+
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;

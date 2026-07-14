@@ -489,7 +489,7 @@ async function ensureSecret(
   nonInteractive?: boolean,
   force?: boolean,
 ): Promise<string> {
-  let resourceId = secretParam.resourceId || secretParam.name;
+  const resourceId = secretParam.resourceId || secretParam.name;
   const version = secretParam.version || "latest";
   let secretAlreadyExisted = false;
 
@@ -504,12 +504,11 @@ async function ensureSecret(
     }
     if (experiments.isEnabled("secretEnvParams") && typeof secretParam.resourceId === "undefined") {
       if (force) {
-        logger.info(
-          `--force: Using default resource ID while creating secreat ${secretParam.name}`,
-        );
+        logger.info(`--force: Using default resource ID for secret ${secretParam.name}`);
+        secretParam.resourceId = secretParam.name;
       } else {
         // TODO: Move the explanation and link to Cloud Secret Manager in the next prompt here once this makes it out of experimental.
-        resourceId = await input({
+        secretParam.resourceId = await input({
           default: secretParam.name,
           message: `What resource ID do you want to use for the backing Secret resource for secret param ${secretParam.name}?`,
           validate: (id) => {
@@ -520,6 +519,7 @@ async function ensureSecret(
           },
         });
       }
+      return ensureSecret(secretParam, projectId, nonInteractive, force);
     }
     const promptMessage = `The value for this secret (${secretParam.name}) will be stored in Cloud Secret Manager (https://cloud.google.com/secret-manager/pricing) as ${resourceId}. Enter ${secretParam.format === "json" ? "a JSON value" : "a value"} for ${
       secretParam.label || secretParam.name
