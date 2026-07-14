@@ -158,7 +158,11 @@ export async function deleteSchema(name: string): Promise<void> {
 /** Connector methods */
 
 export async function getConnector(name: string): Promise<types.Connector> {
-  const res = await dataconnectClient().get<types.Connector>(name);
+  const res = await dataconnectClient().get<types.Connector>(name, {
+    queryParams: {
+      fields: "name,source",
+    },
+  });
   return res.body;
 }
 
