@@ -62,6 +62,11 @@ import { getCredentialsEnvironment, setEnvVarsForEmulators } from "./env";
 import { runWithVirtualEnv } from "../functions/python";
 import { runtimeIsLanguage, Runtime } from "../deploy/functions/runtimes/supported";
 import { DART_ENTRY_POINT } from "../deploy/functions/runtimes/dart";
+import {
+  isDartEndpoint,
+  classifyNonProductionEndpoints,
+  groupByTriggerLabel,
+} from "../deploy/functions/runtimes/dart/triggerSupport";
 import { ExtensionsEmulator } from "./extensionsEmulator";
 
 const EVENT_INVOKE_GA4 = "functions_invoke"; // event name GA4 (alphanumertic)
@@ -634,6 +639,10 @@ export class FunctionsEmulator implements EmulatorInstance {
       for (const e of endpoints) {
         e.codebase = emulatableBackend.codebase;
       }
+
+      // Warn about Dart triggers with limited support.
+      this.logDartTriggerSupportWarnings(endpoints);
+
       return emulatedFunctionsFromEndpoints(endpoints);
     }
   }
@@ -857,14 +866,45 @@ export class FunctionsEmulator implements EmulatorInstance {
         );
         try {
           await this.startRuntime(emulatableBackend);
-        } catch (e: any) {
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
           this.logger.logLabeled(
             "ERROR",
-            `Failed to start functions in ${emulatableBackend.functionsDir}: ${e}`,
+            `Failed to start functions in ${emulatableBackend.functionsDir}: ${message}`,
           );
         }
       }
     }
+  }
+
+  /**
+   * Logs warnings for Dart endpoints whose trigger types are not yet
+   * production-ready.  Classification is owned by the shared
+   * `dart/triggerSupport` module.
+   */
+  private logDartTriggerSupportWarnings(endpoints: backend.Endpoint[]): void {
+    const dartEndpoints = endpoints.filter(isDartEndpoint);
+    if (dartEndpoints.length === 0) {
+      return;
+    }
+
+    const { emulatorOnly, experimental } = classifyNonProductionEndpoints(dartEndpoints);
+
+    groupByTriggerLabel(emulatorOnly).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers work in the emulator but cannot be deployed to production yet: ${ids.join(", ")}`,
+      );
+    });
+
+    groupByTriggerLabel(experimental).forEach((ids, label) => {
+      this.logger.logLabeled(
+        "WARN",
+        "functions",
+        `Dart ${clc.bold(label)} triggers are experimental and not yet fully supported: ${ids.join(", ")}`,
+      );
+    });
   }
 
   // Currently only cleans up eventarc and firealerts triggers
@@ -1133,8 +1173,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.DATABASE);
     try {
       await client.post(apiPath, bundle, { headers: { Authorization: "Bearer owner" } });
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding Realtime Database function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding Realtime Database function: " + String(err));
       throw err;
     }
     return true;
@@ -1207,8 +1247,8 @@ export class FunctionsEmulator implements EmulatorInstance {
     const client = EmulatorRegistry.client(Emulators.FIRESTORE);
     try {
       signature === "cloudevent" ? await client.post(path, bundle) : await client.put(path, bundle);
-    } catch (err: any) {
-      this.logger.log("WARN", "Error adding firestore function: " + err);
+    } catch (err: unknown) {
+      this.logger.log("WARN", "Error adding firestore function: " + String(err));
       throw err;
     }
     return true;
@@ -1441,7 +1481,7 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (functionsEnv.hasUserEnvs(projectInfo)) {
       try {
         return functionsEnv.loadUserEnvs(projectInfo);
-      } catch (e: any) {
+      } catch (e: unknown) {
         // Ignore - user envs are optional.
         logger.debug("Failed to load local environment variables", e);
       }
@@ -1539,13 +1579,17 @@ export class FunctionsEmulator implements EmulatorInstance {
     try {
       const data = fs.readFileSync(secretPath, "utf8");
       secretEnvs = functionsEnv.parseStrict(data);
-    } catch (e: any) {
-      if (e.code !== "ENOENT") {
-        this.logger.logLabeled(
-          "ERROR",
-          "functions",
-          `Failed to read local secrets file ${secretPath}: ${e.message}`,
-        );
+    } catch (e: unknown) {
+      if (typeof e === "object" && e !== null && "code" in e) {
+        const code = (e as { code: unknown }).code;
+        if (code !== "ENOENT") {
+          const message = e instanceof Error ? e.message : String(e);
+          this.logger.logLabeled(
+            "ERROR",
+            "functions",
+            `Failed to read local secrets file ${secretPath}: ${message}`,
+          );
+        }
       }
     }
     // Note - if trigger is undefined, we are loading in 'sequential' mode.
@@ -1906,11 +1950,12 @@ export class FunctionsEmulator implements EmulatorInstance {
     if (!pool.readyForWork(trigger.id, record.backend.runtime)) {
       try {
         await this.startRuntime(record.backend, trigger);
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
         this.logger.logLabeled("ERROR", `Failed to handle request for function ${trigger.id}`);
         this.logger.logLabeled(
           "ERROR",
-          `Failed to start functions in ${record.backend.functionsDir}: ${e}`,
+          `Failed to start functions in ${record.backend.functionsDir}: ${message}`,
         );
         return;
       }

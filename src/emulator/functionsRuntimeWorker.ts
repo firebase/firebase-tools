@@ -1,5 +1,5 @@
 import * as http from "http";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { FunctionsRuntimeInstance } from "./functionsEmulator";
 import { EmulatorLog, Emulators, FunctionsExecutionMode } from "./types";
@@ -55,7 +55,7 @@ export class RuntimeWorker {
     readonly extensionLogInfo: ExtensionLogInfo,
     readonly timeoutSeconds?: number,
   ) {
-    this.id = uuid.v4();
+    this.id = randomUUID();
     this.triggerKey = triggerId || FREE_WORKER_KEY;
     this.runtime = runtime;
 
@@ -272,11 +272,14 @@ export class RuntimeWorker {
       try {
         await Promise.race([this.isSocketReady(), timeout]);
         break;
-      } catch (err: any) {
+      } catch (err: unknown) {
         // Allow us to wait until the server is listening.
-        if (["ECONNREFUSED", "ENOENT"].includes(err?.code)) {
-          await sleep(100);
-          continue;
+        if (typeof err === "object" && err !== null && "code" in err) {
+          const code = (err as { code: unknown }).code;
+          if (typeof code === "string" && ["ECONNREFUSED", "ENOENT"].includes(code)) {
+            await sleep(100);
+            continue;
+          }
         }
         throw err;
       }

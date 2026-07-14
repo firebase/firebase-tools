@@ -43,13 +43,13 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
-/** API agnostic version of a Firebase Data Connect HTTPS trigger. */
+/** API agnostic version of a Firebase SQL Connect HTTPS trigger. */
 export interface DataConnectGraphqlTrigger {
   invoker?: string[] | null;
   schemaFilePath?: string;
 }
 
-/** Something that has a Data Connect HTTPS trigger */
+/** Something that has a SQL Connect HTTPS trigger */
 export interface DataConnectGraphqlTriggered {
   dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
 }
@@ -256,6 +256,7 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
 
 export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const DEFAULT_TIMEOUT_SECONDS = 60;
 export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
@@ -424,6 +425,31 @@ export interface RequiredAPI {
   api: string;
 }
 
+export type LifecycleEvent = "afterFirstDeploy" | "afterRedeploy";
+
+export type LifecycleHook =
+  | {
+      task: {
+        function: string;
+        body?: Record<string, unknown>;
+      };
+    }
+  | {
+      call: {
+        function: string;
+        params?: Record<string, unknown>;
+      };
+    }
+  | {
+      http: {
+        function?: string;
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+      };
+    };
+
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
@@ -433,9 +459,12 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Partial<Record<LifecycleEvent, LifecycleHook>>;
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -473,6 +502,7 @@ export function merge(...backends: Backend[]): Backend {
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
+  const requiredRoles = new Set<string>();
   for (const b of backends) {
     for (const { api, reason } of b.requiredAPIs) {
       const reasons = apiToReasons[api] || new Set();
@@ -481,11 +511,24 @@ export function merge(...backends: Backend[]): Backend {
       }
       apiToReasons[api] = reasons;
     }
-    // Mere all environment variables.
+    // Merge all environment variables.
     merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+
+    // Merge requiredRoles
+    if (b.requiredRoles) {
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
+    }
+    if (b.lifecycleHooks) {
+      merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
+    }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
     merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  if (requiredRoles.size > 0) {
+    merged.requiredRoles = Array.from(requiredRoles);
   }
   return merged;
 }
@@ -497,7 +540,9 @@ export function merge(...backends: Backend[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 &&
+    Object.keys(backend.endpoints).length === 0 &&
+    Object.keys(backend.lifecycleHooks || {}).length === 0
   );
 }
 
@@ -574,18 +619,7 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
   if (experiments.isEnabled("functionsrunapionly")) {
-    try {
-      const runServices = await run.listServices(ctx.projectId);
-      for (const service of runServices) {
-        const endpoint = run.endpointFromService(service);
-        existingBackend.endpoints[endpoint.region] =
-          existingBackend.endpoints[endpoint.region] || {};
-        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
-      }
-    } catch (err: any) {
-      logger.debug(err.message);
-      unreachableRegions.run = ["unknown"];
-    }
+    await loadCloudRunServices(ctx, existingBackend, unreachableRegions, false);
   } else {
     const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
@@ -594,11 +628,44 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
       existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
     unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+
+    if (experiments.isEnabled("dartfunctions")) {
+      await loadCloudRunServices(ctx, existingBackend, unreachableRegions, true);
+    }
   }
 
   ctx.existingBackend = existingBackend;
   ctx.unreachableRegions = unreachableRegions;
   return ctx.existingBackend;
+}
+
+/**
+ * Loads Cloud Run services into the existing backend.
+ * @param ctx Context from the Command library, used for caching.
+ * @param existingBackend The existing backend to load Cloud Run services into.
+ * @param unreachableRegions Object to track unreachable regions.
+ * @param onlyMissing If true, only loads missing Cloud Run services.
+ */
+async function loadCloudRunServices(
+  ctx: Context,
+  existingBackend: Backend,
+  unreachableRegions: { run: string[] },
+  onlyMissing: boolean,
+): Promise<void> {
+  try {
+    const runServices = await run.listServices(ctx.projectId);
+    for (const service of runServices) {
+      const endpoint = run.endpointFromService(service);
+      if (!onlyMissing || !existingBackend.endpoints[endpoint.region]?.[endpoint.id]) {
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    }
+  } catch (err: any) {
+    logger.debug(`Error loading Cloud Run services: ${err.message}`);
+    unreachableRegions.run = ["unknown"];
+  }
 }
 
 /**

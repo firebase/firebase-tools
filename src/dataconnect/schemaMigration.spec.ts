@@ -104,7 +104,7 @@ describe("getIdentifiers", () => {
       source: {},
     };
     expect(() => getIdentifiers(schema)).to.throw(
-      "Data Connect schema must have a postgres datasource with a database name.",
+      "SQL Connect schema must have a postgres datasource with a database name.",
     );
   });
 
@@ -121,7 +121,7 @@ describe("getIdentifiers", () => {
       source: {},
     };
     expect(() => getIdentifiers(schema)).to.throw(
-      "Data Connect schema must have a postgres datasource with a CloudSQL instance.",
+      "SQL Connect schema must have a postgres datasource with a CloudSQL instance.",
     );
   });
 });

@@ -284,7 +284,7 @@ export class EmulatorLog {
     let isNotJSON = false;
     try {
       parsedLog = JSON.parse(json);
-    } catch (err: any) {
+    } catch (err: unknown) {
       isNotJSON = true;
     }
 

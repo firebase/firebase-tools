@@ -172,7 +172,7 @@ async function languageSetup(setup: any): Promise<void> {
     },
   ];
   if (!setup.featureInfo?.dataconnectResolver) {
-    // Data Connect resolvers do not yet support Python.
+    // SQL Connect resolvers do not yet support Python.
     choices.push({
       name: "Python",
       value: "python",

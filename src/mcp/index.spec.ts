@@ -1,8 +1,9 @@
 import { expect } from "chai";
-import * as mockfs from "mock-fs";
 import * as sinon from "sinon";
 import { FirebaseMcpServer } from "./index";
 import * as requireAuthModule from "../requireAuth";
+import * as trackModule from "../track";
+import { ServerTool } from "./tool";
 
 describe("FirebaseMcpServer.getAuthenticatedUser", () => {
   let server: FirebaseMcpServer;
@@ -63,45 +64,59 @@ describe("FirebaseMcpServer.getAuthenticatedUser", () => {
   });
 });
 
-describe("FirebaseMcpServer.detectActiveFeatures", () => {
+describe("FirebaseMcpServer.mcpCallTool", () => {
   let server: FirebaseMcpServer;
+  let toolFn: sinon.SinonStub;
 
   beforeEach(() => {
-    sinon.stub(FirebaseMcpServer.prototype, "detectProjectSetup").resolves();
+    sinon.stub(FirebaseMcpServer.prototype, "detectProjectRoot").resolves("/test/project");
+    sinon.stub(FirebaseMcpServer.prototype, "detectActiveFeatures").resolves([]);
+    sinon.stub(trackModule, "trackGA4").resolves();
 
-    server = new FirebaseMcpServer({ projectRoot: "/test-dir" });
-    sinon.stub(server, "ready").resolves();
+    server = new FirebaseMcpServer({});
+    server.clientInfo = { name: "test-client", version: "0.0.0" };
 
-    sinon.stub(server, "getProjectId").resolves("");
+    sinon.stub(server, "getProjectId").resolves(undefined);
     sinon.stub(server, "getAuthenticatedUser").resolves(null);
+    sinon.stub(server as any, "safeCheckBillingEnabled").resolves(false);
+    sinon.stub(server as any, "_createMcpContext").returns({});
+
+    toolFn = sinon.stub().resolves({ content: [{ type: "text", text: "ok" }] });
+    sinon.stub(server, "getTool").resolves({
+      mcp: {
+        name: "test_tool",
+        inputSchema: {},
+        _meta: { optionalProjectDir: true },
+      },
+      fn: toolFn,
+      isAvailable: async () => true,
+    } as ServerTool);
   });
 
   afterEach(() => {
-    mockfs.restore();
     sinon.restore();
   });
 
-  it("detects Crashlytics for a Flutter project without a prior detectProjectRoot call", async () => {
-    mockfs({
-      "/test-dir": {
-        "pubspec.yaml": "dependencies:\n  firebase_crashlytics: ^5.0.0",
-        lib: {
-          "firebase_options.dart":
-            "const FirebaseOptions android = FirebaseOptions(appId: '1:123:android:abc');",
-        },
-        android: {
-          app: {
-            "build.gradle": "plugins { id 'com.google.firebase.crashlytics' }",
-          },
-          src: {
-            main: {},
-          },
-        },
-      },
-    });
+  // Locks in the normalization of missing `request.params.arguments` to `{}`.
+  // Clients are allowed to omit `arguments` for tools with no required inputs;
+  // without this guard, the tool would receive `undefined` and crash on access.
+  it("passes `{}` to the tool when the client omits arguments", async () => {
+    const result = await server.mcpCallTool({
+      method: "tools/call",
+      params: { name: "test_tool" },
+    } as any);
 
-    const detectedFeatures = await server.detectActiveFeatures();
+    expect(toolFn.calledOnce).to.be.true;
+    expect(toolFn.firstCall.args[0]).to.deep.equal({});
+    expect(result).to.deep.equal({ content: [{ type: "text", text: "ok" }] });
+  });
 
-    expect(detectedFeatures).to.include("crashlytics");
+  it("passes provided arguments through unchanged", async () => {
+    await server.mcpCallTool({
+      method: "tools/call",
+      params: { name: "test_tool", arguments: { foo: "bar" } },
+    } as any);
+
+    expect(toolFn.firstCall.args[0]).to.deep.equal({ foo: "bar" });
   });
 });

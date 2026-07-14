@@ -2,6 +2,7 @@ import { Client } from "../apiv2";
 import { aiLogicProxyOrigin } from "../api";
 import { DeepOmit } from "../metaprogramming";
 import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
+import { getErrStatus } from "../error";
 
 export const API_VERSION = "v1beta";
 
@@ -118,7 +119,7 @@ export async function deleteTrigger(
   projectId: string,
   location: string,
   triggerId: string,
-  allowMissing = false,
+  allowMissing = true,
   validateOnly = false,
   etag?: string,
 ): Promise<void> {
@@ -181,8 +182,10 @@ export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise
   try {
     return await createTrigger(endpoint.project, location, triggerId, triggerBody);
   } catch (err: unknown) {
-    if (err && typeof err === "object" && "status" in err && err.status === 409) {
-      return await updateTrigger(endpoint.project, location, triggerId, triggerBody);
+    if (getErrStatus(err) === 409) {
+      return await updateTrigger(endpoint.project, location, triggerId, triggerBody, [
+        "cloudFunction",
+      ]);
     }
     throw err;
   }

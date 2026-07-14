@@ -52,7 +52,8 @@ async function getRulesFromConsole(projectId: string, databaseId: string): Promi
   // A named database would have a resource name, and the releases.name looks like:
   // projects/{project_id}/releases/cloud.firestore/{database_id}
   const resourceName = databaseId === "(default)" ? undefined : databaseId;
-  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore", resourceName);
+  const releases = await gcp.rules.listAllReleases(projectId);
+  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore", releases, resourceName);
   if (!name) {
     return null;
   }

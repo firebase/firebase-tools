@@ -56,10 +56,6 @@ export const authManagementOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_MANAGEMENT_URL", "https://identitytoolkit.googleapis.com");
 export const consoleOrigin = () =>
   utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com");
-export const dynamicLinksOrigin = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_URL", "https://firebasedynamiclinks.googleapis.com");
-export const dynamicLinksKey = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_KEY", "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ");
 export const eventarcOrigin = () =>
   utils.envOverride("EVENTARC_URL", "https://eventarc.googleapis.com");
 export const firebaseApiOrigin = () =>
@@ -87,7 +83,7 @@ export const functionsV2Origin = () =>
   utils.envOverride("FIREBASE_FUNCTIONS_V2_URL", "https://cloudfunctions.googleapis.com");
 export const runOrigin = () => utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com");
 export const functionsDefaultRegion = () =>
-  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1");
+  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "REGION_TBD");
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
@@ -171,8 +167,6 @@ export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
 export const aiLogicProxyOrigin = () =>
   utils.envOverride("AI_LOGIC_PROXY_URL", "https://firebasevertexai.googleapis.com");
-export const cloudAiCompanionOrigin = () =>
-  utils.envOverride("CLOUD_AI_COMPANION_URL", "https://cloudaicompanion.googleapis.com");
 
 export const appTestingOrigin = () =>
   utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");

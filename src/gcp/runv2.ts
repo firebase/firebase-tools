@@ -306,6 +306,7 @@ export async function listServices(projectId: string): Promise<Service[]> {
       for (const service of res.body.services) {
         if (
           service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+          service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
           service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
         ) {
           allServices.push(service);
@@ -596,10 +597,14 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
   }
   const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
   const endpoint: backend.Endpoint = {
-    platform: service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ? "gcfv2" : "run",
+    platform:
+      service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
+      service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
+        ? "gcfv2"
+        : "run",
     id,
     project,
-    labels: service.labels || {},
+    labels: { ...service.labels, "deployment-tool": "cli-firebase" },
     region: location,
     runtime: (service.labels?.[RUNTIME_LABEL] as Runtime) || latest("nodejs"),
     availableMemoryMb: memory as backend.MemoryOptions,
@@ -689,6 +694,9 @@ export function serviceFromEndpoint(
   };
 
   const template: RevisionTemplate = {
+    annotations: {
+      "run.googleapis.com/client-name": "cli-firebase",
+    },
     containers: [
       {
         name: "worker",

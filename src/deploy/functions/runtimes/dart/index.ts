@@ -49,7 +49,7 @@ export async function tryCreateDelegate(
  * Minimum Dart SDK version required.
  * Dart 3.8+ is needed for cross-compilation flags (--target-os, --target-arch).
  */
-const MIN_DART_SDK_VERSION = "3.8.0";
+const MIN_DART_SDK_VERSION = "3.9.0";
 
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
