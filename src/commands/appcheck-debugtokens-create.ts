@@ -13,7 +13,7 @@ interface AppCheckDebugTokensCreateOptions extends Options {
   displayName?: string;
 }
 
-export const command = new Command("appcheck:debugtokens:create <appId> [debugToken]")
+export const command = new Command("appcheck:debugtoken:create <appId> [debugToken]")
   .description("create a Firebase App Check debug token for an app")
   .option("--display-name <displayName>", "display name for the debug token")
   .before(requireAuth)

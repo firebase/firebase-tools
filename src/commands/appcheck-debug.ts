@@ -15,60 +15,131 @@
  */
 
 import * as clc from "colorette";
-import * as fs from "fs";
-import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 import * as os from "os";
 
 import { Command } from "../command";
-import { needProjectNumber } from "../projectUtils";
-import { createDebugToken, DebugToken } from "../appcheck";
+import { getProjectId, needProjectNumber } from "../projectUtils";
+import { createDebugToken, listDebugTokens, deleteDebugToken, DebugToken } from "../appcheck";
 import { requireAuth } from "../requireAuth";
-import { promiseWithSpinner, logSuccess, updateOrCreateGitignore } from "../utils";
+import { logger } from "../logger";
+import { promiseWithSpinner, logSuccess } from "../utils";
 import { Options } from "../options";
+import { AppMetadata, AppPlatform, listFirebaseApps } from "../management/apps";
+import { getOrPromptProject } from "../management/projects";
+import { FirebaseError } from "../error";
+import { detectApps } from "../appUtils";
+import { select, confirm, input } from "../prompt";
 
 interface AppCheckDebugOptions extends Options {
   displayName?: string;
 }
 
-export const command = new Command("appcheck:debug <appId> [debugToken]")
-  .description("generate, register, and locally store an App Check debug token for an app")
+export const command = new Command("appcheck:debugtoken [appId] [debugToken]")
+  .description("generate and register an App Check debug token for an app")
   .option("--display-name <displayName>", "display name for the debug token")
   .before(requireAuth)
   .action(
     async (
-      appId: string,
+      appId: string | undefined,
       debugToken: string | undefined,
       options: AppCheckDebugOptions,
-    ): Promise<DebugToken> => {
-      const projectNumber = await needProjectNumber(options);
-      let displayName = options.displayName;
-      if (!displayName) {
-        const hostname = os.hostname() || "Unknown Host";
-        displayName = `CLI Debug Token (${hostname})`;
-      }
-
+    ): Promise<DebugToken | void> => {
+      const projectDir = options.cwd || process.cwd();
       const token = debugToken || uuidv4();
 
-      // 1. Register the debug token with Firebase App Check backend
+      let projectId = getProjectId(options);
+
+      if (!projectId) {
+        if (options.nonInteractive) {
+          throw new FirebaseError("Must supply project id in non-interactive mode.");
+        }
+        const result = await getOrPromptProject(options);
+        projectId = result.projectId;
+        options.project = projectId;
+      }
+      logger.info(`Active Project: ${clc.bold(projectId)}`);
+
+      if (!appId) {
+        let apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+        if (!apps.length) {
+          throw new FirebaseError(`There are no apps associated with project ${projectId}.`);
+        }
+
+        const localApps = await detectApps(projectDir);
+        const localAppIds = localApps.map((a) => a.appId).filter(Boolean) as string[];
+        if (localAppIds.length > 0) {
+          const filteredApps = apps.filter((app) => localAppIds.includes(app.appId));
+          if (filteredApps.length > 0) {
+            apps = filteredApps;
+          }
+        }
+
+        if (apps.length === 1) {
+          appId = apps[0].appId;
+        } else if (options.nonInteractive) {
+          throw new FirebaseError(
+            `Project ${projectId} has multiple apps, must specify an app id.`,
+          );
+        } else {
+          const choices = apps.map(
+            (app: AppMetadata & { bundleId?: string; packageName?: string }) => {
+              return {
+                name:
+                  `${app.displayName || app.bundleId || app.packageName || "Unknown App"}` +
+                  ` - ${app.appId} (${app.platform})`,
+                value: app,
+              };
+            },
+          );
+
+          const selectedApp = await select<AppMetadata>({
+            message: "Select the app to register a debug token for:",
+            choices,
+          });
+          appId = selectedApp.appId;
+        }
+      }
+
+      const projectNumber = await needProjectNumber(options);
+
+      let displayName = options.displayName;
+      const defaultName = `CLI Debug Token (${os.hostname() || "Unknown Host"})`;
+      if (!displayName) {
+        if (!options.nonInteractive) {
+          displayName = await input({
+            message: "What would you like to call this debug token?",
+            default: defaultName,
+          });
+        } else {
+          displayName = defaultName;
+        }
+      }
+
+      const existingTokens = await listDebugTokens(projectNumber, appId);
+      const matchingTokens = existingTokens.filter((t) => t.displayName === displayName);
+
+      if (matchingTokens.length > 0 && !options.nonInteractive) {
+        const shouldOverwrite = await confirm({
+          message: `A token with the display name "${displayName}" already exists. Delete the old token(s)?`,
+          default: true,
+        });
+        if (shouldOverwrite) {
+          for (const t of matchingTokens) {
+            await deleteDebugToken(t.name);
+          }
+        }
+      }
+
       const result = await promiseWithSpinner<DebugToken>(
-        async () => await createDebugToken(projectNumber, appId, displayName!, token),
+        async () => await createDebugToken(projectNumber, appId, displayName, token),
         `Registering App Check debug token with Firebase for app ${clc.bold(appId)}`,
       );
 
-      // 2. Write the debug token securely to the local .firebase-debug-token file
-      const projectDir = options.cwd || process.cwd();
-      const tokenFilePath = path.join(projectDir, ".firebase-debug-token");
-      fs.writeFileSync(tokenFilePath, token, { mode: 0o600 }); // Read/write by owner only
-
-      // 3. Automatically update .gitignore to ensure it's never committed to source control
-      updateOrCreateGitignore(projectDir, [".firebase-debug-token"]);
-
-      logSuccess(`Successfully registered and stored App Check debug token:
+      logSuccess(`Successfully registered App Check debug token:
       - Display Name: ${clc.bold(result.displayName)}
-      - Token (Saved to .firebase-debug-token): ${clc.bold(clc.green(token))}
-      - Resource Name: ${clc.cyan(result.name)}
-      - Added '.firebase-debug-token' to your local .gitignore file.`);
+      - Token: ${clc.bold(clc.green(token))}
+      - Resource Name: ${clc.cyan(result.name)}`);
 
       return result;
     },

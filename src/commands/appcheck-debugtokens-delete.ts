@@ -9,7 +9,7 @@ import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 import { Options } from "../options";
 
-export const command = new Command("appcheck:debugtokens:delete <appId> <debugTokenId>")
+export const command = new Command("appcheck:debugtoken:delete <appId> <debugTokenId>")
   .description("delete a Firebase App Check debug token for an app")
   .option("--force", "attempt to delete debug token without prompting for confirmation")
   .before(requireAuth)
