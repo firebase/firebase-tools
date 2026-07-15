@@ -42,10 +42,14 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, { schemas: [] });
 
     const serviceInfos = [
@@ -84,10 +88,14 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, { schemas: [] });
     const serviceInfos = [
       {
@@ -120,12 +128,16 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, { schemas: [] });
 
     const serviceInfos = [
@@ -164,10 +176,14 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, {
         schemas: [
           { name: "projects/p/locations/l/services/s1/schemas/main" },
@@ -211,12 +227,16 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, {
         connectors: [{ name: "projects/p/locations/l/services/s1/connectors/unused-connector" }],
       });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, { schemas: [] });
     const serviceInfos = [
       {
@@ -250,10 +270,14 @@ describe("dataconnect release", () => {
       .patch("/v1/projects/p/locations/l/services/s1/connectors/c1?allow_missing=true")
       .reply(200, { name: "op-name" });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/connectors?pageSize=100&pageToken=&fields=connectors.name%2Cconnectors.source%2Cconnectors.client_cache",
+      )
       .reply(200, { connectors: [] });
     nock(dataconnectOrigin())
-      .get("/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=")
+      .get(
+        "/v1/projects/p/locations/l/services/s1/schemas?pageSize=100&pageToken=&fields=schemas.name%2Cschemas.datasources%2Cschemas.source",
+      )
       .reply(200, {
         schemas: [
           { name: "projects/p/locations/l/services/s1/schemas/main" },
