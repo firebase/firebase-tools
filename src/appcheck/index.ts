@@ -15,7 +15,7 @@ interface ListDebugTokensResponse {
 
 const API_VERSION = "v1";
 
-const client = new Client({ urlPrefix: appCheckOrigin(), apiVersion: API_VERSION });
+const client = new Client({ urlPrefix: appCheckOrigin(), auth: true, apiVersion: API_VERSION });
 
 /**
  * Creates a new DebugToken for the specified app.
