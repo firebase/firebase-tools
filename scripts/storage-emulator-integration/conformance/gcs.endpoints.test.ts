@@ -176,6 +176,23 @@ describe("GCS endpoint conformance tests", () => {
           .then((res) => res.body);
         expect(String(data)).to.eql("hello world");
       });
+
+      it("should handle large JSON uploads (issue #8355)", async () => {
+        const largeJson = { k: "a".repeat(130000) }; // ~130KB, > 100KB limit
+        await supertest(storageHost)
+          .post(`/upload/storage/v1/b/${storageBucket}/o?name=large.json&uploadType=media`)
+          .set(authHeader)
+          .set("Content-Type", "application/json")
+          .send(JSON.stringify(largeJson))
+          .expect(200);
+
+        const data = await supertest(storageHost)
+          .get(`/storage/v1/b/${storageBucket}/o/large.json?alt=media`)
+          .set(authHeader)
+          .expect(200)
+          .then((res) => res.body);
+        expect(data).to.eql(largeJson);
+      });
     });
 
     describe("resumable upload", () => {

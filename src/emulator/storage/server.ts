@@ -61,13 +61,8 @@ export function createApp(
   app.use(bodyParser.raw({ limit: "130mb", type: "application/x-www-form-urlencoded" }));
   app.use(bodyParser.raw({ limit: "130mb", type: "multipart/related" }));
 
-  app.use(
-    express.json({
-      type: ["application/json"],
-    }),
-  );
 
-  app.post("/internal/export", async (req, res) => {
+  app.post("/internal/export", express.json({ limit: "130mb" }), async (req, res) => {
     const initiatedBy: string = req.body.initiatedBy || "unknown";
     const path: string = req.body.path;
     if (!path) {
@@ -106,7 +101,7 @@ export function createApp(
    * }
    * ```
    */
-  app.put("/internal/setRules", async (req, res) => {
+  app.put("/internal/setRules", express.json({ limit: "130mb" }), async (req, res) => {
     const rulesRaw = req.body.rules;
     if (!(rulesRaw && Array.isArray(rulesRaw.files) && rulesRaw.files.length > 0)) {
       res.status(400).json({

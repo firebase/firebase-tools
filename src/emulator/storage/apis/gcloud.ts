@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, NextFunction, json } from "express";
+import * as bodyParser from "body-parser";
 import { Emulators } from "../../types";
 import {
   CloudStorageObjectAccessControlMetadata,
@@ -23,6 +24,14 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   const gcloudStorageAPI = Router();
   // Use Admin StorageLayer to ensure Firebase Rules validation is skipped.
   const { adminStorageLayer, uploadService } = emulator;
+
+  const postUploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    const uploadType = req.query.uploadType || req.header("X-Goog-Upload-Protocol");
+    if (uploadType === "resumable" && !req.query.upload_id) {
+      return json({ limit: "130mb" })(req, res, next);
+    }
+    return bodyParser.raw({ type: "*/*", limit: "130mb" })(req, res, next);
+  };
 
   // Debug statements
   if (process.env.STORAGE_EMULATOR_DEBUG) {
@@ -114,7 +123,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     },
   );
 
-  gcloudStorageAPI.patch("/b/:bucketId/o/:objectId", async (req, res) => {
+  gcloudStorageAPI.patch(
+    "/b/:bucketId/o/:objectId",
+    json({ limit: "130mb" }),
+    async (req, res) => {
     let updatedMetadata: StoredFileMetadata;
     try {
       updatedMetadata = await adminStorageLayer.updateObjectMetadata({
@@ -181,7 +193,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     },
   );
 
-  gcloudStorageAPI.put("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
+  gcloudStorageAPI.put(
+    "/upload/storage/v1/b/:bucketId/o",
+    bodyParser.raw({ type: "*/*", limit: "130mb" }),
+    async (req, res) => {
     if (!req.query.upload_id) {
       res.sendStatus(400);
       return;
@@ -213,7 +228,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     return res.json(new CloudStorageObjectMetadata(metadata));
   });
 
-  gcloudStorageAPI.post("/b/:bucketId/o/:objectId/acl", async (req, res) => {
+  gcloudStorageAPI.post(
+    "/b/:bucketId/o/:objectId/acl",
+    json({ limit: "130mb" }),
+    async (req, res) => {
     // TODO(abehaskins) Link to a doc with more info
     EmulatorLogger.forEmulator(Emulators.STORAGE).log(
       "WARN_ONCE",
@@ -254,7 +272,10 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     } as CloudStorageObjectAccessControlMetadata);
   });
 
-  gcloudStorageAPI.post("/upload/storage/v1/b/:bucketId/o", async (req, res) => {
+  gcloudStorageAPI.post(
+    "/upload/storage/v1/b/:bucketId/o",
+    postUploadMiddleware,
+    async (req, res) => {
     const uploadType = req.query.uploadType || req.header("X-Goog-Upload-Protocol");
 
     // Resumable upload protocol.
@@ -344,6 +365,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
       bucketId: req.params.bucketId,
       objectId: name!.toString(),
       dataRaw: await reqBodyToBuffer(req),
+      contentType: req.header("content-type"),
       authorization: req.header("authorization"),
     });
     return await finalizeOneShotUpload(upload);
@@ -441,6 +463,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
 
   gcloudStorageAPI.post(
     "/b/:bucketId/o/:objectId/:method(rewriteTo|copyTo)/b/:destBucketId/o/:destObjectId",
+    json({ limit: "130mb" }),
     (req, res, next) => {
       if (req.params.method === "rewriteTo" && req.query.rewriteToken) {
         // Don't yet support multi-request copying

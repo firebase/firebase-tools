@@ -2,7 +2,8 @@ import { EmulatorLogger } from "../../emulatorLogger";
 import { Emulators } from "../../types";
 import { randomUUID } from "crypto";
 import { IncomingMetadata, OutgoingFirebaseMetadata, StoredFileMetadata } from "../metadata";
-import { Request, Response, Router } from "express";
+import { Request, Response, Router, NextFunction, json } from "express";
+import * as bodyParser from "body-parser";
 import { StorageEmulator } from "../index";
 import { sendFileBytes } from "./shared";
 import { EmulatorRegistry } from "../../registry";
@@ -24,6 +25,23 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   // eslint-disable-next-line new-cap
   const firebaseStorageAPI = Router();
   const { storageLayer, uploadService } = emulator;
+
+  const firebasePostUploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
+    if (req.method === "PUT" && req.header("x-http-method-override")?.toLowerCase() === "patch") {
+      return json({ limit: "130mb" })(req, res, next);
+    }
+
+    const uploadType = req.header("x-goog-upload-protocol")?.toString();
+    const uploadCommand = req.header("x-goog-upload-command");
+
+    if (uploadCommand === "start") {
+      return json({ limit: "130mb" })(req, res, next);
+    }
+    if (uploadType === "multipart") {
+      return next();
+    }
+    return bodyParser.raw({ type: "*/*", limit: "130mb" })(req, res, next);
+  };
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
     firebaseStorageAPI.use((req, res, next) => {
@@ -368,6 +386,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       bucketId: req.params.bucketId,
       objectId: objectId,
       dataRaw: await reqBodyToBuffer(req),
+      contentType: req.header("content-type"),
       authorization: req.header("authorization"),
     });
     return await finalizeOneShotUpload(upload);
@@ -467,8 +486,15 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     return res.json(new OutgoingFirebaseMetadata(metadata));
   };
 
-  firebaseStorageAPI.patch("/b/:bucketId/o/:objectId", handleMetadataUpdate);
-  firebaseStorageAPI.put("/b/:bucketId/o/:objectId?", async (req, res) => {
+  firebaseStorageAPI.patch(
+    "/b/:bucketId/o/:objectId",
+    json({ limit: "130mb" }),
+    handleMetadataUpdate,
+  );
+  firebaseStorageAPI.put(
+    "/b/:bucketId/o/:objectId?",
+    firebasePostUploadMiddleware,
+    async (req, res) => {
     switch (req.header("x-http-method-override")?.toLowerCase()) {
       case "patch":
         return handleMetadataUpdate(req, res);
@@ -477,7 +503,11 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     }
   });
 
-  firebaseStorageAPI.post("/b/:bucketId/o/:objectId?", handleObjectPostRequest);
+  firebaseStorageAPI.post(
+    "/b/:bucketId/o/:objectId?",
+    firebasePostUploadMiddleware,
+    handleObjectPostRequest,
+  );
 
   firebaseStorageAPI.delete("/b/:bucketId/o/:objectId", async (req, res) => {
     try {
