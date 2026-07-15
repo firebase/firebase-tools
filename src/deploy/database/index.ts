@@ -9,7 +9,7 @@ export const detailedHelp =
   "{\n" +
   '  "database": {\n' +
   '    "rules": "database.rules"\n' +
-  '  }\n' +
+  "  }\n" +
   "}\n\n" +
   "Multiple database instances configuration (by target or database ID):\n" +
   "{\n" +

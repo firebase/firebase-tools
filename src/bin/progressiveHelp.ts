@@ -118,7 +118,9 @@ export function setupProgressiveHelp(client: CLIClient): void {
         nsCmd.action(() => {
           nsCmd.outputHelp();
           logger.info();
-          logger.info(`To deploy ${targetName}, run: ${clc.bold("firebase deploy --only " + targetName)}`);
+          logger.info(
+            `To deploy ${targetName}, run: ${clc.bold("firebase deploy --only " + targetName)}`,
+          );
           logger.info();
         });
 
@@ -129,7 +131,9 @@ export function setupProgressiveHelp(client: CLIClient): void {
           if (target && target.detailedHelp) {
             logger.info(target.detailedHelp);
           } else {
-            logger.info(`Configuration for ${clc.bold(targetName)} is defined in your project's ${clc.bold("firebase.json")}.`);
+            logger.info(
+              `Configuration for ${clc.bold(targetName)} is defined in your project's ${clc.bold("firebase.json")}.`,
+            );
             logger.info(`For more details, see the Firebase documentation:`);
             logger.info(`  https://firebase.google.com/docs/cli#the_firebasejson_file`);
           }
