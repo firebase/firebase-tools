@@ -293,6 +293,7 @@ export async function prepare(
       firebaseConfig,
       userEnvs,
       nonInteractive: options.nonInteractive,
+      force: options.force,
       isEmulator: false,
     });
 

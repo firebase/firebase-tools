@@ -341,6 +341,7 @@ interface ResolveBackendOpts {
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  force?: boolean;
 }
 
 /**
@@ -358,6 +359,7 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
     opts.isEmulator,
+    opts.force,
   );
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
