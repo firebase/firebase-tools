@@ -21,18 +21,75 @@ export interface LoginOptions extends Options {
   };
 }
 
-export const command = new Command("login")
+export const command = new Command("login [auth_code]")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
-  .action(async (options: LoginOptions) => {
+  .action(async (authCode: string | undefined, options: LoginOptions) => {
+    if (authCode) {
+      const state = configstore.get("tempLoginState") as
+        | {
+            sessionId: string;
+            codeVerifier: string;
+          }
+        | undefined;
+
+      if (!state || !state.codeVerifier) {
+        throw new FirebaseError(
+          "No pending login session found. Run " +
+            clc.bold("firebase login") +
+            " first to generate a login URL.",
+          { exit: 1 },
+        );
+      }
+
+      try {
+        const result = await auth.loginRemotelyComplete(authCode, state.codeVerifier);
+        auth.recordCredentials(result);
+        configstore.delete("tempLoginState");
+
+        logger.info();
+        if (typeof result.user === "object" && result.user && result.user.email) {
+          utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
+        } else {
+          utils.logSuccess("Success! Logged in");
+        }
+        return auth;
+      } catch (e: any) {
+        configstore.delete("tempLoginState");
+        throw new FirebaseError(`Login failed: ${e.message}`, { exit: 1 });
+      }
+    }
+
     if (options.nonInteractive && !options.prototyperLogin) {
-      throw new FirebaseError(
-        "Cannot run login in non-interactive mode. See " +
-          clc.bold("login:ci") +
-          " to generate a token for use in non-interactive environments.",
-        { exit: 1 },
-      );
+      try {
+        const { sessionId, sessionIdPrefix, loginUrl, codeVerifier } =
+          await auth.loginRemotelyStart();
+
+        configstore.set("tempLoginState", { sessionId, codeVerifier });
+
+        logger.info();
+        logger.info("To sign in to the Firebase CLI:");
+        logger.info();
+        logger.info("1. Take note of your session ID:");
+        logger.info();
+        logger.info(`   ${clc.bold(sessionIdPrefix)}`);
+        logger.info();
+        logger.info(
+          "2. Visit the URL below on any device and follow the instructions to get your code:",
+        );
+        logger.info();
+        logger.info(`   ${loginUrl}`);
+        logger.info();
+        logger.info("3. Complete the login by running:");
+        logger.info();
+        logger.info(`   ${clc.bold(`firebase login <authorizationCode>`)}`);
+        logger.info();
+
+        return;
+      } catch (e: any) {
+        throw new FirebaseError(`Failed to start login: ${e.message}`, { exit: 1 });
+      }
     }
 
     const user = options.user as User | undefined;
@@ -84,7 +141,7 @@ export const command = new Command("login")
     auth.recordCredentials(result);
 
     logger.info();
-    if (typeof result.user !== "string") {
+    if (typeof result.user === "object" && result.user && result.user.email) {
       utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
     } else {
       // Shouldn't really happen, but the JWT library that parses our results may
