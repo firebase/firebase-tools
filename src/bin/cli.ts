@@ -71,6 +71,16 @@ export function cli(pkg: any) {
 
   const logFilename = useFileLogger();
 
+  // Console loggers are initialized early here so that:
+  // 1. Any errors during startup (loading commands, etc.) are printed to the console.
+  // 2. Commander's help display logic (which prints and exits early, bypassing command action hooks)
+  //    still has console loggers registered so our custom help hooks can output to the console.
+  // We skip this if the user requested JSON output, to avoid polluting stdout.
+  const hasJson = args.includes("--json") || args.includes("-j");
+  if (!hasJson) {
+    useConsoleLoggers();
+  }
+
   logger.debug("-".repeat(70));
   logger.debug("Command:      ", process.argv.join(" "));
   logger.debug("CLI Version:  ", pkg.version);
@@ -161,11 +171,6 @@ export function cli(pkg: any) {
   }
 
   if (isHelp) {
-    // Console loggers must be explicitly enabled here because the Commander help display logic
-    // prints information and exits early, skipping standard action hooks where console loggers
-    // are normally initialized. Without this, our custom help hooks (which use logger.info)
-    // will be silent since Winston would have no transports registered.
-    useConsoleLoggers();
     loadAllCommands(client as Record<string, unknown>);
     setupProgressiveHelp(client);
   }
