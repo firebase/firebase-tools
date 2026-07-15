@@ -93,7 +93,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   }
 
   // Automatically create a bucket for any route which uses a bucket
-  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+  firebaseStorageAPI.use(/.*\/b\/(.+?)\/.*/i, (req, res, next) => {
     const bucketId = req.params[0];
     storageLayer.createBucket(bucketId);
     if (!emulator.rulesManager.getRuleset(bucketId)) {

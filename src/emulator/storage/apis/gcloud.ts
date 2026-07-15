@@ -85,7 +85,7 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
   }
 
   // Automatically create a bucket for any route which uses a bucket
-  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/, (req, res, next) => {
+  gcloudStorageAPI.use(/.*\/b\/(.+?)\/.*/i, (req, res, next) => {
     adminStorageLayer.createBucket(req.params[0]);
     next();
   });
@@ -234,7 +234,6 @@ export function createCloudEndpoints(emulator: StorageEmulator): Router {
     "/b/:bucketId/o/:objectId/acl",
     json({ limit: "130mb" }),
     async (req, res) => {
-      // TODO(abehaskins) Link to a doc with more info
       EmulatorLogger.forEmulator(Emulators.STORAGE).log(
         "WARN_ONCE",
         "Cloud Storage ACLs are not supported in the Storage Emulator. All related methods will succeed, but have no effect.",
