@@ -38,9 +38,7 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken", () => {
     it("should register a debug token when appId and debugToken are passed", async () => {
-      nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
-        .reply(200, { debugTokens: [] });
+      nock(appCheckOrigin()).get(`/v1/${parent}/debugTokens`).reply(200, { debugTokens: [] });
 
       nock(appCheckOrigin())
         .post(`/v1/${parent}/debugTokens`, {
@@ -56,7 +54,7 @@ describe("appcheck:debugtoken commands", () => {
         nonInteractive: true,
       };
 
-      const result = await debugCmd.runner()(appId, tokenValue, options);
+      const result = (await debugCmd.runner()(appId, tokenValue, options)) as DebugToken;
       expect(result).to.deep.equal(dummyToken);
       expect(nock.isDone()).to.be.true;
     });
@@ -85,7 +83,7 @@ describe("appcheck:debugtoken commands", () => {
         nonInteractive: true,
       };
 
-      const result = await debugCmd.runner()(appId, tokenValue, options);
+      const result = (await debugCmd.runner()(appId, tokenValue, options)) as DebugToken;
       expect(result).to.deep.equal(dummyToken);
       expect(nock.isDone()).to.be.true;
     });
@@ -107,7 +105,7 @@ describe("appcheck:debugtoken commands", () => {
         nonInteractive: true,
       };
 
-      const result = await createCmd.runner()(appId, tokenValue, options);
+      const result = (await createCmd.runner()(appId, tokenValue, options)) as DebugToken;
       expect(result).to.deep.equal(dummyToken);
       expect(nock.isDone()).to.be.true;
     });
@@ -124,7 +122,7 @@ describe("appcheck:debugtoken commands", () => {
         projectNumber,
       };
 
-      const result = await listCmd.runner()(appId, options);
+      const result = (await listCmd.runner()(appId, options)) as DebugToken[];
       expect(result).to.deep.equal([dummyToken]);
       expect(nock.isDone()).to.be.true;
     });
@@ -132,9 +130,7 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken:delete", () => {
     it("should delete debug token with --force flag", async () => {
-      nock(appCheckOrigin())
-        .delete(`/v1/${tokenName}`)
-        .reply(200, {});
+      nock(appCheckOrigin()).delete(`/v1/${tokenName}`).reply(200, {});
 
       const options = {
         project: "my-ai-project",

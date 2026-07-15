@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 
 import { Command } from "../command";
 import { needProjectNumber } from "../projectUtils";
@@ -36,7 +36,7 @@ export const command = new Command("appcheck:debugtoken:create <appId> [debugTok
         }
       }
 
-      const token = debugToken || uuidv4();
+      const token = debugToken || randomUUID();
 
       const result = await promiseWithSpinner<DebugToken>(
         async () => await createDebugToken(projectNumber, appId, displayName, token),
