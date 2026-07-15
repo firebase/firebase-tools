@@ -128,6 +128,8 @@ export const command = new Command("appcheck:debugtoken [appId] [debugToken]")
           for (const t of matchingTokens) {
             await deleteDebugToken(t.name);
           }
+        } else {
+          throw new FirebaseError("Registration canceled.", { exit: 1 });
         }
       }
 

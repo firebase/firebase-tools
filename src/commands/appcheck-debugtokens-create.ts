@@ -26,11 +26,14 @@ export const command = new Command("appcheck:debugtoken:create <appId> [debugTok
       const projectNumber = await needProjectNumber(options);
       let displayName = options.displayName;
       if (!displayName) {
-        displayName = await input({
-          message: "What would you like to call your debug token?",
-          default: "MyDebugToken",
-          nonInteractive: options.nonInteractive,
-        });
+        if (options.nonInteractive) {
+          displayName = "MyDebugToken";
+        } else {
+          displayName = await input({
+            message: "What would you like to call your debug token?",
+            default: "MyDebugToken",
+          });
+        }
       }
 
       const token = debugToken || uuidv4();
