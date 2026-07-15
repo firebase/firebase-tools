@@ -17,6 +17,8 @@ Must specify the desired report:
   * TOP_OPERATING_SYSTEMS - metrics grouped by *operating system*
   * TOP_ANDROID_DEVICES - metrics grouped by *device*
   * TOP_APPLE_DEVICES - metrics grouped by *device*
+  * TOP_BROWSERS - metrics grouped by *browser*
+  * WEB_METRICS - metrics by *error type*
 `.trim();
 
 function toText(response: Report, filters: EventFilter): Record<string, string> {

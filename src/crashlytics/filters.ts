@@ -28,7 +28,10 @@ export const EventFilterSchema = z
         `Counts events originating from the given app versions. Must be obtained from the *displayName* field in an API response. `,
       ),
     issueId: z.string().optional().describe(`Count events for the given issue`),
-    issueVariantId: z.string().optional().describe(`Count events for the given issue variant`),
+    issueVariantId: z
+      .string()
+      .optional()
+      .describe(`Count events for the given issue variant. Only supported for mobile apps.`),
     issueErrorTypes: z
       .array(z.enum(["FATAL", "NON_FATAL", "ANR"]))
       .optional()
@@ -38,7 +41,7 @@ export const EventFilterSchema = z
     issueSignals: z
       .array(z.enum(["SIGNAL_EARLY", "SIGNAL_FRESH", "SIGNAL_REGRESSED", "SIGNAL_REPETITIVE"]))
       .optional()
-      .describe(`Counts events matching the given signals`),
+      .describe(`Counts events matching the given signals. Only supported for mobile apps.`),
     operatingSystemDisplayNames: z
       .array(z.string())
       .optional()
@@ -48,11 +51,21 @@ export const EventFilterSchema = z
     deviceDisplayNames: z
       .array(z.string())
       .optional()
-      .describe(`Must be obtained from the *displayName* field in an API response.`),
+      .describe(
+        `Must be obtained from the *displayName* field in an API response. Only supported for mobile apps.`,
+      ),
     deviceFormFactors: z
       .array(z.enum(["PHONE", "TABLET", "DESKTOP", "TV", "WATCH"]))
       .optional()
-      .describe(`Counts events originating from the given device form factors`),
+      .describe(
+        `Counts events originating from the given device form factors. Only supported for mobile apps.`,
+      ),
+    browserFilterDisplayNames: z
+      .array(z.string())
+      .optional()
+      .describe(
+        `Counts events originating from the given browser filter display names. Only supported for web apps.`,
+      ),
   })
   .optional()
   .describe(`Only events matching the given filters will be counted. All filters are optional. 
@@ -74,6 +87,7 @@ const toolToParamMap: Record<string, string> = {
   operatingSystemDisplayNames: "filter.operating_system.display_names",
   deviceDisplayNames: "filter.device.display_names",
   deviceFormFactors: "filter.device.form_factors",
+  browserFilterDisplayNames: "filter.browser.display_names",
 };
 
 /**
