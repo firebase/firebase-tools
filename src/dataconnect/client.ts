@@ -20,19 +20,32 @@ export async function listLocations(projectId: string): Promise<string[]> {
       locationId: string;
       displayName: string;
     }[];
-  }>(`/projects/${projectId}/locations`);
+  }>(`/projects/${projectId}/locations`, {
+    queryParams: {
+      fields: "locations.name,locations.locationId,locations.displayName",
+    },
+  });
   return res.body?.locations?.map((l) => l.locationId) ?? [];
 }
 
 /** Service methods */
 export async function getService(serviceName: string): Promise<types.Service> {
-  const res = await dataconnectClient().get<types.Service>(serviceName);
+  const res = await dataconnectClient().get<types.Service>(serviceName, {
+    queryParams: {
+      fields: "name",
+    },
+  });
   return res.body;
 }
 
 export async function listAllServices(projectId: string): Promise<types.Service[]> {
   const res = await dataconnectClient().get<{ services: types.Service[] }>(
     `/projects/${projectId}/locations/-/services`,
+    {
+      queryParams: {
+        fields: "services.name",
+      },
+    },
   );
   return res.body.services ?? [];
 }
@@ -88,7 +101,11 @@ export async function getSchema(
   schemaId: string = types.MAIN_SCHEMA_ID,
 ): Promise<types.Schema | undefined> {
   try {
-    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`);
+    const res = await dataconnectClient().get<types.Schema>(`${serviceName}/schemas/${schemaId}`, {
+      queryParams: {
+        fields: "name,datasources,source",
+      },
+    });
     return res.body;
   } catch (err: any) {
     if (err.status !== 404) {
@@ -100,7 +117,7 @@ export async function getSchema(
 
 export async function listSchemas(
   serviceName: string,
-  fields: string[] = [],
+  fields: string[] = ["schemas.name", "schemas.datasources", "schemas.source"],
 ): Promise<types.Schema[]> {
   const schemas: types.Schema[] = [];
   const getNextPage = async (pageToken = "") => {
@@ -160,7 +177,7 @@ export async function deleteSchema(name: string): Promise<void> {
 export async function getConnector(name: string): Promise<types.Connector> {
   const res = await dataconnectClient().get<types.Connector>(name, {
     queryParams: {
-      fields: "name,source",
+      fields: "name,source,client_cache",
     },
   });
   return res.body;
@@ -176,7 +193,10 @@ export async function deleteConnector(name: string): Promise<void> {
   return;
 }
 
-export async function listConnectors(serviceName: string, fields: string[] = []) {
+export async function listConnectors(
+  serviceName: string,
+  fields: string[] = ["connectors.name", "connectors.source", "connectors.client_cache"],
+) {
   const connectors: types.Connector[] = [];
   const getNextPage = async (pageToken = "") => {
     const res = await dataconnectClient().get<{
