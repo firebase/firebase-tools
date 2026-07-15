@@ -15,7 +15,7 @@
  */
 
 import * as clc from "colorette";
-import { v4 as uuidv4 } from "uuid";
+import { randomUUID } from "node:crypto";
 import * as os from "os";
 
 import { Command } from "../command";
@@ -46,7 +46,7 @@ export const command = new Command("appcheck:debugtoken [appId] [debugToken]")
       options: AppCheckDebugOptions,
     ): Promise<DebugToken | void> => {
       const projectDir = options.cwd || process.cwd();
-      const token = debugToken || uuidv4();
+      const token = debugToken || randomUUID();
 
       let projectId = getProjectId(options);
 

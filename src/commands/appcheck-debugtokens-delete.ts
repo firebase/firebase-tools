@@ -31,7 +31,9 @@ export const command = new Command("appcheck:debugtoken:delete <appId> <debugTok
 
     if (!options.force) {
       if (options.nonInteractive) {
-        throw new FirebaseError("Must pass --force to delete in non-interactive mode.", { exit: 1 });
+        throw new FirebaseError("Must pass --force to delete in non-interactive mode.", {
+          exit: 1,
+        });
       }
       const confirmMessage = `You are about to delete App Check debug token ${clc.bold(debugTokenName)}. Do you wish to continue?`;
       const consent = await confirm({
