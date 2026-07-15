@@ -6,6 +6,7 @@ import { command as debugCmd } from "./appcheck-debug";
 import { command as createCmd } from "./appcheck-debugtokens-create";
 import { command as listCmd } from "./appcheck-debugtokens-list";
 import { command as deleteCmd } from "./appcheck-debugtokens-delete";
+import * as requireAuthModule from "../requireAuth";
 import { appCheckOrigin } from "../api";
 import { DebugToken } from "../appcheck";
 
@@ -26,9 +27,12 @@ describe("appcheck:debugtoken commands", () => {
   };
 
   let sandbox: sinon.SinonSandbox;
+  let requireAuthStub: sinon.SinonStub;
 
   beforeEach(() => {
     sandbox = sinon.createSandbox();
+    requireAuthStub = sandbox.stub(requireAuthModule, "requireAuth");
+    requireAuthStub.resolves("a@b.com");
   });
 
   afterEach(() => {
