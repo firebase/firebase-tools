@@ -26,21 +26,24 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
   const firebaseStorageAPI = Router();
   const { storageLayer, uploadService } = emulator;
 
-  const firebasePostUploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  const firebasePostUploadMiddleware = (req: Request, res: Response, next: NextFunction): void => {
     if (req.method === "PUT" && req.header("x-http-method-override")?.toLowerCase() === "patch") {
-      return json({ limit: "130mb" })(req, res, next);
+      json({ limit: "130mb" })(req, res, next);
+      return;
     }
 
     const uploadType = req.header("x-goog-upload-protocol")?.toString();
     const uploadCommand = req.header("x-goog-upload-command");
 
     if (uploadCommand === "start") {
-      return json({ limit: "130mb" })(req, res, next);
+      json({ limit: "130mb" })(req, res, next);
+      return;
     }
     if (uploadType === "multipart") {
-      return next();
+      next();
+      return;
     }
-    return bodyParser.raw({ type: "*/*", limit: "130mb" })(req, res, next);
+    bodyParser.raw({ type: "*/*", limit: "130mb" })(req, res, next);
   };
 
   if (process.env.STORAGE_EMULATOR_DEBUG) {
@@ -154,7 +157,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     let prefix = "";
     if (req.query.prefix) {
       prefix = req.query.prefix.toString();
-      if (prefix.charAt(prefix.length - 1) !== "/") {
+      if (!prefix.endsWith("/")) {
         return res.status(400).json({
           error: {
             code: 400,
@@ -361,7 +364,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       let dataRaw: Buffer;
       try {
         ({ metadataRaw, dataRaw } = parseObjectUploadMultipartRequest(
-          contentTypeHeader!,
+          contentTypeHeader,
           await reqBodyToBuffer(req),
         ));
       } catch (err) {
@@ -495,13 +498,14 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
     "/b/:bucketId/o/:objectId?",
     firebasePostUploadMiddleware,
     async (req, res) => {
-    switch (req.header("x-http-method-override")?.toLowerCase()) {
-      case "patch":
-        return handleMetadataUpdate(req, res);
-      default:
-        return handleObjectPostRequest(req, res);
-    }
-  });
+      switch (req.header("x-http-method-override")?.toLowerCase()) {
+        case "patch":
+          return handleMetadataUpdate(req, res);
+        default:
+          return handleObjectPostRequest(req, res);
+      }
+    },
+  );
 
   firebaseStorageAPI.post(
     "/b/:bucketId/o/:objectId?",

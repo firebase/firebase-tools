@@ -1,2 +1,3 @@
+- Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
 - Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
