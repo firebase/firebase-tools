@@ -30,13 +30,10 @@ export function load(client: CLIClient): CLIClient {
   const t0 = process.hrtime.bigint();
 
   client.appcheck = {};
-  client.appcheck.debug = loadCommand("appcheck-debug");
-  client.appcheck.debugtokens = {};
-  client.appcheck.debugtokens.create = loadCommand("appcheck-debugtokens-create");
-  client.appcheck.debugtokens.get = loadCommand("appcheck-debugtokens-get");
-  client.appcheck.debugtokens.update = loadCommand("appcheck-debugtokens-update");
-  client.appcheck.debugtokens.list = loadCommand("appcheck-debugtokens-list");
-  client.appcheck.debugtokens.delete = loadCommand("appcheck-debugtokens-delete");
+  client.appcheck.debugtoken = loadCommand("appcheck-debug");
+  client.appcheck.debugtoken.create = loadCommand("appcheck-debugtokens-create");
+  client.appcheck.debugtoken.list = loadCommand("appcheck-debugtokens-list");
+  client.appcheck.debugtoken.delete = loadCommand("appcheck-debugtokens-delete");
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.appdistribution.testers = {};

@@ -7,6 +7,7 @@ import { listDebugTokens, DebugToken } from "../appcheck";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
+import { Options } from "../options";
 
 function logDebugTokensList(debugTokens: DebugToken[]): void {
   if (debugTokens.length === 0) {
@@ -22,10 +23,10 @@ function logDebugTokensList(debugTokens: DebugToken[]): void {
   logger.info(table.toString());
 }
 
-export const command = new Command("appcheck:debugtokens:list <appId>")
+export const command = new Command("appcheck:debugtoken:list <appId>")
   .description("list all Firebase App Check debug tokens for an app")
   .before(requireAuth)
-  .action(async (appId: string, options: any): Promise<DebugToken[]> => {
+  .action(async (appId: string, options: Options): Promise<DebugToken[]> => {
     const projectNumber = await needProjectNumber(options);
 
     const debugTokens = await promiseWithSpinner<DebugToken[]>(
