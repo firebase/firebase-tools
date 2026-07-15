@@ -474,6 +474,88 @@ describe("applyEnvSecretBindings", () => {
     );
   });
 
+  it("merges resourceID and version fields into the SecretParam", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [{ type: "secret", name: "FOO" }],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        projectId: "test-project",
+        secretId: "bar",
+        version: "2",
+      },
+    };
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    expect(testBuild.params).to.deep.equal([
+      {
+        type: "secret",
+        name: "FOO",
+        resourceId: "bar",
+        version: "2",
+        inLocalEnvironment: true,
+      },
+    ]);
+  });
+
+  it("is case-insensitive when matching SecretParam name and .env file key", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [{ type: "secret", name: "foo" }],
+      requiredAPIs: [],
+    };
+    const testSecretRefs: Record<string, build.ParsedSecretRef> = {
+      FOO: {
+        projectId: "test-project",
+        secretId: "bar",
+        version: "2",
+      },
+    };
+    build.applyEnvSecretBindings(testBuild, testSecretRefs);
+    expect(testBuild.params).to.deep.equal([
+      {
+        type: "secret",
+        name: "foo",
+        resourceId: "bar",
+        version: "2",
+        inLocalEnvironment: true,
+      },
+    ]);
+  });
+
   it("should not add the referenced secret to secretEnvironmentVariables if not present", () => {
     const testBuildEmpty: build.Build = {
       endpoints: {

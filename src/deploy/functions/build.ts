@@ -13,7 +13,7 @@ export const REGION_TBD = "REGION_TBD";
 export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
 // prettier-ignore
 const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
-const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
+export const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
 export const SECRET_REF_SHORT_RE = new RegExp(
   "^" + // start of string
     GCP_SECRET_ID_PATTERN + // capture secret ID
@@ -341,24 +341,28 @@ interface ResolveBackendOpts {
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  force?: boolean;
 }
 
 /**
  * Resolves user-defined parameters inside a Build and generates a Backend.
  * Callers are responsible for persisting resolved env vars.
  */
-export async function resolveBackend(
-  opts: ResolveBackendOpts,
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  const paramValues = await params.resolveParams(
+export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
+  backend: backend.Backend;
+  envs: Record<string, params.ParamValue>;
+  secretRefs: Record<string, string>;
+}> {
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
     opts.isEmulator,
+    opts.force,
   );
 
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
 
 /**
@@ -811,11 +815,25 @@ export function applyEnvSecretBindings(
     return;
   }
   logger.debug(
-    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...`,
+    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...)}`,
   );
+  for (const endpointName of Object.keys(build.endpoints)) {
+    logger.debug(
+      `${endpointName} declared secrets: ${JSON.stringify(build.endpoints[endpointName].secretEnvironmentVariables)}`,
+    );
+  }
+
   for (const key of Object.keys(envSecrets)) {
     const secretRef = envSecrets[key];
     const { projectId, secretId, version } = secretRef;
+
+    for (const param of build.params) {
+      if (param.type === "secret" && param.name.toUpperCase() === key) {
+        param.resourceId = secretId;
+        param.version = version;
+        param.inLocalEnvironment = true;
+      }
+    }
 
     for (const endpointName of Object.keys(build.endpoints)) {
       const endpoint = build.endpoints[endpointName];
