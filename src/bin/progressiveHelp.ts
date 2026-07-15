@@ -104,6 +104,49 @@ export function setupProgressiveHelp(client: CLIClient): void {
     }
   }
 
+  // 2.5. Register dummy commands for deploy targets (e.g. "deploy:firestore")
+  // to support "firebase deploy:<target> --help"
+  try {
+    const { TARGETS, VALID_DEPLOY_TARGETS } = require("../deploy");
+    for (const targetName of VALID_DEPLOY_TARGETS) {
+      const ns = `deploy:${targetName}`;
+      if (!existingNames.has(ns)) {
+        const target = TARGETS[targetName];
+        const description = target.help || `deploy ${targetName} resources`;
+        const nsCmd = program.command(ns);
+        nsCmd.description(description);
+        nsCmd.action(() => {
+          nsCmd.outputHelp();
+          logger.info();
+          logger.info(`To deploy ${targetName}, run: ${clc.bold("firebase deploy --only " + targetName)}`);
+          logger.info();
+        });
+
+        nsCmd.on("--help", () => {
+          logger.info();
+          logger.info(clc.bold(`Detailed setup and configuration for ${targetName}:`));
+          logger.info();
+          if (target && target.detailedHelp) {
+            logger.info(target.detailedHelp);
+          } else {
+            logger.info(`Configuration for ${clc.bold(targetName)} is defined in your project's ${clc.bold("firebase.json")}.`);
+            logger.info(`For more details, see the Firebase documentation:`);
+            logger.info(`  https://firebase.google.com/docs/cli#the_firebasejson_file`);
+          }
+          logger.info();
+          logger.info(clc.bold("General help for firebase deploy:"));
+          logger.info();
+          const deployCmd = program.commands.find((c) => c.name() === "deploy");
+          if (deployCmd) {
+            deployCmd.outputHelp();
+          }
+        });
+      }
+    }
+  } catch (e) {
+    // If deploy cannot be resolved, skip.
+  }
+
   // 3. Patch helpInformation on the main program and all commands/namespaces
   const progTyped = program as unknown as CommanderCommand;
   patchHelpInformation(progTyped, "", progTyped);

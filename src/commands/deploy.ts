@@ -41,8 +41,8 @@ function getDeployHelp(): string {
   targetHelp +=
     "\nTo deploy specific targets, use `--only` followed by a comma-separated list of targets.\n";
   targetHelp += `For example, ${boldFn("firebase deploy --only hosting,firestore")}.\n`;
-  targetHelp += `\nTo see detailed setup and configuration details for a specific target, run:\n`;
-  targetHelp += `  ${boldFn("firebase help deploy:<target>")}`;
+  targetHelp += `\nTo see detailed setup and configuration information for a specific target, run:\n`;
+  targetHelp += `  ${boldFn("firebase deploy:<target> --help")}`;
   return targetHelp;
 }
 

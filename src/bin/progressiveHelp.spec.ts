@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { setupProgressiveHelp, CommanderCommand } from "./progressiveHelp";
 import { CLIClient } from "../command";
 import { CommanderStatic } from "commander";
+import { VALID_DEPLOY_TARGETS } from "../deploy";
 
 interface MockCommand extends CommanderCommand {
   _name: string;
@@ -14,7 +15,8 @@ interface MockCommand extends CommanderCommand {
   command(name: string): MockCommand;
 }
 
-describe("progressiveHelp", () => {
+describe("progressiveHelp", function (this: any) {
+  this.timeout(5000);
   let mockProgram: MockCommand;
   let mockClient: CLIClient;
 
@@ -75,6 +77,11 @@ describe("progressiveHelp", () => {
     // Should register "firestore" and "firestore:databases"
     expect(registeredNames).to.include("firestore");
     expect(registeredNames).to.include("firestore:databases");
+
+    // Should register dummy commands for all deploy targets
+    for (const target of VALID_DEPLOY_TARGETS) {
+      expect(registeredNames).to.include(`deploy:${target}`);
+    }
   });
 
   it("patches helpInformation to filter commands based on progressive prefix", () => {

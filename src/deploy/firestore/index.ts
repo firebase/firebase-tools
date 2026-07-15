@@ -4,7 +4,7 @@ import release from "./release";
 
 export { prepare, deploy, release };
 
-export const help = "Deploys security rules and indexes defined in your project's firebase.json.";
+export const help = "Deploys security rules and indexes referenced by your project's firebase.json.";
 export const detailedHelp =
   "Cloud Firestore deploys security rules and indexes to Firestore databases.\n\n" +
   "Single database configuration in firebase.json:\n" +
