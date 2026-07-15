@@ -145,5 +145,30 @@ describe("appcheck:debugtoken commands", () => {
       await deleteCmd.runner()(appId, tokenId, options);
       expect(nock.isDone()).to.be.true;
     });
+
+    it("should throw error if full resource name does not match app and project", async () => {
+      const mismatchedResource = `projects/${projectNumber}/apps/other-app-id/debugTokens/${tokenId}`;
+      const options = {
+        project: "my-ai-project",
+        projectNumber,
+        force: true,
+      };
+
+      await expect(deleteCmd.runner()(appId, mismatchedResource, options)).to.be.rejectedWith(
+        "does not belong to app",
+      );
+    });
+
+    it("should throw error in non-interactive mode if --force is missing", async () => {
+      const options = {
+        project: "my-ai-project",
+        projectNumber,
+        nonInteractive: true,
+      };
+
+      await expect(deleteCmd.runner()(appId, tokenId, options)).to.be.rejectedWith(
+        "Must pass --force to delete in non-interactive mode.",
+      );
+    });
   });
 });

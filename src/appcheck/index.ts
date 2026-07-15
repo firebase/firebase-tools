@@ -47,10 +47,10 @@ export async function listDebugTokens(projectNumber: string, appId: string): Pro
       queryParams.pageToken = pageToken;
     }
     const res = await client.get<ListDebugTokensResponse>(`${parent}/debugTokens`, { queryParams });
-    if (res.body.debugTokens) {
+    if (res.body?.debugTokens) {
       debugTokens.push(...res.body.debugTokens);
     }
-    pageToken = res.body.nextPageToken || "";
+    pageToken = res.body?.nextPageToken || "";
   } while (pageToken);
   return debugTokens;
 }

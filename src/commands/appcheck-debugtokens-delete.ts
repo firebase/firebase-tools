@@ -19,14 +19,24 @@ export const command = new Command("appcheck:debugtoken:delete <appId> <debugTok
     let debugTokenName = debugTokenId;
     if (!debugTokenName.startsWith("projects/")) {
       debugTokenName = `projects/${projectNumber}/apps/${appId}/debugTokens/${debugTokenId}`;
+    } else {
+      const expectedPrefix = `projects/${projectNumber}/apps/${appId}/debugTokens/`;
+      if (!debugTokenName.startsWith(expectedPrefix)) {
+        throw new FirebaseError(
+          `Debug token ${debugTokenId} does not belong to app ${appId} in project ${projectNumber}`,
+          { exit: 1 },
+        );
+      }
     }
 
     if (!options.force) {
+      if (options.nonInteractive) {
+        throw new FirebaseError("Must pass --force to delete in non-interactive mode.", { exit: 1 });
+      }
       const confirmMessage = `You are about to delete App Check debug token ${clc.bold(debugTokenName)}. Do you wish to continue?`;
       const consent = await confirm({
         message: confirmMessage,
-        force: options.force,
-        nonInteractive: options.nonInteractive,
+        default: false,
       });
       if (!consent) {
         throw new FirebaseError("Delete App Check debug token canceled.");
