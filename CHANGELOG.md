@@ -8,3 +8,4 @@
 - Fixed `dataconnect:execute` command help text. The right env var should be FIREBASE_DATA_CONNECT_EMULATOR_HOST, with an underscore between DATA and CONNECT.
 - Updated the Firebase SQL Connect local toolkit to v3.4.16, which includes the following changes:
   - Updated the Golang dependency version to 1.25.12.
+- Fixed a Hosting emulator timeout when a web frameworks request with a body falls through to a function rewrite. (#10760)
