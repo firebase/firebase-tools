@@ -46,7 +46,9 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken", () => {
     it("should register a debug token when appId and debugToken are passed", async () => {
-      nock(appCheckOrigin()).get(/.*debugTokens.*/).reply(200, { debugTokens: [] });
+      nock(appCheckOrigin())
+        .get(/.*debugTokens.*/)
+        .reply(200, { debugTokens: [] });
 
       nock(appCheckOrigin())
         .post(/.*debugTokens.*/, {
@@ -138,7 +140,9 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken:delete", () => {
     it("should delete debug token with --force flag", async () => {
-      nock(appCheckOrigin()).delete(/.*debugTokens.*/).reply(200, {});
+      nock(appCheckOrigin())
+        .delete(/.*debugTokens.*/)
+        .reply(200, {});
 
       const options = {
         project: "my-ai-project",

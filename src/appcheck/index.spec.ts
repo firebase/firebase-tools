@@ -100,7 +100,9 @@ describe("appcheck", () => {
 
   describe("getDebugToken", () => {
     it("should resolve with DebugToken on success", async () => {
-      nock(appCheckOrigin()).get(/.*debugTokens.*/).reply(200, dummyDebugToken);
+      nock(appCheckOrigin())
+        .get(/.*debugTokens.*/)
+        .reply(200, dummyDebugToken);
 
       const result = await getDebugToken(debugTokenName);
       expect(result).to.deep.equal(dummyDebugToken);
@@ -124,7 +126,9 @@ describe("appcheck", () => {
 
   describe("deleteDebugToken", () => {
     it("should resolve on success", async () => {
-      nock(appCheckOrigin()).delete(/.*debugTokens.*/).reply(200, {});
+      nock(appCheckOrigin())
+        .delete(/.*debugTokens.*/)
+        .reply(200, {});
 
       await expect(deleteDebugToken(debugTokenName)).to.be.eventually.fulfilled;
       expect(nock.isDone()).to.be.true;
