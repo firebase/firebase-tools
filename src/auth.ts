@@ -546,7 +546,6 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
   const successHtml = await readTemplate("loginSuccess.html");
   const tokens = await loginWithLocalhost(
     port,
-    GOOGLE_LOOPBACK_HOST,
     callbackUrl,
     authUrl,
     successHtml,
@@ -571,7 +570,6 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
   const successHtml = await readTemplate("loginSuccessGithub.html");
   const tokens = await loginWithLocalhost(
     port,
-    "localhost",
     callbackUrl,
     authUrl,
     successHtml,
@@ -583,7 +581,6 @@ async function loginWithLocalhostGitHub(port: number): Promise<string> {
 
 async function loginWithLocalhost<ResultType>(
   port: number,
-  host: string,
   callbackUrl: string,
   authUrl: string,
   successHtml: string,
@@ -616,7 +613,9 @@ async function loginWithLocalhost<ResultType>(
       return;
     });
 
-    server.listen(port, host, () => {
+    // Bind all interfaces so both 127.0.0.1 (Google redirect) and localhost/::1
+    // (GitHub redirect) can reach the callback server on dual-stack hosts.
+    server.listen(port, () => {
       logger.info();
       logger.info("Visit this URL on this device to log in:");
       logger.info(clc.bold(clc.underline(authUrl)));
