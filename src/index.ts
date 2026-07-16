@@ -2,7 +2,7 @@ import * as program from "commander";
 import * as clc from "colorette";
 import { stringDistance } from "./utils";
 
-import { logger, useConsoleLoggers } from "./logger";
+import { logger } from "./logger";
 import { isCommandModule, CLIClient } from "./command";
 
 const pkg = require("../package.json");
@@ -120,8 +120,6 @@ program.action((_, args) => {
     client.cli.parse(process.argv);
     return;
   }
-
-  useConsoleLoggers();
 
   logger.error(clc.bold(clc.red("Error:")), clc.bold(cmd), "is not a Firebase command");
 

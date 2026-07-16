@@ -1,3 +1,1 @@
-- Support for specifying that the input for a string or string[] param in Functions must be non-empty (#10678)
-- Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
-- Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#8840)
+- Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
