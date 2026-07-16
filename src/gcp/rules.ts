@@ -31,12 +31,13 @@ export async function getLatestRulesetName(
   releases: Release[],
   resourceName?: string,
 ): Promise<string | null> {
-  let prefix = `projects/${projectId}/releases/${service}`;
+  let releaseName = `projects/${projectId}/releases/${service}`;
   if (resourceName) {
-    prefix += `/${resourceName}`;
+    releaseName += `/${resourceName}`;
   }
-
-  const release = releases.find((r) => r.name.startsWith(prefix));
+  const release =
+    releases.find((r) => r.name === releaseName) ||
+    releases.find((r) => r.name.startsWith(releaseName));
 
   if (!release) {
     return null;
