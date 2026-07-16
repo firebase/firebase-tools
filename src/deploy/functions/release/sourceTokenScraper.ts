@@ -5,7 +5,7 @@ import { timeoutFallback } from "../../../timeout";
 
 // How long a concurrent getToken() call will wait for the first deploy's poller
 // to produce a token before giving up and proceeding without one.
-const SOURCE_TOKEN_FETCH_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const SOURCE_TOKEN_FETCH_TIMEOUT_MS = 25 * 60 * 1000; // 25 minutes, matches fabricator.ts masterTimeout
 
 type TokenFetchState = "NONE" | "FETCHING" | "VALID";
 interface TokenFetchResult {
