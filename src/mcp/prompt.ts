@@ -1,4 +1,4 @@
-import { PromptMessage } from "@modelcontextprotocol/sdk/types.js";
+import { PromptMessage } from "@modelcontextprotocol/server";
 import { McpContext, ServerFeature } from "./types";
 import { getDefaultFeatureAvailabilityCheck } from "./util/availability";
 

@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { dump, DumpOptions } from "js-yaml";
 import { EventFilter, validateEventFilters } from "../../../crashlytics/filters";
 import { getReport, ReportInputSchema, simplifyReport } from "../../../crashlytics/reports";

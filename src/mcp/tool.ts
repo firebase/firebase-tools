@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { z, ZodTypeAny } from "zod";
 import { McpContext, ServerFeature } from "./types";
 import { cleanSchema } from "./util";

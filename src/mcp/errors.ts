@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { mcpError } from "./util";
 export const NO_PROJECT_ERROR = mcpError(
   "To proceed requires an active project. Use the `firebase_update_environment` tool to set a project ID",

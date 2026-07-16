@@ -1,4 +1,4 @@
-import { CallToolResult } from "@modelcontextprotocol/sdk/types";
+import { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { ApplicationIdSchema, IssueIdSchema } from "../../../crashlytics/filters";
 import { getIssue, updateIssue } from "../../../crashlytics/issues";

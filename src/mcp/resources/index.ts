@@ -1,4 +1,4 @@
-import { ReadResourceResult } from "@modelcontextprotocol/sdk/types";
+import { ReadResourceResult } from "@modelcontextprotocol/server";
 import { McpContext } from "../types";
 import { docs } from "./docs";
 import { app_id } from "./guides/app_id";

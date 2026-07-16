@@ -1,12 +1,11 @@
+import { CallToolResultSchema, ListToolsResultSchema } from "@modelcontextprotocol/core";
 import {
   CallToolResult,
-  CallToolResultSchema,
-  ListToolsResultSchema,
   JSONRPCResultResponse,
   JSONRPCRequest,
   ListToolsRequest,
   CallToolRequest,
-} from "@modelcontextprotocol/sdk/types.js";
+} from "@modelcontextprotocol/server";
 import { Client } from "../../apiv2";
 import { ServerTool, ServerToolMeta } from "../tool";
 import { McpContext, ServerFeature } from "../types";
