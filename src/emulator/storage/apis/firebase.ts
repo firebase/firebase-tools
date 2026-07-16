@@ -32,7 +32,7 @@ export function createFirebaseEndpoints(emulator: StorageEmulator): Router {
       return;
     }
 
-    const uploadType = req.header("x-goog-upload-protocol")?.toString();
+    const uploadType = req.header("x-goog-upload-protocol");
     const uploadCommand = req.header("x-goog-upload-command");
 
     if (uploadCommand === "start") {

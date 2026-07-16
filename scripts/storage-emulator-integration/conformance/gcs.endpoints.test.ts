@@ -177,7 +177,7 @@ describe("GCS endpoint conformance tests", () => {
         expect(String(data)).to.eql("hello world");
       });
 
-      it("should handle large JSON uploads (issue #8355)", async () => {
+      it("should handle large JSON uploads", async () => {
         const largeJson = { k: "a".repeat(130000) }; // ~130KB, > 100KB limit
         await supertest(storageHost)
           .post(`/upload/storage/v1/b/${storageBucket}/o?name=large.json&uploadType=media`)
