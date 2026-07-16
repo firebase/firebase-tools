@@ -50,7 +50,7 @@ export default class LocalFunction {
 
     const client = new Client({ urlPrefix: this.url, auth: false });
     void client
-      .post<any, any>("", data, { headers })
+      .post<any, any>("", { data }, { headers })
       .then((res) => {
         this.requestCallBack<any>(undefined, res, res.body);
       })
