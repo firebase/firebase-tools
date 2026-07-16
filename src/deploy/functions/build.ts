@@ -563,14 +563,14 @@ export function toBackend(
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {};
         if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {
-          const connector = params.resolveString(bdEndpoint.vpc.connector, regionParamValues);
+          const connector = r.resolveString(bdEndpoint.vpc.connector);
           bkEndpoint.vpc.connector =
             connector.includes("/") || connector === ""
               ? connector
               : `projects/${bdEndpoint.project}/locations/${region}/connectors/${connector}`;
         }
         if (bdEndpoint.vpc.egressSettings) {
-          const egress = params.resolveString(bdEndpoint.vpc.egressSettings, regionParamValues);
+          const egress = r.resolveString(bdEndpoint.vpc.egressSettings);
           if (!backend.AllVpcEgressSettings.includes(egress as backend.VpcEgressSettings)) {
             throw new FirebaseError(`Value "${egress}" is an invalid egress setting.`);
           }
@@ -579,11 +579,10 @@ export function toBackend(
         if (bdEndpoint.vpc.networkInterfaces) {
           bkEndpoint.vpc.networkInterfaces = bdEndpoint.vpc.networkInterfaces.map((ni) => {
             const resolved: { network?: string; subnetwork?: string; tags?: string[] } = {};
-            if (ni.network) resolved.network = params.resolveString(ni.network, regionParamValues);
-            if (ni.subnetwork)
-              resolved.subnetwork = params.resolveString(ni.subnetwork, regionParamValues);
+            if (ni.network) resolved.network = r.resolveString(ni.network);
+            if (ni.subnetwork) resolved.subnetwork = r.resolveString(ni.subnetwork);
             if (ni.tags) {
-              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, regionParamValues));
+              resolved.tags = ni.tags.map((tag) => r.resolveString(tag));
             }
             return resolved;
           });
