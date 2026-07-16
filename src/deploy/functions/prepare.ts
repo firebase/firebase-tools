@@ -62,6 +62,17 @@ import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
 
+function handleSourceDirectoryFlag(options: Options): void {
+  // Allow the source directory to be overridden by the --source flag
+  if (options.source) {
+    if (Array.isArray(options.config.get("functions"))) {
+      throw new FirebaseError("Cannot specify --source option with multiple codebases.");
+    }
+
+    options.config.set("functions.source", options.source);
+  }
+}
+
 /**
  * Discovers and coordinates declarative security details for a codebase.
  * Mutates want Backend to populate managed service account and etag labels.
@@ -209,6 +220,8 @@ export async function prepare(
   options: DeployOptions,
   payload: args.Payload,
 ): Promise<void> {
+  handleSourceDirectoryFlag(options);
+
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);
 
