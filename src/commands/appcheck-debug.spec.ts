@@ -33,6 +33,10 @@ describe("appcheck:debugtoken commands", () => {
     sandbox = sinon.createSandbox();
     requireAuthStub = sandbox.stub(requireAuthModule, "requireAuth");
     requireAuthStub.resolves("a@b.com");
+    (debugCmd as unknown as { befores: unknown[] }).befores = [];
+    (createCmd as unknown as { befores: unknown[] }).befores = [];
+    (listCmd as unknown as { befores: unknown[] }).befores = [];
+    (deleteCmd as unknown as { befores: unknown[] }).befores = [];
   });
 
   afterEach(() => {
