@@ -72,9 +72,10 @@ export async function discoverSecurityDetails(
   want: backend.Backend,
   have: backend.Backend,
   projectId: string,
+  filters?: EndpointFilter[],
 ): Promise<{
-  existingRoles?: string[];
-  existingEtag?: string;
+  haveRoles?: string[];
+  haveRolesEtag?: string;
   existingManagedSA?: string;
   managedSA?: string;
   newEtag?: string;
@@ -82,15 +83,31 @@ export async function discoverSecurityDetails(
   const requiredRoles = want.requiredRoles;
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
-  let existingEtag: string | undefined;
+  let haveRolesEtag: string | undefined;
   if (firstHave) {
-    existingEtag = firstHave.labels?.["firebase-declarative-security-etag"];
+    haveRolesEtag = firstHave.labels?.["firebase-declarative-security-etag"];
     existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
       ? firstHave.serviceAccount
       : undefined;
   }
 
-  if (!requiredRoles && (!existingManagedSA || !existingEtag)) {
+  const isPartiallyFiltered = !!(
+    filters &&
+    filters.some(
+      (f) => (!f.codebase || f.codebase === codebase) && f.idChunks && f.idChunks.length > 0,
+    )
+  );
+  const isEnrolling = !!requiredRoles && !existingManagedSA;
+  const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
+
+  if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
+    throw new FirebaseError(
+      "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
+        "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
+    );
+  }
+
+  if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
     return {};
   }
 
@@ -98,10 +115,7 @@ export async function discoverSecurityDetails(
     requiredRoles &&
     backend.someEndpoint(
       want,
-      (e) =>
-        typeof e.serviceAccount === "string" &&
-        e.serviceAccount !== "default" &&
-        !e.serviceAccount.startsWith("firebase-fn-"),
+      (e) => typeof e.serviceAccount === "string" && !e.serviceAccount.startsWith("firebase-fn-"),
     )
   ) {
     throw new FirebaseError(
@@ -109,17 +123,17 @@ export async function discoverSecurityDetails(
     );
   }
 
-  if (!requiredRoles && existingManagedSA && existingEtag) {
+  if (!requiredRoles && existingManagedSA && haveRolesEtag) {
     for (const endpoint of backend.allEndpoints(want)) {
       if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
-        endpoint.serviceAccount = "default";
+        endpoint.serviceAccount = null;
       }
       if (endpoint.labels) {
         delete endpoint.labels["firebase-declarative-security-etag"];
       }
     }
     return {
-      existingEtag,
+      haveRolesEtag,
       existingManagedSA,
     };
   }
@@ -130,7 +144,7 @@ export async function discoverSecurityDetails(
     managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
   }
 
-  const existingSalt = existingEtag ? existingEtag.split("-")[0] : undefined;
+  const existingSalt = haveRolesEtag ? haveRolesEtag.split("-")[0] : undefined;
   const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
 
   for (const endpoint of backend.allEndpoints(want)) {
@@ -139,10 +153,10 @@ export async function discoverSecurityDetails(
     endpoint.labels["firebase-declarative-security-etag"] = newEtag;
   }
 
-  if (existingEtag && existingEtag === newEtag) {
+  if (haveRolesEtag && haveRolesEtag === newEtag) {
     return {
-      existingRoles: requiredRoles,
-      existingEtag,
+      haveRoles: requiredRoles,
+      haveRolesEtag,
       existingManagedSA,
       managedSA,
       newEtag,
@@ -166,10 +180,10 @@ export async function discoverSecurityDetails(
     }
   }
 
-  let existingRoles: string[] = [];
+  let haveRoles: string[] = [];
   if (existingManagedSA) {
     try {
-      existingRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+      haveRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
     } catch (err: any) {
       throw new FirebaseError(
         `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
@@ -179,8 +193,8 @@ export async function discoverSecurityDetails(
   }
 
   return {
-    existingRoles,
-    existingEtag,
+    haveRoles,
+    haveRolesEtag,
     existingManagedSA,
     managedSA,
     newEtag,
@@ -417,7 +431,13 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    const security = await discoverSecurityDetails(codebase, wantBackend, haveBackend, projectId);
+    const security = await discoverSecurityDetails(
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId,
+      context.filters,
+    );
     payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
 
