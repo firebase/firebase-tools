@@ -253,9 +253,7 @@ describe("apphosting setup functions", () => {
     it("should warn and continue if the user lacks permissions to grant IAM roles", async () => {
       testResourceIamPermissionsStub.resolves();
       createServiceAccountStub.resolves();
-      addServiceAccountToRolesStub.rejects(
-        new FirebaseError("Permission denied", { status: 403 }),
-      );
+      addServiceAccountToRolesStub.rejects(new FirebaseError("Permission denied", { status: 403 }));
 
       await expect(ensureAppHostingComputeServiceAccount(projectId, serviceAccount)).to.be
         .fulfilled;
