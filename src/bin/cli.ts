@@ -9,7 +9,8 @@ import * as fs from "node:fs";
 
 import { configstore } from "../configstore";
 import { errorOut } from "../errorOut";
-import { logger, useFileLogger } from "../logger";
+import { logger, useFileLogger, useConsoleLoggers } from "../logger";
+import { setupProgressiveHelp } from "./progressiveHelp";
 
 import { enableExperimentsFromCliEnvVariable } from "../experiments";
 enableExperimentsFromCliEnvVariable();
@@ -69,6 +70,16 @@ export function cli(pkg: any) {
   process.env.IS_FIREBASE_CLI = "true";
 
   const logFilename = useFileLogger();
+
+  // Console loggers are initialized early here so that:
+  // 1. Any errors during startup (loading commands, etc.) are printed to the console.
+  // 2. Commander's help display logic (which prints and exits early, bypassing command action hooks)
+  //    still has console loggers registered so our custom help hooks can output to the console.
+  // We skip this if the user requested JSON output, to avoid polluting stdout.
+  const hasJson = args.includes("--json") || args.includes("-j");
+  if (!hasJson) {
+    useConsoleLoggers();
+  }
 
   logger.debug("-".repeat(70));
   logger.debug("Command:      ", process.argv.join(" "));
@@ -147,12 +158,13 @@ export function cli(pkg: any) {
 
   // If this is a help command, load all commands so we can display them.
   const commandName = args[0];
+  const hasHelpFlag = args.includes("--help") || args.includes("-h");
   const isHelp =
     !args.length ||
     commandName === "help" ||
     (args.length === 1 && commandName === "ext") ||
-    commandName === "--help";
-  const hasHelpFlag = args.includes("--help") || args.includes("-h");
+    commandName === "--help" ||
+    hasHelpFlag;
 
   if (hasHelpFlag) {
     client.getCommand(commandName);
@@ -160,6 +172,7 @@ export function cli(pkg: any) {
 
   if (isHelp) {
     loadAllCommands(client as Record<string, unknown>);
+    setupProgressiveHelp(client);
   }
   // If there are no args, display help
   if (!args.length) {

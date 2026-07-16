@@ -6,6 +6,7 @@ import {
   JSONRPCRequest,
   ListToolsRequest,
   CallToolRequest,
+  LATEST_PROTOCOL_VERSION,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool, ServerToolMeta } from "../tool";
@@ -47,11 +48,20 @@ export class OneMcpServer {
       const res = await this.listClient.post<
         JSONRPCRequest & ListToolsRequest,
         JSONRPCResultResponse
-      >("/mcp", {
-        method: "tools/list",
-        jsonrpc: "2.0",
-        id: 1,
-      });
+      >(
+        "/mcp",
+        {
+          method: "tools/list",
+          jsonrpc: "2.0",
+          id: 1,
+        },
+        {
+          headers: {
+            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+            "Mcp-Method": "tools/list",
+          },
+        },
+      );
 
       const parsed = ListToolsResultSchema.parse(res.body.result);
       return parsed.tools.map((mcpTool) => ({
@@ -102,13 +112,14 @@ export class OneMcpServer {
           jsonrpc: "2.0",
           id: 1,
         },
-        ctx.projectId
-          ? {
-              headers: {
-                "x-goog-user-project": ctx.projectId,
-              },
-            }
-          : {},
+        {
+          headers: {
+            "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+            "Mcp-Method": "tools/call",
+            "Mcp-Name": toolName,
+            ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
+          },
+        },
       );
       return CallToolResultSchema.parse(res.body.result);
     } catch (error) {
