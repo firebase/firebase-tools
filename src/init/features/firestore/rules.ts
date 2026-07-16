@@ -45,7 +45,7 @@ export async function initRules(setup: Setup, config: Config, info: RequiredInfo
   info.writeRules = await config.confirmWriteProjectFile(info.rulesFilename, info.rules);
 }
 
-async function getRulesFromConsole(projectId: string, databaseId: string): Promise<string | null> {
+async function getRulesFromConsole(projectId: string, databaseId?: string): Promise<string | null> {
   // The (default) database does not have a resource name since its releases.name looks like:
   // projects/{project_id}/releases/cloud.firestore
   //
@@ -53,7 +53,12 @@ async function getRulesFromConsole(projectId: string, databaseId: string): Promi
   // projects/{project_id}/releases/cloud.firestore/{database_id}
   const resourceName = databaseId === "(default)" ? undefined : databaseId;
   const releases = await gcp.rules.listAllReleases(projectId);
-  const name = await gcp.rules.getLatestRulesetName(projectId, "cloud.firestore", releases, resourceName);
+  const name = await gcp.rules.getLatestRulesetName(
+    projectId,
+    "cloud.firestore",
+    releases,
+    resourceName,
+  );
   if (!name) {
     return null;
   }
