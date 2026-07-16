@@ -34,4 +34,4 @@ Once you’ve tested the schema and operations and ran the generated SDK in your
 
 ### Documentation
 
-Please see [Getting started with Firebase SQL Connect](https://firebase.google.com/docs/data-connect/quickstart).
+Please see [Getting started with Firebase SQL Connect](https://firebase.google.com/docs/sql-connect/quickstart).
