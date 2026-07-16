@@ -93,6 +93,29 @@ describe("toBackend", () => {
     expect(Object.keys(backend.endpoints).length).to.equal(0);
   });
 
+  it("interpolates FUNCTION_REGION correctly in per-region endpoint resolution", () => {
+    const desiredBuild: build.Build = build.of({
+      func: {
+        platform: "gcfv2",
+        region: ["us-central1", "europe-west1"],
+        project: "project",
+        runtime: "nodejs16",
+        entryPoint: "func",
+        httpsTrigger: {},
+        minInstances: '{{ params.FUNCTION_REGION == "us-central1" ? 1 : 0 }}',
+      },
+    });
+    const backend = build.toBackend(desiredBuild, {
+      FUNCTION_REGION: new ParamValue("", true, { string: true }),
+    });
+    const ep1 = backend.endpoints["us-central1"]?.["func"];
+    const ep2 = backend.endpoints["europe-west1"]?.["func"];
+    expect(ep1).to.not.be.undefined;
+    expect(ep2).to.not.be.undefined;
+    expect(ep1.minInstances).to.equal(1);
+    expect(ep2.minInstances).to.equal(0);
+  });
+
   it("populates multiple specified https invokers correctly", () => {
     const desiredBuild: build.Build = build.of({
       func: {

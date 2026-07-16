@@ -327,6 +327,7 @@ export async function prepare(
         // more restrictive character set). We'll need to reimplement that here.
         // BUG BUG BUG. This has happened and we need to fix it.
         resource = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.id}`;
+        endpoint.environmentVariables["FUNCTION_REGION"] = endpoint.region;
       } else {
         assertExhaustive(endpoint.platform);
       }
