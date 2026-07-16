@@ -5,6 +5,7 @@ import { Client } from "../../apiv2";
 import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { ServerFeature } from "../types";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
@@ -52,6 +53,10 @@ describe("OneMcpServer", () => {
         feature: "auth",
       });
       expect(clientRequestStub).to.have.been.calledOnce;
+      expect(clientRequestStub.firstCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/list",
+      });
     });
 
     it("should throw FirebaseError if fetch fails", async () => {
@@ -115,6 +120,9 @@ describe("OneMcpServer", () => {
         },
       });
       expect(clientRequestStub.secondCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "test_tool",
         "x-goog-user-project": "test-project",
       });
     });
@@ -135,6 +143,11 @@ describe("OneMcpServer", () => {
       await tool.fn({ arg: "val" }, { ...mockContext, projectId: undefined });
 
       expect(clientRequestStub.secondCall.args[0].headers?.["x-goog-user-project"]).to.be.undefined;
+      expect(clientRequestStub.secondCall.args[0].headers).to.deep.equal({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "test_tool",
+      });
     });
 
     it("should handle remote tool error results", async () => {
