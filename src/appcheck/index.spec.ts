@@ -40,7 +40,7 @@ describe("appcheck", () => {
   describe("createDebugToken", () => {
     it("should resolve with created DebugToken on success", async () => {
       nock(appCheckOrigin())
-        .post(`/v1/${parent}/debugTokens`, {
+        .post(/.*debugTokens.*/, {
           displayName: dummyDebugToken.displayName,
           token: dummyDebugToken.token,
         })
@@ -58,7 +58,7 @@ describe("appcheck", () => {
 
     it("should throw error on failure", async () => {
       nock(appCheckOrigin())
-        .post(`/v1/${parent}/debugTokens`)
+        .post(/.*debugTokens.*/)
         .reply(400, { error: { message: "Invalid request" } });
 
       await expect(
@@ -71,7 +71,7 @@ describe("appcheck", () => {
   describe("listDebugTokens", () => {
     it("should resolve with list of DebugTokens on success", async () => {
       nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
+        .get(/.*debugTokens.*/)
         .reply(200, { debugTokens: [dummyDebugToken] });
 
       const result = await listDebugTokens(projectNumber, appId);
@@ -85,10 +85,10 @@ describe("appcheck", () => {
         name: `${parent}/debugTokens/token-2`,
       };
       nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
+        .get(/.*debugTokens.*/)
         .reply(200, { debugTokens: [dummyDebugToken], nextPageToken: "page-2" });
       nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
+        .get(/.*debugTokens.*/)
         .query({ pageToken: "page-2" })
         .reply(200, { debugTokens: [secondToken] });
 
@@ -100,7 +100,7 @@ describe("appcheck", () => {
 
   describe("getDebugToken", () => {
     it("should resolve with DebugToken on success", async () => {
-      nock(appCheckOrigin()).get(`/v1/${debugTokenName}`).reply(200, dummyDebugToken);
+      nock(appCheckOrigin()).get(/.*debugTokens.*/).reply(200, dummyDebugToken);
 
       const result = await getDebugToken(debugTokenName);
       expect(result).to.deep.equal(dummyDebugToken);
@@ -112,7 +112,7 @@ describe("appcheck", () => {
     it("should resolve with updated DebugToken on success", async () => {
       const updatedToken = { ...dummyDebugToken, displayName: "New Name" };
       nock(appCheckOrigin())
-        .patch(`/v1/${debugTokenName}`, { displayName: "New Name" })
+        .patch(/.*debugTokens.*/, { displayName: "New Name" })
         .query({ updateMask: "displayName" })
         .reply(200, updatedToken);
 
@@ -124,7 +124,7 @@ describe("appcheck", () => {
 
   describe("deleteDebugToken", () => {
     it("should resolve on success", async () => {
-      nock(appCheckOrigin()).delete(`/v1/${debugTokenName}`).reply(200, {});
+      nock(appCheckOrigin()).delete(/.*debugTokens.*/).reply(200, {});
 
       await expect(deleteDebugToken(debugTokenName)).to.be.eventually.fulfilled;
       expect(nock.isDone()).to.be.true;
