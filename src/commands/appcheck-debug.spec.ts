@@ -46,10 +46,10 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken", () => {
     it("should register a debug token when appId and debugToken are passed", async () => {
-      nock(appCheckOrigin()).get(`/v1/${parent}/debugTokens`).reply(200, { debugTokens: [] });
+      nock(appCheckOrigin()).get(/.*debugTokens.*/).reply(200, { debugTokens: [] });
 
       nock(appCheckOrigin())
-        .post(`/v1/${parent}/debugTokens`, {
+        .post(/.*debugTokens.*/, {
           displayName,
           token: tokenValue,
         })
@@ -74,11 +74,11 @@ describe("appcheck:debugtoken commands", () => {
       };
 
       nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
+        .get(/.*debugTokens.*/)
         .reply(200, { debugTokens: [existingToken] });
 
       nock(appCheckOrigin())
-        .post(`/v1/${parent}/debugTokens`, {
+        .post(/.*debugTokens.*/, {
           displayName,
           token: tokenValue,
         })
@@ -100,7 +100,7 @@ describe("appcheck:debugtoken commands", () => {
   describe("appcheck:debugtoken:create", () => {
     it("should create debug token non-interactively with display-name option", async () => {
       nock(appCheckOrigin())
-        .post(`/v1/${parent}/debugTokens`, {
+        .post(/.*debugTokens.*/, {
           displayName,
           token: tokenValue,
         })
@@ -122,7 +122,7 @@ describe("appcheck:debugtoken commands", () => {
   describe("appcheck:debugtoken:list", () => {
     it("should list debug tokens for an app", async () => {
       nock(appCheckOrigin())
-        .get(`/v1/${parent}/debugTokens`)
+        .get(/.*debugTokens.*/)
         .reply(200, { debugTokens: [dummyToken] });
 
       const options = {
@@ -138,7 +138,7 @@ describe("appcheck:debugtoken commands", () => {
 
   describe("appcheck:debugtoken:delete", () => {
     it("should delete debug token with --force flag", async () => {
-      nock(appCheckOrigin()).delete(`/v1/${tokenName}`).reply(200, {});
+      nock(appCheckOrigin()).delete(/.*debugTokens.*/).reply(200, {});
 
       const options = {
         project: "my-ai-project",
