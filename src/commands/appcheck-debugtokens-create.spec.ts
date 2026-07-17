@@ -79,6 +79,10 @@ describe("appcheck:debugtokens commands", () => {
         .reply(200, { debugTokens: [existingToken] });
 
       nock(appCheckOrigin())
+        .delete(/.*debugTokens\/old-id/)
+        .reply(200, {});
+
+      nock(appCheckOrigin())
         .post(/.*debugTokens.*/, {
           displayName,
           token: tokenValue,
@@ -90,12 +94,35 @@ describe("appcheck:debugtokens commands", () => {
         projectNumber,
         displayName,
         app: appId,
+        force: true,
         nonInteractive: true,
       };
 
       const result = (await createCmd.runner()(tokenValue, options)) as DebugToken;
       expect(result).to.deep.equal(dummyToken);
-      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should throw error if nonInteractive is true and force is false when matching token found", async () => {
+      const existingToken: DebugToken = {
+        ...dummyToken,
+        name: `${parent}/debugTokens/old-id`,
+      };
+
+      nock(appCheckOrigin())
+        .get(/.*debugTokens.*/)
+        .reply(200, { debugTokens: [existingToken] });
+
+      const options = {
+        project: "my-ai-project",
+        projectNumber,
+        displayName,
+        app: appId,
+        nonInteractive: true,
+      };
+
+      await expect(createCmd.runner()(tokenValue, options)).to.be.rejectedWith(
+        "Must pass --force to overwrite in non-interactive mode.",
+      );
     });
   });
 
