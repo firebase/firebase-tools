@@ -123,8 +123,7 @@ steps:
           -d '{ "repositories": ["firebase-tools"] }' \
           "https://api.github.com/app/installations/$$GH_APP_INSTALLATION_ID/access_tokens")
 
-        # Extract the IAT using grep/sed (to avoid requiring a jq dependency)
-        IAT=$(echo "$$RESPONSE" | sed -n 's/.*"token": *"\([^"]*\)".*/\1/p')
+        IAT=$$(RESPONSE="$$RESPONSE" node -p "JSON.parse(process.env.RESPONSE).token")
 
         if [ -z "$$IAT" ]; then
           echo "Error: Failed to obtain IAT token. Raw response:"
