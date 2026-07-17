@@ -223,7 +223,9 @@ export function versionInUse(
   return false;
 }
 
+// A SecretEnvVar without fields that are only populated during deploy prepare.
 export type SecretForPruning = Required<Omit<backend.SecretEnvVar, "allowVersionPinning">>;
+
 /**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
@@ -300,7 +302,7 @@ export async function pruneAndDestroySecrets(
   const { projectId, projectNumber } = projectInfo;
 
   logger.debug("Pruning secrets to find unused secret versions...");
-  const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
+  const unusedSecrets: SecretForPruning[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
     endpoints,
   );
