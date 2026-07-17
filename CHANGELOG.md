@@ -1,1 +1,2 @@
+- Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Fixed an issue where App Hosting deploys failed when the deploying account lacked permission to create or grant roles to the default compute service account, even when that service account already existed. (#10806)
