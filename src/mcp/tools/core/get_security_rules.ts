@@ -43,7 +43,7 @@ export const get_security_rules = tool(
         return mcpError(`Failed to fetch current rules. Code: ${response.status}`);
       }
 
-      const rules = await streamToString(response.body);
+      const rules = response.body ? await streamToString(response.body) : "";
       return toContent(rules);
     }
 

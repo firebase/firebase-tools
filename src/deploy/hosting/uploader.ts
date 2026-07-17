@@ -246,7 +246,7 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
-      const errorMessage = await streamToString(res.body as NodeJS.ReadableStream);
+      const errorMessage = res.body ? await streamToString(res.body as NodeJS.ReadableStream) : "";
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
