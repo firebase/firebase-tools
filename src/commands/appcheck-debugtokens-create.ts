@@ -40,6 +40,7 @@ export const command = new Command("appcheck:debugtokens:create [debugToken]")
   .description("generate and register an App Check debug token for an app")
   .option("--app <appId>", "the app id of your Firebase app")
   .option("--display-name <displayName>", "display name for the debug token")
+  .option("--force", "overwrite existing debug token if it has the same display name without prompting")
   .before(requireAuth)
   .action(
     async (
@@ -121,11 +122,20 @@ export const command = new Command("appcheck:debugtokens:create [debugToken]")
       const existingTokens = await listDebugTokens(projectNumber, appId);
       const matchingTokens = existingTokens.filter((t) => t.displayName === displayName);
 
-      if (matchingTokens.length > 0 && !options.nonInteractive) {
-        const shouldOverwrite = await confirm({
-          message: `A token with the display name "${displayName}" already exists. Delete the old token(s)?`,
-          default: true,
-        });
+      if (matchingTokens.length > 0) {
+        let shouldOverwrite = options.force;
+        if (!shouldOverwrite) {
+          if (options.nonInteractive) {
+            throw new FirebaseError(
+              `A token with the display name "${displayName}" already exists. Must pass --force to overwrite in non-interactive mode.`,
+              { exit: 1 }
+            );
+          }
+          shouldOverwrite = await confirm({
+            message: `A token with the display name "${displayName}" already exists. Delete the old token(s)?`,
+            default: true,
+          });
+        }
         if (shouldOverwrite) {
           for (const t of matchingTokens) {
             await deleteDebugToken(t.name);
