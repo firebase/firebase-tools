@@ -420,8 +420,15 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       "Firebase App Hosting compute service account",
     );
   } catch (err: unknown) {
-    // 409 Already Exists errors can safely be ignored.
-    if (getErrStatus(err) !== 409) {
+    const status = getErrStatus(err);
+    if (status === 403) {
+      logWarning(
+        "Failed to create the default App Hosting compute service account. Make sure you have " +
+          "the iam.serviceAccounts.create permission. If the service account already exists, " +
+          "this warning can be safely ignored.",
+      );
+    } else if (status !== 409) {
+      // 409 Already Exists errors can safely be ignored.
       throw err;
     }
   }
@@ -438,9 +445,16 @@ async function provisionDefaultComputeServiceAccount(projectId: string): Promise
       /* skipAccountLookup= */ true,
     );
   } catch (err: unknown) {
-    if (getErrStatus(err) === 400) {
+    const status = getErrStatus(err);
+    if (status === 400) {
       logWarning(
         "Your App Hosting compute service account is still being provisioned in the background. If you encounter an error, please try again after a few moments.",
+      );
+    } else if (status === 403) {
+      logWarning(
+        "Failed to grant roles to the default App Hosting compute service account. Make sure you " +
+          "have the resourcemanager.projects.setIamPolicy permission. If the service account " +
+          "already has these roles, this warning can be safely ignored.",
       );
     } else {
       throw err;
