@@ -12,14 +12,6 @@ The following reports are available for all Crashlytics applications.
       Counts events and distinct impacted users, grouped by issue.
       Issue groups are sorted by event count, in descending order.
 
-  - name: "topVariants"
-    display_name: "Top Variants"
-    usage: |
-      Counts events and distinct impacted users, grouped by issue variant.
-      Issue variant groups are sorted by event count, in descending order.
-    required: |
-      An issue filter including an issue id is required.
-  
   - name: "topVersions"
     display_name: "Top Versions"
     usage: |
@@ -32,7 +24,17 @@ The following reports are available for all Crashlytics applications.
       Counts events, grouped by device operating systems and their versions.
       Operating systems are sorted by event count, in descending order.
 
-Mobile apps have one of the following reports available, depending on the platform. 
+Mobile apps have the following report available:
+
+    - name: "topVariants"
+    display_name: "Top Variants"
+    usage: |
+      Counts events and distinct impacted users, grouped by issue variant.
+      Issue variant groups are sorted by event count, in descending order.
+    required: |
+      An issue filter including an issue id is required.
+
+Mobile apps also have one of the following reports available, depending on the platform.
 
   - name: "topAndroidDevices"
     display_name: "Top Android Devices"
@@ -46,10 +48,27 @@ Mobile apps have one of the following reports available, depending on the platfo
       Counts events, grouped by operating system and Apple device.
       Devices are sorted by event count, in descending order.
 
+Web apps have the following additional reports available.
+
+  - name: "topBrowsers"
+    display_name: "Top Browsers"
+    usage: |
+      Counts events, grouped by browser.
+      Browsers are sorted by event count, in descending order.
+    required: |
+      An issue filter including an issue id is required.
+
+  - name: "webMetrics"
+    display_name: "Web Metrics"
+    usage: |
+      Counts events and distinct impacted users, grouped by error type.
+      Error types are sorted by event count, in descending order.
+
 Report responses contain the following metrics:
 
   - eventsCount: the number of events matching
   - impactedUsers: the number of distinct end users in all the matching events
+  - sessionsCount: the number of distinct sessions in all the matching events. Only availabe for we apps.
 
 Report responses are always grouped by one of the following dimensions:
 
@@ -57,14 +76,16 @@ Report responses are always grouped by one of the following dimensions:
   - issue
   - variant
   - operating system
-  - mobile device type
+  - mobile device type (mobile only)
+  - browser (web only)
+  - error type (web only)
 
 ### Filters
 
 When setting report filters adhere to the following instructions.
 
   * Issue Filtering:
-    * Use the \`issueErrorTypes\` field to focus on events of different fatalities: 
+    * For mobile apps, use the \`issueErrorTypes\` field to focus on events of different fatalities:
       * FATAL: native crashes, which caused the app to exit.
       * NON_FATAL: uncaught or manually reported exceptions, which did not crash the app.
       * ANR: "app not responding" events, only relevant on Android platforms.

@@ -295,6 +295,41 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.false;
   });
 
+  it("should return true for a Web project with firebase/crashlytics in package.json", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({
+          dependencies: {
+            firebase: "^10.0.0",
+          },
+          imports: {
+            "firebase/crashlytics": "./src/crashlytics.js",
+          },
+        }),
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.true;
+  });
+
+  it("should return false for a Web project without firebase/crashlytics in package.json", async () => {
+    mockfs({
+      "/test-dir": {
+        "package.json": JSON.stringify({
+          dependencies: {
+            firebase: "^10.0.0",
+          },
+        }),
+      },
+    });
+
+    const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
+
+    expect(result).to.be.false;
+  });
+
   it("should return true if any platform uses crashlytics in a multi-platform project", async () => {
     mockfs({
       "/test-dir": {
