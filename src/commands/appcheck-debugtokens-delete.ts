@@ -7,13 +7,17 @@ import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner, logSuccess } from "../utils";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
-import { Options } from "../options";
 
-export const command = new Command("appcheck:debugtoken:delete <appId> <debugTokenId>")
+export const command = new Command("appcheck:debugtokens:delete <debugTokenId>")
   .description("delete a Firebase App Check debug token for an app")
+  .option("--app <appId>", "the app id of your Firebase app")
   .option("--force", "attempt to delete debug token without prompting for confirmation")
   .before(requireAuth)
-  .action(async (appId: string, debugTokenId: string, options: Options): Promise<void> => {
+  .action(async (debugTokenId: string, options: any): Promise<void> => {
+    const appId = options.app;
+    if (!appId) {
+      throw new FirebaseError("Must specify an App ID using --app.");
+    }
     const projectNumber = await needProjectNumber(options);
 
     let debugTokenName = debugTokenId;
