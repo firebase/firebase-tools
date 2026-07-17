@@ -72,6 +72,7 @@ export async function discoverSecurityDetails(
   want: backend.Backend,
   have: backend.Backend,
   projectId: string,
+  filters?: EndpointFilter[],
 ): Promise<{
   haveRoles?: string[];
   haveRolesEtag?: string;
@@ -90,6 +91,22 @@ export async function discoverSecurityDetails(
       : undefined;
   }
 
+  const isPartiallyFiltered = !!(
+    filters &&
+    filters.some(
+      (f) => (!f.codebase || f.codebase === codebase) && f.idChunks && f.idChunks.length > 0,
+    )
+  );
+  const isEnrolling = !!requiredRoles && !existingManagedSA;
+  const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
+
+  if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
+    throw new FirebaseError(
+      "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
+        "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
+    );
+  }
+
   if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
     return {};
   }
@@ -98,10 +115,7 @@ export async function discoverSecurityDetails(
     requiredRoles &&
     backend.someEndpoint(
       want,
-      (e) =>
-        typeof e.serviceAccount === "string" &&
-        e.serviceAccount !== "default" &&
-        !e.serviceAccount.startsWith("firebase-fn-"),
+      (e) => typeof e.serviceAccount === "string" && !e.serviceAccount.startsWith("firebase-fn-"),
     )
   ) {
     throw new FirebaseError(
@@ -112,7 +126,7 @@ export async function discoverSecurityDetails(
   if (!requiredRoles && existingManagedSA && haveRolesEtag) {
     for (const endpoint of backend.allEndpoints(want)) {
       if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
-        endpoint.serviceAccount = "default";
+        endpoint.serviceAccount = null;
       }
       if (endpoint.labels) {
         delete endpoint.labels["firebase-declarative-security-etag"];
@@ -432,7 +446,13 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    const security = await discoverSecurityDetails(codebase, wantBackend, haveBackend, projectId);
+    const security = await discoverSecurityDetails(
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId,
+      context.filters,
+    );
     payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
 

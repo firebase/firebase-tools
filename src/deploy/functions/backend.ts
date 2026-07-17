@@ -426,6 +426,8 @@ export interface RequiredAPI {
   api: string;
 }
 
+export type LifecycleEvent = "afterFirstDeploy" | "afterRedeploy";
+
 export type LifecycleHook =
   | {
       task: {
@@ -459,7 +461,7 @@ export interface Backend {
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
   requiredRoles?: string[];
-  lifecycleHooks?: Record<string, LifecycleHook>;
+  lifecycleHooks?: Partial<Record<LifecycleEvent, LifecycleHook>>;
 }
 
 /**

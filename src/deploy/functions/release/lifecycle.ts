@@ -7,20 +7,68 @@ import * as cloudtasks from "../../../gcp/cloudtasks";
 import * as computeEngine from "../../../gcp/computeEngine";
 import { getProject } from "../../../management/projects";
 import { assertExhaustive } from "../../../functional";
-
-export type DeploymentEvent = "afterFirstDeploy" | "afterRedeploy";
+import { Options } from "../../../options";
+import * as prompts from "../prompts";
 
 /**
  * Determines whether the current deployment represents a fresh codebase deployment
  * (afterFirstDeploy) or an update to an existing deployment (afterRedeploy).
  */
-export function determineDeploymentEvent(haveBackend: backend.Backend): DeploymentEvent {
-  // If haveBackend has no existing endpoints, this is a fresh installation.
-  const hasExistingEndpoints = backend.someEndpoint(haveBackend, () => true);
+export function determineLifecycleEvent(haveBackend: backend.Backend): backend.LifecycleEvent {
+  // If haveBackend has no existing active endpoints, this is a fresh installation.
+  const hasExistingEndpoints = backend.someEndpoint(haveBackend, (ep) => ep.state !== "FAILED");
   if (!hasExistingEndpoints) {
     return "afterFirstDeploy";
   }
   return "afterRedeploy";
+}
+
+/**
+ * Checks if the backend specification has any lifecycle hooks configured.
+ */
+export function hasLifecycleHooks(backendSpec: backend.Backend): boolean {
+  return !!(backendSpec.lifecycleHooks && Object.keys(backendSpec.lifecycleHooks).length > 0);
+}
+
+/**
+ * Detects if this deployment is a redeploy of a partially successful but identical previous deployment.
+ * This will be true only if the hashes for both backends are the same but the specified endpoints are different.
+ * Note: If any code or comment modification was made between deploys, the hash will change, so this check won't detect it as an identical recovery deployment.
+ */
+export function isRecoveryDeployment(
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+): boolean {
+  const wantEndpoints = backend.allEndpoints(wantBackend);
+  const haveEndpoints = backend.allEndpoints(haveBackend);
+
+  const wantHashes = new Set(wantEndpoints.map((ep) => ep.hash).filter((h): h is string => !!h));
+  if (!wantHashes.size) {
+    // If there are no endpoint hashes in wantBackend (e.g. deleting all functions or missing hashes),
+    // we cannot reliably compare hashes to detect recovery, so we return false.
+    return false;
+  }
+
+  // 1. We know a previous deploy was a partial success if haveBackend includes the same hash
+  // but wantBackend includes different functions.
+  const hasSameHash = haveEndpoints.some((ep) => ep.hash && wantHashes.has(ep.hash));
+  if (!hasSameHash) {
+    return false;
+  }
+
+  // 2. If we have existing endpoints in haveBackend with matching hashes, but wantBackend contains net new functions,
+  // we know the current deployment is re-attempting a previous deployment with the same source code specification
+  // that failed to deploy all endpoints successfully.
+  const hasNetNewFunctions = wantEndpoints.some(
+    (wantEp) =>
+      !backend.findEndpoint(
+        haveBackend,
+        (haveEp) =>
+          haveEp.id === wantEp.id && haveEp.region === wantEp.region && haveEp.state !== "FAILED",
+      ),
+  );
+
+  return hasNetNewFunctions;
 }
 
 /**
@@ -32,8 +80,26 @@ export async function executeLifecycleHooks(
   haveBackend: backend.Backend,
   plan?: planner.DeploymentPlan,
   codebase?: string,
+  options?: Options,
 ): Promise<boolean> {
-  const event = determineDeploymentEvent(haveBackend);
+  if (!hasLifecycleHooks(wantBackend)) {
+    return false;
+  }
+
+  let event: backend.LifecycleEvent | undefined;
+  if (isRecoveryDeployment(wantBackend, haveBackend)) {
+    event = await prompts.promptForLifecycleEvent(codebase ?? "default", wantBackend, options);
+    if (!event) {
+      logLabeledBullet(
+        "functions",
+        `Skipping lifecycle hooks for codebase "${codebase ?? "default"}".`,
+      );
+      return false;
+    }
+  } else {
+    event = determineLifecycleEvent(haveBackend);
+  }
+
   const hooks = wantBackend.lifecycleHooks || {};
   const hook = hooks[event];
 
@@ -43,22 +109,14 @@ export async function executeLifecycleHooks(
   }
 
   if (event === "afterRedeploy" && plan) {
-    // Filter the deployment plan to only include changesets relevant to the codebase being released.
-    // Changeset keys in the plan are prefixed with the codebase name (e.g. "mycodebase-").
-    // If the codebase is "default", the key may just start with "-" (e.g. "-endpointId").
-    const relevantChangesets = Object.entries(plan)
-      .filter(([key]) => {
-        if (!codebase) return true;
-        if (key.startsWith(`${codebase}-`)) return true;
-        if (codebase === "default" && key.startsWith("-")) return true;
-        return false;
-      })
-      .map(([, c]) => c);
-    const hasResourceModifications = relevantChangesets.some(
-      (changeset) =>
-        changeset.endpointsToCreate.length > 0 ||
-        changeset.endpointsToUpdate.length > 0 ||
-        changeset.endpointsToDelete.length > 0,
+    const codebasePlans = codebase ? [plan[codebase]].filter(Boolean) : Object.values(plan);
+    const hasResourceModifications = codebasePlans.some((codebasePlan) =>
+      Object.values(codebasePlan.regionalChangesets).some(
+        (changeset) =>
+          changeset.endpointsToCreate.length > 0 ||
+          changeset.endpointsToUpdate.length > 0 ||
+          changeset.endpointsToDelete.length > 0,
+      ),
     );
     if (!hasResourceModifications) {
       logLabeledBullet(
@@ -156,7 +214,7 @@ function getCloudConsoleLogUrl(endpoint: backend.Endpoint): string {
  * Executes a specific lifecycle hook in isolation.
  */
 export async function executeHook(
-  event: DeploymentEvent,
+  event: backend.LifecycleEvent,
   hook: backend.LifecycleHook,
   backendSpec: backend.Backend,
 ): Promise<backend.Endpoint | undefined> {

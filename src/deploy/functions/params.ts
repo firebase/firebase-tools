@@ -121,9 +121,6 @@ type ParamBase<T extends string | number | boolean | string[]> = {
   // Default value. If not provided, a param must be supplied.
   default?: T | build.Expression<T>;
 
-  // default: false
-  immutable?: boolean;
-
   // Defines how the CLI will prompt for the value of the param if it's not in .env files
   input?: ParamInput<T>;
 };
@@ -179,6 +176,9 @@ export interface TextInput<T> { // eslint-disable-line
     validationRegex?: string;
     // The error message to display if validationRegex is missing
     validationErrorMessage?: string;
+
+    // Reject the empty string as valid input.
+    nonEmpty?: boolean;
   };
 }
 
@@ -210,6 +210,9 @@ interface ResourceInput {
 interface MultiSelectInput {
   multiSelect: {
     options: Array<SelectOptions<string>>;
+
+    // Reject the empty string as valid input.
+    nonEmpty?: boolean;
   };
 }
 
@@ -622,6 +625,7 @@ async function promptList(
       prompt,
       param.input,
       resolvedDefault,
+      param.input.multiSelect.nonEmpty,
       (res: string[]) => res,
     );
   } else if (isTextInput(param.input)) {
@@ -631,15 +635,22 @@ async function promptList(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<string[]>(prompt, param.input, resolvedDefault, (res: string): string[] => {
-      return res.split(param.delimiter || ",");
-    });
+    return promptText<string[]>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string): string[] => {
+        return res.split(param.delimiter || ",");
+      },
+    );
   } else if (isResourceInput(param.input)) {
+    // N.B: The type system in the SDK currently doesn't allow a ResourceInput to be assigned to a ListParam, so this path is unreachable.
     prompt = `Select values for ${param.label || param.name}:`;
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptResourceStrings(prompt, param.input, projectId);
+    return promptResourceStrings(prompt, param.input, projectId, false);
   } else {
     assertExhaustive(param.input);
   }
@@ -670,7 +681,13 @@ async function promptBooleanParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<boolean>(prompt, param.input, resolvedDefault, isTruthyInput);
+    return promptText<boolean>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      false, // enforceNonEmpty
+      isTruthyInput,
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Boolean params cannot have Cloud Resource selector inputs");
   } else {
@@ -709,7 +726,13 @@ async function promptStringParam(
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<string>(prompt, param.input, resolvedDefault, (res: string) => res);
+    return promptText<string>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string) => res,
+    );
   } else {
     assertExhaustive(param.input);
   }
@@ -744,15 +767,21 @@ async function promptIntParam(param: IntParam, resolvedDefault?: number): Promis
     if (param.description) {
       prompt += ` \n(${param.description})`;
     }
-    return promptText<number>(prompt, param.input, resolvedDefault, (res: string) => {
-      if (isNaN(+res)) {
-        return { message: `"${res}" could not be converted to a number.` };
-      }
-      if (res.includes(".")) {
-        return { message: `${res} is not an integer value.` };
-      }
-      return +res;
-    });
+    return promptText<number>(
+      prompt,
+      param.input,
+      resolvedDefault,
+      param.input.text.nonEmpty,
+      (res: string) => {
+        if (isNaN(+res)) {
+          return { message: `"${res}" could not be converted to a number.` };
+        }
+        if (res.includes(".")) {
+          return { message: `${res} is not an integer value.` };
+        }
+        return +res;
+      },
+    );
   } else if (isResourceInput(param.input)) {
     throw new FirebaseError("Numeric params cannot have Cloud Resource selector inputs");
   } else {
@@ -785,7 +814,13 @@ async function promptResourceString(
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string>(prompt, { text: {} }, resolvedDefault, (res: string) => res);
+      return promptText<string>(
+        prompt,
+        { text: {} },
+        resolvedDefault,
+        true, // enforceNonEmpty
+        (res: string) => res,
+      );
   }
 }
 
@@ -793,6 +828,7 @@ async function promptResourceStrings(
   prompt: string,
   input: ResourceInput,
   projectId: string,
+  enforceNonEmpty?: boolean,
 ): Promise<string[]> {
   const notFound = new FirebaseError(`No instances of ${input.resource.type} found.`);
   switch (input.resource.type) {
@@ -808,12 +844,24 @@ async function promptResourceStrings(
           }),
         },
       };
-      return promptSelectMultiple<string>(prompt, forgedInput, undefined, (res: string[]) => res);
+      return promptSelectMultiple<string>(
+        prompt,
+        forgedInput,
+        undefined, // resolvedDefault
+        enforceNonEmpty,
+        (res: string[]) => res,
+      );
     default:
       logger.warn(
         `Warning: unknown resource type ${input.resource.type}; defaulting to raw text input...`,
       );
-      return promptText<string[]>(prompt, { text: {} }, undefined, (res: string) => res.split(","));
+      return promptText<string[]>(
+        prompt,
+        { text: {} }, // textInput
+        undefined, // resolvedDefault
+        enforceNonEmpty,
+        (res: string) => res.split(","),
+      );
   }
 }
 
@@ -826,6 +874,7 @@ async function promptText<T extends RawParamValue>(
   prompt: string,
   textInput: TextInput<T>,
   resolvedDefault: T | undefined,
+  enforceNonEmpty = false,
   converter: (res: string) => T | retryInput,
 ): Promise<T> {
   const res = await input({
@@ -839,8 +888,12 @@ async function promptText<T extends RawParamValue>(
         textInput.text.validationErrorMessage ||
           `Input did not match provided validator ${userRe.toString()}, retrying...`,
       );
-      return promptText<T>(prompt, textInput, resolvedDefault, converter);
+      return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
     }
+  }
+  if (enforceNonEmpty && res === "") {
+    logger.error(`A non-empty value is required, retrying......`);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   // TODO(vsfan): the toString() is because PromptOnce()'s return type of string
   // is wrong--it will return the type of the default if selected. Remove this
@@ -848,7 +901,7 @@ async function promptText<T extends RawParamValue>(
   const converted = converter(res.toString());
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptText<T>(prompt, textInput, resolvedDefault, converter);
+    return promptText<T>(prompt, textInput, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }
@@ -882,6 +935,7 @@ async function promptSelectMultiple<T extends string>(
   prompt: string,
   input: MultiSelectInput,
   resolvedDefault: T[] | undefined,
+  enforceNonEmpty = false,
   converter: (res: string[]) => T[] | retryInput,
 ): Promise<T[]> {
   const response = await checkbox({
@@ -898,7 +952,11 @@ async function promptSelectMultiple<T extends string>(
   const converted = converter(response);
   if (shouldRetry(converted)) {
     logger.error(converted.message);
-    return promptSelectMultiple<T>(prompt, input, resolvedDefault, converter);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
+  }
+  if (enforceNonEmpty && Array.isArray(converted) && converted.length === 0) {
+    logger.error(`A non-empty value is required, retrying...`);
+    return promptSelectMultiple<T>(prompt, input, resolvedDefault, enforceNonEmpty, converter);
   }
   return converted;
 }

@@ -1216,7 +1216,6 @@ describe("prepare", () => {
     it("should mutate endpoints to use managed service account when enrolling in declarative security", async () => {
       const e: backend.Endpoint = {
         ...ENDPOINT,
-        serviceAccount: "default",
       };
       const want = backend.of(e);
       want.requiredRoles = ["roles/viewer"];
@@ -1248,7 +1247,7 @@ describe("prepare", () => {
 
       expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(result.haveRolesEtag).to.equal("salt-etag");
-      expect(e.serviceAccount).to.equal("default");
+      expect(e.serviceAccount).to.be.null;
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
     });
 
@@ -1281,7 +1280,7 @@ describe("prepare", () => {
       await prepare.discoverSecurityDetails("default", want, have, "project");
 
       expect(eCustom.serviceAccount).to.equal("custom-sa@project.iam.gserviceaccount.com");
-      expect(eManaged.serviceAccount).to.equal("default");
+      expect(eManaged.serviceAccount).to.be.null;
     });
 
     it("should throw error if user combines custom SA and declarative security", async () => {
@@ -1308,7 +1307,6 @@ describe("prepare", () => {
       });
       const e: backend.Endpoint = {
         ...ENDPOINT,
-        serviceAccount: "default",
       };
       const want = backend.of(e);
       want.requiredRoles = ["roles/viewer"];
@@ -1316,6 +1314,48 @@ describe("prepare", () => {
 
       await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
         .rejected;
+    });
+
+    it("should throw error if attempting to enroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
+    });
+
+    it("should throw error if attempting to unenroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      };
+      const want = backend.of(e);
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
     });
   });
 });
