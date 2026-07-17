@@ -7,7 +7,7 @@ import { listDebugTokens, DebugToken } from "../appcheck";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
-import { Options } from "../options";
+import { FirebaseError } from "../error";
 
 function logDebugTokensList(debugTokens: DebugToken[]): void {
   if (debugTokens.length === 0) {
@@ -23,10 +23,15 @@ function logDebugTokensList(debugTokens: DebugToken[]): void {
   logger.info(table.toString());
 }
 
-export const command = new Command("appcheck:debugtoken:list <appId>")
+export const command = new Command("appcheck:debugtokens:list")
   .description("list all Firebase App Check debug tokens for an app")
+  .option("--app <appId>", "the app id of your Firebase app")
   .before(requireAuth)
-  .action(async (appId: string, options: Options): Promise<DebugToken[]> => {
+  .action(async (options: any): Promise<DebugToken[]> => {
+    const appId = options.app;
+    if (!appId) {
+      throw new FirebaseError("Must specify an App ID using --app.");
+    }
     const projectNumber = await needProjectNumber(options);
 
     const debugTokens = await promiseWithSpinner<DebugToken[]>(
