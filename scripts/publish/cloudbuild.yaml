@@ -101,6 +101,7 @@ steps:
       - "-c"
       - |
         set -e
+        trap "rm -f /tmp/private-key.pem" EXIT
         echo "$$GH_APP_PRIVATE_KEY" > /tmp/private-key.pem
         # Build the JWT payload headers and claims
         # iat (Issued At) is set 60 seconds back to prevent clock drift issues
