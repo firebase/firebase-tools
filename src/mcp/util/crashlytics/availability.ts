@@ -16,11 +16,12 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   const projectDir = ctx.config.projectDir;
   const platforms = await getPlatformsFromFolder(projectDir);
 
-  // If this is not a mobile app, then Crashlytics will not be present
+  // If this is not a supported platform, then Crashlytics will not be present
   if (
     !platforms.includes(Platform.FLUTTER) &&
     !platforms.includes(Platform.ANDROID) &&
-    !platforms.includes(Platform.IOS)
+    !platforms.includes(Platform.IOS) &&
+    !platforms.includes(Platform.WEB)
   ) {
     host.logger.debug("Found no supported Crashlytics platforms.");
     return false;
@@ -36,6 +37,10 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   }
   if (platforms.includes(Platform.IOS) && (await iosAppUsesCrashlytics(projectDir))) {
     host.logger.debug("Found iOS app using Crashlytics");
+    return true;
+  }
+  if (platforms.includes(Platform.WEB) && (await webAppUsesCrashlytics(projectDir))) {
+    host.logger.debug("Found Web app using Crashlytics");
     return true;
   }
 
@@ -79,6 +84,17 @@ async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
   for (const file of pubspecFiles) {
     const content = await fs.readFile(path.join(appPath, file), "utf8");
     if (content.includes("firebase_crashlytics")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function webAppUsesCrashlytics(appPath: string): Promise<boolean> {
+  const packageJsonFiles = await detectFiles(appPath, "package.json");
+  for (const file of packageJsonFiles) {
+    const content = await fs.readFile(path.join(appPath, file), "utf8");
+    if (content.includes("firebase/crashlytics")) {
       return true;
     }
   }
