@@ -11,6 +11,7 @@ import { hostingApiOrigin } from "../../api";
 import { load, dump, HashRecord } from "./hashcache";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import { streamToString } from "../../streamUtils";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
@@ -245,7 +246,7 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
-      const errorMessage = await res.response.text();
+      const errorMessage = await streamToString(res.body as NodeJS.ReadableStream);
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
