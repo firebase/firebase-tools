@@ -3,11 +3,27 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as ailogic from "../gcp/ailogic";
 import * as clc from "colorette";
-import { logger } from "../logger";
+import * as utils from "../utils";
 import { FirebaseError } from "../error";
 import { confirm } from "../prompt";
 
 import { Options } from "../options";
+
+// Developer-facing config paths that `config:set` can write.
+const WRITABLE_CONFIG_PATHS = [
+  "security.auth-only",
+  "security.template-only",
+  "monitoring.state",
+  "monitoring.sample-rate-percentage",
+];
+
+/** Parses a "true"/"false" flag value, throwing a FirebaseError otherwise. */
+function parseBool(pathStr: string, value: string): boolean {
+  if (value !== "true" && value !== "false") {
+    throw new FirebaseError(`Value for ${clc.bold(pathStr)} must be 'true' or 'false'.`);
+  }
+  return value === "true";
+}
 
 export const command = new Command("ailogic:config:set <path> <value>")
   .description("set one configuration value")
@@ -16,115 +32,74 @@ export const command = new Command("ailogic:config:set <path> <value>")
   .action(async (pathStr: string, value: string, options: Options) => {
     const projectId = needProjectId(options);
 
-    await ailogic.ensureAILogicApiEnabled(projectId, options);
-
-    const validPaths = [
-      "security.auth-only",
-      "security.template-only",
-      "monitoring.state",
-      "monitoring.sample-rate-percentage",
-    ];
-
-    if (!validPaths.includes(pathStr)) {
+    // Validate the path up front so bad input fails fast, before the API-enablement flow.
+    if (!WRITABLE_CONFIG_PATHS.includes(pathStr)) {
       throw new FirebaseError(
         `Unknown configuration path: ${pathStr}\n\nValid paths:\n\n` +
-          validPaths.map((p) => `  ${p}`).join("\n"),
+          WRITABLE_CONFIG_PATHS.map((p) => `  ${p}`).join("\n"),
       );
     }
 
-    // Tightening check
+    await ailogic.ensureAILogicApiEnabled(projectId, options);
+
     if (pathStr === "security.auth-only" || pathStr === "security.template-only") {
-      if (value !== "true" && value !== "false") {
-        throw new FirebaseError(`Value for ${clc.bold(pathStr)} must be 'true' or 'false'.`);
-      }
-      const boolVal = value === "true";
+      const boolVal = parseBool(pathStr, value);
+      const isAuthOnly = pathStr === "security.auth-only";
+      const trafficFilter: ailogic.TrafficFilter = isAuthOnly
+        ? { firebaseAuthRequired: boolVal }
+        : { templateOnly: boolVal };
+      const mask = isAuthOnly ? "trafficFilter.firebaseAuthRequired" : "trafficFilter.templateOnly";
 
+      // Tightening security from false to true is client-breaking, so confirm first.
       if (boolVal) {
-        // Fetch current config to check if it's currently false
-        const currentConfig = await ailogic.getConfig(projectId);
+        const current = await ailogic.getConfig(projectId);
         const currentVal =
-          pathStr === "security.auth-only"
-            ? currentConfig.trafficFilter?.firebaseAuthRequired ?? false
-            : currentConfig.trafficFilter?.templateOnly ?? false;
-
+          (isAuthOnly
+            ? current.trafficFilter?.firebaseAuthRequired
+            : current.trafficFilter?.templateOnly) ?? false;
         if (!currentVal) {
-          const rejectMsg =
-            pathStr === "security.auth-only"
-              ? "reject requests from unauthenticated users"
-              : "reject requests not using templates";
-
-          if (options.nonInteractive && !options.force) {
-            throw new FirebaseError(
-              `Updating ${clc.bold(pathStr)} requires confirmation.\n\n` +
-                `To proceed in non-interactive mode, rerun with --force:\n\n` +
-                `  firebase ailogic:config:set ${pathStr} ${value} --force`,
-            );
-          }
-
+          const rejectMsg = isAuthOnly
+            ? "reject requests from unauthenticated users"
+            : "reject requests not using templates";
+          // confirm() aborts in non-interactive mode unless --force is set.
           const confirmed = await confirm({
             message: `Enabling ${clc.bold(pathStr)} will ${rejectMsg}. Continue?`,
             force: options.force,
             nonInteractive: options.nonInteractive,
           });
-
           if (!confirmed) {
             throw new FirebaseError("Command aborted.", { exit: 1 });
           }
         }
       }
 
-      if (pathStr === "security.auth-only") {
-        await ailogic.updateConfig(
-          projectId,
-          {
-            trafficFilter: { firebaseAuthRequired: boolVal },
-          },
-          ["trafficFilter.firebaseAuthRequired"],
-        );
-      } else {
-        await ailogic.updateConfig(
-          projectId,
-          {
-            trafficFilter: { templateOnly: boolVal },
-          },
-          ["trafficFilter.templateOnly"],
-        );
-      }
-      logger.info(
-        clc.green(`Successfully updated security setting: ${clc.bold(pathStr)} = ${value}`),
-      );
-    } else if (pathStr === "monitoring.state") {
-      if (value !== "true" && value !== "false") {
-        throw new FirebaseError(`Value for ${clc.bold(pathStr)} must be 'true' or 'false'.`);
-      }
-      const boolVal = value === "true";
+      await ailogic.updateConfig(projectId, { trafficFilter }, [mask]);
+      utils.logSuccess(`Updated security setting: ${clc.bold(pathStr)} = ${value}`);
+      return;
+    }
+
+    if (pathStr === "monitoring.state") {
+      const boolVal = parseBool(pathStr, value);
       await ailogic.updateConfig(
         projectId,
-        {
-          telemetryConfig: { mode: boolVal ? "ALL" : "NONE" },
-        },
+        { telemetryConfig: { mode: boolVal ? "ALL" : "NONE" } },
         ["telemetryConfig.mode"],
       );
-      logger.info(
-        clc.green(`Successfully updated monitoring state: ${clc.bold(pathStr)} = ${value}`),
-      );
-    } else if (pathStr === "monitoring.sample-rate-percentage") {
-      const numVal = Number(value);
-      if (!Number.isInteger(numVal) || numVal < 1 || numVal > 100) {
-        throw new FirebaseError(
-          `Value for ${clc.bold(pathStr)} must be an integer in the range 1-100.`,
-        );
-      }
-      const samplingRate = numVal / 100;
-      await ailogic.updateConfig(
-        projectId,
-        {
-          telemetryConfig: { samplingRate },
-        },
-        ["telemetryConfig.samplingRate"],
-      );
-      logger.info(
-        clc.green(`Successfully updated monitoring sample rate: ${clc.bold(pathStr)} = ${value}%`),
+      utils.logSuccess(`Updated monitoring state: ${clc.bold(pathStr)} = ${value}`);
+      return;
+    }
+
+    // monitoring.sample-rate-percentage
+    const numVal = Number(value);
+    if (!Number.isInteger(numVal) || numVal < 1 || numVal > 100) {
+      throw new FirebaseError(
+        `Value for ${clc.bold(pathStr)} must be an integer in the range 1-100.`,
       );
     }
+    // The API stores the sampling rate as a fraction in (0,1]; the CLI accepts 1-100 percent.
+    const samplingRate = numVal / 100;
+    await ailogic.updateConfig(projectId, { telemetryConfig: { samplingRate } }, [
+      "telemetryConfig.samplingRate",
+    ]);
+    utils.logSuccess(`Updated monitoring sample rate: ${clc.bold(pathStr)} = ${value}%`);
   });

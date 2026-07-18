@@ -17,6 +17,12 @@ export const API_VERSION = "v1beta";
 /** Label used as the prefix for this module's user-facing progress logging. */
 export const AILOGIC_LOGGING_PREFIX = "ailogic";
 
+/**
+ * All AI Logic management resources live at the fixed `global` location; there is
+ * no per-region configuration surface for these commands.
+ */
+export const GLOBAL_LOCATION = "global";
+
 export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
   "google.firebase.ailogic.v1.beforeGenerate" as const;
 export const AI_LOGIC_AFTER_GENERATE_CONTENT = "google.firebase.ailogic.v1.afterGenerate" as const;
@@ -262,7 +268,7 @@ export function parseProviderType(value: string): ProviderType {
  * Gets the AI Logic Config singleton.
  */
 export async function getConfig(projectId: string): Promise<Config> {
-  const name = `projects/${projectId}/locations/global/config`;
+  const name = `projects/${projectId}/locations/${GLOBAL_LOCATION}/config`;
   const res = await client.get<Config>(name);
   return res.body;
 }
@@ -275,7 +281,7 @@ export async function updateConfig(
   config: Partial<Config>,
   updateMask?: string[],
 ): Promise<Config> {
-  const name = `projects/${projectId}/locations/global/config`;
+  const name = `projects/${projectId}/locations/${GLOBAL_LOCATION}/config`;
   const queryParams: Record<string, string> = {};
   if (updateMask && updateMask.length > 0) {
     queryParams.updateMask = updateMask.join(",");
@@ -467,7 +473,12 @@ export async function updateSecurityRules(
  * Read-only commands use this to report state instead of forcing enablement.
  */
 export async function isAILogicApiEnabled(projectId: string): Promise<boolean> {
-  return ensureApiEnabled.check(projectId, "firebasevertexai.googleapis.com", "ailogic", true);
+  return ensureApiEnabled.check(
+    projectId,
+    "firebasevertexai.googleapis.com",
+    AILOGIC_LOGGING_PREFIX,
+    true,
+  );
 }
 
 /**

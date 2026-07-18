@@ -1,0 +1,110 @@
+import { expect } from "chai";
+import * as sinon from "sinon";
+
+import { command } from "./ailogic-config-set";
+import * as ailogic from "../gcp/ailogic";
+import * as projectUtils from "../projectUtils";
+import * as prompt from "../prompt";
+import * as utils from "../utils";
+import { FirebaseError } from "../error";
+
+const PROJECT_ID = "test-project";
+
+describe("ailogic:config:set", () => {
+  let updateStub: sinon.SinonStub;
+  let getConfigStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    (command as unknown as { befores: unknown[] }).befores = []; // bypass pre-action hooks
+    sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
+    sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
+    sinon.stub(utils, "logSuccess");
+    getConfigStub = sinon.stub(ailogic, "getConfig").resolves({ name: "config" });
+    updateStub = sinon.stub(ailogic, "updateConfig").resolves({ name: "config" });
+    confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+  });
+
+  afterEach(() => sinon.restore());
+
+  it("throws on an unknown path listing the writable paths", async () => {
+    await expect(
+      command.runner()("security.authonly", "true", { project: PROJECT_ID }),
+    ).to.be.rejectedWith(FirebaseError, /Unknown configuration path/);
+  });
+
+  it("rejects a non-boolean value for a security path", async () => {
+    await expect(
+      command.runner()("security.auth-only", "yes", { project: PROJECT_ID }),
+    ).to.be.rejectedWith(FirebaseError, /must be 'true' or 'false'/);
+  });
+
+  it("prompts when tightening auth-only from false to true, then updates", async () => {
+    getConfigStub.resolves({ name: "config", trafficFilter: { firebaseAuthRequired: false } });
+    await command.runner()("security.auth-only", "true", {
+      project: PROJECT_ID,
+      interactive: true,
+    });
+    expect(confirmStub).to.have.been.calledOnce;
+    expect(updateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      { trafficFilter: { firebaseAuthRequired: true } },
+      ["trafficFilter.firebaseAuthRequired"],
+    );
+  });
+
+  it("does not prompt when auth-only is already true", async () => {
+    getConfigStub.resolves({ name: "config", trafficFilter: { firebaseAuthRequired: true } });
+    await command.runner()("security.auth-only", "true", {
+      project: PROJECT_ID,
+      interactive: true,
+    });
+    expect(confirmStub).to.not.have.been.called;
+    expect(updateStub).to.have.been.calledOnce;
+  });
+
+  it("does not prompt when relaxing auth-only to false", async () => {
+    await command.runner()("security.auth-only", "false", { project: PROJECT_ID });
+    expect(confirmStub).to.not.have.been.called;
+    expect(updateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      { trafficFilter: { firebaseAuthRequired: false } },
+      ["trafficFilter.firebaseAuthRequired"],
+    );
+  });
+
+  it("propagates confirm() aborting in non-interactive mode without --force", async () => {
+    // confirm() throws in non-interactive mode when no --force is given; the command
+    // must surface that and not proceed to write.
+    getConfigStub.resolves({ name: "config", trafficFilter: { firebaseAuthRequired: false } });
+    confirmStub.rejects(new FirebaseError("cannot be answered in non-interactive mode"));
+    await expect(
+      command.runner()("security.auth-only", "true", { project: PROJECT_ID, nonInteractive: true }),
+    ).to.be.rejectedWith(FirebaseError, /non-interactive/);
+    expect(updateStub).to.not.have.been.called;
+  });
+
+  it("maps monitoring.state true to telemetryConfig.mode ALL", async () => {
+    await command.runner()("monitoring.state", "true", { project: PROJECT_ID });
+    expect(updateStub).to.have.been.calledWith(PROJECT_ID, { telemetryConfig: { mode: "ALL" } }, [
+      "telemetryConfig.mode",
+    ]);
+  });
+
+  it("maps a sample-rate percentage to a (0,1] sampling fraction", async () => {
+    await command.runner()("monitoring.sample-rate-percentage", "50", { project: PROJECT_ID });
+    expect(updateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      { telemetryConfig: { samplingRate: 0.5 } },
+      ["telemetryConfig.samplingRate"],
+    );
+  });
+
+  it("rejects an out-of-range or non-integer sample rate", async () => {
+    for (const bad of ["0", "101", "1.5", "abc"]) {
+      await expect(
+        command.runner()("monitoring.sample-rate-percentage", bad, { project: PROJECT_ID }),
+      ).to.be.rejectedWith(FirebaseError, /integer in the range 1-100/);
+    }
+  });
+});
