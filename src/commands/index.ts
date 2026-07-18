@@ -224,11 +224,15 @@ export function load(client: CLIClient): CLIClient {
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
   }
-  client.ailogic = {};
-  client.ailogic.providers = {};
-  client.ailogic.providers.enable = loadCommand("ailogic-providers-enable");
-  client.ailogic.providers.disable = loadCommand("ailogic-providers-disable");
-  client.ailogic.providers.list = loadCommand("ailogic-providers-list");
+  // Gated behind the `ailogic` experiment until the underlying API is API-council
+  // approved, since the surface may still change.
+  if (experiments.isEnabled("ailogic")) {
+    client.ailogic = {};
+    client.ailogic.providers = {};
+    client.ailogic.providers.enable = loadCommand("ailogic-providers-enable");
+    client.ailogic.providers.disable = loadCommand("ailogic-providers-disable");
+    client.ailogic.providers.list = loadCommand("ailogic-providers-list");
+  }
 
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

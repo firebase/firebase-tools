@@ -13,6 +13,9 @@ import { confirm, select } from "../prompt";
 
 export const API_VERSION = "v1beta";
 
+/** Label used as the prefix for this module's user-facing progress logging. */
+export const AILOGIC_LOGGING_PREFIX = "ailogic";
+
 export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
   "google.firebase.ailogic.v1.beforeGenerate" as const;
 export const AI_LOGIC_AFTER_GENERATE_CONTENT = "google.firebase.ailogic.v1.afterGenerate" as const;
@@ -212,17 +215,43 @@ export async function deleteBlockingFunction(endpoint: AILogicEndpoint): Promise
   await deleteTrigger(endpoint.project, location, triggerId, true);
 }
 
-export type ProviderType = "gemini-developer-api" | "agent-platform-gemini-api";
+export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";
+
+export const PROVIDER_TYPES: ProviderType[] = ["gemini-developer-api", "gemini-agent-platform-api"];
+
+/** Whether the given string is a known Gemini API provider type. */
+export function isProviderType(value: string): value is ProviderType {
+  return PROVIDER_TYPES.some((p) => p === value);
+}
+
+/** Validates and narrows a string to a ProviderType, throwing a FirebaseError otherwise. */
+export function parseProviderType(value: string): ProviderType {
+  if (!isProviderType(value)) {
+    throw new FirebaseError(
+      `Invalid provider type: ${bold(value)}. Must be one of: ${PROVIDER_TYPES.map(
+        (p) => `'${p}'`,
+      ).join(", ")}.`,
+    );
+  }
+  return value;
+}
 
 /**
  * Enables a Gemini API provider service.
  */
 export async function enableProvider(projectId: string, providerType: ProviderType): Promise<void> {
-  const prefix = "ailogic";
   if (providerType === "gemini-developer-api") {
-    await ensureApiEnabled.ensure(projectId, "generativelanguage.googleapis.com", prefix);
-    await ensureApiEnabled.ensure(projectId, "firebasevertexai.googleapis.com", prefix);
-  } else if (providerType === "agent-platform-gemini-api") {
+    await ensureApiEnabled.ensure(
+      projectId,
+      "generativelanguage.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+    );
+    await ensureApiEnabled.ensure(
+      projectId,
+      "firebasevertexai.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+    );
+  } else if (providerType === "gemini-agent-platform-api") {
     const billingEnabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!billingEnabled) {
       throw new FirebaseError(
@@ -231,77 +260,76 @@ export async function enableProvider(projectId: string, providerType: ProviderTy
         )} must be on the Blaze (pay-as-you-go) plan to enable the Agent Platform. To upgrade, visit the following URL:\n\nhttps://console.firebase.google.com/project/${projectId}/usage/details`,
       );
     }
-    await ensureApiEnabled.ensure(projectId, "aiplatform.googleapis.com", prefix);
-    await ensureApiEnabled.ensure(projectId, "firebasevertexai.googleapis.com", prefix);
-  } else {
-    throw new FirebaseError(`Invalid provider type: ${providerType as string}`);
+    await ensureApiEnabled.ensure(projectId, "aiplatform.googleapis.com", AILOGIC_LOGGING_PREFIX);
+    await ensureApiEnabled.ensure(
+      projectId,
+      "firebasevertexai.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+    );
   }
 }
 
 /**
- * Disables a Gemini API provider service.
+ * Disables a Gemini API provider service. `disableServiceAndPoll` invalidates the
+ * enablement cache for each disabled service, so no explicit uncaching is needed here.
  */
 export async function disableProvider(
   projectId: string,
   providerType: ProviderType,
 ): Promise<void> {
-  const prefix = "ailogic";
   if (providerType === "gemini-developer-api") {
     await serviceUsage.disableServiceAndPoll(
       projectId,
       "generativelanguage.googleapis.com",
-      prefix,
+      AILOGIC_LOGGING_PREFIX,
     );
-    ensureApiEnabled.uncacheEnabledAPI(projectId, "generativelanguage.googleapis.com");
 
     const isVertexEnabled = await ensureApiEnabled.check(
       projectId,
       "aiplatform.googleapis.com",
-      prefix,
+      AILOGIC_LOGGING_PREFIX,
       true,
     );
     if (!isVertexEnabled) {
       await serviceUsage.disableServiceAndPoll(
         projectId,
         "firebasevertexai.googleapis.com",
-        prefix,
+        AILOGIC_LOGGING_PREFIX,
       );
-      ensureApiEnabled.uncacheEnabledAPI(projectId, "firebasevertexai.googleapis.com");
     }
-  } else if (providerType === "agent-platform-gemini-api") {
-    await serviceUsage.disableServiceAndPoll(projectId, "aiplatform.googleapis.com", prefix);
-    ensureApiEnabled.uncacheEnabledAPI(projectId, "aiplatform.googleapis.com");
+  } else if (providerType === "gemini-agent-platform-api") {
+    await serviceUsage.disableServiceAndPoll(
+      projectId,
+      "aiplatform.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+    );
 
     const isDeveloperEnabled = await ensureApiEnabled.check(
       projectId,
       "generativelanguage.googleapis.com",
-      prefix,
+      AILOGIC_LOGGING_PREFIX,
       true,
     );
     if (!isDeveloperEnabled) {
       await serviceUsage.disableServiceAndPoll(
         projectId,
         "firebasevertexai.googleapis.com",
-        prefix,
+        AILOGIC_LOGGING_PREFIX,
       );
-      ensureApiEnabled.uncacheEnabledAPI(projectId, "firebasevertexai.googleapis.com");
     }
-  } else {
-    throw new FirebaseError(`Invalid provider type: ${providerType as string}`);
   }
 }
 
 /**
- *
+ * Lists which Gemini API providers are enabled, derived from underlying API enablement state.
  */
 export async function listProviders(projectId: string): Promise<ProviderType[]> {
-  const prefix = "ailogic";
   const enabled: ProviderType[] = [];
 
   const isDeveloperEnabled = await ensureApiEnabled.check(
     projectId,
     "generativelanguage.googleapis.com",
-    prefix,
+    AILOGIC_LOGGING_PREFIX,
     true,
   );
   if (isDeveloperEnabled) {
@@ -311,13 +339,13 @@ export async function listProviders(projectId: string): Promise<ProviderType[]> 
   const isVertexEnabled = await ensureApiEnabled.check(
     projectId,
     "aiplatform.googleapis.com",
-    prefix,
+    AILOGIC_LOGGING_PREFIX,
     true,
   );
   // aiplatform.googleapis.com cannot be enabled without billing (the Blaze plan),
   // so an enabled Vertex API already implies the agent-platform provider is available.
   if (isVertexEnabled) {
-    enabled.push("agent-platform-gemini-api");
+    enabled.push("gemini-agent-platform-api");
   }
 
   return enabled;
@@ -335,7 +363,7 @@ export async function ensureAILogicApiEnabled(
   const isEnabled = await ensureApiEnabled.check(
     projectId,
     "firebasevertexai.googleapis.com",
-    "ailogic",
+    AILOGIC_LOGGING_PREFIX,
     true,
   );
   if (isEnabled) {
@@ -347,7 +375,7 @@ export async function ensureAILogicApiEnabled(
       `The Firebase AI Logic API (firebasevertexai.googleapis.com) is not enabled on project ${projectId}.\n\n` +
         `Enable Firebase AI Logic with one of the Gemini API providers by running:\n\n` +
         `  firebase ailogic:providers:enable gemini-developer-api\n` +
-        `  firebase ailogic:providers:enable agent-platform-gemini-api\n\n` +
+        `  firebase ailogic:providers:enable gemini-agent-platform-api\n\n` +
         `Then run this command again.`,
     );
   }
@@ -381,17 +409,17 @@ export async function ensureAILogicApiEnabled(
       choices: [
         { name: "gemini-developer-api", value: "gemini-developer-api" },
         {
-          name: "agent-platform-gemini-api (requires the Blaze plan)",
-          value: "agent-platform-gemini-api",
+          name: "gemini-agent-platform-api (requires the Blaze plan)",
+          value: "gemini-agent-platform-api",
         },
       ],
     });
 
-    if (provider === "agent-platform-gemini-api") {
+    if (provider === "gemini-agent-platform-api") {
       const billingEnabled = await cloudbilling.checkBillingEnabled(projectId);
       if (!billingEnabled) {
         logger.info(
-          `\n${bold("Error:")} The agent-platform-gemini-api provider requires the pay-as-you-go (Blaze) plan.\n` +
+          `\n${bold("Error:")} The gemini-agent-platform-api provider requires the pay-as-you-go (Blaze) plan.\n` +
             `Project ${projectId} is on the Spark plan.\n\n` +
             `Upgrade your plan at:\n\n` +
             `  https://console.firebase.google.com/project/${projectId}/usage/details\n`,

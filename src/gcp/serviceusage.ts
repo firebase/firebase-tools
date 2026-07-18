@@ -5,6 +5,7 @@ import { FirebaseError } from "../error";
 import * as utils from "../utils";
 import * as poller from "../operation-poller";
 import { LongRunningOperation } from "../operation-poller";
+import * as ensureApiEnabled from "../ensureApiEnabled";
 
 const API_VERSION = "v1beta1";
 const SERVICE_USAGE_ORIGIN = serviceUsageOrigin();
@@ -98,17 +99,18 @@ export async function disableService(
 export async function disableServiceAndPoll(
   projectId: string,
   service: string,
-  prefix: string,
+  loggingPrefix: string,
 ): Promise<void> {
-  utils.logLabeledBullet(prefix, `disabling service ${bold(service)}...`);
+  utils.logLabeledBullet(loggingPrefix, `disabling service ${bold(service)}...`);
   const op = await disableService(projectId, service);
-  if (op.done) {
-    return;
+  if (!op.done) {
+    await poller.pollOperation<void>({
+      ...serviceUsagePollerOptions,
+      operationResourceName: op.name,
+      headers: { "x-goog-user-project": `${projectId}` },
+    });
   }
-
-  await poller.pollOperation<void>({
-    ...serviceUsagePollerOptions,
-    operationResourceName: op.name,
-    headers: { "x-goog-user-project": `${projectId}` },
-  });
+  // The service is now disabled; invalidate the cached enablement status so that
+  // subsequent checks reflect reality without waiting for the cache to expire.
+  ensureApiEnabled.uncacheEnabledAPI(projectId, service);
 }

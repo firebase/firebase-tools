@@ -19,6 +19,9 @@ export const command = new Command("help [command]")
     }
 
     if (commandName) {
+      // Treat the argument as a command namespace (e.g. "ailogic:providers") and walk
+      // the nested client command tree segment by segment ("ailogic" -> "providers") to
+      // check whether it resolves to a group of subcommands rather than a leaf command.
       const keys = commandName.split(":");
       let current = client;
       let matched = true;
@@ -36,6 +39,8 @@ export const command = new Command("help [command]")
         }
       }
 
+      // If it resolved to a namespace, print every registered command under that prefix
+      // (e.g. `firebase help ailogic:providers` lists enable/disable/list).
       if (matched && current && typeof current === "object") {
         const prefix = commandName + ":";
         const subcmds = (client.cli.commands as CommanderCommand[]).filter((c) =>

@@ -23,12 +23,8 @@ export const command = new Command("ailogic:providers:list")
     const tableHead = ["Provider", "Status"];
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
-    // Show both possible providers, indicating if they are enabled or disabled
-    const allProviders: ailogic.ProviderType[] = [
-      "gemini-developer-api",
-      "agent-platform-gemini-api",
-    ];
-    for (const provider of allProviders) {
+    // Show every possible provider, indicating whether it is enabled or disabled.
+    for (const provider of ailogic.PROVIDER_TYPES) {
       const isEnabled = enabledProviders.includes(provider);
       table.push([clc.bold(provider), isEnabled ? clc.green("Enabled") : clc.red("Disabled")]);
     }
