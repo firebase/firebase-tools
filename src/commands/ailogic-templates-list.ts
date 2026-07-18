@@ -17,7 +17,7 @@ export const command = new Command("ailogic:templates:list")
       logger.info(clc.bold("Firebase AI Logic is not enabled on this project."));
       return [];
     }
-    const templates = await ailogic.listTemplates(projectId, "global");
+    const templates = await ailogic.listTemplates(projectId, ailogic.GLOBAL_LOCATION);
 
     if (templates.length === 0) {
       logger.info(clc.bold("No deployed templates found."));
@@ -28,7 +28,7 @@ export const command = new Command("ailogic:templates:list")
     const table = new Table({ head: tableHead, style: { head: ["green"] } });
 
     for (const t of templates) {
-      const templateId = t.name.split("/").pop() || "";
+      const templateId = ailogic.templateIdFromName(t.name);
       const preview =
         t.templateString.length > 60 ? t.templateString.substring(0, 57) + "..." : t.templateString;
       table.push([

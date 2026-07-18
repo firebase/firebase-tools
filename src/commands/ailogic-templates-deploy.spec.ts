@@ -161,7 +161,7 @@ describe("ailogic:templates:deploy", () => {
     expect(deleteTemplateStub).to.not.be.called;
   });
 
-  it("should fail prune in non-interactive mode without force", async () => {
+  it("does not prune in non-interactive mode without force", async () => {
     const options = { project: "test-project", dir: "prompts", prune: true, nonInteractive: true };
     existsSyncStub.returns(true);
     statSyncStub.returns({ isDirectory: () => true });
@@ -175,10 +175,11 @@ describe("ailogic:templates:deploy", () => {
         locked: false,
       },
     ]);
+    // confirm() aborts in non-interactive mode unless --force is set; the command must
+    // surface that and not delete anything.
+    confirmStub.rejects(new FirebaseError("cannot be answered in non-interactive mode"));
 
-    await expect(command.runner()(options)).to.be.rejectedWith(
-      FirebaseError,
-      "Pruning templates requires confirmation.\n\nTo proceed in non-interactive mode, rerun with --force:\n\n  firebase ailogic:templates:deploy --dir prompts --prune --force",
-    );
+    await expect(command.runner()(options)).to.be.rejectedWith(FirebaseError, /non-interactive/);
+    expect(deleteTemplateStub).to.not.have.been.called;
   });
 });

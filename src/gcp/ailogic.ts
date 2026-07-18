@@ -251,6 +251,11 @@ export interface ListTemplatesResponse {
 
 export type TemplateOutputOnlyFields = "name" | "etag";
 
+/** Extracts the template id (the last path segment) from a template resource name. */
+export function templateIdFromName(name: string): string {
+  return name.split("/").pop() ?? "";
+}
+
 // Developer-facing config paths that `ailogic:config:set` can write.
 export const WRITABLE_CONFIG_PATHS = [
   "security.auth-only",
