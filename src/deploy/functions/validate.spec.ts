@@ -494,6 +494,123 @@ describe("validate", () => {
         "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
       );
     });
+
+    describe("validateLifecycleHooks", () => {
+      it("succeeds when no lifecycle hooks are defined", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("succeeds when a task queue hook targets a valid task queue function", () => {
+        const taskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "mytaskfunc",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(taskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "mytaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a task queue hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterFirstDeploy"/,
+        );
+      });
+
+      it("throws when a task queue hook targets a function that is not a task queue function", () => {
+        const nonTaskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "nontaskfunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(nonTaskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nontaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook "afterFirstDeploy" expects a task queue function\./,
+        );
+      });
+
+      it("throws when a hook targets a GCF Gen 1 function", () => {
+        const v1Ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "v1func",
+          platform: "gcfv1",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(v1Ep);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "v1func",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "v1func" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions./,
+        );
+      });
+
+      it("throws when a call hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            call: {
+              function: "myfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "call" is not supported in the CLI yet./,
+        );
+      });
+
+      it("throws when an http hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            http: {
+              url: "https://example.com/hook",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "http" is not supported in the CLI yet./,
+        );
+      });
+    });
   });
 
   describe("endpointsAreUnqiue", () => {

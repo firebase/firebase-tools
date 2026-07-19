@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as rc from "./rc";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
 import { Command, validateProjectId } from "./command";
