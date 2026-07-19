@@ -7,10 +7,12 @@ import { AngularI18nConfig } from "./interfaces";
 import { findDependency, relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join, posix, sep } from "path";
+import { readFile } from "fs/promises";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
-import { assertIsString } from "../../utils";
+import { assertIsString, logLabeledWarning } from "../../utils";
 import { coerce } from "semver";
+import * as clc from "colorette";
 
 async function localesForTarget(
   dir: string,
@@ -395,6 +397,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions: buildTargetOptions || undefined,
   };
 }
 
@@ -530,6 +533,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   } = await getContext(sourceDir, configuration);
   const targets = (
     buildTarget
@@ -554,6 +558,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     locales,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   };
 }
 
@@ -600,4 +605,154 @@ export function getBuilderType(builder: string): BuilderType | null {
     return null;
   }
   return builderType as BuilderType;
+}
+
+/** Public Hosting domains the engine validates with trustProxyHeaders on (forwarded Host). */
+const ANGULAR_22_PUBLIC_HOST_PATTERNS: readonly string[] = ["*.web.app", "*.firebaseapp.com"];
+
+/** Rotating Cloud Run host the engine validates with trustProxyHeaders off (the default). */
+const ANGULAR_22_CLOUD_RUN_HOST_PATTERNS: readonly string[] = ["*.a.run.app"];
+
+/** Recommended security.allowedHosts: union of both modes, so it survives toggling trustProxyHeaders. */
+export const ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS: readonly string[] = [
+  ...ANGULAR_22_PUBLIC_HOST_PATTERNS,
+  ...ANGULAR_22_CLOUD_RUN_HOST_PATTERNS,
+];
+
+export type Angular22SsrSecurityWarning = {
+  /** Recommended hosts missing from allowedHosts (the fix). Non-empty when a warning fires. */
+  allowedHostsMissing: string[];
+  /** trustProxyHeaders detected in the server entry; tunes the message, does not gate the warning. */
+  trustProxyHeadersEnabled: boolean;
+};
+
+/**
+ * Warns when Angular 22 SSR will trip Angular's strict SSRF host check on Firebase
+ * Hosting. One question: is the Host the engine validates allowlisted? trustProxyHeaders
+ * only selects which Host that is (forwarded public domain vs raw Cloud Run host), not a
+ * second requirement. Returns undefined when unaffected.
+ */
+export function getAngular22SsrSecurityWarning(opts: {
+  ssr: boolean;
+  buildOptionsAllowedHosts: string[] | undefined;
+  serverEntrySource: string | undefined;
+}): Angular22SsrSecurityWarning | undefined {
+  if (!opts.ssr) return undefined;
+
+  const declared = opts.buildOptionsAllowedHosts ?? [];
+
+  // `*` or an engine-level allowedHosts (a literal we can't read) => user owns validation.
+  const serverHasAllowedHosts =
+    !!opts.serverEntrySource && /\ballowedHosts\s*[:=]/.test(opts.serverEntrySource);
+  if (declared.includes("*") || (serverHasAllowedHosts && declared.length === 0)) {
+    return undefined;
+  }
+
+  const trustProxyHeadersEnabled =
+    !!opts.serverEntrySource && /\btrustProxyHeaders\s*[:=]/.test(opts.serverEntrySource);
+
+  // Required host depends on the mode; if it's already declared, the deploy works.
+  const requiredHostPatterns = trustProxyHeadersEnabled
+    ? ANGULAR_22_PUBLIC_HOST_PATTERNS
+    : ANGULAR_22_CLOUD_RUN_HOST_PATTERNS;
+  if (requiredHostPatterns.every((pattern) => declared.includes(pattern))) return undefined;
+
+  // Recommend the full set so the fix survives toggling trustProxyHeaders.
+  const allowedHostsMissing = ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS.filter(
+    (pattern) => !declared.includes(pattern),
+  );
+  return { allowedHostsMissing, trustProxyHeadersEnabled };
+}
+
+/** Renders the warning: allowlist fix first, trustProxyHeaders only as an alternative when unset. */
+export function formatAngular22SsrSecurityWarning(warning: Angular22SsrSecurityWarning): string {
+  const sections: string[] = [
+    "Angular 22 enabled strict SSRF protection on its SSR engine. Without the matching security.allowedHosts entries, the SSR function will reject requests and return errors after deploy.",
+    [
+      "Add these hostnames to security.allowedHosts in angular.json:",
+      `  ${JSON.stringify(warning.allowedHostsMissing)}`,
+      `${clc.bold("Documentation")}: https://angular.dev/best-practices/security#configuring-allowed-hosts`,
+    ].join("\n"),
+  ];
+
+  if (!warning.trustProxyHeadersEnabled) {
+    sections.push(
+      [
+        "Alternatively, enable trustProxyHeaders so the engine validates the forwarded Hosting domain instead of the SSR function host. If you do, also add any custom domains you serve from to security.allowedHosts.",
+        `${clc.bold("Documentation")}: https://angular.dev/best-practices/security#configuring-trusted-proxy-headers`,
+      ].join("\n"),
+    );
+  }
+
+  const message = sections.join("\n\n");
+  return message
+    .split("\n")
+    .map((line, i) => (i === 0 ? line : "  " + line))
+    .join("\n")
+    .concat("\n");
+}
+
+/**
+ * Logs the Angular 22 SSR security warning when needed. `buildTargetOptions` is the
+ * already-resolved builder options (no extra `getContext` parse). Best-effort: any
+ * failure is swallowed so the check never blocks a build.
+ */
+export async function maybeWarnAngular22SsrSecurity(
+  dir: string,
+  opts: { ssr: boolean; buildTargetOptions: JsonObject | null | undefined },
+): Promise<void> {
+  try {
+    const version = getAngularVersion(dir);
+    if (!version) return;
+    const semver = coerce(version);
+    if (!semver || semver.major < 22) return;
+    if (!opts.ssr) return;
+
+    const buildOptionsAllowedHosts = extractAngular22AllowedHostsFromBuildOptions(
+      opts.buildTargetOptions,
+    );
+    const entryPath = getAngular22ServerEntryPath(opts.buildTargetOptions);
+    let serverEntrySource: string | undefined;
+    try {
+      serverEntrySource = await readFile(join(dir, entryPath), "utf8");
+    } catch {
+      // A missing/unreadable entry just means we cannot confirm manual
+      // wiring — keep going so the warning still fires.
+    }
+
+    const warning = getAngular22SsrSecurityWarning({
+      ssr: opts.ssr,
+      buildOptionsAllowedHosts,
+      serverEntrySource,
+    });
+    if (!warning) return;
+
+    logLabeledWarning("Angular 22", formatAngular22SsrSecurityWarning(warning));
+  } catch {
+    // Never let the security pre-flight break a build.
+  }
+}
+
+/** Pulls the string entries of `security.allowedHosts` out of resolved builder options. */
+export function extractAngular22AllowedHostsFromBuildOptions(
+  options: JsonObject | null | undefined,
+): string[] | undefined {
+  const security = options?.security as { allowedHosts?: unknown } | undefined;
+  if (!security || !Array.isArray(security.allowedHosts)) return undefined;
+  return security.allowedHosts.filter((h): h is string => typeof h === "string");
+}
+
+/** Conventional SSR entry the schematic generates; fallback when `ssr.entry` is absent. */
+export const ANGULAR_22_DEFAULT_SERVER_ENTRY = "src/server.ts";
+
+/**
+ * Resolves the SSR server entry source path to inspect. Prefers `options.ssr.entry`
+ * (custom layouts); falls back to `src/server.ts` for the boolean/no-entry SSR forms.
+ */
+export function getAngular22ServerEntryPath(options: JsonObject | null | undefined): string {
+  const ssr = options?.ssr as { entry?: unknown } | boolean | undefined;
+  if (ssr && typeof ssr !== "boolean" && typeof ssr.entry === "string") {
+    return ssr.entry;
+  }
+  return ANGULAR_22_DEFAULT_SERVER_ENTRY;
 }

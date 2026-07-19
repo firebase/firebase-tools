@@ -5,7 +5,7 @@ import * as distribution from "../../../appdistribution/distribution";
 import { AppDistributionClient } from "../../../appdistribution/client";
 import * as appTesting from "../../../gcp/apptesting";
 import { McpContext } from "../../types";
-import { safeLoad } from "js-yaml";
+import { load as safeLoad } from "js-yaml";
 import * as fs from "fs-extra";
 import * as path from "path";
 
@@ -73,7 +73,9 @@ describe("mcp/tools/apptesting/tests", () => {
 
       expect(uploadStub.called).to.be.true;
       expect(
-        clientStub.createReleaseTest.calledWith(releaseName, input.testDevices, input.testCase),
+        clientStub.createReleaseTest.calledWith(releaseName, input.testDevices, {
+          aiInstructions: input.testCase,
+        }),
       ).to.be.true;
 
       const resultText = (result.content[0] as any).text;

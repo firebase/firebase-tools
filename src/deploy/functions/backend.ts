@@ -425,6 +425,31 @@ export interface RequiredAPI {
   api: string;
 }
 
+export type LifecycleEvent = "afterFirstDeploy" | "afterRedeploy";
+
+export type LifecycleHook =
+  | {
+      task: {
+        function: string;
+        body?: Record<string, unknown>;
+      };
+    }
+  | {
+      call: {
+        function: string;
+        params?: Record<string, unknown>;
+      };
+    }
+  | {
+      http: {
+        function?: string;
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+      };
+    };
+
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
   /**
@@ -434,9 +459,12 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Partial<Record<LifecycleEvent, LifecycleHook>>;
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -474,6 +502,7 @@ export function merge(...backends: Backend[]): Backend {
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
+  const requiredRoles = new Set<string>();
   for (const b of backends) {
     for (const { api, reason } of b.requiredAPIs) {
       const reasons = apiToReasons[api] || new Set();
@@ -482,11 +511,24 @@ export function merge(...backends: Backend[]): Backend {
       }
       apiToReasons[api] = reasons;
     }
-    // Mere all environment variables.
+    // Merge all environment variables.
     merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+
+    // Merge requiredRoles
+    if (b.requiredRoles) {
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
+    }
+    if (b.lifecycleHooks) {
+      merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
+    }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
     merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  if (requiredRoles.size > 0) {
+    merged.requiredRoles = Array.from(requiredRoles);
   }
   return merged;
 }
@@ -498,7 +540,9 @@ export function merge(...backends: Backend[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 &&
+    Object.keys(backend.endpoints).length === 0 &&
+    Object.keys(backend.lifecycleHooks || {}).length === 0
   );
 }
 

@@ -5,11 +5,16 @@ import * as prepare from "./prepare";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
+import * as firestore from "../../gcp/firestore";
+import * as storage from "../../gcp/storage";
+import * as database from "../../management/database";
 import * as firestoreService from "./services/firestore";
 import * as storageService from "./services/storage";
 import * as databaseService from "./services/database";
 import * as serviceusage from "../../gcp/serviceusage";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 import { RuntimeDelegate } from "./runtimes";
 import { FirebaseError } from "../../error";
 import { Options } from "../../options";
@@ -194,9 +199,12 @@ describe("prepare", () => {
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
-      getDatabaseStub = sandbox.stub(firestoreService, "getDatabase");
-      getBucketStub = sandbox.stub(storageService, "getBucket");
-      getDatabaseInstanceDetailsStub = sandbox.stub(databaseService, "getDatabaseInstanceDetails");
+      firestoreService.clearCache();
+      storageService.clearCache();
+      databaseService.clearCache();
+      getDatabaseStub = sandbox.stub(firestore, "getDatabase");
+      getBucketStub = sandbox.stub(storage, "getBucket");
+      getDatabaseInstanceDetailsStub = sandbox.stub(database, "getDatabaseInstanceDetails");
     });
 
     afterEach(() => {
@@ -256,6 +264,35 @@ describe("prepare", () => {
       expect(endpointDef).to.not.be.undefined;
       expect(endpointDef?.vpc?.connector).to.equal(
         "projects/project/locations/us-east1/connectors/my-connector",
+      );
+    });
+
+    it("resolves region and preserves pre-formatted VPC connector paths", async () => {
+      const want = build.of({
+        id: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+          region: [build.REGION_TBD],
+          vpc: {
+            connector: "projects/my-project/locations/us-central1/connectors/my-connector",
+          },
+        },
+      });
+
+      const haveE = { ...ENDPOINT, id: "id", region: "us-east1" };
+      const have = backend.of(haveE);
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+      expect(want.endpoints["id"].region).to.deep.equal(["us-east1"]);
+
+      const backendResult = build.toBackend(want, {});
+      const endpointDef = backendResult.endpoints["us-east1"]?.["id"];
+      expect(endpointDef).to.not.be.undefined;
+      expect(endpointDef?.vpc?.connector).to.equal(
+        "projects/my-project/locations/us-central1/connectors/my-connector",
       );
     });
 
@@ -486,6 +523,87 @@ describe("prepare", () => {
       await prepare.resolveDefaultRegionsForBuild(want, backend.of(...relevantEndpoints));
 
       expect(want.endpoints["id"].region).to.deep.equal(["us-central1"]);
+    });
+
+    it("resolves us-east1 for global AI Logic triggers", async () => {
+      const want = build.of({
+        globalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["globalAI"].region).to.deep.equal(["us-east1"]);
+    });
+
+    it("resolves us-central1 for regional AI Logic triggers", async () => {
+      const want = build.of({
+        regionalAI: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          blockingTrigger: {
+            eventType: "google.firebase.ailogic.v1.beforeGenerate",
+            options: {
+              regionalWebhook: true,
+            },
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["regionalAI"].region).to.deep.equal(["us-central1"]);
+    });
+
+    it("falls back to us-central1 when getDatabase or getBucket throws an API error during region resolution", async () => {
+      const want = build.of({
+        firestoreTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.firestore.document.v1.created",
+            eventFilters: { database: "(default)" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+        storageTrigger: {
+          platform: "gcfv2",
+          entryPoint: "entry",
+          project: "project",
+          runtime: latest("nodejs"),
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.archived",
+            eventFilters: { bucket: "my-bucket" },
+            retry: false,
+          },
+          region: [build.REGION_TBD],
+        },
+      });
+      const have = backend.empty();
+
+      getDatabaseStub.rejects(new Error("API Error fetching database location"));
+      getBucketStub.rejects(new Error("API Error fetching bucket location"));
+
+      await prepare.resolveDefaultRegionsForBuild(want, have);
+
+      expect(want.endpoints["firestoreTrigger"].region).to.deep.equal(["us-central1"]);
+      expect(want.endpoints["storageTrigger"].region).to.deep.equal(["us-central1"]);
     });
   });
 
@@ -925,34 +1043,89 @@ describe("prepare", () => {
     let sinonSandbox: sinon.SinonSandbox;
     let ensureApiStub: sinon.SinonStub;
     let generateServiceIdentityStub: sinon.SinonStub;
+    let checkApiStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStub;
 
     beforeEach(() => {
       sinonSandbox = sinon.createSandbox();
       ensureApiStub = sinonSandbox.stub(ensureApiEnabled, "ensure").resolves();
+      checkApiStub = sinonSandbox.stub(ensureApiEnabled, "check").resolves(true);
       generateServiceIdentityStub = sinonSandbox
         .stub(serviceusage, "generateServiceIdentity")
         .resolves();
+      promptStub = sinonSandbox.stub(prompt, "confirm").resolves(true);
     });
 
     afterEach(() => {
       sinonSandbox.restore();
     });
 
+    const mockOptions = {};
+
     it("should not enable any APIs for an empty backend", async () => {
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty());
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.empty(), mockOptions);
       expect(ensureApiStub.called).to.be.false;
       expect(generateServiceIdentityStub.called).to.be.false;
     });
 
-    it("should enable APIs from backend.requiredAPIs", async () => {
-      const api1 = "testapi1.googleapis.com";
-      const api2 = "testapi2.googleapis.com";
+    it("should not prompt when APIs are part of allowlist", async () => {
       const b = backend.empty();
-      b.requiredAPIs = [{ api: api1 }, { api: api2 }];
+      b.requiredAPIs = [{ api: "cloudscheduler.googleapis.com" }]; // Standard API
 
-      await prepare.ensureAllRequiredAPIsEnabled("project", b);
-      expect(ensureApiStub.calledWith("project", api1, "functions", false)).to.be.true;
-      expect(ensureApiStub.calledWith("project", api2, "functions", false)).to.be.true;
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.called).to.be.false;
+      expect(
+        ensureApiStub.calledWith("project", "cloudscheduler.googleapis.com", "functions", false),
+      ).to.be.true;
+    });
+
+    it("should not prompt when additional API is already enabled", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      b.requiredAPIs = [{ api: customApi }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(true);
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.called).to.be.false;
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.false;
+    });
+
+    it("should prompt and enable additional API when user confirms", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      const customReason = "Needed for custom stuff";
+      b.requiredAPIs = [{ api: customApi, reason: customReason }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(false);
+      promptStub.resolves(true);
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions);
+
+      expect(promptStub.calledOnce).to.be.true;
+      expect(
+        promptStub.calledWith(
+          sinon.match({
+            message: `This codebase depends on the following additional API(s) which are currently disabled:\n - ${customApi}: ${customReason}\nWould you like to enable them?`,
+            default: false,
+          }),
+        ),
+      ).to.be.true;
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.true;
+    });
+
+    it("should throw exception when user aborts prompt", async () => {
+      const b = backend.empty();
+      const customApi = "custom.googleapis.com";
+      b.requiredAPIs = [{ api: customApi }];
+      checkApiStub.withArgs("project", customApi, "functions", true).resolves(false);
+      promptStub.resolves(false);
+
+      await expect(
+        prepare.ensureAllRequiredAPIsEnabled("project", b, mockOptions),
+      ).to.be.rejectedWith(FirebaseError, "Must enable required APIs to deploy.");
+
+      expect(ensureApiStub.calledWith("project", customApi, "functions", false)).to.be.false;
     });
 
     it("should enable Secret Manager API if secrets are used ", async () => {
@@ -972,7 +1145,7 @@ describe("prepare", () => {
           },
         ],
       };
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e), mockOptions);
       expect(
         ensureApiStub.calledWith(
           "project",
@@ -994,7 +1167,7 @@ describe("prepare", () => {
         httpsTrigger: {},
       };
 
-      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e), mockOptions);
 
       expect(ensureApiStub.calledWith("project", "https://run.googleapis.com", "functions")).to.be
         .true;
@@ -1010,6 +1183,167 @@ describe("prepare", () => {
       expect(
         generateServiceIdentityStub.calledWith("project", "eventarc.googleapis.com", "functions"),
       ).to.be.true;
+    });
+  });
+
+  describe("discoverSecurityDetails", () => {
+    let testIamPermissionsStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      testIamPermissionsStub = sinon
+        .stub(iam, "testIamPermissions")
+        .resolves({ passed: true } as any);
+      sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
+      sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it("should mutate endpoints to use managed service account when enrolling in declarative security", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.managedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.newEtag).to.be.a("string");
+      expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
+    });
+
+    it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      };
+      const want = backend.of(e);
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
+      expect(e.serviceAccount).to.be.null;
+      expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
+    });
+
+    it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {
+      const eCustom: backend.Endpoint = {
+        ...ENDPOINT,
+        id: "custom",
+        serviceAccount: "custom-sa@project.iam.gserviceaccount.com",
+      };
+      const eManaged: backend.Endpoint = {
+        ...ENDPOINT,
+        id: "managed",
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+      };
+      const want = backend.merge(backend.of(eCustom), backend.of(eManaged));
+
+      const have = backend.merge(
+        backend.of({
+          ...eCustom,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: { "firebase-declarative-security-etag": "salt-etag" },
+        }),
+        backend.of({
+          ...eManaged,
+          serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+          labels: { "firebase-declarative-security-etag": "salt-etag" },
+        }),
+      );
+
+      await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(eCustom.serviceAccount).to.equal("custom-sa@project.iam.gserviceaccount.com");
+      expect(eManaged.serviceAccount).to.be.null;
+    });
+
+    it("should throw error if user combines custom SA and declarative security", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "custom-sa@project.iam.gserviceaccount.com",
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project"),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /Cannot use explicit custom service accounts on functions while using declarative security/,
+      );
+    });
+
+    it("should throw error if user lacks IAM operator permissions", async () => {
+      testIamPermissionsStub.resolves({
+        passed: false,
+        missing: ["iam.serviceAccounts.create"],
+      });
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
+        .rejected;
+    });
+
+    it("should throw error if attempting to enroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
+    });
+
+    it("should throw error if attempting to unenroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      };
+      const want = backend.of(e);
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
     });
   });
 });
