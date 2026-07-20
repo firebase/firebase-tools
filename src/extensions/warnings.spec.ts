@@ -11,6 +11,8 @@ import {
 } from "./types";
 import { DeploymentInstanceSpec } from "../deploy/extensions/planner";
 import * as utils from "../utils";
+import { logger } from "../logger";
+import { FirebaseError } from "../error";
 
 const testExtensionVersion = (listingState: ListingState): ExtensionVersion => {
   return {
@@ -99,5 +101,102 @@ describe("displayWarningsForDeploy", () => {
       "extensions",
       "have not been published to the Firebase Extensions Hub",
     );
+  });
+});
+
+describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
+  let warnStub: sinon.SinonStub;
+  let originalIsTTY: boolean;
+
+  beforeEach(() => {
+    warnStub = sinon.stub(logger, "warn");
+    originalIsTTY = process.stdout.isTTY;
+    Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+  });
+
+  afterEach(() => {
+    warnStub.restore();
+    Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
+    warnings.setPhase2ThresholdForTest(new Date("2026-09-14T00:00:00Z").getTime());
+  });
+
+  it("should hard-error and exit 1 on ext:dev:register in Phase 1 and Phase 2", () => {
+    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
+    expect(() => warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.throw(
+      FirebaseError,
+      /ext:dev:register is disabled/,
+    );
+
+    warnings.setPhase2ThresholdForTest(Date.now() - 100000);
+    expect(() => warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.throw(
+      FirebaseError,
+      /Creating or registering new Firebase Extensions is disabled/,
+    );
+  });
+
+  it("should show concise warning for Category 1 in Phase 1 and boxed banner in Phase 2", () => {
+    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
+    warnings.showDeprecationWarningBefore("ext:install", {});
+    expect(warnStub).to.have.been.calledWithMatch(
+      /You will not be able to install or edit extensions/,
+    );
+
+    warnStub.resetHistory();
+    warnings.setPhase2ThresholdForTest(Date.now() - 100000);
+    warnings.showDeprecationWarningBefore("ext:install", {});
+    expect(warnStub).to.have.been.calledWithMatch(
+      /We recommend migrating active instances to Function-kits/,
+    );
+  });
+
+  it("should show prominent banner for Category 4 commands", () => {
+    warnings.showDeprecationWarningBefore("ext:dev:upload", {});
+    expect(warnStub).to.have.been.calledWithMatch(
+      /Notice for Publishers: Firebase Extensions will shut down/,
+    );
+  });
+
+  it("should silence warnings when isSilenced returns true", () => {
+    warnings.showDeprecationWarningBefore("ext:install", { json: true });
+    expect(warnStub).to.not.have.been.called;
+
+    warnings.showDeprecationWarningBefore("ext:install", { nonInteractive: true });
+    expect(warnStub).to.not.have.been.called;
+
+    warnings.showDeprecationWarningAfter("ext:list", { quiet: true });
+    expect(warnStub).to.not.have.been.called;
+  });
+
+  it("should show footer warning in showDeprecationWarningAfter for Category 2 commands", () => {
+    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
+    warnings.showDeprecationWarningAfter("ext:list", {});
+    expect(warnStub).to.have.been.calledWithMatch(/Notice: Firebase Extensions will shut down/);
+  });
+
+  it("should hard-error on ext:dev:register even if json flag is true", () => {
+    expect(() =>
+      warnings.showDeprecationWarningBefore("ext:dev:register", { json: true }),
+    ).to.throw(FirebaseError, /ext:dev:register is disabled/);
+  });
+
+  it("should silence warnings when CI or GITHUB_ACTIONS environment variables are set", () => {
+    const origCI = process.env.CI;
+    process.env.CI = "true";
+    try {
+      expect(warnings.isSilenced({})).to.be.true;
+    } finally {
+      if (origCI !== undefined) {
+        process.env.CI = origCI;
+      } else {
+        delete process.env.CI;
+      }
+    }
+  });
+
+  it("should not warn on Category 3 commands", () => {
+    warnings.showDeprecationWarningBefore("ext:export", {});
+    warnings.showDeprecationWarningAfter("ext:export", {});
+    warnings.showDeprecationWarningBefore("ext:uninstall", {});
+    expect(warnStub).to.not.have.been.called;
   });
 });

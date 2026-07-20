@@ -3,7 +3,9 @@ import * as clc from "colorette";
 import { logPrefix } from "./extensionsHelper";
 import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { InstanceSpec, getExtensionVersion } from "../deploy/extensions/planner";
+import { FirebaseError } from "../error";
 import { logger } from "../logger";
+import { Options } from "../options";
 import * as utils from "../utils";
 
 const toListEntry = (i: InstanceSpec) => {
@@ -52,4 +54,148 @@ export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolea
       clc.bold(instanceIds.join("\n\t")) +
       `\nIf you proceed with this deployment, those changes will be overwritten.${extra}`,
   );
+}
+
+const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
+let phase2ThresholdMs = new Date("2026-09-14T00:00:00Z").getTime();
+
+const NO_WARNING_COMMANDS = new Set(["ext:uninstall", "ext:dev:deprecate", "ext:export"]);
+const LIST_COMMANDS = new Set(["ext:list", "ext:info"]);
+const INSTALL_COMMANDS = new Set(["ext:install", "ext:configure", "ext:update", "ext:sdk:install"]);
+const PUBLISHER_COMMANDS = new Set([
+  "ext:dev:init",
+  "ext:dev:upload",
+  "ext:dev:list",
+  "ext:dev:usage",
+  "ext:dev:undeprecate",
+]);
+
+export function setPhase2ThresholdForTest(thresholdMs: number): void {
+  phase2ThresholdMs = thresholdMs;
+}
+
+function isPhase2(): boolean {
+  return Date.now() >= phase2ThresholdMs;
+}
+
+/**
+ * Checks if deprecation warnings should be silenced (e.g. non-interactive, JSON, non-TTY, quiet mode, or CI).
+ * @param options Command execution options object.
+ */
+export function isSilenced(options: Options | Record<string, unknown>): boolean {
+  const opts = options as Record<string, unknown>;
+  if (
+    opts?.json ||
+    utils.getInheritedOption(options, "json") ||
+    opts?.nonInteractive ||
+    utils.getInheritedOption(options, "nonInteractive") ||
+    !process.stdout.isTTY ||
+    opts?.quiet ||
+    utils.getInheritedOption(options, "quiet")
+  ) {
+    return true;
+  }
+  if (
+    utils.isRunningInGithubAction() ||
+    !!process.env.CI ||
+    !!process.env.BUILD_ID ||
+    !!process.env.TF_BUILD ||
+    !!process.env.GITHUB_ACTIONS
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Displays deprecation warnings or throws hard exit errors before an ext:* command executes.
+ * @param commandName Name of the command being run (e.g. "ext:install").
+ * @param options Command execution options object.
+ */
+export function showDeprecationWarningBefore(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+): void {
+  if (commandName === "ext:dev:register") {
+    if (!isPhase2()) {
+      throw new FirebaseError(
+        `ext:dev:register is disabled. Registering new publisher profile IDs is no longer supported.\n` +
+          `The Firebase Extensions service will shut down on March 31, 2027.\n` +
+          `Learn more: ${FAQ_URL}`,
+        { exit: 1 },
+      );
+    } else {
+      throw new FirebaseError(
+        `Creating or registering new Firebase Extensions is disabled.\n` +
+          `The Firebase Extensions service will shut down on March 31, 2027.\n` +
+          `Learn more: ${FAQ_URL}`,
+        { exit: 1 },
+      );
+    }
+  }
+
+  if (
+    isSilenced(options) ||
+    NO_WARNING_COMMANDS.has(commandName) ||
+    LIST_COMMANDS.has(commandName)
+  ) {
+    return;
+  }
+
+  if (INSTALL_COMMANDS.has(commandName)) {
+    if (!isPhase2()) {
+      logger.warn(
+        clc.yellow(
+          `⚠ Firebase Extensions will shut down on March 31, 2027. You will not be able to install or edit extensions after this date. We will share migration guidance and tools in September 2026. Learn more: ${FAQ_URL}`,
+        ),
+      );
+    } else {
+      logger.warn(
+        clc.yellow(
+          `================================================================================\n` +
+            `⚠ Firebase Extensions will shut down on March 31, 2027.\n` +
+            `We recommend migrating active instances to Function-kits.\n` +
+            `Learn more & view migration steps: ${FAQ_URL}\n` +
+            `================================================================================`,
+        ),
+      );
+    }
+  } else if (PUBLISHER_COMMANDS.has(commandName)) {
+    logger.warn(
+      clc.yellow(
+        `================================================================================\n` +
+          `⚠ Notice for Publishers: Firebase Extensions will shut down on March 31, 2027.\n` +
+          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `================================================================================`,
+      ),
+    );
+  }
+}
+
+/**
+ * Displays post-execution deprecation warnings (e.g. single-line footer for ext:list and ext:info).
+ * @param commandName Name of the command being run.
+ * @param options Command execution options object.
+ */
+export function showDeprecationWarningAfter(
+  commandName: string,
+  options: Options | Record<string, unknown>,
+): void {
+  if (isSilenced(options) || !LIST_COMMANDS.has(commandName)) {
+    return;
+  }
+
+  if (!isPhase2()) {
+    logger.warn(
+      clc.yellow(
+        `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more: ${FAQ_URL}`,
+      ),
+    );
+  } else {
+    logger.warn(
+      clc.yellow(
+        `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more & view migration steps: ${FAQ_URL}`,
+      ),
+    );
+  }
 }

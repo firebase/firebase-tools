@@ -214,6 +214,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: false,
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
@@ -288,8 +293,14 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
 export function enableExperimentsFromCliEnvVariable(): void {
   const experiments = process.env.FIREBASE_CLI_EXPERIMENTS || "";
   for (const experiment of experiments.split(",")) {
-    if (isValidExperiment(experiment)) {
-      setEnabled(experiment, true);
+    const trimmed = experiment.trim();
+    if (trimmed.startsWith("-")) {
+      const expName = trimmed.slice(1);
+      if (isValidExperiment(expName)) {
+        setEnabled(expName, false);
+      }
+    } else if (isValidExperiment(trimmed)) {
+      setEnabled(trimmed, true);
     }
   }
 }
