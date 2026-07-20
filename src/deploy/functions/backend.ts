@@ -285,7 +285,8 @@ export interface SecretEnvVar {
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
 
-  // Internal use only. Users cannot pin secret to a specific version.
+  // Internal use only. Version pinning is currently only supported for .env-bound secrets.
+  allowVersionPinning?: boolean;
   version?: string;
 }
 
