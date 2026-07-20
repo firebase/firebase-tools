@@ -366,7 +366,11 @@ export class Client {
       process.env.GOOGLE_CLOUD_QUOTA_PROJECT &&
       process.env.GOOGLE_CLOUD_QUOTA_PROJECT !== ""
     ) {
-      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, process.env.GOOGLE_CLOUD_QUOTA_PROJECT);
+      let quotaProject = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
+      if (quotaProject.includes(":")) {
+        quotaProject = quotaProject.split(":").pop()!;
+      }
+      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, quotaProject);
     }
     return reqOptions;
   }
