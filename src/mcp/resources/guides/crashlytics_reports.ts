@@ -68,7 +68,7 @@ Report responses contain the following metrics:
 
   - eventsCount: the number of events matching
   - impactedUsers: the number of distinct end users in all the matching events
-  - sessionsCount: the number of distinct sessions in all the matching events. Only availabe for we apps.
+  - sessionsCount: the number of distinct sessions in all the matching events. Only available for web apps.
 
 Report responses are always grouped by one of the following dimensions:
 
