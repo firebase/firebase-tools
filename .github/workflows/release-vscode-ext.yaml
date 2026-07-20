@@ -10,8 +10,8 @@ permissions:
   issues: read
 
 jobs:
-  environment: firebase-tools VSCode release
   release:
+    environment: firebase-tools VSCode release
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/run-release') &&
