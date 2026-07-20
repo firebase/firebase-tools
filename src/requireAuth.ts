@@ -28,14 +28,20 @@ function getAuthClient(config: GoogleAuthOptions): GoogleAuth {
     return authClient;
   }
 
+  const nodeMajorVersion = parseInt(process.versions.node.split(".")[0], 10);
+  const isNode22OrHigher = !isNaN(nodeMajorVersion) && nodeMajorVersion >= 22;
+  const transporterOptions = isNode22OrHigher
+    ? config.clientOptions?.transporterOptions
+    : {
+        ...config.clientOptions?.transporterOptions,
+        agent: apiv2.noKeepAliveAgent,
+      };
+
   const authConfig: GoogleAuthOptions = {
     ...config,
     clientOptions: {
       ...config.clientOptions,
-      transporterOptions: {
-        ...config.clientOptions?.transporterOptions,
-        agent: apiv2.noKeepAliveAgent,
-      },
+      ...(transporterOptions ? { transporterOptions } : {}),
     },
   };
 
