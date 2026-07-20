@@ -24,7 +24,7 @@ export interface IntervalMetrics {
   eventsCount: number;
   /** The cardinality of distinct users in the set of events. */
   impactedUsersCount: number;
-  /** Web only.The number of distinct sessions in the set of events. */
+  /** Web only. The number of distinct sessions in the set of events. */
   sessionsCount: number;
 }
 
@@ -218,7 +218,7 @@ export interface OperatingSystem {
   displayName?: string;
 }
 
-/** Web broeser metadata */
+/** Web browser metadata */
 export interface Browser {
   /** Browser display version number. */
   displayVersion?: string;
