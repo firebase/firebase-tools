@@ -368,9 +368,12 @@ export class Client {
     ) {
       let quotaProject = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
       if (quotaProject.includes(":")) {
-        quotaProject = quotaProject.split(":").pop()!;
+        const lastColonIndex = quotaProject.lastIndexOf(":");
+        quotaProject = quotaProject.slice(lastColonIndex + 1);
       }
-      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, quotaProject);
+      if (quotaProject) {
+        reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, quotaProject);
+      }
     }
     return reqOptions;
   }
