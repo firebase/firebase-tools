@@ -245,7 +245,7 @@ export async function awaitTestResults(
 
   if (resultsFilePath) {
     try {
-      fs.writeJsonSync(resultsFilePath, summary, { spaces: 2 });
+      fs.outputJsonSync(resultsFilePath, summary, { spaces: 2 });
       utils.logSuccess(`Wrote machine-readable test results to ${resultsFilePath}`);
     } catch (err: unknown) {
       logger.info(`Failed to write results file to ${resultsFilePath}: ${getErrMsg(err)}`);

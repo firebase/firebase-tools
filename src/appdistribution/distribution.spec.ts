@@ -151,7 +151,7 @@ describe("appdistribution/distribution", () => {
     });
 
     it("should write machine-readable JSON results file when specified", async () => {
-      const writeJsonStub = sinon.stub(fs, "writeJsonSync");
+      const outputJsonStub = sinon.stub(fs, "outputJsonSync");
       const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] }];
       mockClient.getReleaseTest.resolves({
         name: "tests/1",
@@ -169,7 +169,7 @@ describe("appdistribution/distribution", () => {
 
       await awaitTestResults(releaseTests, mockClient as any, "/tmp/results.json");
 
-      expect(writeJsonStub).to.have.been.calledWith(
+      expect(outputJsonStub).to.have.been.calledWith(
         "/tmp/results.json",
         sinon.match({
           passed: true,
