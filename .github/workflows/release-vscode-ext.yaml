@@ -28,7 +28,7 @@ jobs:
         with:
           app-id: ${{ secrets.RELEASE_BOT_APP_ID }}
           private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
-          permissions-content: write
+          permission-contents: write
       - name: Trigger Kokoro via API
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
