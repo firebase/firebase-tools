@@ -216,7 +216,7 @@ export const ALL_EXPERIMENTS = experiments({
   },
   extdeprecationwarnings: {
     shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
-    default: false,
+    default: true,
     public: true,
   },
 });
