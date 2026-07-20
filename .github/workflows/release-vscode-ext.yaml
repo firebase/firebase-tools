@@ -10,6 +10,7 @@ permissions:
   issues: read
 
 jobs:
+  environment: firebase-tools VSCode release
   release:
     environment: firebase-tools VSCode release
     if: |
