@@ -305,7 +305,6 @@ export class AppDistributionClient {
       const msg = getErrMsg(err);
       if (
         status === 429 ||
-        msg.includes("429") ||
         msg.includes("RESOURCE_EXHAUSTED") ||
         msg.includes("QUOTA_EXCEEDED")
       ) {
