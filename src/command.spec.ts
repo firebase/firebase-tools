@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { Command as Program } from "commander";
 import * as sinon from "sinon";
 import * as rc from "./rc";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import { configstore } from "./configstore";
 
 import { Command, CLIClient, validateProjectId } from "./command";

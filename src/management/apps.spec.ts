@@ -2,7 +2,7 @@ import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 
 import * as api from "../api";
 import * as appUtils from "../appUtils";

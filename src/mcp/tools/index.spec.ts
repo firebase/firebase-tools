@@ -23,6 +23,14 @@ describe("availableTools", () => {
     isBillingEnabled: true,
   };
 
+  let listToolsStub: sinon.SinonStub;
+  beforeEach(() => {
+    listToolsStub = sinon.stub(OneMcpServer.prototype, "listTools").resolves([]);
+  });
+  afterEach(() => {
+    listToolsStub.restore();
+  });
+
   it("should return specific tools when enabledTools is provided", async () => {
     const tools = await availableTools(mockContext, [], [], ["firebase_login"]);
 
