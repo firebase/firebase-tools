@@ -63,6 +63,10 @@ export const command = new Command("apptesting:execute [release-binary-file]")
     "--results-bucket <bucket>",
     "The name of a Google Cloud Storage bucket where raw test results will be stored. If this flag is not set, Firebase creates a default bucket for you. Note that the bucket must be owned by a billing-enabled project, and that using a non-default bucket will result in billing charges for the storage used.",
   )
+  .option(
+    "--results-file <results_file>",
+    "Path to output a JSON file containing machine-readable test results.",
+  )
   .option("--test-username <string>", "username for automatic login")
   .option(
     "--test-password <string>",
@@ -141,7 +145,7 @@ export const command = new Command("apptesting:execute [release-binary-file]")
         `View progress and results in the Firebase Console:\n${release.firebaseConsoleUri}`,
       );
     } else {
-      await awaitTestResults(releaseTests, client);
+      await awaitTestResults(releaseTests, client, options.resultsFile);
       utils.logBullet(
         `View detailed results in the Firebase Console:\n${release.firebaseConsoleUri}`,
       );
@@ -173,6 +177,10 @@ async function invokeTests(
     }
     return releaseTests;
   } catch (err: unknown) {
-    throw new FirebaseError("Test invocation failed", { original: getError(err) });
+    const errObj = getError(err);
+    if (errObj instanceof FirebaseError) {
+      throw errObj;
+    }
+    throw new FirebaseError(`Test invocation failed: ${errObj.message}`, { original: errObj });
   }
 }

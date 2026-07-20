@@ -120,56 +120,181 @@ export class Distribution {
   }
 }
 
+export interface DeviceExecutionResult {
+  device: string;
+  state: string;
+  failedReason?: string;
+  inconclusiveReason?: string;
+  actionsJsonGcsUri?: string;
+}
+
+export interface TestCaseResult {
+  displayName: string;
+  releaseTestName?: string;
+  passed: boolean;
+  deviceExecutions: DeviceExecutionResult[];
+}
+
+export interface TestResultSummary {
+  passed: boolean;
+  totalTestCases: number;
+  passCount: number;
+  failCount: number;
+  testCases: TestCaseResult[];
+}
+
 /** Wait for release tests to complete */
 export async function awaitTestResults(
   releaseTests: ReleaseTest[],
   requests: AppDistributionClient,
-): Promise<void> {
-  const releaseTestNames = new Set(
+  resultsFilePath?: string,
+): Promise<TestResultSummary> {
+  const pendingReleaseTestNames = new Set(
     releaseTests.map((rt) => rt.name).filter((n): n is string => !!n),
   );
+  const completedReleaseTests = new Map<string, ReleaseTest>();
+
   for (let i = 0; i < TEST_MAX_POLLING_RETRIES; i++) {
-    utils.logBullet(`${releaseTestNames.size} automated test results are pending...`);
+    if (pendingReleaseTestNames.size === 0) {
+      break;
+    }
+    utils.logBullet(`${pendingReleaseTestNames.size} automated test(s) pending completion...`);
     await delay(TEST_POLLING_INTERVAL_MILLIS);
-    for (const releaseTestName of releaseTestNames) {
+
+    for (const releaseTestName of Array.from(pendingReleaseTestNames)) {
       const releaseTest = await requests.getReleaseTest(releaseTestName);
-      if (releaseTest.deviceExecutions.every((e) => e.state === "PASSED")) {
-        releaseTestNames.delete(releaseTestName);
-        if (releaseTestNames.size === 0) {
-          utils.logSuccess("Automated test(s) passed!");
-          return;
+      const isFinished = releaseTest.deviceExecutions.every(
+        (e) => e.state && e.state !== "IN_PROGRESS",
+      );
+      if (isFinished) {
+        pendingReleaseTestNames.delete(releaseTestName);
+        completedReleaseTests.set(releaseTestName, releaseTest);
+
+        const displayName = releaseTest.displayName || releaseTestName;
+        const allPassed = releaseTest.deviceExecutions.every((e) => e.state === "PASSED");
+        if (allPassed) {
+          const deviceList = releaseTest.deviceExecutions
+            .map((e) => deviceToString(e.device))
+            .join(", ");
+          utils.logSuccess(`✔ Passed: "${displayName}" (${deviceList})`);
         } else {
-          continue;
-        }
-      }
-      for (const execution of releaseTest.deviceExecutions) {
-        const device = deviceToString(execution.device);
-        switch (execution.state) {
-          case "PASSED":
-          case "IN_PROGRESS":
-            continue;
-          case "FAILED":
-            throw new FirebaseError(
-              `Automated test failed for ${device}: ${execution.failedReason}`,
-              { exit: 1 },
+          const failedExecs = releaseTest.deviceExecutions.filter((e) => e.state !== "PASSED");
+          for (const exec of failedExecs) {
+            const devStr = deviceToString(exec.device);
+            const reason = exec.failedReason || exec.inconclusiveReason || exec.state || "Failed";
+            utils.logWarning(`✖ Failed: "${displayName}" on ${devStr}: ${reason}`);
+            const gcsUri = formatActionsGcsUri(
+              releaseTest.resultsBucket,
+              releaseTest.name,
+              exec.device.model,
             );
-          case "INCONCLUSIVE":
-            throw new FirebaseError(
-              `Automated test inconclusive for ${device}: ${execution.inconclusiveReason}`,
-              { exit: 1 },
-            );
-          default:
-            throw new FirebaseError(
-              `Unsupported automated test state for ${device}: ${execution.state}`,
-              { exit: 1 },
-            );
+            if (gcsUri) {
+              logger.info(`   Log / Actions detail: ${gcsUri}`);
+            }
+          }
         }
       }
     }
   }
-  throw new FirebaseError("It took longer than expected to run your test(s), please try again.", {
-    exit: 1,
-  });
+
+  if (pendingReleaseTestNames.size > 0) {
+    throw new FirebaseError("It took longer than expected to run your test(s), please try again.", {
+      exit: 1,
+    });
+  }
+
+  const summaryTestCases: TestCaseResult[] = [];
+  let totalFailures = 0;
+  let totalPasses = 0;
+
+  for (const rt of releaseTests) {
+    const name = rt.name;
+    const finalRt = (name && completedReleaseTests.get(name)) || rt;
+    const displayName = finalRt.displayName || name || "Test Case";
+    const casePassed =
+      finalRt.deviceExecutions.length > 0 &&
+      finalRt.deviceExecutions.every((e) => e.state === "PASSED");
+
+    if (casePassed) {
+      totalPasses++;
+    } else {
+      totalFailures++;
+    }
+
+    summaryTestCases.push({
+      displayName,
+      releaseTestName: name,
+      passed: casePassed,
+      deviceExecutions: finalRt.deviceExecutions.map((e) => ({
+        device: deviceToString(e.device),
+        state: e.state || "UNKNOWN",
+        failedReason: e.failedReason,
+        inconclusiveReason: e.inconclusiveReason,
+        actionsJsonGcsUri: formatActionsGcsUri(finalRt.resultsBucket, name, e.device.model),
+      })),
+    });
+  }
+
+  const summary: TestResultSummary = {
+    passed: totalFailures === 0,
+    totalTestCases: summaryTestCases.length,
+    passCount: totalPasses,
+    failCount: totalFailures,
+    testCases: summaryTestCases,
+  };
+
+  if (resultsFilePath) {
+    try {
+      fs.writeJsonSync(resultsFilePath, summary, { spaces: 2 });
+      utils.logSuccess(`Wrote machine-readable test results to ${resultsFilePath}`);
+    } catch (err: unknown) {
+      logger.info(`Failed to write results file to ${resultsFilePath}: ${getErrMsg(err)}`);
+    }
+  }
+
+  if (totalFailures > 0) {
+    utils.logWarning(
+      `\nAutomated test run finished with failures (${totalFailures} of ${summaryTestCases.length} test cases failed):`,
+    );
+    for (const tc of summaryTestCases) {
+      if (!tc.passed) {
+        utils.logWarning(`  - Case "${tc.displayName}":`);
+        for (const exec of tc.deviceExecutions) {
+          if (exec.state !== "PASSED") {
+            const reason = exec.failedReason || exec.inconclusiveReason || exec.state;
+            utils.logWarning(`    • ${exec.device}: ${reason}`);
+            if (exec.actionsJsonGcsUri) {
+              utils.logWarning(`      GCS actions log: ${exec.actionsJsonGcsUri}`);
+            }
+          }
+        }
+      }
+    }
+    throw new FirebaseError(
+      `Automated test(s) failed: ${totalFailures} of ${summaryTestCases.length} test cases failed.`,
+      { exit: 1 },
+    );
+  }
+
+  utils.logSuccess(
+    `Automated test(s) passed! (${totalPasses} of ${summaryTestCases.length} test cases passed)`,
+  );
+  return summary;
+}
+
+function formatActionsGcsUri(
+  resultsBucket: string | undefined,
+  releaseTestName: string | undefined,
+  model: string,
+): string | undefined {
+  if (!resultsBucket || !releaseTestName) {
+    return undefined;
+  }
+  const bucketName = resultsBucket.includes("buckets/")
+    ? resultsBucket.split("buckets/")[1]
+    : resultsBucket.replace(/^gs:\/\//, "");
+  const testId = releaseTestName.split("/").pop() || "";
+  return `gs://${bucketName}/${testId}/${model}/actions.json`;
 }
 
 function delay(ms: number): Promise<number> {
