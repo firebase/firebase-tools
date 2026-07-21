@@ -57,7 +57,6 @@ export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolea
 }
 
 const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
-let phase2ThresholdMs = new Date("2026-09-14T00:00:00Z").getTime();
 
 const NO_WARNING_COMMANDS = new Set(["ext:uninstall", "ext:dev:deprecate", "ext:export"]);
 const LIST_COMMANDS = new Set(["ext:list", "ext:info"]);
@@ -69,14 +68,6 @@ const PUBLISHER_COMMANDS = new Set([
   "ext:dev:usage",
   "ext:dev:undeprecate",
 ]);
-
-export function setPhase2ThresholdForTest(thresholdMs: number): void {
-  phase2ThresholdMs = thresholdMs;
-}
-
-function isPhase2(): boolean {
-  return Date.now() >= phase2ThresholdMs;
-}
 
 /**
  * Checks if deprecation warnings should be silenced (e.g. non-interactive, JSON, non-TTY, quiet mode, or CI).
@@ -117,21 +108,12 @@ export function showDeprecationWarningBefore(
   options: Options | Record<string, unknown>,
 ): void {
   if (commandName === "ext:dev:register") {
-    if (!isPhase2()) {
-      throw new FirebaseError(
-        `ext:dev:register is disabled. Registering new publisher profile IDs is no longer supported.\n` +
-          `The Firebase Extensions service will shut down on March 31, 2027.\n` +
-          `Learn more: ${FAQ_URL}`,
-        { exit: 1 },
-      );
-    } else {
-      throw new FirebaseError(
-        `Creating or registering new Firebase Extensions is disabled.\n` +
-          `The Firebase Extensions service will shut down on March 31, 2027.\n` +
-          `Learn more: ${FAQ_URL}`,
-        { exit: 1 },
-      );
-    }
+    throw new FirebaseError(
+      `ext:dev:register is disabled. Registering new publisher profile IDs is no longer supported.\n` +
+        `The Firebase Extensions service will shut down on March 31, 2027.\n` +
+        `Learn more: ${FAQ_URL}`,
+      { exit: 1 },
+    );
   }
 
   if (
@@ -143,29 +125,17 @@ export function showDeprecationWarningBefore(
   }
 
   if (INSTALL_COMMANDS.has(commandName)) {
-    if (!isPhase2()) {
-      logger.warn(
-        clc.yellow(
-          `⚠ Firebase Extensions will shut down on March 31, 2027. You will not be able to install or edit extensions after this date. We will share migration guidance and tools in September 2026. Learn more: ${FAQ_URL}`,
-        ),
-      );
-    } else {
-      logger.warn(
-        clc.yellow(
-          `================================================================================\n` +
-            `⚠ Firebase Extensions will shut down on March 31, 2027.\n` +
-            `We recommend migrating active instances to Function-kits.\n` +
-            `Learn more & view migration steps: ${FAQ_URL}\n` +
-            `================================================================================`,
-        ),
-      );
-    }
+    logger.warn(
+      clc.yellow(
+        `⚠ Firebase Extensions will shut down on March 31, 2027. You will not be able to install or edit extensions after this date. Learn more: ${FAQ_URL}`,
+      ),
+    );
   } else if (PUBLISHER_COMMANDS.has(commandName)) {
     logger.warn(
       clc.yellow(
         `================================================================================\n` +
           `⚠ Notice for Publishers: Firebase Extensions will shut down on March 31, 2027.\n` +
-          `Learn more & view migration steps: ${FAQ_URL}\n` +
+          `Learn more: ${FAQ_URL}\n` +
           `================================================================================`,
       ),
     );
@@ -185,17 +155,9 @@ export function showDeprecationWarningAfter(
     return;
   }
 
-  if (!isPhase2()) {
-    logger.warn(
-      clc.yellow(
-        `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more: ${FAQ_URL}`,
-      ),
-    );
-  } else {
-    logger.warn(
-      clc.yellow(
-        `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more & view migration steps: ${FAQ_URL}`,
-      ),
-    );
-  }
+  logger.warn(
+    clc.yellow(
+      `⚠ Notice: Firebase Extensions will shut down on March 31, 2027. Learn more: ${FAQ_URL}`,
+    ),
+  );
 }

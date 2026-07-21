@@ -129,7 +129,6 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   afterEach(() => {
     warnStub.restore();
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
-    warnings.setPhase2ThresholdForTest(new Date("2026-09-14T00:00:00Z").getTime());
     for (const [k, v] of Object.entries(originalEnv)) {
       if (v !== undefined) {
         process.env[k] = v;
@@ -139,32 +138,17 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     }
   });
 
-  it("should hard-error and exit 1 on ext:dev:register in Phase 1 and Phase 2", () => {
-    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
+  it("should hard-error and exit 1 on ext:dev:register", () => {
     expect(() => warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.throw(
       FirebaseError,
       /ext:dev:register is disabled/,
     );
-
-    warnings.setPhase2ThresholdForTest(Date.now() - 100000);
-    expect(() => warnings.showDeprecationWarningBefore("ext:dev:register", {})).to.throw(
-      FirebaseError,
-      /Creating or registering new Firebase Extensions is disabled/,
-    );
   });
 
-  it("should show concise warning for Category 1 in Phase 1 and boxed banner in Phase 2", () => {
-    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
+  it("should show concise warning for Category 1 commands", () => {
     warnings.showDeprecationWarningBefore("ext:install", {});
     expect(warnStub).to.have.been.calledWithMatch(
       /You will not be able to install or edit extensions/,
-    );
-
-    warnStub.resetHistory();
-    warnings.setPhase2ThresholdForTest(Date.now() - 100000);
-    warnings.showDeprecationWarningBefore("ext:install", {});
-    expect(warnStub).to.have.been.calledWithMatch(
-      /We recommend migrating active instances to Function-kits/,
     );
   });
 
@@ -187,7 +171,6 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   });
 
   it("should show footer warning in showDeprecationWarningAfter for Category 2 commands", () => {
-    warnings.setPhase2ThresholdForTest(Date.now() + 100000);
     warnings.showDeprecationWarningAfter("ext:list", {});
     expect(warnStub).to.have.been.calledWithMatch(/Notice: Firebase Extensions will shut down/);
   });
