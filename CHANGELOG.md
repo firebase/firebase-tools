@@ -1,3 +1,3 @@
-- Release Firestore emulator v1.22.0 which added support for DML
+- Update Firestore emulator to v1.22.0, adding support for DML
 - Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
