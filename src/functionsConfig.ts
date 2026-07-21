@@ -119,7 +119,7 @@ export async function getFirebaseConfig(options: any): Promise<args.FirebaseConf
       `/v1beta1/projects/${projectId}/adminSdkConfig`,
     );
     return response.body;
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof FirebaseError && err.status === 404) {
       throw new FirebaseError(
         `Cannot deploy to project ${clc.bold(projectId)} because it doesn't have Firebase enabled. ` +
