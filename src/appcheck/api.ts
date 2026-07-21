@@ -1,17 +1,6 @@
 import { appCheckOrigin } from "../api";
 import { Client } from "../apiv2";
-
-export interface DebugToken {
-  name: string;
-  displayName: string;
-  token: string;
-  updateTime?: string;
-}
-
-interface ListDebugTokensResponse {
-  debugTokens?: DebugToken[];
-  nextPageToken?: string;
-}
+import { DebugToken, ListDebugTokensResponse } from "./types";
 
 const API_VERSION = "v1";
 
@@ -57,26 +46,6 @@ export async function listDebugTokens(projectNumber: string, appId: string): Pro
     pageToken = res.body?.nextPageToken || "";
   } while (pageToken);
   return debugTokens;
-}
-
-/**
- * Gets the specified DebugToken.
- */
-export async function getDebugToken(name: string): Promise<DebugToken> {
-  const res = await client.get<DebugToken>(name);
-  return res.body;
-}
-
-/**
- * Updates the specified DebugToken.
- */
-export async function updateDebugToken(name: string, displayName: string): Promise<DebugToken> {
-  const res = await client.patch<Partial<DebugToken>, DebugToken>(
-    name,
-    { displayName },
-    { queryParams: { updateMask: "displayName" } },
-  );
-  return res.body;
 }
 
 /**

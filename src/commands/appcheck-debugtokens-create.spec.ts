@@ -7,7 +7,7 @@ import { command as listCmd } from "./appcheck-debugtokens-list";
 import { command as deleteCmd } from "./appcheck-debugtokens-delete";
 import * as requireAuthModule from "../requireAuth";
 import { appCheckOrigin } from "../api";
-import { DebugToken } from "../appcheck";
+import { DebugToken } from "../appcheck/types";
 
 describe("appcheck:debugtokens commands", () => {
   const projectNumber = "1234567890";

@@ -3,11 +3,13 @@ import * as Table from "cli-table3";
 
 import { Command } from "../command";
 import { needProjectNumber } from "../projectUtils";
-import { listDebugTokens, DebugToken } from "../appcheck";
+
+import { listDebugTokens } from "../appcheck/api";
+import { DebugToken, AppCheckDebugOptions } from "../appcheck/types";
+import { getOrPromptProjectAndAppId } from "../appcheck/prompts";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
-import { FirebaseError } from "../error";
 
 function logDebugTokensList(debugTokens: DebugToken[]): void {
   if (debugTokens.length === 0) {
@@ -27,11 +29,8 @@ export const command = new Command("appcheck:debugtokens:list")
   .description("list all Firebase App Check debug tokens for an app")
   .option("--app <appId>", "the app id of your Firebase app")
   .before(requireAuth)
-  .action(async (options: any): Promise<DebugToken[]> => {
-    const appId = options.app;
-    if (!appId) {
-      throw new FirebaseError("Must specify an App ID using --app.");
-    }
+  .action(async (options: AppCheckDebugOptions): Promise<DebugToken[]> => {
+    const { appId } = await getOrPromptProjectAndAppId(options);
     const projectNumber = await needProjectNumber(options);
 
     const debugTokens = await promiseWithSpinner<DebugToken[]>(
