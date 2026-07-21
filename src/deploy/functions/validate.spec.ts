@@ -847,6 +847,59 @@ describe("validate", () => {
       }
     });
 
+    it("passes validation and allows version pinning to a non-latest version given valid secret config with sentinel set", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+              allowVersionPinning: true,
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+      }
+    });
+
+    it("passes validation and forces version ton latest given valid secret config with no sentinel", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
+    });
+
     it("passes validation for Cloud Run (platform=run) functions with secrets", async () => {
       secretVersionStub.withArgs(project, secret.name, "latest").resolves({
         secret,
