@@ -90,9 +90,9 @@ describe("resolveParams", () => {
   it("always contains the precanned internal param values", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(expectedInternalParams);
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(expectedInternalParams);
   });
 
   it("can pull a literal value out of the dotenvs", async () => {
@@ -111,9 +111,9 @@ describe("resolveParams", () => {
       bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
@@ -138,9 +138,9 @@ describe("resolveParams", () => {
         boolean: false,
       }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal({
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
         boolean: false,
@@ -167,13 +167,15 @@ describe("resolveParams", () => {
   it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(
-        paramsToResolve,
-        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
-        userEnv,
-      ),
-    ).to.eventually.deep.equal({
+    expect(
+      (
+        await params.resolveParams(
+          paramsToResolve,
+          { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+          userEnv,
+        )
+      ).paramValues,
+    ).to.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
     });
@@ -189,7 +191,7 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("bar");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
+    expect((await params.resolveParams(paramsToResolve, fakeConfig, {})).paramValues).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true }),
