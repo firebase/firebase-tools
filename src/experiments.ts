@@ -214,6 +214,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  secretEnvParams: {
+    shortDescription:
+      "Enable writing the backing resource binding for a Functions secret param to .env",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
