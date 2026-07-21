@@ -114,6 +114,43 @@ describe("validate", () => {
     });
   });
 
+  describe("taskQueueFunctionNamesAreValid", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "id",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("should not throw on hyphenated task queue function names", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "my-task-function", taskQueueTrigger: {} },
+      ];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.not.throw();
+    });
+
+    it("should throw on underscores in task queue function names", () => {
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "dummy_function", taskQueueTrigger: {} },
+      ];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.throw(FirebaseError, /dummy_function/);
+    });
+
+    it("should ignore underscores in non-task-queue function names", () => {
+      const endpoints: backend.Endpoint[] = [{ ...ENDPOINT_BASE, id: "dummy_function" }];
+      expect(() => {
+        validate.taskQueueFunctionNamesAreValid(endpoints);
+      }).to.not.throw();
+    });
+  });
+
   describe("endpointsAreValid", () => {
     const ENDPOINT_BASE: backend.Endpoint = {
       platform: "gcfv2",
