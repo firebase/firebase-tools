@@ -108,16 +108,35 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
   let warnStub: sinon.SinonStub;
   let originalIsTTY: boolean;
 
+  let originalEnv: Record<string, string | undefined>;
+
   beforeEach(() => {
     warnStub = sinon.stub(logger, "warn");
     originalIsTTY = process.stdout.isTTY;
     Object.defineProperty(process.stdout, "isTTY", { value: true, configurable: true });
+    originalEnv = {
+      CI: process.env.CI,
+      GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+      BUILD_ID: process.env.BUILD_ID,
+      TF_BUILD: process.env.TF_BUILD,
+    };
+    delete process.env.CI;
+    delete process.env.GITHUB_ACTIONS;
+    delete process.env.BUILD_ID;
+    delete process.env.TF_BUILD;
   });
 
   afterEach(() => {
     warnStub.restore();
     Object.defineProperty(process.stdout, "isTTY", { value: originalIsTTY, configurable: true });
     warnings.setPhase2ThresholdForTest(new Date("2026-09-14T00:00:00Z").getTime());
+    for (const [k, v] of Object.entries(originalEnv)) {
+      if (v !== undefined) {
+        process.env[k] = v;
+      } else {
+        delete process.env[k];
+      }
+    }
   });
 
   it("should hard-error and exit 1 on ext:dev:register in Phase 1 and Phase 2", () => {
