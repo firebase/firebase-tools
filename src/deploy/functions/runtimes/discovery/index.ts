@@ -86,23 +86,23 @@ export async function detectFromPort(
     }, discoveryTimeout);
   });
 
-  // If the admin server's process dies with a non-zero exit code before we've
-  // finished discovery, surface that exit code and any stderr it produced instead
-  // of retrying blindly until the generic timeout above fires.
+  // If the admin server's process exits before we've finished discovery, surface
+  // its exit code (or the fact that it was killed by a signal) and any stderr it
+  // produced instead of retrying blindly until the generic timeout above fires.
+  // Any exit here is unexpected: the admin server is a long-lived HTTP server
+  // that should never go away on its own while we're still waiting on it.
   let stderrBuffer = "";
   childProcess?.stderr?.on("data", (chunk: Buffer) => {
     stderrBuffer += chunk.toString();
   });
   const exitedWithError = new Promise<never>((resolve, reject) => {
     childProcess?.once("exit", (code: number | null) => {
-      if (code === 0 || code === null) {
-        return;
-      }
       const message = stderrBuffer.trim();
+      const exitStatus = code === null ? "via a signal" : `with code ${code}`;
       reject(
         new FirebaseError(
           `User code failed to load. Cannot determine backend specification.\n` +
-            `Process exited with code ${code}.${message ? `\n${message}` : ""}`,
+            `Process exited ${exitStatus}.${message ? `\n${message}` : ""}`,
         ),
       );
     });

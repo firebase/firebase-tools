@@ -264,7 +264,6 @@ export class Delegate {
   ): Promise<{ process: ChildProcess; kill: () => Promise<void> }> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
 
-    // TODO: Refactor return type to () => Promise<void> to simplify nested promises
     const kill = async (): Promise<void> => {
       const p = new Promise<void>((resolve, reject) => {
         childProcess.once("exit", resolve);
