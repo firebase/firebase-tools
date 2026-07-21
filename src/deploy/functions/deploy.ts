@@ -2,7 +2,7 @@ import { setGracefulCleanup } from "tmp";
 import * as clc from "colorette";
 import * as fs from "fs";
 
-import { checkHttpIam } from "./checkIam";
+import { checkHttpIam, checkDefaultServiceAccountEnabled } from "./checkIam";
 import { logLabeledWarning, logLabeledSuccess, logWarning } from "../../utils";
 import { Options } from "../../options";
 import { configForCodebase } from "../../functions/projectConfig";
@@ -188,6 +188,7 @@ export async function deploy(
 
   // Deploy functions
   if (payload.functions && context.config) {
+    await checkDefaultServiceAccountEnabled(context, options, payload);
     await checkHttpIam(context, options, payload);
     const uploads: Promise<void>[] = [];
     for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
