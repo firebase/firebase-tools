@@ -299,14 +299,8 @@ export function setEnabled(name: ExperimentName, to: boolean | null): void {
 export function enableExperimentsFromCliEnvVariable(): void {
   const experiments = process.env.FIREBASE_CLI_EXPERIMENTS || "";
   for (const experiment of experiments.split(",")) {
-    const trimmed = experiment.trim();
-    if (trimmed.startsWith("-")) {
-      const expName = trimmed.slice(1);
-      if (isValidExperiment(expName)) {
-        setEnabled(expName, false);
-      }
-    } else if (isValidExperiment(trimmed)) {
-      setEnabled(trimmed, true);
+    if (isValidExperiment(experiment)) {
+      setEnabled(experiment, true);
     }
   }
 }

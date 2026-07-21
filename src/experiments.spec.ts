@@ -26,16 +26,5 @@ describe("experiments", () => {
       expect(isEnabled("experiments")).to.be.true;
       setEnabled("experiments", false);
     });
-
-    it("should disable experiments when prefixed with hyphen in env var", () => {
-      setEnabled("extdeprecationwarnings", true);
-      expect(isEnabled("extdeprecationwarnings")).to.be.true;
-
-      process.env.FIREBASE_CLI_EXPERIMENTS = "-extdeprecationwarnings";
-      enableExperimentsFromCliEnvVariable();
-
-      expect(isEnabled("extdeprecationwarnings")).to.be.false;
-      setEnabled("extdeprecationwarnings", null);
-    });
   });
 });

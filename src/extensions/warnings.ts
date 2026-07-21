@@ -58,16 +58,25 @@ export function outOfBandChangesWarning(instanceIds: string[], isDynamic: boolea
 
 const FAQ_URL = "https://firebase.google.com/docs/extensions/faq-and-troubleshooting";
 
-const NO_WARNING_COMMANDS = new Set(["ext:uninstall", "ext:dev:deprecate", "ext:export"]);
-const LIST_COMMANDS = new Set(["ext:list", "ext:info"]);
-const INSTALL_COMMANDS = new Set(["ext:install", "ext:configure", "ext:update", "ext:sdk:install"]);
-const PUBLISHER_COMMANDS = new Set([
+/** Commands that trigger a standard deprecation warning before execution. */
+const WARN_BEFORE_COMMANDS = new Set([
+  "ext:install",
+  "ext:configure",
+  "ext:update",
+  "ext:sdk:install",
+]);
+
+/** Publisher commands that trigger a prominent warning banner before execution. */
+const WARN_STRONGLY_BEFORE_COMMANDS = new Set([
   "ext:dev:init",
   "ext:dev:upload",
   "ext:dev:list",
   "ext:dev:usage",
   "ext:dev:undeprecate",
 ]);
+
+/** Commands that display a post-execution footer warning notice after completion. */
+const WARN_AFTER_COMMANDS = new Set(["ext:list", "ext:info"]);
 
 /**
  * Checks if deprecation warnings should be silenced (e.g. non-interactive, JSON, non-TTY, quiet mode, or CI).
@@ -116,21 +125,17 @@ export function showDeprecationWarningBefore(
     );
   }
 
-  if (
-    isSilenced(options) ||
-    NO_WARNING_COMMANDS.has(commandName) ||
-    LIST_COMMANDS.has(commandName)
-  ) {
+  if (isSilenced(options)) {
     return;
   }
 
-  if (INSTALL_COMMANDS.has(commandName)) {
+  if (WARN_BEFORE_COMMANDS.has(commandName)) {
     logger.warn(
       clc.yellow(
         `⚠ Firebase Extensions will shut down on March 31, 2027. You will not be able to install or edit extensions after this date. Learn more: ${FAQ_URL}`,
       ),
     );
-  } else if (PUBLISHER_COMMANDS.has(commandName)) {
+  } else if (WARN_STRONGLY_BEFORE_COMMANDS.has(commandName)) {
     logger.warn(
       clc.yellow(
         `================================================================================\n` +
@@ -151,7 +156,7 @@ export function showDeprecationWarningAfter(
   commandName: string,
   options: Options | Record<string, unknown>,
 ): void {
-  if (isSilenced(options) || !LIST_COMMANDS.has(commandName)) {
+  if (isSilenced(options) || !WARN_AFTER_COMMANDS.has(commandName)) {
     return;
   }
 
