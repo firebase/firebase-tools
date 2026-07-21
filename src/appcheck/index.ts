@@ -60,26 +60,6 @@ export async function listDebugTokens(projectNumber: string, appId: string): Pro
 }
 
 /**
- * Gets the specified DebugToken.
- */
-export async function getDebugToken(name: string): Promise<DebugToken> {
-  const res = await client.get<DebugToken>(name);
-  return res.body;
-}
-
-/**
- * Updates the specified DebugToken.
- */
-export async function updateDebugToken(name: string, displayName: string): Promise<DebugToken> {
-  const res = await client.patch<Partial<DebugToken>, DebugToken>(
-    name,
-    { displayName },
-    { queryParams: { updateMask: "displayName" } },
-  );
-  return res.body;
-}
-
-/**
  * Deletes the specified DebugToken.
  */
 export async function deleteDebugToken(name: string): Promise<void> {

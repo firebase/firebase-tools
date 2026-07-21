@@ -1,15 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import {
-  createDebugToken,
-  listDebugTokens,
-  getDebugToken,
-  updateDebugToken,
-  deleteDebugToken,
-  DebugToken,
-  client,
-} from "./index";
+import { createDebugToken, listDebugTokens, deleteDebugToken, DebugToken, client } from "./index";
 import { FirebaseError } from "../error";
 
 describe("appcheck", () => {
@@ -93,33 +85,6 @@ describe("appcheck", () => {
       expect(getStub.calledTwice).to.be.true;
       expect(getStub.secondCall.args[0]).to.match(/.*debugTokens.*/);
       expect(getStub.secondCall.args[1]).to.deep.equal({ queryParams: { pageToken: "page-2" } });
-    });
-  });
-
-  describe("getDebugToken", () => {
-    it("should resolve with DebugToken on success", async () => {
-      const getStub = sandbox.stub(client, "get").resolves({ body: dummyDebugToken } as any);
-
-      const result = await getDebugToken(debugTokenName);
-      expect(result).to.deep.equal(dummyDebugToken);
-      expect(getStub.calledOnce).to.be.true;
-      expect(getStub.firstCall.args[0]).to.match(/.*debugTokens.*/);
-    });
-  });
-
-  describe("updateDebugToken", () => {
-    it("should resolve with updated DebugToken on success", async () => {
-      const updatedToken = { ...dummyDebugToken, displayName: "New Name" };
-      const patchStub = sandbox.stub(client, "patch").resolves({ body: updatedToken } as any);
-
-      const result = await updateDebugToken(debugTokenName, "New Name");
-      expect(result).to.deep.equal(updatedToken);
-      expect(patchStub.calledOnce).to.be.true;
-      expect(patchStub.firstCall.args[0]).to.match(/.*debugTokens.*/);
-      expect(patchStub.firstCall.args[1]).to.deep.equal({ displayName: "New Name" });
-      expect(patchStub.firstCall.args[2]).to.deep.equal({
-        queryParams: { updateMask: "displayName" },
-      });
     });
   });
 

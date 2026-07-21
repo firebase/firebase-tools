@@ -8,16 +8,15 @@ import { promiseWithSpinner, logSuccess } from "../utils";
 import { confirm } from "../prompt";
 import { FirebaseError } from "../error";
 
+import { AppCheckDebugOptions, getOrPromptProjectAndAppId } from "./appcheck-debugtokens-utils";
+
 export const command = new Command("appcheck:debugtokens:delete <debugTokenId>")
   .description("delete a Firebase App Check debug token for an app")
   .option("--app <appId>", "the app id of your Firebase app")
   .option("--force", "attempt to delete debug token without prompting for confirmation")
   .before(requireAuth)
-  .action(async (debugTokenId: string, options: any): Promise<void> => {
-    const appId = options.app;
-    if (!appId) {
-      throw new FirebaseError("Must specify an App ID using --app.");
-    }
+  .action(async (debugTokenId: string, options: AppCheckDebugOptions): Promise<void> => {
+    const { appId } = await getOrPromptProjectAndAppId(options);
     const projectNumber = await needProjectNumber(options);
 
     let debugTokenName = debugTokenId;
