@@ -195,6 +195,20 @@ describe("showDeprecationWarningBefore & showDeprecationWarningAfter", () => {
     }
   });
 
+  it("should not silence warnings when CI is explicitly set to false", () => {
+    const origCI = process.env.CI;
+    process.env.CI = "false";
+    try {
+      expect(warnings.isSilenced({})).to.be.false;
+    } finally {
+      if (origCI !== undefined) {
+        process.env.CI = origCI;
+      } else {
+        delete process.env.CI;
+      }
+    }
+  });
+
   it("should not warn on Category 3 commands", () => {
     warnings.showDeprecationWarningBefore("ext:export", {});
     warnings.showDeprecationWarningAfter("ext:export", {});

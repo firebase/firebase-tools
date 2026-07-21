@@ -80,7 +80,7 @@ export function isSilenced(options: Options | Record<string, unknown>): boolean 
     utils.getInheritedOption(options, "json") ||
     opts?.nonInteractive ||
     utils.getInheritedOption(options, "nonInteractive") ||
-    !process.stdout.isTTY ||
+    !process.stdout?.isTTY ||
     opts?.quiet ||
     utils.getInheritedOption(options, "quiet")
   ) {
@@ -88,7 +88,7 @@ export function isSilenced(options: Options | Record<string, unknown>): boolean 
   }
   if (
     utils.isRunningInGithubAction() ||
-    !!process.env.CI ||
+    (!!process.env.CI && process.env.CI !== "false") ||
     !!process.env.BUILD_ID ||
     !!process.env.TF_BUILD ||
     !!process.env.GITHUB_ACTIONS
