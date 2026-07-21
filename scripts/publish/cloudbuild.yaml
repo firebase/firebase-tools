@@ -80,7 +80,7 @@ steps:
       - |
         git config --global user.name "firebase-release-app[bot]"
         git config --global user.email "$${GH_APP_ID}+firebase-release-app[bot]@users.noreply.github.com"
-    secretEnv: ['GH_APP_ID'] # The App ID isn't actually secret.
+    secretEnv: ["GH_APP_ID"] # The App ID isn't actually secret.
 
   # Set up the Twitter credentials.
   - name: "gcr.io/$PROJECT_ID/package-builder"
