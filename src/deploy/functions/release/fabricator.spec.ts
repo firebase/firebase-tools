@@ -1233,7 +1233,13 @@ describe("Fabricator", () => {
       upsertScheduleV2.resolves();
 
       await fab.setTrigger(ep);
-      expect(upsertScheduleV2).to.have.been.called;
+      expect(upsertScheduleV2).to.have.been.calledOnce;
+      upsertScheduleV2.resetHistory();
+
+      ep.platform = "run";
+      await fab.setTrigger(ep);
+      expect(upsertScheduleV2).to.have.been.calledOnce;
+      upsertScheduleV2.restore();
     });
 
     it("sets task queue triggers", async () => {
@@ -1244,7 +1250,32 @@ describe("Fabricator", () => {
       upsertTaskQueue.resolves();
 
       await fab.setTrigger(ep);
-      expect(upsertTaskQueue).to.have.been.called;
+      expect(upsertTaskQueue).to.have.been.calledOnce;
+      upsertTaskQueue.resetHistory();
+
+      ep.platform = "run";
+      await fab.setTrigger(ep);
+      expect(upsertTaskQueue).to.have.been.calledOnce;
+      upsertTaskQueue.restore();
+    });
+
+    it("sets blocking triggers", async () => {
+      const ep = endpoint({
+        blockingTrigger: {
+          eventType: "beforeCreate",
+        },
+      });
+      const registerBlockingTrigger = sinon.stub(fab, "registerBlockingTrigger");
+      registerBlockingTrigger.resolves();
+
+      await fab.setTrigger(ep);
+      expect(registerBlockingTrigger).to.have.been.calledOnce;
+      registerBlockingTrigger.resetHistory();
+
+      ep.platform = "run";
+      await fab.setTrigger(ep);
+      expect(registerBlockingTrigger).to.have.been.calledOnce;
+      registerBlockingTrigger.restore();
     });
   });
 
@@ -1284,7 +1315,13 @@ describe("Fabricator", () => {
       deleteScheduleV2.resolves();
 
       await fab.deleteTrigger(ep);
-      expect(deleteScheduleV2).to.have.been.called;
+      expect(deleteScheduleV2).to.have.been.calledOnce;
+      deleteScheduleV2.resetHistory();
+
+      ep.platform = "run";
+      await fab.deleteTrigger(ep);
+      expect(deleteScheduleV2).to.have.been.calledOnce;
+      deleteScheduleV2.restore();
     });
 
     it("deletes task queue triggers", async () => {
@@ -1292,9 +1329,35 @@ describe("Fabricator", () => {
         taskQueueTrigger: {},
       });
       const disableTaskQueue = sinon.stub(fab, "disableTaskQueue");
+      disableTaskQueue.resolves();
 
       await fab.deleteTrigger(ep);
-      expect(disableTaskQueue).to.have.been.called;
+      expect(disableTaskQueue).to.have.been.calledOnce;
+      disableTaskQueue.resetHistory();
+
+      ep.platform = "run";
+      await fab.deleteTrigger(ep);
+      expect(disableTaskQueue).to.have.been.calledOnce;
+      disableTaskQueue.restore();
+    });
+
+    it("deletes blocking triggers", async () => {
+      const ep = endpoint({
+        blockingTrigger: {
+          eventType: "beforeCreate",
+        },
+      });
+      const unregisterBlockingTrigger = sinon.stub(fab, "unregisterBlockingTrigger");
+      unregisterBlockingTrigger.resolves();
+
+      await fab.deleteTrigger(ep);
+      expect(unregisterBlockingTrigger).to.have.been.calledOnce;
+      unregisterBlockingTrigger.resetHistory();
+
+      ep.platform = "run";
+      await fab.deleteTrigger(ep);
+      expect(unregisterBlockingTrigger).to.have.been.calledOnce;
+      unregisterBlockingTrigger.restore();
     });
   });
 
