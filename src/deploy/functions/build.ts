@@ -880,17 +880,20 @@ export function matchSecretEnvVars(build: Build): void {
       continue;
     }
     const secretParam = param;
+    if (!secretParam.resourceId) {
+      continue;
+    }
 
-    for (const endpointName of Object.keys(build.endpoints)) {
-      const endpoint = build.endpoints[endpointName];
+    for (const endpoint of Object.values(build.endpoints)) {
       for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
-        if (envVar.key === secretParam.name) {
-          if (secretParam.resourceId && envVar.secret !== secretParam.resourceId) {
-            logger.debug(
-              `Inserted newly created secret into build.SecretEnvVars: ${envVar.key}=${secretParam.resourceId}`,
-            );
-            envVar.secret = secretParam.resourceId;
-          }
+        if (envVar.key.toUpperCase() !== secretParam.name.toUpperCase()) {
+          continue;
+        }
+        if (envVar.secret !== secretParam.resourceId) {
+          logger.debug(
+            `Inserted newly created secret into build.SecretEnvVars: ${envVar.key}=${secretParam.resourceId}`,
+          );
+          envVar.secret = secretParam.resourceId;
         }
       }
     }
