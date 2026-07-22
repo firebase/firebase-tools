@@ -22,9 +22,9 @@ export interface IntervalMetrics {
   endTime: string;
   /** The total count of events in the interval. */
   eventsCount: number;
-  /** The cardinality of distinct users in the set of events. */
+  /** The number of distinct users in the set of events. */
   impactedUsersCount: number;
-  /** Web only. The number of distinct sessions in the set of events. */
+  /** The number of distinct sessions in the set of events. Only computed for web applications. */
   sessionsCount: number;
 }
 
@@ -34,7 +34,7 @@ export interface Version {
   displayVersion?: string;
   /** One display_version can have many build_version. */
   buildVersion?: string;
-  /** Mobile apps only. Compound human-readable string containing both display and build versions. */
+  /** Compound human-readable string containing both display and build versions. Only present for mobile applications. */
   displayName?: string;
   /** Indicates releases which have artifacts that are currently available in the Play Store to the target audience of the track. */
   tracks?: PlayTrack[];
@@ -677,13 +677,7 @@ export interface GetReportRequest {
   pageSize?: number;
   /** A page token, received from a previous calls. */
   pageToken?: string;
-  /**
-   * For interval metrics, in addition to listing the value for the entire time
-   * period as the first element, append timeseries response with one data point
-   * per time grain.
-   * When not specified, metrics is populated with only one value for the entire
-   * interval.
-   */
+  /** Returns one data point per time grain, or a single data point for the entire interval if omitted. */
   granularity?: TimeGranularity;
 }
 
