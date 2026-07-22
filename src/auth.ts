@@ -283,11 +283,14 @@ const getPort = portfinder.getPortPromise;
 // in-memory cache, so we have it for successive calls
 let lastAccessToken: TokensWithExpiration | undefined;
 
-function getCallbackUrl(port?: number): string {
+// Google's OAuth 2.0 loopback flow expects an IP literal rather than "localhost".
+const GOOGLE_LOOPBACK_HOST = "127.0.0.1";
+
+export function getCallbackUrl(port?: number, host = "localhost"): string {
   if (typeof port === "undefined") {
     return "urn:ietf:wg:oauth:2.0:oob";
   }
-  return `http://localhost:${port}`;
+  return `http://${host}:${port}`;
 }
 
 function queryParamString(args: { [key: string]: string | undefined }) {
@@ -534,7 +537,11 @@ async function loginRemotely(): Promise<UserCredentials> {
 }
 
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
-  const callbackUrl = getCallbackUrl(port);
+  // Use the 127.0.0.1 IP literal (not "localhost") for the Google OAuth loopback.
+  // Google's OAuth 2.0 loopback flow expects an IP literal, and on dual-stack
+  // hosts "localhost" can resolve to ::1 while the listener holds the port on
+  // 127.0.0.1 (or vice versa), which leaves `firebase login` hanging.
+  const callbackUrl = getCallbackUrl(port, GOOGLE_LOOPBACK_HOST);
   const authUrl = getLoginUrl(callbackUrl, userHint);
   const successHtml = await readTemplate("loginSuccess.html");
   const tokens = await loginWithLocalhost(
@@ -556,6 +563,8 @@ async function loginWithLocalhostGoogle(port: number, userHint?: string): Promis
 }
 
 async function loginWithLocalhostGitHub(port: number): Promise<string> {
+  // GitHub's OAuth app validates the redirect_uri host against its registered
+  // callback URL, so keep the existing "localhost" host here.
   const callbackUrl = getCallbackUrl(port);
   const authUrl = getGithubLoginUrl(callbackUrl);
   const successHtml = await readTemplate("loginSuccessGithub.html");
@@ -604,6 +613,8 @@ async function loginWithLocalhost<ResultType>(
       return;
     });
 
+    // Bind all interfaces so both 127.0.0.1 (Google redirect) and localhost/::1
+    // (GitHub redirect) can reach the callback server on dual-stack hosts.
     server.listen(port, () => {
       logger.info();
       logger.info("Visit this URL on this device to log in:");
