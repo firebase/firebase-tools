@@ -27,7 +27,7 @@ export function virtualEnvCmd(cwd: string, venvDir: string): { command: string; 
 export function runWithVirtualEnv(
   commandAndArgs: string[],
   cwd: string,
-  envs: Record<string, string>,
+  envs: Record<string, string | undefined>,
   spawnOpts: cp.SpawnOptions = {},
   venvDir = DEFAULT_VENV_DIR,
 ): cp.ChildProcess {

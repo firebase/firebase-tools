@@ -96,7 +96,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
           '"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))"',
         ],
         this.sourceDir,
-        { ...process.env } as Record<string, string>,
+        { ...process.env },
       );
       child.stderr?.on("data", (chunk: Buffer) => {
         const chunkString = chunk.toString();
@@ -152,7 +152,6 @@ export class Delegate implements runtimes.RuntimeDelegate {
   async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
-      ...process.env,
       ...envs,
       ADMIN_PORT: port.toString(),
     };
@@ -162,7 +161,10 @@ export class Delegate implements runtimes.RuntimeDelegate {
         envWithAdminPort,
       )} in ${this.sourceDir}`,
     );
-    const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
+    const childProcess = runWithVirtualEnv(args, this.sourceDir, {
+      ...process.env,
+      ...envWithAdminPort,
+    });
     childProcess.stdout?.on("data", (chunk: Buffer) => {
       logger.info(chunk.toString("utf8"));
     });
