@@ -4,7 +4,7 @@ import * as fs from "fs";
 import { Client } from "../apiv2";
 import { Command } from "../command";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { printNoticeIfEmulated } from "../emulator/commandUtils";
 import { realtimeOriginOrEmulatorOrCustomUrl } from "../database/api";
@@ -52,9 +52,11 @@ export const command = new Command("database:push <path> [infile]")
         body: inStream,
         queryParams: u.searchParams,
       });
-    } catch (err: any) {
-      logger.debug(err);
-      throw new FirebaseError(`Unexpected error while pushing data: ${err}`, { exit: 2 });
+    } catch (err: unknown) {
+      logger.debug(getErrMsg(err));
+      throw new FirebaseError(`Unexpected error while pushing data: ${getErrMsg(err)}`, {
+        exit: 2,
+      });
     }
 
     if (!path.endsWith("/")) {

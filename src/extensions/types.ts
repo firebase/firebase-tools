@@ -2,6 +2,7 @@ import { MemoryOptions } from "../deploy/functions/backend";
 import { Runtime } from "../deploy/functions/runtimes/supported";
 import * as proto from "../gcp/proto";
 import { SpecParamType } from "./extensionsHelper";
+import { isObject } from "../error";
 
 export enum RegistryLaunchStage {
   EXPERIMENTAL = "EXPERIMENTAL",
@@ -61,11 +62,20 @@ export interface PublisherProfile {
   iconUri?: string;
 }
 
+const extensionInstanceState = [
+  "STATE_UNSPECIFIED",
+  "DEPLOYING",
+  "UNINSTALLING",
+  "ACTIVE",
+  "ERRORED",
+  "PAUSED",
+] as const;
+export type ExtensionInstanceState = (typeof extensionInstanceState)[number];
 export interface ExtensionInstance {
   name: string;
   createTime: string;
   updateTime: string;
-  state: "STATE_UNSPECIFIED" | "DEPLOYING" | "UNINSTALLING" | "ACTIVE" | "ERRORED" | "PAUSED";
+  state: ExtensionInstanceState;
   config: ExtensionConfig;
   serviceAccountEmail: string;
   errorStatus?: string;
@@ -76,6 +86,15 @@ export interface ExtensionInstance {
   extensionVersion?: string;
   labels?: Record<string, string>;
 }
+
+export const isExtensionInstance = (value: unknown): value is ExtensionInstance => {
+  if (!isObject(value) || typeof value.name !== "string") {
+    return false;
+  }
+
+  // TODO: complete validation for any fields we use
+  return true;
+};
 
 export interface ExtensionConfig {
   name: string;
@@ -261,10 +280,6 @@ export enum ParamType {
 export interface ParamOption {
   value: string;
   label?: string;
-}
-
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 export const isParam = (param: unknown): param is Param => {

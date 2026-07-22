@@ -34,6 +34,8 @@ export async function generateServiceIdentity(
   try {
     const res = await apiClient.post<unknown, unknown>(
       `projects/${projectNumber}/services/${service}:generateServiceIdentity`,
+      /* body=*/ {},
+      { headers: { "x-goog-user-project": `${projectNumber}` } },
     );
     return res.body as LongRunningOperation<unknown>;
   } catch (err: unknown) {
@@ -65,5 +67,6 @@ export async function generateServiceIdentityAndPoll(
   await poller.pollOperation<void>({
     ...serviceUsagePollerOptions,
     operationResourceName: op.name,
+    headers: { "x-goog-user-project": `${projectNumber}` },
   });
 }

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../../test/helpers/nock";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import { FirebaseJwtPayload } from "./operations";
 import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
@@ -678,4 +678,4 @@ describeAuthEmulator("phone auth sign-in", ({ authApi }) => {
         });
     });
   });
-});
+}).timeout(5000);

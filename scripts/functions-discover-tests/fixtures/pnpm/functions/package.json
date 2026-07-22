@@ -1,9 +1,12 @@
 {
   "name": "pnpm",
   "dependencies": {
-    "firebase-functions": "^5.1.0"
+    "firebase-functions": "^6.4.0"
   },
-  "engines": {
-    "node": "20"
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@firebase/util",
+      "protobufjs"
+    ]
   }
 }

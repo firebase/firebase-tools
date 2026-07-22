@@ -1,13 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
-import fetch from "node-fetch";
 import * as crypto from "crypto";
 import * as os from "os";
 import { FrameworkOptions } from "../integration-helpers/framework";
 const { google } = require("googleapis");
 
 /* Various delays needed when integration test spawns parallel emulator subprocesses. */
-export const TEST_SETUP_TIMEOUT = 60000;
+export const TEST_SETUP_TIMEOUT = 120000;
 export const EMULATORS_SHUTDOWN_DELAY_MS = 5000;
 export const SMALL_FILE_SIZE = 200 * 1024; /* 200 kB */
 // Firebase Emulator config, for starting up emulators

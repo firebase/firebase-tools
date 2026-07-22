@@ -25,7 +25,7 @@ export interface User {
 
 export interface Account {
   user: User;
-  tokens: Tokens;
+  tokens: TokensWithExpiration;
 }
 export interface TokensWithExpiration extends Tokens {
   expires_at?: number;

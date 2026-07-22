@@ -20,7 +20,7 @@ const getTestFiles = () =>
           testFiles[fileName] = path.resolve(__dirname, "suite", file);
         }
         resolve(testFiles);
-      }
+      },
     );
   });
 
@@ -30,12 +30,13 @@ async function getTestConfig() {
   const testConfig = merge(extensionConfig, {
     mode: "development",
     name: "test",
+    parallelism: 20,
     entry: testFiles,
     output: {
       // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
       path: path.resolve(
         __dirname,
-        "../../dist/test/firebase-vscode/src/test/"
+        "../../dist/test/firebase-vscode/src/test/",
       ),
       filename: "[name].js",
       libraryTarget: "commonjs2",

@@ -8,10 +8,13 @@ import { IMPORT_EXPORT_EMULATORS, Emulators, ALL_EMULATORS } from "./types";
 import { EmulatorRegistry } from "./registry";
 import { FirebaseError } from "../error";
 import { EmulatorHub } from "./hub";
+import { Tenant } from "./auth/state";
 import { getDownloadDetails } from "./downloadableEmulators";
 import { DatabaseEmulator } from "./databaseEmulator";
-import * as rimraf from "rimraf";
+import { DataConnectEmulator } from "./dataconnectEmulator";
+import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
+import { dataConnectLocalConnString } from "../api";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -34,17 +37,24 @@ export interface StorageExportMetadata {
   path: string;
 }
 
+export interface DataConnectExportMetadata {
+  version: string;
+  path: string;
+}
+
 export interface ExportMetadata {
   version: string;
   firestore?: FirestoreExportMetadata;
   database?: DatabaseExportMetadata;
   auth?: AuthExportMetadata;
   storage?: StorageExportMetadata;
+  dataconnect?: DataConnectExportMetadata;
 }
 
 export interface ExportOptions {
   path: string;
   initiatedBy: string;
+  targets?: string[];
 }
 
 export class HubExport {
@@ -52,12 +62,17 @@ export class HubExport {
 
   private tmpDir: string;
   private exportPath: string;
+  private exportTargets: string[];
 
   constructor(
     private projectId: string,
     private options: ExportOptions,
   ) {
     this.exportPath = options.path;
+    // Only apply targets if it's explicitly defined. Otherwise, export all.
+    // This makes sure that the behavior does not change for those who use POST
+    // request to export.
+    this.exportTargets = options.targets ?? [...IMPORT_EXPORT_EMULATORS];
     this.tmpDir = fs.mkdtempSync(`firebase-export-${new Date().getTime()}`);
   }
 
@@ -66,12 +81,20 @@ export class HubExport {
     if (!fs.existsSync(metadataPath)) {
       return undefined;
     }
-
-    return JSON.parse(fs.readFileSync(metadataPath, "utf8").toString()) as ExportMetadata;
+    let mdString: string = "";
+    try {
+      mdString = fs.readFileSync(metadataPath, "utf8").toString();
+      return JSON.parse(mdString) as ExportMetadata;
+    } catch (err: unknown) {
+      // JSON parse errors are unreadable. Throw the original.
+      throw new FirebaseError(`Unable to parse metadata file ${metadataPath}: ${mdString}`);
+    }
   }
 
   public async exportAll(): Promise<void> {
-    const toExport = ALL_EMULATORS.filter(shouldExport);
+    const toExport = ALL_EMULATORS.filter(shouldExport).filter((e) =>
+      this.exportTargets.includes(e),
+    );
     if (toExport.length === 0) {
       throw new FirebaseError("No running emulators support import/export.");
     }
@@ -83,7 +106,7 @@ export class HubExport {
       version: EmulatorHub.CLI_VERSION,
     };
 
-    if (shouldExport(Emulators.FIRESTORE)) {
+    if (shouldExport(Emulators.FIRESTORE) && toExport.includes(Emulators.FIRESTORE)) {
       metadata.firestore = {
         version: getDownloadDetails(Emulators.FIRESTORE).version,
         path: "firestore_export",
@@ -92,7 +115,7 @@ export class HubExport {
       await this.exportFirestore(metadata);
     }
 
-    if (shouldExport(Emulators.DATABASE)) {
+    if (shouldExport(Emulators.DATABASE) && toExport.includes(Emulators.DATABASE)) {
       metadata.database = {
         version: getDownloadDetails(Emulators.DATABASE).version,
         path: "database_export",
@@ -100,7 +123,7 @@ export class HubExport {
       await this.exportDatabase(metadata);
     }
 
-    if (shouldExport(Emulators.AUTH)) {
+    if (shouldExport(Emulators.AUTH) && toExport.includes(Emulators.AUTH)) {
       metadata.auth = {
         version: EmulatorHub.CLI_VERSION,
         path: "auth_export",
@@ -108,12 +131,20 @@ export class HubExport {
       await this.exportAuth(metadata);
     }
 
-    if (shouldExport(Emulators.STORAGE)) {
+    if (shouldExport(Emulators.STORAGE) && toExport.includes(Emulators.STORAGE)) {
       metadata.storage = {
         version: EmulatorHub.CLI_VERSION,
         path: "storage_export",
       };
       await this.exportStorage(metadata);
+    }
+
+    if (shouldExport(Emulators.DATACONNECT) && toExport.includes(Emulators.DATACONNECT)) {
+      metadata.dataconnect = {
+        version: EmulatorHub.CLI_VERSION,
+        path: "dataconnect_export",
+      };
+      await this.exportDataConnect(metadata);
     }
 
     // Make sure the export directory exists
@@ -133,7 +164,7 @@ export class HubExport {
     // Remove any existing data in the directory and then swap it with the
     // temp directory.
     logger.debug(`hubExport: swapping ${this.tmpDir} with ${this.exportPath}`);
-    rimraf.sync(this.exportPath);
+    rmSync(this.exportPath, { recursive: true });
     fse.moveSync(this.tmpDir, this.exportPath);
   }
 
@@ -231,10 +262,36 @@ export class HubExport {
       fs.mkdirSync(authExportPath);
     }
 
+    const tenantsRes = await EmulatorRegistry.client(Emulators.AUTH).get<{
+      tenants: Array<Tenant>;
+    }>(`/identitytoolkit.googleapis.com/v2/projects/${this.projectId}/tenants`, {
+      headers: { Authorization: "Bearer owner" },
+    });
+    const tenants = tenantsRes.body.tenants.map((instance: Tenant) => instance.tenantId);
+
+    // Export accounts from other tenants.
+    for (const tenantId of tenants) {
+      const accountsFile = path.join(authExportPath, `accounts-${tenantId}.json`);
+      logger.debug(
+        `Exporting auth users in Project ${this.projectId} ${tenantId} tenant to ${accountsFile}`,
+      );
+      await fetchToFile(
+        {
+          host,
+          port,
+          path: `/identitytoolkit.googleapis.com/v1/projects/${this.projectId}/accounts:batchGet?maxResults=-1&tenantId=${tenantId}`,
+          headers: { Authorization: "Bearer owner" },
+        },
+        accountsFile,
+      );
+    }
+
     // TODO: Shall we support exporting other projects too?
 
     const accountsFile = path.join(authExportPath, "accounts.json");
-    logger.debug(`Exporting auth users in Project ${this.projectId} to ${accountsFile}`);
+    logger.debug(
+      `Exporting auth users in Project ${this.projectId} default tenant to ${accountsFile}`,
+    );
     await fetchToFile(
       {
         host,
@@ -283,6 +340,28 @@ export class HubExport {
       throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
     }
   }
+
+  private async exportDataConnect(metadata: ExportMetadata): Promise<void> {
+    void trackEmulator("emulator_export", {
+      initiated_by: this.options.initiatedBy,
+      emulator_name: Emulators.DATACONNECT,
+    });
+
+    const instance = EmulatorRegistry.get(Emulators.DATACONNECT) as DataConnectEmulator;
+    if (!instance) {
+      throw new FirebaseError(
+        "Unable to export SQL Connect emulator data: the SQL Connect emulator is not running.",
+      );
+    }
+
+    const dataconnectExportPath = path.join(this.tmpDir, metadata.dataconnect!.path);
+    if (fs.existsSync(dataconnectExportPath)) {
+      fse.removeSync(dataconnectExportPath);
+    }
+    fs.mkdirSync(dataconnectExportPath);
+
+    await instance.exportData(dataconnectExportPath);
+  }
 }
 
 function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<void> {
@@ -297,5 +376,11 @@ function fetchToFile(options: http.RequestOptions, path: fs.PathLike): Promise<v
 }
 
 function shouldExport(e: Emulators): boolean {
+  if (e === Emulators.DATACONNECT && dataConnectLocalConnString()) {
+    logger.info(
+      "Skipping export for SQL Connect because FIREBASE_DATACONNECT_POSTGRESQL_STRING is set.",
+    );
+    return false;
+  }
   return IMPORT_EXPORT_EMULATORS.includes(e) && EmulatorRegistry.isRunning(e);
 }

@@ -16,8 +16,12 @@ export interface FirestoreOptions extends Options {
   recursive?: boolean;
   location?: string;
   type?: types.DatabaseType;
-  deleteProtection?: types.DatabaseDeleteProtectionStateOption;
-  pointInTimeRecoveryEnablement?: types.PointInTimeRecoveryEnablementOption;
+  deleteProtection?: types.EnablementOption;
+  pointInTimeRecovery?: types.EnablementOption;
+  realtimeUpdates?: types.EnablementOption;
+  firestoreDataAccess?: types.EnablementOption;
+  mongodbCompatibleDataAccess?: types.EnablementOption;
+  edition?: string;
 
   // backup schedules
   backupSchedule?: string;
@@ -31,6 +35,9 @@ export interface FirestoreOptions extends Options {
   // CMEK
   encryptionType?: EncryptionType;
   kmsKeyName?: string;
+
+  // Clone
+  snapshotTime?: string;
 }
 
 export enum EncryptionType {

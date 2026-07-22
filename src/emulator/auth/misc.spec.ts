@@ -339,6 +339,54 @@ describeAuthEmulator("createSessionCookie", ({ authApi }) => {
 });
 
 describeAuthEmulator("accounts:lookup", ({ authApi }) => {
+  it("should return user by email when privileged", async () => {
+    const { email } = await registerUser(authApi(), {
+      email: "bob@example.com",
+      password: "password",
+    });
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ email: [email] })
+      .then((res) => {
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].email).to.equal(email);
+      });
+  });
+
+  it("should return user by email even when uppercased", async () => {
+    const { email } = await registerUser(authApi(), {
+      email: "foo@example.com",
+      password: "password",
+    });
+    const caplitalizedEmail = email.toUpperCase();
+
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ email: [caplitalizedEmail] })
+      .then((res) => {
+        console.log(res.body.users);
+        expectStatusCode(200, res);
+        expect(res.body.users).to.have.length(1);
+        expect(res.body.users[0].email).to.equal(email);
+      });
+  });
+
+  it("should return empty result when email is not found", async () => {
+    await authApi()
+      .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:lookup`)
+      .set("Authorization", "Bearer owner")
+      .send({ email: ["non-existent-email@example.com"] })
+      .then((res) => {
+        console.log(res.body.users);
+        expectStatusCode(200, res);
+        expect(res.body).not.to.have.property("users");
+      });
+  });
+
   it("should return user by localId when privileged", async () => {
     const { localId } = await registerAnonUser(authApi());
 

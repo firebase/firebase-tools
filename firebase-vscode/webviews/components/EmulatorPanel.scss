@@ -1,5 +1,11 @@
+@import "../globals/index.scss";
+
 .list {
   list-style: none;
+}
+
+.fullWidth {
+  width: 100%;
 }
 
 .list-item {

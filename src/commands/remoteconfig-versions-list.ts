@@ -6,12 +6,11 @@ import { requireAuth } from "../requireAuth";
 import { requirePermissions } from "../requirePermissions";
 import { Version, ListVersionsResult } from "../remoteconfig/interfaces";
 import { datetimeString } from "../utils";
-
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 const tableHead = ["Update User", "Version Number", "Update Time"];
 
-function pushTableContents(table: typeof Table, version: Version): number {
+function pushTableContents(table: Table.Table, version: Version): number {
   return table.push([
     version.updateUser?.email,
     version.versionNumber,
@@ -25,7 +24,7 @@ export const command = new Command("remoteconfig:versions:list")
   )
   .option(
     "--limit <maxResults>",
-    "limit the number of versions being returned. Pass '0' to fetch all versions.",
+    "limit the number of versions being returned. Pass '0' to fetch all versions",
   )
   .before(requireAuth)
   .before(requirePermissions, ["cloudconfig.configs.get"])
@@ -34,10 +33,15 @@ export const command = new Command("remoteconfig:versions:list")
       needProjectId(options),
       options.limit,
     );
-    const table = new Table({ head: tableHead, style: { head: ["green"] } });
-    for (let item = 0; item < versionsList.versions.length; item++) {
-      pushTableContents(table, versionsList.versions[item]);
-    }
-    logger.info(table.toString());
+    printVersionsTable(versionsList);
+
     return versionsList;
   });
+
+export function printVersionsTable(versionsList: ListVersionsResult): void {
+  const table = new Table({ head: tableHead, style: { head: ["green"] } });
+  for (const version of versionsList.versions || []) {
+    pushTableContents(table, version);
+  }
+  logger.info(table.toString());
+}

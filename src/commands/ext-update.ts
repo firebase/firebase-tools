@@ -88,6 +88,7 @@ export const command = new Command("ext:update <extensionInstanceId> [updateSour
 
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: false,

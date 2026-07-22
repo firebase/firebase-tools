@@ -1,4 +1,4 @@
-import { getFirebaseProject } from "./management/projects";
+import { getProject } from "./management/projects";
 import { RC } from "./rc";
 
 import * as clc from "colorette";
@@ -86,7 +86,7 @@ export async function needProjectNumber(options: any): Promise<string> {
     return options.projectNumber;
   }
   const projectId = needProjectId(options);
-  const metadata = await getFirebaseProject(projectId);
+  const metadata = await getProject(projectId);
   options.projectNumber = metadata.projectNumber;
   return options.projectNumber;
 }

@@ -189,6 +189,7 @@ export class EventarcEmulator implements EmulatorInstance {
       .request<CloudEvent<any>, NodeJS.ReadableStream>({
         method: "POST",
         path: `/functions/projects/${trigger.projectId}/triggers/${trigger.triggerName}`,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(event),
         responseType: "stream",
         resolveOnHTTPError: true,

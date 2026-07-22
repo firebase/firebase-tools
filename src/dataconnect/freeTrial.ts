@@ -1,33 +1,41 @@
-import { listInstances } from "../gcp/cloudsql/cloudsqladmin";
-import * as utils from "../utils";
 import * as clc from "colorette";
+
+import { queryTimeSeries, CmQuery } from "../gcp/cloudmonitoring";
 
 export function freeTrialTermsLink(): string {
   return "https://firebase.google.com/pricing";
 }
 
+const FREE_TRIAL_METRIC = "sqladmin.googleapis.com/fdc_lifetime_free_trial_per_project";
+
 // Checks whether there is already a free trial instance on a project.
-export async function checkForFreeTrialInstance(projectId: string): Promise<string | undefined> {
-  const instances = await listInstances(projectId);
-  return instances.find((i) => i.settings.userLabels?.["firebase-data-connect"] === "ft")?.name;
+export async function checkFreeTrialInstanceUsed(projectId: string): Promise<boolean> {
+  const past7d = new Date();
+  past7d.setDate(past7d.getDate() - 7);
+  const query: CmQuery = {
+    filter: `metric.type="serviceruntime.googleapis.com/quota/allocation/usage" AND metric.label.quota_metric = "${FREE_TRIAL_METRIC}"`,
+    "interval.endTime": new Date().toJSON(),
+    "interval.startTime": past7d.toJSON(),
+  };
+  let used = true;
+  try {
+    const ts = await queryTimeSeries(query, projectId);
+    if (ts.length) {
+      used = ts[0].points.some((p) => p.value.int64Value);
+    }
+  } catch (err: any) {
+    // If the metric doesn't exist, free trial is not used.
+    used = false;
+  }
+  return used;
 }
 
-export function printFreeTrialUnavailable(
-  projectId: string,
-  instanceId: string,
-  configYamlPath: string,
-) {
-  utils.logLabeledError(
-    "dataconnect",
-    `Project '${projectId} already has a CloudSQL instance '${instanceId}' on the Firebase Data Connect no-cost trial.`,
-  );
-  const reuseHint =
-    `To use a different database in the same instance, ${clc.bold(`change the ${clc.blue("instanceId")} to "${instanceId}"`)} in ` +
-    `${clc.green(configYamlPath)}. (Also, update the ${clc.blue("database")} field (i.e. DB name in the instance) ` +
-    `and ${clc.blue("location")} as needed.)`;
-  utils.logLabeledBullet("dataconnect", reuseHint);
-  utils.logLabeledBullet(
-    "dataconnect",
-    `Or you may create a new (paid) CloudSQL instance at https://console.cloud.google.com/sql/instances`,
-  );
+export function upgradeInstructions(projectId: string, trialUsed: boolean): string {
+  return `To provision a ${trialUsed ? "paid CloudSQL Postgres instance" : "CloudSQL Postgres instance on the Firebase SQL Connect no-cost trial"}:
+
+  1. Please upgrade to the pay-as-you-go (Blaze) billing plan. Visit the following page:
+
+      https://console.firebase.google.com/project/${projectId}/usage/details
+
+  2. Run ${clc.bold("firebase deploy --only dataconnect")} to deploy your SQL Connect service.`;
 }

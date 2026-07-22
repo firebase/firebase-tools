@@ -55,12 +55,34 @@ export interface BatchRemoveTestersResponse {
   emails: string[];
 }
 
+export interface ListReleasesResponse {
+  releases: Release[];
+  nextPageToken?: string;
+}
+
+export interface ListGroupsResponse {
+  groups: Group[];
+  nextPageToken?: string;
+}
+
 export interface Group {
   name: string;
   displayName: string;
   testerCount?: number;
   releaseCount?: number;
   inviteLinkCount?: number;
+}
+
+export interface ListTestersResponse {
+  testers: Tester[];
+  nextPageToken?: string;
+}
+
+export interface Tester {
+  name: string;
+  displayName?: string;
+  groups?: string[];
+  lastActivityTime: Date;
 }
 
 export interface CreateReleaseTestRequest {
@@ -83,17 +105,6 @@ export interface DeviceExecution {
   inconclusiveReason?: string;
 }
 
-export function mapDeviceToExecution(device: TestDevice): DeviceExecution {
-  return {
-    device: {
-      model: device.model,
-      version: device.version,
-      orientation: device.orientation,
-      locale: device.locale,
-    },
-  };
-}
-
 export interface FieldHints {
   usernameResourceName?: string;
   passwordResourceName?: string;
@@ -109,4 +120,43 @@ export interface ReleaseTest {
   name?: string;
   deviceExecutions: DeviceExecution[];
   loginCredential?: LoginCredential;
+  testCase?: string;
+  aiInstructions?: AiInstructions;
+  displayName?: string;
+  resultsBucket?: string;
+}
+
+export interface AiStep {
+  goal: string;
+  hint?: string;
+  successCriteria?: string;
+}
+
+export interface AiInstructions {
+  steps: AiStep[];
+}
+
+export interface TestCase {
+  name?: string;
+  displayName: string;
+  prerequisiteTestCase?: string;
+  aiInstructions: AiInstructions;
+}
+
+export interface ListTestCasesResponse {
+  testCases: TestCase[];
+  nextPageToken?: string;
+}
+
+export interface UpdateTestCaseRequest {
+  testCase: TestCase;
+  allowMissing?: boolean;
+}
+
+export interface BatchUpdateTestCasesRequest {
+  requests: UpdateTestCaseRequest[];
+}
+
+export interface BatchUpdateTestCasesResponse {
+  testCases: TestCase[];
 }

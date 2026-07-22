@@ -11,7 +11,7 @@ import { needProjectId } from "../projectUtils";
 import { hostingConfig } from "../hosting/config";
 import { listDemoSites, listSites } from "../hosting/api";
 import { getAppConfig, AppPlatform } from "../management/apps";
-import { promptOnce } from "../prompt";
+import { confirm } from "../prompt";
 import { EmulatorInfo, Emulators, EMULATORS_SUPPORTED_BY_USE_EMULATOR } from "../emulator/types";
 import { getCredentialPathAsync } from "../defaultCredentials";
 import { getProjectDefaultAccount } from "../auth";
@@ -48,7 +48,7 @@ import {
   FrameworkContext,
   FrameworksOptions,
 } from "./interfaces";
-import { logWarning } from "../utils";
+import { IS_WINDOWS, logWarning } from "../utils";
 import { ensureTargeted } from "../functions/ensureTargeted";
 import { isDeepStrictEqual } from "util";
 import { resolveProjectPath } from "../projectPath";
@@ -125,6 +125,7 @@ export async function prepareFrameworks(
   emulators: EmulatorInfo[] = [],
 ): Promise<void> {
   const project = needProjectId(context || options);
+  const isDemoProject = Constants.isDemoProject(project);
   const projectRoot = resolveProjectPath(options, ".");
   const account = getProjectDefaultAccount(projectRoot);
   // options.site is not present when emulated. We could call requireHostingSite but IAM permissions haven't
@@ -140,6 +141,9 @@ export async function prepareFrameworks(
   // think this breaks any other situation because we don't need a site during
   // emulation unless we have multiple sites, in which case we're guaranteed to
   // either have site or target set.
+  if (isDemoProject) {
+    options.site = project;
+  }
   if (!options.site) {
     try {
       await requireHostingSite(options);
@@ -207,8 +211,6 @@ export async function prepareFrameworks(
     });
     let firebaseConfig = null;
     if (usesFirebaseJsSdk) {
-      const isDemoProject = Constants.isDemoProject(project);
-
       const sites = isDemoProject ? listDemoSites(project) : await listSites(project);
       const selectedSite = sites.find((it) => it.name && it.name.split("/").pop() === site);
       if (selectedSite) {
@@ -237,8 +239,7 @@ export async function prepareFrameworks(
   You can link a Web app to a Hosting site here https://console.firebase.google.com/project/${project}/settings/general/web`,
             );
             if (!options.nonInteractive) {
-              const continueDeploy = await promptOnce({
-                type: "confirm",
+              const continueDeploy = await confirm({
                 default: true,
                 message: "Would you like to continue with the deploy?",
               });
@@ -525,7 +526,7 @@ ${
 }`.trimStart(),
       );
 
-      const envs = await glob(getProjectPath(".env.*"));
+      const envs = await glob(getProjectPath(".env.*"), { windowsPathsNoEscape: IS_WINDOWS });
 
       await Promise.all(envs.map((path) => copyFile(path, join(functionsDist, basename(path)))));
 

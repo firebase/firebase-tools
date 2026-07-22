@@ -1,11 +1,13 @@
 import { Signal, computed, effect } from "@preact/signals-react";
-import { Disposable, TelemetryLogger } from "vscode";
+import { Disposable } from "vscode";
 import { ServiceAccountUser } from "../types";
 import { User as AuthUser } from "../../../src/types/auth";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { login, logoutUser, requireAuthWrapper } from "../cli";
 import { globalSignal } from "../utils/globals";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
+import * as vscode from "vscode";
+
 type User = ServiceAccountUser | AuthUser;
 
 /** Currently selected user */
@@ -22,16 +24,39 @@ export async function checkLogin() {
 
 export function registerUser(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
+  // For testing purposes.
+  const userMockCommand = vscode.commands.registerCommand(
+    `fdc-graphql.mock.user`,
+    (user: User | null) => {
+      currentUser.value = user;
+      broker.send("notifyUserChanged", { user });
+    },
+  );
+
+  // For testing purposes.
+  const loadingUser = vscode.commands.registerCommand(
+    `fdc-graphql.user`,
+    () => {
+      return isLoadingUser.value;
+    },
+  );
+
+  const getInitialData = async () => {
+    isLoadingUser.value = true;
+    currentUser.value = await checkLogin();
+    isLoadingUser.value = false;
+  };
+
+  getInitialData();
+
   const notifyUserChangedSub = effect(() => {
     broker.send("notifyUserChanged", { user: currentUser.value });
   });
 
   const getInitialDataSub = broker.on("getInitialData", async () => {
-    isLoadingUser.value = true;
-    currentUser.value = await checkLogin();
-    isLoadingUser.value = false;
+    await getInitialData();
   });
 
   const isLoadingSub = effect(() => {
@@ -39,7 +64,7 @@ export function registerUser(
   });
 
   const addUserSub = broker.on("addUser", async () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.LOGIN);
     const { user } = await login();
     currentUser.value = user;
   });
@@ -59,5 +84,7 @@ export function registerUser(
     { dispose: addUserSub },
     { dispose: logoutSub },
     { dispose: isLoadingSub },
+    userMockCommand,
+    loadingUser,
   );
 }

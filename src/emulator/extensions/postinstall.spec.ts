@@ -85,4 +85,4 @@ describe("replaceConsoleLinks", () => {
       expect(postinstall.replaceConsoleLinks(t.input)).to.equal(t.expected());
     });
   }
-});
+}).timeout(2000);

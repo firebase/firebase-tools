@@ -1,6 +1,6 @@
-# Firebase CLI [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm]
+# Firebase CLI and MCP Server [![Actions Status][gh-actions-badge]][gh-actions] [![Node Version][node-badge]][npm] [![NPM version][npm-badge]][npm] [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=firebase&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImZpcmViYXNlLXRvb2xzIiwibWNwIiwiLS1kaXIiLCIuIl19)
 
-The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line.
+The Firebase Command Line Interface (CLI) Tools can be used to test, manage, and deploy your Firebase project from the command line. This repository is also the home of the official Firebase MCP Server. For more information, please see the [Firebase MCP Server documentation](./src/mcp).
 
 - Deploy code and assets to your Firebase projects
 - Run a local web server for your Firebase Hosting site
@@ -87,9 +87,17 @@ These commands let you deploy and interact with your Firebase services.
 
 ### App Distribution Commands
 
-| Command                        | Description            |
-| ------------------------------ | ---------------------- |
-| **appdistribution:distribute** | Upload a distribution. |
+| Command                              | Description                                                                              |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| **appdistribution:distribute**       | Upload a release binary and optionally distribute it to testers and run automated tests. |
+| **appdistribution:testers:list**     | List testers in project.                                                                 |
+| **appdistribution:testers:add**      | Add testers to project (and group, if specified via flag).                               |
+| **appdistribution:testers:remove**   | Remove testers from a project (or group, if specified via flag).                         |
+| **appdistribution:groups:list**      | List groups (of testers).                                                                |
+| **appdistribution:groups:create**    | Create a group (of testers).                                                             |
+| **appdistribution:groups:delete**    | Delete a group (of testers).                                                             |
+| **appdistribution:testcases:export** | Export test cases as a YAML file.                                                        |
+| **appdistribution:testcases:import** | Import test cases from YAML file.                                                        |
 
 ### Auth Commands
 
@@ -161,11 +169,17 @@ Detailed doc is [here](https://firebase.google.com/docs/cli/auth).
 
 ### Remote Config Commands
 
-| Command                        | Description                                                                                                |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **remoteconfig:get**           | Get a Firebase project's Remote Config template.                                                           |
-| **remoteconfig:versions:list** | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
-| **remoteconfig:rollback**      | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
+| Command                             | Description                                                                                                |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **remoteconfig:get**                | Get a Firebase project's Remote Config template.                                                           |
+| **remoteconfig:versions:list**      | Get a list of the most recent Firebase Remote Config template versions that have been published.           |
+| **remoteconfig:rollback**           | Roll back a project's published Remote Config template to the version provided by `--version_number` flag. |
+| **remoteconfig:experiments:get**    | Get a Remote Config experiment.                                                                            |
+| **remoteconfig:experiments:list**   | Get a list of Remote Config experiments                                                                    |
+| **remoteconfig:experiments:delete** | Delete a Remote Config experiment.                                                                         |
+| **remoteconfig:rollouts:get**       | Get a Remote Config rollout.                                                                               |
+| **remoteconfig:rollouts:list**      | Get a list of Remote Config rollouts.                                                                      |
+| **remoteconfig:rollouts:delete**    | Delete a Remote Config rollout.                                                                            |
 
 Use `firebase:deploy --only remoteconfig` to update and publish a project's Firebase Remote Config template.
 

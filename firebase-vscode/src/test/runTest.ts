@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as os from "os";
 
 import { runTests } from "@vscode/test-electron";
 
@@ -10,14 +11,14 @@ async function main() {
 
     // The path to test runner
     // Passed to --extensionTestsPath
-    const extensionTestsPath = path.resolve(__dirname, "./suite/src/core/index");
+    const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
     // Download VS Code, unzip it and run the integration test
+    const tmpUserData = path.join(os.tmpdir(), `vsc-ud-${Math.random().toString(36).substring(2, 7)}`);
     await runTests({
       extensionDevelopmentPath,
       extensionTestsPath,
-      // Workaround for https://github.com/webdriverio-community/wdio-vscode-service/issues/101#issuecomment-1928159399
-      version: "1.85.0",
+      launchArgs: ["--user-data-dir", tmpUserData],
     });
   } catch (err) {
     console.error("Failed to run tests");

@@ -463,6 +463,154 @@ describe("validate", () => {
 
       expect(() => validate.endpointsAreValid(want)).to.not.throw();
     });
+
+    it("disallows unrecognized blocking trigger types", () => {
+      const ep: backend.Endpoint = {
+        platform: "gcfv2",
+        id: "id",
+        region: "us-east1",
+        project: "project",
+        entryPoint: "func",
+        runtime: "nodejs16",
+        blockingTrigger: {
+          eventType: "google.firebase.ailogic.v1.invalidEvent",
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        /Unrecognized blocking trigger type: google.firebase.ailogic.v1.invalidEvent. Please update your CLI/,
+      );
+    });
+
+    it("errors for scheduled functions with timeout > 1800s", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: {
+          schedule: "every 1 minutes",
+        },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        "The following functions have timeouts that exceed the maximum allowed for their trigger typ",
+      );
+    });
+
+    describe("validateLifecycleHooks", () => {
+      it("succeeds when no lifecycle hooks are defined", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("succeeds when a task queue hook targets a valid task queue function", () => {
+        const taskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "mytaskfunc",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(taskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "mytaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.not.throw();
+      });
+
+      it("throws when a task queue hook targets a non-existent function", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nonexistent",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "nonexistent" not found in backend for lifecycle hook "afterFirstDeploy"/,
+        );
+      });
+
+      it("throws when a task queue hook targets a function that is not a task queue function", () => {
+        const nonTaskEp: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "nontaskfunc",
+          httpsTrigger: {},
+        };
+        const want = backend.of(nonTaskEp);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "nontaskfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook "afterFirstDeploy" expects a task queue function\./,
+        );
+      });
+
+      it("throws when a hook targets a GCF Gen 1 function", () => {
+        const v1Ep: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          id: "v1func",
+          platform: "gcfv1",
+          taskQueueTrigger: {},
+        };
+        const want = backend.of(v1Ep);
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            task: {
+              function: "v1func",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Target endpoint "v1func" is a GCF Gen 1 function. Lifecycle hooks are only supported for GCF Gen 2 functions./,
+        );
+      });
+
+      it("throws when a call hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            call: {
+              function: "myfunc",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "call" is not supported in the CLI yet./,
+        );
+      });
+
+      it("throws when an http hook is specified", () => {
+        const want = backend.of({
+          ...ENDPOINT_BASE,
+          id: "myfunc",
+        });
+        want.lifecycleHooks = {
+          afterFirstDeploy: {
+            http: {
+              url: "https://example.com/hook",
+            },
+          },
+        };
+        expect(() => validate.endpointsAreValid(want)).to.throw(
+          /Lifecycle hook action type "http" is not supported in the CLI yet./,
+        );
+      });
+    });
   });
 
   describe("endpointsAreUnqiue", () => {
@@ -660,6 +808,242 @@ describe("validate", () => {
         await validate.secretsAreValid(project, b);
         expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
       }
+    });
+
+    it("passes validation and allows version pinning to a non-latest version given valid secret config with sentinel set", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+              allowVersionPinning: true,
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+      }
+    });
+
+    it("passes validation and forces version ton latest given valid secret config with no sentinel", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "2",
+        state: "ENABLED",
+      });
+
+      for (const platform of ["gcfv1" as const, "gcfv2" as const]) {
+        const b = backend.of({
+          ...ENDPOINT,
+          platform,
+          secretEnvironmentVariables: [
+            {
+              projectId: project,
+              secret: "MY_SECRET",
+              key: "MY_SECRET",
+              version: "1",
+            },
+          ],
+        });
+
+        await validate.secretsAreValid(project, b);
+        expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("2");
+      }
+    });
+
+    it("passes validation for Cloud Run (platform=run) functions with secrets", async () => {
+      secretVersionStub.withArgs(project, secret.name, "latest").resolves({
+        secret,
+        versionId: "1",
+        state: "ENABLED",
+      });
+
+      const b = backend.of({
+        ...ENDPOINT,
+        platform: "run",
+        secretEnvironmentVariables: [
+          {
+            projectId: project,
+            secret: "MY_SECRET",
+            key: "MY_SECRET",
+          },
+        ],
+      });
+
+      await validate.secretsAreValid(project, b);
+      expect(backend.allEndpoints(b)[0].secretEnvironmentVariables![0].version).to.equal("1");
+    });
+  });
+
+  describe("validateTimeoutConfig", () => {
+    const ENDPOINT_BASE: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "id",
+      region: "us-east1",
+      project: "project",
+      entryPoint: "func",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+    };
+
+    it("should allow valid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3600,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should allow function without timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid HTTP v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        httpsTrigger: {},
+        timeoutSeconds: 3601,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Event v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        eventTrigger: {
+          eventType: "google.cloud.storage.object.v1.finalized",
+          eventFilters: { bucket: "b" },
+          retry: false,
+        },
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1800,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Scheduled v2 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        scheduleTrigger: { schedule: "every 5 minutes" },
+        timeoutSeconds: 1801,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+
+    it("should allow valid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 540,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.not.throw();
+    });
+
+    it("should throw on invalid Gen 1 timeout", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "gcfv1",
+        httpsTrigger: {},
+        timeoutSeconds: 541,
+      };
+      expect(() => validate.validateTimeoutConfig([ep])).to.throw(FirebaseError);
+    });
+  });
+
+  describe("checkFiltersIntegrity", () => {
+    const ENDPOINT: backend.Endpoint = {
+      platform: "gcfv2",
+      id: "func",
+      region: "us-central1",
+      project: "project",
+      entryPoint: "entry",
+      runtime: "nodejs16",
+      httpsTrigger: {},
+      codebase: "default",
+    };
+
+    it("should pass if no filters are provided", () => {
+      expect(() => validate.checkFiltersIntegrity({}, undefined)).to.not.throw();
+      expect(() => validate.checkFiltersIntegrity({}, [])).to.not.throw();
+    });
+
+    it("should pass if filters match endpoints", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should pass if partial id matches", () => {
+      const e = { ...ENDPOINT, id: "group-func" };
+      const b = backend.of(e);
+      const filters = [{ codebase: "default", idChunks: ["group"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.not.throw();
+    });
+
+    it("should throw if filter does not match any endpoint", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [{ codebase: "default", idChunks: ["nonexistent"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
+    });
+
+    it("should throw if codebase does not match", () => {
+      const b = backend.of(ENDPOINT); // codebase: "default"
+      const filters = [{ codebase: "other", idChunks: ["func"] }];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: other:func",
+      );
+    });
+
+    it("should throw if one of multiple filters does not match", () => {
+      const b = backend.of(ENDPOINT);
+      const filters = [
+        { codebase: "default", idChunks: ["func"] },
+        { codebase: "default", idChunks: ["nonexistent"] },
+      ];
+      expect(() => validate.checkFiltersIntegrity({ default: b }, filters)).to.throw(
+        "No function matches the filter: default:nonexistent",
+      );
     });
   });
 });

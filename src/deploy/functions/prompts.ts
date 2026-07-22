@@ -2,13 +2,34 @@ import * as clc from "colorette";
 
 import { getFunctionLabel } from "./functionsDeployHelper";
 import { FirebaseError } from "../../error";
-import { confirm, promptOnce } from "../../prompt";
+import { confirm, number, select } from "../../prompt";
 import { logger } from "../../logger";
 import * as backend from "./backend";
 import * as pricing from "./pricing";
 import * as utils from "../../utils";
+import * as artifacts from "../../functions/artifacts";
 import { Options } from "../../options";
 import { EndpointUpdate } from "./release/planner";
+import * as iam from "../../gcp/iam";
+import { LifecycleEvent } from "./backend";
+
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: undefined;
+}
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = ActiveSecurityPlan | InactiveSecurityPlan;
 
 /**
  * Checks if a deployment will create any functions with a failure policy
@@ -57,12 +78,7 @@ export async function promptForFailurePolicies(
       exit: 1,
     });
   }
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
@@ -161,10 +177,7 @@ export async function promptForUnsafeMigration(
   }
 
   for (const eu of unsafeUpdates) {
-    const shouldUpdate = await promptOnce({
-      type: "confirm",
-      name: "confirm",
-      default: false,
+    const shouldUpdate = await confirm({
       message: `[${getFunctionLabel(
         eu.endpoint,
       )}] Would you like to proceed with the unsafe migration?`,
@@ -260,13 +273,157 @@ export async function promptForMinInstances(
 
   utils.logLabeledWarning("functions", warnMessage);
 
-  const proceed = await promptOnce({
-    type: "confirm",
-    name: "confirm",
-    default: false,
-    message: "Would you like to proceed with deployment?",
-  });
+  const proceed = await confirm("Would you like to proceed with deployment?");
   if (!proceed) {
     throw new FirebaseError("Deployment canceled.", { exit: 1 });
   }
+}
+
+/**
+ * Prompt users for days before containers are cleanuped up by the cleanup policy.
+ */
+export async function promptForCleanupPolicyDays(
+  options: Options,
+  locations: string[],
+): Promise<number> {
+  utils.logLabeledWarning(
+    "functions",
+    `No cleanup policy detected for repositories in ${locations.join(", ")}. ` +
+      "This may result in a small monthly bill as container images accumulate over time.",
+  );
+
+  if (options.force) {
+    return artifacts.DEFAULT_CLEANUP_DAYS;
+  }
+
+  if (options.nonInteractive) {
+    throw new FirebaseError(
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locations.length > 1 ? "locations" : "location"} ${locations.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to manually set up a cleanup policy.",
+    );
+  }
+
+  return await number({
+    default: artifacts.DEFAULT_CLEANUP_DAYS,
+    message: "How many days do you want to keep container images before they're deleted?",
+    validate: (days) =>
+      !days || isNaN(days) || days < 0 ? "Please enter a non-negative number" : true,
+  });
+}
+
+/**
+ * Prompts operators for codebase-wide declarative security changes.
+ */
+export async function promptForSecurityChanges(
+  plan: Record<string, CodebasePlan>,
+  options: Options,
+): Promise<void> {
+  if (options.force) {
+    return;
+  }
+  for (const [codebase, codebasePlan] of Object.entries(plan)) {
+    if (codebasePlan.serviceAccountToDelete) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot opt out of declarative security and delete managed service account ${codebasePlan.serviceAccountToDelete} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      const msg = `Deploying this code will opt out of declarative security for codebase ${codebase}. All functions which do not specify a custom service account will use a default service account on next deploy. As a cleanup, the managed service account ${codebasePlan.serviceAccountToDelete} will be deleted. Continue?`;
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+
+    if (codebasePlan.serviceAccountToCreate) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot enable declarative security and create managed service account ${codebasePlan.serviceAccountToCreate} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      const roleNames = await Promise.all(
+        (codebasePlan.rolesToAdd || []).map((r) => iam.getRoleName(r)),
+      );
+      let msg = "This codebase uses declarative security. ";
+      if (roleNames.length > 0) {
+        msg += `It will use the following role(s):\n${roleNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\nContinue?`;
+      } else {
+        msg += "It will not use any additional roles. Continue?";
+      }
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    } else if (
+      (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) ||
+      (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0)
+    ) {
+      if (options.nonInteractive) {
+        throw new FirebaseError(
+          `Cannot modify declarative security roles for codebase ${codebase} in non-interactive mode. Please deploy with --force to confirm.`,
+          { exit: 1 },
+        );
+      }
+      let msg = `Deploying this code will modify the managed service account for codebase ${codebase}.\n`;
+      if (codebasePlan.rolesToAdd && codebasePlan.rolesToAdd.length > 0) {
+        const addedNames = await Promise.all(
+          codebasePlan.rolesToAdd.map((r) => iam.getRoleName(r)),
+        );
+        msg += `All functions in this codebase will be granted the following new role(s):\n${addedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      if (codebasePlan.rolesToRemove && codebasePlan.rolesToRemove.length > 0) {
+        const removedNames = await Promise.all(
+          codebasePlan.rolesToRemove.map((r) => iam.getRoleName(r)),
+        );
+        msg += `All functions in this codebase will lose access to the following role(s):\n${removedNames
+          .map((r) => `* ${r}`)
+          .join("\n")}\n`;
+      }
+      msg += "Continue?";
+      const confirmed = await confirm({ default: false, message: msg });
+      if (!confirmed) {
+        throw new FirebaseError("Deployment canceled by user.");
+      }
+    }
+  }
+}
+
+/**
+ * Prompts the user to select which lifecycle hook to execute when a partial deployment retry is detected.
+ * If no lifecycle hooks are defined in wantBackend, the prompt is skipped and returns undefined.
+ */
+export async function promptForLifecycleEvent(
+  codebase: string,
+  wantBackend: backend.Backend,
+  options?: Options,
+): Promise<LifecycleEvent | undefined> {
+  const hooks = wantBackend.lifecycleHooks || {};
+  const choices: { name: string; value: LifecycleEvent | "skip" }[] = [];
+
+  for (const hookName of Object.keys(hooks)) {
+    choices.push({ name: hookName, value: hookName as LifecycleEvent });
+  }
+
+  if (choices.length === 0) {
+    return undefined;
+  }
+
+  choices.push({ name: "skip (default)", value: "skip" });
+
+  const selection = await select<LifecycleEvent | "skip">({
+    message: `We cannot determine whether this deployment is a first deploy or a redeploy for codebase "${codebase}" because it is recovering from a previous partial failure.`,
+    choices,
+    default: "skip",
+    nonInteractive: options?.nonInteractive,
+  });
+
+  return selection === "skip" ? undefined : selection;
 }

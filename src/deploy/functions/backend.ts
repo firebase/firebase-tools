@@ -1,10 +1,13 @@
 import * as gcf from "../../gcp/cloudfunctions";
 import * as gcfV2 from "../../gcp/cloudfunctionsv2";
+import * as run from "../../gcp/runv2";
 import * as utils from "../../utils";
 import { Runtime } from "./runtimes/supported";
 import { FirebaseError } from "../../error";
 import { Context } from "./args";
-import { flattenArray } from "../../functional";
+import { assertExhaustive, flattenArray } from "../../functional";
+import { logger } from "../../logger";
+import * as experiments from "../../experiments";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -40,8 +43,21 @@ export interface HttpsTriggered {
   httpsTrigger: HttpsTrigger;
 }
 
+/** API agnostic version of a Firebase SQL Connect HTTPS trigger. */
+export interface DataConnectGraphqlTrigger {
+  invoker?: string[] | null;
+  schemaFilePath?: string;
+}
+
+/** Something that has a SQL Connect HTTPS trigger */
+export interface DataConnectGraphqlTriggered {
+  dataConnectGraphqlTrigger: DataConnectGraphqlTrigger;
+}
+
 /** API agnostic version of a Firebase callable function. */
-export type CallableTrigger = Record<string, never>;
+export type CallableTrigger = {
+  genkitAction?: string;
+};
 
 /** Something that has a callable trigger */
 export interface CallableTriggered {
@@ -135,6 +151,7 @@ export interface BlockingTrigger {
   eventType: string;
   options?: Record<string, unknown>;
 }
+
 export interface BlockingTriggered {
   blockingTrigger: BlockingTrigger;
 }
@@ -145,6 +162,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "scheduled";
   } else if (isHttpsTriggered(endpoint)) {
     return "https";
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    return "dataConnectGraphql";
   } else if (isCallableTriggered(endpoint)) {
     return "callable";
   } else if (isEventTriggered(endpoint)) {
@@ -153,9 +172,8 @@ export function endpointTriggerType(endpoint: Endpoint): string {
     return "taskQueue";
   } else if (isBlockingTriggered(endpoint)) {
     return endpoint.blockingTrigger.eventType;
-  } else {
-    throw new Error("Unexpected trigger type for endpoint " + JSON.stringify(endpoint));
   }
+  assertExhaustive(endpoint);
 }
 
 // TODO(inlined): Enum types should be singularly named
@@ -177,9 +195,6 @@ export function isValidMemoryOption(mem: unknown): mem is MemoryOptions {
   return allMemoryOptions.includes(mem as MemoryOptions);
 }
 
-/**
- * Is a given string a valid VpcEgressSettings?
- */
 export function isValidEgressSetting(egress: unknown): egress is VpcEgressSettings {
   return egress === "PRIVATE_RANGES_ONLY" || egress === "ALL_TRAFFIC";
 }
@@ -241,6 +256,7 @@ export function memoryToGen2Cpu(memory: MemoryOptions): number {
 
 export const DEFAULT_CONCURRENCY = 80;
 export const DEFAULT_MEMORY: MemoryOptions = 256;
+export const DEFAULT_TIMEOUT_SECONDS = 60;
 export const MIN_CPU_FOR_CONCURRENCY = 1;
 export const SCHEDULED_FUNCTION_LABEL = Object.freeze({ deployment: "firebase-schedule" });
 
@@ -269,7 +285,8 @@ export interface SecretEnvVar {
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
 
-  // Internal use only. Users cannot pin secret to a specific version.
+  // Internal use only. Version pinning is currently only supported for .env-bound secrets.
+  allowVersionPinning?: boolean;
   version?: string;
 }
 
@@ -291,18 +308,24 @@ export interface ServiceConfiguration {
   maxInstances?: number | null;
   minInstances?: number | null;
   vpc?: {
-    connector: string;
+    connector?: string;
     egressSettings?: VpcEgressSettings | null;
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }> | null;
   } | null;
   ingressSettings?: IngressSettings | null;
   serviceAccount?: string | null;
 }
 
-export type FunctionsPlatform = "gcfv1" | "gcfv2";
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms = ["gcfv1", "gcfv2", "run"] as const;
+export type FunctionsPlatform = (typeof AllFunctionsPlatforms)[number];
 
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | EventTriggered
   | ScheduleTriggered
@@ -312,6 +335,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -339,6 +369,8 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
   return {}.hasOwnProperty.call(triggered, "blockingTrigger");
 }
 
+export type EndpointState = "ACTIVE" | "FAILED" | "DEPLOYING" | "DELETING" | "UNKONWN";
+
 /**
  * An endpoint that serves traffic to a stack of services.
  * For now, this is always a Cloud Function. Future iterations may use complex
@@ -350,7 +382,7 @@ export type Endpoint = TargetIds &
   Triggered & {
     entryPoint: string;
     platform: FunctionsPlatform;
-    runtime: Runtime;
+    runtime?: Runtime;
 
     // Output only
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
@@ -379,12 +411,45 @@ export type Endpoint = TargetIds &
     // This may eventually be different than id because GCF is going to start
     // doing name translations
     runServiceId?: string;
+
+    // State of the endpoint.
+    state?: EndpointState;
+
+    // Fields for Cloud Run platform (for no-build path)
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export interface RequiredAPI {
   reason?: string;
   api: string;
 }
+
+export type LifecycleEvent = "afterFirstDeploy" | "afterRedeploy";
+
+export type LifecycleHook =
+  | {
+      task: {
+        function: string;
+        body?: Record<string, unknown>;
+      };
+    }
+  | {
+      call: {
+        function: string;
+        params?: Record<string, unknown>;
+      };
+    }
+  | {
+      http: {
+        function?: string;
+        url?: string;
+        method?: string;
+        headers?: Record<string, string>;
+        body?: unknown;
+      };
+    };
 
 /** An API agnostic definition of an entire deployment a customer has or wants. */
 export interface Backend {
@@ -395,9 +460,12 @@ export interface Backend {
   environmentVariables: EnvironmentVariables;
   // region -> id -> Endpoint
   endpoints: Record<string, Record<string, Endpoint>>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Partial<Record<LifecycleEvent, LifecycleHook>>;
 }
 
 /**
+
  * A helper utility to create an empty backend.
  * Tests that verify the behavior of one possible resource in a Backend can use
  * this method to avoid compiler errors when new fields are added to Backend.
@@ -435,6 +503,7 @@ export function merge(...backends: Backend[]): Backend {
 
   // Merge all APIs
   const apiToReasons: Record<string, Set<string>> = {};
+  const requiredRoles = new Set<string>();
   for (const b of backends) {
     for (const { api, reason } of b.requiredAPIs) {
       const reasons = apiToReasons[api] || new Set();
@@ -443,11 +512,24 @@ export function merge(...backends: Backend[]): Backend {
       }
       apiToReasons[api] = reasons;
     }
-    // Mere all environment variables.
+    // Merge all environment variables.
     merged.environmentVariables = { ...merged.environmentVariables, ...b.environmentVariables };
+
+    // Merge requiredRoles
+    if (b.requiredRoles) {
+      for (const role of b.requiredRoles) {
+        requiredRoles.add(role);
+      }
+    }
+    if (b.lifecycleHooks) {
+      merged.lifecycleHooks = { ...(merged.lifecycleHooks || {}), ...b.lifecycleHooks };
+    }
   }
   for (const [api, reasons] of Object.entries(apiToReasons)) {
     merged.requiredAPIs.push({ api, reason: Array.from(reasons).join(" ") });
+  }
+  if (requiredRoles.size > 0) {
+    merged.requiredRoles = Array.from(requiredRoles);
   }
   return merged;
 }
@@ -459,7 +541,9 @@ export function merge(...backends: Backend[]): Backend {
  */
 export function isEmptyBackend(backend: Backend): boolean {
   return (
-    Object.keys(backend.requiredAPIs).length === 0 && Object.keys(backend.endpoints).length === 0
+    Object.keys(backend.requiredAPIs).length === 0 &&
+    Object.keys(backend.endpoints).length === 0 &&
+    Object.keys(backend.lifecycleHooks || {}).length === 0
   );
 }
 
@@ -509,49 +593,79 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
  * @param forceRefresh If true, ignores and overwrites the cache. These cases should eventually go away.
  * @return The backend
  */
-export async function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
-  if (!context.loadedExistingBackend || forceRefresh) {
-    await loadExistingBackend(context);
+export function existingBackend(context: Context, forceRefresh?: boolean): Promise<Backend> {
+  if (!context.existingBackendPromise || forceRefresh) {
+    context.existingBackendPromise = loadExistingBackend(context);
   }
-  // loadExisting guarantees the validity of existingBackend and unreachableRegions
-  return context.existingBackend!;
+  return context.existingBackendPromise;
 }
 
-async function loadExistingBackend(ctx: Context): Promise<void> {
-  ctx.loadedExistingBackend = true;
+async function loadExistingBackend(ctx: Context): Promise<Backend> {
   // Note: is it worth deducing the APIs that must have been enabled for this backend to work?
   // it could reduce redundant API calls for enabling the APIs.
-  ctx.existingBackend = {
+  const existingBackend = {
     ...empty(),
   };
-  ctx.unreachableRegions = {
-    gcfV1: [],
-    gcfV2: [],
+  const unreachableRegions = {
+    gcfV1: [] as string[],
+    gcfV2: [] as string[],
+    run: [] as string[],
   };
   const gcfV1Results = await gcf.listAllFunctions(ctx.projectId);
   for (const apiFunction of gcfV1Results.functions) {
     const endpoint = gcf.endpointFromFunction(apiFunction);
-    ctx.existingBackend.endpoints[endpoint.region] =
-      ctx.existingBackend.endpoints[endpoint.region] || {};
-    ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+    existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+    existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
   }
-  ctx.unreachableRegions.gcfV1 = gcfV1Results.unreachable;
+  unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
-  let gcfV2Results;
-  try {
-    gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
+  if (experiments.isEnabled("functionsrunapionly")) {
+    await loadCloudRunServices(ctx, existingBackend, unreachableRegions, false);
+  } else {
+    const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
       const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      ctx.existingBackend.endpoints[endpoint.region] =
-        ctx.existingBackend.endpoints[endpoint.region] || {};
-      ctx.existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
     }
-    ctx.unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+    unreachableRegions.gcfV2 = gcfV2Results.unreachable;
+
+    if (experiments.isEnabled("dartfunctions")) {
+      await loadCloudRunServices(ctx, existingBackend, unreachableRegions, true);
+    }
+  }
+
+  ctx.existingBackend = existingBackend;
+  ctx.unreachableRegions = unreachableRegions;
+  return ctx.existingBackend;
+}
+
+/**
+ * Loads Cloud Run services into the existing backend.
+ * @param ctx Context from the Command library, used for caching.
+ * @param existingBackend The existing backend to load Cloud Run services into.
+ * @param unreachableRegions Object to track unreachable regions.
+ * @param onlyMissing If true, only loads missing Cloud Run services.
+ */
+async function loadCloudRunServices(
+  ctx: Context,
+  existingBackend: Backend,
+  unreachableRegions: { run: string[] },
+  onlyMissing: boolean,
+): Promise<void> {
+  try {
+    const runServices = await run.listServices(ctx.projectId);
+    for (const service of runServices) {
+      const endpoint = run.endpointFromService(service);
+      if (!onlyMissing || !existingBackend.endpoints[endpoint.region]?.[endpoint.id]) {
+        existingBackend.endpoints[endpoint.region] =
+          existingBackend.endpoints[endpoint.region] || {};
+        existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      }
+    }
   } catch (err: any) {
-    if (err.status === 404 && err.message?.toLowerCase().includes("method not found")) {
-      return; // customer has preview enabled without allowlist set
-    }
-    throw err;
+    logger.debug(`Error loading Cloud Run services: ${err.message}`);
+    unreachableRegions.run = ["unknown"];
   }
 }
 
@@ -564,9 +678,7 @@ async function loadExistingBackend(ctx: Context): Promise<void> {
  * @param want The desired backend. Can be backend.empty() to only warn about unavailability.
  */
 export async function checkAvailability(context: Context, want: Backend): Promise<void> {
-  if (!context.loadedExistingBackend) {
-    await loadExistingBackend(context);
-  }
+  await existingBackend(context);
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
   for (const ep of allEndpoints(want)) {
@@ -614,6 +726,15 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "The following Cloud Functions V2 regions are currently unreachable:\n" +
         context.unreachableRegions.gcfV2.join("\n") +
         "\nCloud Functions in these regions won't be deleted.",
+    );
+  }
+
+  if (context.unreachableRegions?.run.length) {
+    utils.logLabeledWarning(
+      "functions",
+      "The following Cloud Run regions are currently unreachable:\n" +
+        context.unreachableRegions.run.join("\n") +
+        "\nCloud Run services in these regions won't be deleted.",
     );
   }
 }
@@ -714,4 +835,22 @@ export function compareFunctions(
     return 1;
   }
   return 0;
+}
+
+/**
+ * Returns the deterministic Cloud Run URI for a given HTTPS function and project number if available based on the DNS segment length.
+ * If the function name is too long to have a deterministic URI, this method returns the non-deterministic URI from the backend instead.
+ * See https://docs.cloud.google.com/run/docs/triggering/https-request#deterministic for more details.
+ */
+export function maybeDeterministicCloudRunUri(httpsFunc: Endpoint, projectNumber: string): string {
+  const serviceName = httpsFunc.id.toLowerCase().replaceAll("_", "-");
+  const dnsSegment = `${serviceName}-${projectNumber}`;
+  // TODO: Add deploy-time validation to prevent service names that would exceed this.
+  if (dnsSegment.length > 63) {
+    logger.info(
+      `Function name ${httpsFunc.id} is too long to have a deterministic Cloud Run URI. Printing the non-deterministic URI instead.`,
+    );
+    return httpsFunc.uri!;
+  }
+  return `https://${serviceName}-${projectNumber}.${httpsFunc.region}.run.app`;
 }

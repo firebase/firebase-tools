@@ -623,10 +623,10 @@ describe("extensionsHelper", () => {
   });
 
   describe("promptForValidInstanceId", () => {
-    let promptStub: sinon.SinonStub;
+    let inputStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptStub = sinon.stub(prompt, "promptOnce");
+      inputStub = sinon.stub(prompt, "input");
     });
 
     afterEach(() => {
@@ -636,38 +636,38 @@ describe("extensionsHelper", () => {
     it("should prompt the user and return if the user provides a valid id", async () => {
       const extensionName = "extension-name";
       const userInput = "a-valid-name";
-      promptStub.returns(userInput);
+      inputStub.resolves(userInput);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput);
-      expect(promptStub).to.have.been.calledOnce;
+      expect(inputStub).to.have.been.calledOnce;
     });
 
     it("should prompt the user again if the provided id is shorter than 6 characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "short";
       const userInput2 = "a-valid-name";
-      promptStub.onCall(0).returns(userInput1);
-      promptStub.onCall(1).returns(userInput2);
+      inputStub.onCall(0).returns(userInput1);
+      inputStub.onCall(1).returns(userInput2);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
-      expect(promptStub).to.have.been.calledTwice;
+      expect(inputStub).to.have.been.calledTwice;
     });
 
     it("should prompt the user again if the provided id is longer than 45 characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "a-really-long-name-that-is-really-longer-than-were-ok-with";
       const userInput2 = "a-valid-name";
-      promptStub.onCall(0).returns(userInput1);
-      promptStub.onCall(1).returns(userInput2);
+      inputStub.onCall(0).returns(userInput1);
+      inputStub.onCall(1).returns(userInput2);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
-      expect(promptStub).to.have.been.calledTwice;
+      expect(inputStub).to.have.been.calledTwice;
     });
 
     it("should prompt the user again if the provided id ends in a -", async () => {
@@ -675,40 +675,40 @@ describe("extensionsHelper", () => {
       const userInput1 = "invalid-";
       const userInput2 = "-invalid";
       const userInput3 = "a-valid-name";
-      promptStub.onCall(0).returns(userInput1);
-      promptStub.onCall(1).returns(userInput2);
-      promptStub.onCall(2).returns(userInput3);
+      inputStub.onCall(0).returns(userInput1);
+      inputStub.onCall(1).returns(userInput2);
+      inputStub.onCall(2).returns(userInput3);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput3);
-      expect(promptStub).to.have.been.calledThrice;
+      expect(inputStub).to.have.been.calledThrice;
     });
 
     it("should prompt the user again if the provided id starts with a number", async () => {
       const extensionName = "extension-name";
       const userInput1 = "1invalid";
       const userInput2 = "a-valid-name";
-      promptStub.onCall(0).returns(userInput1);
-      promptStub.onCall(1).returns(userInput2);
+      inputStub.onCall(0).returns(userInput1);
+      inputStub.onCall(1).returns(userInput2);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
-      expect(promptStub).to.have.been.calledTwice;
+      expect(inputStub).to.have.been.calledTwice;
     });
 
     it("should prompt the user again if the provided id contains illegal characters", async () => {
       const extensionName = "extension-name";
       const userInput1 = "na.name@name";
       const userInput2 = "a-valid-name";
-      promptStub.onCall(0).returns(userInput1);
-      promptStub.onCall(1).returns(userInput2);
+      inputStub.onCall(0).returns(userInput1);
+      inputStub.onCall(1).returns(userInput2);
 
       const instanceId = await extensionsHelper.promptForValidInstanceId(extensionName);
 
       expect(instanceId).to.equal(userInput2);
-      expect(promptStub).to.have.been.calledTwice;
+      expect(inputStub).to.have.been.calledTwice;
     });
   });
 

@@ -5,7 +5,7 @@ import { AppDistributionClient } from "../appdistribution/client";
 import { getEmails, getProjectName } from "../appdistribution/options-parser-util";
 
 export const command = new Command("appdistribution:testers:add [emails...]")
-  .description("add testers to project (and possibly group)")
+  .description("add testers to project (and App Distribution group, if specified via flag)")
   .option("--file <file>", "a path to a file containing a list of tester emails to be added")
   .option(
     "--group-alias <group-alias>",

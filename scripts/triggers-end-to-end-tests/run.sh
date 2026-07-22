@@ -24,7 +24,7 @@ source scripts/set-default-credentials.sh
 for dir in triggers v1 v2; do
   (
     cd scripts/triggers-end-to-end-tests/$dir
-    npm install
+    npm ci
   )
 done
 

@@ -23,6 +23,7 @@ export interface IpConfiguration {
     allowedConsumerProjects: string[];
     pscEnabled: boolean;
   };
+  enablePrivatePathForGoogleCloudServices?: boolean;
 }
 
 export interface InstanceSettings {
@@ -64,6 +65,9 @@ interface InsightsConfig {
 export interface Instance {
   state?: "RUNNABLE" | "SUSPENDED" | "PENDING_DELETE" | "PENDING_CREATE" | "MAINTENANCE" | "FAILED";
   databaseVersion:
+    | "POSTGRES_18"
+    | "POSTGRES_17"
+    | "POSTGRES_16"
     | "POSTGRES_15"
     | "POSTGRES_14"
     | "POSTGRES_13"

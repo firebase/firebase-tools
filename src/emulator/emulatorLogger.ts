@@ -310,6 +310,9 @@ You can probably fix this by running "npm install ${systemLog.data.name}@latest"
       case "BULLET":
         utils.logLabeledBullet(label, text, "info", mergedData);
         break;
+      case "INFO":
+        utils.logLabeledBullet(label, text, "info", mergedData);
+        break;
       case "SUCCESS":
         utils.logLabeledSuccess(label, text, "info", mergedData);
         break;

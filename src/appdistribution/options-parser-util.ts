@@ -4,11 +4,11 @@ import { needProjectNumber } from "../projectUtils";
 import { FieldHints, LoginCredential, TestDevice } from "./types";
 
 /**
- * Takes in comma separated string or a path to a comma/new line separated file
- * and converts the input into an string[] of testers or groups. Value takes precedent
- * over file.
+ * Takes in comma-separated string or a path to a comma- or newline-separated
+ * file and converts the input into an string[].
+ * Value takes precedent over file.
  */
-export function getTestersOrGroups(value: string, file: string): string[] {
+export function parseIntoStringArray(value: string, file = ""): string[] {
   // If there is no value then the file gets parsed into a string to be split
   if (!value && file) {
     ensureFileExists(file);
@@ -23,8 +23,8 @@ export function getTestersOrGroups(value: string, file: string): string[] {
 }
 
 /**
- * Takes in a string[] or a path to a comma/new line separated file of testers emails and
- * returns a string[] of emails.
+ * Takes in a string[] or a path to a comma- or newline-separated file of
+ * testers emails and returns a string[] of emails.
  */
 export function getEmails(emails: string[], file: string): string[] {
   if (emails.length === 0) {
@@ -61,16 +61,28 @@ export function getAppName(options: any): string {
   if (!options.app) {
     throw new FirebaseError("set the --app option to a valid Firebase app id and try again");
   }
-  const appId = options.app;
+  return toAppName(options.app);
+}
+
+const APP_ID_FORMAT = /^\d+:\d+:(android|ios|web):[a-fA-F0-9]+$/;
+
+function validateAppId(appId: string): void {
+  if (!APP_ID_FORMAT.test(appId)) {
+    throw new FirebaseError(`Invalid Firebase app ID: ${appId}`);
+  }
+}
+
+export function toAppName(appId: string): string {
+  validateAppId(appId);
   return `projects/${appId.split(":")[1]}/apps/${appId}`;
 }
 
 /**
  * Takes in comma separated string or a path to a comma/new line separated file
- * and converts the input into a string[] of test device strings. Value takes precedent
- * over file.
+ * and converts the input into a string[] of test device strings.
+ * Value takes precedent over file.
  */
-export function getTestDevices(value: string, file: string): TestDevice[] {
+export function parseTestDevices(value: string, file = ""): TestDevice[] {
   // If there is no value then the file gets parsed into a string to be split
   if (!value && file) {
     ensureFileExists(file);
@@ -174,4 +186,30 @@ export function getLoginCredential(args: {
 
 function isPresenceMismatched(value1?: string, value2?: string) {
   return (value1 && !value2) || (!value1 && value2);
+}
+
+const APP_NAME_REGEX = /^projects\/(?<projectNumber>[^\/]+)\/apps\/(?<appId>[^\/]+)$/;
+const BUCKET_NAME_FORMAT_REGEX = /^[a-z0-9_.-]+$/;
+
+/**
+ * Parses and returns the custom GCS results bucket resource name path format:
+ * `projects/{project_number}/buckets/{bucket}`.
+ */
+export function getResultsBucket(bucket: string | undefined, appName: string): string | undefined {
+  if (!bucket) {
+    return undefined;
+  }
+  let bucketName = bucket;
+  if (bucketName.startsWith("gs://")) {
+    bucketName = bucketName.substring(5);
+  }
+  if (!BUCKET_NAME_FORMAT_REGEX.test(bucketName)) {
+    throw new FirebaseError(`Invalid results bucket format: ${bucket}`);
+  }
+  const match = APP_NAME_REGEX.exec(appName);
+  if (!match || typeof match.groups === "undefined") {
+    throw new FirebaseError(`Invalid app name: ${appName}`);
+  }
+  const { projectNumber } = match.groups;
+  return `projects/${projectNumber}/buckets/${bucketName}`;
 }

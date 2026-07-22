@@ -40,6 +40,7 @@ type WireEventTrigger = build.EventTrigger & {
 
 export type WireEndpoint = build.Triggered &
   Partial<build.HttpsTriggered> &
+  Partial<build.DataConnectGraphqlTriggered> &
   Partial<build.CallableTriggered> &
   Partial<{ eventTrigger: WireEventTrigger }> &
   Partial<build.TaskQueueTriggered> &
@@ -55,20 +56,28 @@ export type WireEndpoint = build.Triggered &
     maxInstances?: build.Field<number>;
     minInstances?: build.Field<number>;
     vpc?: {
-      connector: string;
+      connector?: string;
       egressSettings?: build.VpcEgressSetting | null;
+      networkInterfaces?: Array<{
+        network?: string | null;
+        subnetwork?: string | null;
+        tags?: Array<string> | null;
+      }> | null;
     } | null;
     ingressSettings?: build.IngressSetting | null;
-    serviceAccount?: string | null;
+    serviceAccount?: build.Field<string>;
     // Note: Historically we used "serviceAccountEmail" to refer to a thing that
     // might not be an email (e.g. it might be "myAccount@"" to be project-relative)
     // We now use "serviceAccount" but maintain backwards compatibility in the
     // wire format for the time being.
-    serviceAccountEmail?: string | null;
+    serviceAccountEmail?: build.Field<string>;
     region?: build.ListField;
     entryPoint: string;
     platform?: build.FunctionsPlatform;
     secretEnvironmentVariables?: Array<ManifestSecretEnv> | null;
+    baseImageUri?: string;
+    command?: string[];
+    args?: string[];
   };
 
 export type WireExtension = {
@@ -78,12 +87,32 @@ export type WireExtension = {
   events: string[];
 };
 
+export type WireLifecycleHook = {
+  task?: {
+    function?: string;
+    body?: unknown;
+  };
+  call?: {
+    function?: string;
+    params?: unknown;
+  };
+  http?: {
+    url?: string;
+    function?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: unknown;
+  };
+};
+
 export interface WireManifest {
   specVersion: string;
   params?: params.Param[];
   requiredAPIs?: build.RequiredApi[];
+  requiredRoles?: string[];
   endpoints: Record<string, WireEndpoint>;
   extensions?: Record<string, WireExtension>;
+  lifecycleHooks?: Record<string, WireLifecycleHook>;
 }
 
 /** Returns a Build from a v1alpha1 Manifest. */
@@ -99,12 +128,17 @@ export function buildFromV1Alpha1(
     specVersion: "string",
     params: "array",
     requiredAPIs: "array",
+    requiredRoles: "array",
     endpoints: "object",
     extensions: "object",
+    lifecycleHooks: "object",
   });
   const bd: build.Build = build.empty();
   bd.params = manifest.params || [];
   bd.requiredAPIs = parseRequiredAPIs(manifest);
+  if (manifest.requiredRoles) {
+    bd.requiredRoles = parseRequiredRoles(manifest);
+  }
   for (const id of Object.keys(manifest.endpoints)) {
     const me: WireEndpoint = manifest.endpoints[id];
     assertBuildEndpoint(me, id);
@@ -120,11 +154,64 @@ export function buildFromV1Alpha1(
       bd.extensions[id] = be;
     }
   }
+  if (manifest.lifecycleHooks) {
+    bd.lifecycleHooks = {};
+    for (const id of Object.keys(manifest.lifecycleHooks)) {
+      if (id !== "afterFirstDeploy" && id !== "afterRedeploy") {
+        throw new FirebaseError(`Invalid eventType "${id}" for lifecycle hook.`);
+      }
+      const hook: WireLifecycleHook = manifest.lifecycleHooks[id];
+      if (!hook || typeof hook !== "object") {
+        throw new FirebaseError(`Invalid lifecycle hook configuration for "${id}".`);
+      }
+      if (hook.task) {
+        if (typeof hook.task.function !== "string" || !hook.task.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.task.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.call) {
+        if (typeof hook.call.function !== "string" || !hook.call.function) {
+          throw new FirebaseError(
+            `Invalid target "${hook.call.function || ""}" for lifecycle hook "${id}"`,
+          );
+        }
+      } else if (hook.http) {
+        const target = hook.http.url || hook.http.function;
+        if (typeof target !== "string" || !target) {
+          throw new FirebaseError(`Invalid target "${target || ""}" for lifecycle hook "${id}"`);
+        }
+      } else {
+        throw new FirebaseError(
+          `No action (task, call, or http) specified for lifecycle hook "${id}"`,
+        );
+      }
+
+      bd.lifecycleHooks[id] = hook as backend.LifecycleHook;
+    }
+  }
   return bd;
+}
+
+const ROLE_REGEX =
+  /^(roles\/[a-zA-Z0-9_\.\-]+|projects\/[a-zA-Z0-9\-]+\/roles\/[a-zA-Z0-9_\.\-]+|organizations\/[0-9]+\/roles\/[a-zA-Z0-9_\.\-]+)$/;
+
+function parseRequiredRoles(manifest: WireManifest): string[] {
+  const roles: string[] = manifest.requiredRoles || [];
+  for (const role of roles) {
+    if (typeof role !== "string") {
+      throw new FirebaseError(`Invalid role "${JSON.stringify(role)}". Expected string`);
+    }
+    if (!ROLE_REGEX.test(role)) {
+      throw new FirebaseError(`Invalid IAM role format "${role}".`);
+    }
+  }
+  return Array.from(new Set(roles)); // Deduplicate as requested
 }
 
 function parseRequiredAPIs(manifest: WireManifest): build.RequiredApi[] {
   const requiredAPIs: build.RequiredApi[] = manifest.requiredAPIs || [];
+
   for (const { api, reason } of requiredAPIs) {
     if (typeof api !== "string") {
       throw new FirebaseError(`Invalid api "${JSON.stringify(api)}. Expected string`);
@@ -149,8 +236,8 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     maxInstances: "Field<number>?",
     minInstances: "Field<number>?",
     concurrency: "Field<number>?",
-    serviceAccount: "string?",
-    serviceAccountEmail: "string?",
+    serviceAccount: "Field<string>?",
+    serviceAccountEmail: "Field<string>?",
     timeoutSeconds: "Field<number>?",
     vpc: "object?",
     labels: "object?",
@@ -158,22 +245,39 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
     environmentVariables: "object?",
     secretEnvironmentVariables: "array?",
     httpsTrigger: "object",
+    dataConnectGraphqlTrigger: "object",
     callableTrigger: "object",
     eventTrigger: "object",
     scheduleTrigger: "object",
     taskQueueTrigger: "object",
     blockingTrigger: "object",
     cpu: (cpu) => cpu === null || isCEL(cpu) || cpu === "gcf_gen1" || typeof cpu === "number",
+    baseImageUri: "string?",
+    command: "array?",
+    args: "array?",
   });
   if (ep.vpc) {
     assertKeyTypes(prefix + ".vpc", ep.vpc, {
-      connector: "string",
+      connector: "string?",
       egressSettings: (setting) => setting === null || build.AllVpcEgressSettings.includes(setting),
+      networkInterfaces: "array?",
     });
-    requireKeys(prefix + ".vpc", ep.vpc, "connector");
+    if (!ep.vpc.connector && !ep.vpc.networkInterfaces) {
+      throw new FirebaseError(
+        `VPC settings on ${id} must specify either 'connector' or 'networkInterfaces'`,
+      );
+    }
+    if (ep.vpc.connector && ep.vpc.networkInterfaces) {
+      throw new FirebaseError(
+        `VPC settings on ${id} cannot specify both 'connector' and 'networkInterfaces'`,
+      );
+    }
   }
   let triggerCount = 0;
   if (ep.httpsTrigger) {
+    triggerCount++;
+  }
+  if (ep.dataConnectGraphqlTrigger) {
     triggerCount++;
   }
   if (ep.callableTrigger) {
@@ -205,16 +309,23 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       eventType: "string",
       retry: "Field<boolean>",
       region: "Field<string>",
-      serviceAccount: "string?",
-      serviceAccountEmail: "string?",
+      serviceAccount: "Field<string>?",
+      serviceAccountEmail: "Field<string>?",
       channel: "string",
     });
   } else if (build.isHttpsTriggered(ep)) {
     assertKeyTypes(prefix + ".httpsTrigger", ep.httpsTrigger, {
       invoker: "array?",
     });
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    assertKeyTypes(prefix + ".dataConnectGraphqlTrigger", ep.dataConnectGraphqlTrigger, {
+      invoker: "array?",
+      schemaFilePath: "string?",
+    });
   } else if (build.isCallableTriggered(ep)) {
-    // no-op
+    assertKeyTypes(prefix + ".callableTrigger", ep.callableTrigger, {
+      genkitAction: "string?",
+    });
   } else if (build.isScheduleTriggered(ep)) {
     assertKeyTypes(prefix + ".scheduleTrigger", ep.scheduleTrigger, {
       schedule: "Field<string>",
@@ -263,6 +374,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
       options: "object",
     });
   } else {
+    // TODO: Replace with assertExhaustive, which needs some type magic here because we have an any
     throw new FirebaseError(
       `Do not recognize trigger type for endpoint ${id}. Try upgrading ` +
         "firebase-tools with npm install -g firebase-tools@latest",
@@ -308,8 +420,17 @@ function parseEndpointForBuild(
   } else if (build.isHttpsTriggered(ep)) {
     triggered = { httpsTrigger: {} };
     copyIfPresent(triggered.httpsTrigger, ep.httpsTrigger, "invoker");
+  } else if (build.isDataConnectGraphqlTriggered(ep)) {
+    triggered = { dataConnectGraphqlTrigger: {} };
+    copyIfPresent(triggered.dataConnectGraphqlTrigger, ep.dataConnectGraphqlTrigger, "invoker");
+    copyIfPresent(
+      triggered.dataConnectGraphqlTrigger,
+      ep.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
   } else if (build.isCallableTriggered(ep)) {
     triggered = { callableTrigger: {} };
+    copyIfPresent(triggered.callableTrigger, ep.callableTrigger, "genkitAction");
   } else if (build.isScheduleTriggered(ep)) {
     const st: build.ScheduleTrigger = {
       // TODO: consider adding validation for fields like this that reject
@@ -428,6 +549,9 @@ function parseEndpointForBuild(
     "ingressSettings",
     "environmentVariables",
     "serviceAccount",
+    "baseImageUri",
+    "command",
+    "args",
   );
   convertIfPresent(parsed, ep, "secretEnvironmentVariables", (senvs) => {
     if (!senvs) {

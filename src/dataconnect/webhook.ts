@@ -2,7 +2,6 @@
  * Webhook send API used to notify VSCode of states within
  */
 
-import fetch from "node-fetch";
 import { logger } from "../logger";
 
 export enum VSCODE_MESSAGE {
@@ -20,7 +19,6 @@ export const DEFAULT_PORT = "40001"; // 5 digit default used by vscode;
 
 // If port in use, VSCode will pass a different port to the integrated term through env var
 export const port = process.env.VSCODE_WEBHOOK_PORT || DEFAULT_PORT;
-
 export async function sendVSCodeMessage(body: WebhookBody) {
   const jsonBody = JSON.stringify(body);
 
@@ -33,8 +31,11 @@ export async function sendVSCodeMessage(body: WebhookBody) {
         "x-mantle-admin": "all",
       },
       body: jsonBody,
+      signal: AbortSignal.timeout(3000),
     });
   } catch (e) {
-    logger.debug(`Could not find VSCode notification endpoint: ${e}`);
+    logger.debug(
+      `Could not find VSCode notification endpoint: ${e}. If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.`,
+    );
   }
 }

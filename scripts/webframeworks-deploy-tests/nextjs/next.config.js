@@ -1,9 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   experimental: {
-    serverActions: true,
+    serverActions: {},
   },
   basePath: "/base",
   i18n: {

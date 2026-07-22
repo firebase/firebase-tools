@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import * as sinon from "sinon";
 
 import { FirebaseError } from "./error";
@@ -93,7 +93,7 @@ describe("OperationPoller", () => {
       let error;
       try {
         await pollOperation<string>(pollerOptions);
-      } catch (err: any) {
+      } catch (err: unknown) {
         error = err;
       }
       expect(error).to.be.instanceOf(TimeoutError);

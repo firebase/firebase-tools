@@ -9,7 +9,7 @@ import { requirePermissions } from "../requirePermissions";
 
 export const command = new Command("apphosting:secrets:access <secretName[@version]>")
   .description(
-    "Access secret value given secret and its version. Defaults to accessing the latest version.",
+    "access secret value given secret and its version. Defaults to accessing the latest version",
   )
   .before(requireAuth)
   .before(secretManager.ensureApi)

@@ -124,7 +124,7 @@ export class ExplorerTreeDataProvider
           return { name: f.name, baseType: OPERATION_TYPE.mutation };
         });
     }
-    const field = this._field(element)
+    const field = this._field(element);
     if (field) {
       const unwrapped = this._baseType(field);
       const type = this._unref(unwrapped);

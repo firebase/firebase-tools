@@ -61,7 +61,7 @@ export function initProjectSelection(userEmail: string | null) {
     broker.send("showMessage", {
       msg: "Not logged in",
       options: {
-        modal: true,
+        modal: !process.env.VSCODE_TEST_MODE,
         detail: `Log in to allow project selection. Click "Sign in with Google" in the sidebar.`,
       },
     });

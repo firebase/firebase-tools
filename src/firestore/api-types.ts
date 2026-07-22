@@ -1,3 +1,5 @@
+import { FirebaseError } from "../error";
+
 /**
  * The v1beta1 indexes API used a 'mode' field to represent the indexing mode.
  * This information has now been split into the fields 'arrayConfig' and 'order'.
@@ -15,6 +17,19 @@ export enum QueryScope {
   COLLECTION_GROUP = "COLLECTION_GROUP",
 }
 
+export enum ApiScope {
+  ANY_API = "ANY_API",
+  DATASTORE_MODE_API = "DATASTORE_MODE_API",
+  MONGODB_COMPATIBLE_API = "MONGODB_COMPATIBLE_API",
+}
+
+export enum Density {
+  DENSITY_UNSPECIFIED = "DENSITY_UNSPECIFIED",
+  SPARSE_ALL = "SPARSE_ALL",
+  SPARSE_ANY = "SPARSE_ANY",
+  DENSE = "DENSE",
+}
+
 export enum Order {
   ASCENDING = "ASCENDING",
   DESCENDING = "DESCENDING",
@@ -22,6 +37,28 @@ export enum Order {
 
 export enum ArrayConfig {
   CONTAINS = "CONTAINS",
+}
+
+export enum TextIndexType {
+  TEXT_INDEX_TYPE_UNSPECIFIED = "TEXT_INDEX_TYPE_UNSPECIFIED",
+  TOKENIZED = "TOKENIZED",
+}
+
+export enum TextMatchType {
+  TEXT_MATCH_TYPE_UNSPECIFIED = "TEXT_MATCH_TYPE_UNSPECIFIED",
+  MATCH_GLOBALLY = "MATCH_GLOBALLY",
+}
+
+export interface SearchConfig {
+  textSpec?: {
+    indexSpecs: {
+      indexType: TextIndexType;
+      matchType: TextMatchType;
+    }[];
+  };
+  geoSpec?: {
+    geoJsonIndexingDisabled?: boolean;
+  };
 }
 
 export interface VectorConfig {
@@ -42,13 +79,17 @@ export enum StateTtl {
 }
 
 /**
- * An Index as it is represented in the Firestore v1beta2 indexes API.
+ * An Index as it is represented in the Firestore indexes API.
  */
 export interface Index {
   name?: string;
   queryScope: QueryScope;
   fields: IndexField[];
   state?: State;
+  apiScope?: ApiScope;
+  density?: Density;
+  multikey?: boolean;
+  unique?: boolean;
 }
 
 /**
@@ -58,6 +99,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  searchConfig?: SearchConfig;
   vectorConfig?: VectorConfig;
 }
 
@@ -101,7 +143,7 @@ export enum DatabaseType {
   FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
 }
 
-export enum DatabaseDeleteProtectionStateOption {
+export enum EnablementOption {
   ENABLED = "ENABLED",
   DISABLED = "DISABLED",
 }
@@ -111,21 +153,37 @@ export enum DatabaseDeleteProtectionState {
   DISABLED = "DELETE_PROTECTION_DISABLED",
 }
 
-export enum PointInTimeRecoveryEnablementOption {
-  ENABLED = "ENABLED",
-  DISABLED = "DISABLED",
-}
-
 export enum PointInTimeRecoveryEnablement {
   ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
   DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
 }
 
+export enum RealtimeUpdatesMode {
+  ENABLED = "REALTIME_UPDATES_MODE_ENABLED",
+  DISABLED = "REALTIME_UPDATES_MODE_DISABLED",
+}
+
+export enum DataAccessMode {
+  UNSPECIFIED = "DATA_ACCESS_MODE_UNSPECIFIED",
+  ENABLED = "DATA_ACCESS_MODE_ENABLED",
+  DISABLED = "DATA_ACCESS_MODE_DISABLED",
+}
+
+export enum DatabaseEdition {
+  DATABASE_EDITION_UNSPECIFIED = "DATABASE_EDITION_UNSPECIFIED",
+  STANDARD = "STANDARD",
+  ENTERPRISE = "ENTERPRISE",
+}
+
 export interface DatabaseReq {
   locationId?: string;
   type?: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -134,8 +192,12 @@ export interface CreateDatabaseReq {
   databaseId: string;
   locationId: string;
   type: DatabaseType;
+  databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -154,12 +216,52 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  realtimeUpdatesMode: RealtimeUpdatesMode;
+  firestoreDataAccessMode: DataAccessMode;
+  mongodbCompatibleDataAccessMode: DataAccessMode;
   cmekConfig?: CmekConfig;
+  databaseEdition?: DatabaseEdition;
+}
+
+export interface BulkDeleteDocumentsRequest {
+  // Database to operate. Should be of the form:
+  // `projects/{project_id}/databases/{database_id}`.
+  name: string;
+  // IDs of the collection groups to delete. Unspecified means *all* collection groups.
+  // Each collection group in this list must be unique.
+  collectionIds?: string[];
+}
+
+export type BulkDeleteDocumentsResponse = {
+  name?: string;
+};
+
+export interface Operation {
+  name: string;
+  done: boolean;
+  metadata: Record<string, any>;
+  response?: Record<string, any>;
+  error?: {
+    name: string;
+    message: string;
+    code: number;
+    details?: any[];
+  };
+}
+
+export interface ListOperationsResponse {
+  operations: Operation[];
 }
 
 export interface RestoreDatabaseReq {
   databaseId: string;
   backup: string;
+  encryptionConfig?: EncryptionConfig;
+}
+
+export interface CloneDatabaseReq {
+  databaseId: string;
+  pitrSnapshot: PITRSnapshot;
   encryptionConfig?: EncryptionConfig;
 }
 
@@ -183,3 +285,25 @@ export type EncryptionConfig =
   | UseCustomerManagedEncryption
   | UseSourceEncryption
   | UseGoogleDefaultEncryption;
+
+export interface PITRSnapshot {
+  database: string;
+  snapshotTime: string;
+}
+
+/**
+ * Validates a flag value that is used with EnablementOption
+ */
+export function validateEnablementOption(
+  optionValue: string | undefined,
+  flagName: string,
+  helpCommandText: string,
+) {
+  if (
+    optionValue &&
+    optionValue !== EnablementOption.ENABLED &&
+    optionValue !== EnablementOption.DISABLED
+  ) {
+    throw new FirebaseError(`Invalid value for flag --${flagName}. ${helpCommandText}`);
+  }
+}

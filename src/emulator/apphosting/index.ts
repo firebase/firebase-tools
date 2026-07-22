@@ -1,10 +1,15 @@
-import { EmulatorLogger } from "../emulatorLogger";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "../types";
 import { start as apphostingStart } from "./serve";
+import { logger } from "./developmentServer";
+
 interface AppHostingEmulatorArgs {
+  projectId?: string;
+  backendId?: string;
   options?: any;
   port?: number;
   host?: string;
+  startCommand?: string;
+  rootDirectory?: string;
 }
 
 /**
@@ -12,24 +17,27 @@ interface AppHostingEmulatorArgs {
  * environment for testing App Hosting features locally.
  */
 export class AppHostingEmulator implements EmulatorInstance {
-  private logger = EmulatorLogger.forEmulator(Emulators.APPHOSTING);
   constructor(private args: AppHostingEmulatorArgs) {}
 
   async start(): Promise<void> {
-    this.logger.logLabeled("INFO", Emulators.APPHOSTING, "starting apphosting emulator");
-
-    const { hostname, port } = await apphostingStart();
+    const { hostname, port } = await apphostingStart({
+      projectId: this.args.projectId,
+      backendId: this.args.backendId,
+      port: this.args.port,
+      startCommand: this.args.startCommand,
+      rootDirectory: this.args.rootDirectory,
+    });
     this.args.options.host = hostname;
     this.args.options.port = port;
   }
 
   connect(): Promise<void> {
-    this.logger.logLabeled("INFO", Emulators.APPHOSTING, "connecting apphosting emulator");
+    logger.logLabeled("INFO", Emulators.APPHOSTING, "connecting apphosting emulator");
     return Promise.resolve();
   }
 
   stop(): Promise<void> {
-    this.logger.logLabeled("INFO", Emulators.APPHOSTING, "stopping apphosting emulator");
+    logger.logLabeled("INFO", Emulators.APPHOSTING, "stopping apphosting emulator");
     return Promise.resolve();
   }
 

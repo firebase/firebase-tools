@@ -1,5 +1,6 @@
 import * as backend from "./backend";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -56,21 +57,21 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string): EndpointFilter[] {
+export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
   const fragments = selector.split(":");
   if (fragments.length < 2) {
     // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
     // This could mean 2 things:
     //
-    //   1. Only the codebase selector (i.e. "abc" refers to a codebase).
-    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function id in the default codebase).
-    //
-    // We decide here to create filter for both conditions. This sounds sloppy, but it's only troublesome if there is
-    // conflict between a codebase name as function id in the default codebase.
-    return [
-      { codebase: fragments[0] },
-      { codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) },
-    ];
+    //   1. Codebase selector (i.e. "abc" refers to a codebase).
+    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function in the default codebase).
+    const codebaseNames = config.map((c) => c.codebase);
+    if (codebaseNames.includes(fragments[0])) {
+      // It's a known codebase name
+      return [{ codebase: fragments[0] }];
+    }
+    // It's not a codebase name, assume it is a function id in default codebase
+    return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
   }
   return [
     {
@@ -88,7 +89,7 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
  *
  * We process the input as follows:
  *
- *   "functions:abc": Filter function w/ id "abc" in the default codebase OR all functions in the "func" codebase.
+ *   "functions:abc": Filter function w/ id "abc" in the default codebase OR all functions in the "abc" codebase.
  *   "functions:g1-gfn": Filter function w/ id "gfn" in function group g1 OR all functions in the "g1.gfn" codebase.
  *   "hosting": Ignored.
  *   "functions:python:another-func": Filter function w/ id "another-func" in "python" codebase.
@@ -98,11 +99,15 @@ export function parseFunctionSelector(selector: string): EndpointFilter[] {
  *     2) Grouped functions w/ "abc" prefix in the default codebase?
  *     3) All functions in the "abc" codebase?
  *
- *   Current implementation creates filters that match against all conditions.
+ *   If config is provided and "abc" matches a codebase name, we assume it's a codebase selector.
+ *   Otherwise, we create filters that match against all conditions.
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
-export function getEndpointFilters(options: { only?: string }): EndpointFilter[] | undefined {
+export function getEndpointFilters(
+  options: { only?: string },
+  config: ValidatedConfig,
+): EndpointFilter[] | undefined {
   if (!options.only) {
     return undefined;
   }
@@ -113,7 +118,7 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector));
+        filters.push(...parseFunctionSelector(selector, config));
       }
     }
   }
@@ -130,8 +135,12 @@ export function getEndpointFilters(options: { only?: string }): EndpointFilter[]
 export function getHumanFriendlyPlatformName(platform: backend.Endpoint["platform"]): string {
   if (platform === "gcfv1") {
     return "1st Gen";
+  } else if (platform === "gcfv2") {
+    return "2nd Gen";
+  } else if (platform === "run") {
+    return "Cloud Run";
   }
-  return "2nd Gen";
+  assertExhaustive(platform);
 }
 
 /**

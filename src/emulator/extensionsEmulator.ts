@@ -3,7 +3,7 @@ import * as spawn from "cross-spawn";
 import * as fs from "fs-extra";
 import * as os from "os";
 import * as path from "path";
-const Table = require("cli-table");
+import * as Table from "cli-table3";
 
 import * as planner from "../deploy/extensions/planner";
 import { enableApiURI } from "../ensureApiEnabled";
@@ -11,7 +11,6 @@ import { FirebaseError } from "../error";
 import { getExtensionFunctionInfo } from "../extensions/emulator/optionsHelper";
 import { toExtensionVersionRef } from "../extensions/refs";
 import { Options } from "../options";
-import { shortenUrl } from "../shortenUrl";
 import { Constants } from "./constants";
 import { downloadExtensionVersion } from "./download";
 import { EmulatorLogger } from "./emulatorLogger";
@@ -21,6 +20,7 @@ import { EmulatorRegistry } from "./registry";
 import { EmulatorInfo, EmulatorInstance, Emulators } from "./types";
 import { Build } from "../deploy/functions/build";
 import { extractExtensionsFromBuilds } from "../extensions/runtimes/common";
+import { populateDefaultParams } from "../extensions/paramHelper";
 
 export interface ExtensionEmulatorArgs {
   options: Options;
@@ -267,7 +267,8 @@ export class ExtensionsEmulator implements EmulatorInstance {
     // TODO: This should find package.json, then use that as functionsDir.
     const functionsDir = path.join(extensionDir, "functions");
     // TODO(b/213335255): For local extensions, this should include extensionSpec instead of extensionVersion
-    const env = Object.assign(this.autoPopulatedParams(instance), instance.params);
+    const params = populateDefaultParams(instance.params, await planner.getExtensionSpec(instance));
+    const env = Object.assign(this.autoPopulatedParams(instance), params);
 
     const { extensionTriggers, runtime, nonSecretEnv, secretEnvVariables } =
       await getExtensionFunctionInfo(instance, env);
@@ -318,13 +319,10 @@ export class ExtensionsEmulator implements EmulatorInstance {
         style: { head: ["yellow"] },
       });
       for (const apiToWarn of apisToWarn) {
-        // We use a shortened link here instead of a alias because cli-table behaves poorly with aliased links
-        const enablementUri = await shortenUrl(
-          enableApiURI(this.args.projectId, apiToWarn.apiName),
-        );
+        const enablementUri = enableApiURI(this.args.projectId, apiToWarn.apiName);
         table.push([
           apiToWarn.apiName,
-          apiToWarn.instanceIds,
+          apiToWarn.instanceIds.join(", "),
           apiToWarn.enabled ? "Yes" : "No",
           apiToWarn.enabled ? "" : clc.bold(clc.underline(enablementUri)),
         ]);

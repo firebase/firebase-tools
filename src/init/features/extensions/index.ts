@@ -4,11 +4,12 @@ import { ensure } from "../../../ensureApiEnabled";
 import { Config } from "../../../config";
 import * as manifest from "../../../extensions/manifest";
 import { extensionsOrigin } from "../../../api";
+import { Setup } from "../..";
 
 /**
  * Set up a new firebase project for extensions.
  */
-export async function doSetup(setup: any, config: Config, options: Options): Promise<any> {
+export async function doSetup(setup: Setup, config: Config, options: Options): Promise<any> {
   const projectId = setup?.rcfile?.projects?.default;
   if (projectId) {
     await requirePermissions({ ...options, project: projectId });

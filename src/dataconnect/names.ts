@@ -80,7 +80,7 @@ export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQ
     throw new FirebaseError(`${cloudSQLInstanceName} is not a valid cloudSQL instance name`);
   }
   const toString = () => {
-    return `projects/${projectId}/locations/${location}/services/${instanceId}`;
+    return `projects/${projectId}/locations/${location}/instances/${instanceId}`;
   };
   return {
     projectId,
@@ -88,4 +88,15 @@ export function parseCloudSQLInstanceName(cloudSQLInstanceName: string): cloudSQ
     instanceId,
     toString,
   };
+}
+
+// https://spec.graphql.org/September2025/#sec-Names
+const graphqlNameRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/**
+ * Returns whether the string is a valid GraphQL Name (a.k.a. identifier).
+ * @param name the string to test
+ */
+export function isGraphqlName(name: string): boolean {
+  return graphqlNameRegex.test(name);
 }

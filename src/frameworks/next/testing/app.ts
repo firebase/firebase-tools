@@ -16,6 +16,7 @@ export const appPathRoutesManifest: AppPathRoutesManifest = {
   "/server-action/page": "/server-action",
   "/ssr/page": "/ssr",
   "/server-action/edge/page": "/server-action/edge",
+  "/ppr/page": "/ppr",
 };
 
 export const pagesManifest: PagesManifest = {

@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../../test/helpers/nock";
 
 import { AuthCloudFunction } from "./cloudFunctions";
 import { EmulatorRegistry } from "../registry";
@@ -37,4 +37,4 @@ describe("cloudFunctions", () => {
       expect(nock.isDone()).to.be.true;
     });
   });
-});
+}).timeout(2000);

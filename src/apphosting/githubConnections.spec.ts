@@ -81,20 +81,26 @@ describe("githubConnections", () => {
 
   describe("connect GitHub repo", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
+    const knownConnectionId = "apphosting-github-conn-test123";
 
-    let promptOnceStub: sinon.SinonStub;
+    let promptStub: sinon.SinonStubbedInstance<typeof prompt>;
     let pollOperationStub: sinon.SinonStub;
     let getConnectionStub: sinon.SinonStub;
     let getRepositoryStub: sinon.SinonStub;
     let createConnectionStub: sinon.SinonStub;
     let serviceAccountHasRolesStub: sinon.SinonStub;
     let createRepositoryStub: sinon.SinonStub;
-    let fetchLinkableRepositoriesStub: sinon.SinonStub;
+    let listAllLinkableGitRepositoriesStub: sinon.SinonStub;
     let getProjectNumberStub: sinon.SinonStub;
     let openInBrowserPopupStub: sinon.SinonStub;
+    let listConnectionsStub: sinon.SinonStub;
+    let fetchGitHubInstallationsStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      promptStub = sandbox.stub(prompt);
+      promptStub.input.throws("Unexpected input call");
+      promptStub.search.throws("Unexpected search call");
+      promptStub.confirm.throws("Unexpected confirm call");
       pollOperationStub = sandbox
         .stub(poller, "pollOperation")
         .throws("Unexpected pollOperation call");
@@ -111,7 +117,7 @@ describe("githubConnections", () => {
       createRepositoryStub = sandbox
         .stub(devconnect, "createGitRepositoryLink")
         .throws("Unexpected createGitRepositoryLink call");
-      fetchLinkableRepositoriesStub = sandbox
+      listAllLinkableGitRepositoriesStub = sandbox
         .stub(devconnect, "listAllLinkableGitRepositories")
         .throws("Unexpected listAllLinkableGitRepositories call");
       sandbox.stub(utils, "openInBrowser").resolves();
@@ -121,20 +127,25 @@ describe("githubConnections", () => {
       getProjectNumberStub = sandbox
         .stub(srcUtils, "getProjectNumber")
         .throws("Unexpected getProjectNumber call");
+      listConnectionsStub = sandbox
+        .stub(devconnect, "listAllConnections")
+        .throws("Unexpected listAllConnections call");
+      fetchGitHubInstallationsStub = sandbox
+        .stub(devconnect, "fetchGitHubInstallations")
+        .throws("Unexpected fetchGitHubInstallations call");
+      sandbox.stub(repo, "generateConnectionId").returns(knownConnectionId);
     });
 
     afterEach(() => {
       sandbox.verifyAndRestore();
     });
 
-    const connectionId = `apphosting-${location}`;
-
     const op = {
-      name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
+      name: `projects/${projectId}/locations/${location}/connections/${knownConnectionId}`,
       done: true,
     };
     const pendingConn = {
-      name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
+      name: `projects/${projectId}/locations/${location}/connections/${knownConnectionId}`,
       disabled: false,
       createTime: "0",
       updateTime: "1",
@@ -146,7 +157,7 @@ describe("githubConnections", () => {
       reconciling: false,
     };
     const completeConn = {
-      name: `projects/${projectId}/locations/${location}/connections/${connectionId}`,
+      name: `projects/${projectId}/locations/${location}/connections/${knownConnectionId}`,
       disabled: false,
       createTime: "0",
       updateTime: "1",
@@ -156,6 +167,12 @@ describe("githubConnections", () => {
         actionUri: "https://google.com",
       },
       reconciling: false,
+      githubConfig: {
+        authorizerCredential: {
+          oauthTokenSecretVersion: "secret",
+          username: "test-user",
+        },
+      },
     };
     const repos = {
       repositories: [
@@ -175,18 +192,18 @@ describe("githubConnections", () => {
       getConnectionStub.onSecondCall().resolves(completeConn);
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.onFirstCall().resolves("any key");
+      promptStub.input.onFirstCall().resolves("any key");
 
-      await repo.getOrCreateConnection(projectId, location, connectionId);
-      expect(createConnectionStub).to.be.calledWith(projectId, location, connectionId);
+      await repo.getOrCreateConnection(projectId, location, knownConnectionId);
+      expect(createConnectionStub).to.be.calledWith(projectId, location, knownConnectionId);
     });
 
     it("checks if secret manager admin role is granted for developer connect P4SA when creating an oauth connection", async () => {
-      getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 }));
-      getConnectionStub.onSecondCall().resolves(completeConn);
+      listConnectionsStub.returns([]); // Mock a situation where the oauth connection does not exist.
       createConnectionStub.resolves(op);
       pollOperationStub.resolves(pendingConn);
-      promptOnceStub.resolves("any key");
+      getConnectionStub.onFirstCall().resolves(completeConn);
+      promptStub.input.resolves("any key");
       getProjectNumberStub.onFirstCall().resolves(projectId);
       openInBrowserPopupStub.resolves({ url: "", cleanup: sandbox.stub() });
 
@@ -201,8 +218,8 @@ describe("githubConnections", () => {
 
     it("creates repository if it doesn't exist", async () => {
       getConnectionStub.resolves(completeConn);
-      fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.rejects(new FirebaseError("error", { status: 404 }));
       createRepositoryStub.resolves({ name: "op" });
       pollOperationStub.resolves(repos.repositories[0]);
@@ -210,28 +227,215 @@ describe("githubConnections", () => {
       await repo.getOrCreateRepository(
         projectId,
         location,
-        connectionId,
+        knownConnectionId,
         repos.repositories[0].remoteUri,
       );
       expect(createRepositoryStub).to.be.calledWith(
         projectId,
         location,
-        connectionId,
+        knownConnectionId,
         "test-repo0",
         repos.repositories[0].remoteUri,
       );
     });
 
+    it("links a github repository without an existing oauth connection", async () => {
+      // linkGitHubRepository()
+      // -getOrCreateFullyInstalledGithubConnection()
+      // --getOrCreateOauthConnection
+      listConnectionsStub.onFirstCall().resolves([]); // Oauth connection does not yet exist.
+      createConnectionStub.onFirstCall().resolves({ name: "op" }); // Poll on createsConnection().
+      pollOperationStub.onFirstCall().resolves(completeConn); // Polling returns the connection created.
+      getProjectNumberStub.onFirstCall().resolves(projectId); // Verifies the secret manager grant.
+
+      // -getOrCreateFullyInstalledGithubConnection()
+      // promptGitHubInstallation fetches the installations.
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "installationID",
+          name: "main-user",
+          type: "user",
+        },
+      ]);
+
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      listConnectionsStub.onSecondCall().resolves([completeConn]); // getConnectionForInstallation() returns sentinel connection.
+
+      // -- createFullyInstalledConnection
+      createConnectionStub.onSecondCall().resolves({ name: "op" }); // Poll on createsConnection().
+      pollOperationStub.onSecondCall().resolves(pendingConn); // Polling returns the connection created.
+      promptStub.input.onFirstCall().resolves("enter"); // Enter to signal setup finished.
+      getConnectionStub.onFirstCall().resolves(completeConn); // getConnection() returns a completed connection.
+
+      // linkGitHubRepository()
+      // -promptCloneUri()
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+
+      // linkGitHubRepository()
+      getConnectionStub.onSecondCall().resolves(completeConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location);
+      expect(getConnectionStub).to.be.calledWith(projectId, location, knownConnectionId);
+      expect(createConnectionStub).to.be.calledWith(projectId, location, knownConnectionId);
+
+      expect(r).to.be.deep.equal(repos.repositories[0]); // Returns the correct repo.
+    });
+
+    it("links a github repository using an existing oauth connection", async () => {
+      // linkGitHubRepository()
+      // -getOrCreateFullyInstalledGithubConnection()
+      listConnectionsStub.onFirstCall().resolves([completeConn]); // getOrCreateOauthConnection() Fetches a completed connection.
+
+      // promptGitHubInstallation fetches the installations.
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "installationID",
+          name: "main-user",
+          type: "user",
+        },
+      ]);
+
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      listConnectionsStub.onSecondCall().resolves([completeConn]); // getConnectionForInstallation() returns sentinel connection.
+      createConnectionStub.onFirstCall().resolves({ name: "op" }); // Poll on createsConnection().
+      pollOperationStub.onFirstCall().resolves(completeConn); // Polling returns the oauth stub connection created.
+
+      // linkGitHubRepository()
+      // -promptCloneUri()
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+
+      // linkGitHubRepository()
+      getConnectionStub.onFirstCall().resolves(completeConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.onSecondCall().resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location);
+      expect(getConnectionStub).to.be.calledWith(projectId, location, knownConnectionId);
+      expect(createConnectionStub).to.be.calledOnce;
+      expect(createConnectionStub).to.be.calledWith(projectId, location, knownConnectionId);
+
+      expect(r).to.be.deep.equal(repos.repositories[0]); // Returns the correct repo.
+    });
+
+    it("links a github repository with a new named connection", async () => {
+      const namedConnectionId = `apphosting-named-${location}`;
+
+      const namedCompleteConn = {
+        name: `projects/${projectId}/locations/${location}/connections/${namedConnectionId}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+      };
+
+      // linkGitHubRepository()
+      // -getOrCreateFullyInstalledGithubConnection()
+      getConnectionStub.onFirstCall().rejects(new FirebaseError("error", { status: 404 })); // Named connection does not exist.
+      getConnectionStub.onSecondCall().resolves(completeConn); // Fetches oauth sentinel.
+      // promptGitHubInstallation fetches the installations.
+      fetchGitHubInstallationsStub.resolves([
+        {
+          id: "installationID",
+          name: "main-user",
+          type: "user",
+        },
+      ]);
+      promptStub.search.onFirstCall().resolves("installationID"); // Uses existing Github Account installation.
+      listConnectionsStub.resolves([completeConn]); // Installation has sentinel connection but not the named one.
+
+      // --createFullyInstalledConnection
+      createConnectionStub.onFirstCall().resolves({ name: "op" }); // Poll on createsConnection().
+      pollOperationStub.onFirstCall().resolves(namedCompleteConn); // Polling returns the connection created.
+
+      // linkGitHubRepository()
+      // -promptCloneUri()
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
+      promptStub.search.onSecondCall().resolves(repos.repositories[0].remoteUri); // promptCloneUri() returns repo's clone uri.
+
+      // linkGitHubRepository()
+      getConnectionStub.onThirdCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.onSecondCall().resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location, namedConnectionId);
+
+      expect(r).to.be.deep.equal(repos.repositories[0]);
+      expect(getConnectionStub).to.be.calledWith(projectId, location, namedConnectionId);
+      expect(createConnectionStub).to.be.calledWith(projectId, location, namedConnectionId, {
+        appInstallationId: "installationID",
+        authorizerCredential: completeConn.githubConfig.authorizerCredential,
+      });
+    });
+
+    it("reuses an existing named connection to link github repo", async () => {
+      const namedConnectionId = `apphosting-named-${location}`;
+
+      const namedCompleteConn = {
+        name: `projects/${projectId}/locations/${location}/connections/${namedConnectionId}`,
+        disabled: false,
+        createTime: "0",
+        updateTime: "1",
+        installationState: {
+          stage: "COMPLETE",
+          message: "complete",
+          actionUri: "https://google.com",
+        },
+        reconciling: false,
+      };
+
+      // linkGitHubRepository()
+      // -getOrCreateFullyInstalledGithubConnection()
+      getConnectionStub.onFirstCall().resolves(namedCompleteConn); // Named connection already exists.
+
+      // -promptCloneUri()
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories); // fetchRepositoryCloneUris() returns repos
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri); // Selects the repo's clone uri.
+
+      // linkGitHubRepository()
+      getConnectionStub.onSecondCall().resolves(namedCompleteConn); // getOrCreateConnection() returns a completed connection.
+
+      // -getOrCreateRepository()
+      getRepositoryStub.rejects(new FirebaseError("error", { status: 404 })); // Repo not yet created.
+      createRepositoryStub.resolves({ name: "op" }); // Poll on createGitRepositoryLink().
+      pollOperationStub.resolves(repos.repositories[0]); // Polling returns the gitRepoLink.
+
+      const r = await repo.linkGitHubRepository(projectId, location, namedConnectionId);
+
+      expect(r).to.be.deep.equal(repos.repositories[0]);
+      expect(getConnectionStub).to.be.calledWith(projectId, location, namedConnectionId);
+      expect(getConnectionStub).to.not.be.calledWith(projectId, location, knownConnectionId);
+      expect(listConnectionsStub).to.not.be.called;
+      expect(createConnectionStub).to.not.be.called;
+    });
+
     it("re-uses existing repository it already exists", async () => {
       getConnectionStub.resolves(completeConn);
-      fetchLinkableRepositoriesStub.resolves(repos);
-      promptOnceStub.onFirstCall().resolves(repos.repositories[0].remoteUri);
+      listAllLinkableGitRepositoriesStub.resolves(repos.repositories);
+      promptStub.search.onFirstCall().resolves(repos.repositories[0].remoteUri);
       getRepositoryStub.resolves(repos.repositories[0]);
 
       const r = await repo.getOrCreateRepository(
         projectId,
         location,
-        connectionId,
+        knownConnectionId,
         repos.repositories[0].remoteUri,
       );
       expect(r).to.be.deep.equal(repos.repositories[0]);
@@ -412,7 +616,7 @@ describe("githubConnections", () => {
         appInstallationId: "installation-3",
       };
 
-      listConnectionsStub.resolves([mockConn1, mockConn2, mockConn3, mockConn4]);
+      listConnectionsStub.onFirstCall().resolves([mockConn1, mockConn2, mockConn3, mockConn4]);
 
       const matchingConnection = await repo.getConnectionForInstallation(
         projectId,
@@ -436,7 +640,7 @@ describe("githubConnections", () => {
         appInstallationId: "installation-2",
       };
 
-      listConnectionsStub.resolves([mockConn1, mockConn2]);
+      listConnectionsStub.onFirstCall().resolves([mockConn1, mockConn2]);
 
       const matchingConnection = await repo.getConnectionForInstallation(
         projectId,
@@ -450,13 +654,13 @@ describe("githubConnections", () => {
   describe("ensureSecretManagerAdminGrant", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let confirmStub: sinon.SinonStub;
     let serviceAccountHasRolesStub: sinon.SinonStub;
     let addServiceAccountToRolesStub: sinon.SinonStub;
     let generateP4SAStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      confirmStub = sandbox.stub(prompt, "confirm").throws("Unexpected confirm call");
       serviceAccountHasRolesStub = sandbox.stub(rm, "serviceAccountHasRoles");
       sandbox.stub(srcUtils, "getProjectNumber").resolves(projectId);
       addServiceAccountToRolesStub = sandbox.stub(rm, "addServiceAccountToRoles");
@@ -476,12 +680,12 @@ describe("githubConnections", () => {
         `service-${projectId}@gcp-sa-devconnect.iam.gserviceaccount.com`,
         ["roles/secretmanager.admin"],
       );
-      expect(promptOnceStub).to.not.be.called;
+      expect(confirmStub).to.not.be.called;
     });
 
     it("prompts user if the developer connect P4SA does not have secretmanager.admin permissions", async () => {
       serviceAccountHasRolesStub.resolves(false);
-      promptOnceStub.resolves(true);
+      confirmStub.resolves(true);
       addServiceAccountToRolesStub.resolves();
 
       await repo.ensureSecretManagerAdminGrant(projectId);
@@ -492,12 +696,12 @@ describe("githubConnections", () => {
         ["roles/secretmanager.admin"],
       );
 
-      expect(promptOnceStub).to.be.called;
+      expect(confirmStub).to.be.called;
     });
 
     it("tries to generate developer connect P4SA if adding role throws an error", async () => {
       serviceAccountHasRolesStub.resolves(false);
-      promptOnceStub.resolves(true);
+      confirmStub.resolves(true);
       generateP4SAStub.resolves();
       addServiceAccountToRolesStub.onFirstCall().throws({ code: 400, status: 400 });
       addServiceAccountToRolesStub.onSecondCall().resolves();
@@ -510,17 +714,17 @@ describe("githubConnections", () => {
         ["roles/secretmanager.admin"],
       ).calledOnce;
       expect(generateP4SAStub).calledOnce;
-      expect(promptOnceStub).to.be.called;
+      expect(confirmStub).to.be.called;
     });
   });
   describe("promptGitHubBranch", () => {
     const sandbox: sinon.SinonSandbox = sinon.createSandbox();
 
-    let promptOnceStub: sinon.SinonStub;
+    let searchStub: sinon.SinonStub;
     let listAllBranchesStub: sinon.SinonStub;
 
     beforeEach(() => {
-      promptOnceStub = sandbox.stub(prompt, "promptOnce").throws("Unexpected promptOnce call");
+      searchStub = sandbox.stub(prompt, "search").throws("Unexpected search call");
       listAllBranchesStub = sandbox
         .stub(devconnect, "listAllBranches")
         .throws("Unexpected listAllBranches call");
@@ -533,7 +737,7 @@ describe("githubConnections", () => {
     it("prompts user for branch", async () => {
       listAllBranchesStub.returns(new Set(["main", "test1"]));
 
-      promptOnceStub.onFirstCall().returns("main");
+      searchStub.onFirstCall().returns("main");
       const testRepoLink = {
         name: "test",
         cloneUri: "/test",
@@ -544,23 +748,6 @@ describe("githubConnections", () => {
         uid: "",
       };
       await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("main");
-    });
-
-    it("re-prompts if user enters a branch that does not exist in given repo", async () => {
-      listAllBranchesStub.returns(new Set(["main", "test1"]));
-
-      promptOnceStub.onFirstCall().returns("not-main");
-      promptOnceStub.onSecondCall().returns("test1");
-      const testRepoLink = {
-        name: "test",
-        cloneUri: "/test",
-        createTime: "",
-        updateTime: "",
-        deleteTime: "",
-        reconciling: false,
-        uid: "",
-      };
-      await expect(repo.promptGitHubBranch(testRepoLink)).to.eventually.equal("test1");
     });
   });
 });

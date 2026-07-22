@@ -1,4 +1,4 @@
-import { VALID_DEPLOY_TARGETS } from "./commands/deploy";
+import { VALID_DEPLOY_TARGETS } from "./deploy";
 import { FirebaseError } from "./error";
 import { Options } from "./options";
 
@@ -30,6 +30,7 @@ const FILTERABLE_TARGETS = new Set([
   "storage",
   "database",
   "dataconnect",
+  "apphosting",
 ]);
 
 /**

@@ -1,4 +1,6 @@
-import { FirebaseError } from "../../error";
+import * as clc from "colorette";
+
+import { FirebaseError, getErrStatus, getError } from "../../error";
 import * as iam from "../../gcp/iam";
 import * as gcsm from "../../gcp/secretManager";
 import * as gcb from "../../gcp/cloudbuild";
@@ -8,6 +10,10 @@ import { FIREBASE_MANAGED } from "../../gcp/secretManager";
 import { isFunctionsManaged } from "../../gcp/secretManager";
 import * as utils from "../../utils";
 import * as prompt from "../../prompt";
+import { Secret } from "../yaml";
+import * as dialogs from "../../apphosting/secrets/dialogs";
+import * as config from "../../apphosting/config";
+import { getProject } from "../../management/projects";
 
 /** Interface for holding the service account pair for a given Backend. */
 export interface ServiceAccounts {
@@ -41,10 +47,10 @@ export function toMulti(accounts: ServiceAccounts): MultiServiceAccounts {
  * Finds the explicit service account used for a backend or, for legacy cases,
  * the defaults for GCB and compute.
  */
-export function serviceAccountsForBackend(
+export async function serviceAccountsForBackend(
   projectNumber: string,
   backend: apphosting.Backend,
-): ServiceAccounts {
+): Promise<ServiceAccounts> {
   if (backend.serviceAccount) {
     return {
       buildServiceAccount: backend.serviceAccount,
@@ -52,8 +58,8 @@ export function serviceAccountsForBackend(
     };
   }
   return {
-    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber),
-    runServiceAccount: gce.getDefaultServiceAccount(projectNumber),
+    buildServiceAccount: gcb.getDefaultServiceAccount(projectNumber), // TOOD: Look this up via API
+    runServiceAccount: await gce.getDefaultServiceAccount(projectNumber),
   };
 }
 
@@ -90,21 +96,21 @@ export async function grantSecretAccess(
   let existingBindings;
   try {
     existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
       `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      { original: getError(err) },
     );
   }
 
+  const updatedBindings = existingBindings.concat(newBindings);
   try {
-    // TODO: Merge with existing bindings with the same role
-    const updatedBindings = existingBindings.concat(newBindings);
     await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
-  } catch (err: any) {
+  } catch (err: unknown) {
     throw new FirebaseError(
-      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
-      { original: err },
+      `Failed to set IAM bindings ${JSON.stringify(newBindings)} on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+        "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+      { original: getError(err) },
     );
   }
 
@@ -112,11 +118,189 @@ export async function grantSecretAccess(
 }
 
 /**
+ * Grants the following users or groups access to the provided secret.
+ */
+export async function grantEmailsSecretAccess(
+  projectId: string,
+  secretNames: string[],
+  emails: string[],
+): Promise<void> {
+  // This feels like a hack, but it's actually sorta taking advantage of an escalation of privilege in Google IAM.
+  // The correct way to determine if an email address is a user or group is to use the Google Admin API
+  // (GET e.g. admin.googleapis.com/admin/directory/v1/users/<email> or GET admin.googleapis.com/admin/driectory/v1/groups/<email>)
+  // but that would require us to have admin permissions on GMail for example. Fortunately, IAM seems to give us well formed errors
+  // that dictate what type of role the email address should have been bound with. This seems... like a design mistake. If they knew
+  // already, why not just accept the value without leaking its type?
+  // Note: we keep typeGuesses outside of the loop so that we learn the type of principal an email is once across all secrets.
+  const typeGuesses = Object.fromEntries(emails.map((email) => [email, "user"]));
+  for (const secretName of secretNames) {
+    let existingBindings;
+    try {
+      existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
+    } catch (err: unknown) {
+      throw new FirebaseError(
+        `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+          "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+        { original: getError(err) },
+      );
+    }
+
+    do {
+      try {
+        const newBindings: iam.Binding[] = [
+          {
+            role: "roles/secretmanager.secretAccessor",
+            members: Object.entries(typeGuesses).map(([email, type]) => `${type}:${email}`),
+          },
+        ];
+        const updatedBindings = existingBindings.concat(newBindings);
+        await gcsm.setIamPolicy({ projectId, name: secretName }, updatedBindings);
+        break;
+      } catch (err: any) {
+        if (!(err instanceof FirebaseError)) {
+          throw new FirebaseError(
+            `Unexpected error updating IAM bindings on secret: ${secretName}`,
+            {
+              original: getError(err),
+            },
+          );
+        }
+        const match = /Principal (.*) is of type "([^"]+)"/.exec(err.message);
+        if (!match) {
+          throw new FirebaseError(
+            `Failed to set IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
+            { original: getError(err) },
+          );
+        }
+        typeGuesses[match[1]] = match[2];
+        continue;
+      }
+    } while (true);
+
+    utils.logSuccess(`Successfully set IAM bindings on secret ${secretName}.\n`);
+  }
+}
+
+/**
+ * Revokes the backend service accounts' access permissions from the provided secret.
+ */
+export async function revokeSecretAccess(
+  projectId: string,
+  secretName: string,
+  accounts: MultiServiceAccounts,
+): Promise<void> {
+  const bindingsToRevoke: iam.Binding[] = [
+    {
+      role: "roles/secretmanager.secretAccessor",
+      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
+        (sa) => `serviceAccount:${sa}`,
+      ),
+    },
+    {
+      role: "roles/secretmanager.viewer",
+      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+    },
+  ];
+
+  await revokeSecretBindings(projectId, secretName, bindingsToRevoke);
+}
+
+/**
+ * Revokes the following users or groups access from the provided secrets.
+ */
+export async function revokeEmailsSecretAccess(
+  projectId: string,
+  secretNames: string[],
+  emails: string[],
+): Promise<void> {
+  const bindingsToRevoke: iam.Binding[] = [
+    {
+      role: "roles/secretmanager.secretAccessor",
+      members: emails.flatMap((email) => [`user:${email}`, `group:${email}`]),
+    },
+  ];
+
+  for (const secretName of secretNames) {
+    await revokeSecretBindings(projectId, secretName, bindingsToRevoke);
+  }
+}
+
+async function revokeSecretBindings(
+  projectId: string,
+  secretName: string,
+  bindingsToRevoke: iam.Binding[],
+): Promise<void> {
+  let existingBindings: iam.Binding[];
+  try {
+    existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
+      { original: getError(err) },
+    );
+  }
+
+  const removalsByRole = new Map<string, Set<string>>();
+
+  for (const binding of bindingsToRevoke) {
+    let members = removalsByRole.get(binding.role);
+    if (!members) {
+      members = new Set<string>();
+      removalsByRole.set(binding.role, members);
+    }
+
+    for (const member of binding.members) {
+      members.add(member);
+    }
+  }
+
+  let updated = false;
+  const bindings: iam.Binding[] = [];
+
+  for (const binding of existingBindings) {
+    const removals = removalsByRole.get(binding.role);
+
+    if (!removals || binding.condition) {
+      bindings.push(binding);
+      continue;
+    }
+
+    const members = binding.members.filter((member) => !removals.has(member));
+    if (members.length !== binding.members.length) {
+      updated = true;
+    }
+
+    if (members.length) {
+      bindings.push({ ...binding, members });
+    } else {
+      updated = true;
+    }
+  }
+
+  if (!updated) {
+    utils.logSuccess(`No matching IAM bindings found on secret ${secretName}.\n`);
+    return;
+  }
+
+  try {
+    await gcsm.setIamPolicy({ projectId, name: secretName }, bindings);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to revoke IAM bindings ${JSON.stringify(bindingsToRevoke)} on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+        "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+      { original: getError(err) },
+    );
+  }
+
+  utils.logSuccess(`Successfully revoked IAM bindings on secret ${secretName}.\n`);
+}
+
+/**
  * Ensures a secret exists for use with app hosting, optionally locked to a region.
  * If a secret exists, we verify the user is not trying to change the region and verifies a secret
  * is not being used for both functions and app hosting as their garbage collection is incompatible
  * (client vs server-side).
- * @returns true if a secret was created, false if a secret already existed, and null if a user aborts.
+ * @return true if a secret was created, false if a secret already existed, and null if a user aborts.
  */
 export async function upsertSecret(
   project: string,
@@ -126,9 +310,9 @@ export async function upsertSecret(
   let existing: gcsm.Secret;
   try {
     existing = await gcsm.getSecret(project, secret);
-  } catch (err: any) {
-    if (err.status !== 404) {
-      throw new FirebaseError("Unexpected error loading secret", { original: err });
+  } catch (err: unknown) {
+    if (getErrStatus(err) !== 404) {
+      throw new FirebaseError("Unexpected error loading secret", { original: getError(err) });
     }
     await gcsm.createSecret(project, secret, gcsm.labels("apphosting"), location);
     return true;
@@ -163,4 +347,200 @@ export async function upsertSecret(
   // TODO: consider whether we should prompt a user who has an unmanaged secret to enroll in version control.
   // This may not be a great idea until version control is actually implemented.
   return false;
+}
+
+/**
+ * Matches a fully qualified secret or version name, e.g.
+ * projects/my-project/secrets/my-secret/versions/1
+ * projects/my-project/secrets/my-secret/versions/latest
+ * projects/my-project/secrets/my-secret
+ */
+const secretResourceRegex =
+  /^projects\/([^/]+)\/secrets\/([^/]+)(?:\/versions\/((?:latest)|\d+))?$/;
+
+/**
+ * Matches a shorthand for a project-relative secret, with optional version, e.g.
+ * my-secret
+ * my-secret@1
+ * my-secret@latest
+ */
+const secretShorthandRegex = /^([^/@]+)(?:@((?:latest)|\d+))?$/;
+
+/**
+ * Resolves a secret name into its plaintext value using the Secret Manager access API.
+ * Supports both fully qualified resource names and shorthand strings (e.g. `secret@version`).
+ */
+export async function loadSecret(project: string | undefined, name: string): Promise<string> {
+  let projectId: string;
+  let secretId: string;
+  let version: string;
+  const match = secretResourceRegex.exec(name);
+  if (match) {
+    projectId = match[1];
+    secretId = match[2];
+    version = match[3] || "latest";
+  } else {
+    const match = secretShorthandRegex.exec(name);
+    if (!match) {
+      throw new FirebaseError(`Invalid secret name: ${name}`);
+    }
+    if (!project) {
+      throw new FirebaseError(
+        `Cannot load secret ${match[1]} without a project. ` +
+          `Please use ${clc.bold("firebase use")} or pass the --project flag.`,
+      );
+    }
+    projectId = project;
+    secretId = match[1];
+    version = match[2] || "latest";
+  }
+  try {
+    return await gcsm.accessSecretVersion(projectId, secretId, version);
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError) {
+      const original = err.original;
+      if (typeof original === "object" && original !== null) {
+        if (
+          (original as any).code === 403 ||
+          (original as any).context?.response?.statusCode === 403
+        ) {
+          utils.logLabeledError(
+            "apphosting",
+            `Permission denied to access secret ${secretId}. Use ` +
+              `${clc.bold("firebase apphosting:secrets:grantaccess")} to get permissions.`,
+          );
+        }
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Fetches secrets from Google Secret Manager and returns their values in plain text.
+ */
+export async function fetchSecrets(
+  projectId: string,
+  secrets: Secret[],
+): Promise<Map<string, string>> {
+  let secretsKeyValuePairs: Map<string, string>;
+
+  try {
+    const secretPromises: Promise<[string, string]>[] = secrets.map(async (secretConfig) => {
+      const [name, version] = getSecretNameParts(secretConfig.secret!);
+
+      const value = await gcsm.accessSecretVersion(projectId, name, version);
+      return [secretConfig.variable, value] as [string, string];
+    });
+
+    const secretEntries = await Promise.all(secretPromises);
+    secretsKeyValuePairs = new Map(secretEntries);
+  } catch (e: any) {
+    throw new FirebaseError(`Error exporting secrets`, {
+      original: e,
+    });
+  }
+
+  return secretsKeyValuePairs;
+}
+
+/**
+ * secret expected to be in format "myApiKeySecret@5",
+ * "projects/test-project/secrets/secretID", or
+ * "projects/test-project/secrets/secretID/versions/5"
+ */
+export function getSecretNameParts(secret: string): [string, string] {
+  let [name, version] = secret.split("@");
+  if (!version) {
+    version = "latest";
+  }
+
+  return [name, version];
+}
+
+/**
+ * Action for the apphosting:secrets:set command.
+ */
+export async function apphostingSecretsSetAction(
+  secretName: string,
+  projectId: string,
+  projectNumber?: string,
+  location?: string,
+  dataFile?: string,
+  nonInteractive?: boolean,
+): Promise<void> {
+  if (!projectNumber) {
+    projectNumber = (await getProject(projectId)).projectNumber;
+  }
+  const created = await upsertSecret(projectId, secretName, location);
+  if (created === null) {
+    return;
+  } else if (created) {
+    utils.logSuccess(`Created new secret projects/${projectId}/secrets/${secretName}`);
+  }
+
+  const secretValue = await utils.readSecretValue(`Enter a value for ${secretName}`, dataFile);
+
+  const version = await gcsm.addVersion(projectId, secretName, secretValue);
+  utils.logSuccess(`Created new secret version ${gcsm.toSecretVersionResourceName(version)}`);
+  utils.logBullet(
+    `You can access the contents of the secret's latest value with ${clc.bold(`firebase apphosting:secrets:access ${secretName}\n`)}`,
+  );
+
+  // If the secret already exists, we want to exit once the new version is added
+  if (!created) {
+    return;
+  }
+
+  const type = await prompt.select({
+    message: "Is this secret for production or only local testing?",
+    choices: [
+      { name: "Production", value: "production" },
+      { name: "Local testing only", value: "local" },
+    ],
+    nonInteractive: !!nonInteractive,
+    default: "production",
+  });
+
+  if (type === "local") {
+    const emailList = await prompt.input({
+      message:
+        "Please enter a comma separated list of user or groups who should have access to this secret:",
+    });
+    if (emailList.length) {
+      await grantEmailsSecretAccess(projectId, [secretName], emailList.split(","));
+    } else {
+      utils.logBullet(
+        "To grant access in the future run " +
+          clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --emails [email list]`),
+      );
+    }
+    await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_EMULATORS_YAML_FILE);
+    return;
+  }
+
+  const accounts = await dialogs.selectBackendServiceAccounts(
+    projectNumber,
+    projectId,
+    !!nonInteractive,
+  );
+
+  // If we're not granting permissions, there's no point in adding to YAML either.
+  if (!accounts.buildServiceAccounts.length && !accounts.runServiceAccounts.length) {
+    utils.logWarning(
+      `To use this secret in your backend, you must grant access. You can do so in the future with ${clc.bold("firebase apphosting:secrets:grantaccess")}`,
+    );
+
+    // TODO: For existing secrets, enter the grantSecretAccess dialog only when the necessary permissions don't exist.
+  } else {
+    await grantSecretAccess(projectId, projectNumber, secretName, accounts);
+  }
+
+  await config.maybeAddSecretToYaml(secretName, config.APPHOSTING_BASE_YAML_FILE);
+  utils.logBullet(
+    "To grant additional users access to this secret run " +
+      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --email [email list]`) +
+      ".\nTo grant additional backends access to this secret run " +
+      clc.bold(`firebase apphosting:secrets:grantaccess ${secretName} --backend [backend ID]`),
+  );
 }

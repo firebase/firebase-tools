@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
-import * as rimraf from "rimraf";
+import { rmSync } from "node:fs";
 import * as path from "path";
 
 import { FrameworkOptions, TriggerEndToEndTest } from "../integration-helpers/framework";
@@ -30,7 +30,7 @@ function cleanUpExtensionsCache(): void {
     process.env.FIREBASE_EXTENSIONS_CACHE_PATH &&
     fs.existsSync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH)
   ) {
-    rimraf.sync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH);
+    rmSync(process.env.FIREBASE_EXTENSIONS_CACHE_PATH, { recursive: true });
   }
 }
 

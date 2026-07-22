@@ -1,0 +1,69 @@
+@import "../globals/index.scss";
+
+textarea {
+  border-radius: 5px;
+  background: var(--vscode-editor-background);
+
+  // Prevent resizes as it is fullscreen
+  resize: none;
+
+  font-family: monospace;
+  font-size: var(--type-ramp-base-font-size);
+  line-height: var(--type-ramp-base-line-height);
+
+  padding: calc(var(--container-padding) / 2) var(--container-padding);
+
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-editor-background);
+
+  border: none;
+  outline: none;
+}
+
+textarea:focus {
+  border: none;
+  outline: none;
+}
+
+html,
+body,
+body > *,
+body > * > * {
+  height: 100%;
+}
+
+vscode-panel-view {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.variable {
+  display: flex;
+  align-items: stretch;
+  flex-direction: column;
+  justify-content: stretch;
+}
+
+.variableInput {
+  flex: 1;
+}
+
+.authentication {
+  display: flex;
+  flex-direction: column;
+
+  span + * {
+    margin-top: 3px;
+  }
+}
+
+// Make sure hidden panels are correctly hidden
+// even if we override the display type for type purposes.
+vscode-panel-view[hidden] {
+  display: none;
+}
+
+vscode-button {
+  flex:0;
+  justify-self: flex-end;
+}

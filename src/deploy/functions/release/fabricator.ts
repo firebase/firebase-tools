@@ -22,9 +22,11 @@ import * as poller from "../../../operation-poller";
 import * as pubsub from "../../../gcp/pubsub";
 import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
+import * as runV2 from "../../../gcp/runv2";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
+import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
@@ -53,12 +55,17 @@ const eventarcPollerOptions: Omit<poller.OperationPollerOptions, "operationResou
 
 const CLOUD_RUN_RESOURCE_EXHAUSTED_CODE = 8;
 
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
+
 export interface FabricatorArgs {
   executor: Executor;
   functionExecutor: Executor;
+  runFunctionExecutor: Executor;
   appEngineLocation: string;
   sources: Record<string, args.Source>;
   projectNumber: string;
+  projectId: string;
 }
 
 const rethrowAs =
@@ -72,16 +79,119 @@ const rethrowAs =
 export class Fabricator {
   executor: Executor;
   functionExecutor: Executor;
+  runFunctionExecutor: Executor;
   sources: Record<string, args.Source>;
   appEngineLocation: string;
   projectNumber: string;
+  projectId: string;
 
   constructor(args: FabricatorArgs) {
     this.executor = args.executor;
     this.functionExecutor = args.functionExecutor;
+    this.runFunctionExecutor = args.runFunctionExecutor;
     this.sources = args.sources;
     this.appEngineLocation = args.appEngineLocation;
     this.projectNumber = args.projectNumber;
+    this.projectId = args.projectId;
+  }
+
+  async grantNewRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToCreate) {
+      utils.logLabeledBullet(
+        "functions",
+        `Creating managed service account ${plan.serviceAccountToCreate}...`,
+      );
+      const saName = plan.serviceAccountToCreate.split("@")[0];
+      try {
+        await iam.createServiceAccount(
+          this.projectId,
+          saName,
+          `Managed by Firebase CLI for codebase ${codebase}`,
+          `Firebase Functions ${codebase}`,
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
+    }
+    if (plan.rolesToAdd?.length) {
+      if (!plan.managedServiceAccount) {
+        throw new FirebaseError("Failed to grant IAM roles: managed service account is missing.", {
+          exit: 1,
+        });
+      }
+      utils.logLabeledBullet("functions", `Granting IAM roles to ${plan.managedServiceAccount}...`);
+      try {
+        await resourcemanager.addServiceAccountRoles(
+          this.projectId,
+          plan.managedServiceAccount,
+          plan.rolesToAdd,
+          true, // skipAccountLookup
+        );
+      } catch (e) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+          { original: e as Error },
+        );
+      }
+    } else if (plan.rolesToRemove?.length) {
+      // We didn't add roles so we don't actually know if we have permission to remove them.
+      // We test and fail early to avoid updating functions but failing to keep roles up to date.
+      const iamResult = await iam.testIamPermissions(this.projectId, [
+        "resourcemanager.projects.setIamPolicy",
+      ]);
+      if (!iamResult.passed) {
+        throw new FirebaseError(
+          "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        );
+      }
+    }
+  }
+
+  async removeOldRoles(plan: planner.CodebasePlan, codebase: string): Promise<void> {
+    if (plan.serviceAccountToDelete) {
+      utils.logLabeledBullet(
+        "functions",
+        `Deleting managed service account ${plan.serviceAccountToDelete}...`,
+      );
+      try {
+        await iam.deleteServiceAccount(this.projectId, plan.serviceAccountToDelete);
+      } catch (e) {
+        throw new FirebaseError(
+          "Failed to delete managed service account " +
+            plan.serviceAccountToDelete +
+            ". Please ask an IAM administrator to delete it manually.",
+          { original: e as Error },
+        );
+      }
+      return;
+    }
+    if (!plan.rolesToRemove?.length) {
+      return;
+    }
+    if (!plan.managedServiceAccount) {
+      throw new FirebaseError("Failed to revoke IAM roles: managed service account is missing.", {
+        exit: 1,
+      });
+    }
+    utils.logLabeledBullet(
+      "functions",
+      `Revoking unneeded IAM roles from ${plan.managedServiceAccount} for codebase ${codebase}...`,
+    );
+    try {
+      await resourcemanager.removeServiceAccountRoles(
+        this.projectId,
+        plan.managedServiceAccount,
+        plan.rolesToRemove,
+      );
+    } catch (e) {
+      throw new FirebaseError(
+        "The declarative security roles for this codebase have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.",
+        { original: e as Error },
+      );
+    }
   }
 
   async applyPlan(plan: planner.DeploymentPlan): Promise<reporter.Summary> {
@@ -90,87 +200,148 @@ export class Fabricator {
       totalTime: 0,
       results: [],
     };
-    const deployChangesets = Object.values(plan).map(async (changes): Promise<void> => {
-      const results = await this.applyChangeset(changes);
-      summary.results.push(...results);
-      return;
-    });
-    const promiseResults = await utils.allSettled(deployChangesets);
 
-    const errs = promiseResults
-      .filter((r) => r.status === "rejected")
-      .map((r) => (r as utils.PromiseRejectedResult).reason);
-    if (errs.length) {
+    // We execute role grants/creations sequentially per codebase.
+    // Batching them into a single IAM update is possible but complex due to codebase-aligned logging
+    // and creation dependencies.
+    // Parallelizing them via Promise.all is bad because GCP's Resource Manager API updates project
+    // IAM policies using optimistic concurrency control (etags). Concurrent writes would trigger
+    // 409 etag conflict errors.
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      await this.grantNewRoles(codebasePlan, codebase);
+    }
+
+    // Accumulate all regional changesets across all codebases
+    const allChangesets: planner.Changeset[] = [];
+    for (const codebasePlan of Object.values(plan)) {
+      allChangesets.push(...Object.values(codebasePlan.regionalChangesets));
+    }
+
+    // Phase 1: Creates and Updates
+    const createAndUpdatePromises = allChangesets.map((changes) => {
+      const scraperV1 = new SourceTokenScraper();
+      const scraperV2 = new SourceTokenScraper();
+      return this.applyUpserts(changes, scraperV1, scraperV2);
+    });
+    const createAndUpdateResultsArray = await Promise.allSettled(createAndUpdatePromises);
+
+    // Process results of Phase 1
+    summary.results = createAndUpdateResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
+      if (r.status === "fulfilled") {
+        return [...acc, ...r.value];
+      }
+      // Handle rejection
       logger.debug(
-        "Fabricator.applyRegionalChanges returned an unhandled exception. This should never happen",
-        JSON.stringify(errs, null, 2),
+        "Fabricator.applyUpserts returned an unhandled exception.",
+        JSON.stringify(r.reason, null, 2),
       );
+      return acc;
+    }, []);
+
+    const hasFailures = summary.results.some((r) => r.error);
+
+    if (hasFailures) {
+      utils.logLabeledWarning("functions", "Deploys failed. Skipping deletes.");
+
+      summary.results = allChangesets.reduce<reporter.DeployResult[]>((accum, changes) => {
+        const currentAborts = changes.endpointsToDelete.map((endpoint) => ({
+          endpoint,
+          durationMs: 0,
+          error: new reporter.AbortedDeploymentError(endpoint),
+        }));
+        return [...accum, ...currentAborts];
+      }, summary.results);
+
+      summary.totalTime = timer.stop();
+      return summary;
+    }
+
+    // Phase 2: Deletes
+    const deleteResultsArray = await Promise.allSettled(
+      allChangesets.map((changes) => this.applyDeletes(changes)),
+    );
+
+    const deleteResults = deleteResultsArray.reduce<reporter.DeployResult[]>((acc, r) => {
+      if (r.status === "fulfilled") {
+        return [...acc, ...r.value];
+      }
+      logger.debug(
+        "Fabricator.applyDeletes returned an unhandled exception. This should never happen",
+        JSON.stringify(r.reason, null, 2),
+      );
+      return acc;
+    }, []);
+
+    summary.results.push(...deleteResults);
+
+    // Similarly to grantNewRoles, we execute role removals sequentially to avoid concurrent
+    // IAM policy update conflicts (409 Conflict / etag mismatch) on GCP.
+    for (const [codebase, codebasePlan] of Object.entries(plan)) {
+      await this.removeOldRoles(codebasePlan, codebase);
     }
 
     summary.totalTime = timer.stop();
     return summary;
   }
 
-  async applyChangeset(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
-    const deployResults: reporter.DeployResult[] = [];
-    const handle = async (
-      op: reporter.OperationType,
-      endpoint: backend.Endpoint,
-      fn: () => Promise<void>,
-    ): Promise<void> => {
-      const timer = new Timer();
-      const result: Partial<reporter.DeployResult> = { endpoint };
-      try {
-        await fn();
-        this.logOpSuccess(op, endpoint);
-      } catch (err: any) {
-        result.error = err as Error;
-      }
-      result.durationMs = timer.stop();
-      deployResults.push(result as reporter.DeployResult);
-    };
+  async applyUpserts(
+    changes: planner.Changeset,
+    scraperV1: SourceTokenScraper,
+    scraperV2: SourceTokenScraper,
+  ): Promise<Array<reporter.DeployResult>> {
+    const ops: Array<Promise<reporter.DeployResult>> = [];
 
-    const upserts: Array<Promise<void>> = [];
-    const scraperV1 = new SourceTokenScraper();
-    const scraperV2 = new SourceTokenScraper();
     for (const endpoint of changes.endpointsToCreate) {
       this.logOpStart("creating", endpoint);
-      upserts.push(
-        handle("create", endpoint, () => this.createEndpoint(endpoint, scraperV1, scraperV2)),
+      ops.push(
+        this.wrapOperation("create", endpoint, () =>
+          this.createEndpoint(endpoint, scraperV1, scraperV2),
+        ),
       );
     }
+
     for (const endpoint of changes.endpointsToSkip) {
       utils.logSuccess(this.getLogSuccessMessage("skip", endpoint));
     }
+
     for (const update of changes.endpointsToUpdate) {
       this.logOpStart("updating", update.endpoint);
-      upserts.push(
-        handle("update", update.endpoint, () => this.updateEndpoint(update, scraperV1, scraperV2)),
+      ops.push(
+        this.wrapOperation("update", update.endpoint, () =>
+          this.updateEndpoint(update, scraperV1, scraperV2),
+        ),
       );
     }
-    await utils.allSettled(upserts);
 
-    // Note: every promise is generated by handle which records error in results.
-    // We've used hasErrors as a cheater here instead of viewing the results of allSettled
-    if (deployResults.find((r) => r.error)) {
-      for (const endpoint of changes.endpointsToDelete) {
-        deployResults.push({
-          endpoint,
-          durationMs: 0,
-          error: new reporter.AbortedDeploymentError(endpoint),
-        });
-      }
-      return deployResults;
-    }
+    return Promise.all(ops);
+  }
 
-    const deletes: Array<Promise<void>> = [];
+  async applyDeletes(changes: planner.Changeset): Promise<Array<reporter.DeployResult>> {
+    const ops: Array<Promise<reporter.DeployResult>> = [];
+
     for (const endpoint of changes.endpointsToDelete) {
       this.logOpStart("deleting", endpoint);
-      deletes.push(handle("delete", endpoint, () => this.deleteEndpoint(endpoint)));
+      ops.push(this.wrapOperation("delete", endpoint, () => this.deleteEndpoint(endpoint)));
     }
-    await utils.allSettled(deletes);
 
-    return deployResults;
+    return Promise.all(ops);
+  }
+
+  private async wrapOperation(
+    op: reporter.OperationType,
+    endpoint: backend.Endpoint,
+    fn: () => Promise<void>,
+  ): Promise<reporter.DeployResult> {
+    const timer = new Timer();
+    const result: Partial<reporter.DeployResult> = { endpoint };
+    try {
+      await fn();
+      this.logOpSuccess(op, endpoint);
+    } catch (err: any) {
+      result.error = err as Error;
+    }
+    result.durationMs = timer.stop();
+    return result as reporter.DeployResult;
   }
 
   async createEndpoint(
@@ -183,6 +354,8 @@ export class Fabricator {
       await this.createV1Function(endpoint, scraperV1);
     } else if (endpoint.platform === "gcfv2") {
       await this.createV2Function(endpoint, scraperV2);
+    } else if (endpoint.platform === "run") {
+      await this.createRunFunction(endpoint);
     } else {
       assertExhaustive(endpoint.platform);
     }
@@ -206,6 +379,8 @@ export class Fabricator {
       await this.updateV1Function(update.endpoint, scraperV1);
     } else if (update.endpoint.platform === "gcfv2") {
       await this.updateV2Function(update.endpoint, scraperV2);
+    } else if (update.endpoint.platform === "run") {
+      await this.updateRunFunction(update);
     } else {
       assertExhaustive(update.endpoint.platform);
     }
@@ -247,10 +422,13 @@ export class Fabricator {
       }
     }
     if (endpoint.platform === "gcfv1") {
-      await this.deleteV1Function(endpoint);
-    } else {
-      await this.deleteV2Function(endpoint);
+      return this.deleteV1Function(endpoint);
+    } else if (endpoint.platform === "gcfv2") {
+      return this.deleteV2Function(endpoint);
+    } else if (endpoint.platform === "run") {
+      return this.deleteRunFunction(endpoint);
     }
+    assertExhaustive(endpoint.platform);
   }
 
   async createV1Function(endpoint: backend.Endpoint, scraper: SourceTokenScraper): Promise<void> {
@@ -425,7 +603,7 @@ export class Fabricator {
         });
     }
 
-    endpoint.uri = resultFunction.serviceConfig?.uri;
+    endpoint.uri = resultFunction.url;
     const serviceName = resultFunction.serviceConfig?.service;
     endpoint.runServiceId = utils.last(serviceName?.split("/"));
     if (!serviceName) {
@@ -438,6 +616,15 @@ export class Fabricator {
     }
     if (backend.isHttpsTriggered(endpoint)) {
       const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      // Like HTTPS triggers, dataConnectGraphqlTriggers have an invoker, but the Firebase SQL Connect P4SA must always be an invoker.
+      const invoker = endpoint.dataConnectGraphqlTrigger.invoker ?? [];
+      invoker.push(getDataConnectP4SA(this.projectNumber));
       if (!invoker.includes("private")) {
         await this.executor
           .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
@@ -470,7 +657,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       const invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
       await this.executor
         .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
         .catch(rethrowAs(endpoint, "set invoker"));
@@ -569,6 +756,14 @@ export class Fabricator {
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
       invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
+      invoker =
+        endpoint.dataConnectGraphqlTrigger.invoker === null
+          ? []
+          : endpoint.dataConnectGraphqlTrigger.invoker;
+      if (invoker) {
+        invoker.push(getDataConnectP4SA(this.projectNumber));
+      }
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -579,7 +774,7 @@ export class Fabricator {
     } else if (backend.isScheduleTriggered(endpoint)) {
       invoker = endpoint.serviceAccount
         ? [endpoint.serviceAccount]
-        : [gce.getDefaultServiceAccount(this.projectNumber)];
+        : [await gce.getDefaultServiceAccount(this.projectNumber)];
     }
 
     if (invoker) {
@@ -622,6 +817,111 @@ export class Fabricator {
       .catch(rethrowAs(endpoint, "delete"));
   }
 
+  // We use createRunFunction and updateRunFunction specifically to deploy Dart functions
+  // directly over to Cloud Run! This avoids cluttering normal Gen 2 Node function hooks.
+  async createRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot create a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.runFunctionExecutor
+      .run(async () => {
+        const op = await runV2.createService(
+          endpoint.project,
+          endpoint.region,
+          endpoint.id,
+          service,
+        );
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "create"));
+
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    if (backend.isHttpsTriggered(endpoint)) {
+      const invoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!invoker.includes("private")) {
+        await this.executor
+          .run(() => run.setInvokerCreate(endpoint.project, serviceName, invoker))
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
+    } else if (backend.isCallableTriggered(endpoint)) {
+      // Callable functions should always be public
+      await this.executor
+        .run(() => run.setInvokerCreate(endpoint.project, serviceName, ["public"]))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
+  async updateRunFunction(update: planner.EndpointUpdate): Promise<void> {
+    const endpoint = update.endpoint;
+    const storageSource = this.sources[endpoint.codebase!]?.storage;
+    if (!storageSource) {
+      logger.debug("Precondition failed. Cannot update a Cloud Run function without storage");
+      throw new Error("Precondition failed");
+    }
+
+    const service = runV2.serviceFromEndpoint(endpoint, "scratch");
+    const container = service.template.containers![0];
+
+    container.sourceCode = {
+      cloudStorageSource: {
+        bucket: storageSource.bucket,
+        object: storageSource.object,
+        generation: storageSource.generation ? String(storageSource.generation) : undefined,
+      },
+    };
+
+    await this.runFunctionExecutor
+      .run(async () => {
+        const op = await runV2.updateService(service);
+        endpoint.uri = op.uri;
+        endpoint.runServiceId = endpoint.id;
+      })
+      .catch(rethrowAs(endpoint, "update"));
+
+    const serviceName = `projects/${endpoint.project}/locations/${endpoint.region}/services/${endpoint.runServiceId}`;
+    // We check for null vs undefined to respect settings people make on the Google Console.
+    // If it's omitted (undefined), we don't touch policies. If it is explicitly null, we make it public.
+    let invoker: string[] | undefined;
+    if (backend.isHttpsTriggered(endpoint)) {
+      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+    }
+
+    if (invoker) {
+      await this.executor
+        .run(() => run.setInvokerUpdate(endpoint.project, serviceName, invoker!))
+        .catch(rethrowAs(endpoint, "set invoker"));
+    }
+  }
+
+  async deleteRunFunction(endpoint: backend.Endpoint): Promise<void> {
+    await this.runFunctionExecutor
+      .run(async () => {
+        try {
+          await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
+        } catch (err: any) {
+          if (err.status === 404) {
+            return;
+          }
+          throw err;
+        }
+      })
+      .catch(rethrowAs(endpoint, "delete"));
+  }
+
   async setRunTraits(serviceName: string, endpoint: backend.Endpoint): Promise<void> {
     await this.functionExecutor
       .run(async () => {
@@ -661,11 +961,21 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.upsertScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.upsertTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.registerBlockingTrigger(endpoint);
     }
   }
@@ -678,11 +988,21 @@ export class Fabricator {
       } else if (endpoint.platform === "gcfv2") {
         await this.deleteScheduleV2(endpoint);
         return;
+      } else if (endpoint.platform === "run") {
+        throw new FirebaseError("Schedule triggers for Cloud Run functions are not supported yet.");
       }
       assertExhaustive(endpoint.platform);
     } else if (backend.isTaskQueueTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError(
+          "Task Queue triggers for Cloud Run functions are not supported yet.",
+        );
+      }
       await this.disableTaskQueue(endpoint);
     } else if (backend.isBlockingTriggered(endpoint)) {
+      if (endpoint.platform === "run") {
+        throw new FirebaseError("Blocking triggers for Cloud Run functions are not supported yet.");
+      }
       await this.unregisterBlockingTrigger(endpoint);
     }
     // N.B. Like Pub/Sub topics, we don't delete Eventarc channels because we
@@ -693,14 +1013,18 @@ export class Fabricator {
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     // The Pub/Sub topic is already created
-    const job = scheduler.jobFromEndpoint(endpoint, this.appEngineLocation, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(
+      endpoint,
+      this.appEngineLocation,
+      this.projectNumber,
+    );
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
   }
 
   async upsertScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
-    const job = scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
+    const job = await scheduler.jobFromEndpoint(endpoint, endpoint.region, this.projectNumber);
     await this.executor
       .run(() => scheduler.createOrReplaceJob(job))
       .catch(rethrowAs(endpoint, "upsert schedule"));
@@ -767,7 +1091,7 @@ export class Fabricator {
   }
 
   logOpStart(op: string, endpoint: backend.Endpoint): void {
-    const runtime = RUNTIMES[endpoint.runtime].friendly;
+    const runtime = endpoint.runtime ? RUNTIMES[endpoint.runtime].friendly : "unknown";
     const platform = getHumanFriendlyPlatformName(endpoint.platform);
     const label = helper.getFunctionLabel(endpoint);
     utils.logLabeledBullet(

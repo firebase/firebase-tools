@@ -1,19 +1,42 @@
 import * as backend from "../backend";
 import * as iam from "../../../gcp/iam";
 import * as events from "../../../functions/events";
+import * as build from "../build";
 import { AuthBlockingService } from "./auth";
-import { obtainStorageBindings, ensureStorageTriggerRegion } from "./storage";
+import {
+  obtainStorageBindings,
+  ensureStorageTriggerRegion,
+  getDefaultRegion as ensureStorageDefaultRegion,
+} from "./storage";
 import { ensureFirebaseAlertsTriggerRegion } from "./firebaseAlerts";
-import { ensureDatabaseTriggerRegion } from "./database";
+import {
+  ensureDatabaseTriggerRegion,
+  getDefaultRegion as ensureDatabaseDefaultRegion,
+} from "./database";
 import { ensureRemoteConfigTriggerRegion } from "./remoteConfig";
 import { ensureTestLabTriggerRegion } from "./testLab";
-import { ensureFirestoreTriggerRegion } from "./firestore";
+import {
+  ensureFirestoreTriggerRegion,
+  getDefaultRegion as ensureFirestoreDefaultRegion,
+} from "./firestore";
+import {
+  ensureDataConnectTriggerRegion,
+  getDefaultRegion as ensureDataConnectDefaultRegion,
+} from "./dataconnect";
+import { AILogicService } from "./ailogic";
+import { ensureAuthEventarcTriggerRegion } from "./authEventarc";
 
 /** A standard void No Op */
 export const noop = (): Promise<void> => Promise.resolve();
 
 /** A No Op that's useful for Services that don't have specific bindings but should still try to set default bindings */
 export const noopProjectBindings = (): Promise<Array<iam.Binding>> => Promise.resolve([]);
+
+/** The default region for global triggers. */
+export const DEFAULT_GLOBAL_TRIGGER_REGION = "us-east1";
+
+/** The fallback region to deploy new functions from. */
+export const FALLBACK_DEPLOYMENT_REGION = "us-central1";
 
 /** A name of a service */
 export type Name =
@@ -25,7 +48,10 @@ export type Name =
   | "database"
   | "remoteconfig"
   | "testlab"
-  | "firestore";
+  | "firestore"
+  | "dataconnect"
+  | "ailogic"
+  | "autheventarc";
 
 /** A service interface for the underlying GCP event services */
 export interface Service {
@@ -38,6 +64,8 @@ export interface Service {
   validateTrigger: (ep: backend.Endpoint, want: backend.Backend) => void;
   registerTrigger: (ep: backend.Endpoint) => Promise<void>;
   unregisterTrigger: (ep: backend.Endpoint) => Promise<void>;
+
+  getDefaultRegion: (endpoint: build.Endpoint) => Promise<string>;
 }
 
 /** A noop service object, useful for v1 events */
@@ -48,6 +76,7 @@ const noOpService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(FALLBACK_DEPLOYMENT_REGION),
 };
 
 /** A pubsub service object */
@@ -59,6 +88,7 @@ const pubSubService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
 };
 
 /** A storage service object */
@@ -70,6 +100,7 @@ const storageService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: ensureStorageDefaultRegion,
 };
 
 /** A firebase alerts service object */
@@ -81,10 +112,12 @@ const firebaseAlertsService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
 };
 
 /** A auth blocking service object */
 const authBlockingService = new AuthBlockingService();
+const aiLogicService = new AILogicService();
 
 /** A database service object */
 const databaseService: Service = {
@@ -95,6 +128,7 @@ const databaseService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: ensureDatabaseDefaultRegion,
 };
 
 /** A remote config service object */
@@ -106,6 +140,7 @@ const remoteConfigService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
 };
 
 /** A test lab service object */
@@ -117,6 +152,7 @@ const testLabService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
 };
 
 /** A firestore service object */
@@ -128,9 +164,35 @@ const firestoreService: Service = {
   validateTrigger: noop,
   registerTrigger: noop,
   unregisterTrigger: noop,
+  getDefaultRegion: ensureFirestoreDefaultRegion,
+};
+
+/** A Firebase SQL Connect service object */
+const dataconnectService: Service = {
+  name: "dataconnect",
+  api: "firebasedataconnect.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureDataConnectTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+  getDefaultRegion: ensureDataConnectDefaultRegion,
+};
+
+/** A Firebase Auth Eventarc service object */
+const authEventarcService: Service = {
+  name: "autheventarc",
+  api: "eventarc.googleapis.com",
+  requiredProjectBindings: noopProjectBindings,
+  ensureTriggerRegion: ensureAuthEventarcTriggerRegion,
+  validateTrigger: noop,
+  registerTrigger: noop,
+  unregisterTrigger: noop,
+  getDefaultRegion: () => Promise.resolve(DEFAULT_GLOBAL_TRIGGER_REGION),
 };
 
 /** Mapping from event type string to service object */
+// TODO: See if there's a way to deduplicate these consts while still ensuring type safety and exhaustion
 const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.pubsub.topic.v1.messagePublished": pubSubService,
   "google.cloud.storage.object.v1.finalized": storageService,
@@ -140,6 +202,8 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.firebase.firebasealerts.alerts.v1.published": firebaseAlertsService,
   "providers/cloud.auth/eventTypes/user.beforeCreate": authBlockingService,
   "providers/cloud.auth/eventTypes/user.beforeSignIn": authBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeSendEmail": authBlockingService,
+  "providers/cloud.auth/eventTypes/user.beforeSendSms": authBlockingService,
   "google.firebase.database.ref.v1.written": databaseService,
   "google.firebase.database.ref.v1.created": databaseService,
   "google.firebase.database.ref.v1.updated": databaseService,
@@ -154,21 +218,20 @@ const EVENT_SERVICE_MAPPING: Record<events.Event, Service> = {
   "google.cloud.firestore.document.v1.created.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.updated.withAuthContext": firestoreService,
   "google.cloud.firestore.document.v1.deleted.withAuthContext": firestoreService,
+  "google.firebase.dataconnect.connector.v1.mutationExecuted": dataconnectService,
+  "google.firebase.ailogic.v1.beforeGenerate": aiLogicService,
+  "google.firebase.ailogic.v1.afterGenerate": aiLogicService,
+  "google.firebase.auth.user.v2.created": authEventarcService,
+  "google.firebase.auth.user.v2.deleted": authEventarcService,
 };
 
-/**
- * Find the Service object for the given endpoint
- * @param endpoint the endpoint that we want the service for
- * @return a Service object that corresponds to the event type of the endpoint or noop
- */
-export function serviceForEndpoint(endpoint: backend.Endpoint): Service {
-  if (backend.isEventTriggered(endpoint)) {
-    return EVENT_SERVICE_MAPPING[endpoint.eventTrigger.eventType as events.Event] || noOpService;
+export function serviceForEndpoint(endpoint: backend.Endpoint | build.Endpoint): Service {
+  let eventType: string | undefined;
+  if ("eventTrigger" in endpoint && endpoint.eventTrigger?.eventType) {
+    eventType = endpoint.eventTrigger.eventType;
+  } else if ("blockingTrigger" in endpoint && endpoint.blockingTrigger?.eventType) {
+    eventType = endpoint.blockingTrigger.eventType;
   }
 
-  if (backend.isBlockingTriggered(endpoint)) {
-    return EVENT_SERVICE_MAPPING[endpoint.blockingTrigger.eventType as events.Event] || noOpService;
-  }
-
-  return noOpService;
+  return eventType ? EVENT_SERVICE_MAPPING[eventType as events.Event] || noOpService : noOpService;
 }

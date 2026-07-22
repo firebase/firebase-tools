@@ -8,10 +8,6 @@ import { FirebaseError } from "../../../error";
 import * as utils from "../../../utils";
 import * as backend from "../backend";
 import * as v2events from "../../../functions/events/v2";
-import {
-  FIRESTORE_EVENT_REGEX,
-  FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX,
-} from "../../../functions/events/v2";
 
 export interface EndpointUpdate {
   endpoint: backend.Endpoint;
@@ -26,14 +22,40 @@ export interface Changeset {
   endpointsToSkip: backend.Endpoint[];
 }
 
-export type DeploymentPlan = Record<string, Changeset>;
+export interface BaseCodebasePlan {
+  regionalChangesets: Record<string, Changeset>;
+}
+
+export interface ActiveSecurityPlan {
+  managedServiceAccount: string;
+  rolesToAdd?: string[];
+  rolesToRemove?: string[];
+  serviceAccountToCreate?: string;
+  serviceAccountToDelete?: undefined;
+}
+
+export interface InactiveSecurityPlan {
+  managedServiceAccount?: undefined;
+  rolesToAdd?: undefined;
+  rolesToRemove?: undefined;
+  serviceAccountToCreate?: undefined;
+  serviceAccountToDelete?: string;
+}
+
+export type CodebasePlan = BaseCodebasePlan & (ActiveSecurityPlan | InactiveSecurityPlan);
+
+export type DeploymentPlan = Record<string, CodebasePlan>; // codebase -> CodebasePlan
 
 export interface PlanArgs {
   wantBackend: backend.Backend; // the desired state
   haveBackend: backend.Backend; // the current state
   codebase: string; // target codebase of the deployment
+  projectId: string; // target project of the deployment
   filters?: EndpointFilter[]; // filters to apply to backend, passed from users by --only flag
   deleteAll?: boolean; // deletes all functions if set
+  haveRoles?: string[];
+  existingManagedSA?: string;
+  managedSA?: string;
 }
 
 /** Calculate the changesets of given endpoints by grouping endpoints with keyFn. */
@@ -62,6 +84,7 @@ export function calculateChangesets(
   const toSkipPredicate = (id: string): boolean =>
     !!(
       !want[id].targetedByOnly && // Don't skip the function if its --only targeted.
+      have[id].state === "ACTIVE" && // Only skip the function if its in a known good state
       have[id].hash &&
       want[id].hash &&
       want[id].hash === have[id].hash
@@ -130,11 +153,43 @@ export function calculateUpdate(want: backend.Endpoint, have: backend.Endpoint):
 }
 
 /**
- * Create a plan for deploying all functions in one region.
+ * Create a plan for deploying all functions for one codebase.
  */
-export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
-  let { wantBackend, haveBackend, codebase, filters, deleteAll } = args;
-  let deployment: DeploymentPlan = {};
+export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan> {
+  let {
+    wantBackend,
+    haveBackend,
+    codebase,
+    filters,
+    deleteAll,
+    haveRoles,
+    existingManagedSA,
+    managedSA,
+  } = args;
+
+  const requiredRoles = wantBackend.requiredRoles;
+  const roles = haveRoles || [];
+  let rolesToAdd: string[] | undefined;
+  let rolesToRemove: string[] | undefined;
+  let serviceAccountToCreate: string | undefined;
+  let serviceAccountToDelete: string | undefined;
+
+  const isFiltered = !!(
+    filters &&
+    filters.some((f) => f.idChunks && f.idChunks.length > 0) &&
+    !deleteAll
+  );
+
+  if (requiredRoles) {
+    rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
+    rolesToRemove = roles.filter((r) => !requiredRoles.includes(r));
+    if (!existingManagedSA && managedSA) {
+      serviceAccountToCreate = managedSA;
+    }
+  } else if (existingManagedSA && !isFiltered) {
+    serviceAccountToDelete = existingManagedSA;
+  }
+
   wantBackend = backend.matchingBackend(wantBackend, (endpoint) => {
     return endpointMatchesAnyFilter(endpoint, filters);
   });
@@ -143,6 +198,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
     return wantedEndpoint(endpoint) || endpointMatchesAnyFilter(endpoint, filters);
   });
 
+  const regionalChangesets: Record<string, Changeset> = {};
   const regions = new Set([
     ...Object.keys(wantBackend.endpoints),
     ...Object.keys(haveBackend.endpoints),
@@ -154,7 +210,7 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
       (e) => `${codebase}-${e.region}-${e.availableMemoryMb || "default"}`,
       deleteAll,
     );
-    deployment = { ...deployment, ...changesets };
+    Object.assign(regionalChangesets, changesets);
   }
 
   if (upgradedToGCFv2WithoutSettingConcurrency(wantBackend, haveBackend)) {
@@ -166,7 +222,25 @@ export function createDeploymentPlan(args: PlanArgs): DeploymentPlan {
         "old default of 1. You can change this with the 'concurrency' option.",
     );
   }
-  return deployment;
+  if (requiredRoles) {
+    if (!managedSA) {
+      throw new FirebaseError("managedServiceAccount is required when requiredRoles is defined.", {
+        exit: 1,
+      });
+    }
+    return {
+      regionalChangesets,
+      rolesToAdd,
+      rolesToRemove,
+      serviceAccountToCreate,
+      managedServiceAccount: managedSA,
+    };
+  } else {
+    return {
+      regionalChangesets,
+      serviceAccountToDelete,
+    };
+  }
 }
 
 /** Whether a user upgraded any endpoints to GCFv2 without setting concurrency. */
@@ -261,9 +335,9 @@ export function upgradedScheduleFromV1ToV2(
 export function checkForUnsafeUpdate(want: backend.Endpoint, have: backend.Endpoint): boolean {
   return (
     backend.isEventTriggered(want) &&
-    FIRESTORE_EVENT_WITH_AUTH_CONTEXT_REGEX.test(want.eventTrigger.eventType) &&
     backend.isEventTriggered(have) &&
-    FIRESTORE_EVENT_REGEX.test(have.eventTrigger.eventType)
+    want.eventTrigger.eventType ===
+      v2events.CONVERTABLE_EVENTS[have.eventTrigger.eventType as v2events.Event]
   );
 }
 
@@ -272,6 +346,8 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   const triggerType = (e: backend.Endpoint): string => {
     if (backend.isHttpsTriggered(e)) {
       return "an HTTPS";
+    } else if (backend.isDataConnectGraphqlTriggered(e)) {
+      return "a SQL Connect HTTPS";
     } else if (backend.isCallableTriggered(e)) {
       return "a callable";
     } else if (backend.isEventTriggered(e)) {
@@ -289,7 +365,12 @@ export function checkForIllegalUpdate(want: backend.Endpoint, have: backend.Endp
   };
   const wantType = triggerType(want);
   const haveType = triggerType(have);
-  if (wantType !== haveType) {
+
+  // Originally, @genkit-ai/firebase/functions defined onFlow which created an HTTPS trigger that implemented the streaming callable protocol for the Flow.
+  // The new version is firebase-functions/https which defines onCallFlow
+  const upgradingHttpsFunction =
+    backend.isHttpsTriggered(have) && backend.isCallableTriggered(want);
+  if (wantType !== haveType && !upgradingHttpsFunction) {
     throw new FirebaseError(
       `[${getFunctionLabel(
         want,

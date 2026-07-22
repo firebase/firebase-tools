@@ -1,3 +1,6 @@
 {
-  "functions": {}
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  }
 }

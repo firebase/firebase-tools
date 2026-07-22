@@ -11,6 +11,7 @@ import { FirebaseError } from "../error";
 
 export const command = new Command("functions:config:unset [keys...]")
   .description("unset environment config at the specified path(s)")
+  .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.create",
@@ -44,4 +45,5 @@ export const command = new Command("functions:config:unset [keys...]")
         "firebase deploy --only functions",
       )}\n`,
     );
+    functionsConfig.logFunctionsConfigDeprecationWarning();
   });

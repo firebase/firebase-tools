@@ -278,5 +278,17 @@ describe("apphosting", () => {
         queryParams: { pageToken: "2" },
       });
     });
+
+    it("lists supported runtimes", async () => {
+      get.resolves({
+        body: {
+          supportedRuntimes: [{ runtimeId: "nodejs22" }],
+        },
+      });
+      await expect(apphosting.listSupportedRuntimes("p", "l")).to.eventually.deep.equal([
+        { runtimeId: "nodejs22" },
+      ]);
+      expect(get).to.have.been.calledWithMatch("projects/p/locations/l/supportedRuntimes");
+    });
   });
 });

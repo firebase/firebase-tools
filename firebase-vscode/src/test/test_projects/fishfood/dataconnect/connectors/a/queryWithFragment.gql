@@ -1,0 +1,5 @@
+query fragmentTest @auth(level: PUBLIC) {
+    comments {
+        ...CommentContent
+    }   
+}

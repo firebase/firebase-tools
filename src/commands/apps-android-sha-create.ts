@@ -15,7 +15,7 @@ function getCertHashType(shaHash: string): string {
 }
 
 export const command = new Command("apps:android:sha:create <appId> <shaHash>")
-  .description("add a SHA certificate hash for a given app id.")
+  .description("add a SHA certificate hash for a given app id")
   .before(requireAuth)
   .action(
     async (appId: string = "", shaHash: string = "", options: any): Promise<AppAndroidShaData> => {

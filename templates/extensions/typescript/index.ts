@@ -8,7 +8,7 @@
  * https://firebase.google.com/docs/extensions/publishers
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 
 exports.greetTheWorld = functions.https.onRequest(
   (req: functions.Request, res: functions.Response) => {

@@ -3,6 +3,8 @@ import * as sinon from "sinon";
 
 import * as prompt from "../../prompt";
 import * as params from "./params";
+import * as secretManager from "../../gcp/secretManager";
+import { FirebaseError } from "../../error";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -75,22 +77,22 @@ describe("CEL resolution", () => {
 });
 
 describe("resolveParams", () => {
-  let promptOnce: sinon.SinonStub;
+  let input: sinon.SinonStub;
 
   beforeEach(() => {
-    promptOnce = sinon.stub(prompt, "promptOnce");
+    input = sinon.stub(prompt, "input");
   });
 
   afterEach(() => {
-    promptOnce.restore();
+    input.restore();
   });
 
   it("always contains the precanned internal param values", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(expectedInternalParams);
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(expectedInternalParams);
   });
 
   it("can pull a literal value out of the dotenvs", async () => {
@@ -109,9 +111,9 @@ describe("resolveParams", () => {
       bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
@@ -136,9 +138,9 @@ describe("resolveParams", () => {
         boolean: false,
       }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal({
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
         boolean: false,
@@ -165,13 +167,15 @@ describe("resolveParams", () => {
   it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(
-        paramsToResolve,
-        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
-        userEnv,
-      ),
-    ).to.eventually.deep.equal({
+    expect(
+      (
+        await params.resolveParams(
+          paramsToResolve,
+          { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+          userEnv,
+        )
+      ).paramValues,
+    ).to.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
     });
@@ -186,8 +190,8 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("bar");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
+    input.resolves("bar");
+    expect((await params.resolveParams(paramsToResolve, fakeConfig, {})).paramValues).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true }),
@@ -212,9 +216,9 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(1).args[0].default).to.eq("baz");
+    expect(input.getCall(1).args[0].default).to.eq("baz");
   });
 
   it("can resolve a CEL expression containing only identities", async () => {
@@ -232,9 +236,9 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(1).args[0].default).to.eq("baz/quox");
+    expect(input.getCall(1).args[0].default).to.eq("baz/quox");
   });
 
   it("can resolve a CEL expression depending on the internal params", async () => {
@@ -258,11 +262,11 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("baz");
+    input.resolves("baz");
     await params.resolveParams(paramsToResolve, fakeConfig, {});
-    expect(promptOnce.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
-    expect(promptOnce.getCall(1).args[0].default).to.eq("projectID: foo");
-    expect(promptOnce.getCall(2).args[0].default).to.eq(
+    expect(input.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
+    expect(input.getCall(1).args[0].default).to.eq("projectID: foo");
+    expect(input.getCall(2).args[0].default).to.eq(
       "http://foo.appspot.com.storage.googleapis.com/",
     );
   });
@@ -276,7 +280,7 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("");
+    input.resolves("");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
   });
 
@@ -295,7 +299,33 @@ describe("resolveParams", () => {
         input: { text: {} },
       },
     ];
-    promptOnce.resolves("22");
+    input.resolves("22");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+  });
+
+  it("does not throw in non-interactive mode if secret exists in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} },
+      secretVersion: { versionId: "1", state: "ENABLED", secret: {} as any },
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.fulfilled;
+
+    getSecretMetadataStub.restore();
+  });
+
+  it("throws in non-interactive mode if secret is missing in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.rejectedWith(
+      FirebaseError,
+      /In non-interactive mode but have no value for the secret/,
+    );
+
+    getSecretMetadataStub.restore();
   });
 });

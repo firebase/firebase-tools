@@ -5,7 +5,7 @@ import { Command } from "../command";
 import { DEFAULT_DURATION, calculateChannelExpireTTL } from "../hosting/expireUtils";
 import { FirebaseError } from "../error";
 import { logLabeledSuccess, datetimeString, logLabeledWarning, consoleUrl } from "../utils";
-import { promptOnce } from "../prompt";
+import { input } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import { logger } from "../logger";
@@ -57,8 +57,7 @@ export const command = new Command("hosting:channel:create [channelId]")
       }
       channelId =
         channelId ||
-        (await promptOnce({
-          type: "input",
+        (await input({
           message: "Please provide a URL-friendly name for the channel:",
           validate: (s) => s.length > 0,
         }));

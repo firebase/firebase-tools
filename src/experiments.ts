@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./init/features/hosting/github";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -35,9 +34,8 @@ export const ALL_EXPERIMENTS = experiments({
   functionsv2deployoptimizations: {
     shortDescription: "Optimize deployments of v2 firebase functions",
     fullDescription:
-      "Reuse build images across funtions to increase performance and reliaibility " +
-      "of deploys. This has been made an experiment due to backend bugs that are " +
-      "temporarily causing failures in some regions with this optimization enabled",
+      "Reuse build images across functions to increase performance and reliability " +
+      "of deploys.",
     public: true,
     default: true,
   },
@@ -57,20 +55,40 @@ export const ALL_EXPERIMENTS = experiments({
       "of how that image was created.",
     public: true,
   },
-
-  // permanent experiment
-  automaticallydeletegcfartifacts: {
-    shortDescription: "Control whether functions cleans up images after deploys",
+  legacyRuntimeConfigCommands: {
+    shortDescription: "Expose legacy functions.config() CLI commands",
     fullDescription:
-      "To control costs, Firebase defaults to automatically deleting containers " +
-      "created during the build process. This has the side-effect of preventing " +
-      "users from rolling back to previous revisions using the Run API. To change " +
-      `this behavior, call ${bold("experiments:disable deletegcfartifactsondeploy")} ` +
-      `consider also calling ${bold("experiments:enable deletegcfartifacts")} ` +
-      `to enable the new command ${bold("functions:deletegcfartifacts")} which` +
-      "lets you clean up images manually",
+      "The Cloud Runtime Config API is deprecated. Enable this experiment to continue using the " +
+      "`functions:config:*` commands while you migrate to the Firebase Functions params APIs.",
+    default: false,
     public: true,
-    default: true,
+  },
+  runfunctions: {
+    shortDescription:
+      "Functions created using the V2 API target Cloud Run Functions (not production ready)",
+    public: false,
+  },
+  functionsiac: {
+    shortDescription: "Exports functions IaC code",
+    public: false,
+  },
+  functionsrunapionly: {
+    shortDescription: "Use Cloud Run API to list v2 functions",
+    public: false,
+  },
+  bypassfunctionsdeprecationcheck: {
+    shortDescription: "Bypass Functions check for old runtimes",
+    fullDescription:
+      "Bypasses the local check for whether a functions runtime is " +
+      "decommissioned. This does not, by itself, allow you to deploy a function with a " +
+      "decommissioned runtime, as there are server-side checks as well.",
+    public: false,
+    default: false,
+  },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: true,
+    default: false,
   },
 
   // Emulator experiments
@@ -124,10 +142,23 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
   },
 
+  apphostinglocalbuilds: {
+    shortDescription: "Enable App Hosting local builds",
+    default: false,
+    public: false,
+  },
+
+  abiu: {
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
+  },
+
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -137,11 +168,56 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: false,
   },
-
-  fdccompatiblemode: {
-    shortDescription: "Enable Data Connect schema migrations in Compatible Mode",
-    fullDescription: "Enable Data Connect schema migrations in Compatible Mode",
+  appsinit: {
+    shortDescription: "Adds experimental `apps:init` command.",
+    fullDescription:
+      "Adds experimental `apps:init` command. When run from an app directory, this command detects the app's platform and configures required files.",
+    default: false,
+    public: true,
+  },
+  mcp: {
+    shortDescription: "Adds experimental `firebase mcp` command for running a Firebase MCP server.",
     default: true,
+    public: false,
+  },
+  mcpalpha: {
+    shortDescription: "Opt-in to early MCP features before they're widely released.",
+    default: false,
+    public: true,
+  },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
+  fdcift: {
+    shortDescription: "Enable instrumentless trial for SQL Connect",
+    default: true,
+    public: false,
+  },
+  apptesting: {
+    shortDescription: "Adds experimental App Testing feature",
+    public: true,
+  },
+  fdcwebhooks: {
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
+    default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
+    public: false,
+  },
+  crashlyticsWeb: {
+    shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
+    default: false,
+    public: true,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable writing the backing resource binding for a Functions secret param to .env",
+    default: false,
     public: false,
   },
 });
@@ -171,7 +247,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 

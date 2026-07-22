@@ -44,40 +44,43 @@ describe("checkAllowedEventTypesResponse", () => {
 });
 
 describe("askForAllowedEventTypes", () => {
-  let promptStub: sinon.SinonStub;
+  let checkboxStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    checkboxStub = sinon.stub(prompt, "checkbox");
+  });
 
   afterEach(() => {
-    promptStub.restore();
+    checkboxStub.restore();
   });
 
   it("should keep prompting user until valid input is given", async () => {
-    promptStub = sinon.stub(prompt, "promptOnce");
-    promptStub.onCall(0).returns(["invalid"]);
-    promptStub.onCall(1).returns(["stillinvalid"]);
-    promptStub.onCall(2).returns(["google.firebase.custom-event-occurred"]);
+    checkboxStub.onCall(0).resolves(["invalid"]);
+    checkboxStub.onCall(1).resolves(["stillinvalid"]);
+    checkboxStub.onCall(2).resolves(["google.firebase.custom-event-occurred"]);
     await askForAllowedEventTypes([
       { type: "google.firebase.custom-event-occurred", description: "A custom event occurred" },
     ]);
-    expect(promptStub.calledThrice).to.be.true;
+    expect(checkboxStub).to.be.calledThrice;
   });
 });
 
 describe("askForEventarcLocation", () => {
-  let promptStub: sinon.SinonStub;
+  let selectStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptStub = sinon.stub(prompt, "promptOnce");
-    promptStub.onCall(0).returns("invalid-region");
-    promptStub.onCall(1).returns("still-invalid-region");
-    promptStub.onCall(2).returns("us-central1");
+    selectStub = sinon.stub(prompt, "select");
   });
 
   afterEach(() => {
-    promptStub.restore();
+    selectStub.restore();
   });
 
   it("should keep prompting user until valid input is given", async () => {
+    selectStub.onCall(0).returns("invalid-region");
+    selectStub.onCall(1).returns("still-invalid-region");
+    selectStub.onCall(2).returns("us-central1");
     await askForEventArcLocation();
-    expect(promptStub.calledThrice).to.be.true;
+    expect(selectStub).to.be.calledThrice;
   });
 });

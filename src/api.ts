@@ -52,12 +52,10 @@ export const apphostingGitHubAppInstallationURL = () =>
 
 export const authOrigin = () =>
   utils.envOverride("FIREBASE_AUTH_URL", "https://accounts.google.com");
+export const authManagementOrigin = () =>
+  utils.envOverride("FIREBASE_AUTH_MANAGEMENT_URL", "https://identitytoolkit.googleapis.com");
 export const consoleOrigin = () =>
   utils.envOverride("FIREBASE_CONSOLE_URL", "https://console.firebase.google.com");
-export const dynamicLinksOrigin = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_URL", "https://firebasedynamiclinks.googleapis.com");
-export const dynamicLinksKey = () =>
-  utils.envOverride("FIREBASE_DYNAMIC_LINKS_KEY", "AIzaSyB6PtY5vuiSB8MNgt20mQffkOlunZnHYiQ");
 export const eventarcOrigin = () =>
   utils.envOverride("EVENTARC_URL", "https://eventarc.googleapis.com");
 export const firebaseApiOrigin = () =>
@@ -85,11 +83,10 @@ export const functionsV2Origin = () =>
   utils.envOverride("FIREBASE_FUNCTIONS_V2_URL", "https://cloudfunctions.googleapis.com");
 export const runOrigin = () => utils.envOverride("CLOUD_RUN_URL", "https://run.googleapis.com");
 export const functionsDefaultRegion = () =>
-  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "us-central1");
+  utils.envOverride("FIREBASE_FUNCTIONS_DEFAULT_REGION", "REGION_TBD");
 
 export const cloudbuildOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDBUILD_URL", "https://cloudbuild.googleapis.com");
-
 export const cloudschedulerOrigin = () =>
   utils.envOverride("FIREBASE_CLOUDSCHEDULER_URL", "https://cloudscheduler.googleapis.com");
 export const cloudTasksOrigin = () =>
@@ -122,6 +119,10 @@ export const rtdbMetadataOrigin = () =>
   utils.envOverride("FIREBASE_RTDB_METADATA_URL", "https://metadata-dot-firebase-prod.appspot.com");
 export const remoteConfigApiOrigin = () =>
   utils.envOverride("FIREBASE_REMOTE_CONFIG_URL", "https://firebaseremoteconfig.googleapis.com");
+export const messagingApiOrigin = () =>
+  utils.envOverride("FIREBASE_MESSAGING_CONFIG_URL", "https://fcm.googleapis.com");
+export const crashlyticsApiOrigin = () =>
+  utils.envOverride("FIREBASE_CRASHLYTICS_URL", "https://firebasecrashlytics.googleapis.com");
 export const resourceManagerOrigin = () =>
   utils.envOverride("FIREBASE_RESOURCEMANAGER_URL", "https://cloudresourcemanager.googleapis.com");
 export const rulesOrigin = () =>
@@ -138,6 +139,8 @@ export const cloudRunApiOrigin = () =>
   utils.envOverride("CLOUD_RUN_API_URL", "https://run.googleapis.com");
 export const serviceUsageOrigin = () =>
   utils.envOverride("FIREBASE_SERVICE_USAGE_URL", "https://serviceusage.googleapis.com");
+export const studioApiOrigin = () =>
+  utils.envOverride("FIREBASE_STUDIO_URL", "https://monospace-pa.googleapis.com");
 
 export const githubOrigin = () => utils.envOverride("GITHUB_URL", "https://github.com");
 export const githubApiOrigin = () => utils.envOverride("GITHUB_API_URL", "https://api.github.com");
@@ -162,6 +165,16 @@ export const cloudSQLAdminOrigin = () =>
   utils.envOverride("CLOUD_SQL_URL", "https://sqladmin.googleapis.com");
 export const vertexAIOrigin = () =>
   utils.envOverride("VERTEX_AI_URL", "https://aiplatform.googleapis.com");
+export const aiLogicProxyOrigin = () =>
+  utils.envOverride("AI_LOGIC_PROXY_URL", "https://firebasevertexai.googleapis.com");
+
+export const appTestingOrigin = () =>
+  utils.envOverride("FIREBASE_APP_TESTING_URL", "https://firebaseapptesting.googleapis.com");
+export const cloudTestingOrigin = () =>
+  utils.envOverride("CLOUD_TESTING_URL", "https://testing.googleapis.com");
+
+export const developerKnowledgeOrigin = () =>
+  utils.envOverride("DEVELOPER_KNOWLEDGE_URL", "https://developerknowledge.googleapis.com");
 
 /** Gets scopes that have been set. */
 export function getScopes(): string[] {

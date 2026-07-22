@@ -7,7 +7,7 @@ import * as refs from "../../extensions/refs";
 import * as utils from "../../utils";
 import { ErrorHandler } from "./errors";
 import { DeploymentInstanceSpec, InstanceSpec } from "./planner";
-import { isObject } from "../../extensions/types";
+import { isObject } from "../../error";
 
 const isRetryable = (err: any) => err.status === 429 || err.status === 409;
 

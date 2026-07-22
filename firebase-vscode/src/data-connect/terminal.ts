@@ -1,24 +1,26 @@
-import { TelemetryLogger, TerminalOptions } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
-import vscode, { Disposable } from "vscode";
+import vscode, { Disposable, TelemetryLogger, TerminalOptions } from "vscode";
 import { checkLogin } from "../core/user";
-import { DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../analytics";
 import { getSettings } from "../utils/settings";
 import { currentProjectId } from "../core/project";
+import { EmulatorHub } from "../../../src/emulator/hub";
 
-const environmentVariables: Record<string, string> = {};
+let environmentVariables: Record<string, string> = {};
 
 const executionOptions: vscode.ShellExecutionOptions = {
   env: environmentVariables,
 };
 
-export function setTerminalEnvVars(envVar: string, value: string) {
-  environmentVariables[envVar] = value;
+export function setTerminalEnvVars(env: Record<string, string>) {
+  environmentVariables = {...environmentVariables, ...env};
 }
 
 export function runCommand(command: string) {
+  const settings = getSettings();
+  setTerminalEnvVars(settings.extraEnv ?? {});
   const terminalOptions: TerminalOptions = {
-    name: "Data Connect Terminal",
+    name: "SQL Connect Terminal",
     env: environmentVariables,
   };
   const terminal = vscode.window.createTerminal(terminalOptions);
@@ -30,13 +32,19 @@ export function runCommand(command: string) {
   if (currentProjectId.value) {
     command = `${command} --project ${currentProjectId.value}`;
   }
+  if (settings.debug) {
+    command = `${command} --debug`;
+  }
   terminal.sendText(command);
 }
 
 export function runTerminalTask(
   taskName: string,
   command: string,
+  presentationOptions: vscode.TaskPresentationOptions = { focus: true },
 ): Promise<string> {
+  const settings = getSettings();
+  setTerminalEnvVars(settings.extraEnv ?? {});
   const type = "firebase-" + Date.now();
   return new Promise(async (resolve, reject) => {
     vscode.tasks.onDidEndTaskProcess(async (e) => {
@@ -54,26 +62,26 @@ export function runTerminalTask(
         }
       }
     });
-    const task = await vscode.tasks.executeTask(
-      new vscode.Task(
-        { type },
-        vscode.TaskScope.Workspace,
-        taskName,
-        "firebase",
-        new vscode.ShellExecution(command, executionOptions),
-      ),
+    const task = new vscode.Task(
+      { type },
+      vscode.TaskScope.Workspace,
+      taskName,
+      "firebase",
+      new vscode.ShellExecution(`${command}${settings.debug ? " --debug" : ""}`, executionOptions),
     );
+    task.presentationOptions = presentationOptions;
+    await vscode.tasks.executeTask(task);
   });
 }
 
 export function registerTerminalTasks(
   broker: ExtensionBrokerImpl,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Disposable {
   const settings = getSettings();
 
   const loginTaskBroker = broker.on("executeLogin", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.IDX_LOGIN);
     runTerminalTask(
       "firebase login",
       `${settings.firebasePath} login --no-localhost`,
@@ -82,23 +90,40 @@ export function registerTerminalTasks(
     });
   });
 
-  const startEmulatorsTaskBroker = broker.on("runStartEmulators", () => {
-    telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
-    // TODO: optional debug mode
+  const startEmulatorsTask = () => {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.START_EMULATORS);
+
+    let cmd = `${settings.firebasePath} emulators:start`;
+    cmd += ` --project ${currentProjectId.value || EmulatorHub.MISSING_PROJECT_PLACEHOLDER}`;
+    if (settings.importPath) {
+      cmd += ` --import ${settings.importPath}`;
+    }
+    if (settings.exportOnExit) {
+      cmd += ` --export-on-exit ${settings.exportPath}`;
+    }
     runTerminalTask(
       "firebase emulators",
-      `${settings.firebasePath} emulators:start --project ${currentProjectId.value}`,
+      cmd,
+      { focus: true },
     );
-  });
+  };
+  const startEmulatorsCommand = vscode.commands.registerCommand(
+    "firebase.emulators.start",
+    startEmulatorsTask,
+  );
 
   return Disposable.from(
     { dispose: loginTaskBroker },
+    startEmulatorsCommand,
     vscode.commands.registerCommand(
       "firebase.dataConnect.runTerminalTask",
       (taskName, command) => {
-        telemetryLogger.logUsage(DATA_CONNECT_EVENT_NAME.COMMAND_EXECUTION, {
-          commandName: command,
-        });
+        analyticsLogger.logger.logUsage(
+          DATA_CONNECT_EVENT_NAME.COMMAND_EXECUTION,
+          {
+            commandName: command,
+          },
+        );
         runTerminalTask(taskName, command);
       },
     ),

@@ -1,6 +1,7 @@
 import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
+import { ParamValue } from "../deploy/functions/params";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
@@ -8,7 +9,8 @@ import { logBullet, logWarning } from "../utils";
 
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
-const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_"];
+const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
+const RESERVED_PREFIX_ALLOWLIST = ["FIREBASE_SECRET_REF_"];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -92,25 +94,24 @@ interface ParseResult {
  *
  * Each line should contain key, value pairs, e.g.:
  *
- *   SERVICE_URL=https://example.com
+ * SERVICE_URL=https://example.com
  *
  * Values can be double quoted, e.g.:
  *
- *   SERVICE_URL="https://example.com"
+ * SERVICE_URL="https://example.com"
  *
  * Double quoted values can include newlines, e.g.:
  *
- *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
+ * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\nABC\nEFG\n-----BEGIN PUBLIC KEY-----""
  *
  * or span multiple lines, e.g.:
  *
- *   PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
- *   ABC
- *   EFG
- *   -----BEGIN PUBLIC KEY-----"
+ * PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+ * ABC
+ * EFG
+ * -----BEGIN PUBLIC KEY-----"
  *
  * See test for more examples.
- *
  * @return {ParseResult} Result containing parsed key, value pairs and errored lines.
  */
 export function parse(data: string): ParseResult {
@@ -176,12 +177,25 @@ export function validateKey(key: string): void {
         ", and then consist of uppercase ASCII letters, digits, and underscores.",
     );
   }
-  if (RESERVED_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+  if (keyConflictsWithReservedPrefixes(key)) {
     throw new KeyValidationError(
       key,
       `Key ${key} starts with a reserved prefix (${RESERVED_PREFIXES.join(" ")})`,
     );
   }
+  if (RESERVED_PREFIX_ALLOWLIST.some((prefix) => key === prefix)) {
+    throw new KeyValidationError(key, `Key ${key} is a known prefix with an empty suffix`);
+  }
+}
+
+/**
+ * @returns true if the key begins with a prefix on the reserved list and is not a known usage.
+ */
+function keyConflictsWithReservedPrefixes(key: string): boolean {
+  return RESERVED_PREFIXES.some(
+    (prefix) =>
+      key.startsWith(prefix) && !RESERVED_PREFIX_ALLOWLIST.some((known) => key.startsWith(known)),
+  );
 }
 
 /**
@@ -218,7 +232,7 @@ export function parseStrict(data: string): Record<string, string> {
 }
 
 function findEnvfiles(
-  functionsSource: string,
+  configDir: string,
   projectId: string,
   projectAlias?: string,
   isEmulator?: boolean,
@@ -233,13 +247,14 @@ function findEnvfiles(
   }
 
   return files
-    .map((f) => path.join(functionsSource, f))
+    .map((f) => path.join(configDir, f))
     .filter(fs.existsSync)
     .map((p) => path.basename(p));
 }
 
 export interface UserEnvsOpts {
   functionsSource: string;
+  configDir?: string;
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
@@ -247,16 +262,11 @@ export interface UserEnvsOpts {
 
 /**
  * Checks if user has specified any environment variables for their functions.
- *
  * @return True if there are any user-specified environment variables
  */
-export function hasUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): boolean {
-  return findEnvfiles(functionsSource, projectId, projectAlias, isEmulator).length > 0;
+export function hasUserEnvs(opts: UserEnvsOpts): boolean {
+  const configDir = opts.configDir || opts.functionsSource;
+  return findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator).length > 0;
 }
 
 /**
@@ -269,16 +279,17 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   if (Object.keys(toWrite).length === 0) {
     return;
   }
-  const { functionsSource, projectId, projectAlias, isEmulator } = envOpts;
+  const { projectId, projectAlias, isEmulator } = envOpts;
+  const configDir = envOpts.configDir || envOpts.functionsSource;
 
   // Determine which .env file to write to, and create it if it doesn't exist
-  const allEnvFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+  const allEnvFiles = findEnvfiles(configDir, projectId, projectAlias, isEmulator);
   const targetEnvFile = envOpts.isEmulator
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
   if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(envOpts.functionsSource, targetEnvFile), "", { flag: "wx" });
+    fs.writeFileSync(path.join(configDir, targetEnvFile), "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
         `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
@@ -303,7 +314,7 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
   for (const k of Object.keys(toWrite)) {
     lines += formatUserEnvForWrite(k, toWrite[k]);
   }
-  fs.appendFileSync(path.join(functionsSource, targetEnvFile), lines);
+  fs.appendFileSync(path.join(configDir, targetEnvFile), lines);
 }
 
 /**
@@ -356,30 +367,28 @@ function formatUserEnvForWrite(key: string, value: string): string {
  *
  * .env files are searched and merged in the following order:
  *
- *   1. .env
- *   2. .env.<project or alias>
+ * 1. .env
+ * 2. .env.<project or alias>
  *
  * If both .env.<project> and .env.<alias> files are found, an error is thrown.
- *
  * @return {Record<string, string>} Environment variables for the project.
  */
-export function loadUserEnvs({
-  functionsSource,
-  projectId,
-  projectAlias,
-  isEmulator,
-}: UserEnvsOpts): Record<string, string> {
-  const envFiles = findEnvfiles(functionsSource, projectId, projectAlias, isEmulator);
+export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
+  const configDir = opts.configDir || opts.functionsSource;
+  const envFiles = findEnvfiles(configDir, opts.projectId, opts.projectAlias, opts.isEmulator);
   if (envFiles.length === 0) {
     return {};
   }
 
   // Disallow setting both .env.<projectId> and .env.<projectAlias>
-  if (projectAlias) {
-    if (envFiles.includes(`.env.${projectId}`) && envFiles.includes(`.env.${projectAlias}`)) {
+  if (opts.projectAlias) {
+    if (
+      envFiles.includes(`.env.${opts.projectId}`) &&
+      envFiles.includes(`.env.${opts.projectAlias}`)
+    ) {
       throw new FirebaseError(
-        `Can't have both dotenv files with projectId (env.${projectId}) ` +
-          `and projectAlias (.env.${projectAlias}) as extensions.`,
+        `Can't have both dotenv files with projectId (env.${opts.projectId}) ` +
+          `and projectAlias (.env.${opts.projectAlias}) as extensions.`,
       );
     }
   }
@@ -387,7 +396,7 @@ export function loadUserEnvs({
   let envs: Record<string, string> = {};
   for (const f of envFiles) {
     try {
-      const data = fs.readFileSync(path.join(functionsSource, f), "utf8");
+      const data = fs.readFileSync(path.join(configDir, f), "utf8");
       envs = { ...envs, ...parseStrict(data) };
     } catch (err: any) {
       throw new FirebaseError(`Failed to load environment variables from ${f}.`, {
@@ -405,7 +414,6 @@ export function loadUserEnvs({
 
 /**
  * Load Firebase-set environment variables.
- *
  * @return Environment varibles for functions.
  */
 export function loadFirebaseEnvs(
@@ -416,4 +424,48 @@ export function loadFirebaseEnvs(
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+}
+
+/**
+ * Writes newly resolved params to the appropriate .env file.
+ * Skips internal params and params that already exist in userEnvs.
+ */
+export function writeResolvedParams(
+  resolvedEnvs: Readonly<Record<string, ParamValue>>,
+  userEnvs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const paramName of Object.keys(resolvedEnvs)) {
+    const paramValue = resolvedEnvs[paramName];
+    if (!paramValue.internal && !Object.prototype.hasOwnProperty.call(userEnvs, paramName)) {
+      toWrite[paramName] = paramValue.toString();
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
+}
+
+/**
+ * Writes newly defined secret bindings to the appropriate env file.
+ * Does not overwrite secrets that already exist anywhere in the .env chain.
+ */
+export function writeResolvedSecretRefs(
+  resolvedSecretRefs: Readonly<Record<string, string>>,
+  haveSecretRefs: Readonly<Record<string, string>>,
+  userEnvOpt: UserEnvsOpts,
+): void {
+  const toWrite: Record<string, string> = {};
+
+  for (const secretName of Object.keys(resolvedSecretRefs)) {
+    const uppercaseName = secretName.toUpperCase();
+    const resolvedRef = resolvedSecretRefs[uppercaseName];
+    if (!Object.prototype.hasOwnProperty.call(haveSecretRefs, uppercaseName)) {
+      const reservedKey = "FIREBASE_SECRET_REF_" + uppercaseName;
+      toWrite[reservedKey] = resolvedRef;
+    }
+  }
+
+  writeUserEnvs(toWrite, userEnvOpt);
 }

@@ -1,0 +1,11 @@
+specVersion: "v1beta"
+serviceId: "fake-service"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "postgres"
+      cloudSql:
+        instanceId: "dataconnect-test"
+connectorDirs: ["./connector"]

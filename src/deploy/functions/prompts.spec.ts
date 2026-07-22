@@ -8,6 +8,7 @@ import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 import { RC } from "../../rc";
+import * as iam from "../../gcp/iam";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",
@@ -35,8 +36,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "functions",
   except: "",
   nonInteractive: false,
-  json: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: ["functions"],
@@ -44,14 +43,14 @@ const SAMPLE_OPTIONS: Options = {
 };
 
 describe("promptForFailurePolicies", () => {
-  let promptStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptStub = sinon.stub(prompt, "promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm");
   });
 
   afterEach(() => {
-    promptStub.restore();
+    confirmStub.restore();
   });
 
   it("should prompt if there are new functions with failure policies", async () => {
@@ -62,7 +61,7 @@ describe("promptForFailurePolicies", () => {
         retry: true,
       },
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForFailurePolicies(
@@ -71,7 +70,7 @@ describe("promptForFailurePolicies", () => {
         backend.empty(),
       ),
     ).not.to.be.rejected;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if all functions with failure policies already had failure policies", async () => {
@@ -90,7 +89,7 @@ describe("promptForFailurePolicies", () => {
         backend.of(endpoint),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.not.have.been.called;
+    expect(confirmStub).to.not.have.been.called;
   });
 
   it("should throw if user declines the prompt", async () => {
@@ -101,7 +100,7 @@ describe("promptForFailurePolicies", () => {
         retry: true,
       },
     };
-    promptStub.resolves(false);
+    confirmStub.resolves(false);
 
     await expect(
       functionPrompts.promptForFailurePolicies(
@@ -110,7 +109,7 @@ describe("promptForFailurePolicies", () => {
         backend.empty(),
       ),
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function adds a failure policy", async () => {
@@ -127,7 +126,7 @@ describe("promptForFailurePolicies", () => {
         retry: true,
       },
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForFailurePolicies(
@@ -136,7 +135,7 @@ describe("promptForFailurePolicies", () => {
         backend.of(endpoint),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should throw if there are any functions with failure policies and the user doesn't accept the prompt", async () => {
@@ -147,7 +146,7 @@ describe("promptForFailurePolicies", () => {
         retry: true,
       },
     };
-    promptStub.resolves(false);
+    confirmStub.resolves(false);
 
     await expect(
       functionPrompts.promptForFailurePolicies(
@@ -156,7 +155,7 @@ describe("promptForFailurePolicies", () => {
         backend.empty(),
       ),
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if there are no functions with failure policies", async () => {
@@ -166,7 +165,7 @@ describe("promptForFailurePolicies", () => {
         ...SAMPLE_EVENT_TRIGGER,
       },
     };
-    promptStub.resolves();
+    confirmStub.resolves();
 
     await expect(
       functionPrompts.promptForFailurePolicies(
@@ -175,7 +174,7 @@ describe("promptForFailurePolicies", () => {
         backend.empty(),
       ),
     ).to.eventually.be.fulfilled;
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 
   it("should throw if there are any functions with failure policies, in noninteractive mode, without the force flag set", async () => {
@@ -191,7 +190,7 @@ describe("promptForFailurePolicies", () => {
     await expect(
       functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty()),
     ).to.be.rejectedWith(FirebaseError, /--force option/);
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 
   it("should not throw if there are any functions with failure policies, in noninteractive mode, with the force flag set", async () => {
@@ -207,21 +206,21 @@ describe("promptForFailurePolicies", () => {
     await expect(
       functionPrompts.promptForFailurePolicies(options, backend.of(endpoint), backend.empty()),
     ).to.eventually.be.fulfilled;
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 });
 
 describe("promptForMinInstances", () => {
-  let promptStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
   let logStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptStub = sinon.stub(prompt, "promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm");
     logStub = sinon.stub(utils, "logLabeledWarning");
   });
 
   afterEach(() => {
-    promptStub.restore();
+    confirmStub.restore();
     logStub.restore();
   });
 
@@ -230,19 +229,19 @@ describe("promptForMinInstances", () => {
       ...SAMPLE_ENDPOINT,
       minInstances: 1,
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty()),
     ).not.to.be.rejected;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if no fucntion has minInstance", async () => {
     const bkend = backend.of(SAMPLE_ENDPOINT);
     await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, bkend)).to.eventually
       .be.fulfilled;
-    expect(promptStub).to.not.have.been.called;
+    expect(confirmStub).to.not.have.been.called;
   });
 
   it("should not prompt if all functions with minInstances already had the same number of minInstances", async () => {
@@ -253,7 +252,7 @@ describe("promptForMinInstances", () => {
 
     await expect(functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, bkend)).to.eventually
       .be.fulfilled;
-    expect(promptStub).to.not.have.been.called;
+    expect(confirmStub).to.not.have.been.called;
   });
 
   it("should not prompt if functions decrease in minInstances", async () => {
@@ -273,7 +272,7 @@ describe("promptForMinInstances", () => {
         backend.of(endpoint),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.not.have.been.called;
+    expect(confirmStub).to.not.have.been.called;
   });
 
   it("should throw if user declines the prompt", async () => {
@@ -281,11 +280,11 @@ describe("promptForMinInstances", () => {
       ...SAMPLE_ENDPOINT,
       minInstances: 1,
     });
-    promptStub.resolves(false);
+    confirmStub.resolves(false);
     await expect(
       functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, bkend, backend.empty()),
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function sets minInstances", async () => {
@@ -293,7 +292,7 @@ describe("promptForMinInstances", () => {
       ...SAMPLE_ENDPOINT,
       minInstances: 1,
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForMinInstances(
@@ -302,7 +301,7 @@ describe("promptForMinInstances", () => {
         backend.of(SAMPLE_ENDPOINT),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should prompt if an existing function increases minInstances", async () => {
@@ -314,7 +313,7 @@ describe("promptForMinInstances", () => {
       ...SAMPLE_ENDPOINT,
       minInstances: 2,
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForMinInstances(
@@ -323,7 +322,7 @@ describe("promptForMinInstances", () => {
         backend.of(endpoint),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should prompt if a minInstance function increases resource reservations", async () => {
@@ -337,7 +336,7 @@ describe("promptForMinInstances", () => {
       minInstances: 2,
       availableMemoryMb: 2048,
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForMinInstances(
@@ -346,7 +345,7 @@ describe("promptForMinInstances", () => {
         backend.of(endpoint),
       ),
     ).eventually.be.fulfilled;
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should throw if there are any functions with failure policies and the user doesn't accept the prompt", async () => {
@@ -354,16 +353,16 @@ describe("promptForMinInstances", () => {
       ...SAMPLE_ENDPOINT,
       minInstances: 2,
     };
-    promptStub.resolves(false);
+    confirmStub.resolves(false);
 
     await expect(
       functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty()),
     ).to.eventually.be.rejectedWith(FirebaseError, /Deployment canceled/);
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should not prompt if there are no functions with minInstances", async () => {
-    promptStub.resolves();
+    confirmStub.resolves();
 
     await expect(
       functionPrompts.promptForMinInstances(
@@ -372,7 +371,7 @@ describe("promptForMinInstances", () => {
         backend.empty(),
       ),
     ).to.eventually.be.fulfilled;
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 
   it("should throw if there are any functions with minInstances, in noninteractive mode, without the force flag set", async () => {
@@ -385,7 +384,7 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty()),
     ).to.be.rejectedWith(FirebaseError, /--force option/);
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 
   it("should not throw if there are any functions with minInstances, in noninteractive mode, with the force flag set", async () => {
@@ -398,7 +397,7 @@ describe("promptForMinInstances", () => {
     await expect(
       functionPrompts.promptForMinInstances(options, backend.of(endpoint), backend.empty()),
     ).to.eventually.be.fulfilled;
-    expect(promptStub).not.to.have.been.called;
+    expect(confirmStub).not.to.have.been.called;
   });
 
   it("Should disclaim if a bill cannot be calculated", async () => {
@@ -407,25 +406,25 @@ describe("promptForMinInstances", () => {
       region: "fillory",
       minInstances: 1,
     };
-    promptStub.resolves(true);
+    confirmStub.resolves(true);
 
     await expect(
       functionPrompts.promptForMinInstances(SAMPLE_OPTIONS, backend.of(endpoint), backend.empty()),
     ).to.eventually.be.fulfilled;
-    expect(promptStub).to.have.been.called;
+    expect(confirmStub).to.have.been.called;
     expect(logStub.firstCall.args[1]).to.match(/Cannot calculate the minimum monthly bill/);
   });
 });
 
 describe("promptForUnsafeMigration", () => {
-  let promptStub: sinon.SinonStub;
+  let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
-    promptStub = sinon.stub(prompt, "promptOnce");
+    confirmStub = sinon.stub(prompt, "confirm");
   });
 
   afterEach(() => {
-    promptStub.restore();
+    confirmStub.restore();
   });
 
   const firestoreEventTrigger: backend.EventTrigger = {
@@ -457,7 +456,7 @@ describe("promptForUnsafeMigration", () => {
   };
 
   it("should prompt if there are potentially unsafe function updates", async () => {
-    promptStub.resolves(false);
+    confirmStub.resolves(false);
     const epUpdates = [
       {
         endpoint: v2Endpoint0,
@@ -470,12 +469,12 @@ describe("promptForUnsafeMigration", () => {
 
     await functionPrompts.promptForUnsafeMigration(epUpdates, SAMPLE_OPTIONS);
 
-    expect(promptStub).to.have.been.calledOnce;
+    expect(confirmStub).to.have.been.calledOnce;
   });
 
   it("should only keep function updates that have been confirmed by user", async () => {
-    promptStub.onFirstCall().resolves(true);
-    promptStub.onSecondCall().resolves(false);
+    confirmStub.onFirstCall().resolves(true);
+    confirmStub.onSecondCall().resolves(false);
     const epUpdates = [
       {
         endpoint: v2Endpoint0,
@@ -508,7 +507,7 @@ describe("promptForUnsafeMigration", () => {
     await expect(functionPrompts.promptForUnsafeMigration(epUpdates, options)).to.eventually.equal(
       epUpdates,
     );
-    expect(promptStub).to.have.not.been.called;
+    expect(confirmStub).to.have.not.been.called;
   });
 
   it("should not proceed with unsafe function updates in non-interactive mode", async () => {
@@ -527,6 +526,112 @@ describe("promptForUnsafeMigration", () => {
     await expect(
       functionPrompts.promptForUnsafeMigration(epUpdates, options),
     ).to.eventually.deep.equal([{ endpoint: v2Endpoint1, unsafe: false }]);
-    expect(promptStub).to.have.not.been.called;
+    expect(confirmStub).to.have.not.been.called;
+  });
+});
+
+describe("promptForSecurityChanges", () => {
+  let confirmStub: sinon.SinonStub;
+  let getRoleNameStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    confirmStub = sinon.stub(prompt, "confirm");
+    getRoleNameStub = sinon.stub(iam, "getRoleName").callsFake(async (role) => `Title for ${role}`);
+  });
+
+  afterEach(() => {
+    confirmStub.restore();
+    getRoleNameStub.restore();
+  });
+
+  it("should do nothing if force option is true", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, force: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.fulfilled;
+    expect(confirmStub).to.not.have.been.called;
+  });
+
+  it("should throw in non-interactive mode when creating a service account", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot enable declarative security",
+    );
+  });
+
+  it("should throw in non-interactive mode when deleting a service account", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToDelete: "sa@proj.iam.gserviceaccount.com",
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot opt out of declarative security",
+    );
+  });
+
+  it("should throw in non-interactive mode when modifying roles", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/editor"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot modify declarative security roles",
+    );
+  });
+
+  it("should prompt and proceed when confirmed in interactive mode", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    confirmStub.resolves(true);
+    const options = { ...SAMPLE_OPTIONS };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.fulfilled;
+    expect(confirmStub).to.have.been.calledOnce;
+  });
+
+  it("should throw when rejected in interactive mode", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    confirmStub.resolves(false);
+    const options = { ...SAMPLE_OPTIONS };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Deployment canceled by user",
+    );
   });
 });

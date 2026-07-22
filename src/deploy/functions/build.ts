@@ -1,14 +1,38 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
-import * as api from "../../.../../api";
 import * as params from "./params";
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
-import { UserEnvsOpts, writeUserEnvs } from "../../functions/env";
 import { FirebaseConfig } from "./args";
 import { Runtime } from "./runtimes/supported";
 import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
+
+export const REGION_TBD = "REGION_TBD";
+export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
+// prettier-ignore
+const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
+export const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
+export const SECRET_REF_SHORT_RE = new RegExp(
+  "^" + // start of string
+    GCP_SECRET_ID_PATTERN + // capture secret ID
+    "(?:[:#@]" + // capture an optional label beginning with :, or capture #/@ to warn the user
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
+    ")?$", // end of optional version group end of string
+);
+export const SECRET_REF_LONG_RE = new RegExp(
+  "^" + // start of string
+    "projects/" + // projects/
+    GCP_PROJECT_ID_PATTERN + // capture project ID
+    "/secrets/" + // /secrets/
+    GCP_SECRET_ID_PATTERN + // capture secret ID
+    "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with ":", "/versions/", or a mistake (#/@) to warn for
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
+    ")?$", // end of optional version group, end of string
+);
+
+export type LifecycleHook = backend.LifecycleHook;
 
 /* The union of a customer-controlled deployment and potentially deploy-time defined parameters */
 export interface Build {
@@ -17,6 +41,8 @@ export interface Build {
   params: params.Param[];
   runtime?: Runtime;
   extensions?: Record<string, DynamicExtension>;
+  requiredRoles?: string[];
+  lifecycleHooks?: Record<string, LifecycleHook>;
 }
 
 /**
@@ -69,13 +95,23 @@ type ServiceAccount = string;
 export interface HttpsTrigger {
   // Which service account should be able to trigger this function. No value means "make public
   // on create and don't do anything on update." For more, see go/cf3-http-access-control
-  invoker?: Array<ServiceAccount | Expression<ServiceAccount>> | null;
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+}
+
+export interface DataConnectGraphqlTrigger {
+  // Which service account should be able to trigger this function in addition to the Firebase SQL Connect P4SA.
+  // No value means that only the Firebase SQL Connect P4SA can trigger this function.
+  // For more context, see go/cf3-http-access-control
+  invoker?: Array<ServiceAccount | Expression<string>> | null;
+  // The file path relative to the Firebase project directory where the GraphQL schema is stored.
+  schemaFilePath?: string;
 }
 
 // Trigger definitions for RPCs servers using the HTTP protocol defined at
 // https://firebase.google.com/docs/functions/callable-reference
-// eslint-disable-next-line
-interface CallableTrigger {}
+interface CallableTrigger {
+  genkitAction?: string;
+}
 
 // Trigger definitions for endpoints that should be called as a delegate for other operations.
 // For example, before user login.
@@ -107,7 +143,7 @@ export interface EventTrigger {
   // requires the EventArc P4SA to be granted the "ActAs" permission to this service account and
   // will cause the "invoker" role to be granted to this service account on the endpoint
   // (Function or Route)
-  serviceAccount?: ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
   // The name of the channel where the function receives events.
   // Must be provided to receive CF3v2 custom events.
@@ -150,6 +186,7 @@ export interface ScheduleTrigger {
 }
 
 export type HttpsTriggered = { httpsTrigger: HttpsTrigger };
+export type DataConnectGraphqlTriggered = { dataConnectGraphqlTrigger: DataConnectGraphqlTrigger };
 export type CallableTriggered = { callableTrigger: CallableTrigger };
 export type BlockingTriggered = { blockingTrigger: BlockingTrigger };
 export type EventTriggered = { eventTrigger: EventTrigger };
@@ -157,6 +194,7 @@ export type ScheduleTriggered = { scheduleTrigger: ScheduleTrigger };
 export type TaskQueueTriggered = { taskQueueTrigger: TaskQueueTrigger };
 export type Triggered =
   | HttpsTriggered
+  | DataConnectGraphqlTriggered
   | CallableTriggered
   | BlockingTriggered
   | EventTriggered
@@ -166,6 +204,13 @@ export type Triggered =
 /** Whether something has an HttpsTrigger */
 export function isHttpsTriggered(triggered: Triggered): triggered is HttpsTriggered {
   return {}.hasOwnProperty.call(triggered, "httpsTrigger");
+}
+
+/** Whether something has a DataConnectGraphqlTrigger */
+export function isDataConnectGraphqlTriggered(
+  triggered: Triggered,
+): triggered is DataConnectGraphqlTriggered {
+  return {}.hasOwnProperty.call(triggered, "dataConnectGraphqlTrigger");
 }
 
 /** Whether something has a CallableTrigger */
@@ -194,21 +239,28 @@ export function isBlockingTriggered(triggered: Triggered): triggered is Blocking
 }
 
 export interface VpcSettings {
-  connector: string | Expression<string>;
+  connector?: string | Expression<string> | null;
   egressSettings?: "PRIVATE_RANGES_ONLY" | "ALL_TRAFFIC" | Expression<string> | null;
+  networkInterfaces?: Array<{
+    network?: string | Expression<string> | null;
+    subnetwork?: string | Expression<string> | null;
+    tags?: Array<string | Expression<string>> | null;
+  }> | null;
 }
 
 export interface SecretEnvVar {
   key: string; // The environment variable this secret is accessible at
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
+  allowVersionPinning?: boolean;
+  version?: string;
 }
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
 const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
-export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2"];
+export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
 export type VpcEgressSetting = backend.VpcEgressSettings;
 export const AllVpcEgressSettings: VpcEgressSetting[] = ["PRIVATE_RANGES_ONLY", "ALL_TRAFFIC"];
 export type IngressSetting = backend.IngressSettings;
@@ -222,20 +274,19 @@ export type Endpoint = Triggered & {
   // Defaults to false. If true, the function will be ignored during the deploy process.
   omit?: Field<boolean>;
 
-  // Defaults to "gcfv2". "Run" will be an additional option defined later
-  platform?: "gcfv1" | "gcfv2";
+  // Defaults to "gcfv2".
+  platform?: "gcfv1" | "gcfv2" | "run";
 
   // Necessary for the GCF API to determine what code to load with the Functions Framework.
-  // Will become optional once "run" is supported as a platform
   entryPoint: string;
 
   // The services account that this function should run as.
   // defaults to the GAE service account when a function is first created as a GCF gen 1 function.
   // Defaults to the compute service account when a function is first created as a GCF gen 2 function.
-  serviceAccount?: Field<string> | ServiceAccount | null;
+  serviceAccount?: ServiceAccount | Expression<string> | null;
 
-  // defaults to ["us-central1"], overridable in firebase-tools with
-  //  process.env.FIREBASE_FUNCTIONS_DEFAULT_REGION
+  // Defaults to REGION_TBD. The deployment region is resolved dynamically at deploy-time
+  // based on event trigger sources or matching existing functions, falling back to "us-central1".
   region?: ListField;
 
   // The Cloud project associated with this endpoint.
@@ -268,6 +319,11 @@ export type Endpoint = Triggered & {
   environmentVariables?: Record<string, string | Expression<string>> | null;
   secretEnvironmentVariables?: SecretEnvVar[] | null;
   labels?: Record<string, string | Expression<string>> | null;
+
+  // Fields for Cloud Run platform (for no-build path)
+  baseImageUri?: string;
+  command?: string[];
+  args?: string[];
 };
 
 type SecretParam = ReturnType<typeof defineSecret>;
@@ -282,43 +338,36 @@ export type DynamicExtension = {
 interface ResolveBackendOpts {
   build: Build;
   firebaseConfig: FirebaseConfig;
-  userEnvOpt: UserEnvsOpts;
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  force?: boolean;
 }
 
 /**
- * Resolves user-defined parameters inside a Build, and generates a Backend.
- * Returns both the Backend and the literal resolved values of any params, since
- * the latter also have to be uploaded so user code can see them in process.env
+ * Resolves user-defined parameters inside a Build and generates a Backend.
+ * Callers are responsible for persisting resolved env vars.
  */
-export async function resolveBackend(
-  opts: ResolveBackendOpts,
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  let paramValues: Record<string, params.ParamValue> = {};
-  paramValues = await params.resolveParams(
+export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
+  backend: backend.Backend;
+  envs: Record<string, params.ParamValue>;
+  secretRefs: Record<string, string>;
+}> {
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
     opts.isEmulator,
+    opts.force,
   );
 
-  const toWrite: Record<string, string> = {};
-  for (const paramName of Object.keys(paramValues)) {
-    const paramValue = paramValues[paramName];
-    if (Object.prototype.hasOwnProperty.call(opts.userEnvs, paramName) || paramValue.internal) {
-      continue;
-    }
-    toWrite[paramName] = paramValue.toString();
-  }
-  writeUserEnvs(toWrite, opts.userEnvOpt);
-
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
 
-// Exported for testing
+/**
+ * Exported for testing
+ */
 export function envWithTypes(
   definedParams: params.Param[],
   rawEnvs: Record<string, string>,
@@ -456,7 +505,7 @@ export function toBackend(
 
     let regions: string[] = [];
     if (!bdEndpoint.region) {
-      regions = [api.functionsDefaultRegion()];
+      regions = [REGION_TBD];
     } else if (Array.isArray(bdEndpoint.region)) {
       regions = params.resolveList(bdEndpoint.region, paramValues);
     } else {
@@ -494,7 +543,11 @@ export function toBackend(
         "environmentVariables",
         "labels",
         "secretEnvironmentVariables",
+        "baseImageUri",
+        "command",
+        "args",
       );
+      r.resolveStrings(bkEndpoint, bdEndpoint, "serviceAccount");
 
       proto.convertIfPresent(bkEndpoint, bdEndpoint, "ingressSettings", (from) => {
         if (from !== null && !backend.AllIngressSettings.includes(from)) {
@@ -530,21 +583,32 @@ export function toBackend(
         nullsafeVisitor((cpu) => (cpu === "gcf_gen1" ? cpu : r.resolveInt(cpu))),
       );
       if (bdEndpoint.vpc) {
-        bdEndpoint.vpc.connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
-        if (bdEndpoint.vpc.connector && !bdEndpoint.vpc.connector.includes("/")) {
-          bdEndpoint.vpc.connector = `projects/${bdEndpoint.project}/locations/${region}/connectors/${bdEndpoint.vpc.connector}`;
+        bkEndpoint.vpc = {};
+        if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {
+          const connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
+          bkEndpoint.vpc.connector =
+            connector.includes("/") || connector === ""
+              ? connector
+              : `projects/${bdEndpoint.project}/locations/${region}/connectors/${connector}`;
         }
-
-        bkEndpoint.vpc = { connector: bdEndpoint.vpc.connector };
         if (bdEndpoint.vpc.egressSettings) {
-          const egressSettings = r.resolveString(bdEndpoint.vpc.egressSettings);
-          if (!backend.isValidEgressSetting(egressSettings)) {
-            throw new FirebaseError(
-              `Value "${egressSettings}" is an invalid ` +
-                "egress setting. Valid values are PRIVATE_RANGES_ONLY and ALL_TRAFFIC",
-            );
+          const egress = params.resolveString(bdEndpoint.vpc.egressSettings, paramValues);
+          if (!backend.AllVpcEgressSettings.includes(egress as backend.VpcEgressSettings)) {
+            throw new FirebaseError(`Value "${egress}" is an invalid egress setting.`);
           }
-          bkEndpoint.vpc.egressSettings = egressSettings;
+          bkEndpoint.vpc.egressSettings = egress as backend.VpcEgressSettings;
+        }
+        if (bdEndpoint.vpc.networkInterfaces) {
+          bkEndpoint.vpc.networkInterfaces = bdEndpoint.vpc.networkInterfaces.map((ni) => {
+            const resolved: { network?: string; subnetwork?: string; tags?: string[] } = {};
+            if (ni.network) resolved.network = params.resolveString(ni.network, paramValues);
+            if (ni.subnetwork)
+              resolved.subnetwork = params.resolveString(ni.subnetwork, paramValues);
+            if (ni.tags) {
+              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, paramValues));
+            }
+            return resolved;
+          });
         }
       } else if (bdEndpoint.vpc === null) {
         bkEndpoint.vpc = null;
@@ -555,6 +619,12 @@ export function toBackend(
 
   const bkend = backend.of(...bkEndpoints);
   bkend.requiredAPIs = build.requiredAPIs;
+  if (build.requiredRoles) {
+    bkend.requiredRoles = build.requiredRoles;
+  }
+  if (build.lifecycleHooks) {
+    bkend.lifecycleHooks = build.lifecycleHooks;
+  }
   return bkend;
 }
 
@@ -567,8 +637,25 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
       httpsTrigger.invoker = endpoint.httpsTrigger.invoker.map(r.resolveString);
     }
     return { httpsTrigger };
+  } else if (isDataConnectGraphqlTriggered(endpoint)) {
+    const dataConnectGraphqlTrigger: backend.DataConnectGraphqlTrigger = {};
+    if (endpoint.dataConnectGraphqlTrigger.invoker === null) {
+      dataConnectGraphqlTrigger.invoker = null;
+    } else if (typeof endpoint.dataConnectGraphqlTrigger.invoker !== "undefined") {
+      dataConnectGraphqlTrigger.invoker = endpoint.dataConnectGraphqlTrigger.invoker.map(
+        r.resolveString,
+      );
+    }
+    proto.copyIfPresent(
+      dataConnectGraphqlTrigger,
+      endpoint.dataConnectGraphqlTrigger,
+      "schemaFilePath",
+    );
+    return { dataConnectGraphqlTrigger };
   } else if (isCallableTriggered(endpoint)) {
-    return { callableTrigger: {} };
+    const trigger: CallableTriggered = { callableTrigger: {} };
+    proto.copyIfPresent(trigger.callableTrigger, endpoint.callableTrigger, "genkitAction");
+    return trigger;
   } else if (isBlockingTriggered(endpoint)) {
     return { blockingTrigger: endpoint.blockingTrigger };
   } else if (isEventTriggered(endpoint)) {
@@ -645,4 +732,177 @@ function discoverTrigger(endpoint: Endpoint, region: string, r: Resolver): backe
     return { taskQueueTrigger };
   }
   assertExhaustive(endpoint);
+}
+
+/**
+ * Prefixes all endpoint IDs and secret names in a build with a given prefix.
+ * This ensures that functions and their associated secrets from different codebases
+ * remain isolated and don't conflict when deployed to the same project.
+ */
+export function applyPrefix(build: Build, prefix: string): void {
+  if (!prefix) {
+    return;
+  }
+  const newEndpoints: Record<string, Endpoint> = {};
+  for (const [id, endpoint] of Object.entries(build.endpoints)) {
+    const newId = `${prefix}-${id}`;
+
+    // Enforce function id constraints early for clearer errors.
+    if (newId.length > 63) {
+      throw new FirebaseError(
+        `Function id '${newId}' exceeds 63 characters after applying prefix '${prefix}'. Please shorten the prefix or function name.`,
+      );
+    }
+    const fnIdRegex = /^[a-zA-Z][a-zA-Z0-9_-]{0,62}$/;
+    if (!fnIdRegex.test(newId)) {
+      throw new FirebaseError(
+        `Function id '${newId}' is invalid after applying prefix '${prefix}'. Function names must start with a letter and can contain letters, numbers, underscores, and hyphens, with a maximum length of 63 characters.`,
+      );
+    }
+
+    newEndpoints[newId] = endpoint;
+
+    if (endpoint.secretEnvironmentVariables) {
+      endpoint.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((secret) => ({
+        ...secret,
+        secret: `${prefix}-${secret.secret}`,
+      }));
+    }
+  }
+  build.endpoints = newEndpoints;
+
+  if (build.lifecycleHooks) {
+    for (const hook of Object.values(build.lifecycleHooks)) {
+      if ("task" in hook) {
+        if (hook.task?.function) {
+          hook.task.function = `${prefix}-${hook.task.function}`;
+        }
+      } else if ("call" in hook) {
+        if (hook.call?.function) {
+          hook.call.function = `${prefix}-${hook.call.function}`;
+        }
+      } else if ("http" in hook) {
+        if (hook.http?.function) {
+          hook.http.function = `${prefix}-${hook.http.function}`;
+        }
+      } else {
+        assertExhaustive(hook);
+      }
+    }
+  }
+}
+
+export interface ParsedSecretRef {
+  projectId?: string;
+  secretId: string;
+  version?: string;
+}
+
+/**
+ * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
+ * Secrets references are of the form csm://secretName/version, referencing a Secret in the same project as the Endpoint.
+ * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
+ *
+ * For each binding imported from the .env file,
+ * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
+ */
+export function applyEnvSecretBindings(
+  build: Build,
+  envSecrets: Record<string, ParsedSecretRef>,
+): void {
+  if (envSecrets.empty) {
+    return;
+  }
+  logger.debug(
+    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...)}`,
+  );
+  for (const endpointName of Object.keys(build.endpoints)) {
+    logger.debug(
+      `${endpointName} declared secrets: ${JSON.stringify(build.endpoints[endpointName].secretEnvironmentVariables)}`,
+    );
+  }
+
+  for (const key of Object.keys(envSecrets)) {
+    const secretRef = envSecrets[key];
+    const { projectId, secretId, version } = secretRef;
+
+    for (const param of build.params) {
+      if (param.type === "secret" && param.name.toUpperCase() === key) {
+        param.resourceId = secretId;
+        param.version = version;
+        param.inLocalEnvironment = true;
+      }
+    }
+
+    for (const endpointName of Object.keys(build.endpoints)) {
+      const endpoint = build.endpoints[endpointName];
+      if (projectId && projectId !== endpoint.project) {
+        throw new FirebaseError(
+          `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
+        );
+      }
+      let notFound = true;
+      for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
+        if (envVar.key === key) {
+          notFound = false;
+          envVar.secret = secretId;
+          if (typeof secretRef.version !== "undefined") {
+            envVar.version = version;
+            envVar.allowVersionPinning = true;
+          }
+          logger.debug(`Merged secret: ${JSON.stringify(envVar)}`);
+        }
+      }
+      if (notFound) {
+        logger.warn(
+          `.env files contain a secret binding ${key} which has not been configured as a secret param via defineSecret().`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Parses any of the supported formats used to refer to a Secret in .env:
+ * API_KEY=<secret-id>
+ * API_KEY=<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>/versions/<version>
+ * @return An object populated with project id, secret id, and version, with a field undefined if not provided.
+ */
+export function parseSecretRef(ref: string): ParsedSecretRef {
+  const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
+  if (shortMatch) {
+    const output: ParsedSecretRef = {
+      secretId: shortMatch[1],
+    };
+    if (shortMatch[2] !== undefined) {
+      output.version = shortMatch[2];
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
+      }
+    }
+    return output;
+  }
+  const longMatch = SECRET_REF_LONG_RE.exec(ref);
+  if (longMatch) {
+    const output: ParsedSecretRef = {
+      projectId: longMatch[1],
+      secretId: longMatch[2],
+    };
+    if (longMatch[3] !== undefined) {
+      output.version = longMatch[3];
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
+      }
+    }
+    return output;
+  }
+  throw new FirebaseError(`Unknown format for secret binding '${ref}'`);
 }

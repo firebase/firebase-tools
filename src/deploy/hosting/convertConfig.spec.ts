@@ -471,11 +471,14 @@ describe("convertConfig", () => {
     it(name, async () => {
       const context: Context = {
         projectId: PROJECT_ID,
-        loadedExistingBackend: true,
+        existingBackendPromise: new Promise((resolve) =>
+          resolve(existingBackend || backend.empty()),
+        ),
         existingBackend: existingBackend || backend.empty(),
         unreachableRegions: {
           gcfV1: [],
           gcfV2: [],
+          run: [],
         },
       };
       const deploy: HostingDeploy = {

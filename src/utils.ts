@@ -3,6 +3,7 @@ import * as tty from "tty";
 import * as path from "node:path";
 import * as yaml from "yaml";
 import { Socket } from "node:net";
+import * as crypto from "node:crypto";
 
 import * as _ from "lodash";
 import * as url from "url";
@@ -11,20 +12,20 @@ import * as clc from "colorette";
 import * as open from "open";
 import * as ora from "ora";
 import * as process from "process";
-import { Readable } from "stream";
-import * as winston from "winston";
-import { SPLAT } from "triple-beam";
 import { AssertionError } from "assert";
-const stripAnsi = require("strip-ansi");
 import { getPortPromise as getPort } from "portfinder";
 
 import { configstore } from "./configstore";
-import { FirebaseError } from "./error";
+import { FirebaseError, getErrMsg, getError } from "./error";
 import { logger, LogLevel } from "./logger";
 import { LogDataOrUndefined } from "./emulator/loggingEmulator";
-import { promptOnce } from "./prompt";
+import { input, password } from "./prompt";
 import { readTemplateSync } from "./templates";
-
+import { isVSCodeExtension } from "./vsCodeUtils";
+import { Config } from "./config";
+import { dirExistsSync, fileExistsSync } from "./fsutils";
+import { platform } from "node:os";
+import { execSync } from "node:child_process";
 export const IS_WINDOWS = process.platform === "win32";
 const SUCCESS_CHAR = IS_WINDOWS ? "+" : "✔";
 const WARNING_CHAR = IS_WINDOWS ? "!" : "⚠";
@@ -200,6 +201,14 @@ export function logWarning(
 }
 
 /**
+ * Log a warning statement to stderr, regardless of logger configuration.
+ */
+export function logWarningToStderr(message: string): void {
+  const prefix = clc.bold(`${WARNING_CHAR} `);
+  process.stderr.write(clc.yellow(prefix + message) + "\n");
+}
+
+/**
  * Log an info statement with a gray bullet at the start of the line.
  */
 export function logLabeledWarning(
@@ -299,34 +308,7 @@ export function explainStdin(): void {
   }
 }
 
-/**
- * Converts text input to a Readable stream.
- * @param text string to turn into a stream.
- * @return Readable stream, or undefined if text is empty.
- */
-export function stringToStream(text: string): Readable | undefined {
-  if (!text) {
-    return undefined;
-  }
-  const s = new Readable();
-  s.push(text);
-  s.push(null);
-  return s;
-}
-
-/**
- * Converts a Readable stream into a string.
- * @param s a readable stream.
- * @return a promise resolving to the string'd contents of the stream.
- */
-export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
-  return new Promise((resolve, reject) => {
-    let b = "";
-    s.on("error", reject);
-    s.on("data", (d) => (b += `${d}`));
-    s.once("end", () => resolve(b));
-  });
-}
+export { stringToStream, streamToString } from "./streamUtils";
 
 /**
  * Sets the active project alias or id in the specified directory.
@@ -423,7 +405,7 @@ export async function promiseWhile<T>(
           return resolve(res);
         }
         setTimeout(run, interval);
-      } catch (err: any) {
+      } catch (err: unknown) {
         return promiseReject(err);
       }
     };
@@ -467,22 +449,6 @@ export async function promiseProps(obj: any): Promise<any> {
 }
 
 /**
- * Attempts to call JSON.stringify on an object, if it throws return the original value
- * @param value
- */
-export function tryStringify(value: any) {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return value;
-  }
-}
-
-/**
  * Attempts to call JSON.parse on an object, if it throws return the original value
  * @param value
  */
@@ -499,34 +465,6 @@ export function tryParse(value: any) {
 }
 
 /**
- *
- */
-export function setupLoggers() {
-  if (process.env.DEBUG) {
-    logger.add(
-      new winston.transports.Console({
-        level: "debug",
-        format: winston.format.printf((info) => {
-          const segments = [info.message, ...(info[SPLAT] || [])].map(tryStringify);
-          return `${stripAnsi(segments.join(" "))}`;
-        }),
-      }),
-    );
-  } else if (process.env.IS_FIREBASE_CLI) {
-    logger.add(
-      new winston.transports.Console({
-        level: "info",
-        format: winston.format.printf((info) =>
-          [info.message, ...(info[SPLAT] || [])]
-            .filter((chunk) => typeof chunk === "string")
-            .join(" "),
-        ),
-      }),
-    );
-  }
-}
-
-/**
  * Runs a given function inside a spinner with a message
  */
 export async function promiseWithSpinner<T>(action: () => Promise<T>, message: string): Promise<T> {
@@ -535,7 +473,7 @@ export async function promiseWithSpinner<T>(action: () => Promise<T>, message: s
   try {
     data = await action();
     spinner.succeed();
-  } catch (err: any) {
+  } catch (err: unknown) {
     spinner.fail();
     throw err;
   }
@@ -600,14 +538,12 @@ export function datetimeString(d: Date): string {
  * Indicates whether the end-user is running the CLI from a cloud-based environment.
  */
 export function isCloudEnvironment() {
-  return !!process.env.CODESPACES || !!process.env.GOOGLE_CLOUD_WORKSTATIONS;
-}
-
-/**
- * Detect if code is running in a VSCode Extension
- */
-export function isVSCodeExtension(): boolean {
-  return !!process.env.VSCODE_CWD;
+  return (
+    !!process.env.CODESPACES ||
+    !!process.env.GOOGLE_CLOUD_WORKSTATIONS ||
+    !!process.env.CLOUD_SHELL ||
+    !!process.env.GOOGLE_CLOUD_SHELL
+  );
 }
 
 /**
@@ -616,6 +552,13 @@ export function isVSCodeExtension(): boolean {
  */
 export function isRunningInWSL(): boolean {
   return !!process.env.WSL_DISTRO_NAME;
+}
+
+/**
+ * Indicates whether the end-user is running the CLI from a GitHub Action.
+ */
+export function isRunningInGithubAction(): boolean {
+  return process.env.GITHUB_ACTION_REPOSITORY === "FirebaseExtended/action-hosting-deploy";
 }
 
 /**
@@ -877,8 +820,8 @@ export function readFileFromDirectory(
 export function wrappedSafeLoad(source: string): any {
   try {
     return yaml.parse(source);
-  } catch (err: any) {
-    throw new FirebaseError(`YAML Error: ${err.message}`, { original: err });
+  } catch (err: unknown) {
+    throw new FirebaseError(`YAML Error: ${getErrMsg(err)}`, { original: getError(err) });
   }
 }
 
@@ -900,16 +843,43 @@ export function generateId(n = 6): string {
 }
 
 /**
+ * Generate a password meeting the following criterias:
+ *  - At least one lowercase, one uppercase, one number, and one special character.
+ */
+export function generatePassword(n = 20): string {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numbers = "0123456789";
+  const special = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+  const all = lower + upper + numbers + special;
+
+  let pw = "";
+  pw += lower[crypto.randomInt(lower.length)];
+  pw += upper[crypto.randomInt(upper.length)];
+  pw += numbers[crypto.randomInt(numbers.length)];
+  pw += special[crypto.randomInt(special.length)];
+
+  for (let i = 4; i < n; i++) {
+    pw += all[crypto.randomInt(all.length)];
+  }
+
+  // Shuffle the password to randomize character order using Fisher-Yates shuffle
+  const pwArray = pw.split("");
+  for (let i = pwArray.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(i);
+    [pwArray[i], pwArray[j]] = [pwArray[j], pwArray[i]];
+  }
+  return pwArray.join("");
+}
+
+/**
  * Reads a secret value from either a file or a prompt.
- * If dataFile is falsy and this is a tty, uses prompty. Otherwise reads from dataFile.
+ * If dataFile is falsy and this is a tty, uses prompt. Otherwise reads from dataFile.
  * If dataFile is - or falsy, this means reading from file descriptor 0 (e.g. pipe in)
  */
 export function readSecretValue(prompt: string, dataFile?: string): Promise<string> {
   if ((!dataFile || dataFile === "-") && tty.isatty(0)) {
-    return promptOnce({
-      type: "password",
-      message: prompt,
-    });
+    return password({ message: prompt });
   }
   let input: string | number = 0;
   if (dataFile && dataFile !== "-") {
@@ -923,4 +893,299 @@ export function readSecretValue(prompt: string, dataFile?: string): Promise<stri
     }
     throw e;
   }
+}
+
+/**
+ * Updates or creates a .gitignore file with the given entries in the given path
+ */
+export function updateOrCreateGitignore(dirPath: string, entries: string[]) {
+  const gitignorePath = path.join(dirPath, ".gitignore");
+
+  if (!fs.existsSync(gitignorePath)) {
+    fs.writeFileSync(gitignorePath, entries.join("\n"));
+    return;
+  }
+
+  let content = fs.readFileSync(gitignorePath, "utf-8");
+  for (const entry of entries) {
+    if (!content.includes(entry)) {
+      content += `\n${entry}\n`;
+    }
+  }
+
+  fs.writeFileSync(gitignorePath, content);
+}
+
+/**
+ * Prompts for a directory name, and reprompts if that path does not exist
+ * N.B. Moved from the original prompt library to this file because it brings in a lot of
+ * dependencies. Moved to "utils" because this file arleady brings in the world.
+ */
+export async function promptForDirectory(args: {
+  message: string;
+  config: Config;
+  default?: boolean;
+  relativeTo?: string;
+}): Promise<string> {
+  let dir = "";
+  while (!dir) {
+    const promptPath = await input(args.message);
+    let target: string;
+    if (args.relativeTo) {
+      target = path.resolve(args.relativeTo, promptPath);
+    } else {
+      target = args.config.path(promptPath);
+    }
+    if (fileExistsSync(target)) {
+      logger.error(
+        `Expected a directory, but ${target} is a file. Please provide a path to a directory.`,
+      );
+    } else if (!dirExistsSync(target)) {
+      logger.error(`Directory ${target} not found. Please provide a path to a directory`);
+    } else {
+      dir = target;
+    }
+  }
+  return dir;
+}
+
+/**
+ * Deeply compares two JSON-serializable objects.
+ * It's a simplified version of a deep equal function, sufficient for comparing the structure
+ * of the gemini-extension.json file. It doesn't handle special cases like RegExp, Date, or functions.
+ */
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a !== "object" || a === null || typeof b !== "object" || b === null) {
+    return false;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) {
+    return false;
+  }
+
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Returns a unique ID that's either `recommended` or `recommended-{i}`.
+ * Avoid existing IDs.
+ */
+export function newUniqueId(recommended: string, existingIDs: string[]): string {
+  let id = recommended;
+  let i = 1;
+  while (existingIDs.includes(id)) {
+    id = `${recommended}-${i}`;
+    i++;
+  }
+  return id;
+}
+
+/**
+ * Checks if a command exists in the system.
+ */
+export function commandExistsSync(command: string): boolean {
+  try {
+    const isWindows = platform() === "win32";
+    // For Windows, `where` is more appropriate. It also often outputs the path.
+    // For Unix-like systems, `which` is standard.
+    // The `2> nul` (Windows) or `2>/dev/null` (Unix) redirects stderr to suppress error messages.
+    // The `>` nul / `>/dev/null` redirects stdout as we only care about the exit code.
+    const commandToCheck = isWindows
+      ? `where "${command}" > nul 2> nul`
+      : `which "${command}" > /dev/null 2> /dev/null`;
+
+    execSync(commandToCheck);
+    return true; // If execSync doesn't throw, the command was found (exit code 0)
+  } catch (error) {
+    // If the command is not found, execSync will throw an error (non-zero exit code)
+    return false;
+  }
+}
+
+/**
+ * Resolves `subPath` against `base` and ensures the result is contained within `base`.
+ * Throws a FirebaseError with an optional message if the resolved path escapes `base`.
+ */
+export function resolveWithin(base: string, subPath: string, errMsg?: string): string {
+  const abs = path.resolve(base, subPath);
+  const rel = path.relative(base, abs);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
+    throw new FirebaseError(errMsg || `Path "${subPath}" must be within "${base}".`);
+  }
+  return abs;
+}
+
+/**
+ * Converts a string to lower snake case.
+ * Useful for converting camelCase for Python or Terraform
+ */
+export function toLowerSnakeCase(s: string): string {
+  return s
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[-\s]+/g, "_")
+    .toLowerCase();
+}
+
+/**
+ * Generates a 32-bit positive integer using the MurmurHash3 algorithm.
+ *
+ * Based on the open-source JavaScript implementation of MurmurHash3 by Gary Court.
+ * @see https://github.com/garycourt/murmurhash-js
+ *
+ * @param key - The string or byte array to hash.
+ * @param seed - Optional seed value (default is 0).
+ * @returns A 32-bit positive integer hash value.
+ */
+export function murmurHashV3(key: string | Uint8Array, seed = 0): number {
+  if (typeof key === "string") {
+    key = new TextEncoder().encode(key);
+  }
+  const remainder = key.length & 3;
+  const bytes = key.length - remainder;
+  const c1 = 3432918353;
+  const c2 = 461845907;
+
+  let h1 = seed;
+  let i = 0;
+  let k1 = 0;
+
+  while (i < bytes) {
+    k1 =
+      (key[i] & 255) |
+      ((key[++i] & 255) << 8) |
+      ((key[++i] & 255) << 16) |
+      ((key[++i] & 255) << 24);
+    ++i;
+    k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+    k1 = (k1 << 15) | (k1 >>> 17);
+    k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+    h1 ^= k1;
+    h1 = (h1 << 13) | (h1 >>> 19);
+    const h1b = ((h1 & 65535) * 5 + ((((h1 >>> 16) * 5) & 65535) << 16)) & 4294967295;
+    h1 = (h1b & 65535) + 27492 + ((((h1b >>> 16) + 58964) & 65535) << 16);
+  }
+  k1 = 0;
+  switch (remainder) {
+    case 3:
+      k1 ^= (key[i + 2] & 255) << 16;
+    // falls through
+    case 2:
+      k1 ^= (key[i + 1] & 255) << 8;
+    // falls through
+    case 1:
+      k1 ^= key[i] & 255;
+      k1 = ((k1 & 65535) * c1 + ((((k1 >>> 16) * c1) & 65535) << 16)) & 4294967295;
+      k1 = (k1 << 15) | (k1 >>> 17);
+      k1 = ((k1 & 65535) * c2 + ((((k1 >>> 16) * c2) & 65535) << 16)) & 4294967295;
+      h1 ^= k1;
+  }
+  h1 ^= key.length;
+  h1 ^= h1 >>> 16;
+  h1 = ((h1 & 65535) * 2246822507 + ((((h1 >>> 16) * 2246822507) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 13;
+  h1 = ((h1 & 65535) * 3266489909 + ((((h1 >>> 16) * 3266489909) & 65535) << 16)) & 4294967295;
+  h1 ^= h1 >>> 16;
+  return h1 >>> 0;
+}
+
+/**
+ * Formats a byte count into a human-readable file size string.
+ */
+export function formatFilesize(bytes: number, decimals = 2): string {
+  if (bytes <= 0) return "0 Bytes";
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+}
+
+export type Limit = <T>(fn: () => Promise<T>) => Promise<T>;
+
+/**
+ * A lightweight Promise concurrency limiter.
+ */
+export function pLimit(concurrency: number): Limit {
+  if (!Number.isInteger(concurrency) || concurrency <= 0) {
+    throw new FirebaseError(`pLimit concurrency must be a positive integer, got ${concurrency}`);
+  }
+
+  const queue: Array<() => void> = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()?.();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = () => {
+        activeCount++;
+        try {
+          Promise.resolve(fn()).then(resolve, reject).finally(next);
+        } catch (err) {
+          reject(err);
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
+
+/**
+ * Calculates the Levenshtein distance between two strings.
+ */
+export function stringDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+
+  // Make 's1' the shorter string to optimize space
+  const [s1, s2] = a.length <= b.length ? [a, b] : [b, a];
+  const v0 = new Array<number>(s1.length + 1);
+  const v1 = new Array<number>(s1.length + 1);
+
+  for (let i = 0; i <= s1.length; i++) {
+    v0[i] = i;
+  }
+
+  for (let i = 0; i < s2.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < s1.length; j++) {
+      const cost = s1[j] === s2[i] ? 0 : 1;
+      v1[j + 1] = Math.min(
+        v1[j] + 1, // Insertion
+        v0[j + 1] + 1, // Deletion
+        v0[j] + cost, // Substitution
+      );
+    }
+    for (let j = 0; j <= s1.length; j++) {
+      v0[j] = v1[j];
+    }
+  }
+
+  return v0[s1.length];
 }

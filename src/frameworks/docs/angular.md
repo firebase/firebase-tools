@@ -10,38 +10,18 @@ page_type: guide
 
 # Integrate Angular
 
-With the Firebase framework-aware {{cli}}, you can deploy your Angular application
-to Firebase and serve dynamic content to your users.
-
 <<_includes/_preview-disclaimer.md>>
 
-<<_includes/_before-you-begin.md>>
-
-- Optional: AngularFire
-
-<<_includes/_initialize-firebase.md>>
-
-1. Answer yes to "Do you want to use a web framework? (experimental)"
-1. Choose your hosting source directory; this could be an existing Angular app.
-1. If prompted, choose Angular.
-
-### Initialize an existing project
-
-Change your hosting config in `firebase.json` to have a `source` option, rather
-than a `public` option. For example:
-
-```json
-{
-  "hosting": {
-    "source": "./path-to-your-angular-workspace"
-  }
-}
-```
+Caution: For Angular developers, new participation in the {{hosting}}
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
 
 ## Serve static content
 
-After initializing Firebase, you can serve static content with the standard
-deployment command:
+You can serve static content with the standard deployment command:
 
 ```shell
 firebase deploy
@@ -55,8 +35,10 @@ To prerender dynamic content in Angular, you need to set up Angular SSR.
 ng add @angular/ssr
 ```
 
-See the [Angular Prerendering (SSG) guide](https://angular.dev/guide/prerendering)
+See the [Angular Prerendering (SSG) guide](https://angular.dev/guide/ssr)
 for more information.
+
+### Optional: add a server module
 
 #### Deploy
 

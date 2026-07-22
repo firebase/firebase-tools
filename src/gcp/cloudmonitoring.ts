@@ -18,6 +18,7 @@ export interface CmQuery {
   "aggregation.perSeriesAligner"?: Aligner;
   "aggregation.crossSeriesReducer"?: Reducer;
   "aggregation.groupByFields"?: string;
+
   orderBy?: string;
   pageSize?: number;
   pageToken?: string;
@@ -132,7 +133,7 @@ export enum ValueType {
  */
 export async function queryTimeSeries(
   query: CmQuery,
-  projectNumber: number,
+  project: number | string,
 ): Promise<TimeSeriesResponse> {
   const client = new Client({
     urlPrefix: cloudMonitoringOrigin(),
@@ -140,14 +141,14 @@ export async function queryTimeSeries(
   });
   try {
     const res = await client.get<{ timeSeries: TimeSeriesResponse }>(
-      `/projects/${projectNumber}/timeSeries/`,
+      `/projects/${project}/timeSeries/`,
       {
         queryParams: query as { [key: string]: any },
       },
     );
     return res.body.timeSeries;
   } catch (err: any) {
-    throw new FirebaseError(`Failed to get extension usage: ${err}`, {
+    throw new FirebaseError(`Failed to get Cloud Monitoring metric: ${err}`, {
       status: err.status,
     });
   }

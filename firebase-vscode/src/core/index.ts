@@ -1,9 +1,9 @@
-import vscode, { Disposable, ExtensionContext, TelemetryLogger } from "vscode";
+import vscode, { Disposable, ExtensionContext } from "vscode";
 import { ExtensionBrokerImpl } from "../extension-broker";
 import { getRootFolders, registerConfig } from "./config";
 import { EmulatorsController } from "./emulators";
 import { registerEnv } from "./env";
-import { pluginLogger, LogLevel } from '../logger-wrapper';
+import { pluginLogger, LogLevel } from "../logger-wrapper";
 import { getSettings } from "../utils/settings";
 import { setEnabled } from "../../../src/experiments";
 import { registerUser } from "./user";
@@ -12,13 +12,26 @@ import { registerQuickstart } from "./quickstart";
 import { registerOptions } from "../options";
 import { upsertFile } from "../data-connect/file-utils";
 import { registerWebhooks } from "./webhook";
+import { createE2eMockable } from "../utils/test_hooks";
+import { runTerminalTask } from "../data-connect/terminal";
+import { AnalyticsLogger, DATA_CONNECT_EVENT_NAME } from "../analytics";
+import { EmulatorHub } from "../../../src/emulator/hub";
 
 export async function registerCore(
   broker: ExtensionBrokerImpl,
   context: ExtensionContext,
-  telemetryLogger: TelemetryLogger,
+  analyticsLogger: AnalyticsLogger,
 ): Promise<[EmulatorsController, vscode.Disposable]> {
   const settings = getSettings();
+
+  // Wrap the runTerminalTask function to allow for e2e testing.
+  const initSpy = createE2eMockable(
+    async (...args: Parameters<typeof runTerminalTask>) => {
+      await runTerminalTask(...args);
+    },
+    "init",
+    async () => {},
+  );
 
   if (settings.npmPath) {
     process.env.PATH += `:${settings.npmPath}`;
@@ -54,19 +67,10 @@ export async function registerCore(
       );
       return;
     }
-    const workspaceFolder = vscode.workspace.workspaceFolders[0];
-    const initCommand = currentProjectId.value ? 
-      `${settings.firebasePath} init dataconnect --project ${currentProjectId.value}` :
-      `${settings.firebasePath} init dataconnect`;
-    vscode.tasks.executeTask(
-      new vscode.Task(
-        { type: "shell" }, // this is the same type as in tasks.json
-        workspaceFolder, // The workspace folder
-        "firebase init dataconnect", // how you name the task
-        "firebase init dataconnect", // Shows up as MyTask: name
-        new vscode.ShellExecution(initCommand),
-      ),
-    );
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.INIT);
+    const projectId = currentProjectId.value || EmulatorHub.MISSING_PROJECT_PLACEHOLDER;
+    const initCommand = `${settings.firebasePath} init dataconnect --project ${projectId}`;
+    initSpy.call("firebase init", initCommand, { focus: true });
   });
 
   const emulatorsController = new EmulatorsController(broker);
@@ -80,11 +84,14 @@ export async function registerCore(
     },
   );
 
+  registerConfig(context, broker);
   const refreshCmd = vscode.commands.registerCommand(
     "firebase.refresh",
     async () => {
       await vscode.commands.executeCommand("workbench.action.closeSidebar");
-      await vscode.commands.executeCommand("workbench.view.extension.firebase-data-connect");
+      await vscode.commands.executeCommand(
+        "workbench.view.extension.firebase-data-connect",
+      );
     },
   );
 
@@ -94,11 +101,11 @@ export async function registerCore(
       openRcCmd,
       refreshCmd,
       emulatorsController,
+      initSpy,
       registerOptions(context),
-      registerConfig(broker),
       registerEnv(broker),
-      registerUser(broker, telemetryLogger),
-      registerProject(broker),
+      registerUser(broker, analyticsLogger),
+      registerProject(broker, analyticsLogger),
       registerQuickstart(broker),
       await registerWebhooks(),
       { dispose: sub1 },

@@ -3,8 +3,8 @@ import * as path from "path";
 import * as yaml from "yaml";
 
 import { fileExistsSync } from "../fsutils";
-import { FirebaseError } from "../error";
-import { ExtensionSpec, isExtensionSpec, isObject, LifecycleEvent, LifecycleStage } from "./types";
+import { FirebaseError, isObject } from "../error";
+import { ExtensionSpec, isExtensionSpec, LifecycleEvent, LifecycleStage } from "./types";
 import { logger } from "../logger";
 import { validateSpec } from "./extensionsHelper";
 

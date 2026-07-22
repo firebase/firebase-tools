@@ -6,6 +6,7 @@ import { DEFAULT_DURATION } from "../hosting/expireUtils";
 import { getAuthDomains, updateAuthDomains } from "../gcp/auth";
 import * as proto from "../gcp/proto";
 import { getHostnameFromUrl } from "../utils";
+import { Constants } from "../emulator/constants";
 
 const ONE_WEEK_MS = 604800000; // 7 * 24 * 60 * 60 * 1000
 
@@ -761,6 +762,9 @@ export async function getDeploymentDomain(
   siteId: string,
   hostingChannel?: string | undefined,
 ): Promise<string | null> {
+  if (Constants.isDemoProject(projectId)) {
+    return null;
+  }
   if (hostingChannel) {
     const channel = await getChannel(projectId, siteId, hostingChannel);
 

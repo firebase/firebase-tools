@@ -1,0 +1,416 @@
+import vscode, {
+  ConfigurationTarget,
+  Disposable,
+  ExtensionContext,
+} from "vscode";
+import { ExtensionBrokerImpl } from "../../extension-broker";
+import { registerWebview } from "../../webview";
+import { ExecutionHistoryTreeDataProvider } from "./execution-history-provider";
+import {
+  ExecutionItem,
+  ExecutionState,
+  createExecution,
+  selectExecutionId,
+  selectedExecution,
+  selectedExecutionId,
+  updateExecution,
+} from "./execution-store";
+import { batch, effect } from "@preact/signals-core";
+import {
+  OperationDefinitionNode,
+  OperationTypeNode,
+  parse,
+  print,
+} from "graphql";
+import { DataConnectService } from "../service";
+import { DataConnectError, toSerializedError } from "../../../common/error";
+import { InstanceType } from "../code-lens-provider";
+import { DATA_CONNECT_EVENT_NAME, AnalyticsLogger } from "../../analytics";
+import { EmulatorsController } from "../../core/emulators";
+import {
+  getConnectorGQLText,
+  insertQueryAt,
+  getSchemas,
+} from "../file-utils";
+import { dataConnectConfigs, firebaseRC } from "../config";
+import * as gif from "../../../../src/gemini/fdcExperience";
+import { configstore } from "../../../../src/configstore";
+import {
+  executionAuthParams,
+  executionVarsJSON,
+  ExecutionParamsService,
+} from "./execution-params";
+import {
+  ExecuteGraphqlRequest,
+  GraphqlResponseError,
+} from "../../dataconnect/types";
+import { GraphqlResponse } from "../../../../src/dataconnect/types";
+import { logger } from "../../../../src/logger";
+
+export interface ExecutionInput {
+  operationAst: OperationDefinitionNode;
+  document: string;
+  documentPath: string;
+  position: vscode.Position;
+  instance: InstanceType;
+}
+
+export interface GenerateOperationInput {
+  projectId?: string;
+  document: vscode.TextDocument;
+  description: string;
+  insertPosition: number;
+  existingQuery: string;
+}
+
+export function registerExecution(
+  context: ExtensionContext,
+  broker: ExtensionBrokerImpl,
+  dataConnectService: DataConnectService,
+  paramsService: ExecutionParamsService,
+  analyticsLogger: AnalyticsLogger,
+  emulatorsController: EmulatorsController,
+): Disposable {
+  const treeDataProvider = new ExecutionHistoryTreeDataProvider();
+  const executionHistoryTreeView = vscode.window.createTreeView(
+    "data-connect-execution-history",
+    {
+      treeDataProvider,
+    },
+  );
+
+  // Select the corresponding tree-item when the selected-execution-id updates
+  const sub1 = effect(() => {
+    const id = selectedExecutionId.value;
+    const selectedItem = treeDataProvider.executionItems.find(
+      ({ item }) => item.executionId === id,
+    );
+    executionHistoryTreeView.reveal(selectedItem, { select: true });
+  });
+
+  function notifyDataConnectResults(item: ExecutionItem) {
+    broker.send("notifyDataConnectResults", {
+      displayName: `${item.input.operationAst.operation} ${item.input.operationAst.name?.value ?? ""}`,
+      query: print(item.input.operationAst),
+      results: item.results,
+      variables: item.variables || "",
+      auth: item.auth,
+    });
+  }
+
+  // Listen for changes to the selected-execution item
+  const sub2 = effect(() => {
+    const item = selectedExecution.value;
+    if (item) {
+      notifyDataConnectResults(item);
+    }
+  });
+
+  const sub3 = broker.on("getDataConnectResults", () => {
+    const item = selectedExecution.value;
+    if (item) {
+      notifyDataConnectResults(item);
+    }
+  });
+
+  // re run called from execution panel;
+  const rerunExecutionBroker = broker.on("rerunExecution", () => {
+    const item = selectedExecution.value;
+    if (item) {
+      executeOperation(item.input);
+    }
+  });
+
+  async function executeOperation(arg: ExecutionInput) {
+    const { operationAst: ast, document, documentPath, instance } = arg;
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD,
+    );
+    analyticsLogger.logger.logUsage(
+      instance === InstanceType.LOCAL
+        ? DATA_CONNECT_EVENT_NAME.RUN_LOCAL + `_${ast.operation}`
+        : DATA_CONNECT_EVENT_NAME.RUN_PROD + `_${ast.operation}`,
+    );
+    await vscode.window.activeTextEditor?.document.save();
+
+    // focus on execution panel immediately
+    vscode.commands.executeCommand("data-connect-execution-parameters.focus");
+
+    const configs = vscode.workspace.getConfiguration("firebase.dataConnect");
+
+    const alwaysExecuteMutationsInProduction =
+      "alwaysAllowMutationsInProduction";
+
+    // notify users that emulator is starting
+    if (
+      instance === InstanceType.LOCAL &&
+      !(await emulatorsController.areEmulatorsRunning())
+    ) {
+      vscode.window.showWarningMessage(
+        "Automatically starting emulator... Please retry `Run Emulator` execution after it's started.",
+        { modal: false },
+      );
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.START_EMULATOR_FROM_EXECUTION,
+      );
+      emulatorsController.startEmulators();
+      return;
+    }
+
+    // Warn against using mutations in production.
+    if (
+      instance !== InstanceType.LOCAL &&
+      !configs.get(alwaysExecuteMutationsInProduction) &&
+      ast.operation === OperationTypeNode.MUTATION
+    ) {
+      analyticsLogger.logger.logUsage(
+        DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING,
+      );
+      const always = "Yes (always)";
+      const yes = "Yes";
+      const result = await vscode.window.showWarningMessage(
+        "You are about to perform a mutation in production environment. Are you sure?",
+        { modal: !process.env.VSCODE_TEST_MODE },
+        yes,
+        always,
+      );
+
+      switch (result) {
+        case yes:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED,
+          );
+          break;
+        case always:
+          // If the user selects "always", we update User settings.
+          configs.update(
+            alwaysExecuteMutationsInProduction,
+            true,
+            ConfigurationTarget.Global,
+          );
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_ACKED_ALWAYS,
+          );
+          break;
+        default:
+          analyticsLogger.logger.logUsage(
+            DATA_CONNECT_EVENT_NAME.RUN_PROD_MUTATION_WARNING_REJECTED,
+          );
+          return;
+      }
+    }
+
+    // get all gql files from connector and validate
+    const gqlText = await getConnectorGQLText(documentPath);
+
+    const servicePath = await dataConnectService.servicePath(documentPath);
+    if (!servicePath) {
+      throw new Error("No service found for document path: " + documentPath);
+    }
+    const req: ExecuteGraphqlRequest = {
+      operationName: ast.name?.value,
+      variables: paramsService.executeGraphqlVariables(),
+      query: gqlText || document,
+      extensions: paramsService.executeGraphqlExtensions(),
+    };
+
+    const item = createExecution({
+      label: ast.name?.value ?? "anonymous",
+      timestamp: Date.now(),
+      state: ExecutionState.RUNNING,
+      input: arg,
+      variables: executionVarsJSON.value,
+      auth: executionAuthParams.value,
+      results: {
+        respErr: toSerializedError(new Error("execution in progress")),
+      },
+    });
+
+    try {
+      // Execute queries/mutations from their source code.
+      // That ensures that we can execute queries in unsaved files.
+      const resp = await dataConnectService.executeGraphQL(
+        servicePath,
+        instance,
+        req,
+      );
+      if (resp.status >= 200 && resp.status < 300) {
+        // Executing queries may return a response which contains errors
+        const body = resp.body as GraphqlResponse;
+        item.state =
+          (body.errors?.length ?? 0) > 0
+            ? ExecutionState.ERRORED
+            : ExecutionState.FINISHED;
+        item.results = {
+          data: body.data,
+          gqlErrors: body.errors,
+          respErr: undefined,
+        };
+      } else {
+        // Executing queries may return a response which contains errors
+        const body = resp.body as GraphqlResponseError;
+        item.state = ExecutionState.ERRORED;
+        item.results = {
+          // Check both spots for GQL error details array.
+          // Backend returns `error: { code, message, details }`
+          // Emulator returns `{ code, message, details }`
+          gqlErrors: body.details || body.error?.details,
+          respErr: {
+            message: `Request failed with status ${resp.status}: ${body.message || body.error?.message}`,
+          },
+        };
+      }
+    } catch (error) {
+      item.state = ExecutionState.ERRORED;
+      item.results = {
+        respErr: toSerializedError(
+          error instanceof Error
+            ? error
+            : new DataConnectError("Unknown error", error),
+        ),
+      };
+    }
+
+    batch(() => {
+      updateExecution(item.executionId, item);
+      selectExecutionId(item.executionId);
+    });
+
+    if (item.state === ExecutionState.ERRORED) {
+      await paramsService.applyDetectedFixes(ast);
+    }
+  }
+
+  async function generateOperation(arg: GenerateOperationInput) {
+    analyticsLogger.logger.logUsage(DATA_CONNECT_EVENT_NAME.GENERATE_OPERATION);
+    if (!arg.projectId) {
+      vscode.window.showErrorMessage(
+        `Connect a Firebase project to use Gemini in Firebase features.`,
+      );
+      return;
+    }
+    await arg.document.save();
+    try {
+      const configs = dataConnectConfigs.value?.tryReadValue;
+      const serviceConfig = configs?.findEnclosingServiceForPath(
+        arg.document.fileName,
+      );
+
+      let schemas: any[] = [];
+
+      if (serviceConfig) {
+        schemas = await getSchemas(serviceConfig);
+      }
+
+      const prompt = `Generate a Data Connect operation to match this description: ${arg.description} 
+${arg.existingQuery ? `\n\nRefine this existing operation:\n${arg.existingQuery}` : ""}`;
+
+      const serviceName = await dataConnectService.servicePath(
+        arg.document.fileName,
+      );
+      const res = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "Data Connect: Generating Operation...",
+        },
+        async (progress) => {
+          return await gif.generateOperation(
+            prompt,
+            serviceName,
+            arg.projectId!,
+            schemas.length > 0 ? schemas : undefined,
+            (status: any) => {
+              let message = "";
+              if (status.state) {
+                message += `[${status.state}] `;
+              }
+              if (status.message) {
+                message += status.message;
+              }
+              if (message) {
+                progress.report({ message });
+              }
+            },
+          );
+        },
+      );
+
+      try {
+        parse(res);
+      } catch (e: any) {
+        logger.error(res);
+        vscode.window.showErrorMessage(
+          `Generated response is not valid GraphQL. Check the logs for details.`,
+        );
+        return;
+      }
+
+      await insertQueryAt(
+        arg.document.uri,
+        arg.insertPosition,
+        arg.existingQuery,
+        res,
+      );
+      vscode.window.showInformationMessage("SQL Connect generation completed");
+    } catch (e: any) {
+      vscode.window.showErrorMessage(`Failed to generate query: ${e.message}`);
+    }
+  }
+
+  return Disposable.from(
+    { dispose: sub1 },
+    { dispose: sub2 },
+    { dispose: sub3 },
+    { dispose: rerunExecutionBroker },
+    registerWebview({
+      name: "data-connect-execution-parameters",
+      context,
+      broker,
+    }),
+    registerWebview({
+      name: "data-connect-execution-results",
+      context,
+      broker,
+    }),
+    executionHistoryTreeView,
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.executeOperation",
+      async (arg: ExecutionInput) => {
+        await executeOperation(arg);
+      },
+    ),
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.generateOperation",
+      async (arg: GenerateOperationInput) => {
+        await generateOperation(arg);
+      },
+    ),
+
+    vscode.commands.registerCommand(
+      "firebase.dataConnect.selectExecutionResultToShow",
+      (executionId) => {
+        selectExecutionId(executionId);
+      },
+    ),
+    vscode.commands.registerCommand(
+      "firebase.openJsonDocument",
+      async (content) => {
+        await vscode.workspace.openTextDocument({ language: "json", content });
+      },
+    ),
+  );
+}
+
+/**
+ * Handles compilation errors by showing an error message and providing an option to open the file.
+ * @param error The GraphQL error object.
+ * @param servicePath The path to the service directory.
+ */
+function executionError(message: string, error?: string) {
+  vscode.window.showErrorMessage(
+    `Failed to execute operation: ${message}: \n${JSON.stringify(error, undefined, 2)}`,
+  );
+  throw new Error(error);
+}

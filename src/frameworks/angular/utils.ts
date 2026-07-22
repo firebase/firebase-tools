@@ -7,10 +7,12 @@ import { AngularI18nConfig } from "./interfaces";
 import { findDependency, relativeRequire, validateLocales } from "../utils";
 import { FirebaseError } from "../../error";
 import { join, posix, sep } from "path";
+import { readFile } from "fs/promises";
 import { BUILD_TARGET_PURPOSE } from "../interfaces";
 import { AssertionError } from "assert";
-import { assertIsString } from "../../utils";
+import { assertIsString, logLabeledWarning } from "../../utils";
 import { coerce } from "semver";
+import * as clc from "colorette";
 
 async function localesForTarget(
   dir: string,
@@ -66,39 +68,32 @@ async function localesForTarget(
   return { locales, defaultLocale };
 }
 
-const enum ExpectedBuilder {
-  APPLICATION = "@angular-devkit/build-angular:application",
-  BROWSER_ESBUILD = "@angular-devkit/build-angular:browser-esbuild",
-  DEPLOY = "@angular/fire:deploy",
-  DEV_SERVER = "@angular-devkit/build-angular:dev-server",
-  LEGACY_BROWSER = "@angular-devkit/build-angular:browser",
-  LEGACY_NGUNIVERSAL_PRERENDER = "@nguniversal/builders:prerender",
-  LEGACY_DEVKIT_PRERENDER = "@angular-devkit/build-angular:prerender",
-  LEGACY_SERVER = "@angular-devkit/build-angular:server",
-  LEGACY_NGUNIVERSAL_SSR_DEV_SERVER = "@nguniversal/builders:ssr-dev-server",
-  LEGACY_DEVKIT_SSR_DEV_SERVER = "@angular-devkit/build-angular:ssr-dev-server",
+export enum BuilderType {
+  DEPLOY = "deploy",
+  DEV_SERVER = "dev-server",
+  SSR_DEV_SERVER = "ssr-dev-server",
+  SERVER = "server",
+  BROWSER = "browser",
+  BROWSER_ESBUILD = "browser-esbuild",
+  APPLICATION = "application",
+  PRERENDER = "prerender",
 }
 
-const DEV_SERVER_TARGETS: string[] = [
-  ExpectedBuilder.DEV_SERVER,
-  ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER,
-  ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER,
-];
+const DEV_SERVER_TARGETS: BuilderType[] = [BuilderType.DEV_SERVER, BuilderType.SSR_DEV_SERVER];
 
-function getValidBuilders(purpose: BUILD_TARGET_PURPOSE): string[] {
+function getValidBuilderTypes(purpose: BUILD_TARGET_PURPOSE): BuilderType[] {
   return [
-    ExpectedBuilder.APPLICATION,
-    ExpectedBuilder.BROWSER_ESBUILD,
-    ExpectedBuilder.DEPLOY,
-    ExpectedBuilder.LEGACY_BROWSER,
-    ExpectedBuilder.LEGACY_DEVKIT_PRERENDER,
-    ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER,
+    BuilderType.APPLICATION,
+    BuilderType.BROWSER_ESBUILD,
+    BuilderType.DEPLOY,
+    BuilderType.BROWSER,
+    BuilderType.PRERENDER,
     ...(purpose === "deploy" ? [] : DEV_SERVER_TARGETS),
   ];
 }
 
 export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) {
-  const validBuilders = getValidBuilders(purpose);
+  const validBuilderTypes = getValidBuilderTypes(purpose);
   const [{ NodeJsAsyncHost }, { workspaces }, { targetStringFromTarget }] = await Promise.all([
     relativeRequire(dir, "@angular-devkit/core/node"),
     relativeRequire(dir, "@angular-devkit/core"),
@@ -111,7 +106,10 @@ export async function getAllTargets(purpose: BUILD_TARGET_PURPOSE, dir: string) 
   workspace.projects.forEach((projectDefinition, project) => {
     if (projectDefinition.extensions.projectType !== "application") return;
     projectDefinition.targets.forEach((targetDefinition, target) => {
-      if (!validBuilders.includes(targetDefinition.builder)) return;
+      const builderType = getBuilderType(targetDefinition.builder);
+      if (builderType && !validBuilderTypes.includes(builderType)) {
+        return;
+      }
       const configurations = Object.keys(targetDefinition.configurations || {});
       if (!configurations.includes("production")) configurations.push("production");
       if (!configurations.includes("development")) configurations.push("development");
@@ -187,34 +185,32 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
 
   if (overrideTarget) {
     const target = workspaceProject.targets.get(overrideTarget.target)!;
-    const builder = target.builder;
-    switch (builder) {
-      case ExpectedBuilder.DEPLOY:
+    const builderType = getBuilderType(target.builder);
+    switch (builderType) {
+      case BuilderType.DEPLOY:
         deployTarget = overrideTarget;
         break;
-      case ExpectedBuilder.APPLICATION:
+      case BuilderType.APPLICATION:
         buildTarget = overrideTarget;
         break;
-      case ExpectedBuilder.BROWSER_ESBUILD:
-      case ExpectedBuilder.LEGACY_BROWSER:
+      case BuilderType.BROWSER:
+      case BuilderType.BROWSER_ESBUILD:
         browserTarget = overrideTarget;
         break;
-      case ExpectedBuilder.LEGACY_DEVKIT_PRERENDER:
-      case ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER:
+      case BuilderType.PRERENDER:
         prerenderTarget = overrideTarget;
         break;
-      case ExpectedBuilder.DEV_SERVER:
-      case ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER:
-      case ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER:
+      case BuilderType.DEV_SERVER:
+      case BuilderType.SSR_DEV_SERVER:
         serveTarget = overrideTarget;
         break;
       default:
-        throw new FirebaseError(`builder ${builder} not known.`);
+        throw new FirebaseError(`builder type ${builderType} not known.`);
     }
   } else if (workspaceProject.targets.has("deploy")) {
     const { builder, defaultConfiguration = "production" } =
       workspaceProject.targets.get("deploy")!;
-    if (builder === ExpectedBuilder.DEPLOY) {
+    if (getBuilderType(builder) === BuilderType.DEPLOY) {
       deployTarget = {
         project,
         target: "deploy",
@@ -294,15 +290,13 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     if (!buildTarget && !browserTarget && workspaceProject.targets.has("build")) {
       const { builder, defaultConfiguration = "production" } =
         workspaceProject.targets.get("build")!;
+      const builderType = getBuilderType(builder);
       const target = {
         project,
         target: "build",
         configuration: configuration || defaultConfiguration,
       };
-      if (
-        builder === ExpectedBuilder.LEGACY_BROWSER ||
-        builder === ExpectedBuilder.BROWSER_ESBUILD
-      ) {
+      if (builderType === BuilderType.BROWSER || builderType === BuilderType.BROWSER_ESBUILD) {
         browserTarget = target;
       } else {
         buildTarget = target;
@@ -353,21 +347,19 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
       const definition = workspaceProject.targets.get(target.target);
       if (!definition) throw new FirebaseError(`${target} could not be found in your angular.json`);
       const { builder } = definition;
-      if (target === deployTarget && builder === ExpectedBuilder.DEPLOY) continue;
-      if (target === buildTarget && builder === ExpectedBuilder.APPLICATION) continue;
-      if (target === buildTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
-      if (target === browserTarget && builder === ExpectedBuilder.BROWSER_ESBUILD) continue;
-      if (target === browserTarget && builder === ExpectedBuilder.LEGACY_BROWSER) continue;
-      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_PRERENDER)
-        continue;
-      if (target === prerenderTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_PRERENDER)
-        continue;
-      if (target === serverTarget && builder === ExpectedBuilder.LEGACY_SERVER) continue;
-      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_NGUNIVERSAL_SSR_DEV_SERVER)
-        continue;
-      if (target === serveTarget && builder === ExpectedBuilder.LEGACY_DEVKIT_SSR_DEV_SERVER)
-        continue;
-      if (target === serveTarget && builder === ExpectedBuilder.DEV_SERVER) continue;
+      const builderType = getBuilderType(builder);
+      if (target === deployTarget && builderType === BuilderType.DEPLOY) continue;
+      if (target === buildTarget && builderType === BuilderType.APPLICATION) continue;
+      if (target === buildTarget && builderType === BuilderType.BROWSER) continue;
+      if (target === browserTarget && builderType === BuilderType.BROWSER_ESBUILD) continue;
+      if (target === browserTarget && builderType === BuilderType.BROWSER) continue;
+      if (target === browserTarget && builderType === BuilderType.APPLICATION) continue;
+      if (target === prerenderTarget && builderType === BuilderType.PRERENDER) continue;
+      if (target === prerenderTarget && builderType === BuilderType.PRERENDER) continue;
+      if (target === serverTarget && builderType === BuilderType.SERVER) continue;
+      if (target === serveTarget && builderType === BuilderType.SSR_DEV_SERVER) continue;
+      if (target === serveTarget && builderType === BuilderType.DEV_SERVER) continue;
+      if (target === serveTarget && builderType === BuilderType.SERVER) continue;
       throw new FirebaseError(
         `${definition.builder} (${targetString}) is not a recognized builder. Please check your angular.json`,
       );
@@ -405,6 +397,7 @@ export async function getContext(dir: string, targetOrConfiguration?: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions: buildTargetOptions || undefined,
   };
 }
 
@@ -421,11 +414,14 @@ export async function getBrowserConfig(sourceDir: string, configuration: string)
     architectHost.getBuilderNameForTarget(buildOrBrowserTarget),
   ]);
 
-  assertIsString(targetOptions?.outputPath);
+  const buildOutputPath =
+    typeof targetOptions?.outputPath === "string"
+      ? targetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
 
   const outputPath = join(
-    targetOptions.outputPath,
-    buildTarget && builderName === ExpectedBuilder.APPLICATION ? "browser" : "",
+    buildOutputPath,
+    buildTarget && getBuilderType(builderName) === BuilderType.APPLICATION ? "browser" : "",
   );
   return { locales, baseHref, outputPath, defaultLocale };
 }
@@ -447,8 +443,13 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     throw new AssertionError({ message: "expected build or browser target to be defined" });
   }
   const browserTargetOptions = await architectHost.getOptionsForTarget(buildOrBrowserTarget);
-  assertIsString(browserTargetOptions?.outputPath);
-  const browserOutputPath = join(browserTargetOptions.outputPath, buildTarget ? "browser" : "")
+
+  const buildOutputPath =
+    typeof browserTargetOptions?.outputPath === "string"
+      ? browserTargetOptions.outputPath
+      : join("dist", buildOrBrowserTarget.project);
+
+  const browserOutputPath = join(buildOutputPath, buildTarget ? "browser" : "")
     .split(sep)
     .join(posix.sep);
   const packageJson = JSON.parse(await host.readFile(join(sourceDir, "package.json")));
@@ -478,8 +479,17 @@ export async function getServerConfig(sourceDir: string, configuration: string) 
     workspaceProject,
   );
   const serverTargetOptions = await architectHost.getOptionsForTarget(buildOrServerTarget);
-  assertIsString(serverTargetOptions?.outputPath);
-  const serverOutputPath = join(serverTargetOptions.outputPath, buildTarget ? "server" : "")
+  if (!serverTargetOptions) {
+    throw new AssertionError({
+      message: `expected "JsonObject" but got "${typeof serverTargetOptions}"`,
+    });
+  }
+  const serverTargetOutputPath =
+    typeof serverTargetOptions?.outputPath === "string"
+      ? serverTargetOptions.outputPath
+      : join("dist", buildOrServerTarget.project);
+
+  const serverOutputPath = join(serverTargetOutputPath, buildTarget ? "server" : "")
     .split(sep)
     .join(posix.sep);
   if (serverLocales && !defaultLocale) {
@@ -523,6 +533,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     workspaceProject,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   } = await getContext(sourceDir, configuration);
   const targets = (
     buildTarget
@@ -547,6 +558,7 @@ export async function getBuildConfig(sourceDir: string, configuration: string) {
     locales,
     serveOptimizedImages,
     ssr,
+    buildTargetOptions,
   };
 }
 
@@ -579,4 +591,168 @@ function throwCannotDetermineTarget(error?: Error): never {
     `Unable to determine the application to deploy, specify a target via the FIREBASE_FRAMEWORKS_BUILD_TARGET environment variable.`,
     { original: error },
   );
+}
+
+/**
+ * Extracts the builder type from a full builder string (everything after the colon)
+ * @example
+ * getBuilderType("@angular-devkit/build-angular:browser") // returns "browser"
+ */
+export function getBuilderType(builder: string): BuilderType | null {
+  const colonIndex = builder.lastIndexOf(":");
+  const builderType = colonIndex >= 0 ? builder.slice(colonIndex + 1) : undefined;
+  if (!builderType || !Object.values(BuilderType).includes(builderType as BuilderType)) {
+    return null;
+  }
+  return builderType as BuilderType;
+}
+
+/** Public Hosting domains the engine validates with trustProxyHeaders on (forwarded Host). */
+const ANGULAR_22_PUBLIC_HOST_PATTERNS: readonly string[] = ["*.web.app", "*.firebaseapp.com"];
+
+/** Rotating Cloud Run host the engine validates with trustProxyHeaders off (the default). */
+const ANGULAR_22_CLOUD_RUN_HOST_PATTERNS: readonly string[] = ["*.a.run.app"];
+
+/** Recommended security.allowedHosts: union of both modes, so it survives toggling trustProxyHeaders. */
+export const ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS: readonly string[] = [
+  ...ANGULAR_22_PUBLIC_HOST_PATTERNS,
+  ...ANGULAR_22_CLOUD_RUN_HOST_PATTERNS,
+];
+
+export type Angular22SsrSecurityWarning = {
+  /** Recommended hosts missing from allowedHosts (the fix). Non-empty when a warning fires. */
+  allowedHostsMissing: string[];
+  /** trustProxyHeaders detected in the server entry; tunes the message, does not gate the warning. */
+  trustProxyHeadersEnabled: boolean;
+};
+
+/**
+ * Warns when Angular 22 SSR will trip Angular's strict SSRF host check on Firebase
+ * Hosting. One question: is the Host the engine validates allowlisted? trustProxyHeaders
+ * only selects which Host that is (forwarded public domain vs raw Cloud Run host), not a
+ * second requirement. Returns undefined when unaffected.
+ */
+export function getAngular22SsrSecurityWarning(opts: {
+  ssr: boolean;
+  buildOptionsAllowedHosts: string[] | undefined;
+  serverEntrySource: string | undefined;
+}): Angular22SsrSecurityWarning | undefined {
+  if (!opts.ssr) return undefined;
+
+  const declared = opts.buildOptionsAllowedHosts ?? [];
+
+  // `*` or an engine-level allowedHosts (a literal we can't read) => user owns validation.
+  const serverHasAllowedHosts =
+    !!opts.serverEntrySource && /\ballowedHosts\s*[:=]/.test(opts.serverEntrySource);
+  if (declared.includes("*") || (serverHasAllowedHosts && declared.length === 0)) {
+    return undefined;
+  }
+
+  const trustProxyHeadersEnabled =
+    !!opts.serverEntrySource && /\btrustProxyHeaders\s*[:=]/.test(opts.serverEntrySource);
+
+  // Required host depends on the mode; if it's already declared, the deploy works.
+  const requiredHostPatterns = trustProxyHeadersEnabled
+    ? ANGULAR_22_PUBLIC_HOST_PATTERNS
+    : ANGULAR_22_CLOUD_RUN_HOST_PATTERNS;
+  if (requiredHostPatterns.every((pattern) => declared.includes(pattern))) return undefined;
+
+  // Recommend the full set so the fix survives toggling trustProxyHeaders.
+  const allowedHostsMissing = ANGULAR_22_RECOMMENDED_ALLOWED_HOSTS.filter(
+    (pattern) => !declared.includes(pattern),
+  );
+  return { allowedHostsMissing, trustProxyHeadersEnabled };
+}
+
+/** Renders the warning: allowlist fix first, trustProxyHeaders only as an alternative when unset. */
+export function formatAngular22SsrSecurityWarning(warning: Angular22SsrSecurityWarning): string {
+  const sections: string[] = [
+    "Angular 22 enabled strict SSRF protection on its SSR engine. Without the matching security.allowedHosts entries, the SSR function will reject requests and return errors after deploy.",
+    [
+      "Add these hostnames to security.allowedHosts in angular.json:",
+      `  ${JSON.stringify(warning.allowedHostsMissing)}`,
+      `${clc.bold("Documentation")}: https://angular.dev/best-practices/security#configuring-allowed-hosts`,
+    ].join("\n"),
+  ];
+
+  if (!warning.trustProxyHeadersEnabled) {
+    sections.push(
+      [
+        "Alternatively, enable trustProxyHeaders so the engine validates the forwarded Hosting domain instead of the SSR function host. If you do, also add any custom domains you serve from to security.allowedHosts.",
+        `${clc.bold("Documentation")}: https://angular.dev/best-practices/security#configuring-trusted-proxy-headers`,
+      ].join("\n"),
+    );
+  }
+
+  const message = sections.join("\n\n");
+  return message
+    .split("\n")
+    .map((line, i) => (i === 0 ? line : "  " + line))
+    .join("\n")
+    .concat("\n");
+}
+
+/**
+ * Logs the Angular 22 SSR security warning when needed. `buildTargetOptions` is the
+ * already-resolved builder options (no extra `getContext` parse). Best-effort: any
+ * failure is swallowed so the check never blocks a build.
+ */
+export async function maybeWarnAngular22SsrSecurity(
+  dir: string,
+  opts: { ssr: boolean; buildTargetOptions: JsonObject | null | undefined },
+): Promise<void> {
+  try {
+    const version = getAngularVersion(dir);
+    if (!version) return;
+    const semver = coerce(version);
+    if (!semver || semver.major < 22) return;
+    if (!opts.ssr) return;
+
+    const buildOptionsAllowedHosts = extractAngular22AllowedHostsFromBuildOptions(
+      opts.buildTargetOptions,
+    );
+    const entryPath = getAngular22ServerEntryPath(opts.buildTargetOptions);
+    let serverEntrySource: string | undefined;
+    try {
+      serverEntrySource = await readFile(join(dir, entryPath), "utf8");
+    } catch {
+      // A missing/unreadable entry just means we cannot confirm manual
+      // wiring — keep going so the warning still fires.
+    }
+
+    const warning = getAngular22SsrSecurityWarning({
+      ssr: opts.ssr,
+      buildOptionsAllowedHosts,
+      serverEntrySource,
+    });
+    if (!warning) return;
+
+    logLabeledWarning("Angular 22", formatAngular22SsrSecurityWarning(warning));
+  } catch {
+    // Never let the security pre-flight break a build.
+  }
+}
+
+/** Pulls the string entries of `security.allowedHosts` out of resolved builder options. */
+export function extractAngular22AllowedHostsFromBuildOptions(
+  options: JsonObject | null | undefined,
+): string[] | undefined {
+  const security = options?.security as { allowedHosts?: unknown } | undefined;
+  if (!security || !Array.isArray(security.allowedHosts)) return undefined;
+  return security.allowedHosts.filter((h): h is string => typeof h === "string");
+}
+
+/** Conventional SSR entry the schematic generates; fallback when `ssr.entry` is absent. */
+export const ANGULAR_22_DEFAULT_SERVER_ENTRY = "src/server.ts";
+
+/**
+ * Resolves the SSR server entry source path to inspect. Prefers `options.ssr.entry`
+ * (custom layouts); falls back to `src/server.ts` for the boolean/no-entry SSR forms.
+ */
+export function getAngular22ServerEntryPath(options: JsonObject | null | undefined): string {
+  const ssr = options?.ssr as { entry?: unknown } | boolean | undefined;
+  if (ssr && typeof ssr !== "boolean" && typeof ssr.entry === "string") {
+    return ssr.entry;
+  }
+  return ANGULAR_22_DEFAULT_SERVER_ENTRY;
 }

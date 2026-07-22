@@ -4,7 +4,7 @@ import { Client } from "../apiv2";
 import { Command } from "../command";
 import { DATABASE_SETTINGS, HELP_TEXT, INVALID_PATH_ERROR } from "../database/settings";
 import { Emulators } from "../emulator/types";
-import { FirebaseError } from "../error";
+import { FirebaseError, getError } from "../error";
 import { populateInstanceDetails } from "../management/database";
 import { realtimeOriginOrCustomUrl } from "../database/api";
 import { requirePermissions } from "../requirePermissions";
@@ -13,7 +13,7 @@ import { requireDatabaseInstance } from "../requireDatabaseInstance";
 import * as utils from "../utils";
 
 export const command = new Command("database:settings:set <path> <value>")
-  .description("set the realtime database setting at path.")
+  .description("set the Realtime Database setting at path")
   .option(
     "--instance <instance>",
     "use the database <instance>.firebaseio.com (if omitted, use default database instance)",
@@ -44,10 +44,10 @@ export const command = new Command("database:settings:set <path> <value>")
     const c = new Client({ urlPrefix: u.origin, auth: true });
     try {
       await c.put(u.pathname, JSON.stringify(parsedValue));
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError(`Unexpected error fetching configs at ${path}`, {
         exit: 2,
-        original: err,
+        original: getError(err),
       });
     }
     utils.logSuccess("Successfully set setting.");

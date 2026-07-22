@@ -1,5 +1,6 @@
 import * as backend from "../backend";
 import * as build from "../build";
+import * as dart from "./dart";
 import * as node from "./node";
 import * as python from "./python";
 import * as validate from "../validate";
@@ -45,7 +46,7 @@ export interface RuntimeDelegate {
    * This is for languages like TypeScript which have a "watch" feature.
    * Returns a cancel function.
    */
-  watch(): Promise<() => Promise<void>>;
+  watch(onRebuild?: () => void): Promise<() => Promise<void>>;
 
   /**
    * Inspect the customer's source for the backend spec it describes.
@@ -70,7 +71,11 @@ export interface DelegateContext {
 }
 
 type Factory = (context: DelegateContext) => Promise<RuntimeDelegate | undefined>;
-const factories: Factory[] = [node.tryCreateDelegate, python.tryCreateDelegate];
+const factories: Factory[] = [
+  node.tryCreateDelegate,
+  python.tryCreateDelegate,
+  dart.tryCreateDelegate,
+];
 
 /**
  * Gets the delegate object responsible for discovering, building, and hosting

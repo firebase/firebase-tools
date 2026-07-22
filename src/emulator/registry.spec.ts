@@ -132,4 +132,4 @@ describe("EmulatorRegistry", () => {
       expect(EmulatorRegistry.url(name, req).host).to.eql(hostFromHeader);
     });
   });
-});
+}).timeout(2000);

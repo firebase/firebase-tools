@@ -222,6 +222,7 @@ describe("reporter", () => {
         fn_deploy_num_successes: 1,
         fn_deploy_num_canceled: 1,
         fn_deploy_num_failures: 1,
+        has_runtime_config: "false",
       });
 
       // The 0ms for an aborted function isn't counted.

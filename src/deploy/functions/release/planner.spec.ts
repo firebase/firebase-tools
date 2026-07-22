@@ -36,6 +36,7 @@ describe("planner", () => {
       runtime: "nodejs16",
       entryPoint: "function",
       environmentVariables: {},
+      state: "ACTIVE",
     } as backend.Endpoint;
   }
 
@@ -44,6 +45,16 @@ describe("planner", () => {
       const httpsFunc = func("a", "b", { httpsTrigger: {} });
       const scheduleFunc = func("a", "b", { scheduleTrigger: {} });
       expect(() => planner.calculateUpdate(httpsFunc, scheduleFunc)).to.throw();
+    });
+
+    it("allows upgrades of genkit functions from the genkit plugin to firebase-functions SDK", () => {
+      const httpsFunc = func("a", "b", { httpsTrigger: {} });
+      const genkitFunc = func("a", "b", { callableTrigger: { genkitAction: "flows/flow" } });
+      expect(planner.calculateUpdate(genkitFunc, httpsFunc)).to.deep.equal({
+        // Missing: deleteAndRecreate
+        endpoint: genkitFunc,
+        unsafe: false,
+      });
     });
 
     it("knows to delete & recreate for v2 topic changes", () => {
@@ -127,7 +138,98 @@ describe("planner", () => {
     });
   });
 
-  describe("calculateRegionalChanges", () => {
+  describe("toSkipPredicate", () => {
+    it("should skip functions with matching hashes", () => {
+      const wantFn = func("skip", "region");
+      const haveFn = func("skip", "region");
+      wantFn.hash = "same-hash";
+      haveFn.hash = "same-hash";
+
+      const want = { skip: wantFn };
+      const have = { skip: haveFn };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(1);
+      expect(result.region.endpointsToSkip[0].id).to.equal("skip");
+    });
+
+    it("should not skip functions with different hashes", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "local-hash";
+      funcHave.hash = "server-hash";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should not skip functions with missing hash values", () => {
+      const func1Want = func("func1", "region");
+      const func1Have = func("func1", "region");
+      func1Want.hash = "hash";
+      // func1Have has no hash
+
+      const func2Want = func("func2", "region");
+      const func2Have = func("func2", "region");
+      // func2Want has no hash
+      func2Have.hash = "hash";
+
+      // Neither has hash
+      const func3Want = func("func3", "region");
+      const func3Have = func("func3", "region");
+
+      const want = { func1: func1Want, func2: func2Want, func3: func3Want };
+      const have = { func1: func1Have, func2: func2Have, func3: func3Have };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(3);
+    });
+
+    it("should not skip functions targeted by --only flag", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcWant.targetedByOnly = true;
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+
+    it("should not skip functions in broken state", () => {
+      const funcWant = func("func", "region");
+      const funcHave = func("func", "region");
+      funcWant.hash = "same-hash";
+      funcHave.hash = "same-hash";
+      funcHave.state = "FAILED";
+
+      const want = { func: funcWant };
+      const have = { func: funcHave };
+
+      const result = planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(result.region.endpointsToSkip).to.have.lengthOf(0);
+      expect(result.region.endpointsToUpdate).to.have.lengthOf(1);
+      expect(result.region.endpointsToUpdate[0].endpoint.id).to.equal("func");
+    });
+  });
+
+  describe("calculateChangesets", () => {
     it("passes a smoke test", () => {
       const created = func("created", "region");
       const updated = func("updated", "region");
@@ -281,12 +383,30 @@ describe("planner", () => {
         },
       });
     });
+
+    it("logs a message when skipping functions", () => {
+      // Create functions with matching hashes that will be skipped
+      const skipWant = func("skip", "region");
+      const skipHave = func("skip", "region");
+      skipWant.hash = "hash";
+      skipHave.hash = "hash";
+
+      const want = { skip: skipWant };
+      const have = { skip: skipHave };
+
+      planner.calculateChangesets(want, have, (e) => e.region);
+
+      expect(logLabeledBullet).to.have.been.calledWith(
+        "functions",
+        "Skipping the deploy of unchanged functions.",
+      );
+    });
   });
 
   describe("createDeploymentPlan", () => {
     const codebase = "default";
 
-    it("groups deployment by region and memory", () => {
+    it("groups deployment by region and memory", async () => {
       const region1mem1Created: backend.Endpoint = func("id1", "region1");
       const region1mem1Updated: backend.Endpoint = func("id2", "region1");
 
@@ -305,7 +425,13 @@ describe("planner", () => {
         region2mem2Updated,
       );
 
-      expect(planner.createDeploymentPlan({ wantBackend, haveBackend, codebase })).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region1-default": {
           endpointsToCreate: [region1mem1Created],
           endpointsToUpdate: [
@@ -337,7 +463,7 @@ describe("planner", () => {
       });
     });
 
-    it("applies filters", () => {
+    it("applies filters", async () => {
       const group1Created = func("g1-created", "region");
       const group1Updated = func("g1-updated", "region");
       const group1Deleted = func("g1-deleted", "region");
@@ -352,14 +478,14 @@ describe("planner", () => {
       const wantBackend = backend.of(group1Updated, group1Created, group2Updated, group2Created);
       const haveBackend = backend.of(group1Updated, group1Deleted, group2Updated, group2Deleted);
 
-      expect(
-        planner.createDeploymentPlan({
-          wantBackend,
-          haveBackend,
-          codebase,
-          filters: [{ codebase, idChunks: ["g1"] }],
-        }),
-      ).to.deep.equal({
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["g1"] }],
+      });
+      expect(plan.regionalChangesets).to.deep.equal({
         "default-region-default": {
           endpointsToCreate: [group1Created],
           endpointsToUpdate: [
@@ -374,7 +500,7 @@ describe("planner", () => {
       });
     });
 
-    it("nudges users towards concurrency settings when upgrading and not setting", () => {
+    it("nudges users towards concurrency settings when upgrading and not setting", async () => {
       const original: backend.Endpoint = func("id", "region");
       original.platform = "gcfv1";
       const upgraded: backend.Endpoint = { ...original };
@@ -384,46 +510,119 @@ describe("planner", () => {
       const wantBackend = backend.of(upgraded);
 
       allowV2Upgrades();
-      planner.createDeploymentPlan({ wantBackend, haveBackend, codebase });
+      await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+      });
       expect(logLabeledBullet).to.have.been.calledOnceWith(
         "functions",
         sinon.match(/change this with the 'concurrency' option/),
       );
     });
 
-    it("does not warn users about concurrency when inappropriate", () => {
+    it("does not warn users about concurrency when inappropriate", async () => {
       allowV2Upgrades();
-      // Concurrency isn't set but this isn't an upgrade operation, so there
-      // should be no warning
       const v2Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv2" };
 
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v2Function),
         haveBackend: backend.of(v2Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
       const v1Function: backend.Endpoint = { ...func("id", "region"), platform: "gcfv1" };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(v1Function),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
 
-      // Upgraded but specified concurrency
       const concurrencyUpgraded: backend.Endpoint = {
         ...v1Function,
         platform: "gcfv2",
         concurrency: 80,
       };
-      planner.createDeploymentPlan({
+      await planner.createDeploymentPlan({
         wantBackend: backend.of(concurrencyUpgraded),
         haveBackend: backend.of(v1Function),
         codebase,
+        projectId: "my-project",
       });
       expect(logLabeledBullet).to.not.have.been.called;
+    });
+
+    it("does not delete the service account when opting out during a filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase, idChunks: ["id"] }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.be.undefined;
+    });
+
+    it("deletes the service account when opting out during a codebase-filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("deletes the service account when opting out during an unfiltered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("does not delete the service account when requiredRoles is defined but empty", async () => {
+      const wantBackend = backend.empty();
+      wantBackend.requiredRoles = [];
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+        managedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.be.undefined;
     });
   });
 

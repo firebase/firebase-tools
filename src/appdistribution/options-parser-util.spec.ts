@@ -1,8 +1,8 @@
 import { expect } from "chai";
-import { getLoginCredential, getTestDevices } from "./options-parser-util";
+import { getLoginCredential, parseTestDevices, getResultsBucket } from "./options-parser-util";
 import { FirebaseError } from "../error";
 import * as fs from "fs-extra";
-import * as rimraf from "rimraf";
+import { rmSync } from "node:fs";
 import * as tmp from "tmp";
 import { join } from "path";
 
@@ -14,14 +14,14 @@ describe("options-parser-util", () => {
   fs.outputFileSync(passwordFile, "password-from-file\n");
 
   after(() => {
-    rimraf.sync(tempdir.name);
+    rmSync(tempdir.name, { recursive: true });
   });
 
   describe("getTestDevices", () => {
     it("parses a test device", () => {
       const optionValue = "model=modelname,version=123,orientation=landscape,locale=en_US";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -37,7 +37,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US;model=modelname2,version=456,orientation=portrait,locale=es";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -59,7 +59,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US\nmodel=modelname2,version=456,orientation=portrait,locale=es";
 
-      const result = getTestDevices(optionValue, "");
+      const result = parseTestDevices(optionValue, "");
 
       expect(result).to.deep.equal([
         {
@@ -80,7 +80,7 @@ describe("options-parser-util", () => {
     it("throws an error with correct format when missing a field", () => {
       const optionValue = "model=modelname,version=123,locale=en_US";
 
-      expect(() => getTestDevices(optionValue, "")).to.throw(
+      expect(() => parseTestDevices(optionValue, "")).to.throw(
         FirebaseError,
         "model=<model-id>,version=<os-version-id>,locale=<locale>,orientation=<orientation>",
       );
@@ -90,7 +90,7 @@ describe("options-parser-util", () => {
       const optionValue =
         "model=modelname,version=123,orientation=landscape,locale=en_US,notafield=blah";
 
-      expect(() => getTestDevices(optionValue, "")).to.throw(
+      expect(() => parseTestDevices(optionValue, "")).to.throw(
         FirebaseError,
         "model, version, orientation, locale",
       );
@@ -200,6 +200,48 @@ describe("options-parser-util", () => {
           passwordResourceName: "password_resource_id",
         }),
       ).to.throw(FirebaseError, "Must specify username and password");
+    });
+  });
+
+  describe("getResultsBucket", () => {
+    const appName = "projects/123456789/apps/1:123456789:android:abcdef";
+
+    it("returns undefined if bucket is not provided", () => {
+      expect(getResultsBucket(undefined, appName)).to.be.undefined;
+    });
+
+    it("returns the formatted bucket name when simple name provided", () => {
+      expect(getResultsBucket("my-bucket", appName)).to.equal(
+        "projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("strips gs:// prefix and formats correctly", () => {
+      expect(getResultsBucket("gs://my-bucket", appName)).to.equal(
+        "projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("throws FirebaseError if bucket name contains invalid characters", () => {
+      expect(() => getResultsBucket("my_Bucket", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: my_Bucket",
+      );
+      expect(() => getResultsBucket("gs://my-bucket/", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: gs://my-bucket/",
+      );
+      expect(() => getResultsBucket("projects/123456789/buckets/my-bucket", appName)).to.throw(
+        FirebaseError,
+        "Invalid results bucket format: projects/123456789/buckets/my-bucket",
+      );
+    });
+
+    it("throws FirebaseError if appName is not valid format", () => {
+      expect(() => getResultsBucket("my-bucket", "invalid-app-name")).to.throw(
+        FirebaseError,
+        "Invalid app name: invalid-app-name",
+      );
     });
   });
 });

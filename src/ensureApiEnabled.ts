@@ -5,6 +5,8 @@ import { serviceUsageOrigin } from "./api";
 import { Client } from "./apiv2";
 import * as utils from "./utils";
 import { FirebaseError, isBillingError } from "./error";
+import { logger } from "./logger";
+import { configstore } from "./configstore";
 
 export const POLL_SETTINGS = {
   pollInterval: 10000,
@@ -30,13 +32,19 @@ export async function check(
   silent = false,
 ): Promise<boolean> {
   const apiName = apiUri.startsWith("http") ? new URL(apiUri).hostname : apiUri;
+  if (checkAPIEnablementCache(projectId, apiName)) {
+    return true;
+  }
   const res = await apiClient.get<{ state: string }>(`/projects/${projectId}/services/${apiName}`, {
-    headers: { "x-goog-quota-user": `projects/${projectId}` },
+    headers: { "x-goog-user-project": `${projectId}` },
     skipLog: { resBody: true },
   });
   const isEnabled = res.body.state === "ENABLED";
   if (isEnabled && !silent) {
     utils.logLabeledSuccess(prefix, `required API ${bold(apiName)} is enabled`);
+  }
+  if (isEnabled) {
+    cacheEnabledAPI(projectId, apiName);
   }
   return isEnabled;
 }
@@ -60,10 +68,11 @@ async function enable(projectId: string, apiName: string): Promise<void> {
       `/projects/${projectId}/services/${apiName}:enable`,
       undefined,
       {
-        headers: { "x-goog-quota-user": `projects/${projectId}` },
+        headers: { "x-goog-user-project": `${projectId}` },
         skipLog: { resBody: true },
       },
     );
+    cacheEnabledAPI(projectId, apiName);
   } catch (err: any) {
     if (isBillingError(err)) {
       throw new FirebaseError(`Your project ${bold(
@@ -173,6 +182,21 @@ export async function ensure(
   return enableApiWithRetries(projectId, hostname, prefix, silent);
 }
 
+export async function bestEffortEnsure(
+  projectId: string,
+  apiUri: string,
+  prefix: string,
+  silent = false,
+): Promise<void> {
+  try {
+    await ensure(projectId, apiUri, prefix, silent);
+  } catch (err: any) {
+    logger.debug(
+      `Unable to check that ${apiUri} is enabled on ${projectId}. Calls to it will fail if it is not enabled`,
+    );
+  }
+}
+
 /**
  * Returns a link to enable an API on a project in Cloud console. This can be used instead of ensure
  * in contexts where automatically enabling APIs is not desirable (ie emulator commands).
@@ -183,4 +207,35 @@ export async function ensure(
  */
 export function enableApiURI(projectId: string, apiName: string): string {
   return `https://console.cloud.google.com/apis/library/${apiName}?project=${projectId}`;
+}
+
+/**
+ * To reduce serviceusage quota burn, we cache API enablement status in configstore.
+ * Once we see that an API is enabled, we skip future checks. This is safe, because:
+ * A - It's rare to disable APIs
+ * B - If the API actually is disabled, the user gets a clear error message with a link to enable it.
+ *
+ * We intentionally do not cache when we see an API is not enabled - some users need to have admins enable APIS,
+ * so we expect APIs to get enabled out of band frequently.
+ */
+
+const API_ENABLEMENT_CACHE_KEY = "apiEnablementCache";
+function checkAPIEnablementCache(projectId: string, apiName: string): boolean {
+  const cache = configstore.get(API_ENABLEMENT_CACHE_KEY) as Record<
+    string,
+    Record<string, boolean>
+  >;
+  return !!cache?.[projectId]?.[apiName];
+}
+
+function cacheEnabledAPI(projectId: string, apiName: string) {
+  const cache = (configstore.get(API_ENABLEMENT_CACHE_KEY) || {}) as Record<
+    string,
+    Record<string, true>
+  >;
+  if (!cache[projectId]) {
+    cache[projectId] = {};
+  }
+  cache[projectId][apiName] = true;
+  configstore.set(API_ENABLEMENT_CACHE_KEY, cache);
 }

@@ -25,6 +25,7 @@ import {
   getBuildConfig,
   getContext,
   getServerConfig,
+  maybeWarnAngular22SsrSecurity,
 } from "./utils";
 import { I18N_ROOT, SHARP_VERSION } from "../constants";
 import { FirebaseError } from "../../error";
@@ -36,18 +37,23 @@ export const docsUrl = "https://firebase.google.com/docs/hosting/frameworks/angu
 
 const DEFAULT_BUILD_SCRIPT = ["ng build"];
 
-export const supportedRange = "16 - 18";
+export const supportedRange = "16 - 20";
 
 export async function discover(dir: string): Promise<Discovery | undefined> {
   if (!(await pathExists(join(dir, "package.json")))) return;
   if (!(await pathExists(join(dir, "angular.json")))) return;
   const version = getAngularVersion(dir);
-  return { mayWantBackend: true, version };
+  const mayWantBackend = !!findDependency("@angular/platform-server", {
+    cwd: dir,
+    depth: 0,
+    omitDev: false,
+  });
+  return { mayWantBackend, version };
 }
 
 export function init(setup: any, config: any) {
   execSync(
-    `npx --yes -p @angular/cli@"${supportedRange}" ng new ${setup.projectId} --directory ${setup.hosting.source} --skip-git`,
+    `npx --yes -p @angular/cli@"${supportedRange}" ng new ${setup.projectId} --directory ${setup.featureInfo.hosting.source} --skip-git`,
     {
       stdio: "inherit",
       cwd: config.projectDir,
@@ -63,8 +69,10 @@ export async function build(dir: string, configuration: string): Promise<BuildRe
     locales,
     baseHref: baseUrl,
     ssr,
+    buildTargetOptions,
   } = await getBuildConfig(dir, configuration);
   await warnIfCustomBuildScript(dir, name, DEFAULT_BUILD_SCRIPT);
+  await maybeWarnAngular22SsrSecurity(dir, { ssr, buildTargetOptions });
   for (const target of targets) {
     // TODO there is a bug here. Spawn for now.
     // await scheduleTarget(prerenderTarget);
@@ -198,7 +206,7 @@ export async function ɵcodegenFunctionsDirectory(
   if (bundleDependencies) {
     const dependencies: Record<string, string> = {};
     for (const externalDependency of externalDependencies) {
-      const packageVersion = findDependency(externalDependency)?.version;
+      const packageVersion = findDependency(externalDependency, { cwd: sourceDir })?.version;
       if (packageVersion) {
         dependencies[externalDependency] = packageVersion;
       }
@@ -243,19 +251,24 @@ exports.handle = function(req,res) {
 };\n`;
   } else if (serverOutputPath) {
     bootstrapScript = `
-    const app = new Promise((resolve) => {
+    const app = new Promise((resolve, reject) => {
       setTimeout(() => {
         const port = process.env.PORT;
         const socket = 'express.sock';
         process.env.PORT = socket;
-        
+
         ${
           serverEntry?.endsWith(".mjs")
             ? `import(\`./${serverOutputPath}/${serverEntry}\`)`
             : `Promise.resolve(require('./${serverOutputPath}/${serverEntry}'))`
-        }.then(({ app }) => {
-          process.env.PORT = port;
-          resolve(app());
+        }.then(({ default: defHandler, reqHandler, app }) => {
+          const handler = app?.() ?? reqHandler ?? defHandler;
+          if (!handler) {
+            reject(\`The file at "./${serverOutputPath}/${serverEntry}" did not export a valid request handler. Expected exports: 'app', 'default', or 'reqHandler'.\`);
+          } else {
+            process.env.PORT = port;
+            resolve(handler);
+          }
         });
       }, 0);
     });

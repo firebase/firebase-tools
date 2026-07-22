@@ -95,6 +95,7 @@ export const command = new Command("ext:sdk:install <extensionName>")
     // if they want to continue
     if (
       !(await confirm({
+        message: "Continue?",
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,

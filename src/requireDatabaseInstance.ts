@@ -1,5 +1,5 @@
 import * as clc from "colorette";
-import { FirebaseError } from "./error";
+import { FirebaseError, getError } from "./error";
 import { getDefaultDatabaseInstance } from "./getDefaultDatabaseInstance";
 
 /**
@@ -20,10 +20,10 @@ export async function requireDatabaseInstance(options: any): Promise<void> {
   }
   let instance;
   try {
-    instance = await getDefaultDatabaseInstance(options);
-  } catch (err: any) {
+    instance = await getDefaultDatabaseInstance(options.project);
+  } catch (err: unknown) {
     throw new FirebaseError(`Failed to get details for project: ${options.project}.`, {
-      original: err,
+      original: getError(err),
     });
   }
   if (instance === "") {

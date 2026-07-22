@@ -184,4 +184,4 @@ describe("files", () => {
 
     const getPersistenceTmpDir = () => `${tmpdir()}/firebase/storage/blobs`;
   });
-});
+}).timeout(2000);

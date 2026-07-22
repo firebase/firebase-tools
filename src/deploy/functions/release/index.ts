@@ -3,20 +3,22 @@ import * as clc from "colorette";
 import { Options } from "../../../options";
 import { logger } from "../../../logger";
 import { reduceFlat } from "../../../functional";
+import * as utils from "../../../utils";
 import * as args from "../args";
 import * as backend from "../backend";
-import * as containerCleaner from "../containerCleaner";
 import * as planner from "./planner";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
 import * as prompts from "../prompts";
-import * as experiments from "../../../experiments";
 import { getAppEngineLocation } from "../../../functionsConfig";
 import { getFunctionLabel } from "../functionsDeployHelper";
+
 import { FirebaseError } from "../../../error";
 import { getProjectNumber } from "../../../getProjectNumber";
 import { release as extRelease } from "../../extensions";
+import * as artifacts from "../../../functions/artifacts";
+import { determineLifecycleEvent, executeLifecycleHooks } from "./lifecycle";
 
 /** Releases new versions of functions and extensions to prod. */
 export async function release(
@@ -39,42 +41,48 @@ export async function release(
     return;
   }
 
-  let plan: planner.DeploymentPlan = {};
-  for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
-    plan = {
-      ...plan,
-      ...planner.createDeploymentPlan({
-        codebase,
-        wantBackend,
-        haveBackend,
-        filters: context.filters,
-      }),
-    };
+  const plan: planner.DeploymentPlan = {};
+  for (const [
+    codebase,
+    { wantBackend, haveBackend, haveRoles, existingManagedSA, managedSA },
+  ] of Object.entries(payload.functions)) {
+    plan[codebase] = await planner.createDeploymentPlan({
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId: context.projectId,
+      filters: context.filters,
+      haveRoles,
+      existingManagedSA,
+      managedSA,
+    });
   }
 
-  const fnsToDelete = Object.values(plan)
+  await prompts.promptForSecurityChanges(plan, options);
+
+  const allRegionalChanges = Object.values(plan)
+    .map((codebasePlan) => Object.values(codebasePlan.regionalChangesets))
+    .reduce(reduceFlat, []);
+
+  const fnsToDelete = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToDelete)
     .reduce(reduceFlat, []);
   const shouldDelete = await prompts.promptForFunctionDeletion(fnsToDelete, options);
   if (!shouldDelete) {
-    for (const change of Object.values(plan)) {
-      change.endpointsToDelete = [];
+    for (const changes of allRegionalChanges) {
+      changes.endpointsToDelete = [];
     }
   }
 
-  const fnsToUpdate = Object.values(plan)
+  const fnsToUpdate = allRegionalChanges
     .map((regionalChanges) => regionalChanges.endpointsToUpdate)
     .reduce(reduceFlat, []);
   const fnsToUpdateSafe = await prompts.promptForUnsafeMigration(fnsToUpdate, options);
-  // Replace endpointsToUpdate in deployment plan with endpoints that are either safe
-  // to update or customers have confirmed they want to update unsafely
-  for (const key of Object.keys(plan)) {
-    plan[key].endpointsToUpdate = [];
-  }
-  for (const eu of fnsToUpdateSafe) {
-    const e = eu.endpoint;
-    const key = `${e.codebase || ""}-${e.region}-${e.availableMemoryMb || "default"}`;
-    plan[key].endpointsToUpdate.push(eu);
+  const safeEndpoints = new Set(fnsToUpdateSafe.map((eu) => eu.endpoint));
+  for (const changes of allRegionalChanges) {
+    changes.endpointsToUpdate = changes.endpointsToUpdate.filter((eu) =>
+      safeEndpoints.has(eu.endpoint),
+    );
   }
 
   const throttlerOptions = {
@@ -84,12 +92,24 @@ export async function release(
     maxBackoff: 100000,
   };
 
+  // N.B. THIS IS TEMPORARY
+  // This will limit concurrent deploys of run functions to two while zip deploy capacity
+  // is low.
+  const runThrottlerOptions = {
+    ...throttlerOptions,
+    concurrency: 2,
+  };
+
+  const projectNumber = options.projectNumber || (await getProjectNumber(context.projectId));
+
   const fab = new fabricator.Fabricator({
     functionExecutor: new executor.QueueExecutor(throttlerOptions),
+    runFunctionExecutor: new executor.QueueExecutor(runThrottlerOptions),
     executor: new executor.QueueExecutor(throttlerOptions),
     sources: context.sources,
     appEngineLocation: getAppEngineLocation(context.firebaseConfig),
-    projectNumber: options.projectNumber || (await getProjectNumber(context.projectId)),
+    projectNumber: projectNumber,
+    projectId: context.projectId,
   });
 
   const summary = await fab.applyPlan(plan);
@@ -102,18 +122,37 @@ export async function release(
   // subtleties are so we can take out a round trip API call to get the latest
   // trigger URLs by calling existingBackend again.
   const wantBackend = backend.merge(...Object.values(payload.functions).map((p) => p.wantBackend));
-  printTriggerUrls(wantBackend);
+  printTriggerUrls(wantBackend, projectNumber);
 
-  const haveEndpoints = backend.allEndpoints(wantBackend);
-  const deletedEndpoints = Object.values(plan)
-    .map((r) => r.endpointsToDelete)
-    .reduce(reduceFlat, []);
-  if (experiments.isEnabled("automaticallydeletegcfartifacts")) {
-    await containerCleaner.cleanupBuildImages(haveEndpoints, deletedEndpoints);
+  for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(payload.functions)) {
+    const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+    if (errors.length === 0) {
+      await executeLifecycleHooks(w, h, plan, codebase, options);
+    }
   }
+
+  await setupArtifactCleanupPolicies(
+    options,
+    options.projectId!,
+    Object.keys(wantBackend.endpoints),
+  );
 
   const allErrors = summary.results.filter((r) => r.error).map((r) => r.error) as Error[];
   if (allErrors.length) {
+    for (const [codebase, { wantBackend: w, haveBackend: h }] of Object.entries(
+      payload.functions,
+    )) {
+      const { errors } = getCodebaseDeployStats(codebase, w, h, summary);
+      if (errors.length > 0) {
+        const event = determineLifecycleEvent(h);
+        if (w.lifecycleHooks?.[event]) {
+          utils.logLabeledWarning(
+            "functions",
+            `Lifecycle hook "${event}" for codebase "${codebase}" was configured but not executed because one or more function deployments failed.`,
+          );
+        }
+      }
+    }
     const opts = allErrors.length === 1 ? { original: allErrors[0] } : { children: allErrors };
     logger.debug("Functions deploy failed.");
     for (const error of allErrors) {
@@ -128,8 +167,10 @@ export async function release(
  * Caller must either force refresh the backend or assume the fabricator
  * has updated the URI of endpoints after deploy.
  */
-export function printTriggerUrls(results: backend.Backend): void {
-  const httpsFunctions = backend.allEndpoints(results).filter(backend.isHttpsTriggered);
+export function printTriggerUrls(results: backend.Backend, projectNumber: string): void {
+  const httpsFunctions = backend
+    .allEndpoints(results)
+    .filter((b) => backend.isHttpsTriggered(b) || backend.isDataConnectGraphqlTriggered(b));
   if (httpsFunctions.length === 0) {
     return;
   }
@@ -141,6 +182,99 @@ export function printTriggerUrls(results: backend.Backend): void {
       );
       continue;
     }
+    if (backend.isDataConnectGraphqlTriggered(httpsFunc)) {
+      // The Cloud Functions backend only returns the non-deterministic hashed URL, which doesn't work for SQL Connect
+      // as we do some verification against the project number and region in the URL, so we manually construct the deterministic URL.
+      const uri = backend.maybeDeterministicCloudRunUri(httpsFunc, projectNumber);
+      logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, uri);
+      continue;
+    }
     logger.info(clc.bold("Function URL"), `(${getFunctionLabel(httpsFunc)}):`, httpsFunc.uri);
+  }
+}
+
+interface CodebaseDeployStats {
+  results: reporter.DeployResult[];
+  errors: reporter.DeployResult[];
+}
+
+function getCodebaseDeployStats(
+  codebase: string,
+  wantBackend: backend.Backend,
+  haveBackend: backend.Backend,
+  summary: reporter.Summary,
+): CodebaseDeployStats {
+  const cb = codebase || "default";
+  const results = summary.results.filter(
+    (r) =>
+      (r.endpoint.codebase ?? "default") === cb ||
+      !!wantBackend.endpoints[r.endpoint.region]?.[r.endpoint.id] ||
+      !!haveBackend.endpoints[r.endpoint.region]?.[r.endpoint.id],
+  );
+  const errors = results.filter((r) => r.error);
+
+  return { results, errors };
+}
+
+/**
+ * Sets up artifact cleanup policies for the regions where functions are deployed
+ * and automatically sets up policies where needed.
+ *
+ * The policy is only set up when:
+ *   1. No cleanup policy exists yet
+ *   2. No other cleanup policies exist (beyond our own if we previously set one)
+ *   3. User has not explicitly opted out
+ *
+ * In non-interactive mode:
+ *   - With force flag: applies the default cleanup policy
+ *   - Without force flag: warns and aborts deployment
+ */
+async function setupArtifactCleanupPolicies(
+  options: Options,
+  projectId: string,
+  locations: string[],
+): Promise<void> {
+  if (locations.length === 0) {
+    return;
+  }
+
+  const { locationsToSetup, locationsWithErrors: locationsWithCheckErrors } =
+    await artifacts.checkCleanupPolicy(projectId, locations);
+
+  if (locationsToSetup.length === 0) {
+    return;
+  }
+
+  const daysToKeep = await prompts.promptForCleanupPolicyDays(options, locationsToSetup);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configuring cleanup policy for ${locationsToSetup.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}. ` +
+      `Images older than ${daysToKeep} days will be automatically deleted.`,
+  );
+
+  const { locationsWithPolicy, locationsWithErrors: locationsWithSetupErrors } =
+    await artifacts.setCleanupPolicies(projectId, locationsToSetup, daysToKeep);
+
+  utils.logLabeledBullet(
+    "functions",
+    `Configured cleanup policy for ${locationsWithPolicy.length > 1 ? "repositories" : "repository"} in ${locationsToSetup.join(", ")}.`,
+  );
+
+  const locationsWithErrors = [...locationsWithCheckErrors, ...locationsWithSetupErrors];
+  if (locationsWithErrors.length > 0) {
+    utils.logLabeledWarning(
+      "functions",
+      `Failed to set up cleanup policy for repositories in ${locationsWithErrors.length > 1 ? "regions" : "region"} ` +
+        `${locationsWithErrors.join(", ")}.` +
+        "This could result in a small monthly bill as container images accumulate over time.",
+    );
+    utils.logLabeledWarning(
+      "functions",
+      `Functions successfully deployed but could not set up cleanup policy in ` +
+        `${locationsWithErrors.length > 1 ? "regions" : "region"} ${locationsWithErrors.join(", ")}. ` +
+        `Pass the --force option to automatically set up a cleanup policy or ` +
+        "run 'firebase functions:artifacts:setpolicy' to set up a cleanup policy to automatically delete old images.",
+    );
   }
 }
