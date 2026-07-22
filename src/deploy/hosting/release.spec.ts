@@ -7,6 +7,7 @@ import * as convertConfigPkg from "./convertConfig";
 
 import { release } from "./release";
 import { last } from "../../utils";
+import { FirebaseError } from "../../error";
 
 describe("release", () => {
   const PROJECT = "fake-project";
@@ -77,6 +78,21 @@ describe("release", () => {
       expect(createReleaseStub).to.have.been.calledOnceWithExactly(SITE, "live", VERSION, {
         message: "hello world",
       });
+    });
+
+    it("should treat a 400 'current active version' response as success (#10730)", async () => {
+      updateVersionStub.resolves({});
+      createReleaseStub.rejects(
+        new FirebaseError(
+          `HTTP Error: 400, ${VERSION} is the current active version of the live channel`,
+          { status: 400 },
+        ),
+      );
+
+      // The deploy has effectively succeeded, so release() should not throw.
+      await release(CONTEXT, {}, {});
+
+      expect(createReleaseStub).to.have.been.calledOnce;
     });
   });
 
