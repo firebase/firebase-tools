@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { getTemplate } from "../../../remoteconfig/get";
 
 export const get_template = tool(
+  "remoteconfig",
   {
     name: "get_template",
     description:

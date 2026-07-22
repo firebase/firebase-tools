@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { findUser, listUsers, UserInfo } from "../../../gcp/auth";
 
 export const get_users = tool(
+  "auth",
   {
     name: "get_users",
     description:
@@ -58,6 +59,6 @@ export const get_users = tool(
     if (!uids?.length && !emails?.length && !phone_numbers?.length) {
       users = await listUsers(projectId, limit || 100);
     }
-    return toContent(users.map(prune));
+    return toContent({ users: users.map(prune) });
   },
 );

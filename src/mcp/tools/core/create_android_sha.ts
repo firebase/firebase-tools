@@ -15,6 +15,7 @@ function getCertHashType(shaHash: string): string {
 }
 
 export const create_android_sha = tool(
+  "core",
   {
     name: "create_android_sha",
     description:

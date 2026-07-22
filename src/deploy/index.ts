@@ -4,7 +4,7 @@ import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logBullet, logSuccess, consoleUrl, addSubdomain, isRunningInGithubAction } from "../utils";
 import { FirebaseError } from "../error";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
@@ -18,16 +18,84 @@ import * as RemoteConfigTarget from "./remoteconfig";
 import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
+import * as AuthTarget from "./auth";
 import { prepareFrameworks } from "../frameworks";
-import { Context } from "./hosting/context";
+import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
-import { isRunningInGithubAction } from "../init/features/hosting/github";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
+import {
+  Context as DataConnectContext,
+  DeployStats,
+  deployStatsParams,
+} from "./dataconnect/context";
 
-const TARGETS = {
+export const VALID_DEPLOY_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+  "extensions",
+  "dataconnect",
+  "apphosting",
+  "auth",
+] as const;
+
+export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
+  dataconnect: [
+    "cloudsql.databases.create",
+    "cloudsql.databases.update",
+    "cloudsql.instances.connect",
+    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "cloudsql.instances.update",
+    "cloudsql.users.create",
+    "firebasedataconnect.connectors.create",
+    "firebasedataconnect.connectors.delete",
+    "firebasedataconnect.connectors.list",
+    "firebasedataconnect.connectors.update",
+    "firebasedataconnect.operations.get",
+    "firebasedataconnect.services.create",
+    "firebasedataconnect.services.delete",
+    "firebasedataconnect.services.update",
+    "firebasedataconnect.services.list",
+    "firebasedataconnect.schemas.create",
+    "firebasedataconnect.schemas.delete",
+    "firebasedataconnect.schemas.list",
+    "firebasedataconnect.schemas.update",
+  ],
+  apphosting: [],
+  extensions: [],
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
+};
+
+export const TARGETS = {
   hosting: HostingTarget,
   database: DatabaseTarget,
   firestore: FirestoreTarget,
@@ -37,6 +105,7 @@ const TARGETS = {
   extensions: ExtensionsTarget,
   dataconnect: DataConnectTarget,
   apphosting: AppHostingTarget,
+  auth: AuthTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };
@@ -90,7 +159,7 @@ export const deploy = async function (
   const projectId = needProjectId(options);
   const payload = {};
   // a shared context object for deploy targets to decorate as needed
-  const context: Context = Object.assign({ projectId }, customContext);
+  const context: HostingContext & DataConnectContext = Object.assign({ projectId }, customContext);
   const predeploys: Chain = [];
   const prepares: Chain = [];
   const deploys: Chain = [];
@@ -148,25 +217,41 @@ export const deploy = async function (
 
   logBullet("deploying " + bold(targetNames.join(", ")));
 
-  await chain(predeploys, context, options, payload);
-  await chain(prepares, context, options, payload);
-  await chain(deploys, context, options, payload);
-  await chain(releases, context, options, payload);
-  await chain(postdeploys, context, options, payload);
+  let result = "predeploys_error";
+  try {
+    await chain(predeploys, context, options, payload);
+    result = "prepares_error";
+    await chain(prepares, context, options, payload);
+    result = "deploys_error";
+    await chain(deploys, context, options, payload);
+    result = "releases_error";
+    await chain(releases, context, options, payload);
+    result = "postdeploys_error";
+    await chain(postdeploys, context, options, payload);
+    result = "success";
+  } finally {
+    const baseParams: AnalyticsParams = {
+      interactive: options.nonInteractive ? "false" : "true",
+      dry_run: options.dryRun ? "true" : "false",
+      result: result,
+    };
+    const duration = Date.now() - startTime;
+    const params = Object.assign({}, baseParams);
+    Object.keys(TARGETS).reduce((accum, t) => {
+      accum[t] = "false";
+      return accum;
+    }, params);
+    for (const t of targetNames) {
+      params[t] = "true";
+    }
+    void trackGA4("product_deploy", params, duration);
 
-  const duration = Date.now() - startTime;
-  const analyticsParams: AnalyticsParams = {
-    interactive: options.nonInteractive ? "false" : "true",
-  };
-
-  Object.keys(TARGETS).reduce((accum, t) => {
-    accum[t] = "false";
-    return accum;
-  }, analyticsParams);
-  for (const t of targetNames) {
-    analyticsParams[t] = "true";
+    const stats: DeployStats | undefined = context?.dataconnect?.deployStats;
+    if (stats) {
+      const fdcParams = deployStatsParams(stats);
+      void trackGA4("dataconnect_deploy", { ...fdcParams, ...baseParams }, duration);
+    }
   }
-  await trackGA4("product_deploy", analyticsParams, duration);
 
   const successMessage = options.dryRun ? "Dry run complete!" : "Deploy complete!";
   logger.info();

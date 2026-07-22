@@ -1,16 +1,24 @@
 import { DataConnectBuildArgs, DataConnectEmulator } from "../emulator/dataconnectEmulator";
-import { Options } from "../options";
 import { FirebaseError } from "../error";
 import { select } from "../prompt";
 import * as utils from "../utils";
 import { prettify, prettifyTable } from "./graphqlError";
-import { DeploymentMetadata, GraphqlError } from "./types";
 import { getProjectDefaultAccount } from "../auth";
+import { DeployOptions } from "../deploy";
+import { DeployStats } from "../deploy/dataconnect/context";
+import { DeploymentMetadata, GraphqlError } from "./types";
 
+/**
+ * Builds the SQL Connect service (Validate Schema/Connectors + Generate metadata).
+ * @param options the CLI options.
+ * @param configDir the config directory of the SQL Connect service.
+ * @param deployStats stats tracker for the deployment.
+ * @return the deployment metadata.
+ */
 export async function build(
-  options: Options,
+  options: DeployOptions,
   configDir: string,
-  dryRun?: boolean,
+  deployStats: DeployStats,
 ): Promise<DeploymentMetadata> {
   const account = getProjectDefaultAccount(options.projectRoot);
   const args: DataConnectBuildArgs = { configDir, account };
@@ -19,17 +27,47 @@ export async function build(
   }
   const buildResult = await DataConnectEmulator.build(args);
   if (buildResult?.errors?.length) {
-    await handleBuildErrors(buildResult.errors, options.nonInteractive, options.force, dryRun);
+    buildResult.errors.forEach((e) => {
+      if (e.extensions?.warningLevel) {
+        let key = e.extensions.warningLevel.toLowerCase();
+        const msgSp = e.message.split(": ");
+        if (msgSp.length >= 2) {
+          key += `_${msgSp[0].toLowerCase()}`;
+        }
+        deployStats.numBuildWarnings.set(key, (deployStats.numBuildWarnings.get(key) ?? 0) + 1);
+      } else {
+        deployStats.numBuildErrors += 1;
+      }
+    });
+    await handleBuildErrors(
+      buildResult.errors,
+      options.nonInteractive,
+      options.force,
+      options.dryRun,
+    );
   }
   return buildResult?.metadata ?? {};
 }
 
+/**
+ * Handles build errors by throwing a FirebaseError if any error cannot be bypassed or acknowledged.
+ */
 export async function handleBuildErrors(
   errors: GraphqlError[],
   nonInteractive: boolean,
   force: boolean,
   dryRun?: boolean,
-) {
+): Promise<void> {
+  const fatalDeploys = errors.filter((w) => w.extensions?.warningLevel === "ALWAYS_REQUIRED");
+  if (fatalDeploys.length) {
+    utils.logLabeledError(
+      "dataconnect",
+      `There are requirements that are always required and cannot be bypassed:\n` +
+        prettifyTable(fatalDeploys),
+    );
+    throw new FirebaseError("Failed due to unbypassable requirements.");
+  }
+
   if (errors.filter((w) => !w.extensions?.warningLevel).length) {
     // Throw immediately if there are any build errors in the GraphQL schema or connectors.
     throw new FirebaseError(
@@ -45,7 +83,7 @@ export async function handleBuildErrors(
       `There are changes in your schema or connectors that will result in broken behavior:\n` +
         prettifyTable(requiredForces),
     );
-    throw new FirebaseError("Rerun this command with --force to deploy these changes.");
+    throw new FirebaseError("Rerun this command with --force to proceed with these changes.");
   }
 
   const interactiveAcks = errors.filter((w) => w.extensions?.warningLevel === "INTERACTIVE_ACK");
@@ -63,7 +101,7 @@ export async function handleBuildErrors(
     );
     if (nonInteractive && !force) {
       throw new FirebaseError(
-        "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to deploy these changes.",
+        "Explicit acknowledgement required for breaking schema or connector changes and new insecure operations. Rerun this command with --force to proceed with these changes.",
       );
     } else if (!nonInteractive && !force && !dryRun) {
       const result = await select({
@@ -72,7 +110,7 @@ export async function handleBuildErrors(
         default: "abort",
       });
       if (result === "abort") {
-        throw new FirebaseError(`Deployment aborted.`);
+        throw new FirebaseError("Aborted.");
       }
     }
   }
@@ -90,7 +128,7 @@ export async function handleBuildErrors(
         default: "proceed",
       });
       if (result === "abort") {
-        throw new FirebaseError(`Deployment aborted.`);
+        throw new FirebaseError("Aborted.");
       }
     }
   }

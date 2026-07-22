@@ -3,78 +3,52 @@ import { requirePermissions } from "../requirePermissions";
 import { checkServiceAccountIam } from "../deploy/functions/checkIam";
 import { checkValidTargetFilters } from "../checkValidTargetFilters";
 import { Command } from "../command";
-import { deploy } from "../deploy";
+import { deploy, TARGETS, VALID_DEPLOY_TARGETS, TARGET_PERMISSIONS } from "../deploy";
 import { requireConfig } from "../requireConfig";
 import { filterTargets } from "../filterTargets";
 import { requireHostingSite } from "../requireHostingSite";
 import { errNoDefaultSite } from "../getDefaultHostingSite";
 import { FirebaseError } from "../error";
 import { bold } from "colorette";
-import { interactiveCreateHostingSite } from "../hosting/interactive";
+import { pickHostingSiteName } from "../hosting/interactive";
 import { logBullet } from "../utils";
+import { createSite } from "../hosting/api";
+import { Options } from "../options";
+import * as experiments from "../experiments";
+import * as clc from "colorette";
 
-// in order of least time-consuming to most time-consuming
-export const VALID_DEPLOY_TARGETS = [
-  "database",
-  "storage",
-  "firestore",
-  "functions",
-  "hosting",
-  "remoteconfig",
-  "extensions",
-  "dataconnect",
-  "apphosting",
-];
-export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
-  database: ["firebasedatabase.instances.update"],
-  hosting: ["firebasehosting.sites.update"],
-  functions: [
-    "cloudfunctions.functions.list",
-    "cloudfunctions.functions.create",
-    "cloudfunctions.functions.get",
-    "cloudfunctions.functions.update",
-    "cloudfunctions.functions.delete",
-    "cloudfunctions.operations.get",
-  ],
-  firestore: [
-    "datastore.indexes.list",
-    "datastore.indexes.create",
-    "datastore.indexes.update",
-    "datastore.indexes.delete",
-  ],
-  storage: [
-    "firebaserules.releases.create",
-    "firebaserules.rulesets.create",
-    "firebaserules.releases.update",
-  ],
-  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
-  dataconnect: [
-    "cloudsql.databases.create",
-    "cloudsql.databases.update",
-    "cloudsql.instances.connect",
-    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
-    "cloudsql.instances.get",
-    "cloudsql.instances.list",
-    "cloudsql.instances.update",
-    "cloudsql.users.create",
-    "firebasedataconnect.connectors.create",
-    "firebasedataconnect.connectors.delete",
-    "firebasedataconnect.connectors.list",
-    "firebasedataconnect.connectors.update",
-    "firebasedataconnect.operations.get",
-    "firebasedataconnect.services.create",
-    "firebasedataconnect.services.delete",
-    "firebasedataconnect.services.update",
-    "firebasedataconnect.services.list",
-    "firebasedataconnect.schemas.create",
-    "firebasedataconnect.schemas.delete",
-    "firebasedataconnect.schemas.list",
-    "firebasedataconnect.schemas.update",
-  ],
-};
+interface DeployTarget {
+  help?: string;
+  detailedHelp?: string;
+}
+
+function getDeployHelp(): string {
+  const boldFn = (str: string) => clc.bold(str);
+
+  let targetHelp = "Deploy targets include:\n\n";
+  for (const [targetName, target] of Object.entries(TARGETS)) {
+    const desc = (target as DeployTarget).help || `Deploy ${targetName} resources`;
+    const formattedDesc = desc
+      .split("\n")
+      .map((line: string, i: number) => {
+        if (i === 0) return line;
+        return "    " + line;
+      })
+      .join("\n");
+    targetHelp += `  ${boldFn(targetName.padEnd(14))} ${formattedDesc}\n`;
+  }
+
+  targetHelp +=
+    "\nTo deploy specific targets, use `--only` followed by a comma-separated list of targets.\n";
+  targetHelp += `For example, ${boldFn("firebase deploy --only hosting,firestore")}.\n`;
+  targetHelp += `\nTo see detailed setup and configuration information for a specific target, run:\n`;
+  targetHelp += `  ${boldFn("firebase deploy:<target> --help")}`;
+  return targetHelp;
+}
 
 export const command = new Command("deploy")
   .description("deploy code and assets to your Firebase project")
+  .help(getDeployHelp())
   .withForce(
     "delete Cloud Functions missing from the current working directory and bypass interactive prompts",
   )
@@ -96,28 +70,37 @@ export const command = new Command("deploy")
     "--dry-run",
     "perform a dry run of your deployment. Validates your changes and builds your code without deploying any changes to your project. " +
       "In order to provide better validation, this may still enable APIs on the target project",
-  )
+  );
+
+if (experiments.isEnabled("apphostinglocalbuilds")) {
+  command.option(
+    "--allow-local-build-secrets",
+    "allow the use of build-available secrets in local builds for App Hosting without interactive confirmation",
+  );
+}
+
+command
   .before(requireConfig)
-  .before((options) => {
-    options.filteredTargets = filterTargets(options, VALID_DEPLOY_TARGETS);
+  .before((options: Options) => {
+    options.filteredTargets = filterTargets(options, [...VALID_DEPLOY_TARGETS]);
     const permissions = options.filteredTargets.reduce((perms: string[], target: string) => {
-      return perms.concat(TARGET_PERMISSIONS[target]);
+      return perms.concat(TARGET_PERMISSIONS[target as (typeof VALID_DEPLOY_TARGETS)[number]]);
     }, []);
     return requirePermissions(options, permissions);
   })
-  .before((options) => {
+  .before((options: Options) => {
     if (options.filteredTargets.includes("functions")) {
-      return checkServiceAccountIam(options.project);
+      return checkServiceAccountIam(options.project!);
     }
   })
-  .before(async (options) => {
+  .before(async (options: Options) => {
     // only fetch the default instance for hosting or database deploys
     if (options.filteredTargets.includes("database")) {
       await requireDatabaseInstance(options);
     }
 
     if (options.filteredTargets.includes("hosting")) {
-      let createSite = false;
+      let shouldCreateSite = false;
       try {
         await requireHostingSite(options);
       } catch (err: unknown) {
@@ -128,10 +111,10 @@ export const command = new Command("deploy")
         if (isPermissionError) {
           throw err;
         } else if (err === errNoDefaultSite) {
-          createSite = true;
+          shouldCreateSite = true;
         }
       }
-      if (!createSite) {
+      if (!shouldCreateSite) {
         return;
       }
       if (options.nonInteractive) {
@@ -142,7 +125,8 @@ export const command = new Command("deploy")
         );
       }
       logBullet("No Hosting site detected.");
-      await interactiveCreateHostingSite("", "", options);
+      const siteId = await pickHostingSiteName("", options);
+      await createSite(options.project!, siteId);
     }
   })
   .before(checkValidTargetFilters)

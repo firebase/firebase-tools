@@ -4,6 +4,7 @@ import { mcpError, toContent } from "../../util";
 import { sendFcmMessage } from "../../../messaging/sendMessage";
 
 export const send_message = tool(
+  "messaging",
   {
     name: "send_message",
     description:

@@ -9,7 +9,6 @@ export async function getDataConnectEmulatorClient(host: FirebaseMcpServer): Pro
   const apiClient = new Client({
     urlPrefix: emulatorUrl,
     apiVersion: DATACONNECT_API_VERSION,
-    auth: false,
   });
 
   return apiClient;

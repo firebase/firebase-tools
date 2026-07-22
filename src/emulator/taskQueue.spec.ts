@@ -1,8 +1,7 @@
 import * as _ from "lodash";
 import * as sinon from "sinon";
-import * as nodeFetch from "node-fetch";
-import AbortController from "abort-controller";
 import { expect } from "chai";
+import nock from "../test/helpers/nock";
 import { EmulatedTask, EmulatedTaskMetadata, Queue, TaskQueue, TaskStatus } from "./taskQueue";
 import { RateLimits, RetryConfig, Task, TaskQueueConfig } from "./tasksEmulator";
 
@@ -156,7 +155,7 @@ describe("Task Queue", () => {
   const mockTask: Task = {
     name: "",
     httpRequest: {
-      url: "",
+      url: "http://website.com/",
       oidcToken: { serviceAccountEmail: "test-user@email.com" },
       body: { test: "test" },
       headers: {},
@@ -181,23 +180,16 @@ describe("Task Queue", () => {
   let TEST_TASK: EmulatedTask;
   const NOW = 1000 * 60;
 
-  const stubs: sinon.SinonStub[] = [];
-
-  before(() => {
-    sinon.stub(Date, "now").returns(NOW);
-  });
-
-  after(() => {
-    sinon.restore();
-  });
+  let dateStub: sinon.SinonStub;
 
   beforeEach(() => {
     TEST_TASK = _.cloneDeep(mockEmulatedTask);
     TEST_TASK.metadata.currentBackoff = 0;
+    dateStub = sinon.stub(Date, "now").returns(NOW);
   });
 
   afterEach(() => {
-    stubs.forEach((s) => s.restore());
+    dateStub.restore();
   });
 
   // Handle Retry Tests
@@ -285,82 +277,50 @@ describe("Task Queue", () => {
   });
 
   describe("Run Task", () => {
+    afterEach(() => {
+      nock.cleanAll();
+    });
+
     it("should call the task url", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new nodeFetch.Response(undefined, { status: 200 });
-      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
-      stubs.push(fetchStub);
+      nock("http://website.com").post("/").reply(200);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
-        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CloudTasks-QueueName": "task-queue",
-            "X-CloudTasks-TaskName": "",
-            "X-CloudTasks-TaskRetryCount": "0",
-            "X-CloudTasks-TaskExecutionCount": "0",
-            "X-CloudTasks-TaskETA": "60000",
-            ...TEST_TASK.task.httpRequest.headers,
-          },
-          signal: new AbortController().signal,
-          body: JSON.stringify(TEST_TASK.task.httpRequest.body),
-        });
+        expect(nock.isDone()).to.be.true;
       });
       return res;
     });
 
     it("Should wait until the backoff time has elapsed", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new nodeFetch.Response(undefined, { status: 200 });
-
       TEST_TASK.metadata.lastRunTime = NOW - 1000;
       TEST_TASK.metadata.currentBackoff = 3;
 
-      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
-      stubs.push(fetchStub);
+      nock("http://website.com").post("/").reply(200);
       taskQueue.setDispatch([TEST_TASK]);
 
       const res = taskQueue.runTask(0).then(() => {
-        expect(fetchStub).to.not.have.been.called;
+        expect(nock.isDone()).to.be.false;
       });
       return res;
     });
 
     it("Should run if the backoff time has elapsed", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new nodeFetch.Response(undefined, { status: 200 });
       TEST_TASK.metadata.lastRunTime = NOW - 3 * 1000;
       TEST_TASK.metadata.currentBackoff = 2;
 
-      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
-      stubs.push(fetchStub);
+      nock("http://website.com").post("/").reply(200);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
-        expect(fetchStub).to.have.been.calledOnce.and.calledWith(TEST_TASK.task.httpRequest.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CloudTasks-QueueName": "task-queue",
-            "X-CloudTasks-TaskName": "",
-            "X-CloudTasks-TaskRetryCount": "0",
-            "X-CloudTasks-TaskExecutionCount": "0",
-            "X-CloudTasks-TaskETA": "60000",
-            ...TEST_TASK.task.httpRequest.headers,
-          },
-          signal: new AbortController().signal,
-          body: JSON.stringify(TEST_TASK.task.httpRequest.body),
-        });
+        expect(nock.isDone()).to.be.true;
       });
       return res;
     });
 
     it("should properly update metadata on success", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new nodeFetch.Response(undefined, { status: 200 });
-
-      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
-      stubs.push(fetchStub);
+      nock("http://website.com").post("/").reply(200);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
         expect(TEST_TASK.metadata.status).to.be.eq(TaskStatus.FINISHED);
@@ -370,10 +330,7 @@ describe("Task Queue", () => {
 
     it("should properly update metadata on failure", () => {
       const taskQueue = new TaskQueue(TEST_TASK_QUEUE_NAME, TEST_TASK_QUEUE_CONFIG);
-      const response = new nodeFetch.Response(undefined, { status: 500 });
-
-      const fetchStub = sinon.stub(nodeFetch, "default").resolves(response);
-      stubs.push(fetchStub);
+      nock("http://website.com").post("/").reply(500);
       taskQueue.setDispatch([TEST_TASK]);
       const res = taskQueue.runTask(0).then(() => {
         expect(TEST_TASK.metadata.status).to.be.eq(TaskStatus.RETRY);

@@ -6,6 +6,7 @@ import { rollbackTemplate } from "../../../remoteconfig/rollback";
 import { RemoteConfigTemplate } from "../../../remoteconfig/interfaces";
 
 export const update_template = tool(
+  "remoteconfig",
   {
     name: "update_template",
     description:

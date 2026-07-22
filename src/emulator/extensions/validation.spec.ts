@@ -20,8 +20,6 @@ const TEST_OPTIONS: Options = {
   force: false,
   filteredTargets: [""],
   nonInteractive: true,
-  interactive: false,
-  json: false,
   debug: false,
   rc: new RC(),
   config: new Config("."),

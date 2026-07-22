@@ -8,6 +8,7 @@ import * as prompt from "../../prompt";
 import * as utils from "../../utils";
 import { Options } from "../../options";
 import { RC } from "../../rc";
+import * as iam from "../../gcp/iam";
 
 const SAMPLE_EVENT_TRIGGER: backend.EventTrigger = {
   eventType: "google.pubsub.topic.publish",
@@ -35,8 +36,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "functions",
   except: "",
   nonInteractive: false,
-  json: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: ["functions"],
@@ -528,5 +527,111 @@ describe("promptForUnsafeMigration", () => {
       functionPrompts.promptForUnsafeMigration(epUpdates, options),
     ).to.eventually.deep.equal([{ endpoint: v2Endpoint1, unsafe: false }]);
     expect(confirmStub).to.have.not.been.called;
+  });
+});
+
+describe("promptForSecurityChanges", () => {
+  let confirmStub: sinon.SinonStub;
+  let getRoleNameStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    confirmStub = sinon.stub(prompt, "confirm");
+    getRoleNameStub = sinon.stub(iam, "getRoleName").callsFake(async (role) => `Title for ${role}`);
+  });
+
+  afterEach(() => {
+    confirmStub.restore();
+    getRoleNameStub.restore();
+  });
+
+  it("should do nothing if force option is true", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, force: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.fulfilled;
+    expect(confirmStub).to.not.have.been.called;
+  });
+
+  it("should throw in non-interactive mode when creating a service account", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot enable declarative security",
+    );
+  });
+
+  it("should throw in non-interactive mode when deleting a service account", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToDelete: "sa@proj.iam.gserviceaccount.com",
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot opt out of declarative security",
+    );
+  });
+
+  it("should throw in non-interactive mode when modifying roles", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/editor"],
+      },
+    };
+    const options = { ...SAMPLE_OPTIONS, nonInteractive: true };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot modify declarative security roles",
+    );
+  });
+
+  it("should prompt and proceed when confirmed in interactive mode", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    confirmStub.resolves(true);
+    const options = { ...SAMPLE_OPTIONS };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.fulfilled;
+    expect(confirmStub).to.have.been.calledOnce;
+  });
+
+  it("should throw when rejected in interactive mode", async () => {
+    const plan = {
+      codebase: {
+        regionalChangesets: {},
+        serviceAccountToCreate: "sa@proj.iam.gserviceaccount.com",
+        managedServiceAccount: "sa@proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      },
+    };
+    confirmStub.resolves(false);
+    const options = { ...SAMPLE_OPTIONS };
+    await expect(functionPrompts.promptForSecurityChanges(plan, options)).to.be.rejectedWith(
+      FirebaseError,
+      "Deployment canceled by user",
+    );
   });
 });

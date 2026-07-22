@@ -6,6 +6,7 @@ import { getFirebaseProjectPage } from "../../../management/projects";
 const PROJECT_LIST_PAGE_SIZE = 20;
 
 export const list_projects = tool(
+  "core",
   {
     name: "list_projects",
     description:

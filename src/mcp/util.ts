@@ -1,5 +1,6 @@
 import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { dump } from "js-yaml";
+import * as experiments from "../experiments";
 import { ServerFeature } from "./types";
 import {
   apphostingOrigin,
@@ -11,7 +12,9 @@ import {
   remoteConfigApiOrigin,
   storageOrigin,
   crashlyticsApiOrigin,
+  appDistributionOrigin,
   realtimeOrigin,
+  developerKnowledgeOrigin,
 } from "../api";
 import { check } from "../ensureApiEnabled";
 import { timeoutFallback } from "../timeout";
@@ -20,7 +23,7 @@ import { timeoutFallback } from "../timeout";
  * Converts data to a CallToolResult.
  */
 export function toContent(
-  data: any,
+  data: unknown,
   options?: { format?: "json" | "yaml"; contentPrefix?: string; contentSuffix?: string },
 ): CallToolResult {
   if (typeof data === "string") return { content: [{ type: "text", text: data }] };
@@ -37,9 +40,34 @@ export function toContent(
   }
   const prefix = options?.contentPrefix || "";
   const suffix = options?.contentSuffix || "";
-  return {
+  const result: CallToolResult = {
     content: [{ type: "text", text: `${prefix}${text}${suffix}` }],
   };
+  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    result.structuredContent = data as Record<string, unknown>;
+  }
+  return result;
+}
+
+/**
+ * Conditionally adds MCP App metadata (_meta.ui.resourceUri) to a CallToolResult.
+ */
+export function applyAppMeta(
+  result: CallToolResult,
+  resourceUri: string,
+): CallToolResult & { _meta?: { ui?: { resourceUri: string } } } {
+  if (experiments.isEnabled("mcpapps")) {
+    return {
+      ...result,
+      _meta: {
+        ...result._meta,
+        ui: {
+          resourceUri,
+        },
+      },
+    };
+  }
+  return result;
 }
 
 /**
@@ -73,8 +101,26 @@ const SERVER_FEATURE_APIS: Record<ServerFeature, string> = {
   functions: functionsOrigin(),
   remoteconfig: remoteConfigApiOrigin(),
   crashlytics: crashlyticsApiOrigin(),
+  apptesting: appDistributionOrigin(),
   apphosting: apphostingOrigin(),
   database: realtimeOrigin(),
+  developerknowledge: developerKnowledgeOrigin(),
+};
+
+const DETECTED_API_FEATURES: Record<ServerFeature, boolean | undefined> = {
+  core: undefined,
+  firestore: undefined,
+  storage: undefined,
+  dataconnect: undefined,
+  auth: undefined,
+  messaging: undefined,
+  functions: undefined,
+  remoteconfig: undefined,
+  crashlytics: undefined,
+  apptesting: undefined,
+  apphosting: undefined,
+  database: undefined,
+  developerknowledge: undefined,
 };
 
 /**
@@ -88,18 +134,26 @@ export async function checkFeatureActive(
 ): Promise<boolean> {
   // if the feature is configured in firebase.json, it's active
   if (feature in (options?.config?.data || {})) return true;
-  // if the feature's api is active in the project, it's active
-  try {
-    if (projectId)
-      return await timeoutFallback(
+
+  if (DETECTED_API_FEATURES[feature] !== undefined) return DETECTED_API_FEATURES[feature]!;
+
+  if (projectId) {
+    // if the feature's api is active in the project, it's active
+    try {
+      const isActive = await timeoutFallback(
         check(projectId, SERVER_FEATURE_APIS[feature], "", true),
         true,
         3000,
       );
-  } catch (e) {
-    // if we don't have network or something, better to default to on
-    return true;
+      DETECTED_API_FEATURES[feature] = isActive;
+      return isActive;
+    } catch (e) {
+      // If the API check fails (e.g. network error), it's safer to assume the feature is active.
+      DETECTED_API_FEATURES[feature] = true;
+      return true;
+    }
   }
+  DETECTED_API_FEATURES[feature] = false;
   return false;
 }
 

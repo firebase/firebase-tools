@@ -34,13 +34,16 @@ export async function init(setup: any, config: any, baseTemplate: string = "vani
     ],
   });
   execSync(
-    `npm create vite@"${supportedRange}" ${setup.hosting.source} --yes -- --template ${template}`,
+    `npm create vite@"${supportedRange}" ${setup.featureInfo.hosting.source} --yes -- --template ${template}`,
     {
       stdio: "inherit",
       cwd: config.projectDir,
     },
   );
-  execSync(`npm install`, { stdio: "inherit", cwd: join(config.projectDir, setup.hosting.source) });
+  execSync(`npm install`, {
+    stdio: "inherit",
+    cwd: join(config.projectDir, setup.featureInfo.hosting.source),
+  });
 }
 
 export const viteDiscoverWithNpmDependency = (dep: string) => async (dir: string) =>

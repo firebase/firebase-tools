@@ -5,20 +5,21 @@ import * as path from "path";
 const cwd = process.cwd();
 
 import { checkbox, select } from "../../../prompt";
-import { App, appDescription, detectApps } from "../../../dataconnect/appFinder";
 import { Config } from "../../../config";
 import { Setup } from "../..";
+import { Options } from "../../../options";
 import { loadAll } from "../../../dataconnect/load";
 import {
+  AdminNodeSDK,
   ConnectorInfo,
   ConnectorYaml,
   DartSDK,
-  Framework,
   JavascriptSDK,
   KotlinSDK,
-  Platform,
+  SwiftSDK,
 } from "../../../dataconnect/types";
-import { FirebaseError } from "../../../error";
+import * as experiments from "../../../experiments";
+import { FirebaseError, getErrMsg, getErrStack } from "../../../error";
 import { isArray } from "lodash";
 import {
   logBullet,
@@ -31,11 +32,14 @@ import {
   logLabeledError,
   commandExistsSync,
 } from "../../../utils";
+import { detectApps, appDescription, Platform, App, Framework } from "../../../appUtils";
 import { DataConnectEmulator } from "../../../emulator/dataconnectEmulator";
 import { getGlobalDefaultAccount } from "../../../auth";
 import { createFlutterApp, createNextApp, createReactApp } from "./create_app";
 import { trackGA4 } from "../../../track";
 import { dirExistsSync, listFiles } from "../../../fsutils";
+import { isBillingEnabled } from "../../../gcp/cloudbilling";
+import { Source } from ".";
 
 export const FDC_APP_FOLDER = "FDC_APP_FOLDER";
 export const FDC_SDK_FRAMEWORKS_ENV = "FDC_SDK_FRAMEWORKS";
@@ -51,12 +55,16 @@ export type SDKInfo = {
   displayIOSWarning: boolean;
 };
 
-export async function askQuestions(setup: Setup): Promise<void> {
+export async function askQuestions(
+  setup: Setup,
+  config?: Config,
+  options?: Options,
+): Promise<void> {
   const info: SdkRequiredInfo = {
     apps: [],
   };
 
-  info.apps = await chooseApp();
+  info.apps = await chooseApp(options);
   if (!info.apps.length) {
     const npxMissingWarning = commandExistsSync("npx")
       ? ""
@@ -72,8 +80,10 @@ export async function askQuestions(setup: Setup): Promise<void> {
         { name: `React${npxMissingWarning}`, value: "react" },
         { name: `Next.JS${npxMissingWarning}`, value: "next" },
         { name: `Flutter${flutterMissingWarning}`, value: "flutter" },
-        { name: "no", value: "no" },
+        { name: "skip", value: "skip" },
       ],
+      default: "skip",
+      nonInteractive: options?.nonInteractive,
     });
     try {
       switch (choice) {
@@ -86,12 +96,14 @@ export async function askQuestions(setup: Setup): Promise<void> {
         case "flutter":
           await createFlutterApp(newUniqueId("flutter_app", listFiles(cwd)));
           break;
-        case "no":
+        case "skip":
           break;
       }
     } catch (err: unknown) {
-      // The detailed error message are already piped into stderr. No need to repeat here.
-      logLabeledError("dataconnect", `Failed to create a ${choice} app template`);
+      logLabeledError(
+        "dataconnect",
+        `Failed to create a ${choice} app template: ${getErrStack(err)}`,
+      );
     }
   }
 
@@ -99,23 +111,24 @@ export async function askQuestions(setup: Setup): Promise<void> {
   setup.featureInfo.dataconnectSdk = info;
 }
 
-async function chooseApp(): Promise<App[]> {
-  let apps = await detectApps(cwd);
+export async function chooseApp(options?: Options): Promise<App[]> {
+  let apps = dedupeAppsByPlatformAndDirectory(await detectApps(cwd));
   if (apps.length) {
     logLabeledSuccess(
       "dataconnect",
       `Detected existing apps ${apps.map((a) => appDescription(a)).join(", ")}`,
     );
   } else {
-    logLabeledWarning("dataconnect", "No app exists in the current directory.");
+    logLabeledWarning("dataconnect", "Cannot detect an existing app in the current directory.");
   }
   // Check for environment variables override.
   const envAppFolder = envOverride(FDC_APP_FOLDER, "");
-  const envPlatform = envOverride(FDC_SDK_PLATFORM_ENV, Platform.NONE) as Platform;
+  const envPlatform: Platform = envOverride(FDC_SDK_PLATFORM_ENV, "") as Platform;
   const envFrameworks: Framework[] = envOverride(FDC_SDK_FRAMEWORKS_ENV, "")
     .split(",")
+    .filter((f) => !!f)
     .map((f) => f as Framework);
-  if (envAppFolder && envPlatform !== Platform.NONE) {
+  if (envAppFolder && envPlatform) {
     // Resolve the relative path to the app directory
     const envAppRelDir = path.relative(cwd, path.resolve(cwd, envAppFolder));
     const matchedApps = apps.filter(
@@ -143,11 +156,20 @@ async function chooseApp(): Promise<App[]> {
         checked: a.directory === ".",
       };
     });
+    const defaultApps = choices.filter((c) => c.checked).map((c) => c.value);
     const pickedApps = await checkbox<App>({
-      message: "Which apps do you want to set up Data Connect SDKs in?",
+      message: "Which apps do you want to set up SQL Connect SDKs in?",
       choices,
+      default: defaultApps.length > 0 ? defaultApps : [choices[0].value],
+      nonInteractive: options?.nonInteractive,
+      validate: (choices) => {
+        if (choices.length === 0) {
+          return "Please choose at least one app.";
+        }
+        return true;
+      },
     });
-    if (!pickedApps.length) {
+    if (!pickedApps || !pickedApps.length) {
       throw new FirebaseError("Command Aborted. Please choose at least one app.");
     }
     apps = pickedApps;
@@ -156,28 +178,65 @@ async function chooseApp(): Promise<App[]> {
 }
 
 export async function actuate(setup: Setup, config: Config) {
-  const fdcInfo = setup.featureInfo?.dataconnect;
   const sdkInfo = setup.featureInfo?.dataconnectSdk;
   if (!sdkInfo) {
-    throw new Error("Data Connect SDK feature RequiredInfo is not provided");
+    throw new Error("SQL Connect SDK feature RequiredInfo is not provided");
   }
+  const startTime = Date.now();
   try {
     await actuateWithInfo(setup, config, sdkInfo);
   } finally {
-    let flow = "no_app";
-    if (sdkInfo.apps.length) {
-      const platforms = sdkInfo.apps.map((a) => a.platform.toLowerCase()).sort();
-      flow = `${platforms.join("_")}_app`;
-    }
-    if (fdcInfo) {
-      fdcInfo.analyticsFlow += `_${flow}`;
-    } else {
-      void trackGA4("dataconnect_init", {
-        project_status: setup.projectId ? (setup.isBillingEnabled ? "blaze" : "spark") : "missing",
-        flow: `cli_sdk_${flow}`,
-      });
+    // If `firebase init dataconnect:sdk` is run alone, emit GA stats.
+    // Otherwise, `firebase init dataconnect` will emit those stats.
+    const fdcInfo = setup.featureInfo?.dataconnect;
+    if (!fdcInfo) {
+      const source: Source = setup.featureInfo?.dataconnectSource || "init_sdk";
+      void trackGA4(
+        "dataconnect_init",
+        {
+          source,
+          project_status: setup.projectId
+            ? (await isBillingEnabled(setup))
+              ? "blaze"
+              : "spark"
+            : "missing",
+          ...initAppCounters(sdkInfo),
+        },
+        Date.now() - startTime,
+      );
     }
   }
+}
+
+export function initAppCounters(info: SdkRequiredInfo): { [key: string]: number } {
+  const counts = {
+    num_web_apps: 0,
+    num_android_apps: 0,
+    num_ios_apps: 0,
+    num_flutter_apps: 0,
+    num_admin_node_apps: 0,
+  };
+
+  for (const app of info.apps ?? []) {
+    switch (app.platform) {
+      case Platform.ADMIN_NODE:
+        counts.num_admin_node_apps++;
+        break;
+      case Platform.WEB:
+        counts.num_web_apps++;
+        break;
+      case Platform.ANDROID:
+        counts.num_android_apps++;
+        break;
+      case Platform.IOS:
+        counts.num_ios_apps++;
+        break;
+      case Platform.FLUTTER:
+        counts.num_flutter_apps++;
+        break;
+    }
+  }
+  return counts;
 }
 
 async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredInfo) {
@@ -187,12 +246,15 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
     // The `firebase_init` MCP tool always pass an empty `apps` list, it should setup all apps detected.
     info.apps = await detectApps(cwd);
     if (!info.apps.length) {
-      logLabeledBullet("dataconnect", "No apps to setup Data Connect Generated SDKs");
+      logLabeledBullet("dataconnect", "No apps to setup SQL Connect Generated SDKs");
       return;
     }
   }
-  const apps = info.apps;
 
+  // detectApps creates unique apps by appId and bundleId, but this method operates
+  // on platform, directory, and frameworks alone. Deduping here to retain the
+  // same behavior
+  const apps = dedupeAppsByPlatformAndDirectory(info.apps);
   const connectorInfo = await chooseExistingConnector(setup, config);
   const connectorYaml = JSON.parse(JSON.stringify(connectorInfo.connectorYaml)) as ConnectorYaml;
   for (const app of apps) {
@@ -219,8 +281,8 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       configDir: connectorInfo.directory,
       account,
     });
-  } catch (e: any) {
-    logLabeledError("dataconnect", `Failed to generate Data Connect SDKs\n${e?.message}`);
+  } catch (e: unknown) {
+    logLabeledError("dataconnect", `Failed to generate SQL Connect SDKs\n${getErrMsg(e)}`);
   }
 
   logLabeledSuccess(
@@ -234,14 +296,14 @@ async function actuateWithInfo(setup: Setup, config: Config, info: SdkRequiredIn
       ),
     );
   }
-  if (apps.some((a) => a.frameworks?.includes("react"))) {
+  if (apps.some((a) => a.frameworks?.includes(Framework.REACT))) {
     logBullet(
-      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase Data Connect",
+      "Visit https://firebase.google.com/docs/data-connect/web-sdk#react for more information on how to set up React Generated SDKs for Firebase SQL Connect",
     );
   }
-  if (apps.some((a) => a.frameworks?.includes("angular"))) {
+  if (apps.some((a) => a.frameworks?.includes(Framework.ANGULAR))) {
     logBullet(
-      "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase Data Connect",
+      "Run `ng add @angular/fire` to install angular sdk dependencies.\nVisit https://github.com/invertase/tanstack-query-firebase/tree/main/packages/angular for more information on how to set up Angular Generated SDKs for Firebase SQL Connect",
     );
   }
 }
@@ -275,7 +337,7 @@ async function chooseExistingConnector(setup: Setup, config: Config): Promise<Co
     .flat();
   if (!choices.length) {
     throw new FirebaseError(
-      `No Firebase Data Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and connector.`,
+      `No Firebase SQL Connect workspace found. Run ${clc.bold("firebase init dataconnect")} to set up a service and connector.`,
     );
   }
   if (choices.length === 1) {
@@ -313,21 +375,43 @@ export function addSdkGenerateToConnectorYaml(
   const generate = connectorYaml.generate;
 
   switch (app.platform) {
+    case Platform.ADMIN_NODE: {
+      const adminNodeSdk: AdminNodeSDK = {
+        outputDir: path.relative(
+          connectorDir,
+          path.join(appDir, `src/dataconnect-admin-generated`),
+        ),
+        package: `@dataconnect/admin-generated`,
+        packageJsonDir: path.relative(connectorDir, appDir),
+      };
+      if (!isArray(generate?.adminNodeSdk)) {
+        generate.adminNodeSdk = generate.adminNodeSdk ? [generate.adminNodeSdk] : [];
+      }
+      if (!generate.adminNodeSdk.some((s) => s.outputDir === adminNodeSdk.outputDir)) {
+        generate.adminNodeSdk.push(adminNodeSdk);
+      }
+      break;
+    }
+
     case Platform.WEB: {
       const javascriptSdk: JavascriptSDK = {
-        outputDir: path.relative(connectorDir, path.join(appDir, `src/dataconnect-generated`)),
-        package: `@dataconnect/generated`,
-        packageJsonDir: path.relative(connectorDir, appDir),
-        react: false,
-        angular: false,
+        outputDir: path.relative(
+          connectorDir,
+          path.join(app.directory, "src/dataconnect-generated"),
+        ),
+        package: "@dataconnect/generated",
+        packageJsonDir: path.relative(connectorDir, app.directory),
+        react: app.frameworks?.includes(Framework.REACT) ?? false,
+        angular: app.frameworks?.includes(Framework.ANGULAR) ?? false,
       };
-      for (const f of app.frameworks || []) {
-        javascriptSdk[f] = true;
+      if (experiments.isEnabled("fdcrealtime")) {
+        javascriptSdk.clientCache = {};
       }
       if (!isArray(generate?.javascriptSdk)) {
         generate.javascriptSdk = generate.javascriptSdk ? [generate.javascriptSdk] : [];
       }
-      if (!generate.javascriptSdk.some((s) => s.outputDir === javascriptSdk.outputDir)) {
+      const existing = generate.javascriptSdk.find((s) => s.outputDir === javascriptSdk.outputDir);
+      if (!existing) {
         generate.javascriptSdk.push(javascriptSdk);
       }
       break;
@@ -335,52 +419,88 @@ export function addSdkGenerateToConnectorYaml(
     case Platform.FLUTTER: {
       const dartSdk: DartSDK = {
         outputDir: path.relative(connectorDir, path.join(appDir, `lib/dataconnect_generated`)),
-        package: "dataconnect_generated",
+        package: "dataconnect_generated/generated.dart",
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        dartSdk.clientCache = {};
+      }
       if (!isArray(generate?.dartSdk)) {
         generate.dartSdk = generate.dartSdk ? [generate.dartSdk] : [];
       }
-      if (!generate.dartSdk.some((s) => s.outputDir === dartSdk.outputDir)) {
+      const existing = generate.dartSdk.find((s) => s.outputDir === dartSdk.outputDir);
+      if (!existing) {
         generate.dartSdk.push(dartSdk);
       }
       break;
     }
     case Platform.ANDROID: {
       const kotlinSdk: KotlinSDK = {
-        outputDir: path.relative(connectorDir, path.join(appDir, `src/main/kotlin`)),
+        outputDir: path.relative(connectorDir, path.join(app.directory, "src/main/kotlin")),
         package: `com.google.firebase.dataconnect.generated`,
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        kotlinSdk.clientCache = {};
+      }
       if (!isArray(generate?.kotlinSdk)) {
         generate.kotlinSdk = generate.kotlinSdk ? [generate.kotlinSdk] : [];
       }
-      if (!generate.kotlinSdk.some((s) => s.outputDir === kotlinSdk.outputDir)) {
+      const existing = generate.kotlinSdk.find((s) => s.outputDir === kotlinSdk.outputDir);
+      if (!existing) {
         generate.kotlinSdk.push(kotlinSdk);
       }
       break;
     }
     case Platform.IOS: {
-      const swiftSdk = {
+      const swiftSdk: SwiftSDK = {
         outputDir: path.relative(
           connectorDir,
           path.join(app.directory, `../FirebaseDataConnectGenerated`),
         ),
         package: "DataConnectGenerated",
       };
+      if (experiments.isEnabled("fdcrealtime")) {
+        swiftSdk.clientCache = {};
+      }
       if (!isArray(generate?.swiftSdk)) {
         generate.swiftSdk = generate.swiftSdk ? [generate.swiftSdk] : [];
       }
-      if (!generate.swiftSdk.some((s) => s.outputDir === swiftSdk.outputDir)) {
+      const existing = generate.swiftSdk.find((s) => s.outputDir === swiftSdk.outputDir);
+      if (!existing) {
         generate.swiftSdk.push(swiftSdk);
       }
       break;
     }
     default:
       throw new FirebaseError(
-        `Unsupported platform ${app.platform} for Data Connect SDK generation. Supported platforms are: ${Object.values(
+        `Unsupported platform ${app.platform} for SQL Connect SDK generation. Supported platforms are: ${Object.values(
           Platform,
-        )
-          .filter((p) => p !== Platform.NONE && p !== Platform.MULTIPLE)
-          .join(", ")}\n${JSON.stringify(app)}`,
+        ).join(", ")}\n${JSON.stringify(app)}`,
       );
   }
+}
+
+function dedupeAppsByPlatformAndDirectory(apps: App[]): App[] {
+  // detectApps creates unique apps by appId and bundleId, but this method operates
+  // on platform, directory, and frameworks alone. Deduping here to retain the
+  // same behavior
+  const uniqueApps = new Map<string, App>();
+  for (const app of apps) {
+    // Sorting frameworks for consistent key generation
+    const frameworkKey = app.frameworks ? [...app.frameworks].sort().join(",") : "";
+    const key = `${app.platform}:${app.directory}:${frameworkKey}`;
+    if (!uniqueApps.has(key)) {
+      const minifiedApp: App = {
+        platform: app.platform,
+        directory: app.directory,
+      };
+
+      if (app.frameworks?.length) {
+        minifiedApp.frameworks = [...app.frameworks];
+      }
+
+      // Create a new object with only the desired properties to avoid carrying over others like appId
+      uniqueApps.set(key, minifiedApp);
+    }
+  }
+  return Array.from(uniqueApps.values());
 }

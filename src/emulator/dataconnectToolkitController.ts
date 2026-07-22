@@ -5,9 +5,9 @@ import { connectableHostname } from "../utils";
 import { DataConnectEmulator, DataConnectEmulatorArgs } from "./dataconnectEmulator";
 import { getDownloadDetails } from "./downloadableEmulators";
 
-const name = "Data Connect Toolkit";
+const name = "SQL Connect Toolkit";
 /**
- * Static controller for the VSCode Data Connect Toolkit
+ * Static controller for the VSCode SQL Connect Toolkit
  */
 export class DataConnectToolkitController {
   static instance: DataConnectEmulator;
@@ -37,7 +37,7 @@ export class DataConnectToolkitController {
       await this.instance.stop();
       this.isRunning = false;
     } catch (e: any) {
-      throw new FirebaseError(`Data Connect Toolkit failed to stop with error: ${e}`);
+      throw new FirebaseError(`SQL Connect Toolkit failed to stop with error: ${e}`);
     }
   }
 

@@ -1,16 +1,17 @@
-import { AbortSignal } from "abort-controller";
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import { ProxyAgent } from "proxy-agent";
+import { ProxyAgent, request } from "undici";
 import * as retry from "retry";
-import AbortController from "abort-controller";
-import fetch, { HeadersInit, Response, RequestInit, Headers } from "node-fetch";
+import * as http from "http";
+import * as https from "https";
 import util from "util";
 
 import * as auth from "./auth";
 import { FirebaseError } from "./error";
+import { isFirebaseMcp, detectAIAgent } from "./env";
 import { logger } from "./logger";
 import { responseToError } from "./responseToError";
+import { streamToString } from "./streamUtils";
 import * as FormData from "form-data";
 
 // Using import would require resolveJsonModule, which seems to break the
@@ -18,16 +19,24 @@ import * as FormData from "form-data";
 const pkg = require("../package.json");
 const CLI_VERSION: string = pkg.version;
 
-export const STANDARD_HEADERS: Record<string, string> = {
-  Connection: "keep-alive",
-  "User-Agent": `FirebaseCLI/${CLI_VERSION}`,
-  "X-Client-Version": `FirebaseCLI/${CLI_VERSION}`,
+export const standardHeaders: () => Record<string, string> = () => {
+  const agent = detectAIAgent();
+  const agentStr = agent === "unknown" ? "" : ` agent-name/${agent}`;
+  const platform = isFirebaseMcp() ? "FirebaseMCP" : "FirebaseCLI";
+  const clientVersion = `${platform}/${CLI_VERSION}${agentStr}`;
+  return {
+    Connection: "keep-alive",
+    "User-Agent": clientVersion,
+    "X-Client-Version": clientVersion,
+  };
 };
 
+// Don't use this one.
 const GOOG_QUOTA_USER_HEADER = "x-goog-quota-user";
 
-const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
-const GOOGLE_CLOUD_QUOTA_PROJECT = process.env.GOOGLE_CLOUD_QUOTA_PROJECT;
+// Header for specifying a quota project. See https://cloud.google.com/apis/docs/system-parameters#project-header
+export const GOOG_USER_PROJECT_HEADER = "x-goog-user-project";
+export const CLI_OAUTH_PROJECT_NUMBER = "563584335869";
 
 export type HttpMethod =
   | "GET"
@@ -138,13 +147,49 @@ export async function getAccessToken(): Promise<string> {
 }
 
 function proxyURIFromEnv(): string | undefined {
-  return (
+  const uri =
     process.env.HTTPS_PROXY ||
     process.env.https_proxy ||
     process.env.HTTP_PROXY ||
     process.env.http_proxy ||
-    undefined
-  );
+    undefined;
+  if (uri === "undefined" || uri === "null") {
+    return undefined;
+  }
+  return uri;
+}
+
+// Some networks (and recent Node.js security releases) interact badly with
+// node-fetch's keep-alive handling: a reused/closed keep-alive socket surfaces
+// as an "Invalid response body ...: Premature close" error while the response
+// body is being read, even though the response is otherwise valid. Retrying the
+// request once without keep-alive (Connection: close) reliably works around it.
+// See https://github.com/firebase/firebase-tools/issues/10692 and
+// https://github.com/node-fetch/node-fetch/issues/1767.
+const httpAgentNoKeepAlive = new http.Agent({ keepAlive: false });
+const httpsAgentNoKeepAlive = new https.Agent({ keepAlive: false });
+export function noKeepAliveAgent(parsedURL: URL): http.Agent | https.Agent {
+  return parsedURL.protocol === "https:" ? httpsAgentNoKeepAlive : httpAgentNoKeepAlive;
+}
+
+function isPrematureCloseError(err: unknown): boolean {
+  for (const candidate of [err, (err as { original?: unknown } | undefined)?.original]) {
+    if (!candidate) {
+      continue;
+    }
+    const e = candidate as { code?: string; errno?: string; message?: string };
+    const code = e.code || e.errno;
+    const message = typeof e.message === "string" ? e.message : "";
+    if (
+      code === "ERR_STREAM_PREMATURE_CLOSE" ||
+      code === "ECONNRESET" ||
+      /premature close/i.test(message) ||
+      /socket hang up/i.test(message)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export type ClientOptions = {
@@ -152,6 +197,12 @@ export type ClientOptions = {
   apiVersion?: string;
   auth?: boolean;
 };
+
+interface FetchOptions extends RequestInit {
+  dispatcher?: ProxyAgent;
+  duplex?: "half";
+  agent?: http.Agent | https.Agent | ((parsedUrl: URL) => http.Agent | https.Agent);
+}
 
 export class Client {
   constructor(private opts: ClientOptions) {
@@ -269,6 +320,17 @@ export class Client {
     try {
       return await this.doRequest<ReqT, ResT>(internalReqOptions);
     } catch (thrown: any) {
+      const originalErrorMessage = thrown.original?.message || thrown.message || "";
+      if (originalErrorMessage.includes(CLI_OAUTH_PROJECT_NUMBER)) {
+        // Error messages mentioning the CLI's OAuth project number should not be shared with end users,
+        // since they will never be actionable for them. If we do display them, support gets a bunch of tickets asking for quota
+        // increases on the wrong project.
+        throw new FirebaseError(
+          "An Internal error has occurred. Please try again in a few minutes. If this error persists, please open an issue at https://github.com/firebase/firebase-tools",
+          { original: thrown },
+        );
+      }
+
       if (thrown instanceof FirebaseError) {
         throw thrown;
       }
@@ -289,7 +351,7 @@ export class Client {
     if (!reqOptions.headers) {
       reqOptions.headers = new Headers();
     }
-    for (const [h, v] of Object.entries(STANDARD_HEADERS)) {
+    for (const [h, v] of Object.entries(standardHeaders())) {
       if (!reqOptions.headers.has(h)) {
         reqOptions.headers.set(h, v);
       }
@@ -301,10 +363,10 @@ export class Client {
     }
     if (
       !reqOptions.ignoreQuotaProject &&
-      GOOGLE_CLOUD_QUOTA_PROJECT &&
-      GOOGLE_CLOUD_QUOTA_PROJECT !== ""
+      process.env.GOOGLE_CLOUD_QUOTA_PROJECT &&
+      process.env.GOOGLE_CLOUD_QUOTA_PROJECT !== ""
     ) {
-      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, GOOGLE_CLOUD_QUOTA_PROJECT);
+      reqOptions.headers.set(GOOG_USER_PROJECT_HEADER, process.env.GOOGLE_CLOUD_QUOTA_PROJECT);
     }
     return reqOptions;
   }
@@ -353,15 +415,15 @@ export class Client {
       }
     }
 
-    const fetchOptions: RequestInit = {
+    const fetchOptions: FetchOptions = {
       headers: options.headers,
       method: options.method,
       redirect: options.redirect,
-      compress: options.compress,
     };
 
-    if (proxyURIFromEnv()) {
-      fetchOptions.agent = new ProxyAgent();
+    const proxyURI = proxyURIFromEnv();
+    if (proxyURI) {
+      fetchOptions.dispatcher = new ProxyAgent({ uri: proxyURI });
     }
 
     if (options.signal) {
@@ -377,8 +439,19 @@ export class Client {
       fetchOptions.signal = controller.signal;
     }
 
-    if (typeof options.body === "string" || isStream(options.body)) {
-      fetchOptions.body = options.body;
+    // A request can only be safely retried if its body can be sent again.
+    // FormData is a single-use stream, so serialize it to a Buffer up front (the
+    // CLI only sends small string forms this way, e.g. the OAuth token request).
+    // Raw streams cannot be replayed and therefore disable the keep-alive retry.
+    let bodyReplayable = true;
+    if (typeof options.body === "string" || Buffer.isBuffer(options.body)) {
+      fetchOptions.body = options.body as any;
+    } else if (options.body instanceof FormData) {
+      fetchOptions.body = options.body.getBuffer() as any;
+    } else if (isStream(options.body)) {
+      fetchOptions.body = options.body as any;
+      fetchOptions.duplex = "half";
+      bodyReplayable = false;
     } else if (options.body !== undefined) {
       fetchOptions.body = JSON.stringify(options.body);
     }
@@ -400,6 +473,10 @@ export class Client {
     }
     const operation = retry.operation(operationOptions);
 
+    // Tracks whether we've already downgraded this request to a non-keep-alive
+    // connection in response to a "Premature close" error (retried at most once).
+    let disabledKeepAlive = false;
+
     return await new Promise<ClientResponse<ResT>>((resolve, reject) => {
       // eslint-disable-next-line @typescript-eslint/no-misused-promises
       operation.attempt(async (currentAttempt): Promise<void> => {
@@ -413,9 +490,38 @@ export class Client {
           }
           this.logRequest(options);
           try {
-            res = await fetch(fetchURL, fetchOptions);
+            if (options.compress === false) {
+              const undiciOptions: any = {
+                method: fetchOptions.method,
+                headers: {},
+                decompress: false,
+              };
+              if (fetchOptions.dispatcher) {
+                undiciOptions.dispatcher = fetchOptions.dispatcher;
+              }
+              if (fetchOptions.signal) {
+                undiciOptions.signal = fetchOptions.signal;
+              }
+              if (fetchOptions.body) {
+                undiciOptions.body = fetchOptions.body;
+              }
+              if (fetchOptions.headers) {
+                for (const [key, value] of (fetchOptions.headers as any).entries()) {
+                  undiciOptions.headers[key] = value;
+                }
+              }
+              const undiciRes = await request(fetchURL, undiciOptions);
+              res = new UndiciResponseCompat(undiciRes) as any;
+            } else {
+              res = await fetch(fetchURL, fetchOptions);
+            }
           } catch (thrown: any) {
-            const err = thrown instanceof Error ? thrown : new Error(thrown);
+            const err =
+              thrown && typeof thrown === "object" && thrown.cause instanceof Error
+                ? thrown.cause
+                : thrown instanceof Error
+                  ? thrown
+                  : new Error(thrown);
             logger.debug(
               `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
             );
@@ -452,13 +558,44 @@ export class Client {
           } else if (options.responseType === "xml") {
             body = (await res.text()) as unknown as ResT;
           } else if (options.responseType === "stream") {
-            body = res.body as unknown as ResT;
+            if (res.body) {
+              if (typeof (res.body as any).getReader === "function") {
+                body = Readable.fromWeb(res.body as any) as unknown as ResT;
+              } else {
+                body = res.body as unknown as ResT;
+              }
+            } else {
+              const emptyStream = new Readable();
+              emptyStream.push(null);
+              body = emptyStream as unknown as ResT;
+            }
           } else {
             throw new FirebaseError(`Unable to interpret response. Please set responseType.`, {
               exit: 2,
             });
           }
         } catch (err: unknown) {
+          // Work around a node-fetch/Node.js keep-alive bug that surfaces as a
+          // "Premature close" error: retry the request once without keep-alive.
+          if (
+            !disabledKeepAlive &&
+            bodyReplayable &&
+            !proxyURIFromEnv() &&
+            isPrematureCloseError(err)
+          ) {
+            disabledKeepAlive = true;
+            fetchOptions.agent = noKeepAliveAgent;
+            // Use a fresh Headers instance so we don't mutate the shared options.
+            const closeHeaders = new Headers(fetchOptions.headers);
+            closeHeaders.set("Connection", "close");
+            fetchOptions.headers = closeHeaders;
+            logger.debug(
+              `*** [apiv2] retrying ${fetchURL} without keep-alive after a premature close error`,
+            );
+            if (operation.retry(err instanceof Error ? err : new Error(`${err}`))) {
+              return;
+            }
+          }
           return err instanceof FirebaseError ? reject(err) : reject(new FirebaseError(`${err}`));
         }
 
@@ -509,11 +646,15 @@ export class Client {
     const logURL = this.requestURL(options);
     logger.debug(`>>> [apiv2][query] ${options.method} ${logURL} ${queryParamsLog}`);
     const headers = options.headers;
-    if (headers && headers.has(GOOG_QUOTA_USER_HEADER)) {
+    if (headers && (headers.has(GOOG_QUOTA_USER_HEADER) || headers.has(GOOG_USER_PROJECT_HEADER))) {
+      const userHeader = headers.has(GOOG_QUOTA_USER_HEADER)
+        ? `${GOOG_QUOTA_USER_HEADER}=${headers.get(GOOG_QUOTA_USER_HEADER)}`
+        : "";
+      const projectHeader = headers.has(GOOG_USER_PROJECT_HEADER)
+        ? `${GOOG_USER_PROJECT_HEADER}=${headers.get(GOOG_USER_PROJECT_HEADER)}`
+        : "";
       logger.debug(
-        `>>> [apiv2][(partial)header] ${options.method} ${logURL} x-goog-quota-user=${
-          headers.get(GOOG_QUOTA_USER_HEADER) || ""
-        }`,
+        `>>> [apiv2][(partial)header] ${options.method} ${logURL} ${userHeader} ${projectHeader}`,
       );
     }
     if (options.body !== undefined) {
@@ -543,6 +684,36 @@ export class Client {
 function isLocalInsecureRequest(urlPrefix: string): boolean {
   const u = new URL(urlPrefix);
   return u.protocol === "http:";
+}
+
+class UndiciResponseCompat {
+  readonly status: number;
+  readonly headers: Headers;
+  readonly body: any;
+  readonly ok: boolean;
+
+  constructor(private undiciRes: any) {
+    this.status = undiciRes.statusCode;
+    this.ok = undiciRes.statusCode >= 200 && undiciRes.statusCode < 300;
+    this.headers = new Headers();
+    for (const [key, value] of Object.entries(undiciRes.headers)) {
+      if (Array.isArray(value)) {
+        for (const v of value) {
+          this.headers.append(key, v);
+        }
+      } else if (value !== undefined) {
+        this.headers.set(key, String(value));
+      }
+    }
+    this.body = undiciRes.body;
+  }
+
+  async text(): Promise<string> {
+    if (!this.body) {
+      return "";
+    }
+    return streamToString(this.body);
+  }
 }
 
 function bodyToString(body: unknown): string {

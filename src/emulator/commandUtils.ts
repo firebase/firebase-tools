@@ -11,6 +11,7 @@ import { requireAuth } from "../requireAuth";
 import { requireConfig } from "../requireConfig";
 import { Emulators, ALL_SERVICE_EMULATORS } from "./types";
 import { FirebaseError } from "../error";
+import { getError } from "../error";
 import { EmulatorRegistry } from "./registry";
 import { getProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
@@ -172,8 +173,8 @@ export async function beforeEmulatorCommand(options: any): Promise<any> {
   ) {
     try {
       await requireAuth(options);
-    } catch (e: any) {
-      logger.debug(e);
+    } catch (e: unknown) {
+      logger.debug(e as any);
       utils.logLabeledWarning(
         "emulators",
         `You are not currently authenticated so some features may not work correctly. Please run ${clc.bold(
@@ -333,8 +334,8 @@ function processKillSignal(
         }
       }
       res();
-    } catch (e: any) {
-      logger.debug(e);
+    } catch (e: unknown) {
+      logger.debug(e as any);
       rej();
     }
   };
@@ -512,9 +513,11 @@ export async function checkJavaMajorVersion(): Promise<number> {
           stdio: ["inherit", "pipe", "pipe"],
         },
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       return reject(
-        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, { original: err }),
+        new FirebaseError(`Could not spawn \`java -version\`. ${JAVA_HINT}`, {
+          original: getError(err),
+        }),
       );
     }
 
@@ -589,5 +592,5 @@ export async function checkJavaMajorVersion(): Promise<number> {
 
 export const MIN_SUPPORTED_JAVA_MAJOR_VERSION = 21;
 export const JAVA_DEPRECATION_WARNING =
-  "firebase-tools will drop support for Java version < 21 soon in firebase-tools@15. " +
+  "firebase-tools no longer supports Java version before 21. " +
   "Please install a JDK at version 21 or above to get a compatible runtime.";

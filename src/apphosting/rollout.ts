@@ -206,7 +206,7 @@ export async function orchestrateRollout(
       );
     }
     throw new FirebaseError(
-      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}.`,
+      `Failed to build your app. Please inspect the build logs at ${build.buildLogsUri}`,
       { children: [build.error] },
     );
   }

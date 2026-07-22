@@ -3,15 +3,9 @@ import { FirebaseError } from "../error";
 
 export const ApplicationIdSchema = z
   .string()
-  .describe(
-    "Firebase app id. For an Android application, read the " +
-      "mobilesdk_app_id value specified in the google-services.json file for " +
-      "the current package name. For an iOS Application, read the GOOGLE_APP_ID " +
-      "from GoogleService-Info.plist. If neither is available, ask the user to " +
-      "provide the app id.",
-  );
+  .describe("Firebase App Id. Strictly required for all API calls.");
 
-export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexidecimal uuid");
+export const IssueIdSchema = z.string().describe("Crashlytics issue id, as hexidecimal UUID");
 
 export const EventFilterSchema = z
   .object({
@@ -109,12 +103,15 @@ export function filterToUrlSearchParams(filter: EventFilter): URLSearchParams {
 const displayNamePattern = /^[^()]+\s+\([^()]+\)$/; // Regular expression like "xxxx (yyy)"
 
 /**
- * Perform some simplistic validation on filters.
+ * Perform some simplistic validation on filters and fill missing values.
  * @param filter filters to validate
  * @throws FirebaseError if any of the filters are invalid.
  */
-export function validateEventFilters(filter: EventFilter): void {
-  if (!filter) return;
+export function validateEventFilters(filter: EventFilter = {}): EventFilter {
+  if (!!filter.intervalStartTime && !filter.intervalEndTime) {
+    // interval.end_time is required if interval.start_time is set but the agent likes to forget it
+    filter.intervalEndTime = new Date().toISOString();
+  }
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
   if (filter.intervalStartTime && new Date(filter.intervalStartTime) < ninetyDaysAgo) {
     throw new FirebaseError("intervalStartTime must be less than 90 days in the past");
@@ -140,4 +137,5 @@ export function validateEventFilters(filter: EventFilter): void {
       }
     });
   }
+  return filter;
 }

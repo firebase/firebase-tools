@@ -39,7 +39,7 @@ export class FBToolsAuthClient extends AuthClient {
   public async getRequestHeaders(): Promise<Record<string, string>> {
     const token = await this.getAccessToken();
     return {
-      ...apiv2.STANDARD_HEADERS,
+      ...apiv2.standardHeaders(),
       Authorization: `Bearer ${token.token}`,
     };
   }

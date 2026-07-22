@@ -622,7 +622,7 @@ export function functionFromEndpoint(
     );
   }
 
-  if (!supported.isRuntime(endpoint.runtime)) {
+  if (!endpoint.runtime || !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
         " This should never happen",

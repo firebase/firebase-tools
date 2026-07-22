@@ -37,6 +37,7 @@ npm run format                   # Auto-fix formatting issues
 
 - **Never use `any` or `unknown` as an escape hatch.** Define proper interfaces/types or use type guards.
 - Use strict null checks and handle `undefined`/`null` explicitly.
+- **Prefer falsy checks over explicit boolean comparisons:** Use `!something` instead of `something === false` unless you explicitly need to distinguish between `false` and other falsy values like `undefined` or `null`.
 
 ### Testing
 

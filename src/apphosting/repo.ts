@@ -34,7 +34,7 @@ const CONNECTION_NAME_REGEX =
 export function parseConnectionName(name: string): ConnectionNameParts | undefined {
   const match = CONNECTION_NAME_REGEX.exec(name);
 
-  if (!match || typeof match.groups === undefined) {
+  if (!match || typeof match.groups === "undefined") {
     return;
   }
   const { projectId, location, id } = match.groups as unknown as ConnectionNameParts;
@@ -205,7 +205,7 @@ async function promptRepositoryUri(
   connections: gcb.Connection[],
 ): Promise<{ remoteUri: string; connection: gcb.Connection }> {
   const { repos, remoteUriToConnection } = await fetchAllRepositories(projectId, connections);
-  const remoteUri = await search({
+  const remoteUri = await search<string>({
     message: "Which GitHub repo do you want to deploy?",
     source: (input: string | undefined): Array<Separator | Choice<string>> => [
       new Separator(),

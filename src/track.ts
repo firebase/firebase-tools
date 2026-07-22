@@ -1,22 +1,10 @@
-import fetch from "node-fetch";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
 import { logger } from "./logger";
-import { isFirebaseStudio } from "./env";
+import { isFirebaseStudio, detectAIAgent, isFirebaseMcp } from "./env";
 const pkg = require("../package.json");
-
-// Detect if the CLI was invoked by a coding agent, based on well-known env vars.
-function detectAIAgent(): string {
-  if (process.env.CLAUDECODE) return "claude_code";
-  if (process.env.CLINE_ACTIVE) return "cline";
-  if (process.env.CODEX_SANDBOX) return "codex_cli";
-  if (process.env.CURSOR_AGENT) return "cursor";
-  if (process.env.GEMINI_CLI) return "gemini_cli";
-  if (process.env.OPENCODE) return "open_code";
-  return "unknown";
-}
 
 type cliEventNames =
   | "command_execution"
@@ -24,6 +12,8 @@ type cliEventNames =
   | "product_init"
   | "product_init_mcp"
   | "dataconnect_init"
+  | "dataconnect_deploy"
+  | "dataconnect_cloud_sql"
   | "error"
   | "login"
   | "api_enabled"
@@ -39,7 +29,9 @@ type cliEventNames =
   | "mcp_client_connected"
   | "mcp_list_prompts"
   | "mcp_get_prompt"
-  | "mcp_read_resource";
+  | "mcp_read_resource"
+  | "mcp_list_resources"
+  | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
   measurementId: string;
@@ -74,9 +66,7 @@ export const GA4_PROPERTIES: Record<GA4Property, GA4Info> = {
  *   2) User opted-in.
  */
 export function usageEnabled(): boolean {
-  return (
-    (!!process.env.IS_FIREBASE_CLI || !!process.env.IS_FIREBASE_MCP) && !!configstore.get("usage")
-  );
+  return (!!process.env.IS_FIREBASE_CLI || isFirebaseMcp()) && !!configstore.get("usage");
 }
 
 // Prop name length must <= 24 and cannot begin with google_/ga_/firebase_.
@@ -355,7 +345,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   if (!property.currentSession) {
     let clientId: string | undefined = configstore.get(property.clientIdKey);
     if (!clientId) {
-      clientId = uuidV4();
+      clientId = randomUUID();
       configstore.set(property.clientIdKey, clientId);
     }
     property.currentSession = {

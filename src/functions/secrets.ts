@@ -88,6 +88,26 @@ export async function ensureValidKey(key: string, options: Options): Promise<str
 }
 
 /**
+ * Validates that a secret value is valid JSON and throws a helpful error if not.
+ * @param secretName The name of the secret being validated
+ * @param secretValue The value to validate
+ * @throws FirebaseError if the value is not valid JSON
+ */
+export function validateJsonSecret(secretName: string, secretValue: string): void {
+  try {
+    JSON.parse(secretValue);
+  } catch (e: any) {
+    throw new FirebaseError(
+      `Provided value for ${secretName} is not valid JSON: ${e.message}\n\n` +
+        `For complex JSON values, use:\n` +
+        `  firebase functions:secrets:set ${secretName} --data-file <file.json>\n` +
+        `Or pipe from stdin:\n` +
+        `  cat <file.json> | firebase functions:secrets:set ${secretName} --format=json`,
+    );
+  }
+}
+
+/**
  * Ensure secret exists. Optionally prompt user to have non-Firebase managed keys be managed by Firebase.
  */
 export async function ensureSecret(
@@ -203,13 +223,16 @@ export function versionInUse(
   return false;
 }
 
+// A SecretEnvVar without fields that are only populated during deploy prepare.
+export type SecretForPruning = Required<Omit<backend.SecretEnvVar, "allowVersionPinning">>;
+
 /**
  * Returns all secret versions from Firebase managed secrets unused in the given list of endpoints.
  */
 export async function pruneSecrets(
   projectInfo: ProjectInfo,
   endpoints: backend.Endpoint[],
-): Promise<Required<backend.SecretEnvVar>[]> {
+): Promise<SecretForPruning[]> {
   const { projectId, projectNumber } = projectInfo;
   const pruneKey = (name: string, version: string) => `${name}@${version}`;
   const prunedSecrets: Set<string> = new Set();
@@ -224,7 +247,7 @@ export async function pruneSecrets(
   }
 
   // Prune all project-scoped secrets in use.
-  const secrets: Required<backend.SecretEnvVar>[] = [];
+  const secrets: SecretForPruning[] = [];
   for (const secret of of(endpoints)) {
     if (!secret.version) {
       // All bets are off if secret version isn't available in the endpoint definition.
@@ -234,7 +257,10 @@ export async function pruneSecrets(
     if (secret.projectId === projectId || secret.projectId === projectNumber) {
       // We already know that secret.version isn't empty, but TS can't figure it out for some reason.
       if (secret.version) {
-        secrets.push({ ...secret, version: secret.version });
+        secrets.push({
+          ...secret,
+          version: secret.version,
+        });
       }
     }
   }
@@ -276,7 +302,7 @@ export async function pruneAndDestroySecrets(
   const { projectId, projectNumber } = projectInfo;
 
   logger.debug("Pruning secrets to find unused secret versions...");
-  const unusedSecrets: Required<backend.SecretEnvVar>[] = await module.exports.pruneSecrets(
+  const unusedSecrets: SecretForPruning[] = await module.exports.pruneSecrets(
     { projectId, projectNumber },
     endpoints,
   );

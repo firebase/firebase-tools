@@ -3,6 +3,8 @@ import * as sinon from "sinon";
 
 import * as prompt from "../../prompt";
 import * as params from "./params";
+import * as secretManager from "../../gcp/secretManager";
+import { FirebaseError } from "../../error";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -88,9 +90,9 @@ describe("resolveParams", () => {
   it("always contains the precanned internal param values", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(expectedInternalParams);
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(expectedInternalParams);
   });
 
   it("can pull a literal value out of the dotenvs", async () => {
@@ -109,9 +111,9 @@ describe("resolveParams", () => {
       bar: new params.ParamValue("24", false, { string: false, number: true, boolean: false }),
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal(
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true, number: false, boolean: false }),
@@ -136,9 +138,9 @@ describe("resolveParams", () => {
         boolean: false,
       }),
     };
-    await expect(
-      params.resolveParams(paramsToResolve, fakeConfig, userEnv),
-    ).to.eventually.deep.equal({
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+    ).to.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
         boolean: false,
@@ -165,13 +167,15 @@ describe("resolveParams", () => {
   it("does not create the corresponding internal params if database url/storage bucket are not configured", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
-    await expect(
-      params.resolveParams(
-        paramsToResolve,
-        { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
-        userEnv,
-      ),
-    ).to.eventually.deep.equal({
+    expect(
+      (
+        await params.resolveParams(
+          paramsToResolve,
+          { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
+          userEnv,
+        )
+      ).paramValues,
+    ).to.deep.equal({
       GCLOUD_PROJECT: expectedInternalParams.GCLOUD_PROJECT,
       PROJECT_ID: expectedInternalParams.PROJECT_ID,
     });
@@ -187,7 +191,7 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("bar");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.deep.equal(
+    expect((await params.resolveParams(paramsToResolve, fakeConfig, {})).paramValues).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true }),
@@ -297,5 +301,31 @@ describe("resolveParams", () => {
     ];
     input.resolves("22");
     await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+  });
+
+  it("does not throw in non-interactive mode if secret exists in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: { name: "MY_SECRET", projectId: "foo", labels: {}, replication: {} },
+      secretVersion: { versionId: "1", state: "ENABLED", secret: {} as any },
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.fulfilled;
+
+    getSecretMetadataStub.restore();
+  });
+
+  it("throws in non-interactive mode if secret is missing in cloud", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataStub = sinon.stub(secretManager, "getSecretMetadata").resolves({
+      secret: undefined,
+    });
+
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.rejectedWith(
+      FirebaseError,
+      /In non-interactive mode but have no value for the secret/,
+    );
+
+    getSecretMetadataStub.restore();
   });
 });

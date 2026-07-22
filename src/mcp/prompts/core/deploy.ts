@@ -1,6 +1,7 @@
 import { prompt } from "../../prompt";
 
 export const deploy = prompt(
+  "core",
   {
     name: "deploy",
     description: "Use this command to deploy resources to Firebase.",

@@ -10,6 +10,10 @@
           "type": "string",
           "description": "The name of the PostgreSQL database."
         },
+        "schema": {
+          "type": "string",
+          "description": "The PostgreSQL schema name. Defaults to 'public' if not specified."
+        },
         "cloudSql": {
           "additionalProperties": false,
           "type": "object",

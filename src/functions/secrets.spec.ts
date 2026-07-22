@@ -556,7 +556,7 @@ describe("functions/secret", () => {
       };
       const fn: Omit<gcf.CloudFunction, gcf.OutputOnlyFields> = {
         name: `projects/${endpoint.project}/locations/${endpoint.region}/functions/${endpoint.id}`,
-        runtime: endpoint.runtime,
+        runtime: endpoint.runtime!,
         entryPoint: endpoint.entryPoint,
         secretEnvironmentVariables: [{ ...sev, version: "2" }],
       };

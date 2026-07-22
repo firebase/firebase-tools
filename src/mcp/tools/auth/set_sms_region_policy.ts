@@ -4,6 +4,7 @@ import { toContent } from "../../util";
 import { setAllowSmsRegionPolicy, setDenySmsRegionPolicy } from "../../../gcp/auth";
 
 export const set_sms_region_policy = tool(
+  "auth",
   {
     name: "set_sms_region_policy",
     description:

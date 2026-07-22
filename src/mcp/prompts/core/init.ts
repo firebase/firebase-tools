@@ -1,8 +1,8 @@
-import { getPlatformFromFolder } from "../../../dataconnect/appFinder";
-import { Platform } from "../../../dataconnect/types";
+import { getPlatformsFromFolder } from "../../../appUtils";
 import { prompt } from "../../prompt";
 
 export const init = prompt(
+  "core",
   {
     name: "init",
     description: "Use this command to set up Firebase services, like backend and AI features.",
@@ -13,7 +13,7 @@ export const init = prompt(
   async (_, mcp) => {
     const { config, projectId, accountEmail, firebaseCliCommand } = mcp;
 
-    const platform = await getPlatformFromFolder(config.projectDir);
+    const platforms = await getPlatformsFromFolder(config.projectDir);
 
     return [
       {
@@ -31,7 +31,7 @@ Your goal is to help the user setup Firebase services in this workspace. Firebas
 
 Use this information to determine which Firebase services the user is already using (if any).
 
-Workspace platform: ${[Platform.NONE, Platform.MULTIPLE].includes(platform) ? "<UNABLE TO DETECT>" : platform}
+Workspace platform(s): ${platforms.length > 0 ? platforms.join(", ") : "<UNABLE TO DETECT>"}
 Active user: ${accountEmail || "<NONE>"}
 Active project: ${projectId || "<NONE>"}
 
@@ -48,7 +48,7 @@ Follow the steps below taking note of any user instructions provided above.
 1. If there is no active user, use the \`firebase_login\` tool to help them sign in.
    - If you run into issues logging the user in, suggest that they run \`${firebaseCliCommand} login --reauth\` in a separate terminal
 2. Start by listing out the existing init options that are available to the user. Ask the user which set of services they would like to add to their app. Always enumerate them and list the options out explicitly for the user:
-  - Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
+  - Backend Services: Backend services for the app, such as setting up a database, adding a user-authentication sign up and login page.
     - IMPORTANT: The backend setup guide is for web apps only. If the user requests backend setup for a mobile app (iOS, Android, or Flutter), inform them that this is not supported and do not use the backend setup guide. You can still assist with other requests.
   - Firebase AI Logic: Add AI features such as chat experiences, multimodal prompts, image generation and editing (via nano banana), etc.
     - IMPORTANT: The Firebase AI Logic setup guide is for web, flutter, and android apps only. If the user requests firebase setup for unsupported platforms (iOS, Unity, or anything else), inform them that this is not supported and direct the user to Firebase Docs to learn how to set up AI Logic for their application (share this link with the user https://firebase.google.com/docs/ai-logic/get-started?api=dev). You can still assist with other requests.
@@ -87,7 +87,7 @@ Follow the steps below taking note of any user instructions provided above.
     '''
 8. Read the guide for the appropriate services and follow the instructions. If no guides match the user's need, inform the user.
 - Use the Firebase \`read_resources\` tool to load the instructions for the service the developer chose in step 2 of this guide
-  - [Backend Services](firebase://guides/init/backend): Read this resource to set up backend services for the app, such as setting up a database, adding a user-authentication sign up and login page, and deploying a web app to a production URL.
+  - [Backend Services](firebase://guides/init/backend): Read this resource to set up backend services for the app, such as setting up a database, and adding a user-authentication sign up and login page.
   - [Firebase AI Logic](firebase://guides/init/ai): Read this resource to add Gemini-powered AI features such as chat experiences, multimodal prompts, image generation, image editing (via nano banana), etc.
 `.trim(),
         },

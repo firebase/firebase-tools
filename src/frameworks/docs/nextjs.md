@@ -11,32 +11,16 @@ page_type: guide
 # Integrate Next.js
 
 Using the {{firebase_cli}}, you can deploy your Next.js Web apps to Firebase and
-serve them with {{firebase_hosting}}. The {{cli}} respects your Next.js settings and
-translates them to Firebase settings with zero or minimal extra configuration on
-your part. If your app includes dynamic server-side logic, the {{cli}} deploys that
-logic to {{cloud_functions_full}}.
+serve them with {{firebase_hosting}}.
 
 <<_includes/_preview-disclaimer.md>>
 
-Caution: For developers creating a full-stack Next.js app, we strongly
-recommend [Firebase App Hosting](/docs/app-hosting/).
-If you're already using the frameworks experiment in the Firebase CLI, we
-recommend "graduating" to
+Caution: For Next.js developers, new participation in the {{hosting}}
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
 {{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
 everything from CDN to server-side rendering, along with improved GitHub
 integration.
-
-<<_includes/_before-you-begin.md>>
-
-- Optional: use the experimental ReactFire library to benefit from its
-  Firebase-friendly features
-
-<<_includes/_initialize-firebase.md>>
-
-1.  Answer yes to "Do you want to use a web framework? (experimental)"
-1.  Choose your hosting source directory. If this is an existing Next.js app,
-    the {{cli}} process completes, and you can proceed to the next section.
-1.  If prompted, choose Next.js.
 
 ## Serve static content
 
@@ -47,6 +31,8 @@ deployment command:
 firebase deploy
 ```
 
+If your app includes dynamic server-side logic, the {{cli}} deploys that
+logic to {{cloud_functions_full}}.
 You can [view your deployed app](/docs/hosting/test-preview-deploy#view-changes)
 on its live site.
 

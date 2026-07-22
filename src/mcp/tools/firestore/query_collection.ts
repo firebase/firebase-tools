@@ -6,10 +6,11 @@ import { convertInputToValue, firestoreDocumentToJson } from "./converter";
 import { Emulators } from "../../../emulator/types";
 
 export const query_collection = tool(
+  "firestore",
   {
     name: "query_collection",
     description:
-      "Use this to retrieve one or more Firestore documents from a collection is a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
+      "Use this to retrieve one or more Firestore documents from a collection in a database in the current project by a collection with a full document path. Use this if you know the exact path of a collection and the filtering clause you would like for the document.",
     inputSchema: z.object({
       database: z
         .string()
@@ -144,7 +145,7 @@ export const query_collection = tool(
 
     const docs = documents.map(firestoreDocumentToJson);
 
-    const docsContent = toContent(docs);
+    const docsContent = toContent({ documents: docs });
 
     return docsContent;
   },

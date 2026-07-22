@@ -1,7 +1,8 @@
 import { computed } from "@preact/signals-core";
-import { ExecutionResult, OperationDefinitionNode } from "graphql";
 import * as vscode from "vscode";
 import { globalSignal } from "../../utils/globals";
+import { AuthParams, ExecutionResults } from "../../messaging/protocol";
+import { ExecutionInput } from "./execution";
 
 export enum ExecutionState {
   INIT,
@@ -16,11 +17,10 @@ export interface ExecutionItem {
   label: string;
   timestamp: number;
   state: ExecutionState;
-  operation: OperationDefinitionNode;
-  args?: string;
-  results?: ExecutionResult | Error;
-  documentPath: string;
-  position: vscode.Position;
+  input: ExecutionInput;
+  variables: string;
+  auth: AuthParams;
+  results: ExecutionResults;
 }
 
 let executionId = 0;
@@ -35,12 +35,6 @@ export const executions = globalSignal<
 >({});
 
 export const selectedExecutionId = globalSignal("");
-
-/** The unparsed JSON object mutation/query variables.
- *
- * The JSON may be invalid.
- */
-export const executionArgsJSON = globalSignal("{}");
 
 export function createExecution(
   executionItem: Omit<ExecutionItem, "executionId">
@@ -72,9 +66,9 @@ export async function selectExecutionId(executionId: string) {
   selectedExecutionId.value = executionId;
 
   // take user to operation location in editor
-  const { documentPath, position } = selectedExecution.value;
-  await vscode.window.showTextDocument(vscode.Uri.file(documentPath), {
-    selection: new vscode.Range(position, position),
+  const { input } = selectedExecution.value;
+  await vscode.window.showTextDocument(vscode.Uri.file(input.documentPath), {
+    selection: new vscode.Range(input.position, input.position),
   });
 }
 

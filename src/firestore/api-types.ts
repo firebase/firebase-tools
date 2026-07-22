@@ -1,3 +1,5 @@
+import { FirebaseError } from "../error";
+
 /**
  * The v1beta1 indexes API used a 'mode' field to represent the indexing mode.
  * This information has now been split into the fields 'arrayConfig' and 'order'.
@@ -37,6 +39,28 @@ export enum ArrayConfig {
   CONTAINS = "CONTAINS",
 }
 
+export enum TextIndexType {
+  TEXT_INDEX_TYPE_UNSPECIFIED = "TEXT_INDEX_TYPE_UNSPECIFIED",
+  TOKENIZED = "TOKENIZED",
+}
+
+export enum TextMatchType {
+  TEXT_MATCH_TYPE_UNSPECIFIED = "TEXT_MATCH_TYPE_UNSPECIFIED",
+  MATCH_GLOBALLY = "MATCH_GLOBALLY",
+}
+
+export interface SearchConfig {
+  textSpec?: {
+    indexSpecs: {
+      indexType: TextIndexType;
+      matchType: TextMatchType;
+    }[];
+  };
+  geoSpec?: {
+    geoJsonIndexingDisabled?: boolean;
+  };
+}
+
 export interface VectorConfig {
   dimension: number;
   flat?: {};
@@ -55,7 +79,7 @@ export enum StateTtl {
 }
 
 /**
- * An Index as it is represented in the Firestore v1beta2 indexes API.
+ * An Index as it is represented in the Firestore indexes API.
  */
 export interface Index {
   name?: string;
@@ -75,6 +99,7 @@ export interface IndexField {
   fieldPath: string;
   order?: Order;
   arrayConfig?: ArrayConfig;
+  searchConfig?: SearchConfig;
   vectorConfig?: VectorConfig;
 }
 
@@ -118,7 +143,7 @@ export enum DatabaseType {
   FIRESTORE_NATIVE = "FIRESTORE_NATIVE",
 }
 
-export enum DatabaseDeleteProtectionStateOption {
+export enum EnablementOption {
   ENABLED = "ENABLED",
   DISABLED = "DISABLED",
 }
@@ -128,14 +153,20 @@ export enum DatabaseDeleteProtectionState {
   DISABLED = "DELETE_PROTECTION_DISABLED",
 }
 
-export enum PointInTimeRecoveryEnablementOption {
-  ENABLED = "ENABLED",
-  DISABLED = "DISABLED",
-}
-
 export enum PointInTimeRecoveryEnablement {
   ENABLED = "POINT_IN_TIME_RECOVERY_ENABLED",
   DISABLED = "POINT_IN_TIME_RECOVERY_DISABLED",
+}
+
+export enum RealtimeUpdatesMode {
+  ENABLED = "REALTIME_UPDATES_MODE_ENABLED",
+  DISABLED = "REALTIME_UPDATES_MODE_DISABLED",
+}
+
+export enum DataAccessMode {
+  UNSPECIFIED = "DATA_ACCESS_MODE_UNSPECIFIED",
+  ENABLED = "DATA_ACCESS_MODE_ENABLED",
+  DISABLED = "DATA_ACCESS_MODE_DISABLED",
 }
 
 export enum DatabaseEdition {
@@ -150,6 +181,9 @@ export interface DatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState?: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement?: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -161,6 +195,9 @@ export interface CreateDatabaseReq {
   databaseEdition?: DatabaseEdition;
   deleteProtectionState: DatabaseDeleteProtectionState;
   pointInTimeRecoveryEnablement: PointInTimeRecoveryEnablement;
+  realtimeUpdatesMode?: RealtimeUpdatesMode;
+  firestoreDataAccessMode?: DataAccessMode;
+  mongodbCompatibleDataAccessMode?: DataAccessMode;
   cmekConfig?: CmekConfig;
 }
 
@@ -179,6 +216,9 @@ export interface DatabaseResp {
   etag: string;
   versionRetentionPeriod: string;
   earliestVersionTime: string;
+  realtimeUpdatesMode: RealtimeUpdatesMode;
+  firestoreDataAccessMode: DataAccessMode;
+  mongodbCompatibleDataAccessMode: DataAccessMode;
   cmekConfig?: CmekConfig;
   databaseEdition?: DatabaseEdition;
 }
@@ -219,6 +259,12 @@ export interface RestoreDatabaseReq {
   encryptionConfig?: EncryptionConfig;
 }
 
+export interface CloneDatabaseReq {
+  databaseId: string;
+  pitrSnapshot: PITRSnapshot;
+  encryptionConfig?: EncryptionConfig;
+}
+
 export enum RecurrenceType {
   DAILY = "DAILY",
   WEEKLY = "WEEKLY",
@@ -239,3 +285,25 @@ export type EncryptionConfig =
   | UseCustomerManagedEncryption
   | UseSourceEncryption
   | UseGoogleDefaultEncryption;
+
+export interface PITRSnapshot {
+  database: string;
+  snapshotTime: string;
+}
+
+/**
+ * Validates a flag value that is used with EnablementOption
+ */
+export function validateEnablementOption(
+  optionValue: string | undefined,
+  flagName: string,
+  helpCommandText: string,
+) {
+  if (
+    optionValue &&
+    optionValue !== EnablementOption.ENABLED &&
+    optionValue !== EnablementOption.DISABLED
+  ) {
+    throw new FirebaseError(`Invalid value for flag --${flagName}. ${helpCommandText}`);
+  }
+}

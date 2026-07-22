@@ -7,10 +7,10 @@ import { needProjectId } from "../projectUtils";
 import { requirePermissions } from "../requirePermissions";
 import * as functionsConfig from "../functionsConfig";
 import * as utils from "../utils";
-import { logFunctionsConfigDeprecationWarning } from "../functions/deprecationWarnings";
 
 export const command = new Command("functions:config:set [values...]")
   .description("set environment config with key=value syntax")
+  .before(functionsConfig.ensureLegacyRuntimeConfigCommandsEnabled)
   .before(requirePermissions, [
     "runtimeconfig.configs.list",
     "runtimeconfig.configs.create",
@@ -50,5 +50,5 @@ export const command = new Command("functions:config:set [values...]")
         "firebase deploy --only functions",
       )}\n`,
     );
-    logFunctionsConfigDeprecationWarning();
+    functionsConfig.logFunctionsConfigDeprecationWarning();
   });

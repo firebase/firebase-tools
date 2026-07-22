@@ -10,7 +10,6 @@ import { Constants } from "./constants";
 import { EmulatorRegistry } from "./registry";
 import { EmulatorLogger } from "./emulatorLogger";
 import { FirebaseError } from "../error";
-import { parseBoltRules } from "../parseBoltRules";
 import { connectableHostname } from "../utils";
 
 export interface DatabaseEmulatorArgs {
@@ -163,11 +162,7 @@ export class DatabaseEmulator implements EmulatorInstance {
   }
 
   private async updateRules(instance: string, rulesPath: string): Promise<any> {
-    const rulesExt = path.extname(rulesPath);
-    const content =
-      rulesExt === ".bolt"
-        ? parseBoltRules(rulesPath).toString()
-        : fs.readFileSync(rulesPath, "utf8");
+    const content = fs.readFileSync(rulesPath, "utf8");
 
     try {
       await EmulatorRegistry.client(Emulators.DATABASE).put(`/.settings/rules.json`, content, {

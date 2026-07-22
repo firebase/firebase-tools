@@ -1,4 +1,4 @@
-import * as nock from "nock";
+import nock from "./test/helpers/nock";
 import * as sinon from "sinon";
 import { APPHOSTING_TOS_ID, APP_CHECK_TOS_ID } from "./gcp/firedata";
 import { requireTosAcceptance } from "./requireTosAcceptance";
@@ -15,8 +15,6 @@ const SAMPLE_OPTIONS: Options = {
   only: "",
   except: "",
   nonInteractive: false,
-  json: false,
-  interactive: false,
   debug: false,
   force: false,
   filteredTargets: [],

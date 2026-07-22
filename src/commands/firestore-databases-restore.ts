@@ -72,21 +72,17 @@ export const command = new Command("firestore:databases:restore")
       encryptionConfig,
     );
 
-    if (options.json) {
-      logger.info(JSON.stringify(databaseResp, undefined, 2));
-    } else {
-      logger.info(
-        clc.bold(`Successfully initiated restore of ${printer.prettyDatabaseString(databaseResp)}`),
-      );
-      logger.info(
-        "Please be sure to configure Firebase rules in your Firebase config file for\n" +
-          "the new database. By default, created databases will have closed rules that\n" +
-          "block any incoming third-party traffic.",
-      );
-      logger.info(
-        `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
-      );
-    }
+    logger.info(
+      clc.bold(`Successfully initiated restore of ${printer.prettyDatabaseString(databaseResp)}`),
+    );
+    logger.info(
+      "Please be sure to configure Firebase rules in your Firebase config file for\n" +
+        "the new database. By default, created databases will have closed rules that\n" +
+        "block any incoming third-party traffic.",
+    );
+    logger.info(
+      `Once the restore is complete, your database may be viewed at ${printer.firebaseConsoleDatabaseUrl(options.project, databaseId)}`,
+    );
 
     return databaseResp;
 

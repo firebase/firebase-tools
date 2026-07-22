@@ -3,8 +3,8 @@ import * as ora from "ora";
 import * as semver from "semver";
 import * as tmp from "tmp";
 import * as fs from "fs-extra";
-import fetch from "node-fetch";
 import * as path from "path";
+import { Readable } from "stream";
 import { marked } from "marked";
 import { markedTerminal } from "marked-terminal";
 
@@ -483,7 +483,7 @@ async function promptForReleaseStage(args: {
       };
       choices.push(stableChoice);
     }
-    stage = await select({
+    stage = await select<ReleaseStage>({
       message: "Choose the release stage:",
       choices: choices,
       default: stage,
@@ -498,7 +498,7 @@ async function promptForReleaseStage(args: {
         default: false,
       });
       if (!confirmed) {
-        stage = await select({
+        stage = await select<ReleaseStage>({
           message: "Choose the release stage:",
           choices: choices,
           default: stage,
@@ -541,7 +541,6 @@ export async function ensureExtensionsPublisherApiEnabled(options: any): Promise
  */
 async function archiveAndUploadSource(extPath: string, bucketName: string): Promise<string> {
   const zippedSource = await archiveDirectory(extPath, {
-    type: "zip",
     ignore: ["node_modules", ".git"],
   });
   const res = await uploadObject(zippedSource, bucketName);
@@ -752,8 +751,10 @@ async function fetchExtensionSource(
   )}. Please check that the repo is public and that the source ref is valid.`;
   try {
     const response = await fetch(archiveUri);
-    if (response.ok) {
-      await response.body.pipe(createUnzipTransform(tempDirectory.name)).promise();
+    if (response.ok && response.body) {
+      await Readable.fromWeb(response.body as any)
+        .pipe(createUnzipTransform(tempDirectory.name))
+        .promise();
     }
   } catch (err) {
     throw new FirebaseError(archiveErrorMessage);

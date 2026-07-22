@@ -33,7 +33,7 @@ let choices: {
 }[] = [
   {
     value: "dataconnect",
-    name: "Data Connect: Set up a Firebase Data Connect service",
+    name: "SQL Connect: Set up a Firebase SQL Connect service",
     checked: false,
   },
   {
@@ -90,11 +90,25 @@ let choices: {
   },
   {
     value: "dataconnect:sdk",
-    name: "Data Connect: Set up a generated SDK for your Firebase Data Connect service",
+    name: "SQL Connect: Set up a generated SDK for your Firebase SQL Connect service",
     checked: false,
     hidden: true,
   },
+  {
+    value: "auth",
+    name: "Authentication: Set up Firebase Authentication",
+    checked: false,
+  },
 ];
+
+if (isEnabled("fdcwebhooks")) {
+  choices.push({
+    value: "dataconnect:resolver",
+    name: "SQL Connect: Set up a custom resolver for your Firebase SQL Connect service",
+    checked: false,
+    hidden: true,
+  });
+}
 
 if (isEnabled("genkit")) {
   choices = [
@@ -116,13 +130,11 @@ if (isEnabled("apptesting")) {
   });
 }
 
-if (isEnabled("ailogic")) {
-  choices.push({
-    value: "ailogic",
-    name: "AI Logic: Set up Firebase AI Logic with app provisioning",
-    checked: false,
-  });
-}
+choices.push({
+  value: "ailogic",
+  name: "AI Logic: Set up Firebase AI Logic with app provisioning",
+  checked: false,
+});
 
 choices.push({
   value: "aitools",
@@ -265,8 +277,21 @@ export async function initAction(feature: string, options: Options): Promise<voi
     setup.features = setup.features.filter((f) => f !== "dataconnect:sdk");
   }
 
-  await init(setup, config, options);
+  // Always prompt for agent skills at the end of init
+  setup.features.push("agentSkills");
 
+  await init(setup, config, options);
+  await postInitSaves(setup, config);
+
+  if (setup.instructions.length) {
+    logger.info(`\n${clc.bold("To get started:")}\n`);
+    for (const i of setup.instructions) {
+      logBullet(i + "\n");
+    }
+  }
+}
+
+export async function postInitSaves(setup: Setup, config: Config): Promise<void> {
   logger.info();
   config.writeProjectFile("firebase.json", setup.config);
   config.writeProjectFile(".firebaserc", setup.rcfile);
@@ -275,11 +300,4 @@ export async function initAction(feature: string, options: Options): Promise<voi
   }
   logger.info();
   utils.logSuccess("Firebase initialization complete!");
-
-  if (setup.instructions.length) {
-    logger.info(`\n${clc.bold("To get started:")}\n`);
-    for (const i of setup.instructions) {
-      logBullet(i + "\n");
-    }
-  }
 }

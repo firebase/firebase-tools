@@ -1,5 +1,4 @@
 import { size } from "lodash";
-import AbortController from "abort-controller";
 import * as clc from "colorette";
 import * as crypto from "crypto";
 import * as fs from "fs";
@@ -250,7 +249,7 @@ export class Uploader {
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
-        }: headers=${JSON.stringify(res.response.headers)} ${errorMessage}`,
+        }: headers=${JSON.stringify(Object.fromEntries((res.response.headers as any).entries()))} ${errorMessage}`,
       );
       throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }

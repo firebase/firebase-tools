@@ -4,15 +4,54 @@
     "definitions": {
         "ActiveRuntime": {
             "enum": [
+                "dart3",
                 "nodejs18",
                 "nodejs20",
                 "nodejs22",
+                "nodejs24",
                 "python310",
                 "python311",
                 "python312",
-                "python313"
+                "python313",
+                "python314"
             ],
             "type": "string"
+        },
+        "AuthConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "providers": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "anonymous": {
+                            "type": "boolean"
+                        },
+                        "emailPassword": {
+                            "type": "boolean"
+                        },
+                        "googleSignIn": {
+                            "additionalProperties": false,
+                            "properties": {
+                                "authorizedRedirectUris": {
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "type": "array"
+                                },
+                                "oAuthBrandDisplayName": {
+                                    "type": "string"
+                                },
+                                "supportEmail": {
+                                    "type": "string"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
         },
         "DataConnectSingle": {
             "additionalProperties": false,
@@ -97,6 +136,13 @@
         "FirestoreSingle": {
             "additionalProperties": false,
             "properties": {
+                "dataAccessMode": {
+                    "enum": [
+                        "FIRESTORE_NATIVE",
+                        "MONGODB_COMPATIBLE"
+                    ],
+                    "type": "string"
+                },
                 "database": {
                     "type": "string"
                 },
@@ -872,6 +918,9 @@
                 "configDir": {
                     "type": "string"
                 },
+                "disallowLegacyRuntimeConfig": {
+                    "type": "boolean"
+                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -909,13 +958,16 @@
                 },
                 "runtime": {
                     "enum": [
+                        "dart3",
                         "nodejs18",
                         "nodejs20",
                         "nodejs22",
+                        "nodejs24",
                         "python310",
                         "python311",
                         "python312",
-                        "python313"
+                        "python313",
+                        "python314"
                     ],
                     "type": "string"
                 },
@@ -1087,7 +1139,6 @@
     },
     "properties": {
         "$schema": {
-            "format": "uri",
             "type": "string"
         },
         "apphosting": {
@@ -1154,6 +1205,9 @@
                     "type": "array"
                 }
             ]
+        },
+        "auth": {
+            "$ref": "#/definitions/AuthConfig"
         },
         "database": {
             "anyOf": [
@@ -1360,6 +1414,9 @@
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {
+                        "edition": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },

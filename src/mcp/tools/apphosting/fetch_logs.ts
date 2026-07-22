@@ -8,6 +8,7 @@ import { fetchServiceLogs } from "../../../gcp/run";
 import { listEntries } from "../../../gcp/cloudlogging";
 
 export const fetch_logs = tool(
+  "apphosting",
   {
     name: "fetch_logs",
     description:
@@ -35,7 +36,7 @@ export const fetch_logs = tool(
       requiresProject: true,
     },
   },
-  async ({ buildLogs, backendId, location } = {}, { projectId }) => {
+  async ({ buildLogs, backendId, location }, { projectId }) => {
     location ||= "";
     if (!backendId) {
       return toContent(`backendId must be specified.`);

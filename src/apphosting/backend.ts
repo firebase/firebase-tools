@@ -25,9 +25,10 @@ import { DeepOmit } from "../metaprogramming";
 import { webApps } from "./app";
 import { GitRepositoryLink } from "../gcp/devConnect";
 import * as ora from "ora";
-import fetch from "node-fetch";
 import { orchestrateRollout } from "./rollout";
 import * as fuzzy from "fuzzy";
+import { isEnabled } from "../experiments";
+import { resolveRuntime } from "./prompts";
 
 const DEFAULT_COMPUTE_SERVICE_ACCOUNT_NAME = "firebase-app-hosting-compute";
 
@@ -79,6 +80,7 @@ export async function doSetup(
   serviceAccount?: string,
   primaryRegion?: string,
   rootDir?: string,
+  runtime?: string,
 ): Promise<void> {
   await ensureRequiredApisEnabled(projectId);
 
@@ -125,6 +127,8 @@ export async function doSetup(
     throw new FirebaseError("Internal error: location or backendId is not defined.");
   }
 
+  runtime = await resolveRuntime(projectId, location, nonInteractive, runtime);
+
   const webApp = await webApps.getOrCreateWebApp(
     projectId,
     webAppName ? webAppName : null,
@@ -143,6 +147,7 @@ export async function doSetup(
     gitRepositoryLink,
     webApp?.id,
     rootDir,
+    runtime,
   );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
 
@@ -207,6 +212,8 @@ export async function doSetup(
 export async function doSetupSourceDeploy(
   projectId: string,
   backendId: string,
+  nonInteractive: boolean,
+  rootDir: string = "/",
 ): Promise<{ backend: Backend; location: string }> {
   const location = await promptLocation(
     projectId,
@@ -219,8 +226,19 @@ export async function doSetupSourceDeploy(
   }
   webAppSpinner.stop();
 
+  const runtime = await resolveRuntime(projectId, location, nonInteractive);
+
   const createBackendSpinner = ora("Creating your new backend...").start();
-  const backend = await createBackend(projectId, location, backendId, null, undefined, webApp?.id);
+  const backend = await createBackend(
+    projectId,
+    location,
+    backendId,
+    null,
+    undefined,
+    webApp?.id,
+    rootDir,
+    runtime,
+  );
   createBackendSpinner.succeed(`Successfully created backend!\n\t${backend.name}\n`);
   return {
     backend,
@@ -290,7 +308,7 @@ export async function ensureAppHostingComputeServiceAccount(
       "v1",
       name,
       ["iam.serviceAccounts.actAs"],
-      `projects/${projectId}`,
+      `${projectId}`,
     );
   } catch (err: unknown) {
     if (!(err instanceof FirebaseError)) {
@@ -318,8 +336,16 @@ export async function promptNewBackendId(projectId: string, location: string): P
   while (true) {
     const backendId = await input({
       default: "my-web-app",
-      message: "Provide a name for your backend [1-30 characters]",
-      validate: (s) => s.length >= 1 && s.length <= 30,
+      message: "Provide a name for your backend [3-30 characters]",
+      validate: (s) => {
+        if (!/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(s)) {
+          return "Must begin with a letter, can contain only lowercase, digits, hyphens, and cannot end with hyphen";
+        } else if (s.length < 3 || s.length > 30) {
+          return "Must be between 3 and 30 characters";
+        }
+
+        return true;
+      },
     });
     try {
       await apphosting.getBackend(projectId, location, backendId);
@@ -352,6 +378,7 @@ export async function createBackend(
   repository: GitRepositoryLink | undefined,
   webAppId: string | undefined,
   rootDir = "/",
+  runtime?: string,
 ): Promise<Backend> {
   const defaultServiceAccount = defaultComputeServiceAccountEmail(projectId);
   const backendReqBody: Omit<Backend, BackendOutputOnlyFields> = {
@@ -366,6 +393,11 @@ export async function createBackend(
     serviceAccount: serviceAccount || defaultServiceAccount,
     appId: webAppId,
   };
+
+  // this is to be extra careful that we do not set the ABIU fields if the experiment is disabled
+  if (isEnabled("abiu")) {
+    backendReqBody.runtime = { value: runtime ?? "" };
+  }
 
   async function createBackendAndPoll(): Promise<apphosting.Backend> {
     const op = await apphosting.createBackend(projectId, location, backendReqBody, backendId);
