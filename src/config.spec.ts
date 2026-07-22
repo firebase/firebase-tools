@@ -43,6 +43,18 @@ describe("Config", () => {
       const relativePath = "something";
       expect(config.path(relativePath)).to.eq(path.join(SIMPLE_CONFIG_DIR, relativePath));
     });
+    it("should allow path segments containing two dots", () => {
+      const publicDir = "foo..bar";
+      const config = new Config({ hosting: { public: publicDir } }, { cwd: SIMPLE_CONFIG_DIR });
+      const configuredPublicDir = config.get("hosting.public") as string;
+      expect(config.path(configuredPublicDir)).to.eq(path.join(SIMPLE_CONFIG_DIR, publicDir));
+    });
+    it("should reject parent directory traversal", () => {
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
+      for (const relativePath of ["..", path.join("..", "outside")]) {
+        expect(() => config.path(relativePath)).to.throw("is outside of project directory");
+      }
+    });
   });
 
   describe("#parseFile", () => {
