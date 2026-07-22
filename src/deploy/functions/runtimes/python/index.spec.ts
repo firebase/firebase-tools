@@ -94,11 +94,14 @@ describe("PythonDelegate", () => {
       runWithVirtualEnvStub.onCall(1).returns(new EventEmitter() as ChildProcess);
 
       const delegate = new python.Delegate(PROJECT_ID, SOURCE_DIR, "python311");
-      await delegate.serveAdmin(8081, { FUNCTION_TARGET: "hello_world" });
+      await delegate.serveAdmin(8081, {
+        FUNCTION_TARGET: "hello_world",
+        SOME_PARENT_SHELL_VAR: "overriden-value",
+      });
 
       expect(runWithVirtualEnvStub).to.have.been.calledTwice;
       const [, , envs] = runWithVirtualEnvStub.secondCall.args;
-      expect(envs.SOME_PARENT_SHELL_VAR).to.equal("inherited-value");
+      expect(envs.SOME_PARENT_SHELL_VAR).to.equal("overriden-value");
       expect(envs.FUNCTION_TARGET).to.equal("hello_world");
       expect(envs.ADMIN_PORT).to.equal("8081");
     });
