@@ -205,7 +205,11 @@ export class Config {
     }
     const outPath = path.normalize(path.join(this.projectDir, pathName));
     const relativePath = path.relative(this.projectDir, outPath);
-    if (relativePath === ".." || relativePath.startsWith(`..${path.sep}`)) {
+    if (
+      path.isAbsolute(relativePath) ||
+      relativePath === ".." ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
       throw new FirebaseError(clc.bold(pathName) + " is outside of project directory", { exit: 1 });
     }
     return outPath;

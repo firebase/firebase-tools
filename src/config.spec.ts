@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as os from "os";
 
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import { Config } from "./config";
 import { FIREBASE_JSON_PATH as VALID_CONFIG_PATH } from "./test/fixtures/valid-config";
@@ -33,6 +34,10 @@ describe("Config", () => {
   });
 
   describe("#path", () => {
+    afterEach(() => {
+      sinon.restore();
+    });
+
     it("should skip an absolute path", () => {
       const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
       const absPath = "/Users/something";
@@ -54,6 +59,11 @@ describe("Config", () => {
       for (const relativePath of ["..", path.join("..", "outside")]) {
         expect(() => config.path(relativePath)).to.throw("is outside of project directory");
       }
+    });
+    it("should reject an absolute result from path.relative", () => {
+      const config = new Config({}, { cwd: SIMPLE_CONFIG_DIR });
+      sinon.stub(path, "relative").returns(path.resolve("outside"));
+      expect(() => config.path("inside")).to.throw("is outside of project directory");
     });
   });
 
