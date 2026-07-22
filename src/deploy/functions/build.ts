@@ -361,6 +361,8 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     opts.isEmulator,
     opts.force,
   );
+  // build.secretEnvVars and build.params may be out of sync after param resolution, if new secret resources were created during it
+  matchSecretEnvVars(opts.build);
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
@@ -804,7 +806,7 @@ export interface ParsedSecretRef {
  * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
  *
  * For each binding imported from the .env file,
- * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 1) Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
  * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
  */
 export function applyEnvSecretBindings(
@@ -858,6 +860,38 @@ export function applyEnvSecretBindings(
         logger.warn(
           `.env files contain a secret binding ${key} which has not been configured as a secret param via defineSecret().`,
         );
+      }
+    }
+  }
+}
+
+/**
+ * Updates the SecretEnvVars of a Build to use the same backing resources as its Secret Params.
+ *
+ * This is usually ensured by applyEnvSecretBindings, which reconciles the state of SecretEnvVars and
+ * Secrets before param handling. However, param handling itself can change the Secrets in the case where
+ * the user is prompted to create a new Secret resource, and selects a non-default resource ID.
+ *
+ * This function is a no-op in all other cases.
+ */
+export function matchSecretEnvVars(build: Build): void {
+  for (const param of build.params) {
+    if (param.type !== "secret") {
+      continue;
+    }
+    const secretParam = param;
+
+    for (const endpointName of Object.keys(build.endpoints)) {
+      const endpoint = build.endpoints[endpointName];
+      for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
+        if (envVar.key === secretParam.name) {
+          if (secretParam.resourceId && envVar.secret !== secretParam.resourceId) {
+            logger.debug(
+              `Inserted newly created secret into build.SecretEnvVars: ${envVar.key}=${secretParam.resourceId}`,
+            );
+            envVar.secret = secretParam.resourceId;
+          }
+        }
       }
     }
   }
