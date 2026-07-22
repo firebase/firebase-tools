@@ -15,8 +15,9 @@ import { getProject } from "./management/projects";
 import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
-import { useConsoleLoggers } from "./logger";
 import { isFirebaseStudio } from "./env";
+import * as experiments from "./experiments";
+import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
 
 export interface CommandModule {
   load: () => void;
@@ -199,9 +200,6 @@ export class Command {
       //   we would like is the following:
       //   > if (args.length > this.actionFn.length)
       if (args.length - 1 > cmd._args.length) {
-        if (!getInheritedOption(options, "json") && !options.isMCP) {
-          useConsoleLoggers();
-        }
         client.errorOut(
           new FirebaseError(
             `Too many arguments. Run ${clc.bold(
@@ -329,10 +327,6 @@ export class Command {
 
     if (getInheritedOption(options, "debug")) {
       options.debug = true;
-    }
-
-    if (!getInheritedOption(options, "json") && !options.isMCP) {
-      useConsoleLoggers();
     }
 
     if (getInheritedOption(options, "config")) {
@@ -482,10 +476,20 @@ export class Command {
       const options = last(args);
       await this.prepare(options);
 
+      if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
+        showDeprecationWarningBefore(this.name, options);
+      }
+
       for (const before of this.befores) {
         await before.fn(options, ...before.args);
       }
-      return this.actionFn(...args);
+      const result = await this.actionFn(...args);
+
+      if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
+        showDeprecationWarningAfter(this.name, options);
+      }
+
+      return result;
     };
   }
 }
