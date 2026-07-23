@@ -9,12 +9,16 @@ import { FirebaseError } from "../error";
 const PROJECT_ID = "test-project";
 
 describe("ailogic:config:get", () => {
+  let enabledStub: sinon.SinonStub;
+  let listProvidersStub: sinon.SinonStub;
+  let getConfigStub: sinon.SinonStub;
+
   beforeEach(() => {
     (command as unknown as { befores: unknown[] }).befores = []; // bypass pre-action hooks
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
-    sinon.stub(ailogic, "isAILogicApiEnabled").resolves(true);
-    sinon.stub(ailogic, "listProviders").resolves(["gemini-developer-api"]);
-    sinon.stub(ailogic, "getConfig").resolves({
+    enabledStub = sinon.stub(ailogic, "isAILogicApiEnabled").resolves(true);
+    listProvidersStub = sinon.stub(ailogic, "listProviders").resolves(["gemini-developer-api"]);
+    getConfigStub = sinon.stub(ailogic, "getConfig").resolves({
       name: "config",
       trafficFilter: { firebaseAuthRequired: true, templateOnly: false },
       telemetryConfig: { mode: "ALL", samplingRate: 0.5 },
@@ -45,15 +49,26 @@ describe("ailogic:config:get", () => {
     });
   });
 
-  it("throws on an unknown path", async () => {
+  it("only checks provider enablement when the path needs it", async () => {
+    await command.runner()("security.auth-only", { project: PROJECT_ID });
+    expect(listProvidersStub).to.not.have.been.called;
+
+    await command.runner()("providers.gemini-developer-api", { project: PROJECT_ID });
+    expect(listProvidersStub).to.have.been.calledOnce;
+  });
+
+  it("throws on an unknown path before making any API calls", async () => {
     await expect(command.runner()("security.authonly", { project: PROJECT_ID })).to.be.rejectedWith(
       FirebaseError,
       /Unknown configuration path/,
     );
+    expect(enabledStub).to.not.have.been.called;
+    expect(getConfigStub).to.not.have.been.called;
+    expect(listProvidersStub).to.not.have.been.called;
   });
 
   it("returns early when AI Logic is not enabled", async () => {
-    (ailogic.isAILogicApiEnabled as sinon.SinonStub).resolves(false);
+    enabledStub.resolves(false);
     expect(await command.runner()(undefined, { project: PROJECT_ID })).to.be.undefined;
   });
 });

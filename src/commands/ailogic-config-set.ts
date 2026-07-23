@@ -9,14 +9,6 @@ import { confirm } from "../prompt";
 
 import { Options } from "../options";
 
-// Developer-facing config paths that `config:set` can write.
-const WRITABLE_CONFIG_PATHS = [
-  "security.auth-only",
-  "security.template-only",
-  "monitoring.state",
-  "monitoring.sample-rate-percentage",
-];
-
 /** Parses a "true"/"false" flag value (case-insensitive), throwing a FirebaseError otherwise. */
 function parseBool(pathStr: string, value: string): boolean {
   const normalized = value.toLowerCase();
@@ -26,57 +18,80 @@ function parseBool(pathStr: string, value: string): boolean {
   return normalized === "true";
 }
 
-// The parsed, validated change to apply: the partial Config, its updateMask, and
-// whether this is a security tightening (true) that requires confirmation.
+// The parsed, validated change to apply. `confirm` is present only when enabling
+// the setting is client-breaking and therefore needs approval before writing.
 interface ConfigUpdate {
   config: Partial<ailogic.Config>;
   updateMask: string;
-  securityTightening: boolean;
-}
-
-/** Validates the path/value pair and builds the update, throwing on bad input. */
-function buildUpdate(pathStr: string, value: string): ConfigUpdate {
-  if (pathStr === "security.auth-only" || pathStr === "security.template-only") {
-    const boolVal = parseBool(pathStr, value);
-    const isAuthOnly = pathStr === "security.auth-only";
-    return {
-      config: {
-        trafficFilter: isAuthOnly ? { firebaseAuthRequired: boolVal } : { templateOnly: boolVal },
-      },
-      updateMask: isAuthOnly ? "trafficFilter.firebaseAuthRequired" : "trafficFilter.templateOnly",
-      securityTightening: boolVal,
-    };
-  }
-  if (pathStr === "monitoring.state") {
-    const boolVal = parseBool(pathStr, value);
-    return {
-      config: { telemetryConfig: { mode: boolVal ? "ALL" : "NONE" } },
-      updateMask: "telemetryConfig.mode",
-      securityTightening: false,
-    };
-  }
-  // monitoring.sample-rate-percentage
-  const numVal = Number(value);
-  if (!Number.isInteger(numVal) || numVal < 1 || numVal > 100) {
-    throw new FirebaseError(
-      `Value for ${clc.bold(pathStr)} must be an integer in the range 1-100.`,
-    );
-  }
-  // The API stores the sampling rate as a fraction in (0,1]; the CLI accepts 1-100 percent.
-  return {
-    config: { telemetryConfig: { samplingRate: numVal / 100 } },
-    updateMask: "telemetryConfig.samplingRate",
-    securityTightening: false,
+  normalizedValue: string;
+  confirm?: {
+    message: string;
+    /** Whether the setting is already active, in which case no confirmation is needed. */
+    isAlreadyEnabled(current: ailogic.Config): boolean;
   };
 }
 
-/** Whether tightening `pathStr` to `true` changes it from a currently-false value. */
-function isTightening(pathStr: string, current: ailogic.Config): boolean {
-  const currentVal =
-    pathStr === "security.auth-only"
-      ? current.trafficFilter?.firebaseAuthRequired
-      : current.trafficFilter?.templateOnly;
-  return !(currentVal ?? false);
+/**
+ * Validates the path/value pair and builds the update, throwing on bad input.
+ * This is the single place that maps a CLI path to its resource field.
+ */
+function buildUpdate(pathStr: string, value: string): ConfigUpdate {
+  switch (pathStr) {
+    case "security.auth-only": {
+      const boolVal = parseBool(pathStr, value);
+      return {
+        config: { trafficFilter: { firebaseAuthRequired: boolVal } },
+        updateMask: "trafficFilter.firebaseAuthRequired",
+        normalizedValue: String(boolVal),
+        confirm: boolVal
+          ? {
+              message: `Enabling ${clc.bold(pathStr)} will reject requests from unauthenticated users. Continue?`,
+              isAlreadyEnabled: (current) => current.trafficFilter?.firebaseAuthRequired ?? false,
+            }
+          : undefined,
+      };
+    }
+    case "security.template-only": {
+      const boolVal = parseBool(pathStr, value);
+      return {
+        config: { trafficFilter: { templateOnly: boolVal } },
+        updateMask: "trafficFilter.templateOnly",
+        normalizedValue: String(boolVal),
+        confirm: boolVal
+          ? {
+              message: `Enabling ${clc.bold(pathStr)} will reject requests not using templates. Continue?`,
+              isAlreadyEnabled: (current) => current.trafficFilter?.templateOnly ?? false,
+            }
+          : undefined,
+      };
+    }
+    case "monitoring.state": {
+      const boolVal = parseBool(pathStr, value);
+      return {
+        config: { telemetryConfig: { mode: boolVal ? "ALL" : "NONE" } },
+        updateMask: "telemetryConfig.mode",
+        normalizedValue: String(boolVal),
+      };
+    }
+    case "monitoring.sample-rate-percentage": {
+      // Require a plain decimal integer; Number() alone would also accept
+      // hex ("0x32"), scientific notation ("1e2"), and decimals ("50.0").
+      if (!/^\d+$/.test(value) || Number(value) < 1 || Number(value) > 100) {
+        throw new FirebaseError(
+          `Value for ${clc.bold(pathStr)} must be an integer in the range 1-100.`,
+        );
+      }
+      return {
+        config: { telemetryConfig: { samplingRate: ailogic.percentToSamplingRate(Number(value)) } },
+        updateMask: "telemetryConfig.samplingRate",
+        normalizedValue: value,
+      };
+    }
+    default:
+      // Unreachable behind assertKnownConfigPath; kept exhaustive so a newly added
+      // writable path cannot silently fall into the wrong branch.
+      throw new FirebaseError(`Unknown configuration path: ${pathStr}`);
+  }
 }
 
 export const command = new Command("ailogic:config:set <path> <value>")
@@ -88,25 +103,16 @@ export const command = new Command("ailogic:config:set <path> <value>")
 
     // Validate the path and value up front so bad input fails fast, before the
     // API-enablement flow.
-    if (!WRITABLE_CONFIG_PATHS.includes(pathStr)) {
-      throw new FirebaseError(
-        `Unknown configuration path: ${pathStr}\n\nValid paths:\n\n` +
-          WRITABLE_CONFIG_PATHS.map((p) => `  ${p}`).join("\n"),
-      );
-    }
+    ailogic.assertKnownConfigPath(pathStr, ailogic.WRITABLE_CONFIG_PATHS);
     const update = buildUpdate(pathStr, value);
 
     await ailogic.ensureAILogicApiEnabled(projectId, options);
 
-    // Tightening a security setting from false to true is client-breaking, so confirm first.
-    if (update.securityTightening && isTightening(pathStr, await ailogic.getConfig(projectId))) {
-      const rejectMsg =
-        pathStr === "security.auth-only"
-          ? "reject requests from unauthenticated users"
-          : "reject requests not using templates";
+    // Tightening a security setting from off to on is client-breaking, so confirm first.
+    if (update.confirm && !update.confirm.isAlreadyEnabled(await ailogic.getConfig(projectId))) {
       // confirm() aborts in non-interactive mode unless --force is set.
       const confirmed = await confirm({
-        message: `Enabling ${clc.bold(pathStr)} will ${rejectMsg}. Continue?`,
+        message: update.confirm.message,
         force: options.force,
         nonInteractive: options.nonInteractive,
       });
@@ -116,6 +122,6 @@ export const command = new Command("ailogic:config:set <path> <value>")
     }
 
     await ailogic.updateConfig(projectId, update.config, [update.updateMask]);
-    utils.logSuccess(`Updated ${clc.bold(pathStr)} = ${value}`);
-    return { path: pathStr, value };
+    utils.logSuccess(`Updated ${clc.bold(pathStr)} = ${update.normalizedValue}`);
+    return { path: pathStr, value: update.normalizedValue };
   });

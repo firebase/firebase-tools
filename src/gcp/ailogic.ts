@@ -5,7 +5,6 @@ import type { AILogicEndpoint } from "../deploy/functions/services/ailogic";
 import { FirebaseError, getErrStatus } from "../error";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as serviceUsage from "./serviceusage";
-import * as rules from "./rules";
 import { bold } from "colorette";
 import * as cloudbilling from "./cloudbilling";
 import * as iam from "./iam";
@@ -243,6 +242,37 @@ export interface Config {
   telemetryConfig?: TelemetryConfig;
 }
 
+// Developer-facing config paths that `ailogic:config:set` can write.
+export const WRITABLE_CONFIG_PATHS = [
+  "security.auth-only",
+  "security.template-only",
+  "monitoring.state",
+  "monitoring.sample-rate-percentage",
+];
+
+/** Throws a FirebaseError listing the valid paths when `path` is not one of them. */
+export function assertKnownConfigPath(path: string, validPaths: string[]): void {
+  if (!validPaths.includes(path)) {
+    throw new FirebaseError(
+      `Unknown configuration path: ${path}\n\nValid paths:\n\n` +
+        validPaths.map((p) => `  ${p}`).join("\n"),
+    );
+  }
+}
+
+/**
+ * Converts the API's telemetry sampling rate, a fraction in (0,1], to the
+ * integer percentage (1-100) the CLI exposes.
+ */
+export function samplingRateToPercent(samplingRate: number): number {
+  return Math.round(samplingRate * 100);
+}
+
+/** Converts a CLI integer percentage (1-100) to the API's (0,1] sampling-rate fraction. */
+export function percentToSamplingRate(percent: number): number {
+  return percent / 100;
+}
+
 export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";
 
 export const PROVIDER_TYPES: ProviderType[] = ["gemini-developer-api", "gemini-agent-platform-api"];
@@ -404,69 +434,6 @@ export async function listProviders(projectId: string): Promise<ProviderType[]> 
 }
 
 /**
- *
- */
-export function generateRulesContent(authOnly: boolean, templateOnly: boolean): string {
-  const condition = authOnly ? "request.auth != null" : "true";
-
-  return `rules_version = '2';
-service firebase.vertexai {
-  match /projects/{project}/locations/{location} {
-    match /templates/{template} {
-      allow read: if ${condition};
-    }
-    match /models/{model} {
-      allow read: if ${templateOnly ? "false" : condition};
-    }
-  }
-}`;
-}
-
-export interface SecurityRulesConfig {
-  authOnly: boolean;
-  templateOnly: boolean;
-}
-
-/**
- * Gets security rules settings by fetching and parsing the active release.
- */
-export async function getSecurityRules(projectId: string): Promise<SecurityRulesConfig> {
-  const releases = await rules.listAllReleases(projectId);
-  const rulesetName = await rules.getLatestRulesetName(projectId, "firebase.vertexai", releases);
-  if (!rulesetName) {
-    return { authOnly: false, templateOnly: false };
-  }
-  const files = await rules.getRulesetContent(rulesetName);
-  const vertexFile = files.find((f) => f.name === "vertexai.rules");
-  if (!vertexFile) {
-    return { authOnly: false, templateOnly: false };
-  }
-  const content = vertexFile.content;
-  const authOnly = content.includes("request.auth != null");
-  const templateOnly = content.includes("allow read: if false");
-  return { authOnly, templateOnly };
-}
-
-/**
- * Deploys new security rules.
- */
-export async function updateSecurityRules(
-  projectId: string,
-  authOnly: boolean,
-  templateOnly: boolean,
-): Promise<void> {
-  const content = generateRulesContent(authOnly, templateOnly);
-  const files = [
-    {
-      name: "vertexai.rules",
-      content,
-    },
-  ];
-  const rulesetName = await rules.createRuleset(projectId, files);
-  await rules.updateOrCreateRelease(projectId, rulesetName, "firebase.vertexai");
-}
-
-/**
  * Returns whether the Firebase AI Logic API is enabled on the project, without prompting to enable it.
  * Read-only commands use this to report state instead of forcing enablement.
  */
@@ -488,13 +455,7 @@ export async function ensureAILogicApiEnabled(
   projectId: string,
   options: { nonInteractive?: boolean; force?: boolean },
 ): Promise<void> {
-  const isEnabled = await ensureApiEnabled.check(
-    projectId,
-    "firebasevertexai.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
-  if (isEnabled) {
+  if (await isAILogicApiEnabled(projectId)) {
     return;
   }
 

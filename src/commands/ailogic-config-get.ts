@@ -3,22 +3,18 @@ import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as ailogic from "../gcp/ailogic";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
 
 import { Options } from "../options";
 
-// Developer-facing config paths that `config:get` can read. Provider sub-paths are
-// derived from the canonical provider list so they stay in sync. Used both to
-// validate the requested path and to list the valid paths in the error message.
+// Everything `config:get` can read: the writable paths plus their group prefixes
+// and the read-only provider status derived from API enablement.
 const READABLE_CONFIG_PATHS = [
   "providers",
   ...ailogic.PROVIDER_TYPES.map((p) => `providers.${p}`),
   "security",
-  "security.auth-only",
-  "security.template-only",
+  ...ailogic.WRITABLE_CONFIG_PATHS.filter((p) => p.startsWith("security.")),
   "monitoring",
-  "monitoring.state",
-  "monitoring.sample-rate-percentage",
+  ...ailogic.WRITABLE_CONFIG_PATHS.filter((p) => p.startsWith("monitoring.")),
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -31,31 +27,38 @@ export const command = new Command("ailogic:config:get [path]")
   .action(async (path: string | undefined, options: Options) => {
     const projectId = needProjectId(options);
 
+    // Validate the path up front so bad input fails fast, before any API calls.
+    if (path) {
+      ailogic.assertKnownConfigPath(path, READABLE_CONFIG_PATHS);
+    }
+
     if (!(await ailogic.isAILogicApiEnabled(projectId))) {
       logger.info("Firebase AI Logic is not enabled on this project.");
       return;
     }
     const config = await ailogic.getConfig(projectId);
 
-    const authOnly = config.trafficFilter?.firebaseAuthRequired ?? false;
-    const templateOnly = config.trafficFilter?.templateOnly ?? false;
     const monitoringState = config.telemetryConfig?.mode === "ALL";
-    // The API stores the sampling rate as a fraction in (0,1]; the CLI exposes it
-    // as an integer percentage (1-100).
+    // An unset samplingRate is displayed as 100% (full sampling).
     const sampleRatePercent =
       config.telemetryConfig?.samplingRate !== undefined
-        ? Math.round(config.telemetryConfig.samplingRate * 100)
+        ? ailogic.samplingRateToPercent(config.telemetryConfig.samplingRate)
         : 100;
 
-    const enabledProviders = await ailogic.listProviders(projectId);
+    // Provider status needs extra Service Usage checks, so fetch it only when the
+    // requested path is under `providers` (or the whole config was requested).
+    const needsProviders = !path || path === "providers" || path.startsWith("providers.");
+    const enabledProviders = needsProviders ? await ailogic.listProviders(projectId) : [];
 
     const configObj = {
-      providers: Object.fromEntries(
-        ailogic.PROVIDER_TYPES.map((p) => [p, enabledProviders.includes(p)]),
-      ),
+      ...(needsProviders && {
+        providers: Object.fromEntries(
+          ailogic.PROVIDER_TYPES.map((p) => [p, enabledProviders.includes(p)]),
+        ),
+      }),
       security: {
-        "auth-only": authOnly,
-        "template-only": templateOnly,
+        "auth-only": config.trafficFilter?.firebaseAuthRequired ?? false,
+        "template-only": config.trafficFilter?.templateOnly ?? false,
       },
       monitoring: {
         state: monitoringState,
@@ -66,13 +69,6 @@ export const command = new Command("ailogic:config:get [path]")
     if (!path) {
       logger.info(JSON.stringify(configObj, null, 2));
       return configObj;
-    }
-
-    if (!READABLE_CONFIG_PATHS.includes(path)) {
-      throw new FirebaseError(
-        `Unknown configuration path: ${path}\n\nValid paths:\n\n` +
-          READABLE_CONFIG_PATHS.map((p) => `  ${p}`).join("\n"),
-      );
     }
 
     let val: unknown = configObj;

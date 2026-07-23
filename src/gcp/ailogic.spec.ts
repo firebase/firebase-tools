@@ -3,7 +3,6 @@ import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as serviceUsage from "./serviceusage";
-import * as rules from "./rules";
 import * as cloudbilling from "./cloudbilling";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
@@ -342,74 +341,6 @@ describe("ailogic", () => {
     it("isProviderType narrows valid values only", () => {
       expect(ailogic.isProviderType("gemini-developer-api")).to.be.true;
       expect(ailogic.isProviderType("nope")).to.be.false;
-    });
-  });
-
-  describe("securityRules", () => {
-    let listReleasesStub: sinon.SinonStub;
-    let getLatestRulesetNameStub: sinon.SinonStub;
-    let getRulesetContentStub: sinon.SinonStub;
-    let createRulesetStub: sinon.SinonStub;
-    let updateOrCreateReleaseStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      listReleasesStub = sinon.stub(rules, "listAllReleases");
-      getLatestRulesetNameStub = sinon.stub(rules, "getLatestRulesetName");
-      getRulesetContentStub = sinon.stub(rules, "getRulesetContent");
-      createRulesetStub = sinon.stub(rules, "createRuleset");
-      updateOrCreateReleaseStub = sinon.stub(rules, "updateOrCreateRelease");
-    });
-
-    afterEach(() => {
-      listReleasesStub.restore();
-      getLatestRulesetNameStub.restore();
-      getRulesetContentStub.restore();
-      createRulesetStub.restore();
-      updateOrCreateReleaseStub.restore();
-    });
-
-    it("should get rules and parse authOnly and templateOnly", async () => {
-      listReleasesStub.resolves([]);
-      getLatestRulesetNameStub.resolves("ruleset-name");
-      getRulesetContentStub.resolves([
-        {
-          name: "vertexai.rules",
-          content: `rules_version = '2';
-service firebase.vertexai {
-  match /projects/{project}/locations/{location} {
-    match /templates/{template} {
-      allow read: if request.auth != null;
-    }
-    match /models/{model} {
-      allow read: if false;
-    }
-  }
-}`,
-        },
-      ]);
-
-      const config = await ailogic.getSecurityRules("my-project");
-
-      expect(config).to.deep.equal({ authOnly: true, templateOnly: true });
-    });
-
-    it("should deploy rules with generateRulesContent", async () => {
-      createRulesetStub.resolves("new-ruleset");
-      updateOrCreateReleaseStub.resolves("release-name");
-
-      await ailogic.updateSecurityRules("my-project", true, false);
-
-      expect(createRulesetStub).to.have.been.calledWith("my-project", [
-        {
-          name: "vertexai.rules",
-          content: ailogic.generateRulesContent(true, false),
-        },
-      ]);
-      expect(updateOrCreateReleaseStub).to.have.been.calledWith(
-        "my-project",
-        "new-ruleset",
-        "firebase.vertexai",
-      );
     });
   });
 });

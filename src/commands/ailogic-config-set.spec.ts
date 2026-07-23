@@ -138,10 +138,19 @@ describe("ailogic:config:set", () => {
   });
 
   it("rejects an out-of-range or non-integer sample rate", async () => {
-    for (const bad of ["0", "101", "1.5", "abc"]) {
+    // "1e2", "0x32", and " 50 " all coerce to valid integers via Number(), so the
+    // strict decimal check must reject them too.
+    for (const bad of ["0", "101", "1.5", "abc", "1e2", "0x32", " 50 ", "50%"]) {
       await expect(
         command.runner()("monitoring.sample-rate-percentage", bad, { project: PROJECT_ID }),
       ).to.be.rejectedWith(FirebaseError, /integer in the range 1-100/);
     }
+    expect(updateStub).to.not.have.been.called;
+  });
+
+  it("returns the normalized value for --json output", async () => {
+    expect(
+      await command.runner()("monitoring.state", "TRUE", { project: PROJECT_ID }),
+    ).to.deep.equal({ path: "monitoring.state", value: "true" });
   });
 });
