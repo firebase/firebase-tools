@@ -52,13 +52,154 @@ import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition } from "../../functional";
+import { assertExhaustive, partition, mapObject } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
 import * as prompt from "../../prompt";
+import * as iam from "../../gcp/iam";
+import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+
+/**
+ * Discovers and coordinates declarative security details for a codebase.
+ * Mutates want Backend to populate managed service account and etag labels.
+ * Returns existing discovered roles, or undefined if no security changes needed.
+ */
+export async function discoverSecurityDetails(
+  codebase: string,
+  want: backend.Backend,
+  have: backend.Backend,
+  projectId: string,
+  filters?: EndpointFilter[],
+): Promise<{
+  haveRoles?: string[];
+  haveRolesEtag?: string;
+  existingManagedSA?: string;
+  managedSA?: string;
+  newEtag?: string;
+}> {
+  const requiredRoles = want.requiredRoles;
+  const firstHave = backend.allEndpoints(have)[0];
+  let existingManagedSA: string | undefined;
+  let haveRolesEtag: string | undefined;
+  if (firstHave) {
+    haveRolesEtag = firstHave.labels?.["firebase-declarative-security-etag"];
+    existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
+      ? firstHave.serviceAccount
+      : undefined;
+  }
+
+  const isPartiallyFiltered = !!(
+    filters &&
+    filters.some(
+      (f) => (!f.codebase || f.codebase === codebase) && f.idChunks && f.idChunks.length > 0,
+    )
+  );
+  const isEnrolling = !!requiredRoles && !existingManagedSA;
+  const isUnenrolling = !requiredRoles && !!existingManagedSA && !!haveRolesEtag;
+
+  if (isPartiallyFiltered && (isEnrolling || isUnenrolling)) {
+    throw new FirebaseError(
+      "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
+        "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
+    );
+  }
+
+  if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {
+    return {};
+  }
+
+  if (
+    requiredRoles &&
+    backend.someEndpoint(
+      want,
+      (e) => typeof e.serviceAccount === "string" && !e.serviceAccount.startsWith("firebase-fn-"),
+    )
+  ) {
+    throw new FirebaseError(
+      `Cannot use explicit custom service accounts on functions while using declarative security in codebase ${codebase}.`,
+    );
+  }
+
+  if (!requiredRoles && existingManagedSA && haveRolesEtag) {
+    for (const endpoint of backend.allEndpoints(want)) {
+      if (!endpoint.serviceAccount || endpoint.serviceAccount === existingManagedSA) {
+        endpoint.serviceAccount = null;
+      }
+      if (endpoint.labels) {
+        delete endpoint.labels["firebase-declarative-security-etag"];
+      }
+    }
+    return {
+      haveRolesEtag,
+      existingManagedSA,
+    };
+  }
+
+  let managedSA = existingManagedSA;
+  if (!managedSA) {
+    const saToCreate = await iam.generateManagedServiceAccountName(projectId, "firebase-fn");
+    managedSA = `${saToCreate}@${projectId}.iam.gserviceaccount.com`;
+  }
+
+  const existingSalt = haveRolesEtag ? haveRolesEtag.split("-")[0] : undefined;
+  const newEtag = iam.computeRolesEtag(requiredRoles!, existingSalt);
+
+  for (const endpoint of backend.allEndpoints(want)) {
+    endpoint.serviceAccount = managedSA;
+    endpoint.labels = endpoint.labels || {};
+    endpoint.labels["firebase-declarative-security-etag"] = newEtag;
+  }
+
+  if (haveRolesEtag && haveRolesEtag === newEtag) {
+    return {
+      haveRoles: requiredRoles,
+      haveRolesEtag,
+      existingManagedSA,
+      managedSA,
+      newEtag,
+    };
+  }
+
+  const permissionsToTest = ["resourcemanager.projects.setIamPolicy"];
+  if (!existingManagedSA) {
+    permissionsToTest.push("iam.serviceAccounts.create");
+  }
+  const iamResult = await iam.testIamPermissions(projectId, permissionsToTest);
+  if (!iamResult.passed) {
+    if (!existingManagedSA) {
+      throw new FirebaseError(
+        `Cannot enable declarative security because you do not have permissions necessary to create the service account. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    } else {
+      throw new FirebaseError(
+        `You do not have access to make the policy changes required in codebase ${codebase} deploy. Please ask an IAM administrator to perform the next deploy.`,
+      );
+    }
+  }
+
+  let haveRoles: string[] = [];
+  if (existingManagedSA) {
+    try {
+      haveRoles = await resourcemanager.getServiceAccountRoles(projectId, managedSA);
+    } catch (err: any) {
+      throw new FirebaseError(
+        `The declarative security roles for codebase ${codebase} have changed, but you do not have access to see what has changed. Please ask an IAM administrator to perform the next deploy.`,
+        { original: err },
+      );
+    }
+  }
+
+  return {
+    haveRoles,
+    haveRolesEtag,
+    existingManagedSA,
+    managedSA,
+    newEtag,
+  };
+}
 
 /**
  * Prepare functions codebases for deploy.
@@ -99,7 +240,7 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -142,7 +283,9 @@ export async function prepare(
       projectAlias: options.projectAlias,
     };
     proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
+    const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const relevantEndpoints = backend
@@ -150,15 +293,28 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+    const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+      build.parseSecretRef(unparsed),
+    );
+    build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
+
+    const {
+      backend: wantBackend,
+      envs: resolvedEnvs,
+      secretRefs: resolvedSecretRefs,
+    } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
       userEnvs,
       nonInteractive: options.nonInteractive,
+      force: options.force,
       isEmulator: false,
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    if (experiments.isEnabled("secretEnvParams")) {
+      functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -248,7 +404,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
       const executablePaths = isDart ? ["bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
@@ -290,8 +446,16 @@ export async function prepare(
   );
   for (const [codebase, wantBackend] of Object.entries(wantBackends)) {
     const haveBackend = haveBackends[codebase] || backend.empty();
-    payload.functions[codebase] = { wantBackend, haveBackend };
+    const security = await discoverSecurityDetails(
+      codebase,
+      wantBackend,
+      haveBackend,
+      projectId,
+      context.filters,
+    );
+    payload.functions[codebase] = { wantBackend, haveBackend, ...security };
   }
+
   for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
     inferDetailsFromExisting(wantBackend, haveBackend, codebaseUsesEnvs.includes(codebase));
     await ensureTriggerRegions(wantBackend);
@@ -645,9 +809,11 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
   }
 }
 
-// Genkit almost always requires an API key, so warn if the customer is about to deploy
-// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
-// deploy of the function.
+/**
+ * Genkit almost always requires an API key, so warn if the customer is about to deploy
+ * a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+ * deploy of the function.
+ */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -786,4 +952,27 @@ export async function ensureAllRequiredAPIsEnabled(
       /* silent=*/ false,
     );
   }
+}
+
+/**
+ * Divides the environment variables between normal envs and references to a Secret resource.
+ * Secret references begin with FIREBASE_SECRET_REF_ and are not provided directly in process.env,
+ * but the Cloud Secret Manager resource they reference is loaded through SecretEnvVars.
+ */
+export function partitionUserEnvs(allEnvs: Record<string, string>): {
+  userEnvs: Record<string, string>;
+  secretRefs: Record<string, string>;
+} {
+  const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
+    (accumulatedSplit, [k, v]) => {
+      if (k.startsWith(build.SECRET_REF_PREFIX)) {
+        accumulatedSplit[0][k.replace(build.SECRET_REF_PREFIX, "")] = v;
+      } else {
+        accumulatedSplit[1][k] = v;
+      }
+      return accumulatedSplit;
+    },
+    [{}, {}] as [Record<string, string>, Record<string, string>],
+  );
+  return { userEnvs: userEnvs, secretRefs: secretRefs };
 }

@@ -1,5 +1,7 @@
 import * as httpMocks from "node-mocks-http";
-import * as nock from "nock";
+import * as sinon from "sinon";
+import * as http from "http";
+import { PassThrough } from "stream";
 import { expect } from "chai";
 import { FunctionsRuntimeInstance, IPCConn } from "./functionsEmulator";
 import { EventEmitter } from "events";
@@ -90,9 +92,47 @@ function mockTrigger(id: string): EmulatedTriggerDefinition {
 }
 
 describe("FunctionsRuntimeWorker", () => {
+  let requestStub: sinon.SinonStub;
+
+  beforeEach(() => {
+    requestStub = sinon.stub(http, "request");
+  });
+
+  afterEach(() => {
+    requestStub.restore();
+  });
+
+  function mockSuccessfulRequest(statusCode: number = 200, body: string = "") {
+    requestStub.callsFake((options: any, callback: any) => {
+      const mockRes = new PassThrough();
+      (mockRes as any).statusCode = statusCode;
+      (mockRes as any).headers = {};
+
+      const mockReq = new PassThrough();
+      if (callback) {
+        process.nextTick(() => {
+          callback(mockRes);
+          mockRes.push(body);
+          mockRes.push(null);
+        });
+      }
+      return mockReq as any;
+    });
+  }
+
+  function mockFailedRequest(err: Error) {
+    requestStub.callsFake(() => {
+      const mockReq = new PassThrough();
+      process.nextTick(() => {
+        mockReq.emit("error", err);
+      });
+      return mockReq as any;
+    });
+  }
+
   describe("RuntimeWorker", () => {
     it("goes from created --> idle --> busy --> idle in normal operation", async () => {
-      const scope = nock("http://localhost").get("/").reply(200);
+      mockSuccessfulRequest(200);
 
       const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
@@ -102,7 +142,6 @@ describe("FunctionsRuntimeWorker", () => {
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
-      scope.done();
 
       expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.BUSY).to.eql(1);
@@ -111,7 +150,7 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("goes from created --> idle --> busy --> finished when there's an error", async () => {
-      const scope = nock("http://localhost").get("/").replyWithError("boom");
+      mockFailedRequest(new Error("boom"));
 
       const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
@@ -121,7 +160,6 @@ describe("FunctionsRuntimeWorker", () => {
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
-      scope.done();
 
       expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.IDLE).to.eql(1);
@@ -131,7 +169,7 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("goes from created --> busy --> finishing --> finished when marked", async () => {
-      const scope = nock("http://localhost").get("/").replyWithError("boom");
+      mockFailedRequest(new Error("boom"));
 
       const worker = new RuntimeWorker("trigger", new MockRuntimeInstance(), {});
       const counter = new WorkerStateCounter(worker);
@@ -142,7 +180,6 @@ describe("FunctionsRuntimeWorker", () => {
         worker.state = RuntimeWorkerState.FINISHING;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
-      scope.done();
 
       expect(counter.counts.CREATED).to.eql(1);
       expect(counter.counts.IDLE).to.eql(1);
@@ -155,7 +192,7 @@ describe("FunctionsRuntimeWorker", () => {
 
   describe("RuntimeWorkerPool", () => {
     it("properly manages a single worker", async () => {
-      const scope = nock("http://localhost").get("/").reply(200);
+      mockSuccessfulRequest(200);
 
       const pool = new RuntimeWorkerPool();
       const triggerId = "region-trigger1";
@@ -176,7 +213,6 @@ describe("FunctionsRuntimeWorker", () => {
         expect(pool.getIdleWorker(triggerId)).to.be.undefined;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
-      scope.done();
 
       // Completed handling request. Worker should be IDLE again.
       expect(pool.getIdleWorker(triggerId)).to.eql(worker);
@@ -190,7 +226,7 @@ describe("FunctionsRuntimeWorker", () => {
       expect(pool.getIdleWorker(triggerId)).to.be.undefined;
 
       // Add a worker to the pool that's destined to fail.
-      const scope = nock("http://localhost").get("/").replyWithError("boom");
+      mockFailedRequest(new Error("boom"));
       const worker = pool.addWorker(mockTrigger(triggerId), new MockRuntimeInstance(), {});
       worker.readyForWork();
       expect(pool.getIdleWorker(triggerId)).to.eql(worker);
@@ -200,7 +236,6 @@ describe("FunctionsRuntimeWorker", () => {
         { method: "GET", path: "/" },
         httpMocks.createResponse({ eventEmitter: EventEmitter }),
       );
-      scope.done();
 
       // Confirm there are no idle workers.
       expect(pool.getIdleWorker(triggerId)).to.be.undefined;
@@ -219,13 +254,12 @@ describe("FunctionsRuntimeWorker", () => {
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
       // Add a worker to the pool that's destined to fail.
-      const scope = nock("http://localhost").get("/").reply(200);
+      mockSuccessfulRequest(200);
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         pool.exit();
       });
       await busyWorker.request({ method: "GET", path: "/" }, resp);
-      scope.done();
 
       expect(busyWorkerCounter.counts.IDLE).to.eql(1);
       expect(busyWorkerCounter.counts.BUSY).to.eql(1);
@@ -250,13 +284,12 @@ describe("FunctionsRuntimeWorker", () => {
       const idleWorkerCounter = new WorkerStateCounter(idleWorker);
 
       // Add a worker to the pool that's destined to fail.
-      const scope = nock("http://localhost").get("/").reply(200);
+      mockSuccessfulRequest(200);
       const resp = httpMocks.createResponse({ eventEmitter: EventEmitter });
       resp.on("end", () => {
         pool.refresh();
       });
       await busyWorker.request({ method: "GET", path: "/" }, resp);
-      scope.done();
 
       expect(busyWorkerCounter.counts.BUSY).to.eql(1);
       expect(busyWorkerCounter.counts.FINISHING).to.eql(1);
@@ -268,7 +301,7 @@ describe("FunctionsRuntimeWorker", () => {
     });
 
     it("gives assigns all triggers to the same worker in sequential mode", async () => {
-      const scope = nock("http://localhost").get("/").reply(200);
+      mockSuccessfulRequest(200);
 
       const triggerId1 = "region-abc";
       const triggerId2 = "region-def";
@@ -283,7 +316,6 @@ describe("FunctionsRuntimeWorker", () => {
         expect(pool.readyForWork(triggerId2)).to.be.false;
       });
       await worker.request({ method: "GET", path: "/" }, resp);
-      scope.done();
 
       expect(pool.readyForWork(triggerId1)).to.be.true;
       expect(pool.readyForWork(triggerId2)).to.be.true;
