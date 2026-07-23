@@ -296,6 +296,15 @@ FOO=foo
       expect(() => {
         env.validateKey("EXT_INSTANCE_ID");
       }).to.throw("starts with a reserved prefix");
+
+      it("except when the key is an allowlisted form", () => {
+        expect(() => {
+          env.validateKey("FIREBASE_SECRET_REF_API_KEY");
+        }).to.not.throw();
+        expect(() => {
+          env.validateKey("FIREBASE_SECRET_REF_");
+        }).to.throw("empty suffix");
+      });
     });
   });
 
