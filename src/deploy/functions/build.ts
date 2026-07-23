@@ -1,6 +1,7 @@
 import * as backend from "./backend";
 import * as proto from "../../gcp/proto";
 import * as params from "./params";
+import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
 import { assertExhaustive, mapObject, nullsafeVisitor } from "../../functional";
 import { FirebaseConfig } from "./args";
@@ -9,6 +10,27 @@ import { ExprParseError } from "./cel";
 import { defineSecret } from "firebase-functions/params";
 
 export const REGION_TBD = "REGION_TBD";
+export const SECRET_REF_PREFIX = "FIREBASE_SECRET_REF_";
+// prettier-ignore
+const GCP_PROJECT_ID_PATTERN = "([a-z][-a-z0-9]{4,28}[a-z0-9])";
+export const GCP_SECRET_ID_PATTERN = "([a-zA-Z0-9-_]+)";
+export const SECRET_REF_SHORT_RE = new RegExp(
+  "^" + // start of string
+    GCP_SECRET_ID_PATTERN + // capture secret ID
+    "(?:[:#@]" + // capture an optional label beginning with :, or capture #/@ to warn the user
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
+    ")?$", // end of optional version group end of string
+);
+export const SECRET_REF_LONG_RE = new RegExp(
+  "^" + // start of string
+    "projects/" + // projects/
+    GCP_PROJECT_ID_PATTERN + // capture project ID
+    "/secrets/" + // /secrets/
+    GCP_SECRET_ID_PATTERN + // capture secret ID
+    "(?:(?:/versions/|:|#|@)" + // optionally: a group starting with ":", "/versions/", or a mistake (#/@) to warn for
+    "([a-z0-9-_]+)" + // allow letters, numbers, hyphen, underscore in version label.
+    ")?$", // end of optional version group, end of string
+);
 
 export type LifecycleHook = backend.LifecycleHook;
 
@@ -230,6 +252,8 @@ export interface SecretEnvVar {
   key: string; // The environment variable this secret is accessible at
   secret: string; // The id of the SecretVersion - ie for projects/myproject/secrets/mysecret, this is 'mysecret'
   projectId: string; // The project containing the Secret
+  allowVersionPinning?: boolean;
+  version?: string;
 }
 
 export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
@@ -317,29 +341,32 @@ interface ResolveBackendOpts {
   userEnvs: Record<string, string>;
   nonInteractive?: boolean;
   isEmulator?: boolean;
+  force?: boolean;
 }
 
 /**
  * Resolves user-defined parameters inside a Build and generates a Backend.
  * Callers are responsible for persisting resolved env vars.
  */
-export async function resolveBackend(
-  opts: ResolveBackendOpts,
-): Promise<{ backend: backend.Backend; envs: Record<string, params.ParamValue> }> {
-  const paramValues = await params.resolveParams(
+export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
+  backend: backend.Backend;
+  envs: Record<string, params.ParamValue>;
+  secretRefs: Record<string, string>;
+}> {
+  const { paramValues: paramValues, secretRefs: secretRefs } = await params.resolveParams(
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
     opts.isEmulator,
+    opts.force,
   );
 
-  return { backend: toBackend(opts.build, paramValues), envs: paramValues };
+  return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
 }
 
-// Exported for testing
 /**
- *
+ * Exported for testing
  */
 export function envWithTypes(
   definedParams: params.Param[],
@@ -763,4 +790,119 @@ export function applyPrefix(build: Build, prefix: string): void {
       }
     }
   }
+}
+
+export interface ParsedSecretRef {
+  projectId?: string;
+  secretId: string;
+  version?: string;
+}
+
+/**
+ * Applies overrides from the .env file binding Secrets to a different Cloud Secret Manager resource.
+ * Secrets references are of the form csm://secretName/version, referencing a Secret in the same project as the Endpoint.
+ * /version can be omitted and will cause the secret to resolve to whatever the latest version was at time of deploy.
+ *
+ * For each binding imported from the .env file,
+ * 1) TODO: Check if a conflicting SecretParam with the same name exists. If so, override the param so that the prompting flow will look in the right place when deciding whether or not to create a new Secret.
+ * 2) Upsert the binding directly into the Build's SecretEnvVars, which will cause it to be actually available in process.ENV
+ */
+export function applyEnvSecretBindings(
+  build: Build,
+  envSecrets: Record<string, ParsedSecretRef>,
+): void {
+  if (envSecrets.empty) {
+    return;
+  }
+  logger.debug(
+    `Attempting to merge .env secret bindings ${JSON.stringify(envSecrets)} into declared secrets...)}`,
+  );
+  for (const endpointName of Object.keys(build.endpoints)) {
+    logger.debug(
+      `${endpointName} declared secrets: ${JSON.stringify(build.endpoints[endpointName].secretEnvironmentVariables)}`,
+    );
+  }
+
+  for (const key of Object.keys(envSecrets)) {
+    const secretRef = envSecrets[key];
+    const { projectId, secretId, version } = secretRef;
+
+    for (const param of build.params) {
+      if (param.type === "secret" && param.name.toUpperCase() === key) {
+        param.resourceId = secretId;
+        param.version = version;
+        param.inLocalEnvironment = true;
+      }
+    }
+
+    for (const endpointName of Object.keys(build.endpoints)) {
+      const endpoint = build.endpoints[endpointName];
+      if (projectId && projectId !== endpoint.project) {
+        throw new FirebaseError(
+          `Secret binding ${key} referenced unsupported cross-project secret in '${projectId}'`,
+        );
+      }
+      let notFound = true;
+      for (const envVar of endpoint.secretEnvironmentVariables ?? []) {
+        if (envVar.key === key) {
+          notFound = false;
+          envVar.secret = secretId;
+          if (typeof secretRef.version !== "undefined") {
+            envVar.version = version;
+            envVar.allowVersionPinning = true;
+          }
+          logger.debug(`Merged secret: ${JSON.stringify(envVar)}`);
+        }
+      }
+      if (notFound) {
+        logger.warn(
+          `.env files contain a secret binding ${key} which has not been configured as a secret param via defineSecret().`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Parses any of the supported formats used to refer to a Secret in .env:
+ * API_KEY=<secret-id>
+ * API_KEY=<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>:<version>
+ * API_KEY=projects/<project-id>/secrets/<secret-id>/versions/<version>
+ * @return An object populated with project id, secret id, and version, with a field undefined if not provided.
+ */
+export function parseSecretRef(ref: string): ParsedSecretRef {
+  const shortMatch = SECRET_REF_SHORT_RE.exec(ref);
+  if (shortMatch) {
+    const output: ParsedSecretRef = {
+      secretId: shortMatch[1],
+    };
+    if (shortMatch[2] !== undefined) {
+      output.version = shortMatch[2];
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
+      }
+    }
+    return output;
+  }
+  const longMatch = SECRET_REF_LONG_RE.exec(ref);
+  if (longMatch) {
+    const output: ParsedSecretRef = {
+      projectId: longMatch[1],
+      secretId: longMatch[2],
+    };
+    if (longMatch[3] !== undefined) {
+      output.version = longMatch[3];
+      if (ref.includes("#") || ref.includes("@")) {
+        throw new FirebaseError(
+          `Malformed secret binding '${ref}'; secret versions are specified with ':'`,
+        );
+      }
+    }
+    return output;
+  }
+  throw new FirebaseError(`Unknown format for secret binding '${ref}'`);
 }
