@@ -1,5 +1,11 @@
 import { McpContext } from "../../types";
-import { getPlatformsFromFolder, Platform, detectFiles } from "../../../appUtils";
+import {
+  getPlatformsFromFolder,
+  Platform,
+  detectFiles,
+  getAllDepsFromPackageJson,
+} from "../../../appUtils";
+import { PackageJSON } from "../../../frameworks/compose/discover/runtime/node";
 import * as fs from "fs-extra";
 import * as path from "path";
 
@@ -92,11 +98,36 @@ async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
 
 async function webAppUsesCrashlytics(appPath: string): Promise<boolean> {
   const packageJsonFiles = await detectFiles(appPath, "package.json");
+  let hasFirebaseDep = false;
   for (const file of packageJsonFiles) {
-    const content = await fs.readFile(path.join(appPath, file), "utf8");
-    if (content.includes("firebase/crashlytics")) {
-      return true;
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      const json = JSON.parse(content) as PackageJSON;
+      const deps = getAllDepsFromPackageJson(json);
+      if (deps.includes("firebase")) {
+        hasFirebaseDep = true;
+        break;
+      }
+    } catch {
+      // Ignore invalid JSON or unreadable package.json
     }
   }
+
+  if (!hasFirebaseDep) {
+    return false;
+  }
+
+  const sourceFiles = await detectFiles(appPath, "*.{js,jsx,ts,tsx,mjs,cjs,html,vue,svelte}");
+  for (const file of sourceFiles) {
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("firebase/crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
+    }
+  }
+
   return false;
 }
