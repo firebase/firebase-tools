@@ -17,12 +17,13 @@ const WRITABLE_CONFIG_PATHS = [
   "monitoring.sample-rate-percentage",
 ];
 
-/** Parses a "true"/"false" flag value, throwing a FirebaseError otherwise. */
+/** Parses a "true"/"false" flag value (case-insensitive), throwing a FirebaseError otherwise. */
 function parseBool(pathStr: string, value: string): boolean {
-  if (value !== "true" && value !== "false") {
+  const normalized = value.toLowerCase();
+  if (normalized !== "true" && normalized !== "false") {
     throw new FirebaseError(`Value for ${clc.bold(pathStr)} must be 'true' or 'false'.`);
   }
-  return value === "true";
+  return normalized === "true";
 }
 
 // The parsed, validated change to apply: the partial Config, its updateMask, and

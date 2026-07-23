@@ -106,6 +106,13 @@ describe("ailogic:config:set", () => {
     );
   });
 
+  it("accepts a case-insensitive boolean value", async () => {
+    await command.runner()("monitoring.state", "TRUE", { project: PROJECT_ID });
+    expect(updateStub).to.have.been.calledWith(PROJECT_ID, { telemetryConfig: { mode: "ALL" } }, [
+      "telemetryConfig.mode",
+    ]);
+  });
+
   it("maps monitoring.state true to telemetryConfig.mode ALL", async () => {
     await command.runner()("monitoring.state", "true", { project: PROJECT_ID });
     expect(updateStub).to.have.been.calledWith(PROJECT_ID, { telemetryConfig: { mode: "ALL" } }, [

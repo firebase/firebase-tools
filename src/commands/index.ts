@@ -232,11 +232,10 @@ export function load(client: CLIClient): CLIClient {
     client.ailogic.providers.enable = loadCommand("ailogic-providers-enable");
     client.ailogic.providers.disable = loadCommand("ailogic-providers-disable");
     client.ailogic.providers.list = loadCommand("ailogic-providers-list");
+    client.ailogic.config = {};
+    client.ailogic.config.get = loadCommand("ailogic-config-get");
+    client.ailogic.config.set = loadCommand("ailogic-config-set");
   }
-
-  client.ailogic.config = {};
-  client.ailogic.config.get = loadCommand("ailogic-config-get");
-  client.ailogic.config.set = loadCommand("ailogic-config-set");
 
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");

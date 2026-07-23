@@ -378,24 +378,22 @@ export async function disableProvider(
  * Lists which Gemini API providers are enabled, derived from underlying API enablement state.
  */
 export async function listProviders(projectId: string): Promise<ProviderType[]> {
-  const enabled: ProviderType[] = [];
+  // The two enablement checks are independent, so run them in parallel to keep
+  // read commands (providers:list, config:get) responsive on a cold cache.
+  const [isDeveloperEnabled, isVertexEnabled] = await Promise.all([
+    ensureApiEnabled.check(
+      projectId,
+      "generativelanguage.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+      true,
+    ),
+    ensureApiEnabled.check(projectId, "aiplatform.googleapis.com", AILOGIC_LOGGING_PREFIX, true),
+  ]);
 
-  const isDeveloperEnabled = await ensureApiEnabled.check(
-    projectId,
-    "generativelanguage.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
+  const enabled: ProviderType[] = [];
   if (isDeveloperEnabled) {
     enabled.push("gemini-developer-api");
   }
-
-  const isVertexEnabled = await ensureApiEnabled.check(
-    projectId,
-    "aiplatform.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
   // aiplatform.googleapis.com cannot be enabled without billing (the Blaze plan),
   // so an enabled Vertex API already implies the agent-platform provider is available.
   if (isVertexEnabled) {
