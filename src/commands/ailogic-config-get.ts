@@ -7,12 +7,12 @@ import { FirebaseError } from "../error";
 
 import { Options } from "../options";
 
-// Developer-facing config paths that `config:get` can read. Used both to validate
-// the requested path and to list the valid paths in the error message.
+// Developer-facing config paths that `config:get` can read. Provider sub-paths are
+// derived from the canonical provider list so they stay in sync. Used both to
+// validate the requested path and to list the valid paths in the error message.
 const READABLE_CONFIG_PATHS = [
   "providers",
-  "providers.gemini-developer-api",
-  "providers.gemini-agent-platform-api",
+  ...ailogic.PROVIDER_TYPES.map((p) => `providers.${p}`),
   "security",
   "security.auth-only",
   "security.template-only",
@@ -20,6 +20,10 @@ const READABLE_CONFIG_PATHS = [
   "monitoring.state",
   "monitoring.sample-rate-percentage",
 ];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 export const command = new Command("ailogic:config:get [path]")
   .description("read AI Logic configuration")
@@ -44,14 +48,11 @@ export const command = new Command("ailogic:config:get [path]")
         : 100;
 
     const enabledProviders = await ailogic.listProviders(projectId);
-    const hasDeveloperApi = enabledProviders.includes("gemini-developer-api");
-    const hasAgentPlatform = enabledProviders.includes("gemini-agent-platform-api");
 
     const configObj = {
-      providers: {
-        "gemini-developer-api": hasDeveloperApi,
-        "gemini-agent-platform-api": hasAgentPlatform,
-      },
+      providers: Object.fromEntries(
+        ailogic.PROVIDER_TYPES.map((p) => [p, enabledProviders.includes(p)]),
+      ),
       security: {
         "auth-only": authOnly,
         "template-only": templateOnly,
@@ -76,7 +77,11 @@ export const command = new Command("ailogic:config:get [path]")
 
     let val: unknown = configObj;
     for (const part of path.split(".")) {
-      val = val && typeof val === "object" ? (val as Record<string, unknown>)[part] : undefined;
+      if (!isRecord(val)) {
+        val = undefined;
+        break;
+      }
+      val = val[part];
     }
     logger.info(typeof val === "object" ? JSON.stringify(val, null, 2) : String(val));
     return val;

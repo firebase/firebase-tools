@@ -38,6 +38,13 @@ describe("ailogic:config:get", () => {
     expect(await command.runner()("security.auth-only", { project: PROJECT_ID })).to.equal(true);
   });
 
+  it("returns a nested object for a group path", async () => {
+    expect(await command.runner()("monitoring", { project: PROJECT_ID })).to.deep.equal({
+      state: true,
+      "sample-rate-percentage": 50,
+    });
+  });
+
   it("throws on an unknown path", async () => {
     await expect(command.runner()("security.authonly", { project: PROJECT_ID })).to.be.rejectedWith(
       FirebaseError,

@@ -14,11 +14,12 @@ describe("ailogic:config:set", () => {
   let updateStub: sinon.SinonStub;
   let getConfigStub: sinon.SinonStub;
   let confirmStub: sinon.SinonStub;
+  let ensureStub: sinon.SinonStub;
 
   beforeEach(() => {
     (command as unknown as { befores: unknown[] }).befores = []; // bypass pre-action hooks
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
-    sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
+    ensureStub = sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
     sinon.stub(utils, "logSuccess");
     getConfigStub = sinon.stub(ailogic, "getConfig").resolves({ name: "config" });
     updateStub = sinon.stub(ailogic, "updateConfig").resolves({ name: "config" });
@@ -37,6 +38,13 @@ describe("ailogic:config:set", () => {
     await expect(
       command.runner()("security.auth-only", "yes", { project: PROJECT_ID }),
     ).to.be.rejectedWith(FirebaseError, /must be 'true' or 'false'/);
+  });
+
+  it("validates input before triggering the API-enablement flow (fail-fast)", async () => {
+    await expect(
+      command.runner()("monitoring.sample-rate-percentage", "500", { project: PROJECT_ID }),
+    ).to.be.rejectedWith(FirebaseError, /integer in the range 1-100/);
+    expect(ensureStub).to.not.have.been.called;
   });
 
   it("prompts when tightening auth-only from false to true, then updates", async () => {
@@ -84,9 +92,31 @@ describe("ailogic:config:set", () => {
     expect(updateStub).to.not.have.been.called;
   });
 
+  it("prompts when tightening template-only from false to true, then updates", async () => {
+    getConfigStub.resolves({ name: "config", trafficFilter: { templateOnly: false } });
+    await command.runner()("security.template-only", "true", {
+      project: PROJECT_ID,
+      interactive: true,
+    });
+    expect(confirmStub).to.have.been.calledOnce;
+    expect(updateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      { trafficFilter: { templateOnly: true } },
+      ["trafficFilter.templateOnly"],
+    );
+  });
+
   it("maps monitoring.state true to telemetryConfig.mode ALL", async () => {
     await command.runner()("monitoring.state", "true", { project: PROJECT_ID });
     expect(updateStub).to.have.been.calledWith(PROJECT_ID, { telemetryConfig: { mode: "ALL" } }, [
+      "telemetryConfig.mode",
+    ]);
+  });
+
+  it("maps monitoring.state false to telemetryConfig.mode NONE without prompting", async () => {
+    await command.runner()("monitoring.state", "false", { project: PROJECT_ID });
+    expect(confirmStub).to.not.have.been.called;
+    expect(updateStub).to.have.been.calledWith(PROJECT_ID, { telemetryConfig: { mode: "NONE" } }, [
       "telemetryConfig.mode",
     ]);
   });
