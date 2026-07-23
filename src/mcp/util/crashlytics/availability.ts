@@ -1,5 +1,11 @@
 import { McpContext } from "../../types";
-import { getPlatformsFromFolder, Platform, detectFiles } from "../../../appUtils";
+import {
+  getPlatformsFromFolder,
+  Platform,
+  detectFiles,
+  getAllDepsFromPackageJson,
+} from "../../../appUtils";
+import { PackageJSON } from "../../../frameworks/compose/discover/runtime/node";
 import * as fs from "fs-extra";
 import * as path from "path";
 
@@ -16,11 +22,12 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   const projectDir = ctx.config.projectDir;
   const platforms = await getPlatformsFromFolder(projectDir);
 
-  // If this is not a mobile app, then Crashlytics will not be present
+  // If this is not a supported platform, then Crashlytics will not be present
   if (
     !platforms.includes(Platform.FLUTTER) &&
     !platforms.includes(Platform.ANDROID) &&
-    !platforms.includes(Platform.IOS)
+    !platforms.includes(Platform.IOS) &&
+    !platforms.includes(Platform.WEB)
   ) {
     host.logger.debug("Found no supported Crashlytics platforms.");
     return false;
@@ -36,6 +43,10 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
   }
   if (platforms.includes(Platform.IOS) && (await iosAppUsesCrashlytics(projectDir))) {
     host.logger.debug("Found iOS app using Crashlytics");
+    return true;
+  }
+  if (platforms.includes(Platform.WEB) && (await webAppUsesCrashlytics(projectDir))) {
+    host.logger.debug("Found Web app using Crashlytics");
     return true;
   }
 
@@ -82,5 +93,41 @@ async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
       return true;
     }
   }
+  return false;
+}
+
+async function webAppUsesCrashlytics(appPath: string): Promise<boolean> {
+  const packageJsonFiles = await detectFiles(appPath, "package.json");
+  let hasFirebaseDep = false;
+  for (const file of packageJsonFiles) {
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      const json = JSON.parse(content) as PackageJSON;
+      const deps = getAllDepsFromPackageJson(json);
+      if (deps.includes("firebase")) {
+        hasFirebaseDep = true;
+        break;
+      }
+    } catch {
+      // Ignore invalid JSON or unreadable package.json
+    }
+  }
+
+  if (!hasFirebaseDep) {
+    return false;
+  }
+
+  const sourceFiles = await detectFiles(appPath, "*.{js,jsx,ts,tsx,mjs,cjs,html,vue,svelte}");
+  for (const file of sourceFiles) {
+    try {
+      const content = await fs.readFile(path.join(appPath, file), "utf8");
+      if (content.includes("firebase/crashlytics")) {
+        return true;
+      }
+    } catch {
+      // Ignore unreadable files
+    }
+  }
+
   return false;
 }
