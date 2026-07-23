@@ -1,185 +1,154 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+
 import { command } from "./ailogic-templates-deploy";
 import * as ailogic from "../gcp/ailogic";
+import * as fsutils from "../fsutils";
+import * as prompt from "../prompt";
+import * as utils from "../utils";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
-import * as fs from "fs";
-import * as prompt from "../prompt";
+
+const PROJECT_ID = "test-project";
+
+function remoteTemplate(id: string, locked = false): ailogic.Template {
+  return {
+    name: `projects/${PROJECT_ID}/locations/global/templates/${id}`,
+    templateString: `${id} content`,
+    locked,
+  };
+}
 
 describe("ailogic:templates:deploy", () => {
-  const sandbox = sinon.createSandbox();
   let listTemplatesStub: sinon.SinonStub;
   let updateTemplateStub: sinon.SinonStub;
   let deleteTemplateStub: sinon.SinonStub;
   let confirmStub: sinon.SinonStub;
-  let existsSyncStub: sinon.SinonStub;
-  let statSyncStub: sinon.SinonStub;
-  let readdirSyncStub: sinon.SinonStub;
-  let readFileSyncStub: sinon.SinonStub;
+  let dirExistsStub: sinon.SinonStub;
+  let listFilesStub: sinon.SinonStub;
+  let fileExistsStub: sinon.SinonStub;
+  let readFileStub: sinon.SinonStub;
+  let logWarningStub: sinon.SinonStub;
 
   beforeEach(() => {
-    listTemplatesStub = sandbox.stub(ailogic, "listTemplates");
-    updateTemplateStub = sandbox.stub(ailogic, "updateTemplate");
-    deleteTemplateStub = sandbox.stub(ailogic, "deleteTemplate");
-    sandbox.stub(ailogic, "ensureAILogicApiEnabled").resolves();
-    confirmStub = sandbox.stub(prompt, "confirm");
-    existsSyncStub = sandbox.stub(fs, "existsSync");
-    statSyncStub = sandbox.stub(fs, "statSync");
-    readdirSyncStub = sandbox.stub(fs, "readdirSync");
-    readFileSyncStub = sandbox.stub(fs, "readFileSync");
-    sandbox.stub(logger, "info");
+    (command as unknown as { befores: unknown[] }).befores = []; // bypass pre-action hooks
+    sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
+    sinon.stub(utils, "logSuccess");
+    logWarningStub = sinon.stub(utils, "logWarning");
+    sinon.stub(logger, "info");
+    listTemplatesStub = sinon.stub(ailogic, "listTemplates").resolves([]);
+    updateTemplateStub = sinon.stub(ailogic, "updateTemplate").resolves(remoteTemplate("x"));
+    deleteTemplateStub = sinon.stub(ailogic, "deleteTemplate").resolves();
+    confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+    dirExistsStub = sinon.stub(fsutils, "dirExistsSync").returns(true);
+    listFilesStub = sinon.stub(fsutils, "listFiles").returns([]);
+    fileExistsStub = sinon.stub(fsutils, "fileExistsSync").returns(true);
+    readFileStub = sinon.stub(fsutils, "readFile").returns("prompt body");
   });
 
-  afterEach(() => {
-    sandbox.restore();
-  });
+  afterEach(() => sinon.restore());
 
-  it("should fail if validation of a prompt file fails", async () => {
-    const options = { project: "test-project", dir: "prompts" };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["t1.prompt", "t2.prompt"]);
-    readFileSyncStub.onFirstCall().returns(""); // empty file -> invalid
-    readFileSyncStub.onSecondCall().returns("---\nmodel: test\n---\nbody"); // valid
+  it("fails validation listing every bad file, before any API call", async () => {
+    listFilesStub.returns(["good.prompt", "empty.prompt", "bad id.prompt"]);
+    readFileStub.callsFake((p: string) => (p.endsWith("empty.prompt") ? "" : "body"));
 
-    await expect(command.runner()(options)).to.be.rejectedWith(
+    await expect(command.runner()({ project: PROJECT_ID })).to.be.rejectedWith(
       FirebaseError,
-      "The following prompt files failed validation:\n  t1.prompt: File is empty.",
+      /empty\.prompt[\s\S]*bad id\.prompt/,
+    );
+    expect(listTemplatesStub).to.not.have.been.called;
+    expect(updateTemplateStub).to.not.have.been.called;
+  });
+
+  it("errors when an explicit --dir does not exist, but no-ops on the default dir", async () => {
+    dirExistsStub.returns(false);
+    await expect(command.runner()({ project: PROJECT_ID, dir: "missing" })).to.be.rejectedWith(
+      FirebaseError,
+      /Directory does not exist/,
     );
 
-    expect(updateTemplateStub).to.not.be.called;
-  });
-
-  it("should fail if local file targets a locked remote template", async () => {
-    const options = { project: "test-project", dir: "prompts" };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["welcome.prompt"]);
-    readFileSyncStub.returns("welcome body");
-
-    // Remote template exists and is locked
-    listTemplatesStub.resolves([
-      {
-        name: "projects/test-project/locations/global/templates/welcome",
-        templateString: "old content",
-        locked: true,
-      },
-    ]);
-
-    await expect(command.runner()(options)).to.be.rejectedWith(
-      FirebaseError,
-      "The following templates are locked and cannot be updated or deleted:\n\n  welcome\n\nUnlock them by running:\n\n  firebase ailogic:templates:unlock <templateId>\n\nThen deploy again. No templates were deployed.",
-    );
-
-    expect(updateTemplateStub).to.not.be.called;
-  });
-
-  it("should deploy templates successfully", async () => {
-    const options = { project: "test-project", dir: "prompts" };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["welcome.prompt"]);
-    readFileSyncStub.returns("welcome body");
-
-    listTemplatesStub.resolves([]);
-    updateTemplateStub.resolves({});
-
-    await command.runner()(options);
-
-    expect(updateTemplateStub).to.have.been.calledOnceWith("test-project", "global", "welcome", {
-      templateString: "welcome body",
-      displayName: "welcome",
+    expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal({
+      deployed: [],
+      pruned: [],
     });
   });
 
-  it("should prune templates successfully after confirmation", async () => {
-    const options = { project: "test-project", dir: "prompts", prune: true, interactive: true };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["welcome.prompt"]);
-    readFileSyncStub.returns("welcome body");
+  it("creates new templates and updates existing ones", async () => {
+    listFilesStub.returns(["welcome.prompt", "fresh.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("welcome")]);
 
-    // remote has welcome and stale-template
-    listTemplatesStub.resolves([
-      {
-        name: "projects/test-project/locations/global/templates/welcome",
-        templateString: "old content",
-        locked: false,
-      },
-      {
-        name: "projects/test-project/locations/global/templates/stale-template",
-        templateString: "stale content",
-        locked: false,
-      },
-    ]);
-
-    updateTemplateStub.resolves({});
-    deleteTemplateStub.resolves({});
-    confirmStub.resolves(true); // User confirms pruning
-
-    await command.runner()(options);
-
-    expect(updateTemplateStub).to.have.been.calledOnceWith("test-project", "global", "welcome", {
-      templateString: "welcome body",
-      displayName: "welcome",
+    expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal({
+      deployed: ["fresh", "welcome"],
+      pruned: [],
     });
-    expect(deleteTemplateStub).to.have.been.calledOnceWith(
-      "test-project",
-      "global",
-      "stale-template",
-    );
+    expect(updateTemplateStub).to.have.been.calledTwice;
+    expect(updateTemplateStub).to.have.been.calledWith(PROJECT_ID, "fresh", {
+      templateString: "prompt body",
+      displayName: "fresh",
+    });
   });
 
-  it("should fail prune if stale remote template is locked", async () => {
-    const options = { project: "test-project", dir: "prompts", prune: true };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["welcome.prompt"]);
-    readFileSyncStub.returns("welcome body");
+  it("blocks the whole deploy when a locked template would be updated or pruned", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("welcome", true), remoteTemplate("stale", true)]);
 
-    // stale template is locked
-    listTemplatesStub.resolves([
-      {
-        name: "projects/test-project/locations/global/templates/welcome",
-        templateString: "old content",
-        locked: false,
-      },
-      {
-        name: "projects/test-project/locations/global/templates/stale-template",
-        templateString: "stale content",
-        locked: true,
-      },
-    ]);
-
-    await expect(command.runner()(options)).to.be.rejectedWith(
+    await expect(command.runner()({ project: PROJECT_ID, prune: true })).to.be.rejectedWith(
       FirebaseError,
-      "The following templates are locked and cannot be updated or deleted:\n\n  stale-template\n\nUnlock them by running:\n\n  firebase ailogic:templates:unlock <templateId>\n\nThen deploy again. No templates were deployed.",
+      /locked[\s\S]*welcome[\s\S]*stale/,
     );
-
-    expect(updateTemplateStub).to.not.be.called;
-    expect(deleteTemplateStub).to.not.be.called;
-  });
-
-  it("does not prune in non-interactive mode without force", async () => {
-    const options = { project: "test-project", dir: "prompts", prune: true, nonInteractive: true };
-    existsSyncStub.returns(true);
-    statSyncStub.returns({ isDirectory: () => true });
-    readdirSyncStub.returns(["welcome.prompt"]);
-    readFileSyncStub.returns("welcome body");
-
-    listTemplatesStub.resolves([
-      {
-        name: "projects/test-project/locations/global/templates/stale-template",
-        templateString: "stale content",
-        locked: false,
-      },
-    ]);
-    // confirm() aborts in non-interactive mode unless --force is set; the command must
-    // surface that and not delete anything.
-    confirmStub.rejects(new FirebaseError("cannot be answered in non-interactive mode"));
-
-    await expect(command.runner()(options)).to.be.rejectedWith(FirebaseError, /non-interactive/);
+    expect(updateTemplateStub).to.not.have.been.called;
     expect(deleteTemplateStub).to.not.have.been.called;
+  });
+
+  it("prunes after confirmation and reports the result", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("welcome"), remoteTemplate("stale")]);
+
+    expect(
+      await command.runner()({ project: PROJECT_ID, prune: true, interactive: true }),
+    ).to.deep.equal({ deployed: ["welcome"], pruned: ["stale"] });
+    expect(confirmStub).to.have.been.calledOnce;
+    expect(deleteTemplateStub).to.have.been.calledOnceWith(PROJECT_ID, "stale");
+  });
+
+  it("aborts the prune when confirmation is declined", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("stale")]);
+    confirmStub.resolves(false);
+
+    await expect(
+      command.runner()({ project: PROJECT_ID, prune: true, interactive: true }),
+    ).to.be.rejectedWith(FirebaseError, /aborted/i);
+    expect(deleteTemplateStub).to.not.have.been.called;
+  });
+
+  it("passes force and nonInteractive through to confirm for the prune gate", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("stale")]);
+
+    await command.runner()({ project: PROJECT_ID, prune: true, force: true });
+
+    expect(confirmStub).to.have.been.calledWithMatch({ force: true });
+    expect(deleteTemplateStub).to.have.been.calledOnceWith(PROJECT_ID, "stale");
+  });
+
+  it("skips prune with a warning when there are no local prompt files", async () => {
+    listFilesStub.returns([]);
+    expect(await command.runner()({ project: PROJECT_ID, prune: true })).to.deep.equal({
+      deployed: [],
+      pruned: [],
+    });
+    expect(logWarningStub).to.have.been.calledWithMatch(/--prune was ignored/);
+    expect(listTemplatesStub).to.not.have.been.called;
+  });
+
+  it("reports a directory named like a prompt file instead of crashing", async () => {
+    listFilesStub.returns(["welcome.prompt", "folder.prompt"]);
+    fileExistsStub.callsFake((p: string) => !p.endsWith("folder.prompt"));
+
+    await expect(command.runner()({ project: PROJECT_ID })).to.be.rejectedWith(
+      FirebaseError,
+      /folder\.prompt: Not a file/,
+    );
   });
 });

@@ -244,7 +244,7 @@ export interface Template {
   locked?: boolean;
 }
 
-export interface ListTemplatesResponse {
+interface ListTemplatesResponse {
   templates?: Template[];
   nextPageToken?: string;
 }
@@ -274,6 +274,27 @@ export function assertKnownConfigPath(path: string, validPaths: string[]): void 
   }
 }
 
+// Templates live only at the fixed global location, so the resource name is
+// derived from the project and template id alone (mirroring getConfig/updateConfig).
+function templateName(projectId: string, templateId: string): string {
+  return `projects/${projectId}/locations/${GLOBAL_LOCATION}/templates/${templateId}`;
+}
+
+/**
+ * Runs `fn`, mapping a 404 from the API to a friendly "does not exist" error for
+ * the given template. Other errors are rethrown unchanged.
+ */
+export async function withTemplate404<T>(templateId: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
+      throw new FirebaseError(`Template ${bold(templateId)} does not exist.`);
+    }
+    throw err;
+  }
+}
+
 export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";
 
 export const PROVIDER_TYPES: ProviderType[] = ["gemini-developer-api", "gemini-agent-platform-api"];
@@ -298,13 +319,8 @@ export function parseProviderType(value: string): ProviderType {
 /**
  * Gets a Template.
  */
-export async function getTemplate(
-  projectId: string,
-  location: string,
-  templateId: string,
-): Promise<Template> {
-  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
-  const res = await client.get<Template>(name);
+export async function getTemplate(projectId: string, templateId: string): Promise<Template> {
+  const res = await client.get<Template>(templateName(projectId, templateId));
   return res.body;
 }
 
@@ -313,17 +329,15 @@ export async function getTemplate(
  */
 export async function updateTemplate(
   projectId: string,
-  location: string,
   templateId: string,
   template: DeepOmit<Template, TemplateOutputOnlyFields>,
   allowMissing = true,
 ): Promise<Template> {
-  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
   const queryParams: Record<string, string> = {
     allowMissing: allowMissing ? "true" : "false",
   };
   const res = await client.patch<DeepOmit<Template, TemplateOutputOnlyFields>, Template>(
-    name,
+    templateName(projectId, templateId),
     template,
     { queryParams },
   );
@@ -333,52 +347,32 @@ export async function updateTemplate(
 /**
  * Deletes a Template.
  */
-export async function deleteTemplate(
-  projectId: string,
-  location: string,
-  templateId: string,
-): Promise<void> {
-  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
-  await client.delete<void>(name);
+export async function deleteTemplate(projectId: string, templateId: string): Promise<void> {
+  await client.delete<void>(templateName(projectId, templateId));
 }
 
 /**
- * Locks a Template.
+ * Locks or unlocks a Template. A locked template cannot be updated or deleted
+ * until it is unlocked.
  */
-export async function lockTemplate(
+export async function setTemplateLocked(
   projectId: string,
-  location: string,
   templateId: string,
+  locked: boolean,
 ): Promise<Template> {
-  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
-  const template = { locked: true };
-  const res = await client.patch<Partial<Template>, Template>(name, template, {
-    queryParams: { updateMask: "locked" },
-  });
-  return res.body;
-}
-
-/**
- * Unlocks a Template.
- */
-export async function unlockTemplate(
-  projectId: string,
-  location: string,
-  templateId: string,
-): Promise<Template> {
-  const name = `projects/${projectId}/locations/${location}/templates/${templateId}`;
-  const template = { locked: false };
-  const res = await client.patch<Partial<Template>, Template>(name, template, {
-    queryParams: { updateMask: "locked" },
-  });
+  const res = await client.patch<Partial<Template>, Template>(
+    templateName(projectId, templateId),
+    { locked },
+    { queryParams: { updateMask: "locked" } },
+  );
   return res.body;
 }
 
 /**
  * Lists Templates, slurping all pages.
  */
-export async function listTemplates(projectId: string, location: string): Promise<Template[]> {
-  const parent = `projects/${projectId}/locations/${location}`;
+export async function listTemplates(projectId: string): Promise<Template[]> {
+  const parent = `projects/${projectId}/locations/${GLOBAL_LOCATION}`;
   let pageToken: string | undefined;
   const templates: Template[] = [];
 

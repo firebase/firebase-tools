@@ -237,7 +237,7 @@ describe("ailogic", () => {
       };
       getStub.resolves({ body: mockTemplate });
 
-      const template = await ailogic.getTemplate("my-project", "global", "temp-1");
+      const template = await ailogic.getTemplate("my-project", "temp-1");
 
       expect(getStub).to.have.been.calledWith(
         "projects/my-project/locations/global/templates/temp-1",
@@ -252,7 +252,7 @@ describe("ailogic", () => {
       };
       patchStub.resolves({ body: mockTemplate });
 
-      const template = await ailogic.updateTemplate("my-project", "global", "temp-1", {
+      const template = await ailogic.updateTemplate("my-project", "temp-1", {
         templateString: "hello",
       });
 
@@ -271,7 +271,7 @@ describe("ailogic", () => {
     it("should delete template", async () => {
       deleteStub.resolves({});
 
-      await ailogic.deleteTemplate("my-project", "global", "temp-1");
+      await ailogic.deleteTemplate("my-project", "temp-1");
 
       expect(deleteStub).to.have.been.calledWith(
         "projects/my-project/locations/global/templates/temp-1",
@@ -286,7 +286,7 @@ describe("ailogic", () => {
       };
       patchStub.resolves({ body: mockTemplate });
 
-      const template = await ailogic.lockTemplate("my-project", "global", "temp-1");
+      const template = await ailogic.setTemplateLocked("my-project", "temp-1", true);
 
       expect(patchStub).to.have.been.calledWithMatch(
         "projects/my-project/locations/global/templates/temp-1",
@@ -308,7 +308,7 @@ describe("ailogic", () => {
       };
       patchStub.resolves({ body: mockTemplate });
 
-      const template = await ailogic.unlockTemplate("my-project", "global", "temp-1");
+      const template = await ailogic.setTemplateLocked("my-project", "temp-1", false);
 
       expect(patchStub).to.have.been.calledWithMatch(
         "projects/my-project/locations/global/templates/temp-1",
@@ -335,7 +335,7 @@ describe("ailogic", () => {
         },
       });
 
-      const templates = await ailogic.listTemplates("my-project", "global");
+      const templates = await ailogic.listTemplates("my-project");
 
       expect(getStub).to.have.been.calledTwice;
       expect(templates).to.deep.equal([

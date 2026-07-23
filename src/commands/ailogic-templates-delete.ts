@@ -5,7 +5,7 @@ import * as ailogic from "../gcp/ailogic";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { confirm } from "../prompt";
-import { FirebaseError, getErrStatus } from "../error";
+import { FirebaseError } from "../error";
 
 import { Options } from "../options";
 
@@ -18,15 +18,9 @@ export const command = new Command("ailogic:templates:delete <templateId>")
 
     await ailogic.ensureAILogicApiEnabled(projectId, options);
 
-    let template: ailogic.Template;
-    try {
-      template = await ailogic.getTemplate(projectId, ailogic.GLOBAL_LOCATION, templateId);
-    } catch (err: unknown) {
-      if (getErrStatus(err) === 404) {
-        throw new FirebaseError(`Template ${clc.bold(templateId)} does not exist.`);
-      }
-      throw err;
-    }
+    const template = await ailogic.withTemplate404(templateId, () =>
+      ailogic.getTemplate(projectId, templateId),
+    );
 
     // A locked template cannot be deleted; --force does not override a lock.
     if (template.locked) {
@@ -45,6 +39,9 @@ export const command = new Command("ailogic:templates:delete <templateId>")
       throw new FirebaseError("Command aborted.", { exit: 1 });
     }
 
-    await ailogic.deleteTemplate(projectId, ailogic.GLOBAL_LOCATION, templateId);
+    // The template can be deleted out from under us between the get and the delete;
+    // map that 404 to the same friendly error.
+    await ailogic.withTemplate404(templateId, () => ailogic.deleteTemplate(projectId, templateId));
     utils.logSuccess(`Deleted template: ${clc.bold(templateId)}`);
+    return template;
   });

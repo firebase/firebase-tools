@@ -44,10 +44,12 @@ describe("ailogic:templates:delete", () => {
     expect(deleteStub).to.not.have.been.called;
   });
 
-  it("deletes after confirmation", async () => {
-    await command.runner()("welcome", { project: PROJECT_ID, interactive: true });
+  it("deletes after confirmation and returns the deleted template", async () => {
+    expect(
+      await command.runner()("welcome", { project: PROJECT_ID, interactive: true }),
+    ).to.deep.equal({ name: "welcome", templateString: "x" });
     expect(confirmStub).to.have.been.calledOnce;
-    expect(deleteStub).to.have.been.calledWith(PROJECT_ID, ailogic.GLOBAL_LOCATION, "welcome");
+    expect(deleteStub).to.have.been.calledWith(PROJECT_ID, "welcome");
   });
 
   it("aborts when confirmation is declined", async () => {

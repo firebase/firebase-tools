@@ -8,31 +8,39 @@ import * as Table from "cli-table3";
 
 import { Options } from "../options";
 
+const PREVIEW_LENGTH = 60;
+const ELLIPSIS = "...";
+
 export const command = new Command("ailogic:templates:list")
   .description("list deployed templates")
   .before(requirePermissions, ["firebasevertexai.templates.get"])
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     if (!(await ailogic.isAILogicApiEnabled(projectId))) {
-      logger.info(clc.bold("Firebase AI Logic is not enabled on this project."));
+      logger.info("Firebase AI Logic is not enabled on this project.");
       return [];
     }
-    const templates = await ailogic.listTemplates(projectId, ailogic.GLOBAL_LOCATION);
+    const templates = await ailogic.listTemplates(projectId);
 
     if (templates.length === 0) {
       logger.info(clc.bold("No deployed templates found."));
       return templates;
     }
 
-    const tableHead = ["Template ID", "Display Name", "Locked", "Template Preview"];
-    const table = new Table({ head: tableHead, style: { head: ["green"] } });
+    const table = new Table({
+      head: ["Template ID", "Display Name", "Locked", "Template Preview"],
+      style: { head: ["green"] },
+    });
 
     for (const t of templates) {
-      const templateId = ailogic.templateIdFromName(t.name);
+      // Defensive: list responses may elide large fields.
+      const templateString = t.templateString ?? "";
       const preview =
-        t.templateString.length > 60 ? t.templateString.substring(0, 57) + "..." : t.templateString;
+        templateString.length > PREVIEW_LENGTH
+          ? templateString.substring(0, PREVIEW_LENGTH - ELLIPSIS.length) + ELLIPSIS
+          : templateString;
       table.push([
-        clc.bold(templateId),
+        clc.bold(ailogic.templateIdFromName(t.name)),
         t.displayName || "",
         t.locked ? "Yes" : "No",
         preview.replace(/\n/g, " "),

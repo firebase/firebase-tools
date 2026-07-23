@@ -2,9 +2,7 @@ import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
 import * as ailogic from "../gcp/ailogic";
-import * as clc from "colorette";
 import { logger } from "../logger";
-import { FirebaseError, getErrStatus } from "../error";
 
 import { Options } from "../options";
 
@@ -17,15 +15,9 @@ export const command = new Command("ailogic:templates:get <templateId>")
       logger.info("Firebase AI Logic is not enabled on this project.");
       return;
     }
-    let template: ailogic.Template;
-    try {
-      template = await ailogic.getTemplate(projectId, ailogic.GLOBAL_LOCATION, templateId);
-    } catch (err: unknown) {
-      if (getErrStatus(err) === 404) {
-        throw new FirebaseError(`Template ${clc.bold(templateId)} does not exist.`);
-      }
-      throw err;
-    }
+    const template = await ailogic.withTemplate404(templateId, () =>
+      ailogic.getTemplate(projectId, templateId),
+    );
     logger.info(template.templateString);
     return template;
   });

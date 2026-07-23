@@ -11,8 +11,7 @@ import { FirebaseError } from "../error";
 const PROJECT_ID = "test-project";
 
 describe("ailogic:templates:lock / unlock", () => {
-  let lockStub: sinon.SinonStub;
-  let unlockStub: sinon.SinonStub;
+  let setLockedStub: sinon.SinonStub;
 
   beforeEach(() => {
     (lockCommand as unknown as { befores: unknown[] }).befores = [];
@@ -20,24 +19,31 @@ describe("ailogic:templates:lock / unlock", () => {
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
     sinon.stub(utils, "logSuccess");
-    lockStub = sinon.stub(ailogic, "lockTemplate").resolves();
-    unlockStub = sinon.stub(ailogic, "unlockTemplate").resolves();
+    setLockedStub = sinon
+      .stub(ailogic, "setTemplateLocked")
+      .resolves({ name: "welcome", templateString: "x" });
   });
 
   afterEach(() => sinon.restore());
 
-  it("locks a template", async () => {
-    await lockCommand.runner()("welcome", { project: PROJECT_ID });
-    expect(lockStub).to.have.been.calledWith(PROJECT_ID, ailogic.GLOBAL_LOCATION, "welcome");
+  it("locks a template and returns it", async () => {
+    expect(await lockCommand.runner()("welcome", { project: PROJECT_ID })).to.deep.equal({
+      name: "welcome",
+      templateString: "x",
+    });
+    expect(setLockedStub).to.have.been.calledWith(PROJECT_ID, "welcome", true);
   });
 
-  it("unlocks a template", async () => {
-    await unlockCommand.runner()("welcome", { project: PROJECT_ID });
-    expect(unlockStub).to.have.been.calledWith(PROJECT_ID, ailogic.GLOBAL_LOCATION, "welcome");
+  it("unlocks a template and returns it", async () => {
+    expect(await unlockCommand.runner()("welcome", { project: PROJECT_ID })).to.deep.equal({
+      name: "welcome",
+      templateString: "x",
+    });
+    expect(setLockedStub).to.have.been.calledWith(PROJECT_ID, "welcome", false);
   });
 
   it("maps a 404 to a friendly 'does not exist' error on lock", async () => {
-    lockStub.rejects(new FirebaseError("not found", { status: 404 }));
+    setLockedStub.rejects(new FirebaseError("not found", { status: 404 }));
     await expect(lockCommand.runner()("missing", { project: PROJECT_ID })).to.be.rejectedWith(
       FirebaseError,
       /does not exist/,
@@ -45,7 +51,7 @@ describe("ailogic:templates:lock / unlock", () => {
   });
 
   it("maps a 404 to a friendly 'does not exist' error on unlock", async () => {
-    unlockStub.rejects(new FirebaseError("not found", { status: 404 }));
+    setLockedStub.rejects(new FirebaseError("not found", { status: 404 }));
     await expect(unlockCommand.runner()("missing", { project: PROJECT_ID })).to.be.rejectedWith(
       FirebaseError,
       /does not exist/,
