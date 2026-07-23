@@ -188,8 +188,10 @@ export async function deploy(
 
   // Deploy functions
   if (payload.functions && context.config) {
-    await checkDefaultServiceAccountEnabled(context, options, payload);
-    await checkHttpIam(context, options, payload);
+    await Promise.all([
+      checkDefaultServiceAccountEnabled(context, options, payload),
+      checkHttpIam(context, options, payload),
+    ]);
     const uploads: Promise<void>[] = [];
     for (const [codebase, { wantBackend, haveBackend }] of Object.entries(payload.functions)) {
       if (shouldUploadBeSkipped(context, wantBackend, haveBackend)) {
