@@ -1,3 +1,4 @@
+- Validate task queue function names at deploy time, since Cloud Tasks queue IDs (derived from the function name) cannot contain underscores (#7365).
 - Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
