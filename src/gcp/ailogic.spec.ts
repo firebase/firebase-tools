@@ -1,11 +1,15 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as ailogic from "./ailogic";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import * as serviceUsage from "./serviceusage";
+import * as cloudbilling from "./cloudbilling";
 import {
   AI_LOGIC_BEFORE_GENERATE_CONTENT,
   AI_LOGIC_AFTER_GENERATE_CONTENT,
   AILogicEndpoint,
 } from "../deploy/functions/services/ailogic";
+import { FirebaseError } from "../error";
 
 describe("ailogic", () => {
   const mockEndpointBase = {
@@ -140,6 +144,215 @@ describe("ailogic", () => {
           },
         },
       );
+    });
+  });
+
+  describe("getConfig", () => {
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getStub = sinon.stub(ailogic.client, "get");
+    });
+
+    afterEach(() => {
+      getStub.restore();
+    });
+
+    it("should fetch config", async () => {
+      const mockConfig: ailogic.Config = {
+        name: "projects/my-project/locations/global/config",
+        generativeLanguageConfig: { apiKey: "key" },
+      };
+      getStub.resolves({ body: mockConfig });
+
+      const config = await ailogic.getConfig("my-project");
+
+      expect(getStub).to.have.been.calledWithMatch("projects/my-project/locations/global/config");
+      expect(config).to.deep.equal(mockConfig);
+    });
+  });
+
+  describe("updateConfig", () => {
+    let patchStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      patchStub = sinon.stub(ailogic.client, "patch");
+    });
+
+    afterEach(() => {
+      patchStub.restore();
+    });
+
+    it("should update config", async () => {
+      const patchConfig: Partial<ailogic.Config> = {
+        generativeLanguageConfig: { apiKey: "new-key" },
+      };
+      const mockConfig: ailogic.Config = {
+        name: "projects/my-project/locations/global/config",
+        generativeLanguageConfig: { apiKey: "new-key" },
+      };
+      patchStub.resolves({ body: mockConfig });
+
+      const config = await ailogic.updateConfig("my-project", patchConfig, [
+        "generativeLanguageConfig",
+      ]);
+
+      expect(patchStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/config",
+        patchConfig,
+        {
+          queryParams: {
+            updateMask: "generativeLanguageConfig",
+          },
+        },
+      );
+      expect(config).to.deep.equal(mockConfig);
+    });
+  });
+
+  describe("providers", () => {
+    let ensureStub: sinon.SinonStub;
+    let disableStub: sinon.SinonStub;
+    let checkStub: sinon.SinonStub;
+    let billingStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      ensureStub = sinon.stub(ensureApiEnabled, "ensure");
+      // disableServiceAndPoll now owns cache invalidation, so it is stubbed here and
+      // that behavior is verified in serviceusage.spec.ts.
+      disableStub = sinon.stub(serviceUsage, "disableServiceAndPoll");
+      checkStub = sinon.stub(ensureApiEnabled, "check");
+      billingStub = sinon.stub(cloudbilling, "checkBillingEnabled");
+    });
+
+    afterEach(() => {
+      ensureStub.restore();
+      disableStub.restore();
+      checkStub.restore();
+      billingStub.restore();
+    });
+
+    it("should enable gemini-developer-api", async () => {
+      ensureStub.resolves();
+
+      await ailogic.enableProvider("my-project", "gemini-developer-api");
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(ensureStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+      expect(ensureStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should enable gemini-agent-platform-api if billing is enabled", async () => {
+      ensureStub.resolves();
+      billingStub.resolves(true);
+
+      await ailogic.enableProvider("my-project", "gemini-agent-platform-api");
+
+      expect(ensureStub).to.have.been.calledTwice;
+      expect(ensureStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "aiplatform.googleapis.com",
+        "ailogic",
+      );
+      expect(ensureStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should reject enabling gemini-agent-platform-api if billing is disabled", async () => {
+      ensureStub.resolves();
+      billingStub.resolves(false);
+
+      await expect(
+        ailogic.enableProvider("my-project", "gemini-agent-platform-api"),
+      ).to.be.rejectedWith(FirebaseError, /must be on the Blaze/);
+
+      expect(ensureStub).to.not.have.been.called;
+    });
+
+    it("should disable gemini-developer-api and disable proxy if gemini-agent-platform-api is also disabled", async () => {
+      disableStub.resolves();
+      checkStub.resolves(false); // gemini-agent-platform-api is disabled
+
+      await ailogic.disableProvider("my-project", "gemini-developer-api");
+
+      // The cross-check must consult the OTHER provider's API.
+      expect(checkStub).to.have.been.calledWith("my-project", "aiplatform.googleapis.com");
+      expect(disableStub).to.have.been.calledTwice;
+      expect(disableStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+      expect(disableStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "firebasevertexai.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should disable gemini-developer-api but NOT disable proxy if gemini-agent-platform-api is enabled", async () => {
+      disableStub.resolves();
+      checkStub.resolves(true); // gemini-agent-platform-api is enabled
+
+      await ailogic.disableProvider("my-project", "gemini-developer-api");
+
+      expect(disableStub).to.have.been.calledOnce;
+      expect(disableStub.firstCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
+    });
+
+    it("should list enabled providers", async () => {
+      checkStub.onFirstCall().resolves(true); // gemini-developer-api is enabled
+      checkStub.onSecondCall().resolves(true); // gemini-agent-platform-api API is enabled
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal(["gemini-developer-api", "gemini-agent-platform-api"]);
+    });
+
+    it("should map each provider to its own API enablement state", async () => {
+      // Pin per-API results so a swapped destructure/check cannot pass.
+      checkStub.withArgs("my-project", "generativelanguage.googleapis.com").resolves(true);
+      checkStub.withArgs("my-project", "aiplatform.googleapis.com").resolves(false);
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal(["gemini-developer-api"]);
+    });
+  });
+
+  describe("parseProviderType", () => {
+    it("returns the provider for a valid value", () => {
+      expect(ailogic.parseProviderType("gemini-developer-api")).to.equal("gemini-developer-api");
+      expect(ailogic.parseProviderType("gemini-agent-platform-api")).to.equal(
+        "gemini-agent-platform-api",
+      );
+    });
+
+    it("throws a FirebaseError listing the valid providers for an invalid value", () => {
+      expect(() => ailogic.parseProviderType("agent-platform-gemini-api")).to.throw(
+        FirebaseError,
+        /Invalid provider type/,
+      );
+    });
+
+    it("isProviderType narrows valid values only", () => {
+      expect(ailogic.isProviderType("gemini-developer-api")).to.be.true;
+      expect(ailogic.isProviderType("nope")).to.be.false;
     });
   });
 });
