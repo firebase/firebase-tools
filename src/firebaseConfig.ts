@@ -188,6 +188,28 @@ type FunctionConfigBase = {
   prefix?: string;
 } & Deployable;
 
+export type KitSourcePackage = {
+  /** Package identifier (e.g., "@firebase-functions-kits/firestore-bigquery-export") */
+  id: string;
+};
+
+export type KitFunctionConfig = FunctionConfigBase & {
+  /** Unique identifier for the functions kit (peer to codebase) */
+  kit: string;
+  /** Package details when resolved from a package repository. */
+  sourcePackage?: KitSourcePackage;
+  /** Local directory containing the kit source code. */
+  source: string;
+  /** Dictionary mapping instance IDs to their configuration directories */
+  instances?: Record<string, string>;
+  /** codebase cannot be used in a kit stanza */
+  codebase?: never;
+  /** remoteSource cannot be used in a kit stanza */
+  remoteSource?: never;
+  /** prefix cannot be used in a kit stanza */
+  prefix?: never;
+};
+
 export type LocalFunctionConfig = FunctionConfigBase & {
   // Directory containing the Cloud Functions source code.
   source: string;
@@ -197,6 +219,8 @@ export type LocalFunctionConfig = FunctionConfigBase & {
   disallowLegacyRuntimeConfig?: boolean;
   // Forbid remoteSource when local source is provided
   remoteSource?: never;
+  // Forbid kit when local source is provided
+  kit?: never;
 };
 
 export type RemoteFunctionConfig = FunctionConfigBase & {
@@ -213,9 +237,11 @@ export type RemoteFunctionConfig = FunctionConfigBase & {
   runtime: ActiveRuntime;
   // Forbid local source when remoteSource is provided
   source?: never;
+  // Forbid kit when remoteSource is provided
+  kit?: never;
 };
 
-export type FunctionConfig = LocalFunctionConfig | RemoteFunctionConfig;
+export type FunctionConfig = LocalFunctionConfig | RemoteFunctionConfig | KitFunctionConfig;
 
 export type FunctionsConfig = FunctionConfig | FunctionConfig[];
 
