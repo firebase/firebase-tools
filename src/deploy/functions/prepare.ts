@@ -262,7 +262,7 @@ export async function prepare(
   const existingBackend = await backend.existingBackend(context);
 
   // == Phase 1.5 Prepare extensions found in codebases if any
-  if (Object.values(wantBuilds).some((b) => b.extensions)) {
+  if (Object.values(wantBuilds).some((b) => b.extensions && Object.keys(b.extensions).length > 0)) {
     const extContext: ExtContext = {};
     const extPayload: ExtPayload = {};
     await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
