@@ -265,10 +265,17 @@ export class Delegate {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
 
     const kill = async (): Promise<void> => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
+      // The process may have already exited (e.g. it crashed while discovery was
+      // still running) before kill() is called. In that case the 'exit' event has
+      // already fired and a listener registered now would never see it, hanging
+      // this function forever.
+      const alreadyExited = childProcess.exitCode !== null || childProcess.signalCode !== null;
+      const p = alreadyExited
+        ? Promise.resolve()
+        : new Promise<void>((resolve, reject) => {
+            childProcess.once("exit", resolve);
+            childProcess.once("error", reject);
+          });
 
       try {
         await fetch(`http://localhost:${port}/__/quitquitquit`);

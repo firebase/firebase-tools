@@ -178,15 +178,27 @@ export class Delegate implements runtimes.RuntimeDelegate {
       } catch (e) {
         logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
       }
+      // The process may have already exited (e.g. it crashed while discovery was
+      // still running) before kill() is called. In that case the 'exit' event has
+      // already fired and a listener registered now would never see it, hanging
+      // this function forever.
+      if (childProcess.exitCode !== null || childProcess.signalCode !== null) {
+        return;
+      }
       const quitTimeout = setTimeout(() => {
         if (!childProcess.killed) {
           childProcess.kill("SIGKILL");
         }
       }, 10_000);
-      clearTimeout(quitTimeout);
       return new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
+        childProcess.once("exit", () => {
+          clearTimeout(quitTimeout);
+          resolve();
+        });
+        childProcess.once("error", (err) => {
+          clearTimeout(quitTimeout);
+          reject(err);
+        });
       });
     };
     return Promise.resolve({ process: childProcess, kill });
