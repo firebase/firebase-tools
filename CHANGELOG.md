@@ -1,3 +1,4 @@
 - Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - `firebase deploy --only functions` now fails fast with an actionable error if a 1st gen function relies on a missing or disabled default App Engine service account, instead of surfacing a generic "internal error" after several retries (#4524)
+- Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
