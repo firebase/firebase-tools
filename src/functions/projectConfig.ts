@@ -1,12 +1,13 @@
-import { FunctionsConfig, FunctionConfig } from "../firebaseConfig";
+import { FunctionsConfig, FunctionConfig, KitSourcePackage } from "../firebaseConfig";
 import { FirebaseError } from "../error";
 import type { ActiveRuntime } from "../deploy/functions/runtimes/supported/types";
+import * as experiments from "../experiments";
 
 export type NormalizedConfig = [FunctionConfig, ...FunctionConfig[]];
-// Stronger validated variants: local vs remote.
+// Stronger validated variants: local vs remote vs kit.
 type FunctionConfigCommon = Omit<
   FunctionConfig,
-  "source" | "remoteSource" | "codebase" | "runtime"
+  "source" | "remoteSource" | "codebase" | "runtime" | "kit" | "sourcePackage" | "instances"
 >;
 
 export type ValidatedLocalSingle = FunctionConfigCommon & {
@@ -16,6 +17,7 @@ export type ValidatedLocalSingle = FunctionConfigCommon & {
   runtime?: ActiveRuntime;
   remoteSource?: never;
   disallowLegacyRuntimeConfig?: boolean;
+  kit?: never;
 };
 
 export type ValidatedRemoteSingle = FunctionConfigCommon & {
@@ -24,9 +26,21 @@ export type ValidatedRemoteSingle = FunctionConfigCommon & {
   runtime: ActiveRuntime;
   codebase: string;
   source?: never;
+  kit?: never;
 };
 
-export type ValidatedSingle = ValidatedLocalSingle | ValidatedRemoteSingle;
+export type ValidatedKitSingle = FunctionConfigCommon & {
+  kit: string;
+  sourcePackage?: KitSourcePackage;
+  source: string;
+  instances?: Record<string, string>;
+  codebase?: never;
+  runtime?: ActiveRuntime;
+  remoteSource?: never;
+  prefix?: never;
+};
+
+export type ValidatedSingle = ValidatedLocalSingle | ValidatedRemoteSingle | ValidatedKitSingle;
 export type ValidatedConfig = [ValidatedSingle, ...ValidatedSingle[]];
 
 export const DEFAULT_CODEBASE = "default";
@@ -77,6 +91,27 @@ export function validatePrefix(prefix: string): void {
 }
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
+  if ("kit" in config && config.kit) {
+    experiments.assertEnabled("kits", "use functions kits");
+    if (config.codebase) {
+      throw new FirebaseError(
+        "Cannot specify both 'kit' and 'codebase' in a single functions config.",
+      );
+    }
+    if (config.remoteSource) {
+      throw new FirebaseError(
+        "Cannot specify both 'kit' and 'remoteSource' in a single functions config.",
+      );
+    }
+    if ((config as { prefix?: string }).prefix) {
+      throw new FirebaseError("Cannot specify 'prefix' in a functions kit config.");
+    }
+    if (!config.source) {
+      throw new FirebaseError("Must specify 'source' in a functions kit config.");
+    }
+    return config as ValidatedKitSingle;
+  }
+
   const { source, remoteSource, runtime, codebase: providedCodebase, ...rest } = config;
 
   // Exactly one of source or remoteSource must be specified
@@ -102,7 +137,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
       ...commonConfig,
       source,
       ...(runtime ? { runtime } : {}),
-    };
+    } as ValidatedLocalSingle;
   } else if (remoteSource) {
     if (!remoteSource.repository || !remoteSource.ref) {
       throw new FirebaseError("remoteSource requires 'repository' and 'ref' to be specified.");
@@ -117,7 +152,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
       ...commonConfig,
       remoteSource,
       runtime,
-    };
+    } as ValidatedRemoteSingle;
   }
 
   // Unreachable due to XOR guard
@@ -138,12 +173,14 @@ export function assertUnique(
   }
   for (const single of config) {
     const value = single[property];
-    if (values.has(value)) {
-      throw new FirebaseError(
-        `functions.${property} must be unique but '${value}' was used more than once.`,
-      );
+    if (value !== undefined) {
+      if (values.has(value)) {
+        throw new FirebaseError(
+          `functions.${String(property)} must be unique but '${String(value)}' was used more than once.`,
+        );
+      }
+      values.add(value);
     }
-    values.add(value);
   }
 }
 
@@ -177,13 +214,44 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
   }
 }
 
+function assertUniqueKitInstancesAndCodebases(config: ValidatedConfig): void {
+  const codebases = new Set<string>();
+  const instanceIds = new Set<string>();
+
+  for (const c of config) {
+    if ("codebase" in c && c.codebase) {
+      codebases.add(c.codebase);
+    }
+    if ("instances" in c && c.instances) {
+      for (const instanceId of Object.keys(c.instances)) {
+        if (instanceIds.has(instanceId)) {
+          throw new FirebaseError(
+            `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
+          );
+        }
+        instanceIds.add(instanceId);
+      }
+    }
+  }
+
+  for (const instanceId of instanceIds) {
+    if (codebases.has(instanceId)) {
+      throw new FirebaseError(
+        `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
+      );
+    }
+  }
+}
+
 /**
  * Validate functions config.
  */
 export function validate(config: NormalizedConfig): ValidatedConfig {
   const validated = config.map((cfg) => validateSingle(cfg)) as ValidatedConfig;
   assertUnique(validated, "codebase");
+  assertUnique(validated, "kit");
   assertUniqueSourcePrefixPair(validated);
+  assertUniqueKitInstancesAndCodebases(validated);
   return validated;
 }
 
@@ -209,12 +277,17 @@ export function configForCodebase(config: ValidatedConfig, codebase: string): Va
 
 /** Returns true if the codebase uses a local source. */
 export function isLocalConfig(c: ValidatedSingle): c is ValidatedLocalSingle {
-  return (c as ValidatedLocalSingle).source !== undefined;
+  return "source" in c && !("kit" in c);
 }
 
 /** Returns true if the codebase uses a remote source. */
 export function isRemoteConfig(c: ValidatedSingle): c is ValidatedRemoteSingle {
-  return (c as ValidatedRemoteSingle).remoteSource !== undefined;
+  return "remoteSource" in c;
+}
+
+/** Returns true if the config uses a functions kit. */
+export function isKitConfig(c: ValidatedSingle): c is ValidatedKitSingle {
+  return "kit" in c;
 }
 
 /**
