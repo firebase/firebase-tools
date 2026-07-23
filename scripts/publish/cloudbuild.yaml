@@ -74,11 +74,13 @@ steps:
 
   # Set up the Git configuration.
   - name: "gcr.io/cloud-builders/git"
-    dir: "${_REPOSITORY_NAME}"
-    args: ["config", "--global", "user.email", "firebase-oss-bot@google.com"]
-  - name: "gcr.io/cloud-builders/git"
-    dir: "${_REPOSITORY_NAME}"
-    args: ["config", "--global", "user.name", "Google Open Source Bot"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        git config --global user.name "firebase-release-app[bot]"
+        git config --global user.email "$${GH_APP_ID}+firebase-release-app[bot]@users.noreply.github.com"
+    secretEnv: ["GH_APP_ID"] # The App ID isn't actually secret.
 
   # Set up the Twitter credentials.
   - name: "gcr.io/$PROJECT_ID/package-builder"
@@ -91,9 +93,48 @@ steps:
     args: ["-c", "cp -v npmrc ~/.npmrc"]
 
   # Set up the hub credentials for package-builder.
-  - name: "gcr.io/$PROJECT_ID/package-builder"
+  - id: "request-github-iat"
+    name: "gcr.io/$PROJECT_ID/package-builder"
     entrypoint: "bash"
-    args: ["-c", "mkdir -vp ~/.config && cp -v hub ~/.config/hub"]
+    secretEnv: ["GH_APP_ID", "GH_APP_INSTALLATION_ID", "GH_APP_PRIVATE_KEY"]
+    args:
+      - "-c"
+      - |
+        set -e
+        trap "rm -f /tmp/private-key.pem" EXIT
+        echo "$$GH_APP_PRIVATE_KEY" > /tmp/private-key.pem
+        # Build the JWT payload headers and claims
+        # iat (Issued At) is set 60 seconds back to prevent clock drift issues
+        iat=$$(date +%s -d "1 minute ago")
+        exp=$$(($$iat + 600))
+        HEADER=$$(echo -n '{"alg":"RS256","typ":"JWT"}' | openssl base64 -e -A | tr -d '=' | tr '/+' '_-')
+        PAYLOAD=$$(echo -n "{\"iat\":$$iat,\"exp\":$$exp,\"iss\":\"$$GH_APP_ID\"}" | openssl base64 -e -A | tr -d '=' | tr '/+' '_-')
+
+        # Sign the JWT payload using the App's private key
+        HEADER_PAYLOAD="$${HEADER}.$${PAYLOAD}"
+        SIGNATURE=$$(echo -n "$$HEADER.$$PAYLOAD" | openssl dgst -sha256 -sign /tmp/private-key.pem | openssl base64 -e -A | tr -d '=' | tr '/+' '_-')
+        JWT="$${HEADER_PAYLOAD}.$${SIGNATURE}"
+
+        # Exchange the JWT for an Installation Access Token (IAT)
+        RESPONSE=$(curl -s -X POST \
+          -H "Authorization: Bearer $${JWT}" \
+          -H "Accept: application/vnd.github+json" \
+          -H "X-GitHub-Api-Version: 2026-03-10" \
+          -H "Content-Type: application/json" \
+          -d '{ "repositories": ["firebase-tools"] }' \
+          "https://api.github.com/app/installations/$$GH_APP_INSTALLATION_ID/access_tokens")
+
+        IAT=$$(RESPONSE="$$RESPONSE" node -p "JSON.parse(process.env.RESPONSE).token")
+
+        if [ -z "$$IAT" ]; then
+          echo "Error: Failed to obtain IAT token. Raw response:"
+          echo "$$RESPONSE"
+          exit 1
+        fi
+
+        # Save the token to a shared file for subsequent build steps
+        mkdir -vp ~/.config && echo -n "$$IAT" > ~/.config/hub
+        echo "Successfully requested and saved GitHub App IAT."
 
   # Publish the package.
   - name: "gcr.io/$PROJECT_ID/package-builder"
@@ -215,3 +256,12 @@ substitutions:
   _REPOSITORY_ORG: "firebase"
   _REPOSITORY_NAME: "firebase-tools"
   _ARTIFACT_REGISTRY_PROJECT: "firebase-cli"
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/GH_APP_ID/versions/latest
+      env: "GH_APP_ID"
+    - versionName: projects/$PROJECT_ID/secrets/GH_APP_INSTALLATION_ID/versions/latest
+      env: "GH_APP_INSTALLATION_ID"
+    - versionName: projects/$PROJECT_ID/secrets/GH_APP_PRIVATE_KEY/versions/latest
+      env: "GH_APP_PRIVATE_KEY"
