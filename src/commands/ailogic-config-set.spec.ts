@@ -148,6 +148,17 @@ describe("ailogic:config:set", () => {
     expect(updateStub).to.not.have.been.called;
   });
 
+  it("normalizes a zero-padded sample rate in the echoed value", async () => {
+    expect(
+      await command.runner()("monitoring.sample-rate-percentage", "007", { project: PROJECT_ID }),
+    ).to.deep.equal({ path: "monitoring.sample-rate-percentage", value: "7" });
+    expect(updateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      { telemetryConfig: { samplingRate: 0.07 } },
+      ["telemetryConfig.samplingRate"],
+    );
+  });
+
   it("returns the normalized value for --json output", async () => {
     expect(
       await command.runner()("monitoring.state", "TRUE", { project: PROJECT_ID }),

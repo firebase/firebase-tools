@@ -84,7 +84,8 @@ function buildUpdate(pathStr: string, value: string): ConfigUpdate {
       return {
         config: { telemetryConfig: { samplingRate: ailogic.percentToSamplingRate(Number(value)) } },
         updateMask: "telemetryConfig.samplingRate",
-        normalizedValue: value,
+        // Number() drops leading zeros so the echo matches what was stored ("007" -> "7").
+        normalizedValue: String(Number(value)),
       };
     }
     default:
@@ -97,7 +98,12 @@ function buildUpdate(pathStr: string, value: string): ConfigUpdate {
 export const command = new Command("ailogic:config:set <path> <value>")
   .description("set one configuration value")
   .option("-f, --force", "bypass confirmation prompt")
-  .before(requirePermissions, ["firebasevertexai.config.update", "firebasevertexai.config.get"])
+  .before(requirePermissions, [
+    "firebasevertexai.config.update",
+    "firebasevertexai.config.get",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ])
   .action(async (pathStr: string, value: string, options: Options) => {
     const projectId = needProjectId(options);
 

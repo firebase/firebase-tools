@@ -487,13 +487,15 @@ export async function ensureAILogicApiEnabled(
   const proceed = await confirm({
     message: "Would you like to enable it now?",
     default: true,
+    force: options.force,
   });
   if (!proceed) {
     throw new FirebaseError("Command aborted.", { exit: 1 });
   }
 
   for (;;) {
-    const provider = await select<ProviderType>({
+    // "cancel" gives the Spark-plan retry loop below an exit that is not Ctrl+C.
+    const provider = await select<ProviderType | "cancel">({
       message: "Which Gemini API provider do you want to enable?",
       choices: [
         { name: "gemini-developer-api", value: "gemini-developer-api" },
@@ -501,8 +503,12 @@ export async function ensureAILogicApiEnabled(
           name: "gemini-agent-platform-api (requires the Blaze plan)",
           value: "gemini-agent-platform-api",
         },
+        { name: "cancel", value: "cancel" },
       ],
     });
+    if (provider === "cancel") {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
+    }
 
     if (provider === "gemini-agent-platform-api") {
       const billingEnabled = await cloudbilling.checkBillingEnabled(projectId);

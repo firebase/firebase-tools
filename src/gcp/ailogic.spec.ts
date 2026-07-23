@@ -286,6 +286,8 @@ describe("ailogic", () => {
 
       await ailogic.disableProvider("my-project", "gemini-developer-api");
 
+      // The cross-check must consult the OTHER provider's API.
+      expect(checkStub).to.have.been.calledWith("my-project", "aiplatform.googleapis.com");
       expect(disableStub).to.have.been.calledTwice;
       expect(disableStub.firstCall).to.have.been.calledWith(
         "my-project",
@@ -320,6 +322,16 @@ describe("ailogic", () => {
       const enabled = await ailogic.listProviders("my-project");
 
       expect(enabled).to.deep.equal(["gemini-developer-api", "gemini-agent-platform-api"]);
+    });
+
+    it("should map each provider to its own API enablement state", async () => {
+      // Pin per-API results so a swapped destructure/check cannot pass.
+      checkStub.withArgs("my-project", "generativelanguage.googleapis.com").resolves(true);
+      checkStub.withArgs("my-project", "aiplatform.googleapis.com").resolves(false);
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal(["gemini-developer-api"]);
     });
   });
 
