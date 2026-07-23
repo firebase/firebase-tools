@@ -690,6 +690,88 @@ describe("applyEnvSecretBindings", () => {
   });
 });
 
+describe("matchSecretEnvVars", () => {
+  it("updates secretEnvVars in a Build with resource IDs from Secret params", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [
+        {
+          type: "secret",
+          name: "foo",
+          resourceId: "bar",
+          version: "2",
+          inLocalEnvironment: true,
+        },
+      ],
+      requiredAPIs: [],
+    };
+    build.matchSecretEnvVars(testBuild);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+      },
+    ]);
+  });
+
+  it("is case-insensitive when matching secret names and env vars", () => {
+    const testBuild: build.Build = {
+      endpoints: {
+        func: {
+          region: "us-central1",
+          project: "test-project",
+          platform: "gcfv2",
+          runtime: "nodejs18",
+          entryPoint: "func1",
+          httpsTrigger: {},
+          secretEnvironmentVariables: [
+            {
+              key: "foo",
+              secret: "foo",
+              projectId: "test-project",
+            },
+          ],
+        },
+      },
+      params: [
+        {
+          type: "secret",
+          name: "FOO",
+          resourceId: "bar",
+          version: "2",
+          inLocalEnvironment: true,
+        },
+      ],
+      requiredAPIs: [],
+    };
+    build.matchSecretEnvVars(testBuild);
+    expect(testBuild.endpoints["func"].secretEnvironmentVariables).to.deep.equal([
+      {
+        key: "foo",
+        secret: "bar",
+        projectId: "test-project",
+      },
+    ]);
+  });
+});
+
 describe("applyPrefix", () => {
   const createTestBuild = (): build.Build => ({
     endpoints: {
