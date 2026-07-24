@@ -434,7 +434,7 @@ export class Client {
     if (options.timeout) {
       const controller = new AbortController();
       reqTimeout = setTimeout(() => {
-        controller.abort();
+        controller.abort(new FirebaseError("Aborted"));
       }, options.timeout);
       fetchOptions.signal = controller.signal;
     }
