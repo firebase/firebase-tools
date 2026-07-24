@@ -16,6 +16,8 @@ import { reconcileStudioFirebaseProject } from "./management/studio";
 import { requireAuth } from "./requireAuth";
 import { Options } from "./options";
 import { isFirebaseStudio } from "./env";
+import * as experiments from "./experiments";
+import { showDeprecationWarningBefore, showDeprecationWarningAfter } from "./extensions/warnings";
 
 export interface CommandModule {
   load: () => void;
@@ -474,10 +476,20 @@ export class Command {
       const options = last(args);
       await this.prepare(options);
 
+      if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
+        showDeprecationWarningBefore(this.name, options);
+      }
+
       for (const before of this.befores) {
         await before.fn(options, ...before.args);
       }
-      return this.actionFn(...args);
+      const result = await this.actionFn(...args);
+
+      if (this.name.startsWith("ext:") && experiments.isEnabled("extdeprecationwarnings")) {
+        showDeprecationWarningAfter(this.name, options);
+      }
+
+      return result;
     };
   }
 }

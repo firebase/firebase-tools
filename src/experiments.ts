@@ -220,6 +220,11 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
