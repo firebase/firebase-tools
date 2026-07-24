@@ -77,6 +77,30 @@ describe("OneMcpServer", () => {
 
       await expect(server.listTools()).to.be.rejected;
     });
+
+    it("should filter tools if allowedTools option is provided", async () => {
+      const serverWithFilter = new OneMcpServer(
+        feature,
+        serverUrl,
+        { requiresAuth: false, requiresProject: true },
+        { allowedTools: ["allowed_tool"] },
+      );
+      clientRequestStub.resolves({
+        body: {
+          result: {
+            tools: [
+              { name: "allowed_tool", inputSchema: { type: "object" } },
+              { name: "disallowed_tool", inputSchema: { type: "object" } },
+            ],
+          },
+        },
+      });
+
+      const tools = await serverWithFilter.listTools();
+
+      expect(tools).to.have.length(1);
+      expect(tools[0].mcp.name).to.equal("auth_allowed_tool");
+    });
   });
 
   describe("callTool", () => {
@@ -204,6 +228,22 @@ describe("OneMcpServer", () => {
       });
 
       await expect(tool.fn({}, mockContext)).to.be.rejected;
+    });
+
+    it("should throw FirebaseError when calling a tool not in allowedTools", async () => {
+      const serverWithFilter = new OneMcpServer(
+        feature,
+        serverUrl,
+        { requiresAuth: false, requiresProject: true },
+        { allowedTools: ["allowed_tool"] },
+      );
+
+      const fn = (serverWithFilter as any).callTool.bind(serverWithFilter);
+
+      await expect(fn("disallowed_tool", {}, mockContext)).to.be.rejectedWith(
+        FirebaseError,
+        /is not allowed on remote server/,
+      );
     });
   });
 });
