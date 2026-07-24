@@ -53,6 +53,7 @@ jobs:
         node-version:
           - "22"
           - "24"
+          - "26"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
@@ -162,6 +163,7 @@ jobs:
         node-version:
           - "22"
           - "24"
+          - "26"
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # ratchet:actions/checkout@v4
         with:
