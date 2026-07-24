@@ -233,7 +233,7 @@ export class Uploader {
     const timeout = setTimeout(() => {
       controller.abort();
     }, this.uploadTimeout(this.hashMap[toUpload]));
-    const res = await this.uploadClient.request({
+    const res = await this.uploadClient.request<void, NodeJS.ReadableStream>({
       method: "POST",
       path: `/${toUpload}`,
       body: this.zipStream(this.hashMap[toUpload]),
@@ -246,7 +246,7 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
-      const errorMessage = res.body ? await streamToString(res.body as NodeJS.ReadableStream) : "";
+      const errorMessage = res.body ? await streamToString(res.body) : "";
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status

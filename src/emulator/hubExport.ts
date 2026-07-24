@@ -329,7 +329,10 @@ export class HubExport {
       initiatedBy: this.options.initiatedBy,
     };
 
-    const res = await EmulatorRegistry.client(Emulators.STORAGE).request({
+    const res = await EmulatorRegistry.client(Emulators.STORAGE).request<
+      void,
+      NodeJS.ReadableStream
+    >({
       method: "POST",
       path: "/internal/export",
       headers: { "Content-Type": "application/json" },
@@ -338,7 +341,7 @@ export class HubExport {
       resolveOnHTTPError: true,
     });
     if (res.status >= 400) {
-      const errorMsg = res.body ? await streamToString(res.body as NodeJS.ReadableStream) : "";
+      const errorMsg = res.body ? await streamToString(res.body) : "";
       throw new FirebaseError(`Failed to export storage: ${errorMsg}`);
     }
   }
