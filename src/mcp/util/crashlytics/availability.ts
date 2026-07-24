@@ -8,6 +8,7 @@ import {
 import { PackageJSON } from "../../../frameworks/compose/discover/runtime/node";
 import * as fs from "fs-extra";
 import * as path from "path";
+import { Client } from "../../../apiv2";
 
 /**
  * Returns a function that detects whether Crashlytics is available.
@@ -45,7 +46,10 @@ async function isCrashlyticsInstalled(ctx: McpContext): Promise<boolean> {
     host.logger.debug("Found iOS app using Crashlytics");
     return true;
   }
-  if (platforms.includes(Platform.WEB) && (await webAppUsesCrashlytics(projectDir))) {
+  if (
+    platforms.includes(Platform.WEB) &&
+    (await webAppUsesCrashlytics(projectDir, ctx.projectId))
+  ) {
     host.logger.debug("Found Web app using Crashlytics");
     return true;
   }
@@ -96,7 +100,11 @@ async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
   return false;
 }
 
-async function webAppUsesCrashlytics(appPath: string): Promise<boolean> {
+async function webAppUsesCrashlytics(appPath: string, projectId?: string): Promise<boolean> {
+  if (!projectId) {
+    return false;
+  }
+
   const packageJsonFiles = await detectFiles(appPath, "package.json");
   let hasFirebaseDep = false;
   for (const file of packageJsonFiles) {
@@ -117,17 +125,20 @@ async function webAppUsesCrashlytics(appPath: string): Promise<boolean> {
     return false;
   }
 
-  const sourceFiles = await detectFiles(appPath, "*.{js,jsx,ts,tsx,mjs,cjs,html,vue,svelte}");
-  for (const file of sourceFiles) {
-    try {
-      const content = await fs.readFile(path.join(appPath, file), "utf8");
-      if (content.includes("firebase/crashlytics")) {
-        return true;
-      }
-    } catch {
-      // Ignore unreadable files
-    }
-  }
+  return await hasTelemetryConfig(projectId);
+}
 
-  return false;
+async function hasTelemetryConfig(projectId: string): Promise<boolean> {
+  const client = new Client({
+    urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
+    auth: true,
+    apiVersion: "v1alpha",
+  });
+
+  try {
+    const res = await client.get(`projects/${projectId}/config`);
+    return !!res.body;
+  } catch {
+    return false;
+  }
 }

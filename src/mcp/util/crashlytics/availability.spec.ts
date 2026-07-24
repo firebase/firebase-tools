@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import * as mockfs from "mock-fs";
+import nock from "../../../test/helpers/nock";
 import { isCrashlyticsAvailable } from "./availability";
 import { McpContext } from "../../types";
 import { Config } from "../../../config";
@@ -9,6 +10,7 @@ import { RC } from "../../../rc";
 describe("isCrashlyticsAvailable", () => {
   afterEach(() => {
     mockfs.restore();
+    nock.cleanAll();
   });
 
   const mockContext = (projectDir: string): McpContext => ({
@@ -295,7 +297,7 @@ describe("isCrashlyticsAvailable", () => {
     expect(result).to.be.false;
   });
 
-  it("should return true for a Web project with firebase in package.json and firebase/crashlytics import in a source file", async () => {
+  it("should return true for a Web project with firebase in package.json and an existing telemetry config", async () => {
     mockfs({
       "/test-dir": {
         "package.json": JSON.stringify({
@@ -303,18 +305,20 @@ describe("isCrashlyticsAvailable", () => {
             firebase: "^10.0.0",
           },
         }),
-        src: {
-          "index.ts": 'import { getCrashlytics } from "firebase/crashlytics";',
-        },
       },
     });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/config")
+      .reply(200, { name: "projects/test-project/config" });
 
     const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
 
     expect(result).to.be.true;
+    expect(nock.isDone()).to.be.true;
   });
 
-  it("should return false for a Web project with firebase in package.json but without firebase/crashlytics import", async () => {
+  it("should return false for a Web project with firebase in package.json but no telemetry config", async () => {
     mockfs({
       "/test-dir": {
         "package.json": JSON.stringify({
@@ -322,18 +326,20 @@ describe("isCrashlyticsAvailable", () => {
             firebase: "^10.0.0",
           },
         }),
-        src: {
-          "index.ts": 'import { initializeApp } from "firebase/app";',
-        },
       },
     });
+
+    nock("https://firebasetelemetryadmin.googleapis.com")
+      .get("/v1alpha/projects/test-project/config")
+      .reply(404, { error: { message: "Not found" } });
 
     const result = await isCrashlyticsAvailable(mockContext("/test-dir"));
 
     expect(result).to.be.false;
+    expect(nock.isDone()).to.be.true;
   });
 
-  it("should return false for a Web project with firebase/crashlytics import but without firebase in package.json", async () => {
+  it("should return false for a Web project without firebase in package.json", async () => {
     mockfs({
       "/test-dir": {
         "package.json": JSON.stringify({
@@ -341,9 +347,6 @@ describe("isCrashlyticsAvailable", () => {
             other: "^1.0.0",
           },
         }),
-        src: {
-          "index.ts": 'import { getCrashlytics } from "firebase/crashlytics";',
-        },
       },
     });
 
