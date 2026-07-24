@@ -233,7 +233,7 @@ export class Uploader {
     const timeout = setTimeout(() => {
       controller.abort();
     }, this.uploadTimeout(this.hashMap[toUpload]));
-    const res = await this.uploadClient.request<void, NodeJS.ReadableStream>({
+    const res = await this.uploadClient.request<unknown, NodeJS.ReadableStream>({
       method: "POST",
       path: `/${toUpload}`,
       body: this.zipStream(this.hashMap[toUpload]),

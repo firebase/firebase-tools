@@ -330,7 +330,7 @@ export class HubExport {
     };
 
     const res = await EmulatorRegistry.client(Emulators.STORAGE).request<
-      void,
+      unknown,
       NodeJS.ReadableStream
     >({
       method: "POST",
