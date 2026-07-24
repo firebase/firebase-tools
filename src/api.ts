@@ -32,6 +32,8 @@ export const developerConnectP4SADomain = () =>
 
 export const artifactRegistryDomain = () =>
   utils.envOverride("ARTIFACT_REGISTRY_DOMAIN", "https://artifactregistry.googleapis.com");
+export const appCheckOrigin = () =>
+  utils.envOverride("FIREBASE_APPCHECK_URL", "https://firebaseappcheck.googleapis.com");
 export const appDistributionOrigin = () =>
   utils.envOverride(
     "FIREBASE_APP_DISTRIBUTION_URL",
