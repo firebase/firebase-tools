@@ -15,6 +15,7 @@ import { DataConnectEmulator } from "./dataconnectEmulator";
 import { rmSync } from "node:fs";
 import { trackEmulator } from "../track";
 import { dataConnectLocalConnString } from "../api";
+import { streamToString } from "../streamUtils";
 
 export interface FirestoreExportMetadata {
   version: string;
@@ -337,7 +338,8 @@ export class HubExport {
       resolveOnHTTPError: true,
     });
     if (res.status >= 400) {
-      throw new FirebaseError(`Failed to export storage: ${await res.response.text()}`);
+      const errorMsg = res.body ? await streamToString(res.body as NodeJS.ReadableStream) : "";
+      throw new FirebaseError(`Failed to export storage: ${errorMsg}`);
     }
   }
 

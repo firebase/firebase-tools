@@ -47,7 +47,7 @@ async function getDBRules(instanceDetails: DatabaseInstance): Promise<string> {
   if (response.status !== 200) {
     throw new FirebaseError(`Failed to fetch current rules. Code: ${response.status}`);
   }
-  return await response.response.text();
+  return response.body ? await utils.streamToString(response.body) : "";
 }
 
 function writeDBRules(rules: string, filename: string, config: Config): void {
