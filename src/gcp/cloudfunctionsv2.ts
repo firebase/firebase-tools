@@ -312,7 +312,7 @@ export async function createFunction(cloudFunction: InputCloudFunction): Promise
 
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint,
     // Enable logging execution id by default for better debugging
     LOG_EXECUTION_ID: "true",
   };
@@ -394,7 +394,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
   };
   cloudFunction.serviceConfig.environmentVariables = {
     ...cloudFunction.serviceConfig.environmentVariables,
-    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint.replaceAll("-", "."),
+    FUNCTION_TARGET: cloudFunction.buildConfig.entryPoint,
     // Enable logging execution id by default for better debugging
     LOG_EXECUTION_ID: "true",
   };

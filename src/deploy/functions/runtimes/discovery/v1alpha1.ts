@@ -230,7 +230,7 @@ function assertBuildEndpoint(ep: WireEndpoint, id: string): void {
   assertKeyTypes(prefix, ep, {
     region: "List",
     platform: (platform) => build.AllFunctionsPlatforms.includes(platform),
-    entryPoint: "string",
+    entryPoint: (ep) => typeof ep === "string" && ep.length > 0,
     omit: "Field<boolean>?",
     availableMemoryMb: (mem) => mem === null || isCEL(mem) || backend.isValidMemoryOption(mem),
     maxInstances: "Field<number>?",
