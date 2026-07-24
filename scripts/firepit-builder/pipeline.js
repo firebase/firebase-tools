@@ -106,6 +106,8 @@ if (isPublishing) {
     "firebase-tools-instant-win.exe",
     "firebase-tools-linux",
     "firebase-tools-macos",
+    "firebase-tools-macos-arm64",
+    "firebase-tools-instant-macos-arm64",
     "firebase-tools-win.exe",
   ];
 
@@ -123,9 +125,8 @@ if (isPublishing) {
 }
 
 echo("-- Artifacts");
-rm("-rf", "/tmp/firepit_artifacts");
-
 const outputDir = path.join(tempdir().toString(), "firepit_artifacts");
+rm("-rf", outputDir);
 echo(outputDir);
 mkdir(outputDir);
 mv("dist/*", outputDir);
