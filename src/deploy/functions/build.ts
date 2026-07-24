@@ -256,8 +256,21 @@ export interface SecretEnvVar {
   version?: string;
 }
 
-export type MemoryOption = 128 | 256 | 512 | 1024 | 2048 | 4096 | 8192 | 16384 | 32768;
-const allMemoryOptions: MemoryOption[] = [128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768];
+export type MemoryOption =
+  | 128
+  | 256
+  | 512
+  | 1024
+  | 1536
+  | 2048
+  | 3072
+  | 4096
+  | 8192
+  | 16384
+  | 32768;
+const allMemoryOptions: MemoryOption[] = [
+  128, 256, 512, 1024, 1536, 2048, 3072, 4096, 8192, 16384, 32768,
+];
 
 export type FunctionsPlatform = backend.FunctionsPlatform;
 export const AllFunctionsPlatforms: FunctionsPlatform[] = ["gcfv1", "gcfv2", "run"];
