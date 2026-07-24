@@ -103,6 +103,35 @@ export function getVenvPythonVersion(sourceDir: string, venvDir: string): string
   return `${match[1]}.${match[2]}`;
 }
 
+/**
+ * Build the "Python version mismatch" error message for a venv created with `actual`
+ * Python version when `runtime` expects `expected`. Exported (and takes `platform`
+ * explicitly) so it can be unit tested without going through actual process spawning.
+ */
+export function buildVersionMismatchMessage(
+  runtime: supported.Runtime & supported.RuntimeOf<"python">,
+  actual: string,
+  expected: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const recreateCmd =
+    platform === "win32"
+      ? `py -${expected} -m venv ${DEFAULT_VENV_DIR}`
+      : `python${expected} -m venv ${DEFAULT_VENV_DIR}`;
+  const message =
+    `Python version mismatch: the virtual environment at "${DEFAULT_VENV_DIR}" was created with ` +
+    `Python ${actual}, but this project is configured to use Python ${expected} (runtime "${runtime}"). ` +
+    `Recreate the virtual environment with '${recreateCmd}'`;
+  const actualRuntime = `python${actual.replace(".", "")}`;
+  if (supported.isRuntime(actualRuntime)) {
+    return (
+      message +
+      `, or set "runtime": "${actualRuntime}" in firebase.json to match the Python version already installed.`
+    );
+  }
+  return message + ".";
+}
+
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "python";
   constructor(
@@ -183,22 +212,12 @@ export class Delegate implements runtimes.RuntimeDelegate {
    * Returns undefined when no mismatch is detected (or can't be determined).
    */
   private checkVenvPythonVersionMismatch(): string | undefined {
-    if (process.platform === "win32") {
-      // getPythonBinary() is version-neutral on Windows, so there's nothing to compare.
-      return undefined;
-    }
     const expected = getExpectedPythonVersion(this.runtime);
     const actual = getVenvPythonVersion(this.sourceDir, DEFAULT_VENV_DIR);
     if (!expected || !actual || expected === actual) {
       return undefined;
     }
-    const actualRuntime = `python${actual.replace(".", "")}`;
-    return (
-      `Python version mismatch: the virtual environment at "${DEFAULT_VENV_DIR}" was created with ` +
-      `Python ${actual}, but this project is configured to use Python ${expected} (runtime "${this.runtime}"). ` +
-      `Recreate the virtual environment with 'python${expected} -m venv ${DEFAULT_VENV_DIR}', or set ` +
-      `"runtime": "${actualRuntime}" in firebase.json to match the Python version already installed.`
-    );
+    return buildVersionMismatchMessage(this.runtime, actual, expected);
   }
 
   validate(): Promise<void> {

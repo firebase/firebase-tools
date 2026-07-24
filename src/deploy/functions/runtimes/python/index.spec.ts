@@ -81,6 +81,31 @@ describe("PythonDelegate", () => {
     });
   });
 
+  describe("buildVersionMismatchMessage", () => {
+    it("suggests recreating the venv with a versioned python binary by default", () => {
+      const message = python.buildVersionMismatchMessage("python312", "3.10", "3.12", "darwin");
+
+      expect(message).to.match(
+        /Python version mismatch.*Python 3\.10.*Python 3\.12.*runtime "python312"/s,
+      );
+      expect(message).to.include("python3.12 -m venv venv");
+      expect(message).to.include('"runtime": "python310"');
+    });
+
+    it("suggests the py launcher to recreate the venv on windows", () => {
+      const message = python.buildVersionMismatchMessage("python312", "3.10", "3.12", "win32");
+
+      expect(message).to.include("py -3.12 -m venv venv");
+    });
+
+    it("omits the runtime suggestion when the venv's python version isn't a supported runtime", () => {
+      const message = python.buildVersionMismatchMessage("python312", "3.9", "3.12", "darwin");
+
+      expect(message).to.match(/Python version mismatch.*Python 3\.9.*Python 3\.12/s);
+      expect(message).not.to.include('"runtime": "python39"');
+    });
+  });
+
   describe("modulesDir version mismatch", () => {
     let tmpDir: string;
     let platformMock: sinon.SinonStub;
