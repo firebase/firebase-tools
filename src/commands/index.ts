@@ -252,6 +252,10 @@ export function load(client: CLIClient): CLIClient {
   client.remoteconfig.experiments.list = loadCommand("remoteconfig-experiments-list");
   client.remoteconfig.experiments.delete = loadCommand("remoteconfig-experiments-delete");
   client.serve = loadCommand("serve");
+  client.skills = {};
+  client.skills.add = loadCommand("skills-add");
+  client.skills.update = loadCommand("skills-update");
+  client.skills.delete = loadCommand("skills-delete");
   client.setup = {};
   client.setup.emulators = {};
   client.setup.emulators.database = loadCommand("setup-emulators-database");
