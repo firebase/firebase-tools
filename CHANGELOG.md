@@ -2,3 +2,4 @@
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
 - Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
+- Add support for emulating and deploying functions using Yarn 2+. Fixes issue where the Cloud Functions emulator failed to start in Yarn 2+ PnP and pnpm nodeLinker environments by adding explicit Yarn resolution hooks (#10813).

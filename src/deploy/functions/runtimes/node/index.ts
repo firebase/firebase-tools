@@ -22,6 +22,7 @@ import { DelegateContext } from "..";
 import * as supported from "../supported";
 import * as validate from "./validate";
 import * as versioning from "./versioning";
+import * as utils from "./utils";
 
 import { fileExistsSync } from "../../../../fsutils";
 
@@ -79,7 +80,7 @@ export class Delegate {
   _sdkVersion: string | undefined = undefined;
   get sdkVersion(): string {
     if (this._sdkVersion === undefined) {
-      this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir) || "";
+      this._sdkVersion = versioning.getFunctionsSDKVersion(this.sourceDir, this.projectDir) || "";
     }
     return this._sdkVersion;
   }
@@ -168,17 +169,52 @@ export class Delegate {
     // Location of the binary included in the Firebase Functions SDK
     // differs depending on the developer's setup and choice of package manager.
     //
-    // We'll try few routes in the following order:
+    // We'll search for the emulator binary in the following order:
     //
-    //   1. $SOURCE_DIR/node_modules/.bin/firebase-functions
-    //   2. $PROJECT_DIR/node_modules/.bin/firebase-functions
-    //   3. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
-    //   4. (2) but ignore .pnpm directory
+    //   1. Native Yarn Plug'n'Play evaluation (via `.pnp.cjs`)
+    //   2. $SOURCE_DIR/node_modules/.bin/firebase-functions
+    //   3. $PROJECT_DIR/node_modules/.bin/firebase-functions
+    //   4. node_modules closest to the resolved path ${require.resolve("firebase-functions")}
+    //   5. (4) but backing out of any internal `.pnpm` virtual stores to hit the top-level
     //
-    // (1) works for most package managers (npm, yarn[no-hoist]).
-    // (2) works for some monorepo setup.
-    // (3) handles cases where developer prefers monorepo setup or bundled function code.
-    // (4) handles issue with some .pnpm setup (see https://github.com/firebase/firebase-tools/issues/5517)
+    // For locations 2-5, we look for two distinct structural patterns:
+    //   A) The standard `.bin/firebase-functions` shell wrapper.
+    //   B) The direct literal JS payload (`firebase-functions/lib/bin/firebase-functions.js`).
+    //
+    //   Pattern (B) is a critical fallback. Native `pnpm` and Yarn `nodeLinker: pnpm` environments
+    //   rely heavily on physical symlinking to save disk space, but they frequently skip compiling
+    //   `.bin/` wrappers for nested dependencies, causing Pattern (A) to fail.
+    //
+    // (1) must be checked *before* any `require.resolve()` calls. If the CLI was launched natively
+    //     (without yarn), `require.resolve()` will silently fail to find the zip archive and traverse
+    //     all the way up to global directories, loading the wrong package. Querying `.pnp.cjs` first
+    //     protects against this.
+    // (2) works for most basic package managers (npm, yarn[no-hoist]).
+    // (3) works for standard monorepos pulling functions up to the root.
+    // (4) handles custom monorepos or uniquely bundled function code.
+    // (5) handles issue with some pnpm setups where `require.resolve` traps us inside a `.pnpm` shadow-folder.
+
+    // 1. Native Yarn PnP hook (.pnp.cjs)
+    // Aggressively query the PnP mapping securely first!
+    const resolved = utils.resolvePnpModulePackageJson(
+      this.sourceDir,
+      this.projectDir,
+      "firebase-functions",
+    );
+    if (resolved) {
+      const { pkgPath, packageJson } = resolved;
+      const relativeBinPath = packageJson.bin?.["firebase-functions"];
+      const jsBinPath = relativeBinPath ? path.join(pkgPath, relativeBinPath) : undefined;
+      if (jsBinPath && fileExistsSync(jsBinPath)) {
+        logger.debug(`Found firebase-functions binary internally via Yarn PnP at '${jsBinPath}'`);
+        // When we return this zip path, spawnFunctionsProcess constructs a new `spawn(process.execPath)`
+        // containing our payload. Because the child environment correctly inherits `NODE_OPTIONS`, it
+        // boots up with an identically patched `fs` architecture, safely executing the zipped script!
+        return jsBinPath;
+      }
+    }
+
+    // 2. Check standard monorepo node_modules scopes and naive resolution
     const sourceNodeModulesPath = path.join(this.sourceDir, "node_modules");
     const projectNodeModulesPath = path.join(this.projectDir, "node_modules");
     const sdkPath = require.resolve("firebase-functions", { paths: [this.sourceDir] });
@@ -195,6 +231,18 @@ export class Delegate {
       if (fileExistsSync(binPath)) {
         logger.debug(`Found firebase-functions binary at '${binPath}'`);
         return binPath;
+      }
+
+      const directJsPath = path.join(
+        nodeModulesPath,
+        "firebase-functions",
+        "lib",
+        "bin",
+        "firebase-functions.js",
+      );
+      if (fileExistsSync(directJsPath)) {
+        logger.debug(`Found firebase-functions binary directly at '${directJsPath}'`);
+        return directJsPath;
       }
     }
 
@@ -223,8 +271,33 @@ export class Delegate {
       env.CLOUD_RUNTIME_CONFIG = JSON.stringify(config);
     }
 
-    const binPath = this.findFunctionsBinary();
-    const childProcess = spawn(binPath, [this.sourceDir], {
+    if (process.env.NODE_OPTIONS) {
+      env.NODE_OPTIONS = process.env.NODE_OPTIONS;
+    }
+    // If we detect a Yarn PnP environment, we append the `.pnp.cjs` hook to the child's NODE_OPTIONS.
+    // This strictly ensures that if the firebase CLI was booted purely natively without `yarn`
+    // (e.g. `npx firebase deploy`), the spawned emulator process will still correctly inherit
+    // the virtual file system APIs necessary to evaluate zippered dependencies.
+    for (const searchDir of [this.sourceDir, this.projectDir]) {
+      const pnpHookPath = path.join(searchDir, ".pnp.cjs");
+      if (fs.existsSync(pnpHookPath)) {
+        env.NODE_OPTIONS = [env.NODE_OPTIONS || "", `--require "${pnpHookPath}"`].join(" ").trim();
+        break;
+      }
+    }
+
+    let binPath = this.findFunctionsBinary();
+    const spawnArgs = [this.sourceDir];
+
+    // On Windows, if we bypass the .cmd shell wrapper and return the raw .js payload,
+    // the OS will fail to execute it natively. This conditionally rewrites the spawn
+    // configuration to explicitly target Node for cross-platform execution.
+    if (binPath.endsWith(".js")) {
+      spawnArgs.unshift(binPath);
+      binPath = process.execPath;
+    }
+
+    const childProcess = spawn(binPath, spawnArgs, {
       env,
       cwd: this.sourceDir,
       stdio: [/* stdin=*/ "ignore", /* stdout=*/ "pipe", /* stderr=*/ "pipe"],
