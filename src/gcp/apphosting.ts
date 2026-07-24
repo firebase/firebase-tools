@@ -811,3 +811,28 @@ export async function getNextRolloutId(
   const highest = Math.max(highestId(builds.builds), highestId(rollouts.rollouts));
   return `build-${year}-${month}-${day}-${String(highest + 1).padStart(3, "0")}`;
 }
+
+/**
+ * Update a backend configuration (e.g. labels).
+ */
+export async function updateBackend(
+  projectId: string,
+  location: string,
+  backendId: string,
+  backend: DeepOmit<Partial<Backend>, BackendOutputOnlyFields | "name">,
+): Promise<Operation> {
+  const fieldMasks = proto.fieldMasks(backend);
+  const queryParams = {
+    updateMask: fieldMasks.join(","),
+  };
+  const name = `projects/${projectId}/locations/${location}/backends/${backendId}`;
+  const res = await client.patch<any, Operation>(
+    name,
+    { ...backend, name },
+    {
+      queryParams,
+    },
+  );
+  return res.body;
+}
+
