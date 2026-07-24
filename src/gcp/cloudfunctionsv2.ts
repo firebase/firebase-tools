@@ -415,7 +415,7 @@ export async function updateFunction(cloudFunction: InputCloudFunction): Promise
     const res = await client.patch<typeof cloudFunction, Operation>(
       cloudFunction.name,
       cloudFunction,
-      { queryParams },
+      { queryParams, retryOnPrematureClose: false },
     );
     return res.body;
   } catch (err: any) {
