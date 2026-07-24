@@ -134,6 +134,7 @@ steps:
 
         # Save the token to a shared file for subsequent build steps
         mkdir -vp ~/.config && echo -n "$$IAT" > ~/.config/hub
+        echo -n "$$IAT" > /workspace/hub
         echo "Successfully requested and saved GitHub App IAT."
 
   # Publish the package.
