@@ -122,10 +122,11 @@ describe("appdistribution/distribution", () => {
       setTimeoutStub.restore();
     });
 
-    it("should fail immediately when a test execution fails", async () => {
+    it("should fail and report failed count when a test execution fails", async () => {
       const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] }];
       mockClient.getReleaseTest.resolves({
         name: "tests/1",
+        displayName: "Login Case",
         deviceExecutions: [
           {
             state: "FAILED",
@@ -145,7 +146,38 @@ describe("appdistribution/distribution", () => {
       }
 
       expect(caughtError).to.exist;
-      expect(caughtError.message).to.match(/Automated test failed/);
+      expect(caughtError.message).to.match(/Automated test\(s\) failed/);
+      setTimeoutStub.restore();
+    });
+
+    it("should write machine-readable JSON results file when specified", async () => {
+      const outputJsonStub = sinon.stub(fs, "outputJsonSync");
+      const releaseTests: ReleaseTest[] = [{ name: "tests/1", deviceExecutions: [] }];
+      mockClient.getReleaseTest.resolves({
+        name: "tests/1",
+        displayName: "Login Case",
+        resultsBucket: "projects/123/buckets/my-bucket",
+        deviceExecutions: [
+          {
+            state: "PASSED",
+            device: { model: "Pixel", version: "14", locale: "en_US", orientation: "PORTRAIT" },
+          },
+        ],
+      } as any);
+
+      const setTimeoutStub = sinon.stub(global, "setTimeout").callsFake((fn) => fn() as any);
+
+      await awaitTestResults(releaseTests, mockClient as any, "/tmp/results.json");
+
+      expect(outputJsonStub).to.have.been.calledWith(
+        "/tmp/results.json",
+        sinon.match({
+          passed: true,
+          totalTestCases: 1,
+          passCount: 1,
+          failCount: 0,
+        }),
+      );
       setTimeoutStub.restore();
     });
   });
