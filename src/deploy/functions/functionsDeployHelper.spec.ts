@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import * as sinon from "sinon";
 
 import * as backend from "./backend";
 import * as helper from "./functionsDeployHelper";
@@ -6,6 +7,7 @@ import { Options } from "../../options";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
 import { EndpointFilter, parseFunctionSelector } from "./functionsDeployHelper";
 import * as experiments from "../../experiments";
+import * as prompt from "../../prompt";
 
 describe("functionsDeployHelper", () => {
   const ENDPOINT: backend.Endpoint = {
@@ -233,8 +235,8 @@ describe("functionsDeployHelper", () => {
     ];
 
     for (const tc of testcases) {
-      it(tc.desc, () => {
-        const actual = parseFunctionSelector(tc.selector, tc.config);
+      it(tc.desc, async () => {
+        const actual = await parseFunctionSelector(tc.selector, tc.config);
 
         expect(actual.length).to.equal(tc.expected.length);
         expect(actual).to.deep.include.members(tc.expected);
@@ -301,28 +303,29 @@ describe("functionsDeployHelper", () => {
     ];
 
     for (const tc of testcases) {
-      it(tc.desc, () => {
+      it(tc.desc, async () => {
         const options = {
           only: tc.only,
         } as Options;
 
-        const actual = helper.getEndpointFilters(options, TEST_CONFIG);
+        const actual = await helper.getEndpointFilters(options, TEST_CONFIG);
 
         expect(actual?.length).to.equal(tc.expected.length);
         expect(actual).to.deep.include.members(tc.expected);
       });
     }
 
-    it("returns undefined given no only option", () => {
-      expect(helper.getEndpointFilters({}, TEST_CONFIG)).to.be.undefined;
+    it("returns undefined given no only option", async () => {
+      expect(await helper.getEndpointFilters({}, TEST_CONFIG)).to.be.undefined;
     });
 
-    it("returns undefined given no functions selector", () => {
-      expect(helper.getEndpointFilters({ only: "hosting:siteA,storage:bucketB" }, TEST_CONFIG)).to
-        .be.undefined;
+    it("returns undefined given no functions selector", async () => {
+      expect(
+        await helper.getEndpointFilters({ only: "hosting:siteA,storage:bucketB" }, TEST_CONFIG),
+      ).to.be.undefined;
     });
 
-    it("should create only codebase filter when selector matches codebase name", () => {
+    it("should create only codebase filter when selector matches codebase name", async () => {
       const config: ValidatedConfig = [
         { source: "functions", codebase: DEFAULT_CODEBASE },
         { source: "other-functions", codebase: "other" },
@@ -332,12 +335,12 @@ describe("functionsDeployHelper", () => {
         only: "functions:other",
       } as Options;
 
-      const actual = helper.getEndpointFilters(options, config);
+      const actual = await helper.getEndpointFilters(options, config);
 
       expect(actual).to.deep.equal([{ codebase: "other" }]);
     });
 
-    it("should create default codebase filter when selector does not match codebase name", () => {
+    it("should create default codebase filter when selector does not match codebase name", async () => {
       const config: ValidatedConfig = [
         { source: "functions", codebase: DEFAULT_CODEBASE },
         { source: "python-functions", codebase: "python" },
@@ -347,10 +350,48 @@ describe("functionsDeployHelper", () => {
         only: "functions:other",
       } as Options;
 
-      const actual = helper.getEndpointFilters(options, config);
+      const actual = await helper.getEndpointFilters(options, config);
 
       expect(actual?.length).to.equal(1);
       expect(actual).to.deep.equal([{ codebase: DEFAULT_CODEBASE, idChunks: ["other"] }]);
+    });
+
+    it("prompts user when target matches both kit name and kit instance ID (with >1 instance)", async () => {
+      experiments.setEnabled("kits", true);
+      const promptStub = sinon.stub(prompt, "select").resolves("instance");
+      const config = [
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "my-kit": "cfg1", "my-kit-2": "cfg2" },
+        },
+      ] as unknown as ValidatedConfig;
+
+      const filters = await helper.getEndpointFilters({ only: "functions:my-kit" }, config);
+      expect(promptStub.calledOnce).to.be.true;
+      expect(filters).to.deep.equal([{ codebase: "my-kit" }]);
+
+      promptStub.restore();
+      experiments.setEnabled("kits", null);
+    });
+
+    it("does not prompt user when kit has only 1 instance matching kit name", async () => {
+      experiments.setEnabled("kits", true);
+      const promptStub = sinon.stub(prompt, "select").resolves("instance");
+      const config = [
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "my-kit": "cfg1" },
+        },
+      ] as unknown as ValidatedConfig;
+
+      const filters = await helper.getEndpointFilters({ only: "functions:my-kit" }, config);
+      expect(promptStub.called).to.be.false;
+      expect(filters).to.deep.equal([{ kit: "my-kit" }]);
+
+      promptStub.restore();
+      experiments.setEnabled("kits", null);
     });
   });
 

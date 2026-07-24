@@ -1,6 +1,8 @@
 import * as backend from "./backend";
 import { DEFAULT_CODEBASE, ValidatedConfig, isKitConfig } from "../../functions/projectConfig";
 import { assertExhaustive } from "../../functional";
+import { select } from "../../prompt";
+import { Options } from "../../options";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
@@ -65,7 +67,11 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
+export async function parseFunctionSelector(
+  selector: string,
+  config: ValidatedConfig,
+  options?: Options | { only?: string; nonInteractive?: boolean; force?: boolean },
+): Promise<EndpointFilter[]> {
   const fragments = selector.split(":");
   const target = fragments[0];
 
@@ -73,6 +79,7 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
   const codebaseNames = config
     .map((c) => ("codebase" in c ? c.codebase : undefined))
     .filter((c): c is string => !!c);
+
   if (codebaseNames.includes(target)) {
     return [
       {
@@ -82,9 +89,44 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
     ];
   }
 
-  // 2. Check if target matches a kit name
+  // 2. Check if target matches a kit name or kit instance ID
   const kitConfigs = config.filter(isKitConfig);
-  if (kitConfigs.some((k) => k.kit === target)) {
+  const isKitName = kitConfigs.some((k) => k.kit === target);
+  const isKitInstance = kitConfigs.some((k) => k.instances && target in k.instances);
+
+  // If target matches BOTH a kit name and a kit instance ID, prompt user to resolve ambiguity if kit has >1 instance
+  const kitConfig = kitConfigs.find((k) => k.kit === target);
+  const numInstances = Object.keys(kitConfig?.instances || {}).length;
+  if (isKitName && isKitInstance && numInstances > 1) {
+    const choice = await select({
+      message: `The selector '${target}' matches both a functions kit name and an instance ID. Which would you like to deploy?`,
+      choices: [
+        { name: `All instances of kit '${target}'`, value: "kit" },
+        { name: `Only the individual instance '${target}'`, value: "instance" },
+      ],
+      default: "kit",
+      nonInteractive: options?.nonInteractive,
+      force: options?.force,
+    });
+
+    if (choice === "kit") {
+      return [
+        {
+          kit: target,
+          ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+        },
+      ];
+    } else {
+      return [
+        {
+          codebase: target,
+          ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+        },
+      ];
+    }
+  }
+
+  if (isKitName) {
     return [
       {
         kit: target,
@@ -93,8 +135,6 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
     ];
   }
 
-  // 3. Check if target matches a kit instance ID
-  const isKitInstance = kitConfigs.some((k) => k.instances && target in k.instances);
   if (isKitInstance) {
     return [
       {
@@ -139,10 +179,10 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
  *
  *   If no filter exists, we return undefined which the caller should interpret as "match all functions".
  */
-export function getEndpointFilters(
-  options: { only?: string },
+export async function getEndpointFilters(
+  options: Options | { only?: string; nonInteractive?: boolean; force?: boolean },
   config: ValidatedConfig,
-): EndpointFilter[] | undefined {
+): Promise<EndpointFilter[] | undefined> {
   if (!options.only) {
     return undefined;
   }
@@ -153,7 +193,7 @@ export function getEndpointFilters(
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector, config));
+        filters.push(...(await parseFunctionSelector(selector, config, options)));
       }
     }
   }

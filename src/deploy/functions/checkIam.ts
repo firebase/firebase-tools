@@ -73,7 +73,7 @@ export async function checkHttpIam(
   if (!payload.functions) {
     return;
   }
-  const filters = context.filters || getEndpointFilters(options, context.config!);
+  const filters = context.filters || (await getEndpointFilters(options, context.config!));
   const wantBackends = Object.values(payload.functions).map(({ wantBackend }) => wantBackend);
   const httpEndpoints = [...flattenArray(wantBackends.map((b) => backend.allEndpoints(b)))]
     .filter((f) => backend.isHttpsTriggered(f) || backend.isDataConnectGraphqlTriggered(f))
