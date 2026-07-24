@@ -1,11 +1,13 @@
 import * as backend from "./backend";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { DEFAULT_CODEBASE, ValidatedConfig, isKitConfig } from "../../functions/projectConfig";
 import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
   // If codebase is undefined, match all functions in all codebase that matches the idChunks.
   // This is useful when trying to filter just using id chunks across all codebases.
   codebase?: string;
+  // If kit is specified, match all functions in all instances of the specified kit.
+  kit?: string;
   // If id chunks is undefined, match all function in the said codebase.
   idChunks?: string[];
 }
@@ -37,6 +39,12 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
     }
   }
 
+  if (endpoint.kit && filter.kit) {
+    if (endpoint.kit !== filter.kit) {
+      return false;
+    }
+  }
+
   if (!filter.idChunks) {
     // If idChunks is not provided, we match all functions.
     return true;
@@ -59,18 +67,45 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
  */
 export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
   const fragments = selector.split(":");
+  const target = fragments[0];
+
+  // 1. Check if target matches a known codebase name
+  const codebaseNames = config
+    .map((c) => ("codebase" in c ? c.codebase : undefined))
+    .filter((c): c is string => !!c);
+  if (codebaseNames.includes(target)) {
+    return [
+      {
+        codebase: target,
+        ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+      },
+    ];
+  }
+
+  // 2. Check if target matches a kit name
+  const kitConfigs = config.filter(isKitConfig);
+  if (kitConfigs.some((k) => k.kit === target)) {
+    return [
+      {
+        kit: target,
+        ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+      },
+    ];
+  }
+
+  // 3. Check if target matches a kit instance ID
+  const isKitInstance = kitConfigs.some((k) => k.instances && target in k.instances);
+  if (isKitInstance) {
+    return [
+      {
+        codebase: target,
+        ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+      },
+    ];
+  }
+
   if (fragments.length < 2) {
-    // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
-    // This could mean 2 things:
-    //
-    //   1. Codebase selector (i.e. "abc" refers to a codebase).
-    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function in the default codebase).
-    const codebaseNames = config.map((c) => c.codebase);
-    if (codebaseNames.includes(fragments[0])) {
-      // It's a known codebase name
-      return [{ codebase: fragments[0] }];
-    }
-    // It's not a codebase name, assume it is a function id in default codebase
+    // It's not a codebase or kit name, assume it is a function id in default codebase
     return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
   }
   return [
@@ -158,26 +193,42 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
+  const unitsFromConfig: string[] = [];
+  for (const c of config) {
+    if (isKitConfig(c)) {
+      if (c.instances) {
+        unitsFromConfig.push(...Object.keys(c.instances));
+      }
+    } else if (c.codebase) {
+      unitsFromConfig.push(c.codebase);
+    }
+  }
+  const codebasesFromConfig = [...new Set(unitsFromConfig)];
   if (!filters) {
     return [...codebasesFromConfig];
   }
 
-  const codebasesFromFilters = [
-    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
-  ];
+  const targetedUnits = new Set<string>();
+  for (const filter of filters) {
+    if (filter.codebase) {
+      targetedUnits.add(filter.codebase);
+    }
+    if (filter.kit) {
+      for (const c of config) {
+        if (isKitConfig(c) && c.kit === filter.kit && c.instances) {
+          for (const instanceId of Object.keys(c.instances)) {
+            targetedUnits.add(instanceId);
+          }
+        }
+      }
+    }
+  }
 
-  if (codebasesFromFilters.length === 0) {
+  if (targetedUnits.size === 0) {
     return [...codebasesFromConfig];
   }
 
-  const intersections: string[] = [];
-  for (const codebase of codebasesFromConfig) {
-    if (codebasesFromFilters.includes(codebase)) {
-      intersections.push(codebase);
-    }
-  }
-  return intersections;
+  return codebasesFromConfig.filter((unit) => targetedUnits.has(unit));
 }
 
 /**

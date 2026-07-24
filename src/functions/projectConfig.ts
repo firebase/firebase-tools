@@ -265,12 +265,22 @@ export function normalizeAndValidate(config?: FunctionsConfig): ValidatedConfig 
 }
 
 /**
- * Return functions config for given codebase.
+ * Return functions config for given codebase or kit instance.
  */
-export function configForCodebase(config: ValidatedConfig, codebase: string): ValidatedSingle {
-  const codebaseCfg = config.find((c) => c.codebase === codebase);
+export function configForCodebase(
+  config: ValidatedConfig,
+  codebaseOrInstance: string,
+): ValidatedSingle {
+  const codebaseCfg = config.find((c) => {
+    if (isKitConfig(c)) {
+      return c.instances && codebaseOrInstance in c.instances;
+    }
+    return c.codebase === codebaseOrInstance;
+  });
   if (!codebaseCfg) {
-    throw new FirebaseError(`No functions config found for codebase ${codebase}`);
+    throw new FirebaseError(
+      `No functions config found for codebase or kit instance ${codebaseOrInstance}`,
+    );
   }
   return codebaseCfg;
 }

@@ -543,4 +543,39 @@ describe("projectConfig", () => {
       });
     }
   });
+
+  describe("configForCodebase", () => {
+    beforeEach(() => {
+      experiments.setEnabled("kits", true);
+    });
+
+    afterEach(() => {
+      experiments.setEnabled("kits", null);
+    });
+
+    it("returns config for standard codebase name", () => {
+      const config = projectConfig.validate([{ codebase: "my-codebase", source: "functions" }]);
+      expect(projectConfig.configForCodebase(config, "my-codebase")).to.deep.equal(config[0]);
+    });
+
+    it("returns config for kit instance ID", () => {
+      const config = projectConfig.validate([
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "instance-1": "cfg1", "instance-2": "cfg2" },
+        },
+      ]);
+      expect(projectConfig.configForCodebase(config, "instance-1")).to.deep.equal(config[0]);
+      expect(projectConfig.configForCodebase(config, "instance-2")).to.deep.equal(config[0]);
+    });
+
+    it("throws if codebase or instance ID is not found", () => {
+      const config = projectConfig.validate([{ codebase: "my-codebase", source: "functions" }]);
+      expect(() => projectConfig.configForCodebase(config, "unknown")).to.throw(
+        FirebaseError,
+        /No functions config found for codebase or kit instance unknown/,
+      );
+    });
+  });
 });

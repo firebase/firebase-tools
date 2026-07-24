@@ -47,6 +47,7 @@ import {
   ValidatedConfig,
   requireLocal,
   shouldUseRuntimeConfig,
+  isKitConfig,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -240,7 +241,12 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => {
+    if (isKitConfig(cfg)) {
+      return cfg.instances && Object.keys(cfg.instances).some((inst) => codebases.includes(inst));
+    }
+    return cfg.codebase && codebases.includes(cfg.codebase);
+  });
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -347,6 +353,9 @@ export async function prepare(
       }
       endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
       endpoint.codebase = codebase;
+      if (isKitConfig(config)) {
+        endpoint.kit = config.kit;
+      }
     }
     wantBackends[codebase] = wantBackend;
     if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {

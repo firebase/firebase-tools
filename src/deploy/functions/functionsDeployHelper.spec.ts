@@ -5,6 +5,7 @@ import * as helper from "./functionsDeployHelper";
 import { Options } from "../../options";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
 import { EndpointFilter, parseFunctionSelector } from "./functionsDeployHelper";
+import * as experiments from "../../experiments";
 
 describe("functionsDeployHelper", () => {
   const ENDPOINT: backend.Endpoint = {
@@ -397,6 +398,24 @@ describe("functionsDeployHelper", () => {
         },
       ];
       expect(helper.targetCodebases(config, filters)).to.have.members(["default", "foobar"]);
+    });
+
+    it("returns all instance IDs for a targeted kit", () => {
+      experiments.setEnabled("kits", true);
+      const kitConfig: ValidatedConfig = [
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "inst-1": "c1", "inst-2": "c2" },
+        } as any,
+        {
+          source: "foo",
+          codebase: "default",
+        },
+      ];
+      const filters: EndpointFilter[] = [{ kit: "my-kit" }];
+      expect(helper.targetCodebases(kitConfig, filters)).to.have.members(["inst-1", "inst-2"]);
+      experiments.setEnabled("kits", null);
     });
   });
 
