@@ -40,6 +40,7 @@ export interface HttpTarget {
   httpMethod: HttpMethod;
   headers?: Record<string, string>;
   body?: string;
+  attemptDeadline?: string;
 
   // oneof authorizationHeader
   oauthToken?: OauthToken;
@@ -257,6 +258,9 @@ export async function jobFromEndpoint(
           endpoint.serviceAccount ?? (await gce.getDefaultServiceAccount(projectNumber)),
       },
     };
+    if (endpoint.scheduleTrigger.attemptDeadline) {
+      job.httpTarget.attemptDeadline = endpoint.scheduleTrigger.attemptDeadline;
+    }
   } else {
     assertExhaustive(endpoint.platform);
   }
