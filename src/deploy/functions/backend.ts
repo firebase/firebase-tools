@@ -388,8 +388,6 @@ export type Endpoint = TargetIds &
     // "Codebase" is not part of the container contract. Instead, it's value is provided by firebase.json or derived
     // from function labels.
     codebase?: string;
-    // Identifier for the functions kit if this endpoint belongs to a functions kit.
-    kit?: string;
     // URI is available on GCFv1 for HTTPS triggers and on GCFv2 always
     uri?: string;
     // sourceUploadUrl is available on GCFv1 only

@@ -169,7 +169,7 @@ export async function prepareDynamicExtensions(
   builds: Record<string, Build>,
 ): Promise<void> {
   const functionsConfig = normalizeAndValidate(options.config.src.functions);
-  const filters = await getEndpointFilters(options, functionsConfig);
+  const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
   const projectId = needProjectId(options);
   const projectNumber = await needProjectNumber(options);

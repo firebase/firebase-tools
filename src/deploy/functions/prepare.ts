@@ -214,7 +214,7 @@ export async function prepare(
   const projectNumber = await needProjectNumber(options);
 
   context.config = normalizeAndValidate(options.config.src.functions);
-  context.filters = await getEndpointFilters(options, context.config); // Parse --only filters for functions.
+  context.filters = getEndpointFilters(options, context.config); // Parse --only filters for functions.
 
   const codebases = targetCodebases(context.config, context.filters);
   if (codebases.length === 0) {
@@ -353,9 +353,6 @@ export async function prepare(
       }
       endpoint.environmentVariables[EVENTARC_SOURCE_ENV] = resource;
       endpoint.codebase = codebase;
-      if (isKitConfig(config)) {
-        endpoint.kit = config.kit;
-      }
     }
     wantBackends[codebase] = wantBackend;
     if (functionsEnv.hasUserEnvs(userEnvOpt) || hasEnvsFromParams) {
