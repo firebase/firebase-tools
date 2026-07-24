@@ -341,8 +341,7 @@ export class HubExport {
       resolveOnHTTPError: true,
     });
     if (res.status >= 400) {
-      const errorMsg = res.body ? await streamToString(res.body) : "";
-      throw new FirebaseError(`Failed to export storage: ${errorMsg}`);
+      throw new FirebaseError(`Failed to export storage: ${await streamToString(res.body)}`);
     }
   }
 

@@ -69,8 +69,7 @@ export async function profiler(options: any): Promise<unknown> {
   });
 
   if (res.response.status >= 400) {
-    const errorMsg = res.body ? await utils.streamToString(res.body) : "";
-    throw responseToError(res.response, errorMsg);
+    throw responseToError(res.response, await utils.streamToString(res.body));
   }
 
   if (!options.duration) {
