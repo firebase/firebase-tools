@@ -42,13 +42,39 @@ The schema for one object in the `indexes` array is as follows. Optional propert
 
 Note that Cloud Firestore document fields can only be indexed in one [mode](https://firebase.google.com/docs/firestore/query-data/index-overview#index_modes), thus a field object cannot contain both the `order` and `arrayConfig` properties.
 
+While there are fields and properties that are specific to Cloud Firestore editions, some fields are shared as well.
+
+#### Standard edition
+
 ```javascript
-  collectionGroup: string  // Labeled "Collection ID" in the Firebase console
-  queryScope: string       // One of "COLLECTION", "COLLECTION_GROUP"
-  fields: array
-    fieldPath: string
-    order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig property
-    arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order property
+collectionGroup: string  // Labeled "Collection ID" in the Firebase console
+queryScope: string       // One of "COLLECTION", "COLLECTION_GROUP"
+apiScope: string         // "ANY_API" (the default) is the only acceptable value. Optional.
+density: string          // "SPARSE_ALL" is the only acceptable value. Optional.
+fields: array
+  fieldPath: string
+  order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig and vectorConfig properties
+  arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order and vectorConfig properties
+  vectorConfig?: object  // Indicates that this is a vector index; excludes order and arrayConfig properties
+    dimension: number    // The resulting index will only include vectors of this dimension
+    flat: {}             // Indicates the vector index is a flat index
+```
+
+#### Enterprise edition
+
+```javascript
+collectionGroup: string  // Labeled "Collection ID" in the Firebase console
+queryScope: string       // One of "COLLECTION", "COLLECTION_GROUP"
+apiScope: string         // For Native mode, omit or set to "ANY_API". For MongoDB compatiblity, use "MONGODB_COMPATIBLE_API"
+multikey: boolean        // Indicates if this is a multikey index
+density: string          // One of "SPARSE_ANY" or "DENSE"
+fields: array
+  fieldPath: string
+  order?: string         // One of "ASCENDING", "DESCENDING"; excludes arrayConfig and vectorConfig properties
+  arrayConfig?: string   // If this parameter used, must be "CONTAINS"; excludes order and vectorConfig properties
+  vectorConfig?: object  // Indicates that this is a vector index; excludes order and arrayConfig properties
+    dimension: number    // The resulting index will only include vectors of this dimension
+    flat: {}             // Indicates the vector index is a flat index
 ```
 
 ### FieldOverrides
