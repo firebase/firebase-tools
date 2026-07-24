@@ -624,14 +624,14 @@ describe("cloudfunctions", () => {
 
   describe("setInvokerUpdate", () => {
     it("should reject on emtpy invoker array", async () => {
-      await expect(cloudfunctions.setInvokerUpdate("project", "function", [])).to.be.rejected;
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", [], true)).to.be.rejected;
     });
 
     it("should reject if the getting the IAM policy fails", async () => {
       nock(functionsOrigin()).get("/v1/function:getIamPolicy").reply(404, {});
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", ["public"]),
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"], true),
       ).to.be.rejectedWith("Failed to get the IAM Policy on the function function");
     });
 
@@ -649,7 +649,7 @@ describe("cloudfunctions", () => {
         .reply(418, {});
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", ["public"]),
+        cloudfunctions.setInvokerUpdate("project", "function", ["public"], true),
       ).to.be.rejectedWith("Failed to set the IAM Policy on the function function");
     });
 
@@ -666,11 +666,25 @@ describe("cloudfunctions", () => {
         })
         .reply(200, {});
 
-      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["public"])).to.not.be
-        .rejected;
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["public"], true)).to.not
+        .be.rejected;
     });
 
-    it("should set the policy with private invoker with active policies", async () => {
+    it("should skip setIamPolicy when onlyIfUnset is true and a binding already exists", async () => {
+      nock(functionsOrigin())
+        .get("/v1/function:getIamPolicy")
+        .reply(200, {
+          bindings: [{ role: "roles/cloudfunctions.invoker", members: ["allUsers"] }],
+          etag: "abc",
+          version: 3,
+        });
+      // setIamPolicy is intentionally not mocked — any call to it would throw via nock
+
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["public"], true)).to.not
+        .be.rejected;
+    });
+
+    it("should skip setIamPolicy with private invoker when a binding already exists", async () => {
       nock(functionsOrigin())
         .get("/v1/function:getIamPolicy")
         .reply(200, {
@@ -681,22 +695,10 @@ describe("cloudfunctions", () => {
           etag: "1234",
           version: 3,
         });
-      nock(functionsOrigin())
-        .post("/v1/function:setIamPolicy", {
-          policy: {
-            bindings: [
-              { role: "random-role", members: ["user:pineapple"] },
-              { role: "roles/cloudfunctions.invoker", members: [] },
-            ],
-            etag: "1234",
-            version: 3,
-          },
-          updateMask: "bindings,etag,version",
-        })
-        .reply(200, {});
+      // setIamPolicy is intentionally not mocked — onlyIfUnset skips when a binding exists
 
-      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["private"])).to.not.be
-        .rejected;
+      await expect(cloudfunctions.setInvokerUpdate("project", "function", ["private"], true)).to.not
+        .be.rejected;
     });
 
     it("should set the policy with a set of invokers with active policies", async () => {
@@ -722,11 +724,16 @@ describe("cloudfunctions", () => {
         .reply(200, {});
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", [
-          "service-account1@",
-          "service-account2@project.iam.gserviceaccount.com",
-          "service-account3@",
-        ]),
+        cloudfunctions.setInvokerUpdate(
+          "project",
+          "function",
+          [
+            "service-account1@",
+            "service-account2@project.iam.gserviceaccount.com",
+            "service-account3@",
+          ],
+          true,
+        ),
       ).to.not.be.rejected;
     });
 
@@ -749,11 +756,16 @@ describe("cloudfunctions", () => {
         });
 
       await expect(
-        cloudfunctions.setInvokerUpdate("project", "function", [
-          "service-account2@project.iam.gserviceaccount.com",
-          "service-account3@",
-          "service-account1@",
-        ]),
+        cloudfunctions.setInvokerUpdate(
+          "project",
+          "function",
+          [
+            "service-account2@project.iam.gserviceaccount.com",
+            "service-account3@",
+            "service-account1@",
+          ],
+          true,
+        ),
       ).to.not.be.rejected;
     });
   });
