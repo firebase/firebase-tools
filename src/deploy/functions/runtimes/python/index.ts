@@ -67,6 +67,71 @@ export function getPythonBinary(
   assertExhaustive(runtime, `Unhandled python runtime ${runtime as string}`);
 }
 
+/**
+ * Extract the "major.minor" Python version a runtime name (e.g. "python310") expects.
+ * Returns undefined for runtime names that don't encode a version (there are none today,
+ * but this keeps the check from throwing if that ever changes).
+ */
+export function getExpectedPythonVersion(
+  runtime: supported.Runtime & supported.RuntimeOf<"python">,
+): string | undefined {
+  const match = /^python(\d)(\d+)$/.exec(runtime);
+  if (!match) {
+    return undefined;
+  }
+  return `${match[1]}.${match[2]}`;
+}
+
+/**
+ * Read the Python version a virtual environment was created with, from its pyvenv.cfg.
+ * Returns undefined if the venv (or its version marker) doesn't exist, so callers can
+ * fall back to other error messages instead of failing on this best-effort check.
+ */
+export function getVenvPythonVersion(sourceDir: string, venvDir: string): string | undefined {
+  let contents: string;
+  try {
+    contents = fs.readFileSync(path.join(sourceDir, venvDir, "pyvenv.cfg"), "utf8");
+  } catch {
+    return undefined;
+  }
+  // pyvenv.cfg has included a "version" line (e.g. "version = 3.10.12") since Python 3.3.
+  // Python 3.11+ additionally writes "version_info", which we also accept.
+  const match = /^version(?:_info)?\s*=\s*(\d+)\.(\d+)/m.exec(contents);
+  if (!match) {
+    return undefined;
+  }
+  return `${match[1]}.${match[2]}`;
+}
+
+/**
+ * Build the "Python version mismatch" error message for a venv created with `actual`
+ * Python version when `runtime` expects `expected`. Exported (and takes `platform`
+ * explicitly) so it can be unit tested without going through actual process spawning.
+ */
+export function buildVersionMismatchMessage(
+  runtime: supported.Runtime & supported.RuntimeOf<"python">,
+  actual: string,
+  expected: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const recreateCmd =
+    platform === "win32"
+      ? `py -${expected} -m venv ${DEFAULT_VENV_DIR}`
+      : `python${expected} -m venv ${DEFAULT_VENV_DIR}`;
+  const message =
+    `Python version mismatch: the virtual environment at "${DEFAULT_VENV_DIR}" was created with ` +
+    `Python ${actual}, but this project is configured to use Python ${expected} (runtime "${runtime}"). ` +
+    `Recreate the virtual environment with '${recreateCmd}'`;
+  const actualRuntime = `python${actual.replace(".", "")}`;
+  if (supported.isRuntime(actualRuntime)) {
+    return (
+      message +
+      `, or set "runtime": "${actualRuntime}" in firebase.json to match the Python version already installed.`
+    );
+  }
+  return message + ".";
+}
+
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "python";
   constructor(
@@ -114,6 +179,10 @@ export class Delegate implements runtimes.RuntimeDelegate {
       });
       this._modulesDir = out.trim();
       if (this._modulesDir === "") {
+        const versionMismatch = this.checkVenvPythonVersionMismatch();
+        if (versionMismatch) {
+          throw new FirebaseError(versionMismatch);
+        }
         if (stderr.includes("venv") && stderr.includes("activate")) {
           throw new FirebaseError(
             "Failed to find location of Firebase Functions SDK: Missing virtual environment at venv directory. " +
@@ -134,6 +203,21 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   getPythonBinary(): string {
     return getPythonBinary(this.runtime);
+  }
+
+  /**
+   * Compares the Python version the venv was actually created with against the version
+   * this.runtime expects, so we can surface a clear error instead of the generic
+   * "Failed to find location of Firebase Functions SDK" message when they disagree.
+   * Returns undefined when no mismatch is detected (or can't be determined).
+   */
+  private checkVenvPythonVersionMismatch(): string | undefined {
+    const expected = getExpectedPythonVersion(this.runtime);
+    const actual = getVenvPythonVersion(this.sourceDir, DEFAULT_VENV_DIR);
+    if (!expected || !actual || expected === actual) {
+      return undefined;
+    }
+    return buildVersionMismatchMessage(this.runtime, actual, expected);
   }
 
   validate(): Promise<void> {
