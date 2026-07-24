@@ -43,6 +43,9 @@ interface CreateWebAppOptions extends CreateFirebaseAppOptions {
   displayName: string;
 }
 
+/**
+ *
+ */
 export async function getPlatform(appDir: string, config: Config) {
   // Detect what platform based on current user
   let targetPlatforms = await getPlatformsFromFolder(appDir);
@@ -164,6 +167,9 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
   }
 }
 export type SdkInitOptions = CreateIosAppOptions | CreateAndroidAppOptions | CreateWebAppOptions;
+/**
+ *
+ */
 export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions) {
   let appData;
   switch (appPlatform) {
@@ -181,6 +187,9 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
   }
   return appData;
 }
+/**
+ *
+ */
 export async function getSdkOutputPath(
   appDir: string,
   platform: AppPlatform,
@@ -198,6 +207,9 @@ export async function getSdkOutputPath(
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
+/**
+ *
+ */
 export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
     throw new FirebaseError(
@@ -207,30 +219,49 @@ export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): voi
     );
   }
 }
-async function selectAppInteractively(
+/**
+ * Interactively prompts the user to select a Firebase App from a list.
+ */
+export async function selectAppInteractively(
   apps: AppMetadata[],
-  appPlatform: AppPlatform,
+  appPlatform: AppPlatform = AppPlatform.ANY,
+  options?: {
+    message?: string;
+  },
 ): Promise<AppMetadata> {
   checkForApps(apps, appPlatform);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const choices = apps.map((app: any) => {
+  const choices = apps.map((app) => {
+    let displayText = app.displayName || app.appId;
+
+    if (!app.displayName) {
+      if (app.platform === AppPlatform.IOS && "bundleId" in app) {
+        displayText = (app as IosAppMetadata).bundleId;
+      } else if (app.platform === AppPlatform.ANDROID && "packageName" in app) {
+        displayText = (app as AndroidAppMetadata).packageName;
+      }
+    }
+
     return {
-      name:
-        `${app.displayName || app.bundleId || app.packageName}` +
-        ` - ${app.appId} (${app.platform})`,
+      name: `${displayText} - ${app.appId} (${app.platform})`,
       value: app,
     };
   });
 
-  return await select({
-    message:
-      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
-      "app to get the configuration data:",
+  const message =
+    options?.message ??
+    `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
+      "app to get the configuration data:";
+
+  return await select<AppMetadata>({
+    message,
     choices,
   });
 }
 
+/**
+ *
+ */
 export async function getSdkConfig(
   options: Options,
   appPlatform: AppPlatform,
@@ -597,6 +628,9 @@ export function getAppConfigFile(config: AppConfig, platform: AppPlatform): AppC
 
 export type AppConfig = MobileConfig | WebConfig;
 
+/**
+ *
+ */
 export async function writeConfigToFile(
   filename: string,
   nonInteractive: boolean,
@@ -741,6 +775,9 @@ export async function deleteAppAndroidSha(
   }
 }
 
+/**
+ *
+ */
 export async function findIntelligentPathForIOS(appDir: string, options: AppsInitOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
@@ -771,6 +808,9 @@ export async function findIntelligentPathForIOS(appDir: string, options: AppsIni
   return outputPath;
 }
 
+/**
+ *
+ */
 export async function findIntelligentPathForAndroid(appDir: string, options: AppsInitOptions) {
   /**
    * android/build.gradle // if it's this, choose app
