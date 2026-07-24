@@ -1,0 +1,11 @@
+name: simple-https
+version: 1.0.0
+specVersion: v1beta
+
+resources:
+  - name: myHttpFunction
+    type: firebaseextensions.v1beta.function
+    description: A simple HTTP triggered function
+    properties:
+      runtime: nodejs20
+      httpsTrigger: {}
