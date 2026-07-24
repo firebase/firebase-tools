@@ -32,6 +32,7 @@ import {
 import { logError } from "./utils";
 import { camelCase } from "lodash";
 import { registerHandlers } from "./handlers";
+import { hostValidationMiddleware } from "../hostValidation";
 import * as bodyParser from "body-parser";
 import { URLSearchParams } from "url";
 import { decode, JwtHeader } from "jsonwebtoken";
@@ -114,14 +115,21 @@ function specWithEmulatorServer(protocol: string, host: string | undefined): Ope
  * accepted by the target endpoint), it assumes ALL keys / tokens map to this
  * default project ID.
  * @param projectStateForId a map from projectId to state, injectable for tests
+ * @param listenHosts the address(es) the emulator is bound to, used to reject
+ * untrusted Host headers when bound to loopback (mitigates DNS-rebinding)
  */
 export async function createApp(
   defaultProjectId: string,
   singleProjectMode = SingleProjectMode.NO_WARNING,
   projectStateForId = new Map<string, AgentProjectState>(),
+  listenHosts: string[] = [],
 ): Promise<express.Express> {
   const app = express();
   app.set("json spaces", 2);
+
+  // Reject requests with an untrusted Host header to mitigate DNS-rebinding.
+  // Only enforced when bound to loopback (see hostValidationMiddleware).
+  app.use(hostValidationMiddleware(listenHosts));
 
   // Return access-control-allow-private-network heder if requested
   // Enables accessing locahost when site is exposed via tunnel see https://github.com/firebase/firebase-tools/issues/4227
