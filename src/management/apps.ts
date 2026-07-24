@@ -43,9 +43,6 @@ interface CreateWebAppOptions extends CreateFirebaseAppOptions {
   displayName: string;
 }
 
-/**
- *
- */
 export async function getPlatform(appDir: string, config: Config) {
   // Detect what platform based on current user
   let targetPlatforms = await getPlatformsFromFolder(appDir);
@@ -167,9 +164,6 @@ async function initiateWebAppCreation(options: CreateWebAppOptions): Promise<Web
   }
 }
 export type SdkInitOptions = CreateIosAppOptions | CreateAndroidAppOptions | CreateWebAppOptions;
-/**
- *
- */
 export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions) {
   let appData;
   switch (appPlatform) {
@@ -187,9 +181,6 @@ export async function sdkInit(appPlatform: AppPlatform, options: SdkInitOptions)
   }
   return appData;
 }
-/**
- *
- */
 export async function getSdkOutputPath(
   appDir: string,
   platform: AppPlatform,
@@ -207,9 +198,6 @@ export async function getSdkOutputPath(
   }
   throw new FirebaseError("Platform " + platform.toString() + " is not supported yet.");
 }
-/**
- *
- */
 export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): void {
   if (!apps.length) {
     throw new FirebaseError(
@@ -259,9 +247,6 @@ export async function selectAppInteractively(
   });
 }
 
-/**
- *
- */
 export async function getSdkConfig(
   options: Options,
   appPlatform: AppPlatform,
@@ -628,9 +613,6 @@ export function getAppConfigFile(config: AppConfig, platform: AppPlatform): AppC
 
 export type AppConfig = MobileConfig | WebConfig;
 
-/**
- *
- */
 export async function writeConfigToFile(
   filename: string,
   nonInteractive: boolean,
@@ -775,9 +757,6 @@ export async function deleteAppAndroidSha(
   }
 }
 
-/**
- *
- */
 export async function findIntelligentPathForIOS(appDir: string, options: AppsInitOptions) {
   const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });
   for (let i = 0; i < currentFiles.length; i++) {
@@ -808,9 +787,6 @@ export async function findIntelligentPathForIOS(appDir: string, options: AppsIni
   return outputPath;
 }
 
-/**
- *
- */
 export async function findIntelligentPathForAndroid(appDir: string, options: AppsInitOptions) {
   /**
    * android/build.gradle // if it's this, choose app
