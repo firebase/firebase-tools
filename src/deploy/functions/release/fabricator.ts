@@ -927,7 +927,7 @@ export class Fabricator {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
         return;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         await this.upsertScheduleV2(endpoint);
         return;
       } else if (endpoint.platform === "run") {
@@ -954,7 +954,7 @@ export class Fabricator {
       if (endpoint.platform === "gcfv1") {
         await this.deleteScheduleV1(endpoint);
         return;
-      } else if (endpoint.platform === "gcfv2") {
+      } else if (endpoint.platform === "gcfv2" || endpoint.platform === "run") {
         await this.deleteScheduleV2(endpoint);
         return;
       } else if (endpoint.platform === "run") {
