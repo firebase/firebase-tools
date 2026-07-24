@@ -261,15 +261,21 @@ export class Delegate {
     config: backend.RuntimeConfigValues,
     envs: backend.EnvironmentVariables,
     port: string,
-  ): Promise<() => Promise<void>> {
+  ): Promise<{ process: ChildProcess; kill: () => Promise<void> }> {
     const childProcess = this.spawnFunctionsProcess(config, { ...envs, PORT: port });
 
-    // TODO: Refactor return type to () => Promise<void> to simplify nested promises
-    return Promise.resolve(async () => {
-      const p = new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
+    const kill = async (): Promise<void> => {
+      // The process may have already exited (e.g. it crashed while discovery was
+      // still running) before kill() is called. In that case the 'exit' event has
+      // already fired and a listener registered now would never see it, hanging
+      // this function forever.
+      const alreadyExited = childProcess.exitCode !== null || childProcess.signalCode !== null;
+      const p = alreadyExited
+        ? Promise.resolve()
+        : new Promise<void>((resolve, reject) => {
+            childProcess.once("exit", resolve);
+            childProcess.once("error", reject);
+          });
 
       try {
         await fetch(`http://localhost:${port}/__/quitquitquit`);
@@ -282,7 +288,8 @@ export class Delegate {
         }
       }, 10_000);
       return p;
-    });
+    };
+    return Promise.resolve({ process: childProcess, kill });
   }
 
   // eslint-disable-next-line require-await
@@ -316,9 +323,16 @@ export class Delegate {
         // HTTP-based discovery (default)
         const basePort = 8000 + randomInt(0, 1000); // Add a jitter to reduce likelihood of race condition
         const port = await portfinder.getPortPromise({ port: basePort });
-        const kill = await this.serveAdmin(config, env, port.toString());
+        const { process: adminProcess, kill } = await this.serveAdmin(config, env, port.toString());
         try {
-          discovered = await discovery.detectFromPort(port, this.projectId, this.runtime);
+          discovered = await discovery.detectFromPort(
+            port,
+            this.projectId,
+            this.runtime,
+            /* initialDelay= */ 0,
+            /* timeout= */ 10_000,
+            adminProcess,
+          );
         } finally {
           await kill();
         }
