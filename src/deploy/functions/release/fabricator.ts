@@ -417,13 +417,18 @@ export class Fabricator {
       .run(async () => {
         // try to get the source token right before deploying
         apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.createFunction(apiFunction);
-        return poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
+        try {
+          const op: { name: string } = await gcf.createFunction(apiFunction);
+          return poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        } catch (err) {
+          scraper.abort();
+          throw err;
+        }
       })
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "create"));
 
@@ -546,18 +551,22 @@ export class Fabricator {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
             apiFunction.buildConfig.sourceToken = await scraper.getToken();
           }
-          const op: { name: string } = await gcfV2.createFunction(apiFunction);
-          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-            ...gcfV2PollerOptions,
-            pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-            operationResourceName: op.name,
-            onPoll: scraper.poller,
-          });
+          try {
+            const op: { name: string } = await gcfV2.createFunction(apiFunction);
+            return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+              ...gcfV2PollerOptions,
+              pollerName: `create-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+              onPoll: scraper.poller,
+            });
+          } catch (err) {
+            // Release the scraper so the next retry (or concurrent waiters) are
+            // not stuck awaiting a token promise that will never be fulfilled.
+            scraper.abort();
+            throw err;
+          }
         })
         .catch(async (err: any) => {
-          // Abort waiting on source token so other concurrent calls don't get stuck
-          scraper.abort();
-
           // If the createFunction call returns RPC error code RESOURCE_EXHAUSTED (8),
           // we have exhausted the underlying Cloud Run API quota. To retry, we need to
           // first delete the GCF function resource, then call createFunction again.
@@ -644,13 +653,18 @@ export class Fabricator {
     const resultFunction = await this.functionExecutor
       .run(async () => {
         apiFunction.sourceToken = await scraper.getToken();
-        const op: { name: string } = await gcf.updateFunction(apiFunction);
-        return await poller.pollOperation<gcf.CloudFunction>({
-          ...gcfV1PollerOptions,
-          pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-          operationResourceName: op.name,
-          onPoll: scraper.poller,
-        });
+        try {
+          const op: { name: string } = await gcf.updateFunction(apiFunction);
+          return await poller.pollOperation<gcf.CloudFunction>({
+            ...gcfV1PollerOptions,
+            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+            onPoll: scraper.poller,
+          });
+        } catch (err) {
+          scraper.abort();
+          throw err;
+        }
       })
       .catch(rethrowAs<gcf.CloudFunction>(endpoint, "update"));
 
@@ -695,18 +709,24 @@ export class Fabricator {
           if (experiments.isEnabled("functionsv2deployoptimizations")) {
             apiFunction.buildConfig.sourceToken = await scraper.getToken();
           }
-          const op: { name: string } = await gcfV2.updateFunction(apiFunction);
-          return await poller.pollOperation<gcfV2.OutputCloudFunction>({
-            ...gcfV2PollerOptions,
-            pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
-            operationResourceName: op.name,
-            onPoll: scraper.poller,
-          });
+          try {
+            const op: { name: string } = await gcfV2.updateFunction(apiFunction);
+            return await poller.pollOperation<gcfV2.OutputCloudFunction>({
+              ...gcfV2PollerOptions,
+              pollerName: `update-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+              operationResourceName: op.name,
+              onPoll: scraper.poller,
+            });
+          } catch (err) {
+            // Release the scraper so the next retry (or concurrent waiters) are
+            // not stuck awaiting a token promise that will never be fulfilled.
+            scraper.abort();
+            throw err;
+          }
         },
         { retryCodes: [...DEFAULT_RETRY_CODES, CLOUD_RUN_RESOURCE_EXHAUSTED_CODE] },
       )
       .catch((err: any) => {
-        scraper.abort();
         logger.error((err as Error).message);
         throw new reporter.DeploymentError(endpoint, "update", err);
       });

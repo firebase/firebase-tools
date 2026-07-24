@@ -6,10 +6,17 @@ export async function timeoutFallback<T, V>(
   value: V,
   timeoutMillis = 2000,
 ): Promise<T | V> {
-  return Promise.race([
-    promise,
-    new Promise<V>((resolve) => setTimeout(() => resolve(value), timeoutMillis)),
-  ]);
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<V>((resolve) => {
+        timer = setTimeout(() => resolve(value), timeoutMillis);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function timeoutError<T>(
