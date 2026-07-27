@@ -500,7 +500,7 @@ export function getSecretLocalPath(backend: EmulatableBackend, projectDir: strin
 }
 
 /**
- * toBackendInfo transforms an EmulatableBackend into its correspondign API type, BackendInfo
+ * toBackendInfo transforms an EmulatableBackend into its corresponding API type, BackendInfo
  * @param e the emulatableBackend to transform
  * @param cf3Triggers a list of CF3 triggers. If e does not include predefinedTriggers, these will be used instead.
  */

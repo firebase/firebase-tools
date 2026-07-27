@@ -1,6 +1,5 @@
+- Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
+- Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
+- Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
+- Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
 - Added support for a two-phase non-interactive authentication flow to `firebase login` using `login [auth_code]`, allowing headless tools and agents to log in.
-- Add declarative security support and automated rolling IAM role grants/revocations for 2nd gen Cloud Functions
-- Fixed an issue in `apps:create` where App Store ID was always prompted for even when unnecessary.
-- Add `functions:lifecycle:list` and `functions:lifecycle:run` commands to view and run
-  lifecycle hooks in isolation.
-- Updated the Firebase SQL Connect local toolkit to v3.4.15, which supports for 1:1 nested mutations. (#10773)

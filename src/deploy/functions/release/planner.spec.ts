@@ -573,6 +573,24 @@ describe("planner", () => {
       expect(plan.serviceAccountToDelete).to.be.undefined;
     });
 
+    it("deletes the service account when opting out during a codebase-filtered deploy", async () => {
+      const wantBackend = backend.empty();
+      const haveBackend = backend.of(func("id", "region"));
+
+      const plan = await planner.createDeploymentPlan({
+        wantBackend,
+        haveBackend,
+        codebase,
+        projectId: "my-project",
+        filters: [{ codebase }],
+        existingManagedSA: "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      });
+
+      expect(plan.serviceAccountToDelete).to.equal(
+        "firebase-fn-123@my-project.iam.gserviceaccount.com",
+      );
+    });
+
     it("deletes the service account when opting out during an unfiltered deploy", async () => {
       const wantBackend = backend.empty();
       const haveBackend = backend.of(func("id", "region"));

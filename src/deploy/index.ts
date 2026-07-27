@@ -4,7 +4,7 @@ import { hostingOrigin } from "../api";
 import { bold, underline, white } from "colorette";
 import { includes, each } from "lodash";
 import { needProjectId } from "../projectUtils";
-import { logBullet, logSuccess, consoleUrl, addSubdomain } from "../utils";
+import { logBullet, logSuccess, consoleUrl, addSubdomain, isRunningInGithubAction } from "../utils";
 import { FirebaseError } from "../error";
 import { AnalyticsParams, trackGA4 } from "../track";
 import { lifecycleHooks } from "./lifecycleHooks";
@@ -22,8 +22,6 @@ import * as AuthTarget from "./auth";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
-import { isRunningInGithubAction } from "../utils";
-import { TARGET_PERMISSIONS } from "../commands/deploy";
 import { requirePermissions } from "../requirePermissions";
 import { Options } from "../options";
 import { HostingConfig } from "../firebaseConfig";
@@ -33,7 +31,71 @@ import {
   deployStatsParams,
 } from "./dataconnect/context";
 
-const TARGETS = {
+export const VALID_DEPLOY_TARGETS = [
+  "database",
+  "storage",
+  "firestore",
+  "functions",
+  "hosting",
+  "remoteconfig",
+  "extensions",
+  "dataconnect",
+  "apphosting",
+  "auth",
+] as const;
+
+export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
+  database: ["firebasedatabase.instances.update"],
+  hosting: ["firebasehosting.sites.update"],
+  functions: [
+    "cloudfunctions.functions.list",
+    "cloudfunctions.functions.create",
+    "cloudfunctions.functions.get",
+    "cloudfunctions.functions.update",
+    "cloudfunctions.functions.delete",
+    "cloudfunctions.operations.get",
+  ],
+  firestore: [
+    "datastore.indexes.list",
+    "datastore.indexes.create",
+    "datastore.indexes.update",
+    "datastore.indexes.delete",
+  ],
+  storage: [
+    "firebaserules.releases.create",
+    "firebaserules.rulesets.create",
+    "firebaserules.releases.update",
+  ],
+  remoteconfig: ["cloudconfig.configs.get", "cloudconfig.configs.update"],
+  dataconnect: [
+    "cloudsql.databases.create",
+    "cloudsql.databases.update",
+    "cloudsql.instances.connect",
+    "cloudsql.instances.create", // TODO: Support users who don't have cSQL writer permissions and want to use existing instances
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "cloudsql.instances.update",
+    "cloudsql.users.create",
+    "firebasedataconnect.connectors.create",
+    "firebasedataconnect.connectors.delete",
+    "firebasedataconnect.connectors.list",
+    "firebasedataconnect.connectors.update",
+    "firebasedataconnect.operations.get",
+    "firebasedataconnect.services.create",
+    "firebasedataconnect.services.delete",
+    "firebasedataconnect.services.update",
+    "firebasedataconnect.services.list",
+    "firebasedataconnect.schemas.create",
+    "firebasedataconnect.schemas.delete",
+    "firebasedataconnect.schemas.list",
+    "firebasedataconnect.schemas.update",
+  ],
+  apphosting: [],
+  extensions: [],
+  auth: ["firebase.projects.update", "firebaseauth.configs.update"],
+};
+
+export const TARGETS = {
   hosting: HostingTarget,
   database: DatabaseTarget,
   firestore: FirestoreTarget,

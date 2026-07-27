@@ -3,6 +3,7 @@ import type { ReadOptions } from "fs-extra";
 import { dirname, extname, join, relative } from "path";
 import { readFile } from "fs/promises";
 import { IncomingMessage, request as httpRequest, ServerResponse, Agent } from "http";
+import { Readable } from "stream";
 import { sync as spawnSync } from "cross-spawn";
 import * as clc from "colorette";
 import { satisfies as semverSatisfied } from "semver";
@@ -10,6 +11,7 @@ import { satisfies as semverSatisfied } from "semver";
 import { logger } from "../logger";
 import { FirebaseError } from "../error";
 import { fileExistsSync } from "../fsutils";
+import type { RequestWithRawBody } from "../hosting/proxy";
 import { pathToFileURL } from "url";
 import {
   DEFAULT_DOCS_URL,
@@ -160,6 +162,26 @@ export function proxyResponse(
   return proxiedRes;
 }
 
+// Matches the gen2/Cloud Run ingress limit; caps the buffer so it can't OOM.
+export const MAX_REQUEST_BODY_BYTES = 32 * 1024 * 1024;
+
+/** Read a request stream into a Buffer, throwing once it exceeds maxBytes. */
+export async function bufferRequestBody(req: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > MAX_REQUEST_BODY_BYTES) {
+      throw new FirebaseError(`Request body exceeds the ${MAX_REQUEST_BODY_BYTES} byte limit`, {
+        status: 413,
+      });
+    }
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks);
+}
+
 export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
   const agent = new Agent({ keepAlive: true });
   // If the path is a the auth token sync URL pass through to Cloud Functions
@@ -168,6 +190,9 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
     firebaseDefaultsJSON && JSON.parse(firebaseDefaultsJSON)._authTokenSyncURL;
   return async (originalReq: IncomingMessage, originalRes: ServerResponse, next: () => void) => {
     const { method, headers, url: path } = originalReq;
+    // A client that disconnects mid-request leaves a socket whose writes fail with
+    // EPIPE/ECONNRESET; handle the error so a broken client can't crash the emulator.
+    originalRes.on("error", (err) => logger.debug("Response stream error:", method, path, err));
     if (!method || !path) {
       originalRes.end();
       return;
@@ -193,6 +218,39 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
           "X-Forwarded-Host": headers.host,
         },
       };
+      // Buffer the body before forwarding it to the dev server, which consumes
+      // the stream. If the dev server 404s we cascade (call next) to the next
+      // rewrite — e.g. a Cloud Function — and that handler replays the body via
+      // req.rawBody; otherwise it would forward a drained stream with a stale
+      // content-length and hang until timeout.
+      // See https://github.com/firebase/firebase-tools/issues/5986
+      let rawBody: Buffer | undefined;
+      if (!["GET", "HEAD"].includes(method)) {
+        try {
+          rawBody = await bufferRequestBody(originalReq);
+        } catch (err) {
+          if (err instanceof FirebaseError && err.status === 413) {
+            // Reject oversized payloads like the function ingress does.
+            originalRes.statusCode = 413;
+            originalRes.end();
+            return;
+          }
+
+          logger.debug("Error buffering request body:", method, path, err);
+          if (originalRes.writable) {
+            originalRes.statusCode = 400;
+            originalRes.end();
+          } else {
+            // if the client is already gone, writing would EPIPE (handled by the
+            // response error handler above), so tear the response down instead.
+            originalRes.destroy();
+          }
+          return;
+        }
+        (originalReq as RequestWithRawBody).rawBody = rawBody;
+        opts.headers["content-length"] = rawBody.length.toString();
+        delete opts.headers["transfer-encoding"];
+      }
       const req = httpRequest(opts, (response) => {
         const { statusCode, statusMessage, headers } = response;
         if (statusCode === 404) {
@@ -202,12 +260,19 @@ export function simpleProxy(hostOrRequestHandler: string | RequestHandler) {
           response.pipe(originalRes);
         }
       });
-      originalReq.pipe(req);
       req.on("error", (err) => {
         logger.debug("Error encountered while proxying request:", method, path, err);
         originalRes.end();
       });
+      if (rawBody !== undefined) {
+        req.end(rawBody);
+      } else {
+        originalReq.pipe(req);
+      }
     } else {
+      // NOTE: the in-process handler branch (Next.js via getRequestHandler) is
+      // not covered here — it consumes the body itself and does not cascade to a
+      // function rewrite the same way, so the #5986 replay above does not apply.
       const proxiedRes = proxyResponse(originalReq, originalRes, () => {
         // This next function is called when the proxied response is a 404
         // In that case we want to let the handler to use the original response
