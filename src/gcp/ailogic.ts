@@ -177,9 +177,6 @@ export async function listTriggers(
   return triggers;
 }
 
-/**
- *
- */
 export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise<Trigger> {
   const eventType = endpoint.blockingTrigger.eventType;
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
@@ -204,9 +201,6 @@ export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise
   }
 }
 
-/**
- *
- */
 export async function deleteBlockingFunction(endpoint: AILogicEndpoint): Promise<void> {
   const eventType = endpoint.blockingTrigger.eventType;
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
