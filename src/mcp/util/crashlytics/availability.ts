@@ -1,11 +1,5 @@
 import { McpContext } from "../../types";
-import {
-  getPlatformsFromFolder,
-  Platform,
-  detectFiles,
-  getAllDepsFromPackageJson,
-} from "../../../appUtils";
-import { PackageJSON } from "../../../frameworks/compose/discover/runtime/node";
+import { getPlatformsFromFolder, Platform, detectFiles } from "../../../appUtils";
 import * as fs from "fs-extra";
 import * as path from "path";
 import { Client } from "../../../apiv2";
@@ -100,35 +94,21 @@ async function flutterAppUsesCrashlytics(appPath: string): Promise<boolean> {
   return false;
 }
 
+interface TelemetryConfig {
+  name?: string;
+  appId?: string;
+  [key: string]: unknown;
+}
+
+interface ListConfigsResponse {
+  configs?: TelemetryConfig[];
+}
+
 async function webAppUsesCrashlytics(appPath: string, projectId?: string): Promise<boolean> {
   if (!projectId) {
     return false;
   }
 
-  const packageJsonFiles = await detectFiles(appPath, "package.json");
-  let hasFirebaseDep = false;
-  for (const file of packageJsonFiles) {
-    try {
-      const content = await fs.readFile(path.join(appPath, file), "utf8");
-      const json = JSON.parse(content) as PackageJSON;
-      const deps = getAllDepsFromPackageJson(json);
-      if (deps.includes("firebase")) {
-        hasFirebaseDep = true;
-        break;
-      }
-    } catch {
-      // Ignore invalid JSON or unreadable package.json
-    }
-  }
-
-  if (!hasFirebaseDep) {
-    return false;
-  }
-
-  return await hasTelemetryConfig(projectId);
-}
-
-async function hasTelemetryConfig(projectId: string): Promise<boolean> {
   const client = new Client({
     urlPrefix: "https://firebasetelemetryadmin.googleapis.com",
     auth: true,
@@ -136,9 +116,47 @@ async function hasTelemetryConfig(projectId: string): Promise<boolean> {
   });
 
   try {
-    const res = await client.get(`projects/${projectId}/config`);
-    return !!res.body;
+    const res = await client.get<ListConfigsResponse>(
+      `projects/${projectId}/locations/global/configs`,
+    );
+    const configs = res.body?.configs || [];
+    const appIdsInPath = await getAppIdsFromAppPath(appPath);
+
+    for (const config of configs) {
+      if (config.appId && appIdsInPath.has(config.appId)) {
+        return true;
+      }
+    }
   } catch {
-    return false;
+    // Ignore API or file reading errors
   }
+
+  return false;
+}
+
+async function getAppIdsFromAppPath(appPath: string): Promise<Set<string>> {
+  const appIds = new Set<string>();
+
+  try {
+    const files = await detectFiles(appPath, "*");
+    const appIdRegex = /1:\d+:[a-z0-9_-]+:[a-z0-9_-]+/gi;
+
+    for (const file of files) {
+      try {
+        const content = await fs.readFile(path.join(appPath, file), "utf8");
+        const matches = content.match(appIdRegex);
+        if (matches) {
+          for (const match of matches) {
+            appIds.add(match);
+          }
+        }
+      } catch {
+        // Ignore unreadable files
+      }
+    }
+  } catch {
+    // Ignore glob detection errors
+  }
+
+  return appIds;
 }
