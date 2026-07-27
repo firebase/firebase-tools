@@ -103,8 +103,11 @@ export function validatePrefix(prefix: string): void {
 }
 
 function validateSingle(config: FunctionConfig): ValidatedSingle {
-  if ("kit" in config && config.kit) {
+  if ("kit" in config) {
     experiments.assertEnabled("kits", "use functions kits");
+    if (!config.kit) {
+      throw new FirebaseError("Must specify 'kit' name in a functions kit config.");
+    }
     validateKitId(config.kit);
     if (config.codebase) {
       throw new FirebaseError(
@@ -116,11 +119,20 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
         "Cannot specify both 'kit' and 'remoteSource' in a single functions config.",
       );
     }
-    if ((config as { prefix?: string }).prefix) {
+    if (config.prefix) {
       throw new FirebaseError("Cannot specify 'prefix' in a functions kit config.");
     }
     if (!config.source) {
       throw new FirebaseError("Must specify 'source' in a functions kit config.");
+    }
+    if (
+      !config.instances ||
+      typeof config.instances !== "object" ||
+      Array.isArray(config.instances)
+    ) {
+      throw new FirebaseError(
+        "Must specify 'instances' as an object mapping instance IDs to configuration paths in a functions kit config.",
+      );
     }
     return config as ValidatedKitSingle;
   }

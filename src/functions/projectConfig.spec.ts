@@ -298,11 +298,37 @@ describe("projectConfig", () => {
       });
 
       it("fails validation if kit is missing source", () => {
-        const config = [{ kit: "firestore-bigquery-export" }];
+        const config = [{ kit: "firestore-bigquery-export", instances: { inst1: "path" } }];
         // @ts-expect-error kit requires source
         expect(() => projectConfig.validate(config)).to.throw(
           FirebaseError,
           /Must specify 'source' in a functions kit config/,
+        );
+      });
+
+      it("fails validation if kit is missing instances", () => {
+        const config = [
+          { kit: "firestore-bigquery-export", source: "functions/kits/bigquery-export" },
+        ];
+        // @ts-expect-error kit requires instances
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /Must specify 'instances' as an object mapping instance IDs to configuration paths/,
+        );
+      });
+
+      it("fails validation if instances is not an object", () => {
+        const config = [
+          {
+            kit: "firestore-bigquery-export",
+            source: "functions/kits/bigquery-export",
+            instances: ["invalid-array-instance"],
+          },
+        ];
+        // @ts-expect-error instances must be an object
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /Must specify 'instances' as an object mapping instance IDs to configuration paths/,
         );
       });
 
