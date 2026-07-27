@@ -125,6 +125,36 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
+    it("rejects unsupported Cloud Run event types before deployment", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "run",
+        eventTrigger: {
+          eventType: "google.cloud.pubsub.topic.v1.messagePublished",
+          retry: false,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        "is not supported for Cloud Run functions yet",
+      );
+    });
+
+    it("rejects unsupported Cloud Run event retry policies", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        platform: "run",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: true,
+        },
+      };
+
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        "Retry policies are not supported",
+      );
+    });
+
     it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,
