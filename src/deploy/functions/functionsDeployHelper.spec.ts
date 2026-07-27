@@ -330,7 +330,7 @@ describe("functionsDeployHelper", () => {
           source: "kits/my-kit",
           instances: { "inst-1": "cfg1", "inst-2": "cfg2" },
         },
-      ] as unknown as ValidatedConfig;
+      ] as ValidatedConfig;
 
       const filters = helper.getEndpointFilters({ only: "functions:inst-1" }, config);
       expect(filters).to.deep.equal([{ codebase: "inst-1" }]);
@@ -422,7 +422,7 @@ describe("functionsDeployHelper", () => {
           kit: "my-kit",
           source: "kits/my-kit",
           instances: { "inst-1": "c1", "inst-2": "c2" },
-        } as any,
+        } as ValidatedConfig[number],
         {
           source: "foo",
           codebase: "default",
