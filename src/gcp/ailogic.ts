@@ -183,9 +183,6 @@ export async function listTriggers(
   return triggers;
 }
 
-/**
- *
- */
 export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise<Trigger> {
   const eventType = endpoint.blockingTrigger.eventType;
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
@@ -210,9 +207,6 @@ export async function upsertBlockingFunction(endpoint: AILogicEndpoint): Promise
   }
 }
 
-/**
- *
- */
 export async function deleteBlockingFunction(endpoint: AILogicEndpoint): Promise<void> {
   const eventType = endpoint.blockingTrigger.eventType;
   const triggerId = AI_LOGIC_EVENTS_TO_TRIGGER[eventType];
@@ -258,19 +252,6 @@ export function assertKnownConfigPath(path: string, validPaths: string[]): void 
         validPaths.map((p) => `  ${p}`).join("\n"),
     );
   }
-}
-
-/**
- * Converts the API's telemetry sampling rate, a fraction in (0,1], to the
- * integer percentage (1-100) the CLI exposes.
- */
-export function samplingRateToPercent(samplingRate: number): number {
-  return Math.round(samplingRate * 100);
-}
-
-/** Converts a CLI integer percentage (1-100) to the API's (0,1] sampling-rate fraction. */
-export function percentToSamplingRate(percent: number): number {
-  return percent / 100;
 }
 
 export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";

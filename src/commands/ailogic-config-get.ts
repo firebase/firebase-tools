@@ -23,6 +23,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export const command = new Command("ailogic:config:get [path]")
   .description("read AI Logic configuration")
+  .help(
+    `prints the full AI Logic configuration for the active project as JSON. If [path] is given, prints only that section or value.
+
+Valid values for [path]:
+
+${READABLE_CONFIG_PATHS.map((p) => `  ${p}`).join("\n")}
+
+For example, to check whether requests are restricted to authenticated users:
+
+  firebase ailogic:config:get security.auth-only`,
+  )
   .before(requirePermissions, ["firebasevertexai.config.get", "serviceusage.services.get"])
   .action(async (path: string | undefined, options: Options) => {
     const projectId = needProjectId(options);
@@ -39,10 +50,11 @@ export const command = new Command("ailogic:config:get [path]")
     const config = await ailogic.getConfig(projectId);
 
     const monitoringState = config.telemetryConfig?.mode === "ALL";
-    // An unset samplingRate is displayed as 100% (full sampling).
+    // The API stores samplingRate as a fraction in (0,1]; the CLI displays an
+    // integer percentage. An unset samplingRate is displayed as 100% (full sampling).
     const sampleRatePercent =
       config.telemetryConfig?.samplingRate !== undefined
-        ? ailogic.samplingRateToPercent(config.telemetryConfig.samplingRate)
+        ? Math.round(config.telemetryConfig.samplingRate * 100)
         : 100;
 
     // Provider status needs extra Service Usage checks, so fetch it only when the

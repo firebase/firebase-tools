@@ -82,7 +82,8 @@ function buildUpdate(pathStr: string, value: string): ConfigUpdate {
         );
       }
       return {
-        config: { telemetryConfig: { samplingRate: ailogic.percentToSamplingRate(Number(value)) } },
+        // The API stores samplingRate as a fraction in (0,1].
+        config: { telemetryConfig: { samplingRate: Number(value) / 100 } },
         updateMask: "telemetryConfig.samplingRate",
         // Number() drops leading zeros so the echo matches what was stored ("007" -> "7").
         normalizedValue: String(Number(value)),
@@ -97,6 +98,20 @@ function buildUpdate(pathStr: string, value: string): ConfigUpdate {
 
 export const command = new Command("ailogic:config:set <path> <value>")
   .description("set one configuration value")
+  .help(
+    `sets one AI Logic configuration value on the active project.
+
+Valid values for <path>, and the <value> each accepts:
+
+  security.auth-only                 true|false - only allow requests from authenticated users
+  security.template-only             true|false - only allow requests that use a server template
+  monitoring.state                   true|false - turn AI monitoring on or off
+  monitoring.sample-rate-percentage  1-100      - percentage of requests sampled for monitoring
+
+For example, to only allow requests from authenticated users:
+
+  firebase ailogic:config:set security.auth-only true`,
+  )
   .option("-f, --force", "bypass confirmation prompt")
   .before(requirePermissions, [
     "firebasevertexai.config.update",
