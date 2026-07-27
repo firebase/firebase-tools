@@ -16,7 +16,11 @@ export const command = new Command("ailogic:templates:list")
   .help(
     `lists every deployed server prompt template with its id, display name, lock state, and a preview of its content. Use ailogic:templates:get <templateId> to print a template in full.`,
   )
-  .before(requirePermissions, ["firebasevertexai.templates.get"])
+  .before(requirePermissions, [
+    "firebasevertexai.templates.get",
+    // isAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ])
   .action(async (options: Options) => {
     const projectId = needProjectId(options);
     if (!(await ailogic.isAILogicApiEnabled(projectId))) {

@@ -27,6 +27,15 @@ describe("ailogic:templates:delete", () => {
 
   afterEach(() => sinon.restore());
 
+  it("rejects a non-URL-safe template id before any API call", async () => {
+    await expect(command.runner()("welcome#old", { project: PROJECT_ID })).to.be.rejectedWith(
+      FirebaseError,
+      /Invalid template id/,
+    );
+    expect(getStub).to.not.have.been.called;
+    expect(deleteStub).to.not.have.been.called;
+  });
+
   it("maps a 404 to a friendly 'does not exist' error", async () => {
     getStub.rejects(new FirebaseError("not found", { status: 404 }));
     await expect(command.runner()("missing", { project: PROJECT_ID })).to.be.rejectedWith(

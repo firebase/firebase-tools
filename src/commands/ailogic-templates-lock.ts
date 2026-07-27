@@ -18,9 +18,15 @@ For example:
 
   firebase ailogic:templates:lock my-template`,
   )
-  .before(requirePermissions, ["firebasevertexai.templates.update"])
+  .before(requirePermissions, [
+    "firebasevertexai.templates.update",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ])
   .action(async (templateId: string, options: Options) => {
     const projectId = needProjectId(options);
+    // Validate the id up front so bad input fails fast, before the API-enablement flow.
+    ailogic.assertValidTemplateId(templateId);
     await ailogic.ensureAILogicApiEnabled(projectId, options);
     const template = await ailogic.withTemplate404(templateId, () =>
       ailogic.setTemplateLocked(projectId, templateId, true),

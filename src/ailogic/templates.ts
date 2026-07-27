@@ -3,14 +3,10 @@ import * as yaml from "js-yaml";
 
 import { getError } from "../error";
 import * as fsutils from "../fsutils";
-import { Template, templateIdFromName } from "../gcp/ailogic";
+import { Template, templateIdFromName, TEMPLATE_ID_REGEX } from "../gcp/ailogic";
 
 export const PROMPT_FILE_EXT = ".prompt";
 export const DEFAULT_PROMPTS_DIR = "prompts";
-
-// Template ids are derived from filenames and spliced into REST resource paths,
-// so restrict them to URL-safe characters. (The server may impose stricter rules.)
-const TEMPLATE_ID_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 // Frontmatter is delimited by `---` on its own line; matching anchored lines
 // (rather than splitting on "---" anywhere) keeps `---` inside YAML values or
@@ -84,6 +80,12 @@ export function readPromptDirectory(dir: string): LocalTemplates {
         error:
           "File name does not form a valid template id (letters, digits, '.', '_', and '-' only).",
       });
+      continue;
+    }
+    // Case-insensitive extension matching means "foo.prompt" and "foo.PROMPT" both
+    // map to id "foo"; report the collision instead of letting the last file win.
+    if (templates.has(templateId)) {
+      errors.push({ file, error: `Duplicate template id '${templateId}'.` });
       continue;
     }
     const content = fsutils.readFile(path.join(dir, file));

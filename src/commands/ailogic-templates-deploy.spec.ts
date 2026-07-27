@@ -108,6 +108,23 @@ describe("ailogic:templates:deploy", () => {
     expect(deleteTemplateStub).to.not.have.been.called;
   });
 
+  it("continues pruning when a template was already deleted concurrently (404)", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([
+      remoteTemplate("welcome"),
+      remoteTemplate("gone"),
+      remoteTemplate("stale"),
+    ]);
+    deleteTemplateStub
+      .withArgs(PROJECT_ID, "gone")
+      .rejects(new FirebaseError("not found", { status: 404 }));
+
+    expect(await command.runner()({ project: PROJECT_ID, prune: true, force: true })).to.deep.equal(
+      { deployed: ["welcome"], pruned: ["gone", "stale"] },
+    );
+    expect(deleteTemplateStub).to.have.been.calledTwice;
+  });
+
   it("prunes after confirmation and reports the result", async () => {
     listFilesStub.returns(["welcome.prompt"]);
     listTemplatesStub.resolves([remoteTemplate("welcome"), remoteTemplate("stale")]);

@@ -8,7 +8,7 @@ import * as templates from "../ailogic/templates";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { logger } from "../logger";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 import * as fsutils from "../fsutils";
 import { confirm } from "../prompt";
 
@@ -39,7 +39,16 @@ For example, to deploy all templates from the default directory and delete remot
     `delete remote templates with no matching local ${templates.PROMPT_FILE_EXT} file`,
   )
   .option("-f, --force", "bypass the confirmation prompt when pruning")
-  .before(requirePermissions, ["firebasevertexai.templates.update"])
+  .before(requirePermissions, [
+    // Deploy reads the remote state (get), creates/updates (update), and with
+    // --prune deletes; preflight all three so a partial deploy cannot start
+    // with permissions that only cover part of the plan.
+    "firebasevertexai.templates.update",
+    "firebasevertexai.templates.get",
+    "firebasevertexai.templates.delete",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ])
   .action(async (options: DeployOptions) => {
     const projectId = needProjectId(options);
     // `--dir` has no Commander default so we can tell an explicit `--dir` apart from
@@ -130,7 +139,16 @@ For example, to deploy all templates from the default directory and delete remot
     }
     for (const templateId of plan.deletes) {
       logger.info(`Pruning template ${clc.bold(templateId)}...`);
-      await ailogic.deleteTemplate(projectId, templateId);
+      try {
+        await ailogic.deleteTemplate(projectId, templateId);
+      } catch (err: unknown) {
+        // The template can be deleted out from under us between the plan and this
+        // delete; the desired end state is reached, so don't fail the deploy.
+        if (getErrStatus(err) !== 404) {
+          throw err;
+        }
+        logger.info(`Template ${clc.bold(templateId)} was already deleted.`);
+      }
     }
 
     utils.logSuccess("Successfully deployed templates.");

@@ -18,9 +18,15 @@ For example:
 
   firebase ailogic:templates:get my-template`,
   )
-  .before(requirePermissions, ["firebasevertexai.templates.get"])
+  .before(requirePermissions, [
+    "firebasevertexai.templates.get",
+    // isAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ])
   .action(async (templateId: string, options: Options) => {
     const projectId = needProjectId(options);
+    // Validate the id up front so bad input fails fast, before any API calls.
+    ailogic.assertValidTemplateId(templateId);
     if (!(await ailogic.isAILogicApiEnabled(projectId))) {
       logger.info("Firebase AI Logic is not enabled on this project.");
       return;

@@ -512,4 +512,20 @@ describe("ailogic", () => {
       expect(ailogic.isProviderType("nope")).to.be.false;
     });
   });
+
+  describe("assertValidTemplateId", () => {
+    it("accepts URL-safe ids", () => {
+      expect(() => ailogic.assertValidTemplateId("welcome")).to.not.throw();
+      expect(() => ailogic.assertValidTemplateId("v2.greeting_A-1")).to.not.throw();
+    });
+
+    it("rejects ids that would address a different REST resource", () => {
+      for (const bad of ["welcome#old", "welcome?x=1", "..", "../foo", "a/b", ".hidden", ""]) {
+        expect(() => ailogic.assertValidTemplateId(bad), bad).to.throw(
+          FirebaseError,
+          /Invalid template id/,
+        );
+      }
+    });
+  });
 });

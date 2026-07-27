@@ -98,6 +98,14 @@ describe("ailogic templates", () => {
       expect([...result.templates.keys()]).to.deep.equal(["Upper"]);
       expect(result.errors).to.deep.equal([]);
     });
+
+    it("reports case-variant files that collapse to the same template id", () => {
+      stubDir({ "foo.prompt": "current", "foo.PROMPT": "stale" });
+      const result = readPromptDirectory("prompts");
+      expect([...result.templates.keys()]).to.deep.equal(["foo"]);
+      expect(result.errors).to.have.length(1);
+      expect(result.errors[0].error).to.match(/Duplicate template id/);
+    });
   });
 
   describe("planTemplateDeploy", () => {

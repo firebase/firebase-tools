@@ -256,6 +256,20 @@ export function templateIdFromName(name: string): string {
   return name.split("/").pop() ?? "";
 }
 
+// Template ids are spliced into REST resource paths, so restrict them to URL-safe
+// characters: an unvalidated id like "welcome#old" or ".." would silently address a
+// DIFFERENT template once the URL is parsed. (The server may impose stricter rules.)
+export const TEMPLATE_ID_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/** Validates a template id, throwing a FirebaseError when it is not URL-safe. */
+export function assertValidTemplateId(templateId: string): void {
+  if (!TEMPLATE_ID_REGEX.test(templateId)) {
+    throw new FirebaseError(
+      `Invalid template id: ${bold(templateId)}. Template ids must start with a letter or digit and contain only letters, digits, '.', '_', and '-'.`,
+    );
+  }
+}
+
 // Developer-facing config paths that `ailogic:config:set` can write.
 export const WRITABLE_CONFIG_PATHS = [
   "security.auth-only",
