@@ -13,6 +13,9 @@ const ELLIPSIS = "...";
 
 export const command = new Command("ailogic:templates:list")
   .description("list deployed templates")
+  .help(
+    `lists every deployed server prompt template with its id, display name, lock state, and a preview of its content. Use ailogic:templates:get <templateId> to print a template in full.`,
+  )
   .before(requirePermissions, ["firebasevertexai.templates.get"])
   .action(async (options: Options) => {
     const projectId = needProjectId(options);

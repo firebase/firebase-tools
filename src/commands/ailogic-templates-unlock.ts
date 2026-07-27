@@ -9,6 +9,15 @@ import { Options } from "../options";
 
 export const command = new Command("ailogic:templates:unlock <templateId>")
   .description("unlock a template")
+  .help(
+    `unlocks one deployed server prompt template so it can be updated or deleted again.
+
+<templateId> is the template's id, as shown in ailogic:templates:list.
+
+For example:
+
+  firebase ailogic:templates:unlock my-template`,
+  )
   .before(requirePermissions, ["firebasevertexai.templates.update"])
   .action(async (templateId: string, options: Options) => {
     const projectId = needProjectId(options);

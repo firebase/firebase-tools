@@ -1,3 +1,5 @@
+import * as path from "path";
+
 import { Command } from "../command";
 import { requirePermissions } from "../requirePermissions";
 import { needProjectId } from "../projectUtils";
@@ -19,6 +21,15 @@ interface DeployOptions extends Options {
 
 export const command = new Command("ailogic:templates:deploy")
   .description("deploy server prompt templates from local files")
+  .help(
+    `deploys every ${templates.PROMPT_FILE_EXT} file in the prompts directory as a server prompt template. The file name (without the extension) becomes the template id: new ids are created, existing ids are updated, and with --prune remote templates that have no local file are deleted after confirmation.
+
+The directory defaults to '${templates.DEFAULT_PROMPTS_DIR}' and is resolved relative to the project root (or the current directory outside a project). Locked templates block the whole deploy; unlock them first with ailogic:templates:unlock.
+
+For example, to deploy all templates from the default directory and delete remote templates not present locally:
+
+  firebase ailogic:templates:deploy --prune`,
+  )
   .option(
     "--dir <path>",
     `directory containing ${templates.PROMPT_FILE_EXT} files (default: ${templates.DEFAULT_PROMPTS_DIR})`,
@@ -35,7 +46,12 @@ export const command = new Command("ailogic:templates:deploy")
     // the implicit default: an explicit missing directory is an error, whereas a
     // missing default directory is a no-op.
     const dirExplicit = typeof options.dir === "string";
-    const dir = options.dir ?? templates.DEFAULT_PROMPTS_DIR;
+    // Resolve against the project root so the command behaves the same from any
+    // subdirectory; outside a project (bare --project) it falls back to the cwd.
+    const dir = path.resolve(
+      options.projectRoot ?? ".",
+      options.dir ?? templates.DEFAULT_PROMPTS_DIR,
+    );
 
     // Read and validate all local input before the API-enablement flow, so bad
     // input fails fast and every invalid file is reported in one pass.

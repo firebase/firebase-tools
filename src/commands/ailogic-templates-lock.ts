@@ -9,6 +9,15 @@ import { Options } from "../options";
 
 export const command = new Command("ailogic:templates:lock <templateId>")
   .description("lock a template")
+  .help(
+    `locks one deployed server prompt template. A locked template cannot be updated or deleted (including by ailogic:templates:deploy) until it is unlocked with ailogic:templates:unlock.
+
+<templateId> is the template's id, as shown in ailogic:templates:list.
+
+For example:
+
+  firebase ailogic:templates:lock my-template`,
+  )
   .before(requirePermissions, ["firebasevertexai.templates.update"])
   .action(async (templateId: string, options: Options) => {
     const projectId = needProjectId(options);

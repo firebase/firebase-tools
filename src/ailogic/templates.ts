@@ -66,7 +66,9 @@ export function readPromptDirectory(dir: string): LocalTemplates {
   const errors: PromptFileError[] = [];
 
   for (const file of fsutils.listFiles(dir)) {
-    if (!file.endsWith(PROMPT_FILE_EXT)) {
+    // Match the extension case-insensitively so files from case-insensitive
+    // filesystems (e.g. "FOO.PROMPT") are deployed rather than silently skipped.
+    if (!file.toLowerCase().endsWith(PROMPT_FILE_EXT)) {
       continue;
     }
     // listFiles returns directory entries too; a directory named "foo.prompt"
@@ -75,7 +77,7 @@ export function readPromptDirectory(dir: string): LocalTemplates {
       errors.push({ file, error: "Not a file." });
       continue;
     }
-    const templateId = path.basename(file, PROMPT_FILE_EXT);
+    const templateId = file.slice(0, -PROMPT_FILE_EXT.length);
     if (!TEMPLATE_ID_REGEX.test(templateId)) {
       errors.push({
         file,

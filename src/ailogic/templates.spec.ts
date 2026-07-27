@@ -91,6 +91,13 @@ describe("ailogic templates", () => {
       expect(result.templates.size).to.equal(0);
       expect(result.errors[0].error).to.match(/valid template id/);
     });
+
+    it("matches the extension case-insensitively, preserving the id's case", () => {
+      stubDir({ "Upper.PROMPT": "body" });
+      const result = readPromptDirectory("prompts");
+      expect([...result.templates.keys()]).to.deep.equal(["Upper"]);
+      expect(result.errors).to.deep.equal([]);
+    });
   });
 
   describe("planTemplateDeploy", () => {

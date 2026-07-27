@@ -1,7 +1,9 @@
 import { expect } from "chai";
+import * as path from "path";
 import * as sinon from "sinon";
 
 import { command } from "./ailogic-templates-deploy";
+import * as detectProjectRootModule from "../detectProjectRoot";
 import * as ailogic from "../gcp/ailogic";
 import * as fsutils from "../fsutils";
 import * as prompt from "../prompt";
@@ -58,6 +60,12 @@ describe("ailogic:templates:deploy", () => {
     );
     expect(listTemplatesStub).to.not.have.been.called;
     expect(updateTemplateStub).to.not.have.been.called;
+  });
+
+  it("resolves the prompts directory against the project root, not the cwd", async () => {
+    sinon.stub(detectProjectRootModule, "detectProjectRoot").returns("/my/project");
+    await command.runner()({ project: PROJECT_ID, dir: "custom" });
+    expect(dirExistsStub).to.have.been.calledWith(path.resolve("/my/project", "custom"));
   });
 
   it("errors when an explicit --dir does not exist, but no-ops on the default dir", async () => {
