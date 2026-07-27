@@ -346,8 +346,8 @@ export function isKitConfig(c: ValidatedSingle): c is ValidatedKitSingle {
  * @param c The validated functions config entry.
  * @param purpose Optional message to use in the error.
  */
-export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLocalSingle {
-  if (!isLocalConfig(c)) {
+export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLocalSingle | ValidatedKitSingle {
+  if (isRemoteConfig(c)) {
     const msg =
       purpose ??
       "This operation requires a local functions source directory, but the codebase is configured with a remote source.";
