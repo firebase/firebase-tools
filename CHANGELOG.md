@@ -2,3 +2,4 @@
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
 - Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
+- Automatically enable non-interactive mode when an AI agent is detected in the environment to prevent the CLI from hanging on interactive prompts.
