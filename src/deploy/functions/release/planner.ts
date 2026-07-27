@@ -271,10 +271,10 @@ export function upgradedToGCFv2WithoutSettingConcurrency(
  *  a user listens to a different bucket, which happens to have a different region.
  */
 export function changedTriggerRegion(want: backend.Endpoint, have: backend.Endpoint): boolean {
-  if (want.platform !== "gcfv2") {
+  if (want.platform !== "gcfv2" && want.platform !== "run") {
     return false;
   }
-  if (have.platform !== "gcfv2") {
+  if (have.platform !== want.platform) {
     return false;
   }
   if (!backend.isEventTriggered(want)) {

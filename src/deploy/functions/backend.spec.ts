@@ -72,7 +72,7 @@ describe("Backend", () => {
   const RUN_SERVICE: run.Service = {
     name: "projects/project/locations/region/services/id",
     labels: {
-      "goog-managed-by": "cloud-functions",
+      "goog-managed-by": "cloudfunctions",
       "goog-cloudfunctions-runtime": "nodejs16",
       "firebase-functions-codebase": "default",
     },
@@ -128,6 +128,17 @@ describe("Backend", () => {
       expect(backend.functionName(ENDPOINT)).to.equal(
         "projects/project/locations/region/functions/id",
       );
+      expect(backend.eventarcTriggerIdForFunction(ENDPOINT)).to.equal("firebase-id-region");
+      expect(
+        backend.eventarcTriggerIdForFunction({ ...ENDPOINT, region: "us-central1" }),
+      ).not.to.equal(backend.eventarcTriggerIdForFunction({ ...ENDPOINT, region: "europe-west1" }));
+      expect(
+        backend.eventarcTriggerIdForFunction({
+          ...ENDPOINT,
+          id: "a".repeat(60),
+          region: "us-central1",
+        }),
+      ).to.have.length(63);
     });
 
     it("merge", () => {
@@ -332,7 +343,7 @@ describe("Backend", () => {
           },
           labels: {
             "deployment-tool": "cli-firebase",
-            "goog-managed-by": "cloud-functions",
+            "goog-managed-by": "cloudfunctions",
             "goog-cloudfunctions-runtime": "nodejs16",
             "firebase-functions-codebase": "default",
           },
@@ -340,11 +351,50 @@ describe("Backend", () => {
           ingressSettings: "ALLOW_ALL" as const,
           timeoutSeconds: 60,
           serviceAccount: null,
+          runServiceId: "id",
         };
         delete wantEndpoint.state;
 
         expect(have).to.deep.equal(backend.of(wantEndpoint));
         expect(listAllFunctionsV2).to.not.have.been.called;
+      });
+
+      it("should read existing functions from Cloud Run when Dart functions are enabled", async () => {
+        isEnabled.withArgs("dartfunctions").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [HAVE_CLOUD_FUNCTION_V2],
+          unreachable: [],
+        });
+        const directRunService: run.Service = {
+          ...RUN_SERVICE,
+          name: "projects/project/locations/region/services/dart-function",
+          labels: {
+            ...RUN_SERVICE.labels,
+            "goog-managed-by": "firebase-functions",
+            "goog-cloudfunctions-runtime": "dart3",
+          },
+          annotations: {
+            "firebase-functions-metadata": JSON.stringify({
+              functionId: "dart-function",
+            }),
+          },
+        };
+        listServices.onFirstCall().resolves([RUN_SERVICE, directRunService]);
+
+        const context = newContext();
+        context.projectId = "project";
+        const have = await backend.existingBackend(context);
+
+        expect(listServices).to.have.been.calledOnceWith("project");
+        expect(listAllFunctionsV2).to.have.been.calledOnceWith("project");
+        expect(backend.allEndpoints(have).map((endpoint) => endpoint.platform)).to.have.members([
+          "gcfv2",
+          "run",
+        ]);
       });
 
       it("should handle Cloud Run list errors gracefully when experiment is enabled", async () => {
@@ -387,7 +437,7 @@ describe("Backend", () => {
           },
           labels: {
             "deployment-tool": "cli-firebase",
-            "goog-managed-by": "cloud-functions",
+            "goog-managed-by": "cloudfunctions",
             "goog-cloudfunctions-runtime": "nodejs16",
             "firebase-functions-codebase": "default",
           },
@@ -395,6 +445,7 @@ describe("Backend", () => {
           ingressSettings: "ALLOW_ALL" as const,
           timeoutSeconds: 60,
           serviceAccount: null,
+          runServiceId: "id",
         };
         delete wantEndpoint.state;
 
@@ -497,6 +548,29 @@ describe("Backend", () => {
         await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
           FirebaseError,
           /The following Cloud Functions V2 regions are currently unreachable:/,
+        );
+      });
+
+      it("should throw when Cloud Run discovery fails for a Dart deployment", async () => {
+        isEnabled.withArgs("dartfunctions").returns(true);
+        listAllFunctions.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listAllFunctionsV2.onFirstCall().resolves({
+          functions: [],
+          unreachable: [],
+        });
+        listServices.rejects(new Error("Cloud Run API unavailable"));
+        const want = backend.of({
+          ...ENDPOINT,
+          platform: "run",
+          httpsTrigger: {},
+        });
+
+        await expect(backend.checkAvailability(newContext(), want)).to.eventually.be.rejectedWith(
+          FirebaseError,
+          /Existing Dart functions cannot be reconciled safely/,
         );
       });
 

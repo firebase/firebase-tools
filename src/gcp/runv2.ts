@@ -305,8 +305,7 @@ export async function listServices(projectId: string): Promise<Service[]> {
     if (res.body.services) {
       for (const service of res.body.services) {
         if (
-          service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
-          service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions" ||
+          GCF_CLIENT_NAMES.has(service.labels?.[CLIENT_NAME_LABEL] || "") ||
           service.labels?.[CLIENT_NAME_LABEL] === "firebase-functions"
         ) {
           allServices.push(service);
@@ -319,8 +318,8 @@ export async function listServices(projectId: string): Promise<Service[]> {
   return allServices;
 }
 
-// TODO: Replace with real version:
-function functionNameToServiceName(id: string): string {
+// TODO: Replace with real version.
+export function functionNameToServiceName(id: string): string {
   return id.toLowerCase().replace(/_/g, "-");
 }
 
@@ -547,6 +546,7 @@ export const RUNTIME_LABEL = "goog-cloudfunctions-runtime";
 // In GCF 2nd gen this is cloudfunctions but is the empty string after ejecting. We can use a new value to detect how much
 // of the fleet has migrated.
 export const CLIENT_NAME_LABEL = "goog-managed-by";
+const GCF_CLIENT_NAMES = new Set(["cloud-functions", "cloudfunctions"]);
 
 // NOTE: Any annotation with a google domain prefix is read-only and a holdover from the GCF API.
 export const TRIGGER_TYPE_ANNOTATION = "cloudfunctions.googleapis.com/trigger-type";
@@ -559,7 +559,7 @@ export const FUNCTION_SIGNATURE_TYPE_ENV = "FUNCTION_SIGNATURE_TYPE";
 export const FIREBASE_FUNCTION_METADTA_ANNOTATION = "firebase-functions-metadata";
 export interface FirebaseFunctionMetadata {
   functionId: string;
-  // TODO: Trigger type since we cannot set cloudfunctions.googleapis.com/trigger-type
+  eventTrigger?: backend.EventTrigger;
 }
 
 // Partial implementation. A full implementation may require more refactoring.
@@ -596,12 +596,9 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     logger.debug("Converting a service to an endpoint with an invalid memory option", memory);
   }
   const cpu = Number(service.template.containers![0]!.resources!.limits!.cpu);
+  const signatureType = env.find((e) => e.name === FUNCTION_SIGNATURE_TYPE_ENV)?.value;
   const endpoint: backend.Endpoint = {
-    platform:
-      service.labels?.[CLIENT_NAME_LABEL] === "cloud-functions" ||
-      service.labels?.[CLIENT_NAME_LABEL] === "cloudfunctions"
-        ? "gcfv2"
-        : "run",
+    platform: GCF_CLIENT_NAMES.has(service.labels?.[CLIENT_NAME_LABEL] || "") ? "gcfv2" : "run",
     id,
     project,
     labels: { ...service.labels, "deployment-tool": "cli-firebase" },
@@ -623,18 +620,27 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
       : service.annotations?.["run.googleapis.com/ingress"] === "internal-and-cloud-load-balancing"
         ? "ALLOW_INTERNAL_AND_GCLB"
         : "ALLOW_ALL") as backend.IngressSettings,
-    // TODO: Figure out how to encode all trigger types to the underlying Run service that is compatible with both V2 functions and "direct to run" functions
-    ...(!service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
-    service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
-      ? { httpsTrigger: {} }
-      : {
-          eventTrigger: {
-            eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
-            // TODO: Figure out how to recover the retry info from Run (vs Functions API) as we currently default to false.
-            retry: false,
-          },
-        }),
+    ...(metadata.eventTrigger
+      ? { eventTrigger: metadata.eventTrigger }
+      : signatureType === "cloudevent"
+        ? {
+            eventTrigger: {
+              eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+              retry: false,
+            },
+          }
+        : !service.annotations?.[TRIGGER_TYPE_ANNOTATION] ||
+            service.annotations?.[TRIGGER_TYPE_ANNOTATION] === "HTTP_TRIGGER"
+          ? { httpsTrigger: {} }
+          : {
+              eventTrigger: {
+                eventType: service.annotations?.[TRIGGER_TYPE_ANNOTATION] || "unknown",
+                // TODO: Figure out how to recover retry info for services not created by Firebase.
+                retry: false,
+              },
+            }),
   };
+  endpoint.runServiceId = svcId;
   proto.renameIfPresent(endpoint, service.template, "concurrency", "maxInstanceRequestConcurrency");
   proto.renameIfPresent(endpoint, service.labels || {}, "codebase", CODEBASE_LABEL);
   proto.renameIfPresent(endpoint, service.scaling || {}, "minInstances", "minInstanceCount");
@@ -676,11 +682,13 @@ export function serviceFromEndpoint(
     ...(endpoint.runtime ? { [RUNTIME_LABEL]: endpoint.runtime } : {}),
     [CLIENT_NAME_LABEL]: "firebase-functions",
   };
-
-  // A bit of a hack, but other code assumes the Functions method of indicating deployment tool and
-  // injects this as a label. To avoid thinking that this is actually meaningful in the CRF world,
-  // we delete it here.
-  delete labels["deployment-tool"];
+  if (labels["deployment-tool"]) {
+    labels["deployment-tool"] = labels["deployment-tool"]
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, "-")
+      .replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "")
+      .slice(0, 63);
+  }
 
   // TODO: hash
   if (endpoint.codebase) {
@@ -690,6 +698,7 @@ export function serviceFromEndpoint(
   const annotations: Record<string, string> = {
     [FIREBASE_FUNCTION_METADTA_ANNOTATION]: JSON.stringify({
       functionId: endpoint.id,
+      ...(backend.isEventTriggered(endpoint) ? { eventTrigger: endpoint.eventTrigger } : {}),
     }),
   };
 
@@ -742,9 +751,9 @@ export function serviceFromEndpoint(
   proto.renameIfPresent(template, endpoint, "maxInstanceRequestConcurrency", "concurrency");
 
   const service: Omit<Service, ServiceOutputFields> = {
-    name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${functionNameToServiceName(
-      endpoint.id,
-    )}`,
+    name: `projects/${endpoint.project}/locations/${endpoint.region}/services/${
+      endpoint.runServiceId ?? functionNameToServiceName(endpoint.id)
+    }`,
     labels,
     annotations,
     template,
@@ -760,7 +769,11 @@ export function serviceFromEndpoint(
   // TODO: other trigger types (callable, scheduled, etc)
 
   if (endpoint.serviceAccount) {
-    template.serviceAccount = endpoint.serviceAccount;
+    template.serviceAccount = proto.formatServiceAccount(
+      endpoint.serviceAccount,
+      endpoint.project,
+      true,
+    );
   }
 
   if (endpoint.timeoutSeconds) {

@@ -27,6 +27,8 @@ export type OperationType =
   | "delete schedule"
   | "upsert task queue"
   | "upsert eventarc channel"
+  | "upsert eventarc trigger"
+  | "delete eventarc trigger"
   | "disable task queue"
   | "create topic"
   | "delete topic"

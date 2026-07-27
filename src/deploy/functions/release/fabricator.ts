@@ -1,7 +1,7 @@
 import * as clc from "colorette";
 
 import { DEFAULT_RETRY_CODES, Executor } from "./executor";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrStatus } from "../../../error";
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
 import { assertExhaustive } from "../../../functional";
@@ -23,11 +23,13 @@ import * as pubsub from "../../../gcp/pubsub";
 import * as reporter from "./reporter";
 import * as run from "../../../gcp/run";
 import * as runV2 from "../../../gcp/runv2";
+import * as proto from "../../../gcp/proto";
 import * as scheduler from "../../../gcp/cloudscheduler";
 import * as utils from "../../../utils";
 import * as services from "../services";
 import { getDataConnectP4SA } from "../services/dataconnect";
 import { AUTH_BLOCKING_EVENTS } from "../../../functions/events/v1";
+import { FIRESTORE_EVENTS } from "../../../functions/events/v2";
 import * as gce from "../../../gcp/computeEngine";
 import { getHumanFriendlyPlatformName } from "../functionsDeployHelper";
 
@@ -805,16 +807,12 @@ export class Fabricator {
       },
     };
 
+    const serviceId = runV2.functionNameToServiceName(endpoint.id);
     await this.runFunctionExecutor
       .run(async () => {
-        const op = await runV2.createService(
-          endpoint.project,
-          endpoint.region,
-          endpoint.id,
-          service,
-        );
+        const op = await runV2.createService(endpoint.project, endpoint.region, serviceId, service);
         endpoint.uri = op.uri;
-        endpoint.runServiceId = endpoint.id;
+        endpoint.runServiceId = serviceId;
       })
       .catch(rethrowAs(endpoint, "create"));
 
@@ -857,7 +855,8 @@ export class Fabricator {
       .run(async () => {
         const op = await runV2.updateService(service);
         endpoint.uri = op.uri;
-        endpoint.runServiceId = endpoint.id;
+        endpoint.runServiceId =
+          endpoint.runServiceId ?? runV2.functionNameToServiceName(endpoint.id);
       })
       .catch(rethrowAs(endpoint, "update"));
 
@@ -880,7 +879,11 @@ export class Fabricator {
     await this.runFunctionExecutor
       .run(async () => {
         try {
-          await runV2.deleteService(endpoint.project, endpoint.region, endpoint.id);
+          await runV2.deleteService(
+            endpoint.project,
+            endpoint.region,
+            endpoint.runServiceId ?? runV2.functionNameToServiceName(endpoint.id),
+          );
         } catch (err: any) {
           if (err.status === 404) {
             return;
@@ -923,7 +926,14 @@ export class Fabricator {
   // Set/Delete trigger is responsible for wiring up a function with any trigger not owned
   // by the GCF API. This includes schedules, task queues, and blocking function triggers.
   async setTrigger(endpoint: backend.Endpoint): Promise<void> {
-    if (backend.isScheduleTriggered(endpoint)) {
+    if (backend.isEventTriggered(endpoint) && endpoint.platform === "run") {
+      if (!FIRESTORE_EVENTS.some((eventType) => eventType === endpoint.eventTrigger.eventType)) {
+        throw new FirebaseError(
+          `Event type ${endpoint.eventTrigger.eventType} is not supported for Cloud Run functions yet.`,
+        );
+      }
+      await this.upsertEventarcTrigger(endpoint);
+    } else if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.upsertScheduleV1(endpoint);
         return;
@@ -950,7 +960,9 @@ export class Fabricator {
   }
 
   async deleteTrigger(endpoint: backend.Endpoint): Promise<void> {
-    if (backend.isScheduleTriggered(endpoint)) {
+    if (backend.isEventTriggered(endpoint) && endpoint.platform === "run") {
+      await this.deleteEventarcTrigger(endpoint);
+    } else if (backend.isScheduleTriggered(endpoint)) {
       if (endpoint.platform === "gcfv1") {
         await this.deleteScheduleV1(endpoint);
         return;
@@ -978,6 +990,230 @@ export class Fabricator {
     // don't know if there are any subscribers or not. If we start supporting 2P
     // channels, we might need to revisit this or else the events will still get
     // published and the customer will still get charged.
+  }
+
+  async eventarcTriggerFromEndpoint(
+    endpoint: backend.Endpoint & backend.EventTriggered,
+  ): Promise<eventarc.Trigger> {
+    const triggerRegion = endpoint.eventTrigger.region || endpoint.region;
+    const triggerId = backend.eventarcTriggerIdForFunction(endpoint);
+    const serviceId = endpoint.runServiceId ?? runV2.functionNameToServiceName(endpoint.id);
+    const eventFilters: eventarc.EventFilter[] = [
+      {
+        attribute: "type",
+        value: endpoint.eventTrigger.eventType,
+      },
+    ];
+
+    for (const [attribute, value] of Object.entries(endpoint.eventTrigger.eventFilters || {})) {
+      if (attribute !== "type") {
+        eventFilters.push({ attribute, value });
+      }
+    }
+    for (const [attribute, value] of Object.entries(
+      endpoint.eventTrigger.eventFilterPathPatterns || {},
+    )) {
+      eventFilters.push({ attribute, value, operator: "match-path-pattern" });
+    }
+
+    const serviceAccount = await this.eventarcServiceAccount(endpoint);
+
+    return {
+      name: `projects/${endpoint.project}/locations/${triggerRegion}/triggers/${triggerId}`,
+      eventFilters,
+      serviceAccount,
+      destination: {
+        cloudRun: {
+          service: serviceId,
+          region: endpoint.region,
+        },
+      },
+      labels: {
+        "deployment-tool": "cli-firebase",
+        ...(endpoint.runtime ? { runtime: endpoint.runtime } : {}),
+      },
+      eventDataContentType: "application/protobuf",
+      ...(endpoint.eventTrigger.channel ? { channel: endpoint.eventTrigger.channel } : {}),
+    };
+  }
+
+  async eventarcServiceAccount(
+    endpoint: backend.Endpoint & backend.EventTriggered,
+  ): Promise<string> {
+    const serviceAccount =
+      endpoint.eventTrigger.serviceAccount ||
+      endpoint.serviceAccount ||
+      (await gce.getDefaultServiceAccount(this.projectNumber));
+    return proto.formatServiceAccount(serviceAccount, endpoint.project, true);
+  }
+
+  async setEventarcInvoker(
+    endpoint: backend.Endpoint & backend.EventTriggered,
+    serviceAccounts: string[],
+  ): Promise<void> {
+    const serviceId = endpoint.runServiceId ?? runV2.functionNameToServiceName(endpoint.id);
+    await this.executor.run(() =>
+      run.setInvokerUpdate(
+        endpoint.project,
+        `projects/${endpoint.project}/locations/${endpoint.region}/services/${serviceId}`,
+        serviceAccounts,
+      ),
+    );
+  }
+
+  async upsertEventarcTrigger(endpoint: backend.Endpoint & backend.EventTriggered): Promise<void> {
+    const trigger = await this.eventarcTriggerFromEndpoint(endpoint);
+    const existing = await this.executor.run(() => eventarc.getTrigger(trigger.name));
+    if (!existing) {
+      await this.setEventarcInvoker(endpoint, [trigger.serviceAccount]).catch(
+        rethrowAs(endpoint, "set invoker"),
+      );
+      try {
+        const op = await this.executor.run(() => eventarc.createTrigger(trigger), {
+          retryCodes: [429, 503],
+        });
+        await poller.pollOperation<eventarc.Trigger>({
+          ...eventarcPollerOptions,
+          pollerName: `create-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        });
+      } catch (err) {
+        if (getErrStatus(err) === 409) {
+          const created = await eventarc.getTrigger(trigger.name);
+          if (created && eventarc.triggerMatches(created, trigger)) {
+            return;
+          }
+        }
+        throw rethrowAs(endpoint, "upsert eventarc trigger")(err);
+      }
+      return;
+    }
+
+    if (eventarc.triggerMatches(existing, trigger)) {
+      logger.debug("Skipping Eventarc trigger update because it already matches", trigger.name);
+      await this.setEventarcInvoker(endpoint, [trigger.serviceAccount]).catch(
+        rethrowAs(endpoint, "set invoker"),
+      );
+      return;
+    }
+
+    const reconciledTrigger: eventarc.Trigger = {
+      ...trigger,
+      labels: { ...existing.labels, ...trigger.labels },
+    };
+    const previousServiceAccount =
+      existing.serviceAccount ||
+      proto.formatServiceAccount(
+        await gce.getDefaultServiceAccount(this.projectNumber),
+        endpoint.project,
+        true,
+      );
+    const transitionServiceAccounts = [
+      ...new Set([previousServiceAccount, reconciledTrigger.serviceAccount]),
+    ];
+    await this.setEventarcInvoker(endpoint, transitionServiceAccounts).catch(
+      rethrowAs(endpoint, "set invoker"),
+    );
+
+    let previousTriggerRestored = false;
+    try {
+      if (!eventarc.triggerRequiresReplacement(existing, trigger)) {
+        await this.executor.run(async () => {
+          const op = await eventarc.updateTrigger(reconciledTrigger);
+          await poller.pollOperation<eventarc.Trigger>({
+            ...eventarcPollerOptions,
+            pollerName: `update-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+            operationResourceName: op.name,
+          });
+        });
+      } else {
+        let replacementStarted = false;
+        try {
+          await this.executor.run(
+            async () => {
+              const deleteOp = await eventarc.deleteTrigger(trigger.name);
+              replacementStarted = true;
+              await poller.pollOperation<void>({
+                ...eventarcPollerOptions,
+                pollerName: `replace-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+                operationResourceName: deleteOp.name,
+              });
+              const op = await eventarc.createTrigger(reconciledTrigger);
+              await poller.pollOperation<eventarc.Trigger>({
+                ...eventarcPollerOptions,
+                pollerName: `create-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+                operationResourceName: op.name,
+              });
+            },
+            { retryCodes: [] },
+          );
+        } catch (err) {
+          if (replacementStarted) {
+            try {
+              const failedReplacement = await eventarc.getTrigger(trigger.name);
+              if (failedReplacement) {
+                const cleanupOp = await eventarc.deleteTrigger(trigger.name);
+                await poller.pollOperation<void>({
+                  ...eventarcPollerOptions,
+                  pollerName: `cleanup-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+                  operationResourceName: cleanupOp.name,
+                });
+              }
+              const rollbackOp = await eventarc.createTrigger(eventarc.triggerForCreate(existing));
+              await poller.pollOperation<eventarc.Trigger>({
+                ...eventarcPollerOptions,
+                pollerName: `rollback-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+                operationResourceName: rollbackOp.name,
+              });
+              previousTriggerRestored = true;
+            } catch (rollbackError) {
+              const rollbackMessage =
+                rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+              throw new FirebaseError(
+                `Failed to replace Eventarc trigger ${trigger.name} and failed to restore the previous trigger: ${rollbackMessage}`,
+                { original: err as Error },
+              );
+            }
+          }
+          throw err;
+        }
+      }
+      await this.setEventarcInvoker(endpoint, [reconciledTrigger.serviceAccount]);
+    } catch (err) {
+      try {
+        await this.setEventarcInvoker(
+          endpoint,
+          previousTriggerRestored ? [previousServiceAccount] : transitionServiceAccounts,
+        );
+      } catch (invokerRollbackError) {
+        const rollbackMessage =
+          invokerRollbackError instanceof Error
+            ? invokerRollbackError.message
+            : String(invokerRollbackError);
+        throw new FirebaseError(
+          `Failed to update Eventarc trigger ${trigger.name} and failed to restore its Cloud Run invoker: ${rollbackMessage}`,
+          { original: err as Error },
+        );
+      }
+      throw rethrowAs(endpoint, "upsert eventarc trigger")(err);
+    }
+  }
+
+  async deleteEventarcTrigger(endpoint: backend.Endpoint & backend.EventTriggered): Promise<void> {
+    const trigger = await this.eventarcTriggerFromEndpoint(endpoint);
+    await this.executor
+      .run(async () => {
+        if ((await eventarc.getTrigger(trigger.name)) === undefined) {
+          return;
+        }
+        const op = await eventarc.deleteTrigger(trigger.name);
+        await poller.pollOperation<void>({
+          ...eventarcPollerOptions,
+          pollerName: `delete-eventarc-${endpoint.codebase}-${endpoint.region}-${endpoint.id}`,
+          operationResourceName: op.name,
+        });
+      })
+      .catch(rethrowAs(endpoint, "delete eventarc trigger"));
   }
 
   async upsertScheduleV1(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {

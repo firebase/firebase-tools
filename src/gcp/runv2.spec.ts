@@ -78,6 +78,56 @@ describe("runv2", () => {
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(BASE_RUN_SERVICE);
     });
 
+    it("should use the authoritative Run service ID", () => {
+      const endpoint: backend.Endpoint = {
+        ...BASE_ENDPOINT_RUN,
+        runServiceId: "existing-service-id",
+        httpsTrigger: {},
+      };
+
+      expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI).name).to.equal(
+        `projects/${PROJECT_ID}/locations/${LOCATION}/services/existing-service-id`,
+      );
+    });
+
+    it("should preserve event trigger metadata for backend reconstruction", () => {
+      const eventTrigger: backend.EventTrigger = {
+        eventType: "google.cloud.firestore.document.v1.written",
+        eventFilters: {
+          database: "(default)",
+          namespace: "(default)",
+        },
+        eventFilterPathPatterns: {
+          document: "users/{userId}",
+        },
+        retry: false,
+        region: "nam5",
+      };
+      const endpoint: backend.Endpoint = {
+        ...BASE_ENDPOINT_RUN,
+        eventTrigger,
+        labels: {
+          "deployment-tool": "cli-firebase",
+        },
+      };
+
+      const service = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
+      const metadata = JSON.parse(service.annotations![runv2.FIREBASE_FUNCTION_METADTA_ANNOTATION]);
+
+      expect(metadata).to.deep.equal({
+        functionId: FUNCTION_ID,
+        eventTrigger,
+      });
+      expect(service.labels?.["deployment-tool"]).to.equal("cli-firebase");
+      const reconstructed = runv2.endpointFromService(service);
+      expect(backend.isEventTriggered(reconstructed)).to.be.true;
+      if (!backend.isEventTriggered(reconstructed)) {
+        throw new Error("Expected an event-triggered endpoint");
+      }
+      expect(reconstructed.eventTrigger).to.deep.equal(eventTrigger);
+      expect(reconstructed.runServiceId).to.equal(SERVICE_ID);
+    });
+
     it("should handle different codebase", () => {
       const endpoint: backend.Endpoint = {
         ...BASE_ENDPOINT_RUN,
@@ -190,19 +240,47 @@ describe("runv2", () => {
       expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI)).to.deep.equal(expectedServiceInput);
     });
 
-    it("should remove deployment-tool label", () => {
+    it("should preserve deployment-tool label for lifecycle reconciliation", () => {
       const endpoint: backend.Endpoint = {
         ...BASE_ENDPOINT_RUN,
         httpsTrigger: {},
-        labels: { "deployment-tool": "firebase-cli" },
+        labels: { "deployment-tool": "cli-firebase--Agent.V1" },
       };
       const result = runv2.serviceFromEndpoint(endpoint, IMAGE_URI);
-      expect(result.labels?.["deployment-tool"]).to.be.undefined;
+      expect(result.labels?.["deployment-tool"]).to.equal("cli-firebase--agent-v1");
       expect(result.labels?.[runv2.CLIENT_NAME_LABEL]).to.equal("firebase-functions");
+    });
+
+    it("should expand shorthand service accounts", () => {
+      const endpoint: backend.Endpoint = {
+        ...BASE_ENDPOINT_RUN,
+        httpsTrigger: {},
+        serviceAccount: "runner@",
+      };
+
+      expect(runv2.serviceFromEndpoint(endpoint, IMAGE_URI).template.serviceAccount).to.equal(
+        `runner@${PROJECT_ID}.iam.gserviceaccount.com`,
+      );
     });
   });
 
   describe("endpointFromService", () => {
+    it("should recover legacy direct Run CloudEvent services", () => {
+      const service = structuredClone(BASE_RUN_SERVICE);
+      service.template.containers![0].env = service.template.containers![0].env?.map((variable) =>
+        variable.name === runv2.FUNCTION_SIGNATURE_TYPE_ENV
+          ? { ...variable, value: "cloudevent" }
+          : variable,
+      );
+
+      const endpoint = runv2.endpointFromService(service);
+
+      expect(backend.isEventTriggered(endpoint)).to.be.true;
+      if (backend.isEventTriggered(endpoint)) {
+        expect(endpoint.eventTrigger.eventType).to.equal("unknown");
+      }
+    });
+
     it("should copy a minimal service", () => {
       const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
         ...BASE_RUN_SERVICE,
@@ -238,6 +316,7 @@ describe("runv2", () => {
         region: LOCATION,
         runtime: latest("nodejs"),
         entryPoint: "customEntryPoint",
+        runServiceId: SERVICE_ID,
         availableMemoryMb: 256,
         cpu: 1,
         httpsTrigger: {},
@@ -256,60 +335,63 @@ describe("runv2", () => {
       expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
     });
 
-    it("should detect a service that's GCF managed", () => {
-      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
-        ...BASE_RUN_SERVICE,
-        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
-        labels: {
-          [runv2.RUNTIME_LABEL]: latest("nodejs"),
-          [runv2.CLIENT_NAME_LABEL]: "cloud-functions", // This indicates it's GCF managed
-        },
-        annotations: {
-          ...BASE_RUN_SERVICE.annotations,
-          [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
-          [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
-          [runv2.TRIGGER_TYPE_ANNOTATION]: "HTTP_TRIGGER",
-        },
-        template: {
-          containers: [
-            {
-              name: "worker",
-              image: IMAGE_URI,
-              resources: {
-                limits: {
-                  cpu: "1",
-                  memory: "256Mi",
+    for (const clientName of ["cloudfunctions", "cloud-functions"]) {
+      it(`should detect a service that's GCF managed with ${clientName}`, () => {
+        const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          ...BASE_RUN_SERVICE,
+          name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+          labels: {
+            [runv2.RUNTIME_LABEL]: latest("nodejs"),
+            [runv2.CLIENT_NAME_LABEL]: clientName,
+          },
+          annotations: {
+            ...BASE_RUN_SERVICE.annotations,
+            [runv2.FUNCTION_ID_ANNOTATION]: FUNCTION_ID, // Using FUNCTION_ID_ANNOTATION as primary source for id
+            [runv2.FUNCTION_TARGET_ANNOTATION]: "customEntryPoint",
+            [runv2.TRIGGER_TYPE_ANNOTATION]: "HTTP_TRIGGER",
+          },
+          template: {
+            containers: [
+              {
+                name: "worker",
+                image: IMAGE_URI,
+                resources: {
+                  limits: {
+                    cpu: "1",
+                    memory: "256Mi",
+                  },
                 },
               },
-            },
-          ],
-        },
-      };
+            ],
+          },
+        };
 
-      const expectedEndpoint: backend.Endpoint = {
-        platform: "gcfv2",
-        id: FUNCTION_ID,
-        project: PROJECT_ID,
-        region: LOCATION,
-        runtime: latest("nodejs"),
-        entryPoint: "customEntryPoint",
-        availableMemoryMb: 256,
-        cpu: 1,
-        httpsTrigger: {},
-        labels: {
-          "deployment-tool": "cli-firebase",
-          [runv2.RUNTIME_LABEL]: latest("nodejs"),
-          [runv2.CLIENT_NAME_LABEL]: "cloud-functions",
-        },
-        environmentVariables: {},
-        secretEnvironmentVariables: [],
-        ingressSettings: "ALLOW_ALL",
-        serviceAccount: null,
-        timeoutSeconds: 60,
-      };
+        const expectedEndpoint: backend.Endpoint = {
+          platform: "gcfv2",
+          id: FUNCTION_ID,
+          project: PROJECT_ID,
+          region: LOCATION,
+          runtime: latest("nodejs"),
+          entryPoint: "customEntryPoint",
+          runServiceId: SERVICE_ID,
+          availableMemoryMb: 256,
+          cpu: 1,
+          httpsTrigger: {},
+          labels: {
+            "deployment-tool": "cli-firebase",
+            [runv2.RUNTIME_LABEL]: latest("nodejs"),
+            [runv2.CLIENT_NAME_LABEL]: clientName,
+          },
+          environmentVariables: {},
+          secretEnvironmentVariables: [],
+          ingressSettings: "ALLOW_ALL",
+          serviceAccount: null,
+          timeoutSeconds: 60,
+        };
 
-      expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
-    });
+        expect(runv2.endpointFromService(service)).to.deep.equal(expectedEndpoint);
+      });
+    }
 
     it("should derive id from FIREBASE_FUNCTIONS_METADATA if present", () => {
       const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
@@ -454,6 +536,7 @@ describe("runv2", () => {
         region: LOCATION,
         runtime: latest("nodejs"), // Default runtime
         entryPoint: SERVICE_ID, // No FUNCTION_TARGET_ANNOTATION
+        runServiceId: SERVICE_ID,
         availableMemoryMb: 128,
         cpu: 0.5,
         httpsTrigger: {},
@@ -489,7 +572,7 @@ describe("runv2", () => {
       const mockServices = [
         {
           name: "service1",
-          labels: { "goog-managed-by": "cloud-functions" },
+          labels: { "goog-managed-by": "cloudfunctions" },
         },
         {
           name: "service2",
@@ -511,7 +594,7 @@ describe("runv2", () => {
       const mockServices1 = [
         {
           name: "service1",
-          labels: { "goog-managed-by": "cloud-functions" },
+          labels: { "goog-managed-by": "cloudfunctions" },
         },
       ];
       const mockServices2 = [

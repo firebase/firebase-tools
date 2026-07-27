@@ -8,6 +8,7 @@ import { Context } from "./args";
 import { assertExhaustive, flattenArray } from "../../functional";
 import { logger } from "../../logger";
 import * as experiments from "../../experiments";
+import * as crypto from "crypto";
 
 /** Retry settings for a ScheduleSpec. */
 export interface ScheduleRetryConfig {
@@ -581,6 +582,17 @@ export function scheduleIdForFunction(cloudFunction: TargetIds): string {
   return `firebase-schedule-${cloudFunction.id}-${cloudFunction.region}`;
 }
 
+/** Returns a region-qualified Eventarc trigger ID within the 63-character API limit. */
+export function eventarcTriggerIdForFunction(cloudFunction: TargetIds): string {
+  const normalizedId = cloudFunction.id.toLowerCase().replace(/_/g, "-");
+  const fullId = `firebase-${normalizedId}-${cloudFunction.region}`;
+  if (fullId.length <= 63) {
+    return fullId;
+  }
+  const hash = crypto.createHash("sha256").update(fullId).digest("hex").slice(0, 8);
+  return `${fullId.slice(0, 54)}-${hash}`;
+}
+
 /**
  * A caching accessor of the existing backend.
  * The method explicitly loads Cloud Functions from their API but implicitly deduces
@@ -619,14 +631,17 @@ async function loadExistingBackend(ctx: Context): Promise<Backend> {
   }
   unreachableRegions.gcfV1 = gcfV1Results.unreachable;
 
+  const addEndpoint = (endpoint: Endpoint): void => {
+    existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
+    existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+  };
+
   if (experiments.isEnabled("functionsrunapionly")) {
     await loadCloudRunServices(ctx, existingBackend, unreachableRegions, false);
   } else {
     const gcfV2Results = await gcfV2.listAllFunctions(ctx.projectId);
     for (const apiFunction of gcfV2Results.functions) {
-      const endpoint = gcfV2.endpointFromFunction(apiFunction);
-      existingBackend.endpoints[endpoint.region] = existingBackend.endpoints[endpoint.region] || {};
-      existingBackend.endpoints[endpoint.region][endpoint.id] = endpoint;
+      addEndpoint(gcfV2.endpointFromFunction(apiFunction));
     }
     unreachableRegions.gcfV2 = gcfV2Results.unreachable;
 
@@ -681,9 +696,12 @@ export async function checkAvailability(context: Context, want: Backend): Promis
   await existingBackend(context);
   const gcfV1Regions = new Set();
   const gcfV2Regions = new Set();
+  let hasRunEndpoints = false;
   for (const ep of allEndpoints(want)) {
     if (ep.platform === "gcfv1") {
       gcfV1Regions.add(ep.region);
+    } else if (ep.platform === "run") {
+      hasRunEndpoints = true;
     } else {
       gcfV2Regions.add(ep.region);
     }
@@ -708,6 +726,13 @@ export async function checkAvailability(context: Context, want: Backend): Promis
       "The following Cloud Functions V2 regions are currently unreachable:\n\t" +
         neededUnreachableV2.join("\n\t") +
         "\nThis deployment contains functions in those regions. Please try again in a few minutes, or exclude these regions from your deployment.",
+    );
+  }
+
+  if (hasRunEndpoints && context.unreachableRegions?.run.length) {
+    throw new FirebaseError(
+      "Cloud Run services could not be listed for this project. " +
+        "Existing Dart functions cannot be reconciled safely. Ensure the Cloud Run API is enabled and that you have permission to list services, then try again.",
     );
   }
 
