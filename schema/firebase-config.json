@@ -999,6 +999,7 @@
                 }
             },
             "required": [
+                "instances",
                 "kit",
                 "source"
             ],
