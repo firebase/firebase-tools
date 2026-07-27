@@ -343,6 +343,52 @@ describe("projectConfig", () => {
         );
       });
 
+      it("fails validation given invalid kit name", () => {
+        const config = [{ ...VALID_KIT_CONFIG, kit: "Invalid-Kit-Name!" }];
+        expect(() => projectConfig.validate(config as any)).to.throw(
+          FirebaseError,
+          /Invalid kit name/,
+        );
+      });
+
+      it("fails validation given long kit name (>40 chars)", () => {
+        const config = [{ ...VALID_KIT_CONFIG, kit: "a".repeat(41) }];
+        expect(() => projectConfig.validate(config as any)).to.throw(
+          FirebaseError,
+          /Invalid kit name/,
+        );
+      });
+
+      it("fails validation given invalid instance ID format", () => {
+        const config = [
+          {
+            ...VALID_KIT_CONFIG,
+            instances: { "Invalid_Instance!": "config/path" },
+          },
+        ];
+        expect(() => projectConfig.validate(config as any)).to.throw(
+          FirebaseError,
+          /Invalid kit instance ID/,
+        );
+      });
+
+      it("fails validation if kit instance IDs are duplicated across kits", () => {
+        const config: projectConfig.NormalizedConfig = [
+          VALID_KIT_CONFIG,
+          {
+            kit: "another-kit",
+            source: "functions/kits/another",
+            instances: {
+              "firestore-bigquery-export": "config/bq-instance-2",
+            },
+          },
+        ];
+        expect(() => projectConfig.validate(config)).to.throw(
+          FirebaseError,
+          /functions kit instance ID must be unique across all kits, but 'firestore-bigquery-export' was used more than once/,
+        );
+      });
+
       it("fails validation if codebase name conflicts with a kit instance ID", () => {
         const config: projectConfig.NormalizedConfig = [
           { source: "functions", codebase: "bq-instance-1" },
@@ -425,6 +471,9 @@ describe("projectConfig", () => {
     const kitCfg = {
       kit: "my-kit",
       source: "kits/my-kit",
+      instances: {
+        "my-kit": "kits/my-kit",
+      },
     };
 
     it("isLocalConfig narrow correctly", () => {
