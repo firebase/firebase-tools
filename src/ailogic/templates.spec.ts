@@ -45,6 +45,8 @@ describe("ailogic templates", () => {
     it("rejects invalid YAML and non-mapping frontmatter", () => {
       expect(validatePromptFile("---\nkey: [unclosed\n---\nbody")).to.match(/Invalid YAML/);
       expect(validatePromptFile("---\njust a string\n---\nbody")).to.match(/YAML mapping/);
+      // Arrays are typeof "object" but are not mappings.
+      expect(validatePromptFile("---\n- a\n- b\n---\nbody")).to.match(/YAML mapping/);
     });
   });
 
@@ -119,9 +121,25 @@ describe("ailogic templates", () => {
       expect(plan).to.deep.equal({
         creates: ["fresh"],
         updates: ["welcome"],
+        unchanged: [],
         deletes: [],
         lockedViolations: [],
       });
+    });
+
+    it("skips templates whose content matches the remote", () => {
+      // remote() uses the id as the templateString, so this local content matches.
+      const matching = new Map([["welcome", "welcome"]]);
+      const plan = planTemplateDeploy(matching, [remote("welcome")], false);
+      expect(plan.unchanged).to.deep.equal(["welcome"]);
+      expect(plan.updates).to.deep.equal([]);
+    });
+
+    it("does not flag a locked template as a violation when its content is unchanged", () => {
+      const matching = new Map([["welcome", "welcome"]]);
+      const plan = planTemplateDeploy(matching, [remote("welcome", true)], false);
+      expect(plan.unchanged).to.deep.equal(["welcome"]);
+      expect(plan.lockedViolations).to.deep.equal([]);
     });
 
     it("flags a locked update target as a violation, not an update", () => {

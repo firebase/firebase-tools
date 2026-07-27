@@ -347,11 +347,18 @@ export async function updateTemplate(
   projectId: string,
   templateId: string,
   template: DeepOmit<Template, TemplateOutputOnlyFields>,
+  updateMask?: string[],
   allowMissing = true,
 ): Promise<Template> {
+  // Without an updateMask the API replaces the whole resource, clearing any
+  // writable field omitted from the body (e.g. displayName). A body etag is
+  // enforced as a precondition either way; do not include "etag" in the mask.
   const queryParams: Record<string, string> = {
     allowMissing: allowMissing ? "true" : "false",
   };
+  if (updateMask && updateMask.length > 0) {
+    queryParams.updateMask = updateMask.join(",");
+  }
   const res = await client.patch<DeepOmit<Template, TemplateOutputOnlyFields>, Template>(
     templateName(projectId, templateId),
     template,
@@ -403,10 +410,10 @@ export async function listTemplates(projectId: string): Promise<Template[]> {
   do {
     const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
     const res = await client.get<ListTemplatesResponse>(`${parent}/templates`, { queryParams });
-    if (res.body.templates) {
+    if (res.body?.templates) {
       templates.push(...res.body.templates);
     }
-    pageToken = res.body.nextPageToken;
+    pageToken = res.body?.nextPageToken;
   } while (pageToken);
 
   return templates;

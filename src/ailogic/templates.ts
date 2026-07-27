@@ -32,7 +32,12 @@ export function validatePromptFile(content: string): string | null {
   const frontmatter = rest.slice(0, close.index);
   try {
     const parsed = yaml.load(frontmatter);
-    if (parsed !== undefined && parsed !== null && typeof parsed !== "object") {
+    // Arrays are typeof "object" too; a YAML sequence is not a valid mapping.
+    if (
+      parsed !== undefined &&
+      parsed !== null &&
+      (typeof parsed !== "object" || Array.isArray(parsed))
+    ) {
       return "Frontmatter must be a YAML mapping.";
     }
   } catch (err: unknown) {
@@ -105,6 +110,8 @@ export interface TemplateDeployPlan {
   creates: string[];
   /** Local template ids that update an existing, unlocked remote template. */
   updates: string[];
+  /** Local template ids whose content already matches the remote; nothing to write. */
+  unchanged: string[];
   /** Remote template ids to prune (unlocked, no local counterpart). */
   deletes: string[];
   /** Locked templates the deploy would modify or delete; any entry blocks the deploy. */
@@ -122,12 +129,22 @@ export function planTemplateDeploy(
   prune: boolean,
 ): TemplateDeployPlan {
   const remoteById = new Map(remote.map((t) => [templateIdFromName(t.name), t]));
-  const plan: TemplateDeployPlan = { creates: [], updates: [], deletes: [], lockedViolations: [] };
+  const plan: TemplateDeployPlan = {
+    creates: [],
+    updates: [],
+    unchanged: [],
+    deletes: [],
+    lockedViolations: [],
+  };
 
-  for (const id of local.keys()) {
+  for (const [id, content] of local) {
     const existing = remoteById.get(id);
     if (!existing) {
       plan.creates.push(id);
+    } else if (existing.templateString === content) {
+      // Nothing to write, so a lock on an identical template is not violated
+      // and an unchanged deploy does not churn updateTime/etag.
+      plan.unchanged.push(id);
     } else if (existing.locked) {
       plan.lockedViolations.push(id);
     } else {

@@ -39,4 +39,19 @@ describe("ailogic:templates:list", () => {
     listStub.resolves(templates);
     expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal(templates);
   });
+
+  it("strips CRLF line endings from the preview so \\r cannot garble the table", async () => {
+    listStub.resolves([
+      {
+        name: "projects/p/locations/global/templates/crlf",
+        templateString: "line one\r\nline two",
+      },
+    ]);
+
+    await command.runner()({ project: PROJECT_ID });
+
+    const tableOutput = (logger.info as sinon.SinonStub).args.map((a) => a.join(" ")).join("\n");
+    expect(tableOutput).to.include("line one line two");
+    expect(tableOutput).to.not.match(/\r/);
+  });
 });

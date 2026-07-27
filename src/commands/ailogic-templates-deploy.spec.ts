@@ -78,6 +78,7 @@ describe("ailogic:templates:deploy", () => {
     expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal({
       deployed: [],
       pruned: [],
+      unchanged: [],
     });
   });
 
@@ -88,6 +89,7 @@ describe("ailogic:templates:deploy", () => {
     expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal({
       deployed: ["fresh", "welcome"],
       pruned: [],
+      unchanged: [],
     });
     expect(updateTemplateStub).to.have.been.calledTwice;
     expect(updateTemplateStub).to.have.been.calledWith(PROJECT_ID, "fresh", {
@@ -117,12 +119,27 @@ describe("ailogic:templates:deploy", () => {
 
     await command.runner()({ project: PROJECT_ID, prune: true, force: true });
 
-    expect(updateTemplateStub).to.have.been.calledWith(PROJECT_ID, "welcome", {
-      templateString: "prompt body",
-      displayName: "welcome",
-      etag: "etag-w",
-    });
+    // Updates are masked to templateString so a displayName set outside the CLI
+    // is preserved; the etag rides along as a precondition only.
+    expect(updateTemplateStub).to.have.been.calledWith(
+      PROJECT_ID,
+      "welcome",
+      { templateString: "prompt body", etag: "etag-w" },
+      ["templateString"],
+    );
     expect(deleteTemplateStub).to.have.been.calledWith(PROJECT_ID, "stale", "etag-s");
+  });
+
+  it("skips templates whose content is unchanged and reports all-up-to-date", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([{ ...remoteTemplate("welcome"), templateString: "prompt body" }]);
+
+    expect(await command.runner()({ project: PROJECT_ID })).to.deep.equal({
+      deployed: [],
+      pruned: [],
+      unchanged: ["welcome"],
+    });
+    expect(updateTemplateStub).to.not.have.been.called;
   });
 
   it("maps an etag conflict (409) during update to a re-run message", async () => {
@@ -148,7 +165,7 @@ describe("ailogic:templates:deploy", () => {
       .rejects(new FirebaseError("not found", { status: 404 }));
 
     expect(await command.runner()({ project: PROJECT_ID, prune: true, force: true })).to.deep.equal(
-      { deployed: ["welcome"], pruned: ["gone", "stale"] },
+      { deployed: ["welcome"], pruned: ["gone", "stale"], unchanged: [] },
     );
     expect(deleteTemplateStub).to.have.been.calledTwice;
   });
@@ -159,7 +176,7 @@ describe("ailogic:templates:deploy", () => {
 
     expect(
       await command.runner()({ project: PROJECT_ID, prune: true, interactive: true }),
-    ).to.deep.equal({ deployed: ["welcome"], pruned: ["stale"] });
+    ).to.deep.equal({ deployed: ["welcome"], pruned: ["stale"], unchanged: [] });
     expect(confirmStub).to.have.been.calledOnce;
     expect(deleteTemplateStub).to.have.been.calledOnceWith(PROJECT_ID, "stale");
   });
@@ -190,6 +207,7 @@ describe("ailogic:templates:deploy", () => {
     expect(await command.runner()({ project: PROJECT_ID, prune: true })).to.deep.equal({
       deployed: [],
       pruned: [],
+      unchanged: [],
     });
     expect(logWarningStub).to.have.been.calledWithMatch(/--prune was ignored/);
     expect(listTemplatesStub).to.not.have.been.called;

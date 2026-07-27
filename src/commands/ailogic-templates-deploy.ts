@@ -69,7 +69,7 @@ For example, to deploy all templates from the default directory and delete remot
         throw new FirebaseError(`Directory does not exist: ${dir}`);
       }
       logger.info(`Default prompts directory '${dir}' does not exist. No templates to deploy.`);
-      return { deployed: [], pruned: [] };
+      return { deployed: [], pruned: [], unchanged: [] };
     }
 
     const local = templates.readPromptDirectory(dir);
@@ -88,7 +88,7 @@ For example, to deploy all templates from the default directory and delete remot
         );
       }
       logger.info(`No ${templates.PROMPT_FILE_EXT} files found to deploy.`);
-      return { deployed: [], pruned: [] };
+      return { deployed: [], pruned: [], unchanged: [] };
     }
 
     await ailogic.ensureAILogicApiEnabled(projectId, options);
@@ -106,6 +106,16 @@ For example, to deploy all templates from the default directory and delete remot
           plan.lockedViolations.map((id) => `  ${id}`).join("\n") +
           `\n\nUnlock them by running:\n\n  firebase ailogic:templates:unlock <templateId>\n\nThen deploy again. No templates were deployed.`,
       );
+    }
+
+    if (plan.unchanged.length > 0) {
+      logger.info(
+        `Skipping ${plan.unchanged.length} unchanged template(s): ${plan.unchanged.join(", ")}`,
+      );
+    }
+    if (plan.creates.length === 0 && plan.updates.length === 0 && plan.deletes.length === 0) {
+      utils.logSuccess("All templates are already up to date.");
+      return { deployed: [], pruned: [], unchanged: plan.unchanged };
     }
 
     // confirm() aborts in non-interactive mode unless --force is set.
@@ -137,11 +147,18 @@ For example, to deploy all templates from the default directory and delete remot
       logger.info(`Updating template ${clc.bold(templateId)}...`);
       const etag = remoteEtags.get(templateId);
       try {
-        await ailogic.updateTemplate(projectId, templateId, {
-          templateString: local.templates.get(templateId) ?? "",
-          displayName: templateId,
-          ...(etag ? { etag } : {}),
-        });
+        // Mask the write to templateString: an unmasked PATCH replaces the whole
+        // resource, which would clear a displayName set outside this deploy. The
+        // body etag stays enforced as a precondition under the mask.
+        await ailogic.updateTemplate(
+          projectId,
+          templateId,
+          {
+            templateString: local.templates.get(templateId) ?? "",
+            ...(etag ? { etag } : {}),
+          },
+          ["templateString"],
+        );
       } catch (err: unknown) {
         if (getErrStatus(err) === 409) {
           throw new FirebaseError(
@@ -172,5 +189,9 @@ For example, to deploy all templates from the default directory and delete remot
     }
 
     utils.logSuccess("Successfully deployed templates.");
-    return { deployed: [...plan.creates, ...plan.updates], pruned: plan.deletes };
+    return {
+      deployed: [...plan.creates, ...plan.updates],
+      pruned: plan.deletes,
+      unchanged: plan.unchanged,
+    };
   });

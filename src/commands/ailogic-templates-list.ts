@@ -50,7 +50,9 @@ export const command = new Command("ailogic:templates:list")
         clc.bold(ailogic.templateIdFromName(t.name)),
         t.displayName || "",
         t.locked ? "Yes" : "No",
-        preview.replace(/\n/g, " "),
+        // Also strip \r: a raw carriage return in a table cell resets the terminal
+        // cursor to the line start and garbles the rendered table.
+        preview.replace(/\r?\n/g, " "),
       ]);
     }
 
