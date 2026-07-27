@@ -20,7 +20,9 @@ describe("ailogic:templates:delete", () => {
     sinon.stub(projectUtils, "needProjectId").returns(PROJECT_ID);
     sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
     sinon.stub(utils, "logSuccess");
-    getStub = sinon.stub(ailogic, "getTemplate").resolves({ name: "welcome", templateString: "x" });
+    getStub = sinon
+      .stub(ailogic, "getTemplate")
+      .resolves({ name: "welcome", templateString: "x", etag: "etag-1" });
     deleteStub = sinon.stub(ailogic, "deleteTemplate").resolves();
     confirmStub = sinon.stub(prompt, "confirm").resolves(true);
   });
@@ -53,12 +55,19 @@ describe("ailogic:templates:delete", () => {
     expect(deleteStub).to.not.have.been.called;
   });
 
-  it("deletes after confirmation and returns the deleted template", async () => {
+  it("deletes after confirmation, passing the pre-read etag, and returns the template", async () => {
     expect(
       await command.runner()("welcome", { project: PROJECT_ID, interactive: true }),
-    ).to.deep.equal({ name: "welcome", templateString: "x" });
+    ).to.deep.equal({ name: "welcome", templateString: "x", etag: "etag-1" });
     expect(confirmStub).to.have.been.calledOnce;
-    expect(deleteStub).to.have.been.calledWith(PROJECT_ID, "welcome");
+    expect(deleteStub).to.have.been.calledWith(PROJECT_ID, "welcome", "etag-1");
+  });
+
+  it("maps an etag conflict (409) to a re-run message", async () => {
+    deleteStub.rejects(new FirebaseError("aborted", { status: 409 }));
+    await expect(
+      command.runner()("welcome", { project: PROJECT_ID, force: true }),
+    ).to.be.rejectedWith(FirebaseError, /modified while awaiting confirmation/);
   });
 
   it("aborts when confirmation is declined", async () => {

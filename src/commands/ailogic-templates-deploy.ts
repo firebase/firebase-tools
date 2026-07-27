@@ -95,6 +95,9 @@ For example, to deploy all templates from the default directory and delete remot
 
     const remote = await ailogic.listTemplates(projectId);
     const plan = templates.planTemplateDeploy(local.templates, remote, options.prune ?? false);
+    // Etags from the listing let the server reject (409) writes against templates
+    // that changed after planning, instead of silently overwriting the newer state.
+    const remoteEtags = new Map(remote.map((t) => [ailogic.templateIdFromName(t.name), t.etag]));
 
     // Locked templates block the whole deploy during planning; --force does not override a lock.
     if (plan.lockedViolations.length > 0) {
@@ -132,22 +135,39 @@ For example, to deploy all templates from the default directory and delete remot
     }
     for (const templateId of plan.updates) {
       logger.info(`Updating template ${clc.bold(templateId)}...`);
-      await ailogic.updateTemplate(projectId, templateId, {
-        templateString: local.templates.get(templateId) ?? "",
-        displayName: templateId,
-      });
+      const etag = remoteEtags.get(templateId);
+      try {
+        await ailogic.updateTemplate(projectId, templateId, {
+          templateString: local.templates.get(templateId) ?? "",
+          displayName: templateId,
+          ...(etag ? { etag } : {}),
+        });
+      } catch (err: unknown) {
+        if (getErrStatus(err) === 409) {
+          throw new FirebaseError(
+            `Template ${clc.bold(templateId)} was modified while deploying. Re-run the deploy to apply your local files against the latest remote state.`,
+          );
+        }
+        throw err;
+      }
     }
     for (const templateId of plan.deletes) {
       logger.info(`Pruning template ${clc.bold(templateId)}...`);
       try {
-        await ailogic.deleteTemplate(projectId, templateId);
+        await ailogic.deleteTemplate(projectId, templateId, remoteEtags.get(templateId));
       } catch (err: unknown) {
         // The template can be deleted out from under us between the plan and this
         // delete; the desired end state is reached, so don't fail the deploy.
-        if (getErrStatus(err) !== 404) {
-          throw err;
+        if (getErrStatus(err) === 404) {
+          logger.info(`Template ${clc.bold(templateId)} was already deleted.`);
+          continue;
         }
-        logger.info(`Template ${clc.bold(templateId)} was already deleted.`);
+        if (getErrStatus(err) === 409) {
+          throw new FirebaseError(
+            `Template ${clc.bold(templateId)} was modified while deploying, so it was not pruned. Re-run the deploy to plan against the latest remote state.`,
+          );
+        }
+        throw err;
       }
     }
 

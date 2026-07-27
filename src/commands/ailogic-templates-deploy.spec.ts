@@ -108,6 +108,34 @@ describe("ailogic:templates:deploy", () => {
     expect(deleteTemplateStub).to.not.have.been.called;
   });
 
+  it("passes the listed etag on updates and prunes so concurrent edits are rejected", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([
+      { ...remoteTemplate("welcome"), etag: "etag-w" },
+      { ...remoteTemplate("stale"), etag: "etag-s" },
+    ]);
+
+    await command.runner()({ project: PROJECT_ID, prune: true, force: true });
+
+    expect(updateTemplateStub).to.have.been.calledWith(PROJECT_ID, "welcome", {
+      templateString: "prompt body",
+      displayName: "welcome",
+      etag: "etag-w",
+    });
+    expect(deleteTemplateStub).to.have.been.calledWith(PROJECT_ID, "stale", "etag-s");
+  });
+
+  it("maps an etag conflict (409) during update to a re-run message", async () => {
+    listFilesStub.returns(["welcome.prompt"]);
+    listTemplatesStub.resolves([remoteTemplate("welcome")]);
+    updateTemplateStub.rejects(new FirebaseError("aborted", { status: 409 }));
+
+    await expect(command.runner()({ project: PROJECT_ID })).to.be.rejectedWith(
+      FirebaseError,
+      /modified while deploying/,
+    );
+  });
+
   it("continues pruning when a template was already deleted concurrently (404)", async () => {
     listFilesStub.returns(["welcome.prompt"]);
     listTemplatesStub.resolves([

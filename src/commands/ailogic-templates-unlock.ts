@@ -28,9 +28,9 @@ For example:
     // Validate the id up front so bad input fails fast, before the API-enablement flow.
     ailogic.assertValidTemplateId(templateId);
     await ailogic.ensureAILogicApiEnabled(projectId, options);
-    const template = await ailogic.withTemplate404(templateId, () =>
+    await ailogic.withTemplate404(templateId, () =>
       ailogic.setTemplateLocked(projectId, templateId, false),
     );
     utils.logSuccess(`Unlocked template: ${clc.bold(templateId)}`);
-    return template;
+    return { templateId, locked: false };
   });

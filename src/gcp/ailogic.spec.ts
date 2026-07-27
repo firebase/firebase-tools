@@ -268,58 +268,69 @@ describe("ailogic", () => {
       expect(template).to.deep.equal(mockTemplate);
     });
 
-    it("should delete template", async () => {
+    it("should delete template without an etag by default", async () => {
       deleteStub.resolves({});
 
       await ailogic.deleteTemplate("my-project", "temp-1");
 
-      expect(deleteStub).to.have.been.calledWith(
+      expect(deleteStub).to.have.been.calledWithMatch(
         "projects/my-project/locations/global/templates/temp-1",
+        { queryParams: {} },
       );
     });
 
-    it("should lock template", async () => {
+    it("should pass the etag on delete when provided", async () => {
+      deleteStub.resolves({});
+
+      await ailogic.deleteTemplate("my-project", "temp-1", "etag-1");
+
+      expect(deleteStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1",
+        { queryParams: { etag: "etag-1" } },
+      );
+    });
+
+    it("should pass the etag in the update body when provided", async () => {
       const mockTemplate: ailogic.Template = {
         name: "projects/my-project/locations/global/templates/temp-1",
         templateString: "hello",
-        locked: true,
       };
       patchStub.resolves({ body: mockTemplate });
 
-      const template = await ailogic.setTemplateLocked("my-project", "temp-1", true);
+      await ailogic.updateTemplate("my-project", "temp-1", {
+        templateString: "hello",
+        etag: "etag-1",
+      });
 
       expect(patchStub).to.have.been.calledWithMatch(
         "projects/my-project/locations/global/templates/temp-1",
+        { templateString: "hello", etag: "etag-1" },
+      );
+    });
+
+    it("should lock a template via the ModifyLock RPC", async () => {
+      postStub.resolves({ body: {} });
+
+      await ailogic.setTemplateLocked("my-project", "temp-1", true);
+
+      // `locked` is output-only on the resource, so this must NOT be a PATCH.
+      expect(postStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1:modifyLock",
         { locked: true },
-        {
-          queryParams: {
-            updateMask: "locked",
-          },
-        },
       );
-      expect(template).to.deep.equal(mockTemplate);
+      expect(patchStub).to.not.have.been.called;
     });
 
-    it("should unlock template", async () => {
-      const mockTemplate: ailogic.Template = {
-        name: "projects/my-project/locations/global/templates/temp-1",
-        templateString: "hello",
-        locked: false,
-      };
-      patchStub.resolves({ body: mockTemplate });
+    it("should unlock a template via the ModifyLock RPC", async () => {
+      postStub.resolves({ body: {} });
 
-      const template = await ailogic.setTemplateLocked("my-project", "temp-1", false);
+      await ailogic.setTemplateLocked("my-project", "temp-1", false);
 
-      expect(patchStub).to.have.been.calledWithMatch(
-        "projects/my-project/locations/global/templates/temp-1",
+      expect(postStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/templates/temp-1:modifyLock",
         { locked: false },
-        {
-          queryParams: {
-            updateMask: "locked",
-          },
-        },
       );
-      expect(template).to.deep.equal(mockTemplate);
+      expect(patchStub).to.not.have.been.called;
     });
 
     it("should list templates slurping all pages", async () => {

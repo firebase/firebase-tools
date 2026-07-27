@@ -5,7 +5,7 @@ import * as ailogic from "../gcp/ailogic";
 import * as clc from "colorette";
 import * as utils from "../utils";
 import { confirm } from "../prompt";
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrStatus } from "../error";
 
 import { Options } from "../options";
 
@@ -54,9 +54,21 @@ For example:
       throw new FirebaseError("Command aborted.", { exit: 1 });
     }
 
-    // The template can be deleted out from under us between the get and the delete;
-    // map that 404 to the same friendly error.
-    await ailogic.withTemplate404(templateId, () => ailogic.deleteTemplate(projectId, templateId));
+    // Pass the etag from the pre-confirmation read so the server refuses (409) to
+    // delete a template that changed while the prompt was on screen; a 404 (deleted
+    // out from under us) still maps to the friendly "does not exist" error.
+    try {
+      await ailogic.withTemplate404(templateId, () =>
+        ailogic.deleteTemplate(projectId, templateId, template.etag),
+      );
+    } catch (err: unknown) {
+      if (getErrStatus(err) === 409) {
+        throw new FirebaseError(
+          `Template ${clc.bold(templateId)} was modified while awaiting confirmation. Re-run the command to delete its latest version.`,
+        );
+      }
+      throw err;
+    }
     utils.logSuccess(`Deleted template: ${clc.bold(templateId)}`);
     return template;
   });

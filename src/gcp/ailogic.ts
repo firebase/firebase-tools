@@ -240,7 +240,9 @@ export interface Template {
   name: string;
   templateString: string;
   displayName?: string;
+  /** When set on an update or delete, the server rejects the write (409) if the template changed since the etag was read. */
   etag?: string;
+  /** Output only; changed via the ModifyLock RPC (`setTemplateLocked`), not PATCH. */
   locked?: boolean;
 }
 
@@ -249,7 +251,7 @@ interface ListTemplatesResponse {
   nextPageToken?: string;
 }
 
-export type TemplateOutputOnlyFields = "name" | "etag";
+export type TemplateOutputOnlyFields = "name" | "locked";
 
 /** Extracts the template id (the last path segment) from a template resource name. */
 export function templateIdFromName(name: string): string {
@@ -361,8 +363,16 @@ export async function updateTemplate(
 /**
  * Deletes a Template.
  */
-export async function deleteTemplate(projectId: string, templateId: string): Promise<void> {
-  await client.delete<void>(templateName(projectId, templateId));
+export async function deleteTemplate(
+  projectId: string,
+  templateId: string,
+  etag?: string,
+): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (etag) {
+    queryParams.etag = etag;
+  }
+  await client.delete<void>(templateName(projectId, templateId), { queryParams });
 }
 
 /**
@@ -373,13 +383,13 @@ export async function setTemplateLocked(
   projectId: string,
   templateId: string,
   locked: boolean,
-): Promise<Template> {
-  const res = await client.patch<Partial<Template>, Template>(
-    templateName(projectId, templateId),
+): Promise<void> {
+  // `locked` is output-only on the resource; the API only changes it through the
+  // dedicated ModifyLock RPC (a PATCH with updateMask=locked is rejected).
+  await client.post<{ locked: boolean }, unknown>(
+    `${templateName(projectId, templateId)}:modifyLock`,
     { locked },
-    { queryParams: { updateMask: "locked" } },
   );
-  return res.body;
 }
 
 /**
