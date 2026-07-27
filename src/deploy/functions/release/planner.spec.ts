@@ -94,32 +94,34 @@ describe("planner", () => {
       });
     });
 
-    it("knows to delete & recreate when trigger regions change", () => {
-      const original: backend.Endpoint = func("a", "b", {
-        eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.finalized",
-          eventFilters: { bucket: "my-bucket" },
-          region: "us-west1",
-          retry: false,
-        },
+    for (const platform of ["gcfv2", "run"] as const) {
+      it(`knows to delete & recreate ${platform} functions when trigger regions change`, () => {
+        const original: backend.Endpoint = func("a", "b", {
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.finalized",
+            eventFilters: { bucket: "my-bucket" },
+            region: "us-west1",
+            retry: false,
+          },
+        });
+        original.platform = platform;
+        const changed: backend.Endpoint = func("a", "b", {
+          eventTrigger: {
+            eventType: "google.cloud.storage.object.v1.finalzied",
+            eventFilters: { bucket: "my-bucket" },
+            region: "us",
+            retry: false,
+          },
+        });
+        changed.platform = platform;
+        allowV2Upgrades();
+        expect(planner.calculateUpdate(changed, original)).to.deep.equal({
+          endpoint: changed,
+          unsafe: false,
+          deleteAndRecreate: original,
+        });
       });
-      original.platform = "gcfv2";
-      const changed: backend.Endpoint = func("a", "b", {
-        eventTrigger: {
-          eventType: "google.cloud.storage.object.v1.finalzied",
-          eventFilters: { bucket: "my-bucket" },
-          region: "us",
-          retry: false,
-        },
-      });
-      changed.platform = "gcfv2";
-      allowV2Upgrades();
-      expect(planner.calculateUpdate(changed, original)).to.deep.equal({
-        endpoint: changed,
-        unsafe: false,
-        deleteAndRecreate: original,
-      });
-    });
+    }
 
     it("knows to upgrade in-place in the general case", () => {
       const v1Function: backend.Endpoint = {

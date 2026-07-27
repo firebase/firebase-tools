@@ -7,6 +7,7 @@ import { Options } from "../../options";
 import { flattenArray } from "../../functional";
 import * as iam from "../../gcp/iam";
 import * as gce from "../../gcp/computeEngine";
+import * as proto from "../../gcp/proto";
 import * as args from "./args";
 import * as backend from "./backend";
 import { trackGA4 } from "../../track";
@@ -170,14 +171,19 @@ export function obtainPubSubServiceAgentBindings(projectNumber: string): iam.Bin
 export async function obtainDefaultComputeServiceAgentBindings(
   projectNumber: string,
 ): Promise<iam.Binding[]> {
-  const defaultComputeServiceAgent = `serviceAccount:${await gce.getDefaultServiceAccount(projectNumber)}`;
+  return obtainEventarcDeliveryAgentBindings([await gce.getDefaultServiceAccount(projectNumber)]);
+}
+
+/** Returns the roles required for service accounts that deliver Eventarc events to Cloud Run. */
+export function obtainEventarcDeliveryAgentBindings(serviceAccounts: string[]): iam.Binding[] {
+  const members = serviceAccounts.map((serviceAccount) => `serviceAccount:${serviceAccount}`);
   const runInvokerBinding: iam.Binding = {
     role: RUN_INVOKER_ROLE,
-    members: [defaultComputeServiceAgent],
+    members: [...members],
   };
   const eventarcEventReceiverBinding: iam.Binding = {
     role: EVENTARC_EVENT_RECEIVER_ROLE,
-    members: [defaultComputeServiceAgent],
+    members: [...members],
   };
   return [runInvokerBinding, eventarcEventReceiverBinding];
 }
@@ -249,7 +255,42 @@ export async function ensureServiceAgentRoles(
   const newServices = wantServices.filter(
     (wantS) => !haveServices.find((haveS) => wantS.name === haveS.name),
   );
-  if (newServices.length === 0) {
+  const runEventEndpoints = backend
+    .allEndpoints(want)
+    .filter(
+      (endpoint): endpoint is backend.Endpoint & backend.EventTriggered =>
+        endpoint.platform === "run" && backend.isEventTriggered(endpoint),
+    );
+  const changedRunEventEndpoints: Array<backend.Endpoint & backend.EventTriggered> = [];
+  const runEventServiceAccounts = new Set<string>();
+  let defaultServiceAccount: string | undefined;
+  const deliveryServiceAccount = async (
+    endpoint: backend.Endpoint & backend.EventTriggered,
+  ): Promise<string> => {
+    const configuredServiceAccount =
+      endpoint.eventTrigger.serviceAccount || endpoint.serviceAccount;
+    if (!configuredServiceAccount) {
+      defaultServiceAccount ??= await gce.getDefaultServiceAccount(projectNumber);
+    }
+    return proto.formatServiceAccount(
+      configuredServiceAccount || defaultServiceAccount!,
+      endpoint.project,
+      true,
+    );
+  };
+  for (const endpoint of runEventEndpoints) {
+    const existing = have.endpoints[endpoint.region]?.[endpoint.id];
+    const existingServiceAccount =
+      existing?.platform === "run" && backend.isEventTriggered(existing)
+        ? await deliveryServiceAccount(existing)
+        : undefined;
+    const desiredServiceAccount = await deliveryServiceAccount(endpoint);
+    if (!existingServiceAccount || existingServiceAccount !== desiredServiceAccount) {
+      changedRunEventEndpoints.push(endpoint);
+      runEventServiceAccounts.add(desiredServiceAccount);
+    }
+  }
+  if (newServices.length === 0 && runEventServiceAccounts.size === 0) {
     return;
   }
 
@@ -264,6 +305,14 @@ export async function ensureServiceAgentRoles(
     requiredBindings.push(...obtainPubSubServiceAgentBindings(projectNumber));
     requiredBindings.push(...(await obtainDefaultComputeServiceAgentBindings(projectNumber)));
   }
+  if (runEventServiceAccounts.size > 0) {
+    requiredBindings.push({
+      role: EVENTARC_EVENT_RECEIVER_ROLE,
+      members: [...runEventServiceAccounts].map(
+        (serviceAccount) => `serviceAccount:${serviceAccount}`,
+      ),
+    });
+  }
   if (requiredBindings.length === 0) {
     return;
   }
@@ -271,7 +320,10 @@ export async function ensureServiceAgentRoles(
     projectId,
     projectNumber,
     requiredBindings,
-    newServices.map((service) => service.api),
+    [
+      ...newServices.map((service) => service.api),
+      ...changedRunEventEndpoints.map((endpoint) => endpoint.id),
+    ],
     dryRun,
   );
 }
