@@ -169,25 +169,27 @@ describe("ailogic", () => {
       billingStub.restore();
     });
 
-    it("should enable gemini-developer-api", async () => {
+    it("should enable gemini-developer-api, enabling the AI Logic API first", async () => {
       ensureStub.resolves();
 
       await ailogic.enableProvider("my-project", "gemini-developer-api");
 
       expect(ensureStub).to.have.been.calledTwice;
+      // The AI Logic API must be enabled before the provider API so a partial
+      // failure cannot leave a provider on while AI Logic is off.
       expect(ensureStub.firstCall).to.have.been.calledWith(
-        "my-project",
-        "generativelanguage.googleapis.com",
-        "ailogic",
-      );
-      expect(ensureStub.secondCall).to.have.been.calledWith(
         "my-project",
         "firebasevertexai.googleapis.com",
         "ailogic",
       );
+      expect(ensureStub.secondCall).to.have.been.calledWith(
+        "my-project",
+        "generativelanguage.googleapis.com",
+        "ailogic",
+      );
     });
 
-    it("should enable gemini-agent-platform-api if billing is enabled", async () => {
+    it("should enable gemini-agent-platform-api if billing is enabled, enabling the AI Logic API first", async () => {
       ensureStub.resolves();
       billingStub.resolves(true);
 
@@ -196,12 +198,12 @@ describe("ailogic", () => {
       expect(ensureStub).to.have.been.calledTwice;
       expect(ensureStub.firstCall).to.have.been.calledWith(
         "my-project",
-        "aiplatform.googleapis.com",
+        "firebasevertexai.googleapis.com",
         "ailogic",
       );
       expect(ensureStub.secondCall).to.have.been.calledWith(
         "my-project",
-        "firebasevertexai.googleapis.com",
+        "aiplatform.googleapis.com",
         "ailogic",
       );
     });
@@ -251,12 +253,31 @@ describe("ailogic", () => {
     });
 
     it("should list enabled providers", async () => {
-      checkStub.onFirstCall().resolves(true); // gemini-developer-api is enabled
-      checkStub.onSecondCall().resolves(true); // gemini-agent-platform-api API is enabled
+      checkStub
+        .withArgs("my-project", "firebasevertexai.googleapis.com", "ailogic", true)
+        .resolves(true);
+      checkStub
+        .withArgs("my-project", "generativelanguage.googleapis.com", "ailogic", true)
+        .resolves(true);
+      checkStub.withArgs("my-project", "aiplatform.googleapis.com", "ailogic", true).resolves(true);
 
       const enabled = await ailogic.listProviders("my-project");
 
       expect(enabled).to.deep.equal(["gemini-developer-api", "gemini-agent-platform-api"]);
+    });
+
+    it("should list no providers when the AI Logic API is disabled, even if provider APIs are enabled", async () => {
+      checkStub
+        .withArgs("my-project", "firebasevertexai.googleapis.com", "ailogic", true)
+        .resolves(false);
+      checkStub
+        .withArgs("my-project", "generativelanguage.googleapis.com", "ailogic", true)
+        .resolves(true);
+      checkStub.withArgs("my-project", "aiplatform.googleapis.com", "ailogic", true).resolves(true);
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal([]);
     });
   });
 

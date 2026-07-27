@@ -240,18 +240,7 @@ export function parseProviderType(value: string): ProviderType {
  * Enables a Gemini API provider service.
  */
 export async function enableProvider(projectId: string, providerType: ProviderType): Promise<void> {
-  if (providerType === "gemini-developer-api") {
-    await ensureApiEnabled.ensure(
-      projectId,
-      "generativelanguage.googleapis.com",
-      AILOGIC_LOGGING_PREFIX,
-    );
-    await ensureApiEnabled.ensure(
-      projectId,
-      "firebasevertexai.googleapis.com",
-      AILOGIC_LOGGING_PREFIX,
-    );
-  } else if (providerType === "gemini-agent-platform-api") {
+  if (providerType === "gemini-agent-platform-api") {
     const billingEnabled = await cloudbilling.checkBillingEnabled(projectId);
     if (!billingEnabled) {
       throw new FirebaseError(
@@ -260,13 +249,21 @@ export async function enableProvider(projectId: string, providerType: ProviderTy
         )} must be on the Blaze (pay-as-you-go) plan to enable the Agent Platform. To upgrade, visit the following URL:\n\nhttps://console.firebase.google.com/project/${projectId}/usage/details`,
       );
     }
-    await ensureApiEnabled.ensure(projectId, "aiplatform.googleapis.com", AILOGIC_LOGGING_PREFIX);
-    await ensureApiEnabled.ensure(
-      projectId,
-      "firebasevertexai.googleapis.com",
-      AILOGIC_LOGGING_PREFIX,
-    );
   }
+
+  // Enable the AI Logic API first: a partial failure must not leave a provider's
+  // API enabled while the AI Logic API is off, a state where providers:list would
+  // report the provider as enabled but AI Logic itself is not usable.
+  await ensureApiEnabled.ensure(
+    projectId,
+    "firebasevertexai.googleapis.com",
+    AILOGIC_LOGGING_PREFIX,
+  );
+  const providerApi =
+    providerType === "gemini-developer-api"
+      ? "generativelanguage.googleapis.com"
+      : "aiplatform.googleapis.com";
+  await ensureApiEnabled.ensure(projectId, providerApi, AILOGIC_LOGGING_PREFIX);
 }
 
 /**
@@ -324,24 +321,36 @@ export async function disableProvider(
  * Lists which Gemini API providers are enabled, derived from underlying API enablement state.
  */
 export async function listProviders(projectId: string): Promise<ProviderType[]> {
-  const enabled: ProviderType[] = [];
+  // The three enablement checks are independent, so run them in parallel to keep
+  // read commands responsive on a cold cache.
+  const [isAILogicEnabled, isDeveloperEnabled, isVertexEnabled] = await Promise.all([
+    ensureApiEnabled.check(
+      projectId,
+      "firebasevertexai.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+      true,
+    ),
+    ensureApiEnabled.check(
+      projectId,
+      "generativelanguage.googleapis.com",
+      AILOGIC_LOGGING_PREFIX,
+      true,
+    ),
+    ensureApiEnabled.check(projectId, "aiplatform.googleapis.com", AILOGIC_LOGGING_PREFIX, true),
+  ]);
 
-  const isDeveloperEnabled = await ensureApiEnabled.check(
-    projectId,
-    "generativelanguage.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
+  // A provider is only usable through AI Logic when the AI Logic API itself is
+  // enabled. Without this check, a project with (say) generativelanguage enabled
+  // outside the CLI would have its provider reported as enabled even though AI
+  // Logic is off.
+  if (!isAILogicEnabled) {
+    return [];
+  }
+
+  const enabled: ProviderType[] = [];
   if (isDeveloperEnabled) {
     enabled.push("gemini-developer-api");
   }
-
-  const isVertexEnabled = await ensureApiEnabled.check(
-    projectId,
-    "aiplatform.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
   // aiplatform.googleapis.com cannot be enabled without billing (the Blaze plan),
   // so an enabled Vertex API already implies the agent-platform provider is available.
   if (isVertexEnabled) {
