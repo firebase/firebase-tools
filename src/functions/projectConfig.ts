@@ -33,7 +33,7 @@ export type ValidatedKitSingle = FunctionConfigCommon & {
   kit: string;
   sourcePackage?: KitSourcePackage;
   source: string;
-  instances?: Record<string, string>;
+  instances: Record<string, string>;
   codebase?: never;
   runtime?: ActiveRuntime;
   remoteSource?: never;

@@ -265,7 +265,7 @@ describe("projectConfig", () => {
         const config: projectConfig.NormalizedConfig = [VALID_KIT_CONFIG];
         expect(() => projectConfig.validate(config)).to.throw(
           FirebaseError,
-          /Cannot use functions kits because the experiment kits is not enabled/,
+          /Cannot use functions kits because the experiment .*kits.* is not enabled/,
         );
       });
 
