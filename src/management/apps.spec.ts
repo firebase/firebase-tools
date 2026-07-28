@@ -24,6 +24,7 @@ import {
   findIntelligentPathForAndroid,
   findIntelligentPathForIOS,
   getPlatform,
+  selectAppInteractively,
 } from "./apps";
 import * as pollUtils from "../operation-poller";
 import { FirebaseError } from "../error";
@@ -832,6 +833,63 @@ describe("App management", () => {
     }
     afterEach(() => {
       mockfs.restore();
+    });
+  });
+
+  describe("selectAppInteractively", () => {
+    it("should throw a FirebaseError when apps array is empty", async () => {
+      await expect(selectAppInteractively([], AppPlatform.ANY)).to.be.rejectedWith(
+        FirebaseError,
+        /There are no apps associated with this Firebase project/,
+      );
+    });
+
+    it("should format the select prompt options and return the selected app", async () => {
+      const promptSelectStub = sandbox.stub(prompt, "select");
+      const mockApps = [
+        {
+          appId: "appId1",
+          displayName: "App 1",
+          platform: AppPlatform.IOS,
+          bundleId: "com.example.app1",
+        } as unknown as IosAppMetadata,
+        {
+          appId: "appId2",
+          platform: AppPlatform.ANDROID,
+          packageName: "com.example.app2",
+        } as unknown as AndroidAppMetadata,
+      ];
+      promptSelectStub.resolves(mockApps[1]);
+
+      const selectedApp = await selectAppInteractively(mockApps, AppPlatform.ANY);
+
+      expect(selectedApp).to.deep.equal(mockApps[1]);
+      expect(promptSelectStub.calledOnce).to.be.true;
+      const callArgs = promptSelectStub.getCall(0).args[0];
+      expect(callArgs.message).to.equal("Select the app to get the configuration data:");
+      expect(callArgs.choices).to.deep.equal([
+        { name: "App 1 - appId1 (IOS)", value: mockApps[0] },
+        { name: "com.example.app2 - appId2 (ANDROID)", value: mockApps[1] },
+      ]);
+    });
+
+    it("should support a custom prompt message", async () => {
+      const promptSelectStub = sandbox.stub(prompt, "select");
+      const mockApps = [
+        {
+          appId: "appId1",
+          displayName: "App 1",
+          platform: AppPlatform.IOS,
+        } as unknown as IosAppMetadata,
+      ];
+      promptSelectStub.resolves(mockApps[0]);
+
+      await selectAppInteractively(mockApps, AppPlatform.ANY, {
+        message: "Choose custom app:",
+      });
+
+      expect(promptSelectStub.calledOnce).to.be.true;
+      expect(promptSelectStub.getCall(0).args[0].message).to.equal("Choose custom app:");
     });
   });
 });
