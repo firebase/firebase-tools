@@ -346,7 +346,19 @@ export function isKitConfig(c: ValidatedSingle): c is ValidatedKitSingle {
  * @param c The validated functions config entry.
  * @param purpose Optional message to use in the error.
  */
-export function requireLocal(c: ValidatedSingle, purpose?: string): ValidatedLocalSingle | ValidatedKitSingle {
+export function requireLocal(c: ValidatedKitSingle, purpose?: string): ValidatedKitSingle;
+export function requireLocal(
+  c: ValidatedLocalSingle | ValidatedRemoteSingle,
+  purpose?: string,
+): ValidatedLocalSingle;
+export function requireLocal(
+  c: ValidatedSingle,
+  purpose?: string,
+): ValidatedLocalSingle | ValidatedKitSingle;
+export function requireLocal(
+  c: ValidatedSingle,
+  purpose?: string,
+): ValidatedLocalSingle | ValidatedKitSingle {
   if (isRemoteConfig(c)) {
     const msg =
       purpose ??
