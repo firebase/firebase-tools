@@ -928,8 +928,11 @@
                     "type": "array"
                 },
                 "instances": {
-                    "$ref": "#/definitions/Record<string,string>",
-                    "description": "Dictionary mapping instance IDs to their configuration directories"
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Dictionary mapping instance IDs to their configuration directories",
+                    "type": "object"
                 },
                 "kit": {
                     "description": "Unique identifier for the functions kit (peer to codebase)",

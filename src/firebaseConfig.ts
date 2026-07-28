@@ -201,7 +201,8 @@ export type KitFunctionConfig = FunctionConfigBase & {
   /** Local directory containing the kit source code. */
   source: string;
   /** Dictionary mapping instance IDs to their configuration directories */
-  instances: Record<string, string>;
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  instances: { [instanceId: string]: string };
   /** codebase cannot be used in a kit stanza */
   codebase?: never;
   /** remoteSource cannot be used in a kit stanza */
