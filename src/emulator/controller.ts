@@ -548,6 +548,7 @@ export async function startAll(
             functionsDir,
             runtime,
             codebase: instanceId,
+            prefix: `kit-${instanceId}`,
             configDir: path.join(projectDir, configDir),
             env: {
               ...options.extDevEnv,

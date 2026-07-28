@@ -786,7 +786,8 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    const prefix = isKitConfig(codebaseConfig) ? `kit-${codebase}` : codebaseConfig.prefix || "";
+    build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;

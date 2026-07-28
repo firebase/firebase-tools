@@ -40,6 +40,7 @@ export class FunctionsServer {
           backends.push({
             functionsDir,
             codebase: instanceId,
+            prefix: `kit-${instanceId}`,
             configDir: path.join(options.config.projectDir, configDir),
             runtime: localCfg.runtime,
             env: {},
