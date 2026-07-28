@@ -11,6 +11,18 @@ import { Options } from "../options";
 
 export const command = new Command("ailogic:providers:disable <providerType>")
   .description("disable a Gemini API provider service")
+  .help(
+    `disables the Google Cloud API that backs a Gemini API provider. Running apps that use the provider will no longer be able to invoke it.
+
+Valid values for <providerType>:
+
+  gemini-developer-api       the Gemini Developer API
+  gemini-agent-platform-api  the Gemini API on the Agent Platform
+
+For example:
+
+  firebase ailogic:providers:disable gemini-developer-api`,
+  )
   .option("-f, --force", "bypass confirmation prompt")
   .before(requirePermissions, ["serviceusage.services.disable", "firebasevertexai.config.update"])
   .action(async (providerType: string, options: Options) => {

@@ -147,6 +147,69 @@ describe("ailogic", () => {
     });
   });
 
+  describe("getConfig", () => {
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      getStub = sinon.stub(ailogic.client, "get");
+    });
+
+    afterEach(() => {
+      getStub.restore();
+    });
+
+    it("should fetch config", async () => {
+      const mockConfig: ailogic.Config = {
+        name: "projects/my-project/locations/global/config",
+        generativeLanguageConfig: { apiKey: "key" },
+      };
+      getStub.resolves({ body: mockConfig });
+
+      const config = await ailogic.getConfig("my-project");
+
+      expect(getStub).to.have.been.calledWithMatch("projects/my-project/locations/global/config");
+      expect(config).to.deep.equal(mockConfig);
+    });
+  });
+
+  describe("updateConfig", () => {
+    let patchStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      patchStub = sinon.stub(ailogic.client, "patch");
+    });
+
+    afterEach(() => {
+      patchStub.restore();
+    });
+
+    it("should update config", async () => {
+      const patchConfig: Partial<ailogic.Config> = {
+        generativeLanguageConfig: { apiKey: "new-key" },
+      };
+      const mockConfig: ailogic.Config = {
+        name: "projects/my-project/locations/global/config",
+        generativeLanguageConfig: { apiKey: "new-key" },
+      };
+      patchStub.resolves({ body: mockConfig });
+
+      const config = await ailogic.updateConfig("my-project", patchConfig, [
+        "generativeLanguageConfig",
+      ]);
+
+      expect(patchStub).to.have.been.calledWithMatch(
+        "projects/my-project/locations/global/config",
+        patchConfig,
+        {
+          queryParams: {
+            updateMask: "generativeLanguageConfig",
+          },
+        },
+      );
+      expect(config).to.deep.equal(mockConfig);
+    });
+  });
+
   describe("providers", () => {
     let ensureStub: sinon.SinonStub;
     let disableStub: sinon.SinonStub;
@@ -225,6 +288,8 @@ describe("ailogic", () => {
 
       await ailogic.disableProvider("my-project", "gemini-developer-api");
 
+      // The cross-check must consult the OTHER provider's API.
+      expect(checkStub).to.have.been.calledWith("my-project", "aiplatform.googleapis.com");
       expect(disableStub).to.have.been.calledTwice;
       expect(disableStub.firstCall).to.have.been.calledWith(
         "my-project",
@@ -264,6 +329,17 @@ describe("ailogic", () => {
       const enabled = await ailogic.listProviders("my-project");
 
       expect(enabled).to.deep.equal(["gemini-developer-api", "gemini-agent-platform-api"]);
+    });
+
+    it("should map each provider to its own API enablement state", async () => {
+      // Pin per-API results so a swapped destructure/check cannot pass.
+      checkStub.withArgs("my-project", "firebasevertexai.googleapis.com").resolves(true);
+      checkStub.withArgs("my-project", "generativelanguage.googleapis.com").resolves(true);
+      checkStub.withArgs("my-project", "aiplatform.googleapis.com").resolves(false);
+
+      const enabled = await ailogic.listProviders("my-project");
+
+      expect(enabled).to.deep.equal(["gemini-developer-api"]);
     });
 
     it("should list no providers when the AI Logic API is disabled, even if provider APIs are enabled", async () => {

@@ -16,6 +16,12 @@ export const API_VERSION = "v1beta";
 /** Label used as the prefix for this module's user-facing progress logging. */
 export const AILOGIC_LOGGING_PREFIX = "ailogic";
 
+/**
+ * All AI Logic management resources live at the fixed `global` location; there is
+ * no per-region configuration surface for these commands.
+ */
+export const GLOBAL_LOCATION = "global";
+
 export const AI_LOGIC_BEFORE_GENERATE_CONTENT =
   "google.firebase.ailogic.v1.beforeGenerate" as const;
 export const AI_LOGIC_AFTER_GENERATE_CONTENT = "google.firebase.ailogic.v1.afterGenerate" as const;
@@ -209,6 +215,45 @@ export async function deleteBlockingFunction(endpoint: AILogicEndpoint): Promise
   await deleteTrigger(endpoint.project, location, triggerId, true);
 }
 
+export interface GenerativeLanguageConfig {
+  apiKey?: string;
+}
+
+export interface TrafficFilter {
+  templateOnly?: boolean;
+  firebaseAuthRequired?: boolean;
+}
+
+export interface TelemetryConfig {
+  mode?: "MODE_UNSPECIFIED" | "NONE" | "ALL";
+  samplingRate?: number;
+}
+
+export interface Config {
+  name: string;
+  generativeLanguageConfig?: GenerativeLanguageConfig;
+  trafficFilter?: TrafficFilter;
+  telemetryConfig?: TelemetryConfig;
+}
+
+// Developer-facing config paths that `ailogic:config:set` can write.
+export const WRITABLE_CONFIG_PATHS = [
+  "security.auth-only",
+  "security.template-only",
+  "monitoring.state",
+  "monitoring.sample-rate-percentage",
+];
+
+/** Throws a FirebaseError listing the valid paths when `path` is not one of them. */
+export function assertKnownConfigPath(path: string, validPaths: string[]): void {
+  if (!validPaths.includes(path)) {
+    throw new FirebaseError(
+      `Unknown configuration path: ${path}\n\nValid paths:\n\n` +
+        validPaths.map((p) => `  ${p}`).join("\n"),
+    );
+  }
+}
+
 export type ProviderType = "gemini-developer-api" | "gemini-agent-platform-api";
 
 export const PROVIDER_TYPES: ProviderType[] = ["gemini-developer-api", "gemini-agent-platform-api"];
@@ -228,6 +273,32 @@ export function parseProviderType(value: string): ProviderType {
     );
   }
   return value;
+}
+
+/**
+ * Gets the AI Logic Config singleton.
+ */
+export async function getConfig(projectId: string): Promise<Config> {
+  const name = `projects/${projectId}/locations/${GLOBAL_LOCATION}/config`;
+  const res = await client.get<Config>(name);
+  return res.body;
+}
+
+/**
+ * Updates the AI Logic Config singleton.
+ */
+export async function updateConfig(
+  projectId: string,
+  config: Partial<Config>,
+  updateMask?: string[],
+): Promise<Config> {
+  const name = `projects/${projectId}/locations/${GLOBAL_LOCATION}/config`;
+  const queryParams: Record<string, string> = {};
+  if (updateMask && updateMask.length > 0) {
+    queryParams.updateMask = updateMask.join(",");
+  }
+  const res = await client.patch<Partial<Config>, Config>(name, config, { queryParams });
+  return res.body;
 }
 
 /**
@@ -316,14 +387,9 @@ export async function disableProvider(
  */
 export async function listProviders(projectId: string): Promise<ProviderType[]> {
   // The three enablement checks are independent, so run them in parallel to keep
-  // read commands responsive on a cold cache.
+  // read commands (providers:list, config:get) responsive on a cold cache.
   const [isAILogicEnabled, isDeveloperEnabled, isVertexEnabled] = await Promise.all([
-    ensureApiEnabled.check(
-      projectId,
-      "firebasevertexai.googleapis.com",
-      AILOGIC_LOGGING_PREFIX,
-      true,
-    ),
+    isAILogicApiEnabled(projectId),
     ensureApiEnabled.check(
       projectId,
       "generativelanguage.googleapis.com",
@@ -355,6 +421,19 @@ export async function listProviders(projectId: string): Promise<ProviderType[]> 
 }
 
 /**
+ * Returns whether the Firebase AI Logic API is enabled on the project, without prompting to enable it.
+ * Read-only commands use this to report state instead of forcing enablement.
+ */
+export async function isAILogicApiEnabled(projectId: string): Promise<boolean> {
+  return ensureApiEnabled.check(
+    projectId,
+    "firebasevertexai.googleapis.com",
+    AILOGIC_LOGGING_PREFIX,
+    true,
+  );
+}
+
+/**
  * Ensures that the Firebase AI Logic API is enabled. If not enabled:
  * - In non-interactive mode: throws an error with instructions.
  * - In interactive mode: prompts to enable, and guides the user to choose a provider to enable.
@@ -363,13 +442,7 @@ export async function ensureAILogicApiEnabled(
   projectId: string,
   options: { nonInteractive?: boolean; force?: boolean },
 ): Promise<void> {
-  const isEnabled = await ensureApiEnabled.check(
-    projectId,
-    "firebasevertexai.googleapis.com",
-    AILOGIC_LOGGING_PREFIX,
-    true,
-  );
-  if (isEnabled) {
+  if (await isAILogicApiEnabled(projectId)) {
     return;
   }
 
@@ -401,13 +474,15 @@ export async function ensureAILogicApiEnabled(
   const proceed = await confirm({
     message: "Would you like to enable it now?",
     default: true,
+    force: options.force,
   });
   if (!proceed) {
     throw new FirebaseError("Command aborted.", { exit: 1 });
   }
 
   for (;;) {
-    const provider = await select<ProviderType>({
+    // "cancel" gives the Spark-plan retry loop below an exit that is not Ctrl+C.
+    const provider = await select<ProviderType | "cancel">({
       message: "Which Gemini API provider do you want to enable?",
       choices: [
         { name: "gemini-developer-api", value: "gemini-developer-api" },
@@ -415,8 +490,12 @@ export async function ensureAILogicApiEnabled(
           name: "gemini-agent-platform-api (requires the Blaze plan)",
           value: "gemini-agent-platform-api",
         },
+        { name: "cancel", value: "cancel" },
       ],
     });
+    if (provider === "cancel") {
+      throw new FirebaseError("Command aborted.", { exit: 1 });
+    }
 
     if (provider === "gemini-agent-platform-api") {
       const billingEnabled = await cloudbilling.checkBillingEnabled(projectId);
