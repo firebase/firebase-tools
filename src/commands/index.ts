@@ -62,6 +62,7 @@ export function load(client: CLIClient): CLIClient {
   client.auth.export = loadCommand("auth-export");
   client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
+  client.crashlytics.onboard = loadCommand("crashlytics-onboard");
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.crashlytics.mappingfile = {};
