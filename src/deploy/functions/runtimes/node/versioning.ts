@@ -7,6 +7,7 @@ import * as semver from "semver";
 
 import { logger } from "../../../../logger";
 import * as utils from "../../../../utils";
+import { resolvePnpModulePackageJson } from "./utils";
 
 interface NpmShowResult {
   "dist-tags": {
@@ -67,13 +68,20 @@ export function findModuleVersion(name: string, resolvedPath: string): string | 
  * @return version string (e.g. "3.1.2"), or void if firebase-functions is not in package.json
  * or if we had trouble getting the version.
  */
-export function getFunctionsSDKVersion(sourceDir: string): string | undefined {
+export function getFunctionsSDKVersion(sourceDir: string, projectDir: string): string | undefined {
   try {
+    // If strict Yarn PnP is detected, aggressively query the PnP mapping securely first!
+    // This protects users executing a global unpatched CLI directly over a strict Plug'n'Play virtual configuration
+    // from accidentally picking up a globally installed firebase-functions package if require.resolve traverses up the tree.
+    const resolved = resolvePnpModulePackageJson(sourceDir, projectDir, "firebase-functions");
+    if (resolved?.packageJson.version) {
+      return resolved.packageJson.version;
+    }
+
     return findModuleVersion(
       "firebase-functions",
-      // Find the entry point of the firebase-function module. require.resolve works for project directories using
-      //   npm, yarn (1), or yarn (1) workspaces. Does not support yarn (2) since GCF doesn't support it anyway:
-      //   https://issuetracker.google.com/issues/213632942.
+      // Find the entry point of the firebase-functions module. `require.resolve` works natively across
+      // npm, pnpm, and yarn nodeLinker environments.
       require.resolve("firebase-functions", { paths: [sourceDir] }),
     );
   } catch (e: any) {

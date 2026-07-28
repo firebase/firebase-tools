@@ -180,7 +180,7 @@ export const command = new Command("functions:config:export")
         : functionsConfig?.source;
       if (source) {
         const sourceDir = options.config.path(source);
-        sdkVersion = getFunctionsSDKVersion(sourceDir);
+        sdkVersion = getFunctionsSDKVersion(sourceDir, options.config.projectDir);
       }
     } catch (e) {
       // ignore error, just show the warning if we can't detect the version
