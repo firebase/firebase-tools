@@ -20,7 +20,10 @@ export function stringToStream(text: string): Readable | undefined {
  * @param s a readable stream.
  * @return a promise resolving to the string'd contents of the stream.
  */
-export function streamToString(s: NodeJS.ReadableStream): Promise<string> {
+export function streamToString(s?: NodeJS.ReadableStream | null): Promise<string> {
+  if (!s) {
+    return Promise.resolve("");
+  }
   return new Promise((resolve, reject) => {
     let b = "";
     s.on("error", reject);
