@@ -670,6 +670,31 @@ describe("Fabricator", () => {
       expect(gcfv2.deleteFunction).to.have.been.called;
     });
 
+    it("retries function creation when a freshly created service account has not yet propagated (BUG: currently fails immediately)", async () => {
+      // GCF returns HTTP 404 when the deploy references a service account that
+      // was created moments ago and has not propagated through IAM yet.
+      const saNotFoundErr = new Error(
+        "Service account projects/-/serviceAccounts/firebase-fn-123@test-project.iam.gserviceaccount.com was not found. Please verify that the caller has iam.serviceAccounts.actAs permission on the service account.",
+      );
+      (saNotFoundErr as any).status = 404;
+      gcfv2.createFunction.onFirstCall().rejects(saNotFoundErr);
+      gcfv2.createFunction.resolves({ name: "op", done: false });
+      poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
+      run.setInvokerCreate.resolves();
+
+      // Use the same executor type as a real deploy (release/index.ts) so that
+      // retry-code based mitigations are exercised too, with fast backoff.
+      const queueFab = new fabricator.Fabricator({
+        ...ctorArgs,
+        functionExecutor: new executor.QueueExecutor({ retries: 3, backoff: 1, maxBackoff: 10 }),
+      });
+
+      const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
+      await queueFab.createV2Function(ep, new scraper.SourceTokenScraper());
+
+      expect(gcfv2.createFunction).to.have.been.calledTwice;
+    });
+
     it("throws on set invoker failure", async () => {
       gcfv2.createFunction.resolves({ name: "op", done: false });
       poller.pollOperation.resolves({ serviceConfig: { service: "service" } });
@@ -2069,6 +2094,26 @@ describe("Fabricator", () => {
         ["roles/viewer"],
         true,
       );
+    });
+
+    it("waits for a newly created service account to be visible before returning from grantNewRoles (BUG: no propagation check)", async () => {
+      // IAM service account creation is eventually consistent. grantNewRoles
+      // should poll getServiceAccount until the new SA is visible before the
+      // deploy proceeds to create functions that actAs it.
+      const getServiceAccountStub = sinon.stub(iam, "getServiceAccount").resolves({
+        name: "projects/test-project/serviceAccounts/firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        email: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      } as any);
+      const plan: planner.CodebasePlan = {
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.grantNewRoles(plan, "default");
+
+      expect(createServiceAccountStub).to.have.been.called;
+      expect(getServiceAccountStub).to.have.been.called;
     });
 
     it("should remove roles or delete SA in removeOldRoles", async () => {
