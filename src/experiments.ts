@@ -136,6 +136,14 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
+  },
+
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
     default: true,
@@ -212,6 +220,17 @@ export const ALL_EXPERIMENTS = experiments({
   crashlyticsWeb: {
     shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
     default: false,
+    public: true,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable writing the backing resource binding for a Functions secret param to .env",
+    default: false,
+    public: false,
+  },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
     public: true,
   },
 });

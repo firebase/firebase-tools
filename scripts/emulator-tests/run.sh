@@ -15,7 +15,7 @@ trap cleanup EXIT
 cp package.json dev/package.json
 
 # Install deps required to run test triggers.
-(cd scripts/emulator-tests/functions && npm ci)
+(cd scripts/emulator-tests/functions && npm ci --legacy-peer-deps)
 
 # Run the tests from the built dev directory.
  mocha dev/scripts/emulator-tests/*.spec.*

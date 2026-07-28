@@ -174,7 +174,11 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   let serviceAccountToCreate: string | undefined;
   let serviceAccountToDelete: string | undefined;
 
-  const isFiltered = !!(filters && filters.length > 0 && !deleteAll);
+  const isFiltered = !!(
+    filters &&
+    filters.some((f) => f.idChunks && f.idChunks.length > 0) &&
+    !deleteAll
+  );
 
   if (requiredRoles) {
     rolesToAdd = requiredRoles.filter((r) => !roles.includes(r));
