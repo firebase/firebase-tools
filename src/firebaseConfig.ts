@@ -169,16 +169,25 @@ export type DatabaseConfig = DatabaseSingle | DatabaseMultiple;
 
 export type FirestoreConfig = FirestoreSingle | FirestoreMultiple;
 
+/**
+ * Base configuration options common to all Cloud Functions configurations.
+ */
 type FunctionConfigBase = {
-  // Optional: Directory containing the .env files for this codebase.
-  // Defaults to the same directory as source if not specified.
-  configDir?: string;
   // Optional: List of glob patterns for files and directories to ignore during deployment.
   // Uses gitignore-style syntax. Commonly includes node_modules, .git, etc.
   ignore?: string[];
   // Optional: The Node.js/Python runtime version to use for Cloud Functions.
   // Example: "nodejs20", "python312". Must be a supported runtime version.
   runtime?: ActiveRuntime;
+} & Deployable;
+
+/**
+ * Base configuration options specific to codebase-based Cloud Functions configurations.
+ */
+type CodebaseFunctionConfigBase = FunctionConfigBase & {
+  // Optional: Directory containing the .env files for this codebase.
+  // Defaults to the same directory as source if not specified.
+  configDir?: string;
   // Optional: A unique identifier for this functions codebase when using multiple codebases.
   // Must be unique across all codebases in firebase.json.
   codebase?: string;
@@ -186,7 +195,7 @@ type FunctionConfigBase = {
   // Must start with a lowercase letter; may contain lowercase letters, numbers, and dashes;
   // cannot start or end with a dash; maximum length 30 characters.
   prefix?: string;
-} & Deployable;
+};
 
 export type KitSourcePackage = {
   /** Package identifier (e.g., "@firebase-functions-kits/firestore-bigquery-export") */
@@ -209,9 +218,11 @@ export type KitFunctionConfig = FunctionConfigBase & {
   remoteSource?: never;
   /** prefix cannot be used in a kit stanza */
   prefix?: never;
+  /** configDir cannot be used in a kit stanza */
+  configDir?: never;
 };
 
-export type LocalFunctionConfig = FunctionConfigBase & {
+export type LocalFunctionConfig = CodebaseFunctionConfigBase & {
   // Directory containing the Cloud Functions source code.
   source: string;
   // Optional: When true, prevents the Firebase CLI from fetching and including legacy
@@ -224,7 +235,7 @@ export type LocalFunctionConfig = FunctionConfigBase & {
   kit?: never;
 };
 
-export type RemoteFunctionConfig = FunctionConfigBase & {
+export type RemoteFunctionConfig = CodebaseFunctionConfigBase & {
   // Deploy functions from a remote Git repository.
   remoteSource: {
     // The URL of the Git repository.

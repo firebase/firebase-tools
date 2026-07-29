@@ -915,12 +915,6 @@
         "KitFunctionConfig": {
             "additionalProperties": false,
             "properties": {
-                "codebase": {
-                    "type": "string"
-                },
-                "configDir": {
-                    "type": "string"
-                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -963,9 +957,6 @@
                             "type": "string"
                         }
                     ]
-                },
-                "prefix": {
-                    "type": "string"
                 },
                 "runtime": {
                     "enum": [
