@@ -6,7 +6,7 @@ import * as onboarding from "./onboarding";
 import * as ensureApiEnabled from "../ensureApiEnabled";
 import * as cloudlogging from "../gcp/cloudlogging";
 import * as cloudbilling from "../gcp/cloudbilling";
-import * as firebasetelemetry from "../gcp/firebasetelemetry";
+import * as firebasetelemetry from "./firebasetelemetry";
 import { FirebaseError } from "../error";
 
 describe("onboarding", () => {
@@ -77,7 +77,7 @@ describe("onboarding", () => {
       onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456", { nonInteractive: true }),
     ).to.be.rejectedWith(
       FirebaseError,
-      "Crashlytics web onboarding requires the Blaze plan, but project test-project is not on the Blaze plan.",
+      "Crashlytics requires the Blaze plan, but project test-project is not on the Blaze plan.",
     );
   });
 
@@ -87,9 +87,6 @@ describe("onboarding", () => {
 
     await onboarding.onboardCrashlyticsWeb("test-project", "1:123:web:456");
 
-    expect(enableBillingStub).to.have.been.calledOnceWith(
-      "test-project",
-      "Crashlytics web onboarding",
-    );
+    expect(enableBillingStub).to.have.been.calledOnceWith("test-project", "Crashlytics");
   });
 });

@@ -55,7 +55,10 @@ describe("firebasetelemetry", () => {
         )
         .reply(409, { error: { status: "ALREADY_EXISTS" } });
       nock(firebaseTelemetryAdminOrigin())
-        .patch("/v1alpha/projects/test-project/locations/global/configs/1-123-web-456", reqConfig)
+        .patch(
+          "/v1alpha/projects/test-project/locations/global/configs/1-123-web-456?updateMask=logBucket,samplingRate",
+          reqConfig,
+        )
         .reply(200, resConfig);
 
       const res = await firebasetelemetry.createOrUpdateTelemetryConfig(

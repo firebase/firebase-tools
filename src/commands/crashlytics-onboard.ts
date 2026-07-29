@@ -17,7 +17,7 @@ export interface CrashlyticsOnboardOptions extends Options {
 }
 
 export const command = new Command("crashlytics:onboard [appId]")
-  .description("onboard a Firebase app to Crashlytics")
+  .description("onboard a Firebase web app to Crashlytics")
   .option("--app <appID>", "the app id of your Firebase app")
   .before(requireAuth)
   .action(

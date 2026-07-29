@@ -1,9 +1,7 @@
-import { checkBillingEnabled, enableBilling } from "../../gcp/cloudbilling";
+import { checkBillingEnabled } from "../../gcp/cloudbilling";
+import { enableBilling } from "../../extensions/checkProjectBilling";
 import { FirebaseError } from "../../error";
 
-/**
- *
- */
 export async function checkBilling(projectId: string, nonInteractive: boolean) {
   const enabled = await checkBillingEnabled(projectId);
   if (!enabled && nonInteractive) {

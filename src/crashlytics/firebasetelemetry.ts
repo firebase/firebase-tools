@@ -42,7 +42,7 @@ export async function createOrUpdateTelemetryConfig(
     if (err.status === 409) {
       try {
         const patchRes = await client.patch<TelemetryConfig, TelemetryConfig>(
-          `/projects/${projectId}/locations/global/configs/${configId}`,
+          `/projects/${projectId}/locations/global/configs/${configId}?updateMask=logBucket,samplingRate`,
           configBody,
         );
         return patchRes.body;

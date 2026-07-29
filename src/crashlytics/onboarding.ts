@@ -7,7 +7,7 @@ import {
   LogBucket,
   LogSink,
 } from "../gcp/cloudlogging";
-import { createOrUpdateTelemetryConfig, TelemetryConfig } from "../gcp/firebasetelemetry";
+import { createOrUpdateTelemetryConfig, TelemetryConfig } from "./firebasetelemetry";
 import { logLabeledBullet, logLabeledSuccess } from "../utils";
 
 export const CRASHLYTICS_TELEMETRY_BUCKET_ID = "firebase-telemetry";
@@ -32,16 +32,18 @@ export async function onboardCrashlyticsWeb(
   const billingEnabled = await checkBillingEnabled(projectId);
   if (!billingEnabled && options.nonInteractive) {
     throw new FirebaseError(
-      `Crashlytics web onboarding requires the Blaze plan, but project ${projectId} is not on the Blaze plan. ` +
+      `Crashlytics requires the Blaze plan, but project ${projectId} is not on the Blaze plan. ` +
         `Please visit https://console.cloud.google.com/billing/linkedaccount?project=${projectId} to upgrade your project.`,
     );
   } else if (!billingEnabled) {
-    await enableBilling(projectId, "Crashlytics web onboarding");
+    await enableBilling(projectId, "Crashlytics");
   }
 
   logLabeledBullet("crashlytics", "Enabling required telemetry APIs...");
-  await ensure(projectId, "firebasetelemetry.googleapis.com", "crashlytics", false);
-  await ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false);
+  await Promise.all([
+    ensure(projectId, "firebasetelemetry.googleapis.com", "crashlytics", false),
+    ensure(projectId, "firebasetelemetryadmin.googleapis.com", "crashlytics", false),
+  ]);
   logLabeledSuccess("crashlytics", "Telemetry APIs enabled.");
 
   logLabeledBullet(
