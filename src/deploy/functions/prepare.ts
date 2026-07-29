@@ -288,7 +288,11 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
+      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
+    } else {
+      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);

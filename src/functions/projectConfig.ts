@@ -370,11 +370,15 @@ export function requireLocal(
 
 /**
  * Resolve the directory used for .env files.
+ * - Kit: returns `instances[instanceId]` if instanceId provided and present, otherwise `undefined`.
  * - Local: returns `configDir` if set, otherwise `source`.
  * - Remote: returns `configDir` if set, otherwise `undefined`.
  */
-export function resolveConfigDir(c: ValidatedSingle): string | undefined {
-  return c.configDir || c.source;
+export function resolveConfigDir(c: ValidatedSingle, instanceId?: string): string | undefined {
+  if (isKitConfig(c)) {
+    return instanceId ? c.instances[instanceId] : undefined;
+  }
+  return c.configDir || (isLocalConfig(c) ? c.source : undefined);
 }
 
 /**

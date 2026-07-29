@@ -572,6 +572,28 @@ describe("projectConfig", () => {
       ])[0];
       expect(projectConfig.resolveConfigDir(cfg)).to.be.undefined;
     });
+
+    it("returns instance configDir for kit configs when instanceId is provided", () => {
+      experiments.setEnabled("kits", true);
+      try {
+        const cfg = projectConfig.validate([
+          {
+            kit: "my-kit",
+            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            source: "kit-source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+          },
+        ])[0];
+        expect(projectConfig.resolveConfigDir(cfg, "inst-alpha")).to.equal("config/inst-alpha");
+        expect(projectConfig.resolveConfigDir(cfg, "inst-beta")).to.equal("config/inst-beta");
+        expect(projectConfig.resolveConfigDir(cfg)).to.be.undefined;
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
+    });
   });
 
   describe("shouldUseRuntimeConfig", () => {
