@@ -235,8 +235,8 @@ function functionsOpLogReject(func: InputCloudFunction, type: string, err: any):
     utils.logLabeledWarning(
       "functions",
       `Your current project quotas don't allow for the current max instances setting of ${maxInstances}. ` +
-        "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
-        "at https://cloud.google.com/run/quotas.",
+      "Either reduce this function's maximum instances, or request a quota increase on the underlying Cloud Run service " +
+      "at https://cloud.google.com/run/quotas.",
     );
     const suggestedFix = func.buildConfig.runtime?.startsWith("python")
       ? "firebase_functions.options.set_global_options(max_instances=10)"
@@ -449,7 +449,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
   if (endpoint.runtime && !supported.isRuntime(endpoint.runtime)) {
     throw new FirebaseError(
       "Failed internal assertion. Trying to deploy a new function with a deprecated runtime." +
-        " This should never happen",
+      " This should never happen",
     );
   }
 
@@ -550,7 +550,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       if (!endpoint.eventTrigger.eventFilters?.topic) {
         throw new FirebaseError(
           "Error: Pub/Sub event trigger is missing topic: " +
-            JSON.stringify(endpoint.eventTrigger, null, 2),
+          JSON.stringify(endpoint.eventTrigger, null, 2),
         );
       }
       gcfFunction.eventTrigger.pubsubTopic = endpoint.eventTrigger.eventFilters.topic;
@@ -581,6 +581,21 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       "region",
     );
     proto.copyIfPresent(gcfFunction.eventTrigger, endpoint.eventTrigger, "channel");
+
+    // V1 Functions had a an automatic FUNCTION_REGION environment variable. V2 functions omitted this because Cloud Run's original
+    // goal was to create a platform more portable to KNative. We're preserving the old behaviour by adding this back in so that
+    // users who depended on this (e.g. generic code that targeted a task queue in the same region) don't break on upgrade.
+    // We only set it when the user hasn't explicitly set it, since we don't want to override a user's explicit setting.
+    if (!gcfFunction.serviceConfig.environmentVariables) {
+      gcfFunction.serviceConfig.environmentVariables = {};
+    }
+    if (!endpoint.region) {
+      throw new FirebaseError(
+        `Function ${endpoint.id} is missing the function region at deploy time. This should never happen`,
+        { exit: 1 },
+      );
+    }
+    gcfFunction.serviceConfig.environmentVariables["FUNCTION_REGION"] = endpoint.region;
 
     endpoint.eventTrigger.retry
       ? (gcfFunction.eventTrigger.retryPolicy = "RETRY_POLICY_RETRY")
@@ -617,7 +632,7 @@ export function functionFromEndpoint(endpoint: backend.Endpoint): InputCloudFunc
       ...gcfFunction.labels,
       [BLOCKING_LABEL]:
         BLOCKING_EVENT_TO_LABEL_KEY[
-          endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
+        endpoint.blockingTrigger.eventType as (typeof AUTH_BLOCKING_EVENTS)[number]
         ],
     };
   }
@@ -812,7 +827,7 @@ export function endpointFromFunction(gcfFunction: OutputCloudFunction): backend.
     if (!serviceName) {
       logger.debug(
         "Got a v2 function without a service name." +
-          "Maybe we've migrated to using the v2 API everywhere and missed this code",
+        "Maybe we've migrated to using the v2 API everywhere and missed this code",
       );
     } else {
       endpoint.runServiceId = utils.last(serviceName.split("/"));
