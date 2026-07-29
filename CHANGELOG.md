@@ -1,3 +1,4 @@
+- Add `appcheck:debugtokens:create`, `appcheck:debugtokens:list`, and `appcheck:debugtokens:delete` CLI commands for managing App Check debug tokens (#10801).
 - Added `firebase ailogic:providers:*` CLI commands to enable, disable, and list Gemini API providers.
 - Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
