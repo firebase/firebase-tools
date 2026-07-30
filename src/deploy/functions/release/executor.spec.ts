@@ -133,7 +133,9 @@ describe("Executor", () => {
     });
 
     it("safely handles circular error objects without throwing", () => {
-      const circularErr: any = new Error("Service account proj@iam.gserviceaccount.com does not exist");
+      const circularErr: any = new Error(
+        "Service account proj@iam.gserviceaccount.com does not exist",
+      );
       circularErr.status = 404;
       circularErr.self = circularErr; // Circular reference
       expect(executor.isServiceAccount404(circularErr)).to.be.true;
