@@ -14,7 +14,14 @@ interface NpmShowResult {
   };
 }
 
-const MIN_SDK_VERSION = "3.20.0";
+export const FUNCTIONS_SDK_DEV_VERSION = "0.0.0-development";
+
+// The versions of the Firebase Functions SDK that added support for the container contract.
+export const MIN_FUNCTIONS_SDK_VERSION = "3.20.0";
+
+// The version of the Firebase Functions SDK that added support for the extensions annotation in the container contract.
+export const MIN_FUNCTIONS_SDK_VERSION_FOR_EXTENSIONS_FEATURES = "5.1.0";
+
 const NPM_COMMAND_TIMEOUT_MILLIES = 10000;
 
 export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
@@ -27,7 +34,6 @@ export const FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING =
 
 /**
  * Exported for testing purposes only.
- *
  * @internal
  */
 export function findModuleVersion(name: string, resolvedPath: string): string | undefined {
@@ -110,8 +116,11 @@ export function getLatestSDKVersion(): string | undefined {
  * @param sourceDir the location of the customer's source code.
  */
 export function checkFunctionsSDKVersion(currentVersion: string): void {
+  if (currentVersion === FUNCTIONS_SDK_DEV_VERSION) {
+    return;
+  }
   try {
-    if (semver.lt(currentVersion, MIN_SDK_VERSION)) {
+    if (semver.lt(currentVersion, MIN_FUNCTIONS_SDK_VERSION)) {
       utils.logWarning(FUNCTIONS_SDK_VERSION_TOO_OLD_WARNING);
     }
 
