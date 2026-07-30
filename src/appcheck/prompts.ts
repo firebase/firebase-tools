@@ -9,9 +9,13 @@ import { AppCheckDebugOptions } from "./types";
 /**
  * Gets the appId from options or prompts the user to select an app if multiple exist.
  * Uses needProjectId(options) to retrieve the active or specified project ID.
+ * @param options the command options
+ * @param message the prompt shown when the user has to choose between apps.
+ * Defaults to the wording used when registering a debug token.
  */
 export async function getOrPromptAppId(
   options: AppCheckDebugOptions,
+  message = "Select the app to register a debug token for:",
 ): Promise<{ projectId: string; appId: string }> {
   const projectId = needProjectId(options);
 
@@ -43,7 +47,7 @@ export async function getOrPromptAppId(
   }
 
   const selectedApp = await selectAppInteractively(apps, AppPlatform.ANY, {
-    message: "Select the app to register a debug token for:",
+    message,
   });
 
   return { projectId, appId: selectedApp.appId };

@@ -1,0 +1,1 @@
+- Fixed `appcheck:debugtokens:list` and `appcheck:debugtokens:delete` prompting "Select the app to register a debug token for" when asking which app to operate on.
