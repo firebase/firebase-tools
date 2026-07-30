@@ -38,12 +38,15 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
   }
   let message = "";
   try {
-    message = (
-      err?.message ||
-      err?.original?.message ||
-      err?.context?.body?.error?.message ||
-      String(err)
-    ).toLowerCase();
+    message = [
+      err?.message,
+      err?.original?.message,
+      err?.context?.body?.error?.message,
+      String(err),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
   } catch {
     message = String(err).toLowerCase();
   }

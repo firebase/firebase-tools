@@ -132,6 +132,15 @@ describe("Executor", () => {
       expect(executor.isServiceAccount404(err2)).to.be.false;
     });
 
+    it("inspects all error message sources when err.message is generic", () => {
+      const genericErr: any = new Error("Generic Request Failed 404");
+      genericErr.status = 404;
+      genericErr.context = {
+        body: { error: { message: "Service account my-sa@project.iam.gserviceaccount.com missing" } },
+      };
+      expect(executor.isServiceAccount404(genericErr)).to.be.true;
+    });
+
     it("safely handles circular error objects without throwing", () => {
       const circularErr: any = new Error(
         "Service account proj@iam.gserviceaccount.com does not exist",
