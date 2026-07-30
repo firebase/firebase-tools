@@ -34,13 +34,31 @@ export class FunctionsServer {
         "Remote sources are not supported in the Functions emulator.",
       );
       const functionsDir = path.join(options.config.projectDir, localCfg.source);
-      backends.push({
-        functionsDir,
-        codebase: localCfg.codebase,
-        runtime: localCfg.runtime,
-        env: {},
-        secretEnv: [],
-      });
+
+      if (projectConfig.isKitConfig(localCfg)) {
+        for (const [instanceId, configDir] of Object.entries(localCfg.instances)) {
+          backends.push({
+            functionsDir,
+            codebase: instanceId,
+            prefix: projectConfig.addKitPrefix(instanceId),
+            configDir: path.join(options.config.projectDir, configDir),
+            runtime: localCfg.runtime,
+            env: {},
+            secretEnv: [],
+          });
+        }
+      } else {
+        backends.push({
+          functionsDir,
+          codebase: localCfg.codebase,
+          ...(localCfg.configDir
+            ? { configDir: path.join(options.config.projectDir, localCfg.configDir) }
+            : {}),
+          runtime: localCfg.runtime,
+          env: {},
+          secretEnv: [],
+        });
+      }
     }
     this.backends = backends;
 
