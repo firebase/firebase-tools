@@ -80,6 +80,32 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token");
   });
 
+  it("abort before a concurrent waiter re-arms the scraper so the retry can proceed", async () => {
+    const scraper = new SourceTokenScraper();
+    // First caller transitions NONE → FETCHING.
+    await expect(scraper.getToken()).to.eventually.be.undefined;
+
+    // Simulate a failed deploy: abort() is called before the retry fires.
+    scraper.abort();
+
+    // The retry's getToken() should resolve immediately (promise already
+    // settled with {aborted: true}) and return undefined, not deadlock.
+    const secondToken = scraper.getToken();
+    const timeout = new Promise<string | undefined>((_, reject) =>
+      setTimeout(() => reject(new Error("deadlock: getToken() did not resolve")), 50),
+    );
+    await expect(Promise.race([secondToken, timeout])).to.eventually.be.undefined;
+
+    // After the re-arm, a subsequent poller call delivers the token normally.
+    scraper.poller({
+      metadata: {
+        sourceToken: "retry token",
+        target: "projects/p/locations/l/functions/f",
+      },
+    });
+    await expect(scraper.getToken()).to.eventually.equal("retry token");
+  });
+
   it("concurrent requests for source token", async () => {
     const scraper = new SourceTokenScraper();
 
