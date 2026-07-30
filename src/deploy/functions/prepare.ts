@@ -48,6 +48,7 @@ import {
   requireLocal,
   shouldUseRuntimeConfig,
   isKitConfig,
+  addKitPrefix,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -790,7 +791,9 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    const prefix = isKitConfig(codebaseConfig) ? `kit-${codebase}` : codebaseConfig.prefix || "";
+    const prefix = isKitConfig(codebaseConfig)
+      ? addKitPrefix(codebase)
+      : codebaseConfig.prefix || "";
     build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }

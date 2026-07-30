@@ -78,7 +78,7 @@ export function validateCodebase(codebase: string): void {
 /**
  * Check that the kit name is 40 characters or less and only contains allowed characters.
  */
-export function validateKitId(kit: string): void {
+export function validateKit(kit: string): void {
   if (kit.length === 0 || kit.length > 40 || !/^[a-z0-9_-]+$/.test(kit)) {
     throw new FirebaseError(
       "Invalid kit name. Kit name must be 40 characters or less and " +
@@ -108,7 +108,7 @@ function validateSingle(config: FunctionConfig): ValidatedSingle {
     if (!config.kit) {
       throw new FirebaseError("Must specify 'kit' name in a functions kit config.");
     }
-    validateKitId(config.kit);
+    validateKit(config.kit);
     if (config.codebase) {
       throw new FirebaseError(
         "Cannot specify both 'kit' and 'codebase' in a single functions config.",
@@ -339,6 +339,14 @@ export function isRemoteConfig(c: ValidatedSingle): c is ValidatedRemoteSingle {
 /** Returns true if the config uses a functions kit. */
 export function isKitConfig(c: ValidatedSingle): c is ValidatedKitSingle {
   return "kit" in c;
+}
+
+/** Prefix added to function names for Functions Kit instances. */
+export const KIT_PREFIX = "kit-";
+
+/** Format the function prefix for a kit instance. */
+export function addKitPrefix(instanceId: string): string {
+  return `${KIT_PREFIX}${instanceId}`;
 }
 
 /**

@@ -42,7 +42,12 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { isKitConfig, normalizeAndValidate, requireLocal } from "../functions/projectConfig";
+import {
+  isKitConfig,
+  addKitPrefix,
+  normalizeAndValidate,
+  requireLocal,
+} from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -548,7 +553,7 @@ export async function startAll(
             functionsDir,
             runtime,
             codebase: instanceId,
-            prefix: `kit-${instanceId}`,
+            prefix: addKitPrefix(instanceId),
             configDir: path.join(projectDir, configDir),
             env: {
               ...options.extDevEnv,

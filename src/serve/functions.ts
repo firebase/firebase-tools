@@ -40,7 +40,7 @@ export class FunctionsServer {
           backends.push({
             functionsDir,
             codebase: instanceId,
-            prefix: `kit-${instanceId}`,
+            prefix: projectConfig.addKitPrefix(instanceId),
             configDir: path.join(options.config.projectDir, configDir),
             runtime: localCfg.runtime,
             env: {},
