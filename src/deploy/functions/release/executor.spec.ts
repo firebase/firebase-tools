@@ -136,7 +136,11 @@ describe("Executor", () => {
       const genericErr: any = new Error("Generic Request Failed 404");
       genericErr.status = 404;
       genericErr.context = {
-        body: { error: { message: "Service account my-sa@project.iam.gserviceaccount.com missing" } },
+        body: {
+          error: {
+            message: "Service account my-sa@project.iam.gserviceaccount.com missing",
+          },
+        },
       };
       expect(executor.isServiceAccount404(genericErr)).to.be.true;
     });
