@@ -289,6 +289,11 @@ describe("utils", () => {
       }
       await expect(utils.streamToString(stream)).to.eventually.equal("hello world");
     });
+
+    it("should return empty string if stream is undefined or null", async () => {
+      await expect(utils.streamToString(undefined)).to.eventually.equal("");
+      await expect(utils.streamToString(null)).to.eventually.equal("");
+    });
   });
 
   describe("allSettled", () => {
