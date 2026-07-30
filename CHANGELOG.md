@@ -1,3 +1,0 @@
-- Fix typo that was breaking the emulator handling of secret params (issue #10866)
-- Fixes service account propagation delays during Cloud Functions deploys and cleans up newly created service accounts on 100% deployment failure (#10871).
-- Fixed `appcheck:debugtokens:list` and `appcheck:debugtokens:delete` prompting "Select the app to register a debug token for" when asking which app to operate on.
