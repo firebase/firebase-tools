@@ -92,8 +92,9 @@ export const ALL_EXPERIMENTS = experiments({
   },
   kits: {
     shortDescription: "Enable Functions Kits.",
-    fullDescription: "Adds support for Function Kits schema and deployment features.",
-    public: true,
+    fullDescription: "Adds support for Function Kits.",
+    public: false,
+    default: false,
   },
 
   // Emulator experiments
