@@ -398,6 +398,32 @@ describe("projectConfig", () => {
         );
       });
 
+      it("fails validation if instance ID starts with a dash", () => {
+        const config = [
+          {
+            ...VALID_KIT_CONFIG,
+            instances: { "-invalid-instance": "config/path" },
+          },
+        ];
+        expect(() => projectConfig.validate(config as any)).to.throw(
+          FirebaseError,
+          /Invalid kit instance ID.*cannot start or end with a dash/,
+        );
+      });
+
+      it("fails validation if instance ID ends with a dash", () => {
+        const config = [
+          {
+            ...VALID_KIT_CONFIG,
+            instances: { "invalid-instance-": "config/path" },
+          },
+        ];
+        expect(() => projectConfig.validate(config as any)).to.throw(
+          FirebaseError,
+          /Invalid kit instance ID.*cannot start or end with a dash/,
+        );
+      });
+
       it("fails validation if kit instance IDs are duplicated across kits", () => {
         const config: projectConfig.NormalizedConfig = [
           VALID_KIT_CONFIG,

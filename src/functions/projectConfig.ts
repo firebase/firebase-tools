@@ -247,10 +247,14 @@ export function validateKitInstances(
   allProjectInstanceIds: Set<string>,
 ): void {
   for (const instanceId of Object.keys(instances)) {
-    if (instanceId.length === 0 || instanceId.length > 40 || !/^[a-z0-9_-]+$/.test(instanceId)) {
+    if (
+      instanceId.length === 0 ||
+      instanceId.length > 40 ||
+      !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
+    ) {
       throw new FirebaseError(
-        `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less and ` +
-          "can contain only lowercase letters, numeric characters, underscores, and dashes.",
+        `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
+          "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
       );
     }
     if (allProjectInstanceIds.has(instanceId)) {
