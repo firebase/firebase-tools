@@ -83,6 +83,10 @@ export async function discoverSecurityDetails(
   newEtag?: string;
 }> {
   const requiredRoles = want.requiredRoles;
+  // Note: On partial first rollouts (where at least one function successfully deployed),
+  // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
+  // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
+  // fabricator cleans up the unreferenced service account so no orphaned SA remains.
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
   let haveRolesEtag: string | undefined;
