@@ -50,8 +50,8 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
   return (
     message.includes("serviceaccount") ||
     message.includes("service account") ||
-    message.includes("iam.gserviceaccount.com") ||
-    message.includes("gserviceaccount.com")
+    /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.gserviceaccount\.com\b/i.test(message) ||
+    /\bgserviceaccount\.com\b/i.test(message)
   );
 };
 
