@@ -16,7 +16,6 @@ async function main() {
     // Download VS Code, unzip it and run the integration test
     const tmpUserData = path.join(os.tmpdir(), `vsc-ud-${Math.random().toString(36).substring(2, 7)}`);
     await runTests({
-      version: "1.96.4",
       extensionDevelopmentPath,
       extensionTestsPath,
       launchArgs: ["--user-data-dir", tmpUserData],
