@@ -59,6 +59,10 @@ describe("Fabricator", () => {
     tasks.queueFromEndpoint.restore();
     tasks.queueNameForEndpoint.restore();
     runv2.serviceFromEndpoint.restore();
+    runv2.functionNameToServiceName.restore();
+    eventarc.triggerMatches.restore();
+    eventarc.triggerRequiresReplacement.restore();
+    eventarc.triggerForCreate.restore();
     gcf.createFunction.rejects(new Error("unexpected gcf.createFunction"));
     gcf.updateFunction.rejects(new Error("unexpected gcf.updateFunction"));
     gcf.deleteFunction.rejects(new Error("unexpected gcf.deleteFunction"));
@@ -74,6 +78,10 @@ describe("Fabricator", () => {
     eventarc.deleteChannel.rejects(new Error("unexpected eventarc.deleteChannel"));
     eventarc.getChannel.rejects(new Error("unexpected eventarc.getChannel"));
     eventarc.updateChannel.rejects(new Error("unexpected eventarc.updateChannel"));
+    eventarc.getTrigger.rejects(new Error("unexpected eventarc.getTrigger"));
+    eventarc.createTrigger.rejects(new Error("unexpected eventarc.createTrigger"));
+    eventarc.updateTrigger.rejects(new Error("unexpected eventarc.updateTrigger"));
+    eventarc.deleteTrigger.rejects(new Error("unexpected eventarc.deleteTrigger"));
     run.getIamPolicy.rejects(new Error("unexpected run.getIamPolicy"));
     run.setIamPolicy.rejects(new Error("unexpected run.setIamPolicy"));
     run.setInvokerCreate.rejects(new Error("unexpected run.setInvokerCreate"));
@@ -1842,6 +1850,335 @@ describe("Fabricator", () => {
     });
   });
 
+  describe("Cloud Run Eventarc triggers", () => {
+    const firestoreTrigger: backend.EventTrigger = {
+      eventType: "google.cloud.firestore.document.v1.written",
+      eventFilters: {
+        database: "(default)",
+        namespace: "(default)",
+      },
+      eventFilterPathPatterns: {
+        document: "users/{userId}",
+      },
+      retry: false,
+      region: "nam5",
+      serviceAccount: "eventarc@test-project.iam.gserviceaccount.com",
+    };
+
+    function firestoreEndpoint(): backend.Endpoint & backend.EventTriggered {
+      return endpoint(
+        { eventTrigger: JSON.parse(JSON.stringify(firestoreTrigger)) },
+        {
+          platform: "run",
+          project: "test-project",
+          runtime: "dart3",
+          id: "Firestore_Handler",
+        },
+      ) as backend.Endpoint & backend.EventTriggered;
+    }
+
+    it("converts a Firestore endpoint to an Eventarc trigger", async () => {
+      const trigger = await fab.eventarcTriggerFromEndpoint(firestoreEndpoint());
+
+      expect(trigger).to.deep.equal({
+        name: "projects/test-project/locations/nam5/triggers/firebase-firestore-handler-us-central1",
+        eventFilters: [
+          {
+            attribute: "type",
+            value: "google.cloud.firestore.document.v1.written",
+          },
+          {
+            attribute: "database",
+            value: "(default)",
+          },
+          {
+            attribute: "namespace",
+            value: "(default)",
+          },
+          {
+            attribute: "document",
+            value: "users/{userId}",
+            operator: "match-path-pattern",
+          },
+        ],
+        serviceAccount: "eventarc@test-project.iam.gserviceaccount.com",
+        destination: {
+          cloudRun: {
+            service: "firestore-handler",
+            region: "us-central1",
+          },
+        },
+        labels: {
+          "deployment-tool": "cli-firebase",
+          runtime: "dart3",
+        },
+        eventDataContentType: "application/protobuf",
+      });
+    });
+
+    it("resolves the project's default compute service account", async () => {
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.serviceAccount = null;
+      ep.serviceAccount = null;
+      const getDefaultServiceAccount = sinon
+        .stub(gce, "getDefaultServiceAccount")
+        .resolves("custom-default@test-project.iam.gserviceaccount.com");
+
+      const trigger = await fab.eventarcTriggerFromEndpoint(ep);
+
+      expect(getDefaultServiceAccount).to.have.been.calledOnceWith("1234567");
+      expect(trigger.serviceAccount).to.equal(
+        "custom-default@test-project.iam.gserviceaccount.com",
+      );
+    });
+
+    it("expands shorthand service accounts and scopes Run invoker access", async () => {
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.serviceAccount = "eventarc@";
+      ep.runServiceId = "firestore-handler";
+      run.setInvokerUpdate.resolves();
+
+      const trigger = await fab.eventarcTriggerFromEndpoint(ep);
+      await fab.setEventarcInvoker(ep, [trigger.serviceAccount]);
+
+      expect(trigger.serviceAccount).to.equal("eventarc@test-project.iam.gserviceaccount.com");
+      expect(run.setInvokerUpdate).to.have.been.calledOnceWith(
+        "test-project",
+        "projects/test-project/locations/us-central1/services/firestore-handler",
+        ["eventarc@test-project.iam.gserviceaccount.com"],
+      );
+    });
+
+    it("creates a missing Firestore trigger and polls its operation", async () => {
+      eventarc.getTrigger.resolves(undefined);
+      eventarc.createTrigger.resolves({ name: "operations/create-trigger" } as any);
+      poller.pollOperation.resolves();
+      run.setInvokerUpdate.resolves();
+      const ep = firestoreEndpoint();
+
+      await fab.setTrigger(ep);
+
+      expect(eventarc.createTrigger).to.have.been.calledOnceWith(
+        sinon.match({
+          name: "projects/test-project/locations/nam5/triggers/firebase-firestore-handler-us-central1",
+        }),
+      );
+      expect(poller.pollOperation).to.have.been.calledOnceWith(
+        sinon.match({
+          operationResourceName: "operations/create-trigger",
+        }),
+      );
+    });
+
+    it("treats a matching trigger as created after a create conflict", async () => {
+      const ep = firestoreEndpoint();
+      const desired = await fab.eventarcTriggerFromEndpoint(ep);
+      const conflict = new Error("already exists");
+      (conflict as any).status = 409;
+      eventarc.getTrigger.onFirstCall().resolves(undefined);
+      eventarc.getTrigger.onSecondCall().resolves(desired);
+      eventarc.createTrigger.rejects(conflict);
+      run.setInvokerUpdate.resolves();
+
+      await fab.setTrigger(ep);
+
+      expect(eventarc.createTrigger).to.have.been.calledOnce;
+      expect(poller.pollOperation).not.to.have.been.called;
+    });
+
+    it("does not recreate an existing Firestore trigger", async () => {
+      const ep = firestoreEndpoint();
+      eventarc.getTrigger.resolves(await fab.eventarcTriggerFromEndpoint(ep));
+      run.setInvokerUpdate.resolves();
+
+      await fab.setTrigger(ep);
+
+      expect(eventarc.createTrigger).not.to.have.been.called;
+      expect(eventarc.updateTrigger).not.to.have.been.called;
+      expect(eventarc.deleteTrigger).not.to.have.been.called;
+    });
+
+    it("patches mutable trigger fields without deleting the trigger", async () => {
+      const ep = firestoreEndpoint();
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.labels = {
+        "deployment-tool": "cli-firebase",
+        runtime: "dart2",
+        owner: "customer",
+      };
+      eventarc.getTrigger.resolves(existing);
+      eventarc.updateTrigger.resolves({ name: "operations/update-trigger" } as any);
+      poller.pollOperation.resolves();
+      run.setInvokerUpdate.resolves();
+
+      await fab.setTrigger(ep);
+
+      expect(eventarc.updateTrigger).to.have.been.calledOnceWith(
+        sinon.match({
+          labels: {
+            "deployment-tool": "cli-firebase",
+            runtime: "dart3",
+            owner: "customer",
+          },
+        }),
+      );
+      expect(eventarc.deleteTrigger).not.to.have.been.called;
+      expect(eventarc.createTrigger).not.to.have.been.called;
+    });
+
+    it("keeps both Run invokers when a trigger PATCH outcome is uncertain", async () => {
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.serviceAccount = "new@test-project.iam.gserviceaccount.com";
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.serviceAccount = "old@test-project.iam.gserviceaccount.com";
+      eventarc.getTrigger.resolves(existing);
+      eventarc.updateTrigger.resolves({ name: "operations/update-trigger" } as any);
+      poller.pollOperation.rejects(new Error("operation status unavailable"));
+      run.setInvokerUpdate.resolves();
+
+      await expect(fab.setTrigger(ep)).to.be.rejectedWith(reporter.DeploymentError);
+
+      expect(run.setInvokerUpdate.firstCall.args[2]).to.have.members([
+        "old@test-project.iam.gserviceaccount.com",
+        "new@test-project.iam.gserviceaccount.com",
+      ]);
+      expect(run.setInvokerUpdate.lastCall.args[2]).to.have.members([
+        "old@test-project.iam.gserviceaccount.com",
+        "new@test-project.iam.gserviceaccount.com",
+      ]);
+    });
+
+    it("replaces a Firestore trigger when its immutable routing changes", async () => {
+      const ep = firestoreEndpoint();
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.eventFilters = existing.eventFilters.map((filter) =>
+        filter.attribute === "document" ? { ...filter, value: "posts/{postId}" } : filter,
+      );
+      eventarc.getTrigger.resolves(existing);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      eventarc.createTrigger.resolves({ name: "operations/create-trigger" } as any);
+      poller.pollOperation.resolves();
+      run.setInvokerUpdate.resolves();
+
+      await fab.setTrigger(ep);
+
+      expect(eventarc.deleteTrigger).to.have.been.calledOnceWith(
+        "projects/test-project/locations/nam5/triggers/firebase-firestore-handler-us-central1",
+      );
+      expect(eventarc.createTrigger).to.have.been.calledOnce;
+      expect(poller.pollOperation).to.have.been.calledTwice;
+    });
+
+    it("restores the previous trigger when replacement creation fails", async () => {
+      const ep = firestoreEndpoint();
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.eventFilters = existing.eventFilters.map((filter) =>
+        filter.attribute === "document" ? { ...filter, value: "posts/{postId}" } : filter,
+      );
+      eventarc.getTrigger.onFirstCall().resolves(existing);
+      eventarc.getTrigger.onSecondCall().resolves(undefined);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      eventarc.createTrigger.onFirstCall().rejects(new Error("create failed"));
+      eventarc.createTrigger
+        .onSecondCall()
+        .resolves({ name: "operations/rollback-trigger" } as any);
+      poller.pollOperation.resolves();
+      run.setInvokerUpdate.resolves();
+
+      await expect(fab.setTrigger(ep)).to.be.rejectedWith(reporter.DeploymentError);
+
+      expect(eventarc.createTrigger).to.have.been.calledTwice;
+      expect(eventarc.createTrigger.secondCall).to.have.been.calledWith(
+        sinon.match({
+          name: "projects/test-project/locations/nam5/triggers/firebase-firestore-handler-us-central1",
+          eventFilters: existing.eventFilters,
+        }),
+      );
+    });
+
+    it("restores the previous trigger when delete operation polling fails", async () => {
+      const ep = firestoreEndpoint();
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.eventFilters = existing.eventFilters.map((filter) =>
+        filter.attribute === "document" ? { ...filter, value: "posts/{postId}" } : filter,
+      );
+      eventarc.getTrigger.onFirstCall().resolves(existing);
+      eventarc.getTrigger.onSecondCall().resolves(undefined);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      eventarc.createTrigger.resolves({ name: "operations/rollback-trigger" } as any);
+      poller.pollOperation.onFirstCall().rejects(new Error("delete poll failed"));
+      poller.pollOperation.onSecondCall().resolves();
+      run.setInvokerUpdate.resolves();
+
+      await expect(fab.setTrigger(ep)).to.be.rejectedWith(reporter.DeploymentError);
+
+      expect(eventarc.createTrigger).to.have.been.calledOnceWith(
+        sinon.match({
+          eventFilters: existing.eventFilters,
+        }),
+      );
+    });
+
+    it("restores the previous Run invoker when replacement fails", async () => {
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.serviceAccount = "new@test-project.iam.gserviceaccount.com";
+      const existing = await fab.eventarcTriggerFromEndpoint(ep);
+      existing.serviceAccount = "old@test-project.iam.gserviceaccount.com";
+      existing.eventFilters = existing.eventFilters.map((filter) =>
+        filter.attribute === "document" ? { ...filter, value: "posts/{postId}" } : filter,
+      );
+      eventarc.getTrigger.onFirstCall().resolves(existing);
+      eventarc.getTrigger.onSecondCall().resolves(undefined);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      eventarc.createTrigger.onFirstCall().rejects(new Error("create failed"));
+      eventarc.createTrigger
+        .onSecondCall()
+        .resolves({ name: "operations/rollback-trigger" } as any);
+      poller.pollOperation.resolves();
+      run.setInvokerUpdate.resolves();
+
+      await expect(fab.setTrigger(ep)).to.be.rejectedWith(reporter.DeploymentError);
+
+      expect(run.setInvokerUpdate.firstCall.args[2]).to.have.members([
+        "old@test-project.iam.gserviceaccount.com",
+        "new@test-project.iam.gserviceaccount.com",
+      ]);
+      expect(run.setInvokerUpdate.lastCall.args[2]).to.deep.equal([
+        "old@test-project.iam.gserviceaccount.com",
+      ]);
+    });
+
+    it("deletes an existing Firestore trigger and polls its operation", async () => {
+      eventarc.getTrigger.resolves({ name: "existing-trigger" } as any);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      poller.pollOperation.resolves();
+      const ep = firestoreEndpoint();
+
+      await fab.deleteTrigger(ep);
+
+      expect(eventarc.deleteTrigger).to.have.been.calledOnceWith(
+        "projects/test-project/locations/nam5/triggers/firebase-firestore-handler-us-central1",
+      );
+      expect(poller.pollOperation).to.have.been.calledOnceWith(
+        sinon.match({
+          operationResourceName: "operations/delete-trigger",
+        }),
+      );
+    });
+
+    it("deletes a legacy direct Run trigger with unknown event metadata", async () => {
+      eventarc.getTrigger.resolves({ name: "existing-trigger" } as any);
+      eventarc.deleteTrigger.resolves({ name: "operations/delete-trigger" } as any);
+      poller.pollOperation.resolves();
+      const ep = firestoreEndpoint();
+      ep.eventTrigger.eventType = "unknown";
+
+      await fab.deleteTrigger(ep);
+
+      expect(eventarc.deleteTrigger).to.have.been.calledOnce;
+    });
+  });
+
   describe("createRunFunction", () => {
     it("creates a Cloud Run service with correct configuration", async () => {
       runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
@@ -1920,6 +2257,28 @@ describe("Fabricator", () => {
       await fab.createRunFunction(ep);
 
       expect(run.setInvokerCreate).to.not.have.been.called;
+    });
+
+    it("normalizes the Cloud Run service ID consistently", async () => {
+      runv2.createService.resolves({ uri: "https://service", name: "service" } as any);
+      run.setInvokerCreate.resolves();
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "run",
+          id: "My_Function",
+        },
+      );
+
+      await fab.createRunFunction(ep);
+
+      expect(runv2.createService).to.have.been.calledWith(
+        ep.project,
+        ep.region,
+        "my-function",
+        sinon.match.any,
+      );
+      expect(ep.runServiceId).to.equal("my-function");
     });
   });
 
@@ -2028,6 +2387,21 @@ describe("Fabricator", () => {
       await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.called;
+    });
+
+    it("normalizes the Cloud Run service ID before deletion", async () => {
+      runv2.deleteService.resolves();
+      const ep = endpoint(
+        { httpsTrigger: {} },
+        {
+          platform: "run",
+          id: "My_Function",
+        },
+      );
+
+      await fab.deleteRunFunction(ep);
+
+      expect(runv2.deleteService).to.have.been.calledWith(ep.project, ep.region, "my-function");
     });
   });
 

@@ -1196,6 +1196,36 @@ describe("prepare", () => {
         generateServiceIdentityStub.calledWith("project", "eventarc.googleapis.com", "functions"),
       ).to.be.true;
     });
+
+    it("should enable Eventarc APIs for event-triggered Cloud Run services", async () => {
+      const e: backend.Endpoint = {
+        id: "dartFirestore",
+        platform: "run",
+        region: "us-central1",
+        project: "project",
+        entryPoint: "entry",
+        runtime: "dart3",
+        eventTrigger: {
+          eventType: "google.cloud.firestore.document.v1.written",
+          retry: false,
+        },
+      };
+
+      await prepare.ensureAllRequiredAPIsEnabled("project", backend.of(e));
+
+      expect(ensureApiStub.calledWith("project", "https://run.googleapis.com", "functions")).to.be
+        .true;
+      expect(ensureApiStub.calledWith("project", "https://eventarc.googleapis.com", "functions")).to
+        .be.true;
+      expect(ensureApiStub.calledWith("project", "https://pubsub.googleapis.com", "functions")).to
+        .be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "pubsub.googleapis.com", "functions"),
+      ).to.be.true;
+      expect(
+        generateServiceIdentityStub.calledWith("project", "eventarc.googleapis.com", "functions"),
+      ).to.be.true;
+    });
   });
 
   describe("discoverSecurityDetails", () => {

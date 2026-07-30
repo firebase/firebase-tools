@@ -11,6 +11,7 @@ import * as backend from "./backend";
 import * as utils from "../../utils";
 import * as secrets from "../../functions/secrets";
 import { assertExhaustive } from "../../functional";
+import { FIRESTORE_EVENTS } from "../../functions/events/v2";
 
 /**
  * GCF Gen 1 has a max timeout of 540s.
@@ -94,6 +95,18 @@ export function endpointsAreValid(
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
+    if (ep.platform === "run" && backend.isEventTriggered(ep)) {
+      if (!FIRESTORE_EVENTS.some((eventType) => eventType === ep.eventTrigger.eventType)) {
+        throw new FirebaseError(
+          `Event type ${ep.eventTrigger.eventType} is not supported for Cloud Run functions yet.`,
+        );
+      }
+      if (ep.eventTrigger.retry) {
+        throw new FirebaseError(
+          `Retry policies are not supported for Cloud Run event function ${ep.id} yet.`,
+        );
+      }
+    }
     const service = serviceForEndpoint(ep);
     if (backend.isBlockingTriggered(ep)) {
       if (service.name === "noop") {

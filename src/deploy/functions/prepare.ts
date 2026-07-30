@@ -920,7 +920,12 @@ export async function ensureAllRequiredAPIsEnabled(
       return ensureApiEnabled.ensure(projectNumber, api, "functions", /* silent=*/ false);
     }),
   );
-  if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2")) {
+  if (
+    backend.someEndpoint(
+      wantBackend,
+      (e) => e.platform === "gcfv2" || (e.platform === "run" && backend.isEventTriggered(e)),
+    )
+  ) {
     // Note: Some of these are premium APIs that require billing to be enabled.
     // We'd eventually have to add special error handling for billing APIs, but
     // enableCloudBuild is called above and has this special casing already.
