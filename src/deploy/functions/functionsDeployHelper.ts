@@ -55,6 +55,15 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 }
 
 /**
+ * Returns all codebase names and kit instance IDs defined in the configuration.
+ */
+export function getCodebasesFromConfig(config: ValidatedConfig): string[] {
+  return [
+    ...new Set(config.flatMap((c) => (isKitConfig(c) ? Object.keys(c.instances) : [c.codebase]))),
+  ];
+}
+
+/**
  * Returns list of filters after parsing selector.
  */
 export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
@@ -62,12 +71,7 @@ export function parseFunctionSelector(selector: string, config: ValidatedConfig)
   const target = fragments[0];
 
   // Check if target matches a known codebase name or kit instance ID
-  const codebaseNames = config.flatMap((c) => {
-    if (isKitConfig(c)) {
-      return c.instances ? Object.keys(c.instances) : [];
-    }
-    return c.codebase ? [c.codebase] : [];
-  });
+  const codebaseNames = getCodebasesFromConfig(config);
 
   if (codebaseNames.includes(target)) {
     return [
@@ -167,16 +171,7 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = [
-    ...new Set(
-      config.flatMap((c) => {
-        if (isKitConfig(c)) {
-          return c.instances ? Object.keys(c.instances) : [];
-        }
-        return c.codebase ? [c.codebase] : [];
-      }),
-    ),
-  ];
+  const codebasesFromConfig = getCodebasesFromConfig(config);
   if (!filters) {
     return [...codebasesFromConfig];
   }
