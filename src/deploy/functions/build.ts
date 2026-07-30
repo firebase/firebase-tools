@@ -358,8 +358,8 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
     opts.nonInteractive,
-    opts.isEmulator,
     opts.force,
+    opts.isEmulator,
   );
 
   return { backend: toBackend(opts.build, paramValues), envs: paramValues, secretRefs: secretRefs };
