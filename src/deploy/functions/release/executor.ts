@@ -36,15 +36,21 @@ export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
   if (parseErrorCode(err) !== 404) {
     return false;
   }
-  const message = (
-    err.message ||
-    err.original?.message ||
-    err.context?.body?.error?.message ||
-    JSON.stringify(err)
-  ).toLowerCase();
+  let message = "";
+  try {
+    message = (
+      err?.message ||
+      err?.original?.message ||
+      err?.context?.body?.error?.message ||
+      String(err)
+    ).toLowerCase();
+  } catch {
+    message = String(err).toLowerCase();
+  }
   return (
     message.includes("serviceaccount") ||
     message.includes("service account") ||
+    message.includes("iam.gserviceaccount.com") ||
     message.includes("gserviceaccount.com")
   );
 };
