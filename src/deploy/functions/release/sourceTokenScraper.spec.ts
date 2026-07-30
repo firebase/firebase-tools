@@ -42,6 +42,24 @@ describe("SourceTokenScraper", () => {
     await expect(scraper.getToken()).to.eventually.equal("magic token");
   });
 
+  it("returns early when configured with a timeout", async () => {
+    const scraper = new SourceTokenScraper();
+    // Put the scraper into FETCHING state.
+    await scraper.getToken();
+
+    const start = Date.now();
+    await expect(scraper.getToken({ timeoutMs: 5 })).to.eventually.be.undefined;
+    expect(Date.now() - start).to.be.lessThan(100);
+
+    scraper.poller({
+      metadata: {
+        sourceToken: "magic token",
+        target: "projects/p/locations/l/functions/f",
+      },
+    });
+    await expect(scraper.getToken()).to.eventually.equal("magic token");
+  });
+
   it("refreshes token after timer expires", async () => {
     const scraper = new SourceTokenScraper(10);
     await expect(scraper.getToken()).to.eventually.be.undefined;
