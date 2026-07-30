@@ -9,5 +9,3 @@
 - Removed the warning that Dart functions may not yet be visible in the Firebase Console, since they are now shown.
 - Add the V1 environment variable FUNCTION_REGION to v2 functions (#10862)
 - Fixes service account propagation delays during Cloud Functions deploys and cleans up newly created service accounts on 100% deployment failure (#10871).
-
-
