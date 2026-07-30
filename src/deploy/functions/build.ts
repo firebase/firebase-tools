@@ -523,6 +523,11 @@ export function toBackend(
       }
     }
     for (const region of regions) {
+      const regionParamValues = {
+        ...paramValues,
+        FUNCTION_REGION: new params.ParamValue(region, true, { string: true }),
+      };
+      const r = new Resolver(regionParamValues);
       const trigger = discoverTrigger(bdEndpoint, region, r);
 
       if (typeof bdEndpoint.platform === "undefined") {
@@ -585,14 +590,14 @@ export function toBackend(
       if (bdEndpoint.vpc) {
         bkEndpoint.vpc = {};
         if (typeof bdEndpoint.vpc.connector !== "undefined" && bdEndpoint.vpc.connector !== null) {
-          const connector = params.resolveString(bdEndpoint.vpc.connector, paramValues);
+          const connector = r.resolveString(bdEndpoint.vpc.connector);
           bkEndpoint.vpc.connector =
             connector.includes("/") || connector === ""
               ? connector
               : `projects/${bdEndpoint.project}/locations/${region}/connectors/${connector}`;
         }
         if (bdEndpoint.vpc.egressSettings) {
-          const egress = params.resolveString(bdEndpoint.vpc.egressSettings, paramValues);
+          const egress = r.resolveString(bdEndpoint.vpc.egressSettings);
           if (!backend.AllVpcEgressSettings.includes(egress as backend.VpcEgressSettings)) {
             throw new FirebaseError(`Value "${egress}" is an invalid egress setting.`);
           }
@@ -601,11 +606,10 @@ export function toBackend(
         if (bdEndpoint.vpc.networkInterfaces) {
           bkEndpoint.vpc.networkInterfaces = bdEndpoint.vpc.networkInterfaces.map((ni) => {
             const resolved: { network?: string; subnetwork?: string; tags?: string[] } = {};
-            if (ni.network) resolved.network = params.resolveString(ni.network, paramValues);
-            if (ni.subnetwork)
-              resolved.subnetwork = params.resolveString(ni.subnetwork, paramValues);
+            if (ni.network) resolved.network = r.resolveString(ni.network);
+            if (ni.subnetwork) resolved.subnetwork = r.resolveString(ni.subnetwork);
             if (ni.tags) {
-              resolved.tags = ni.tags.map((tag) => params.resolveString(tag, paramValues));
+              resolved.tags = ni.tags.map((tag) => r.resolveString(tag));
             }
             return resolved;
           });
