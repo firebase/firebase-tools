@@ -80,6 +80,7 @@ async function checkCLIInstallation(): Promise<void> {
   // This should never error out - it must be best effort.
   let message = "";
   try {
+    const settings = getSettings();
     // Fetch directly so that we don't need to rely on any tools being presnt on path.
     const latestVersionRes = await fetch(
       "https://registry.npmjs.org/firebase-tools",
@@ -89,29 +90,34 @@ async function checkCLIInstallation(): Promise<void> {
     ];
     setIsVSCodeExtension(true);
     const env = { ...process.env, VSCODE_CWD: "" };
-    const versionRes = spawnSync("firebase", ["--version"], {
+    const versionRes = spawnSync(`${settings.firebasePath} --version`, {
       env,
-      shell: process.platform === "win32",
+      shell: true,
     });
-    const currentVersion = semver.valid(versionRes.stdout?.toString());
-    const npmVersionRes = spawnSync("npm", ["--version"], {
+    const versionStdout = versionRes.status === 0 ? versionRes.stdout?.toString().trim() : "";
+    const currentVersion = versionStdout ? (semver.valid(versionStdout) || semver.coerce(versionStdout)?.version) : undefined;
+    const npmVersionRes = spawnSync("npm --version", {
       env,
-      shell: process.platform === "win32",
+      shell: true,
     });
-    const npmVersion = semver.valid(npmVersionRes.stdout?.toString());
+    const npmStdout = npmVersionRes.status === 0 ? npmVersionRes.stdout?.toString().trim() : "";
+    const npmVersion = npmStdout ? (semver.valid(npmStdout) || semver.coerce(npmStdout)?.version) : undefined;
     if (!currentVersion) {
       message = `The Firebase CLI is not installed (or not available on $PATH). If you would like to install it, run ${
         npmVersion
           ? "npm install -g firebase-tools"
           : "curl -sL https://firebase.tools | bash"
       }`;
-    } else if (semver.lt(currentVersion, latestVersion)) {
+    } else if (latestVersion && semver.lt(currentVersion, latestVersion)) {
       let installCommand =
         "curl -sL https://firebase.tools | upgrade=true bash";
       if (npmVersion) {
         // Despite the presence of npm, the existing command may be standalone.
         // Run a special standalone-specific command to tell if it actually is.
-        const checkRes = spawnSync("firebase", ["--tool:setup-check"], { env });
+        const checkRes = spawnSync(`${settings.firebasePath} --tool:setup-check`, {
+          env,
+          shell: true,
+        });
         if (checkRes.status !== 0) {
           installCommand = "npm install -g firebase-tools@latest";
         }
