@@ -486,7 +486,7 @@ function populateDefaultParams(config: FirebaseConfig): Record<string, ParamValu
  * @return a Functions-formatted reference (e.g "foo:latest") to a Secret
  * resource which has been verified to exist/have just been created
  */
-async function ensureSecret(
+export async function ensureSecret(
   secretParam: SecretParam,
   projectId: string,
   nonInteractive?: boolean,
