@@ -2,7 +2,6 @@ import * as clc from "colorette";
 import * as fs from "fs";
 import * as path from "path";
 import * as fsConfig from "../firestore/fsConfig";
-import * as proto from "../gcp/proto";
 
 import { logger } from "../logger";
 import { trackEmulator, trackGA4 } from "../track";
@@ -43,7 +42,12 @@ import { getProjectDefaultAccount } from "../auth";
 import { Options } from "../options";
 import { ParsedTriggerDefinition } from "./functionsEmulatorShared";
 import { ExtensionsEmulator } from "./extensionsEmulator";
-import { normalizeAndValidate, requireLocal } from "../functions/projectConfig";
+import {
+  isKitConfig,
+  addKitPrefix,
+  normalizeAndValidate,
+  requireLocal,
+} from "../functions/projectConfig";
 import { requiresJava } from "./downloadableEmulators";
 import { prepareFrameworks } from "../frameworks";
 import * as experiments from "../experiments";
@@ -542,22 +546,40 @@ export async function startAll(
           `Cannot load functions from ${functionsDir} because it has invalid runtime ${runtime as string}`,
         );
       }
-      const backend: EmulatableBackend = {
-        functionsDir,
-        runtime,
-        codebase: localCfg.codebase,
-        prefix: localCfg.prefix,
-        env: {
-          ...options.extDevEnv,
-        },
-        secretEnv: [], // CF3 secrets are bound to specific functions, so we'll get them during trigger discovery.
-        // TODO(b/213335255): predefinedTriggers and nodeMajorVersion are here to support ext:dev:emulators:* commands.
-        // Ideally, we should handle that case via ExtensionEmulator.
-        predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
-        ignore: localCfg.ignore,
-      };
-      proto.convertIfPresent(backend, localCfg, "configDir", (cd) => path.join(projectDir, cd));
-      emulatableBackends.push(backend);
+
+      if (isKitConfig(localCfg)) {
+        for (const [instanceId, configDir] of Object.entries(localCfg.instances)) {
+          const backend: EmulatableBackend = {
+            functionsDir,
+            runtime,
+            codebase: instanceId,
+            prefix: addKitPrefix(instanceId),
+            configDir: path.join(projectDir, configDir),
+            env: {
+              ...options.extDevEnv,
+            },
+            secretEnv: [],
+            predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+            ignore: localCfg.ignore,
+          };
+          emulatableBackends.push(backend);
+        }
+      } else {
+        const backend: EmulatableBackend = {
+          functionsDir,
+          runtime,
+          codebase: localCfg.codebase,
+          ...(localCfg.prefix ? { prefix: localCfg.prefix } : {}),
+          ...(localCfg.configDir ? { configDir: path.join(projectDir, localCfg.configDir) } : {}),
+          env: {
+            ...options.extDevEnv,
+          },
+          secretEnv: [],
+          predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
+          ignore: localCfg.ignore,
+        };
+        emulatableBackends.push(backend);
+      }
     }
   }
 

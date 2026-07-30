@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as build from "./build";
 import * as prepare from "./prepare";
+import * as experiments from "../../experiments";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -100,6 +101,52 @@ describe("prepare", () => {
       const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
+    });
+
+    it("should automatically apply the kit instance ID as the prefix for kit function builds", async () => {
+      experiments.setEnabled("kits", true);
+      discoverBuildStub.callsFake(() =>
+        Promise.resolve(
+          build.of({
+            test: {
+              platform: "gcfv2",
+              entryPoint: "test",
+              project: "project",
+              runtime: latest("nodejs"),
+              httpsTrigger: {},
+            },
+          }),
+        ),
+      );
+      try {
+        const config: ValidatedConfig = [
+          {
+            kit: "my-kit",
+            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            source: "source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+            runtime: "nodejs22",
+          },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+        expect(Object.keys(builds["inst-alpha"].endpoints)).to.deep.equal(["kit-inst-alpha-test"]);
+        expect(Object.keys(builds["inst-beta"].endpoints)).to.deep.equal(["kit-inst-beta-test"]);
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
     });
 
     it("should preserve runtime from codebase config", async () => {
