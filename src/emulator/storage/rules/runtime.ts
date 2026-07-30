@@ -115,6 +115,9 @@ export class StorageRulesRuntime {
   } = {};
   private _childprocess?: ChildProcess;
   private _alive = false;
+  // Holds the incomplete trailing line of the runtime's stdout between "data"
+  // events. See handleRuntimeStdout().
+  private _stdoutBuffer = "";
 
   get alive() {
     return this._alive;
@@ -188,42 +191,64 @@ export class StorageRulesRuntime {
     });
 
     this._childprocess.stdout?.on("data", (buf: Buffer) => {
-      const serializedRuntimeActionResponse = buf.toString("utf-8").trim();
-      if (serializedRuntimeActionResponse !== "") {
-        let rap;
-        try {
-          rap = JSON.parse(serializedRuntimeActionResponse) as RuntimeActionResponse;
-        } catch (err: unknown) {
-          EmulatorLogger.forEmulator(Emulators.STORAGE).log(
-            "INFO",
-            serializedRuntimeActionResponse,
-          );
-          return;
-        }
-
-        const id = rap.id ?? rap.server_request_id;
-        if (id === undefined) {
-          console.log(`Received no ID from server response ${serializedRuntimeActionResponse}`);
-          return;
-        }
-
-        const request = this._requests[id];
-
-        if (rap.status !== "ok" && !("action" in rap)) {
-          console.warn(`[RULES] ${rap.status}: ${rap.message}`);
-          rap.errors.forEach(console.warn.bind(console));
-          return;
-        }
-
-        if (request) {
-          request.handler(rap);
-        } else {
-          console.log(`No handler for event ${serializedRuntimeActionResponse}`);
-        }
-      }
+      this.handleRuntimeStdout(buf.toString("utf-8"));
     });
 
     return startPromise;
+  }
+
+  /**
+   * Dispatches a chunk of the rules runtime's stdout to the awaiting requests.
+   *
+   * The runtime writes one JSON response per line. Node stream "data" events do
+   * not respect message boundaries: under concurrent load several responses
+   * arrive in a single chunk, and a single response can be split across chunks.
+   * So we buffer the incomplete trailing line and only parse complete,
+   * newline-delimited lines. Parsing a raw chunk instead would throw on any
+   * batched responses and silently drop them, hanging every request in the
+   * batch — the root cause of #6194 and #6865.
+   */
+  private handleRuntimeStdout(chunk: string): void {
+    this._stdoutBuffer += chunk;
+    const lines = this._stdoutBuffer.split("\n");
+    // The last element is the incomplete trailing line ("" if the chunk ended
+    // on a newline); keep it buffered until its terminator arrives.
+    this._stdoutBuffer = lines.pop() ?? "";
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line === "") {
+        continue;
+      }
+
+      let rap;
+      try {
+        rap = JSON.parse(line) as RuntimeActionResponse;
+      } catch (err: unknown) {
+        EmulatorLogger.forEmulator(Emulators.STORAGE).log("INFO", line);
+        continue;
+      }
+
+      const id = rap.id ?? rap.server_request_id;
+      if (id === undefined) {
+        console.log(`Received no ID from server response ${line}`);
+        continue;
+      }
+
+      const request = this._requests[id];
+
+      if (rap.status !== "ok" && !("action" in rap)) {
+        console.warn(`[RULES] ${rap.status}: ${rap.message}`);
+        rap.errors.forEach(console.warn.bind(console));
+        continue;
+      }
+
+      if (request) {
+        request.handler(rap);
+      } else {
+        console.log(`No handler for event ${line}`);
+      }
+    }
   }
 
   stop(): Promise<void> {
@@ -263,22 +288,29 @@ export class StorageRulesRuntime {
     }
 
     return new Promise<RuntimeActionResponse>((resolve) => {
-      this._requests[runtimeActionRequest.id] = {
+      const requestId = runtimeActionRequest.id;
+      this._requests[requestId] = {
         request: runtimeActionRequest,
-        handler: resolve,
+        handler: (rap: RuntimeActionResponse) => {
+          // Free the pending-request entry on completion. Previously entries
+          // were only deleted on the firestore cross-service override path,
+          // leaking one entry per request otherwise.
+          delete this._requests[requestId];
+          resolve(rap);
+        },
       };
 
       const serializedRequest = JSON.stringify(runtimeActionRequest);
 
-      // Added due to https://github.com/firebase/firebase-tools/issues/3915
-      // Without waiting to acquire the lock and allowing the child process enough time
-      // (~15ms) to pipe the output back, the emulator will run into issues with
-      // capturing the output and resolving corresponding promises en masse.
+      // The ~15ms delay that used to sit here (added for #3915) was a workaround
+      // for the stdout framing bug: it slowed request writes so responses were
+      // less likely to batch into a single "data" event. Now that stdout is
+      // framed on newlines (see the handler in start()), the delay is
+      // unnecessary and only slows every request, so release the lock as soon
+      // as the write is queued.
       lock.acquire(synchonizationKey, (done) => {
         this._childprocess?.stdin?.write(serializedRequest + "\n");
-        setTimeout(() => {
-          done();
-        }, 15);
+        done();
       });
     });
   }
