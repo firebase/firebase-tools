@@ -14,11 +14,11 @@ export const command = new Command("ailogic:templates:delete <templateId>")
   .help(
     `deletes one deployed server prompt template after confirmation (skippable with --force).
 
-<templateId> is the template's id, as shown in ailogic:templates:list. A locked template cannot be deleted; unlock it first with ailogic:templates:unlock (--force does not override a lock).
+<templateId> is the template's id, as shown in \`ailogic:templates:list\`. A locked template cannot be deleted; unlock it first with \`ailogic:templates:unlock\` (--force does not override a lock).
 
 For example:
 
-  firebase ailogic:templates:delete my-template --force`,
+  \`firebase ailogic:templates:delete my-template --force\``,
   )
   .option("-f, --force", "bypass confirmation prompt")
   .before(requirePermissions, [

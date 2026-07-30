@@ -236,7 +236,6 @@ export function load(client: CLIClient): CLIClient {
     client.ailogic.config.get = loadCommand("ailogic-config-get");
     client.ailogic.config.set = loadCommand("ailogic-config-set");
     client.ailogic.templates = {};
-    client.ailogic.templates.deploy = loadCommand("ailogic-templates-deploy");
     client.ailogic.templates.list = loadCommand("ailogic-templates-list");
     client.ailogic.templates.get = loadCommand("ailogic-templates-get");
     client.ailogic.templates.delete = loadCommand("ailogic-templates-delete");

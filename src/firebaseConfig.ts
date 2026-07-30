@@ -227,6 +227,11 @@ export type RemoteConfigConfig = {
   template: string;
 } & Deployable;
 
+export type AiLogicConfig = {
+  /** Directory of .prompt files deployed as server prompt templates (default: "prompts"). */
+  templates?: string;
+} & Deployable;
+
 export type EmulatorsConfig = {
   auth?: {
     host?: string;
@@ -343,6 +348,7 @@ export type FirebaseConfig = {
   hosting?: HostingConfig;
   storage?: StorageConfig;
   remoteconfig?: RemoteConfigConfig;
+  ailogic?: AiLogicConfig;
   emulators?: EmulatorsConfig;
   extensions?: ExtensionsConfig;
   dataconnect?: DataConnectConfig;

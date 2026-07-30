@@ -12,11 +12,11 @@ export const command = new Command("ailogic:templates:get <templateId>")
   .help(
     `prints the full content of one deployed server prompt template.
 
-<templateId> is the template's id, as shown in the first column of ailogic:templates:list (for templates deployed from files, the file name without the ${PROMPT_FILE_EXT} extension).
+<templateId> is the template's id, as shown in the first column of \`ailogic:templates:list\` (for templates deployed from files, the file path without the ${PROMPT_FILE_EXT} extension, with '/' as '.').
 
 For example:
 
-  firebase ailogic:templates:get my-template`,
+  \`firebase ailogic:templates:get my-template\``,
   )
   .before(requirePermissions, [
     "firebasevertexai.templates.get",

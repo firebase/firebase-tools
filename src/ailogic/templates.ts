@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import * as yaml from "js-yaml";
 
@@ -59,48 +60,66 @@ export interface LocalTemplates {
 }
 
 /**
- * Reads every prompt file in `dir`, validating ids and contents. All problems are
- * collected (not fail-fast) so the caller can report them in a single pass.
+ * Reads every prompt file under `dir` (recursively), validating ids and contents.
+ * All problems are collected (not fail-fast) so the caller can report them in a
+ * single pass.
+ *
+ * Template ids must be a single URL segment, so a nested file's relative path
+ * flattens into its id with `/` becoming `.`: agents/support.prompt -> agents.support.
  */
 export function readPromptDirectory(dir: string): LocalTemplates {
   const templates = new Map<string, string>();
+  // Which file produced each id, so a collision can name both offenders.
+  const sourceOfId = new Map<string, string>();
   const errors: PromptFileError[] = [];
 
-  for (const file of fsutils.listFiles(dir)) {
-    // Match the extension case-insensitively so files from case-insensitive
-    // filesystems (e.g. "FOO.PROMPT") are deployed rather than silently skipped.
-    if (!file.toLowerCase().endsWith(PROMPT_FILE_EXT)) {
-      continue;
+  const walk = (rel: string): void => {
+    for (const entry of fs.readdirSync(path.join(dir, rel), { withFileTypes: true })) {
+      // Ids and error messages use `/` regardless of platform.
+      const file = rel ? `${rel}/${entry.name}` : entry.name;
+      // Match the extension case-insensitively so files from case-insensitive
+      // filesystems (e.g. "FOO.PROMPT") are deployed rather than silently skipped.
+      const hasPromptExt = entry.name.toLowerCase().endsWith(PROMPT_FILE_EXT);
+      if (entry.isDirectory()) {
+        if (hasPromptExt) {
+          // A directory named "foo.prompt" is almost certainly a mistake; report
+          // it rather than silently recursing into or skipping it.
+          errors.push({ file, error: "Not a file." });
+        } else {
+          walk(file);
+        }
+        continue;
+      }
+      if (!hasPromptExt) {
+        continue;
+      }
+      const templateId = file.slice(0, -PROMPT_FILE_EXT.length).replace(/\//g, ".");
+      if (!TEMPLATE_ID_REGEX.test(templateId)) {
+        errors.push({
+          file,
+          error:
+            "File path does not form a valid template id (letters, digits, '.', '_', and '-' only).",
+        });
+        continue;
+      }
+      if (templates.has(templateId)) {
+        errors.push({
+          file,
+          error: `Duplicate template id '${templateId}' (also from ${sourceOfId.get(templateId)}).`,
+        });
+        continue;
+      }
+      const content = fsutils.readFile(path.join(dir, file));
+      const validationError = validatePromptFile(content);
+      if (validationError) {
+        errors.push({ file, error: validationError });
+      } else {
+        templates.set(templateId, content);
+        sourceOfId.set(templateId, file);
+      }
     }
-    // listFiles returns directory entries too; a directory named "foo.prompt"
-    // must be reported, not read (readFile would throw a raw EISDIR).
-    if (!fsutils.fileExistsSync(path.join(dir, file))) {
-      errors.push({ file, error: "Not a file." });
-      continue;
-    }
-    const templateId = file.slice(0, -PROMPT_FILE_EXT.length);
-    if (!TEMPLATE_ID_REGEX.test(templateId)) {
-      errors.push({
-        file,
-        error:
-          "File name does not form a valid template id (letters, digits, '.', '_', and '-' only).",
-      });
-      continue;
-    }
-    // Case-insensitive extension matching means "foo.prompt" and "foo.PROMPT" both
-    // map to id "foo"; report the collision instead of letting the last file win.
-    if (templates.has(templateId)) {
-      errors.push({ file, error: `Duplicate template id '${templateId}'.` });
-      continue;
-    }
-    const content = fsutils.readFile(path.join(dir, file));
-    const validationError = validatePromptFile(content);
-    if (validationError) {
-      errors.push({ file, error: validationError });
-    } else {
-      templates.set(templateId, content);
-    }
-  }
+  };
+  walk("");
 
   return { templates, errors };
 }

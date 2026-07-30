@@ -10,13 +10,13 @@ import { Options } from "../options";
 export const command = new Command("ailogic:templates:lock <templateId>")
   .description("lock a template")
   .help(
-    `locks one deployed server prompt template. A locked template cannot be updated or deleted (including by ailogic:templates:deploy) until it is unlocked with ailogic:templates:unlock.
+    `locks one deployed server prompt template. A locked template cannot be updated or deleted (including by \`firebase deploy\`) until it is unlocked with \`ailogic:templates:unlock\`.
 
-<templateId> is the template's id, as shown in ailogic:templates:list.
+<templateId> is the template's id, as shown in \`ailogic:templates:list\`.
 
 For example:
 
-  firebase ailogic:templates:lock my-template`,
+  \`firebase ailogic:templates:lock my-template\``,
   )
   .before(requirePermissions, [
     "firebasevertexai.templates.update",

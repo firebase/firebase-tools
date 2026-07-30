@@ -1,7 +1,8 @@
 import { expect } from "chai";
-import * as sinon from "sinon";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 
-import * as fsutils from "../fsutils";
 import { Template } from "../gcp/ailogic";
 import { planTemplateDeploy, readPromptDirectory, validatePromptFile } from "./templates";
 
@@ -51,25 +52,29 @@ describe("ailogic templates", () => {
   });
 
   describe("readPromptDirectory", () => {
-    afterEach(() => sinon.restore());
+    let dir: string;
 
-    function stubDir(files: Record<string, string | null>): void {
-      // null content marks a directory-like entry (not a regular file).
-      sinon.stub(fsutils, "listFiles").returns(Object.keys(files));
-      sinon
-        .stub(fsutils, "fileExistsSync")
-        .callsFake((p: string) => files[p.split("/").pop() ?? ""] !== null);
-      sinon.stub(fsutils, "readFile").callsFake((p: string) => {
-        const content = files[p.split("/").pop() ?? ""];
-        if (content === null || content === undefined) {
-          throw new Error("unexpected read");
+    beforeEach(() => {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), "ailogic-prompts-"));
+    });
+
+    afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+    // Writes real files/directories; null content marks a directory entry.
+    function makeDir(files: Record<string, string | null>): void {
+      for (const [rel, content] of Object.entries(files)) {
+        const abs = path.join(dir, rel);
+        if (content === null) {
+          fs.mkdirSync(abs, { recursive: true });
+        } else {
+          fs.mkdirSync(path.dirname(abs), { recursive: true });
+          fs.writeFileSync(abs, content);
         }
-        return content;
-      });
+      }
     }
 
     it("collects templates and reports every error in one pass", () => {
-      stubDir({
+      makeDir({
         "welcome.prompt": "hello",
         "empty.prompt": "",
         "bad id.prompt": "body",
@@ -77,7 +82,7 @@ describe("ailogic templates", () => {
         "notes.txt": "ignored",
       });
 
-      const result = readPromptDirectory("prompts");
+      const result = readPromptDirectory(dir);
 
       expect([...result.templates.keys()]).to.deep.equal(["welcome"]);
       expect(result.errors.map((e) => e.file).sort()).to.deep.equal([
@@ -88,25 +93,49 @@ describe("ailogic templates", () => {
     });
 
     it("rejects a file named exactly '.prompt' (empty template id)", () => {
-      stubDir({ ".prompt": "body" });
-      const result = readPromptDirectory("prompts");
+      makeDir({ ".prompt": "body" });
+      const result = readPromptDirectory(dir);
       expect(result.templates.size).to.equal(0);
       expect(result.errors[0].error).to.match(/valid template id/);
     });
 
     it("matches the extension case-insensitively, preserving the id's case", () => {
-      stubDir({ "Upper.PROMPT": "body" });
-      const result = readPromptDirectory("prompts");
+      makeDir({ "Upper.PROMPT": "body" });
+      const result = readPromptDirectory(dir);
       expect([...result.templates.keys()]).to.deep.equal(["Upper"]);
       expect(result.errors).to.deep.equal([]);
     });
 
-    it("reports case-variant files that collapse to the same template id", () => {
-      stubDir({ "foo.prompt": "current", "foo.PROMPT": "stale" });
-      const result = readPromptDirectory("prompts");
-      expect([...result.templates.keys()]).to.deep.equal(["foo"]);
+    it("reads subfolders recursively, flattening paths into dotted ids", () => {
+      makeDir({
+        "welcome.prompt": "hi",
+        "agents/support.prompt": "support body",
+        "agents/deep/triage.prompt": "triage body",
+      });
+
+      const result = readPromptDirectory(dir);
+
+      expect([...result.templates.keys()].sort()).to.deep.equal([
+        "agents.deep.triage",
+        "agents.support",
+        "welcome",
+      ]);
+      expect(result.errors).to.deep.equal([]);
+    });
+
+    it("reports a nested file colliding with a dotted flat file, naming both", () => {
+      makeDir({
+        "agents/support.prompt": "nested",
+        "agents.support.prompt": "flat",
+      });
+
+      const result = readPromptDirectory(dir);
+
+      expect(result.templates.size).to.equal(1);
       expect(result.errors).to.have.length(1);
-      expect(result.errors[0].error).to.match(/Duplicate template id/);
+      expect(result.errors[0].error).to.match(
+        /Duplicate template id 'agents\.support' \(also from /,
+      );
     });
   });
 

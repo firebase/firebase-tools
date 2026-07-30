@@ -12,11 +12,11 @@ export const command = new Command("ailogic:templates:unlock <templateId>")
   .help(
     `unlocks one deployed server prompt template so it can be updated or deleted again.
 
-<templateId> is the template's id, as shown in ailogic:templates:list.
+<templateId> is the template's id, as shown in \`ailogic:templates:list\`.
 
 For example:
 
-  firebase ailogic:templates:unlock my-template`,
+  \`firebase ailogic:templates:unlock my-template\``,
   )
   .before(requirePermissions, [
     "firebasevertexai.templates.update",

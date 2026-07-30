@@ -19,6 +19,7 @@ import * as ExtensionsTarget from "./extensions";
 import * as DataConnectTarget from "./dataconnect";
 import * as AppHostingTarget from "./apphosting";
 import * as AuthTarget from "./auth";
+import * as AiLogicTarget from "./ailogic";
 import { prepareFrameworks } from "../frameworks";
 import { Context as HostingContext } from "./hosting/context";
 import { addPinnedFunctionsToOnlyString, hasPinnedFunctions } from "./hosting/prepare";
@@ -42,6 +43,7 @@ export const VALID_DEPLOY_TARGETS = [
   "dataconnect",
   "apphosting",
   "auth",
+  "ailogic",
 ] as const;
 
 export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], string[]> = {
@@ -93,6 +95,16 @@ export const TARGET_PERMISSIONS: Record<(typeof VALID_DEPLOY_TARGETS)[number], s
   apphosting: [],
   extensions: [],
   auth: ["firebase.projects.update", "firebaseauth.configs.update"],
+  ailogic: [
+    // Deploy reads the remote state (get), creates/updates (update), and deletes
+    // templates whose files were removed; preflight all three so a partial
+    // deploy cannot start with permissions that only cover part of the plan.
+    "firebasevertexai.templates.update",
+    "firebasevertexai.templates.get",
+    "firebasevertexai.templates.delete",
+    // ensureAILogicApiEnabled reads API enablement state via Service Usage.
+    "serviceusage.services.get",
+  ],
 };
 
 export const TARGETS = {
@@ -106,6 +118,7 @@ export const TARGETS = {
   dataconnect: DataConnectTarget,
   apphosting: AppHostingTarget,
   auth: AuthTarget,
+  ailogic: AiLogicTarget,
 };
 
 export type DeployOptions = Options & { dryRun?: boolean };
