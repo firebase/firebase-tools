@@ -30,7 +30,10 @@ export const command = new Command("appcheck:debugtokens:list")
   .option("--app <appId>", "the app id of your Firebase app")
   .before(requireAuth)
   .action(async (options: AppCheckDebugOptions): Promise<DebugToken[]> => {
-    const { appId } = await getOrPromptProjectAndAppId(options);
+    const { appId } = await getOrPromptProjectAndAppId(
+      options,
+      "Select the app to list debug tokens for:",
+    );
     const projectNumber = await needProjectNumber(options);
 
     const debugTokens = await promiseWithSpinner<DebugToken[]>(
