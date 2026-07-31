@@ -479,7 +479,12 @@ export function recordCredentials(creds: UserCredentials) {
   configstore.delete("session");
 }
 
-async function loginRemotely(): Promise<UserCredentials> {
+export async function loginRemotelyStart(): Promise<{
+  sessionId: string;
+  sessionIdPrefix: string;
+  loginUrl: string;
+  codeVerifier: string;
+}> {
   const authProxyClient = new apiv2.Client({
     urlPrefix: authProxyOrigin(),
     auth: false,
@@ -498,12 +503,51 @@ async function loginRemotely(): Promise<UserCredentials> {
 
   const loginUrl = `${authProxyOrigin()}/login?code_challenge=${codeChallenge}&session=${sessionId}&attest=${attestToken}`;
 
+  return {
+    sessionId,
+    sessionIdPrefix: sessionId.substring(0, 5).toUpperCase(),
+    loginUrl,
+    codeVerifier,
+  };
+}
+
+export async function loginRemotelyComplete(
+  code: string,
+  codeVerifier: string,
+): Promise<UserCredentials> {
+  try {
+    const tokens = await getTokensFromAuthorizationCode(
+      code,
+      `${authProxyOrigin()}/complete`,
+      codeVerifier,
+    );
+
+    void trackGA4("login", { method: "google_remote" });
+
+    const decoded = jwt.decode(tokens.id_token!, { json: true });
+    if (!decoded || typeof decoded === "string") {
+      throw new FirebaseError("Invalid ID token received.");
+    }
+
+    return {
+      user: decoded as unknown as User,
+      tokens: tokens,
+      scopes: SCOPES,
+    };
+  } catch (e) {
+    throw new FirebaseError("Unable to authenticate using the provided code. Please try again.");
+  }
+}
+
+async function loginRemotely(): Promise<UserCredentials> {
+  const { sessionIdPrefix, loginUrl, codeVerifier } = await loginRemotelyStart();
+
   logger.info();
   logger.info("To sign in to the Firebase CLI:");
   logger.info();
   logger.info("1. Take note of your session ID:");
   logger.info();
-  logger.info(`   ${clc.bold(sessionId.substring(0, 5).toUpperCase())}`);
+  logger.info(`   ${clc.bold(sessionIdPrefix)}`);
   logger.info();
   logger.info("2. Visit the URL below on any device and follow the instructions to get your code:");
   logger.info();
@@ -514,23 +558,7 @@ async function loginRemotely(): Promise<UserCredentials> {
 
   const code = await input({ message: "Enter authorization code:" });
 
-  try {
-    const tokens = await getTokensFromAuthorizationCode(
-      code,
-      `${authProxyOrigin()}/complete`,
-      codeVerifier,
-    );
-
-    void trackGA4("login", { method: "google_remote" });
-
-    return {
-      user: jwt.decode(tokens.id_token!, { json: true }) as any as User,
-      tokens: tokens,
-      scopes: SCOPES,
-    };
-  } catch (e) {
-    throw new FirebaseError("Unable to authenticate using the provided code. Please try again.");
-  }
+  return loginRemotelyComplete(code, codeVerifier);
 }
 
 async function loginWithLocalhostGoogle(port: number, userHint?: string): Promise<UserCredentials> {
