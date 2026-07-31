@@ -25,11 +25,14 @@ export function streamToString(s?: NodeJS.ReadableStream | null): Promise<string
     return Promise.resolve("");
   }
   return new Promise((resolve, reject) => {
-    let b = "";
+    const chunks: Buffer[] = [];
     s.on("error", reject);
     s.on("data", (d: Buffer | string) => {
-      b += d.toString();
+      // Buffer the raw chunks and decode once at the end. Decoding each chunk
+      // on its own corrupts any multi-byte character that straddles a chunk
+      // boundary, turning it into replacement characters.
+      chunks.push(Buffer.isBuffer(d) ? d : Buffer.from(String(d), "utf8"));
     });
-    s.once("end", () => resolve(b));
+    s.once("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
   });
 }
