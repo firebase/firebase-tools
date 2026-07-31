@@ -91,6 +91,7 @@ export function endpointsAreValid(
   validateLifecycleHooks(wantBackend, existingBackend);
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
+  taskQueueFunctionNamesAreValid(endpoints);
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
@@ -325,6 +326,27 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
     const msg =
       `${invalidIds.map((f) => f.id).join(", ")} function name(s) can only contain letters, ` +
       `numbers, hyphens, and not exceed 62 characters in length`;
+    throw new FirebaseError(msg);
+  }
+}
+
+/**
+ * Validate that task queue function names conform to Cloud Tasks queue ID naming rules.
+ * Unlike Cloud Functions, Cloud Tasks queue IDs (which we derive from the function name)
+ * cannot contain underscores. See
+ * https://cloud.google.com/tasks/docs/reference/rest/v2/projects.locations.queues#Queue
+ * @throws { FirebaseError } Task queue function names must be valid Cloud Tasks queue IDs.
+ */
+export function taskQueueFunctionNamesAreValid(endpoints: backend.Endpoint[]): void {
+  const queueId = /^[a-zA-Z0-9-]{1,100}$/;
+  const invalidIds = endpoints
+    .filter(backend.isTaskQueueTriggered)
+    .filter((ep) => !queueId.test(ep.id));
+  if (invalidIds.length !== 0) {
+    const msg =
+      `${invalidIds.map((f) => f.id).join(", ")} task queue function name(s) can only contain ` +
+      `letters, numbers, and hyphens (no underscores), and not exceed 100 characters in length. ` +
+      `This is because the function's name is used as the Cloud Tasks queue ID.`;
     throw new FirebaseError(msg);
   }
 }
