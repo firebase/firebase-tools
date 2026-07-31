@@ -4,7 +4,6 @@ import * as os from "os";
 import * as path from "path";
 import * as sinon from "sinon";
 
-import * as experiments from "../../experiments";
 import * as prompt from "../../prompt";
 import * as ailogic from "../../gcp/ailogic";
 import { FirebaseError } from "../../error";
@@ -28,7 +27,6 @@ describe("deploy ailogic", () => {
   let updateTemplateStub: sinon.SinonStub;
   let deleteTemplateStub: sinon.SinonStub;
   let confirmStub: sinon.SinonStub;
-  let experimentEnabled: boolean;
 
   // A minimal stand-in for the pieces of Options that prepare/release touch.
   function makeOptions(overrides: Record<string, unknown> = {}): DeployOptions {
@@ -53,8 +51,6 @@ describe("deploy ailogic", () => {
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "ailogic-deploy-"));
     fs.mkdirSync(path.join(dir, "prompts"));
-    experimentEnabled = experiments.isEnabled("ailogic");
-    experiments.setEnabled("ailogic", true);
     sinon.stub(ailogic, "ensureAILogicApiEnabled").resolves();
     listTemplatesStub = sinon.stub(ailogic, "listTemplates").resolves([]);
     updateTemplateStub = sinon.stub(ailogic, "updateTemplate").resolves(remoteTemplate("x"));
@@ -64,7 +60,6 @@ describe("deploy ailogic", () => {
 
   afterEach(() => {
     sinon.restore();
-    experiments.setEnabled("ailogic", experimentEnabled);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -74,11 +69,6 @@ describe("deploy ailogic", () => {
     await release(context, options);
     return context;
   }
-
-  it("requires the ailogic experiment", async () => {
-    experiments.setEnabled("ailogic", false);
-    await expect(run()).to.be.rejectedWith(FirebaseError, /experiment/);
-  });
 
   it("creates, updates with etags, and skips unchanged templates", async () => {
     writePrompt("fresh.prompt", "fresh body");

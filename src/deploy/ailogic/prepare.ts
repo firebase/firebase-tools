@@ -1,6 +1,5 @@
 import * as clc from "colorette";
 
-import * as experiments from "../../experiments";
 import * as utils from "../../utils";
 import { FirebaseError } from "../../error";
 import { confirm } from "../../prompt";
@@ -47,8 +46,6 @@ export async function prepare(
   context: AiLogicDeployContext,
   options: DeployOptions,
 ): Promise<void> {
-  experiments.assertEnabled("ailogic", "deploy AI Logic resources");
-
   if (!filterIncludes(options, "templates")) {
     return;
   }
