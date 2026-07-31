@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as clc from "colorette";
 
-import { firebaseApiOrigin } from "./api";
+import { consoleOrigin, firebaseApiOrigin } from "./api";
 import { Client } from "./apiv2";
 import { ensure as ensureApiEnabled } from "./ensureApiEnabled";
 import { FirebaseError } from "./error";
@@ -114,10 +114,22 @@ export function getAppEngineLocation(config: any): string {
 
 export async function getFirebaseConfig(options: any): Promise<args.FirebaseConfig> {
   const projectId = needProjectId(options);
-  const response = await apiClient.get<args.FirebaseConfig>(
-    `/v1beta1/projects/${projectId}/adminSdkConfig`,
-  );
-  return response.body;
+  try {
+    const response = await apiClient.get<args.FirebaseConfig>(
+      `/v1beta1/projects/${projectId}/adminSdkConfig`,
+    );
+    return response.body;
+  } catch (err: unknown) {
+    if (err instanceof FirebaseError && err.status === 404) {
+      throw new FirebaseError(
+        `Cannot deploy to project ${clc.bold(projectId)} because it doesn't have Firebase enabled. ` +
+          `Add Firebase to this Google Cloud project in the Firebase console, then try again:\n\n` +
+          `${consoleOrigin()}/project/${projectId}/settings/general`,
+        { original: err, exit: 1, status: 404 },
+      );
+    }
+    throw err;
+  }
 }
 
 // If you make changes to this function, run "node scripts/test-functions-config.js"
