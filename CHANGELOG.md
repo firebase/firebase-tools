@@ -1,0 +1,1 @@
+- Fixed `apps:init` writing `google-services.json` to an `app/app` path when the Android module has no `src` directory, by detecting the module from the directory basename instead of the first path segment (#10863).
