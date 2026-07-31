@@ -2,6 +2,7 @@ import * as path from "path";
 import * as os from "os";
 
 import { runTests } from "@vscode/test-electron";
+import { VSCODE_VERSION } from "./constants";
 
 async function main() {
   try {
@@ -16,6 +17,7 @@ async function main() {
     // Download VS Code, unzip it and run the integration test
     const tmpUserData = path.join(os.tmpdir(), `vsc-ud-${Math.random().toString(36).substring(2, 7)}`);
     await runTests({
+      version: VSCODE_VERSION,
       extensionDevelopmentPath,
       extensionTestsPath,
       launchArgs: ["--user-data-dir", tmpUserData],

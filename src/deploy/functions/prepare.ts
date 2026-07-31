@@ -47,6 +47,8 @@ import {
   ValidatedConfig,
   requireLocal,
   shouldUseRuntimeConfig,
+  isKitConfig,
+  addKitPrefix,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -81,6 +83,10 @@ export async function discoverSecurityDetails(
   newEtag?: string;
 }> {
   const requiredRoles = want.requiredRoles;
+  // Note: On partial first rollouts (where at least one function successfully deployed),
+  // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
+  // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
+  // fabricator cleans up the unreferenced service account so no orphaned SA remains.
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
   let haveRolesEtag: string | undefined;
@@ -240,7 +246,12 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => {
+    if (isKitConfig(cfg)) {
+      return cfg.instances && Object.keys(cfg.instances).some((inst) => codebases.includes(inst));
+    }
+    return cfg.codebase && codebases.includes(cfg.codebase);
+  });
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -282,7 +293,11 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
+      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
+    } else {
+      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
@@ -780,7 +795,10 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    const prefix = isKitConfig(codebaseConfig)
+      ? addKitPrefix(codebase)
+      : codebaseConfig.prefix || "";
+    build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
