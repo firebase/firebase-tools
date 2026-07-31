@@ -107,7 +107,18 @@ steps:
           else
             npm view firebase-tools version > /workspace/version_number.txt
           fi
-          echo "Using version number: $(cat /workspace/version_number.txt)"
+          VERSION_NUM=$(cat /workspace/version_number.txt)
+          echo "Using version number: $VERSION_NUM"
+
+          # Update the package-lock.json for the docker image to use the target version
+          DOCKER_DIR="./firebase-docker-image"
+          if [[ ! -d "$DOCKER_DIR" ]]; then
+            DOCKER_DIR="./scripts/publish/firebase-docker-image"
+          fi
+          if [[ ! -d "$DOCKER_DIR" ]]; then
+            DOCKER_DIR="./firebase-tools/scripts/publish/firebase-docker-image"
+          fi
+          npm --prefix "$DOCKER_DIR" install firebase-tools@$VERSION_NUM
         fi
 
   # Publish the package.

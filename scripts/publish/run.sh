@@ -24,6 +24,11 @@ fi
 while [[ $# -gt 0 ]]; do
   case $1 in
     --version-number)
+      if [[ -z "$2" ]]; then
+        echo "Error: --version-number requires a version argument."
+        printusage
+        exit 1
+      fi
       VERSION_NUMBER="$2"
       shift 2
       ;;
