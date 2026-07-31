@@ -21,13 +21,15 @@ export interface LoginOptions extends Options {
   };
 }
 
+const TEMP_LOGIN_STATE_KEY = "tempLoginState";
+
 export const command = new Command("login [auth_code]")
   .description("log the CLI into Firebase")
   .option("--no-localhost", "login from a device without an accessible localhost")
   .option("--reauth", "force reauthentication even if already logged in")
   .action(async (authCode: string | undefined, options: LoginOptions) => {
     if (authCode) {
-      const state = configstore.get("tempLoginState") as
+      const state = configstore.get(TEMP_LOGIN_STATE_KEY) as
         | {
             sessionId: string;
             codeVerifier: string;
@@ -46,18 +48,18 @@ export const command = new Command("login [auth_code]")
       try {
         const result = await auth.loginRemotelyComplete(authCode, state.codeVerifier);
         auth.recordCredentials(result);
-        configstore.delete("tempLoginState");
+        configstore.delete(TEMP_LOGIN_STATE_KEY);
 
-        logger.info();
-        if (typeof result.user === "object" && result.user && result.user.email) {
+        if (typeof result.user === "object" && result.user?.email) {
           utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
         } else {
           utils.logSuccess("Success! Logged in");
         }
         return auth;
-      } catch (e: any) {
-        configstore.delete("tempLoginState");
-        throw new FirebaseError(`Login failed: ${e.message}`, { exit: 1 });
+      } catch (e: unknown) {
+        configstore.delete(TEMP_LOGIN_STATE_KEY);
+        const message = e instanceof Error ? e.message : String(e);
+        throw new FirebaseError(`Login failed: ${message}`, { exit: 1 });
       }
     }
 
@@ -66,7 +68,7 @@ export const command = new Command("login [auth_code]")
         const { sessionId, sessionIdPrefix, loginUrl, codeVerifier } =
           await auth.loginRemotelyStart();
 
-        configstore.set("tempLoginState", { sessionId, codeVerifier });
+        configstore.set(TEMP_LOGIN_STATE_KEY, { sessionId, codeVerifier });
 
         logger.info();
         logger.info("To sign in to the Firebase CLI:");
@@ -87,8 +89,9 @@ export const command = new Command("login [auth_code]")
         logger.info();
 
         return;
-      } catch (e: any) {
-        throw new FirebaseError(`Failed to start login: ${e.message}`, { exit: 1 });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        throw new FirebaseError(`Failed to start login: ${message}`, { exit: 1 });
       }
     }
 
@@ -141,7 +144,7 @@ export const command = new Command("login [auth_code]")
     auth.recordCredentials(result);
 
     logger.info();
-    if (typeof result.user === "object" && result.user && result.user.email) {
+    if (typeof result.user === "object" && result.user?.email) {
       utils.logSuccess("Success! Logged in as " + clc.bold(result.user.email));
     } else {
       // Shouldn't really happen, but the JWT library that parses our results may
