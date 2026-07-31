@@ -328,4 +328,14 @@ describe("resolveParams", () => {
 
     getSecretMetadataStub.restore();
   });
+
+  it("never calls ensureSecret if running in the emulator", async () => {
+    const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
+    const getSecretMetadataSpy = sinon.spy(secretManager, "getSecretMetadata");
+
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, false, false, true);
+    expect(getSecretMetadataSpy.called).to.be.false;
+
+    getSecretMetadataSpy.restore();
+  });
 });
