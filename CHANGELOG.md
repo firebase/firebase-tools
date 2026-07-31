@@ -2,4 +2,4 @@
 - Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
 - Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
 - Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
-- Added support for a two-phase non-interactive authentication flow to `firebase login` using `login [auth_code]`, allowing headless tools and agents to log in.
+- Added support for a two-phase non-interactive authentication flow to `firebase login`. Users can initiate by running `firebase login --non-interactive`, navigate to the printed link to get an authorization code, and complete the login by running `firebase login <auth_code>`. This allows headless tools and agents to log in.
