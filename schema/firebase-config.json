@@ -17,6 +17,42 @@
             ],
             "type": "string"
         },
+        "AiLogicConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "templates": {
+                    "description": "Directory of .prompt files deployed as server prompt templates (default: \"prompts\").",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "AuthConfig": {
             "additionalProperties": false,
             "properties": {
@@ -1230,6 +1266,9 @@
     "properties": {
         "$schema": {
             "type": "string"
+        },
+        "ailogic": {
+            "$ref": "#/definitions/AiLogicConfig"
         },
         "apphosting": {
             "anyOf": [

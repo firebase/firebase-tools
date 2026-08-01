@@ -236,6 +236,42 @@ export interface Config {
   telemetryConfig?: TelemetryConfig;
 }
 
+export interface Template {
+  name: string;
+  templateString: string;
+  displayName?: string;
+  /** When set on an update or delete, the server rejects the write (409) if the template changed since the etag was read. */
+  etag?: string;
+  /** Output only; changed via the ModifyLock RPC (`setTemplateLocked`), not PATCH. */
+  locked?: boolean;
+}
+
+interface ListTemplatesResponse {
+  templates?: Template[];
+  nextPageToken?: string;
+}
+
+export type TemplateOutputOnlyFields = "name" | "locked";
+
+/** Extracts the template id (the last path segment) from a template resource name. */
+export function templateIdFromName(name: string): string {
+  return name.split("/").pop() ?? "";
+}
+
+// Template ids are spliced into REST resource paths, so restrict them to URL-safe
+// characters: an unvalidated id like "welcome#old" or ".." would silently address a
+// DIFFERENT template once the URL is parsed. (The server may impose stricter rules.)
+export const TEMPLATE_ID_REGEX = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/** Validates a template id, throwing a FirebaseError when it is not URL-safe. */
+export function assertValidTemplateId(templateId: string): void {
+  if (!TEMPLATE_ID_REGEX.test(templateId)) {
+    throw new FirebaseError(
+      `Invalid template id: ${bold(templateId)}. Template ids must start with a letter or digit and contain only letters, digits, '.', '_', and '-'.`,
+    );
+  }
+}
+
 // Developer-facing config paths that `ailogic:config:set` can write.
 export const WRITABLE_CONFIG_PATHS = [
   "security.auth-only",
@@ -251,6 +287,27 @@ export function assertKnownConfigPath(path: string, validPaths: string[]): void 
       `Unknown configuration path: ${path}\n\nValid paths:\n\n` +
         validPaths.map((p) => `  ${p}`).join("\n"),
     );
+  }
+}
+
+// Templates live only at the fixed global location, so the resource name is
+// derived from the project and template id alone (mirroring getConfig/updateConfig).
+function templateName(projectId: string, templateId: string): string {
+  return `projects/${projectId}/locations/${GLOBAL_LOCATION}/templates/${templateId}`;
+}
+
+/**
+ * Runs `fn`, mapping a 404 from the API to a friendly "does not exist" error for
+ * the given template. Other errors are rethrown unchanged.
+ */
+export async function withTemplate404<T>(templateId: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: unknown) {
+    if (getErrStatus(err) === 404) {
+      throw new FirebaseError(`Template ${bold(templateId)} does not exist.`);
+    }
+    throw err;
   }
 }
 
@@ -273,6 +330,93 @@ export function parseProviderType(value: string): ProviderType {
     );
   }
   return value;
+}
+
+/**
+ * Gets a Template.
+ */
+export async function getTemplate(projectId: string, templateId: string): Promise<Template> {
+  const res = await client.get<Template>(templateName(projectId, templateId));
+  return res.body;
+}
+
+/**
+ * Updates a Template (upsert).
+ */
+export async function updateTemplate(
+  projectId: string,
+  templateId: string,
+  template: DeepOmit<Template, TemplateOutputOnlyFields>,
+  updateMask?: string[],
+  allowMissing = true,
+): Promise<Template> {
+  // Without an updateMask the API replaces the whole resource, clearing any
+  // writable field omitted from the body (e.g. displayName). A body etag is
+  // enforced as a precondition either way; do not include "etag" in the mask.
+  const queryParams: Record<string, string> = {
+    allowMissing: allowMissing ? "true" : "false",
+  };
+  if (updateMask && updateMask.length > 0) {
+    queryParams.updateMask = updateMask.join(",");
+  }
+  const res = await client.patch<DeepOmit<Template, TemplateOutputOnlyFields>, Template>(
+    templateName(projectId, templateId),
+    template,
+    { queryParams },
+  );
+  return res.body;
+}
+
+/**
+ * Deletes a Template.
+ */
+export async function deleteTemplate(
+  projectId: string,
+  templateId: string,
+  etag?: string,
+): Promise<void> {
+  const queryParams: Record<string, string> = {};
+  if (etag) {
+    queryParams.etag = etag;
+  }
+  await client.delete<void>(templateName(projectId, templateId), { queryParams });
+}
+
+/**
+ * Locks or unlocks a Template. A locked template cannot be updated or deleted
+ * until it is unlocked.
+ */
+export async function setTemplateLocked(
+  projectId: string,
+  templateId: string,
+  locked: boolean,
+): Promise<void> {
+  // `locked` is output-only on the resource; the API only changes it through the
+  // dedicated ModifyLock RPC (a PATCH with updateMask=locked is rejected).
+  await client.post<{ locked: boolean }, unknown>(
+    `${templateName(projectId, templateId)}:modifyLock`,
+    { locked },
+  );
+}
+
+/**
+ * Lists Templates, slurping all pages.
+ */
+export async function listTemplates(projectId: string): Promise<Template[]> {
+  const parent = `projects/${projectId}/locations/${GLOBAL_LOCATION}`;
+  let pageToken: string | undefined;
+  const templates: Template[] = [];
+
+  do {
+    const queryParams: Record<string, string> = pageToken ? { pageToken } : {};
+    const res = await client.get<ListTemplatesResponse>(`${parent}/templates`, { queryParams });
+    if (res.body?.templates) {
+      templates.push(...res.body.templates);
+    }
+    pageToken = res.body?.nextPageToken;
+  } while (pageToken);
+
+  return templates;
 }
 
 /**
