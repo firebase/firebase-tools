@@ -26,7 +26,7 @@ export const command = new Command("crashlytics:onboard:web [appId]")
       options: CrashlyticsOnboardOptions,
     ): Promise<OnboardWebResult | undefined> => {
       const projectId = needProjectId(options);
-      let appId = appIdInput || options.app || "";
+      let appId: string = appIdInput ?? options.app ?? "";
 
       let appPlatform: AppPlatform = AppPlatform.ANY;
       if (!appId) {
