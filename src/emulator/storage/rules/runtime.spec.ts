@@ -1,6 +1,8 @@
 import { expect } from "chai";
-import { createAuthExpressionValue, StorageRulesRuntime } from "./runtime";
-import { RulesetOperationMethod, RuntimeActionResponse } from "./types";
+import * as sinon from "sinon";
+import { createAuthExpressionValue, fetchFirestoreDocument, StorageRulesRuntime } from "./runtime";
+import { DataLoadStatus, RulesetOperationMethod, RuntimeActionResponse } from "./types";
+import { EmulatorRegistry } from "../../registry";
 
 // Reaches the private stdout handler and pending-request map so we can drive the
 // framing logic directly, without spawning the Java rules runtime.
@@ -100,6 +102,97 @@ describe("Storage Rules Runtime", () => {
 
       internals.handleRuntimeStdout(`us":"ok"}\n`);
       expect(received).to.deep.equal([1, 2]);
+    });
+  });
+
+  describe("fetchFirestoreDocument", () => {
+    let sandbox: sinon.SinonSandbox;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    function stubFirestoreClient(get: sinon.SinonStub) {
+      sandbox.stub(EmulatorRegistry, "client").returns({ get } as any);
+    }
+
+    function fakeRequest(path = "/documents/jobs/job1") {
+      return {
+        action: "fetch_firestore_document" as const,
+        context: { path },
+        warnings: [],
+        errors: [],
+      };
+    }
+
+    it("returns the document immediately on a successful first attempt", async () => {
+      const get = sandbox.stub().resolves({ body: { name: "jobs/job1", fields: {} } });
+      stubFirestoreClient(get);
+
+      const response = await fetchFirestoreDocument("proj", fakeRequest());
+
+      expect(response.status).to.equal(DataLoadStatus.OK);
+      expect(get.callCount).to.equal(1);
+    });
+
+    it("returns not_found immediately on a confirmed 404, without retrying", async () => {
+      // A 404 from a server that's actually up is a real answer — it must
+      // not be retried, both to keep the common "does this exist yet"
+      // check fast and to prove the fix doesn't change that fast path.
+      const notFound = Object.assign(new Error("Not Found"), { status: 404 });
+      const get = sandbox.stub().rejects(notFound);
+      stubFirestoreClient(get);
+
+      const response = await fetchFirestoreDocument("proj", fakeRequest());
+
+      expect(response.status).to.equal(DataLoadStatus.NOT_FOUND);
+      expect(get.callCount).to.equal(1);
+    });
+
+    it("retries past a transient connection failure and succeeds once the server is reachable", async () => {
+      // A request that fails to reach the server says nothing about whether
+      // the document exists; previously any such failure was reported as an
+      // immediate, permanent "not found".
+      const connectionRefused = Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:8080"), {
+        code: "ECONNREFUSED",
+      });
+      const get = sandbox.stub();
+      get.onCall(0).rejects(connectionRefused);
+      get.onCall(1).rejects(connectionRefused);
+      get.onCall(2).resolves({ body: { name: "jobs/job1", fields: {} } });
+      stubFirestoreClient(get);
+
+      const response = await fetchFirestoreDocument("proj", fakeRequest());
+
+      expect(response.status).to.equal(DataLoadStatus.OK);
+      expect(get.callCount).to.equal(3);
+    });
+
+    it("returns not_found without retrying when the response body is malformed", async () => {
+      // A bad payload is a schema/programming problem, not a transient network
+      // one — retrying it would waste time and disguise the real cause.
+      const get = sandbox.stub().resolves({ body: undefined });
+      stubFirestoreClient(get);
+
+      const response = await fetchFirestoreDocument("proj", fakeRequest());
+
+      expect(response.status).to.equal(DataLoadStatus.NOT_FOUND);
+      expect(get.callCount).to.equal(1);
+    });
+
+    it("gives up and returns not_found after exhausting retries on a persistent non-404 failure", async () => {
+      const timeout = new Error("timeout");
+      const get = sandbox.stub().rejects(timeout);
+      stubFirestoreClient(get);
+
+      const response = await fetchFirestoreDocument("proj", fakeRequest());
+
+      expect(response.status).to.equal(DataLoadStatus.NOT_FOUND);
+      expect(get.callCount).to.equal(3);
     });
   });
 });
