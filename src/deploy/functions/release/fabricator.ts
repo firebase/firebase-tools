@@ -6,7 +6,7 @@ import {
   isServiceAccount404,
   isTransientError,
 } from "./executor";
-import { FirebaseError } from "../../../error";
+import { FirebaseError, getErrStatus } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -79,6 +79,18 @@ const rethrowAs =
   (err: unknown): T => {
     logger.error((err as Error).message);
     throw new reporter.DeploymentError(endpoint, op, err);
+  };
+
+// A 404 while deleting means the resource is already gone — the desired end
+// state — so treat it as success rather than failing the deployment. See #4795.
+const rethrowAsUnlessNotFound =
+  <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
+  (err: unknown): T | void => {
+    if (getErrStatus(err) === 404) {
+      logger.debug(`Ignoring 404 for ${op} on ${endpoint.id}; resource already deleted.`);
+      return;
+    }
+    return rethrowAs<T>(endpoint, op)(err);
   };
 
 /** Fabricators make a customer's backend match a spec by applying a plan. */
@@ -1082,19 +1094,19 @@ export class Fabricator {
     const jobName = scheduler.jobNameForEndpoint(endpoint, this.appEngineLocation);
     await this.executor
       .run(() => scheduler.deleteJob(jobName))
-      .catch(rethrowAs(endpoint, "delete schedule"));
+      .catch(rethrowAsUnlessNotFound(endpoint, "delete schedule"));
 
     const topicName = scheduler.topicNameForEndpoint(endpoint);
     await this.executor
       .run(() => pubsub.deleteTopic(topicName))
-      .catch(rethrowAs(endpoint, "delete topic"));
+      .catch(rethrowAsUnlessNotFound(endpoint, "delete topic"));
   }
 
   async deleteScheduleV2(endpoint: backend.Endpoint & backend.ScheduleTriggered): Promise<void> {
     const jobName = scheduler.jobNameForEndpoint(endpoint, endpoint.region);
     await this.executor
       .run(() => scheduler.deleteJob(jobName))
-      .catch(rethrowAs(endpoint, "delete schedule"));
+      .catch(rethrowAsUnlessNotFound(endpoint, "delete schedule"));
   }
 
   async disableTaskQueue(endpoint: backend.Endpoint & backend.TaskQueueTriggered): Promise<void> {

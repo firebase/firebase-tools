@@ -1137,6 +1137,22 @@ describe("Fabricator", () => {
         "delete topic",
       );
     });
+
+    it("ignores a 404 when the schedule or topic is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      pubsub.deleteTopic.rejects(new FirebaseError("Topic not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
   });
 
   describe("deleteScheduleV2", () => {
@@ -1157,6 +1173,20 @@ describe("Fabricator", () => {
 
     it("wraps errors", async () => {
       scheduler.deleteJob.rejects(new Error("Fail"));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
+        reporter.DeploymentError,
+        "delete schedule",
+      );
+    });
+
+    it("ignores a 404 when the schedule is already deleted", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Job not found.", { status: 404 }));
+      await expect(fab.deleteScheduleV2(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+    });
+
+    it("still wraps non-404 errors", async () => {
+      scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
       await expect(fab.deleteScheduleV2(ep)).to.eventually.be.rejectedWith(
         reporter.DeploymentError,
         "delete schedule",
