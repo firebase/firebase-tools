@@ -103,7 +103,7 @@ export async function createSourceDeployArchive(
     flags: "w",
     encoding: "binary",
   });
-  const archive = archiver("zip");
+  const archive = new archiver.ZipArchive();
 
   const targetDir = targetSubDir ? path.join(rootDir, targetSubDir) : rootDir;
   // We must ignore firebase-debug.log or weird things happen if you're in the public dir when you deploy.
@@ -148,7 +148,7 @@ export function resolveIgnorePatterns(
   ignore.push(".local_build_*");
   return ignore;
 }
-async function pipeAsync(from: archiver.Archiver, to: fs.WriteStream): Promise<void> {
+async function pipeAsync(from: archiver.ZipArchive, to: fs.WriteStream): Promise<void> {
   from.pipe(to);
   await from.finalize();
   return new Promise((resolve, reject) => {
