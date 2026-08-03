@@ -488,22 +488,65 @@ function toExpressionValue(obj: any): ExpressionValue {
   );
 }
 
-async function fetchFirestoreDocument(
+// A request that never completed says nothing about whether the document
+// exists, so it isn't reported as "not found" on the first failure. Retried
+// a small, bounded number of times instead — enough to ride out a brief
+// blip without noticeably delaying a genuine failure.
+const FETCH_FIRESTORE_DOCUMENT_MAX_ATTEMPTS = 3;
+const FETCH_FIRESTORE_DOCUMENT_RETRY_DELAY_MS = 150;
+
+/** Narrows a thrown value to one carrying an HTTP status code (e.g. FirebaseError). */
+function hasHttpStatus(e: unknown): e is { status: number } {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "status" in e &&
+    typeof (e as Record<string, unknown>).status === "number"
+  );
+}
+
+/**
+ * Fetches a Firestore document for a `firestore.get()`/`firestore.exists()`
+ * call made from within a Storage rules evaluation. Exported for unit
+ * testing only; not part of this module's public surface.
+ * @internal
+ */
+export async function fetchFirestoreDocument(
   projectId: string,
   request: RuntimeActionFirestoreDataRequest,
 ): Promise<RuntimeActionFirestoreDataResponse> {
   const pathname = `projects/${projectId}${request.context.path}`;
 
   const client = EmulatorRegistry.client(Emulators.FIRESTORE, { apiVersion: "v1", auth: true });
-  try {
-    const doc = await client.get(pathname);
-    const { name, fields } = doc.body as { name: string; fields: string };
-    const result = { name, fields };
+  for (let attempt = 1; attempt <= FETCH_FIRESTORE_DOCUMENT_MAX_ATTEMPTS; attempt++) {
+    let doc;
+    // Only the request itself is guarded here — parsing the response below is
+    // deliberately left outside, so a malformed payload surfaces as the
+    // programming/schema error it is rather than being retried as though it
+    // were a transient network failure.
+    try {
+      doc = await client.get(pathname);
+    } catch (e: unknown) {
+      // A confirmed 404 is a real answer about the document, so it's returned
+      // straight away — only failures that leave the answer unknown are retried.
+      const isConfirmedNotFound = hasHttpStatus(e) && e.status === 404;
+      const isLastAttempt = attempt === FETCH_FIRESTORE_DOCUMENT_MAX_ATTEMPTS;
+      if (isConfirmedNotFound || isLastAttempt) {
+        return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
+      }
+      await utils.sleep(FETCH_FIRESTORE_DOCUMENT_RETRY_DELAY_MS);
+      continue;
+    }
+
+    const body = doc.body as { name?: string; fields?: unknown } | undefined;
+    if (!body || typeof body.name !== "string") {
+      return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
+    }
+    const result = { name: body.name, fields: body.fields };
     return { result, status: DataLoadStatus.OK, warnings: [], errors: [] };
-  } catch (e) {
-    // Don't care what the error is, just return not_found
-    return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
   }
+  // Unreachable: the loop above always returns by its last iteration.
+  return { status: DataLoadStatus.NOT_FOUND, warnings: [], errors: [] };
 }
 
 /**

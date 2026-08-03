@@ -1,2 +1,3 @@
 - Added support for a two-phase non-interactive login flow. Initiate this by running `firebase login --non-interactive`, navigate to the printed link to get an authorization code, and complete the login by running `firebase login <auth_code>`.
 - Fixed `apps:init` writing `google-services.json` to an `app/app` path when the Android module has no `src` directory, by detecting the module from the directory basename instead of the first path segment (#10863).
+- Fixed `firestore.get()`/`firestore.exists()` in Storage rules reporting a failed request as "document not found", which could cause rules to deny access on the strength of a transport failure. Only a confirmed 404 is now treated as a real answer; other failures are retried.
