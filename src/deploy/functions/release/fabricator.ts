@@ -5,8 +5,9 @@ import {
   isCloudRunResourceExhausted,
   isServiceAccount404,
   isTransientError,
+  parseErrorCode,
 } from "./executor";
-import { FirebaseError, getErrStatus } from "../../../error";
+import { FirebaseError } from "../../../error";
 
 import { SourceTokenScraper } from "./sourceTokenScraper";
 import { Timer } from "./timer";
@@ -86,7 +87,7 @@ const rethrowAs =
 const rethrowAsUnlessNotFound =
   <T>(endpoint: backend.Endpoint, op: reporter.OperationType) =>
   (err: unknown): T | void => {
-    if (getErrStatus(err) === 404) {
+    if (parseErrorCode(err) === 404) {
       logger.debug(`Ignoring 404 for ${op} on ${endpoint.id}; resource already deleted.`);
       return;
     }

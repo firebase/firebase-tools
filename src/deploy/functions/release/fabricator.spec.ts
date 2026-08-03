@@ -1146,6 +1146,14 @@ describe("Fabricator", () => {
       expect(pubsub.deleteTopic).to.have.been.called;
     });
 
+    it("ignores a raw GCP 404 where the status is on err.code", async () => {
+      scheduler.deleteJob.rejects(Object.assign(new Error("Job not found."), { code: 404 }));
+      pubsub.deleteTopic.rejects(Object.assign(new Error("Topic not found."), { code: 404 }));
+      await expect(fab.deleteScheduleV1(ep)).to.eventually.be.fulfilled;
+      expect(scheduler.deleteJob).to.have.been.called;
+      expect(pubsub.deleteTopic).to.have.been.called;
+    });
+
     it("still wraps non-404 errors", async () => {
       scheduler.deleteJob.rejects(new FirebaseError("Permission denied.", { status: 403 }));
       await expect(fab.deleteScheduleV1(ep)).to.eventually.be.rejectedWith(
