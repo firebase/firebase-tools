@@ -15,7 +15,10 @@ async function main() {
     const extensionTestsPath = path.resolve(__dirname, "./suite/index");
 
     // Download VS Code, unzip it and run the integration test
-    const tmpUserData = path.join(os.tmpdir(), `vsc-ud-${Math.random().toString(36).substring(2, 7)}`);
+    const tmpUserData = path.join(
+      os.tmpdir(),
+      `vsc-ud-${Math.random().toString(36).substring(2, 7)}`,
+    );
     await runTests({
       version: VSCODE_VERSION,
       extensionDevelopmentPath,
