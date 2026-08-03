@@ -47,12 +47,14 @@ import {
   ValidatedConfig,
   requireLocal,
   shouldUseRuntimeConfig,
+  isKitConfig,
+  addKitPrefix,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
 import { applyBackendHashToBackends } from "./cache/applyHash";
 import { allEndpoints, Backend } from "./backend";
-import { assertExhaustive, partition } from "../../functional";
+import { assertExhaustive, partition, mapObject } from "../../functional";
 import { prepareDynamicExtensions } from "../extensions/prepare";
 import { Context as ExtContext, Payload as ExtPayload } from "../extensions/args";
 import { DeployOptions } from "..";
@@ -81,6 +83,10 @@ export async function discoverSecurityDetails(
   newEtag?: string;
 }> {
   const requiredRoles = want.requiredRoles;
+  // Note: On partial first rollouts (where at least one function successfully deployed),
+  // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
+  // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
+  // fabricator cleans up the unreferenced service account so no orphaned SA remains.
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
   let haveRolesEtag: string | undefined;
@@ -240,7 +246,12 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config!.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => {
+    if (isKitConfig(cfg)) {
+      return cfg.instances && Object.keys(cfg.instances).some((inst) => codebases.includes(inst));
+    }
+    return cfg.codebase && codebases.includes(cfg.codebase);
+  });
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -282,8 +293,14 @@ export async function prepare(
       projectId: projectId,
       projectAlias: options.projectAlias,
     };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
-    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
+      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
+    } else {
+      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    }
+
+    const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
     const envs = { ...userEnvs, ...firebaseEnvs };
 
     const relevantEndpoints = backend
@@ -291,15 +308,28 @@ export async function prepare(
       .filter((e) => e.codebase === codebase || e.codebase === undefined);
     await resolveDefaultRegionsForBuild(wantBuild, backend.of(...relevantEndpoints));
 
-    const { backend: wantBackend, envs: resolvedEnvs } = await build.resolveBackend({
+    const parsedSecretRefs = mapObject<string, build.ParsedSecretRef>(secretRefs, (unparsed) =>
+      build.parseSecretRef(unparsed),
+    );
+    build.applyEnvSecretBindings(wantBuild, parsedSecretRefs);
+
+    const {
+      backend: wantBackend,
+      envs: resolvedEnvs,
+      secretRefs: resolvedSecretRefs,
+    } = await build.resolveBackend({
       build: wantBuild,
       firebaseConfig,
       userEnvs,
       nonInteractive: options.nonInteractive,
+      force: options.force,
       isEmulator: false,
     });
 
     functionsEnv.writeResolvedParams(resolvedEnvs, userEnvs, userEnvOpt);
+    if (experiments.isEnabled("secretEnvParams")) {
+      functionsEnv.writeResolvedSecretRefs(resolvedSecretRefs, secretRefs, userEnvOpt);
+    }
 
     let hasEnvsFromParams = false;
     wantBackend.environmentVariables = envs;
@@ -389,7 +419,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime!, "dart");
+      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
       const executablePaths = isDart ? ["bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
@@ -765,7 +795,10 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    const prefix = isKitConfig(codebaseConfig)
+      ? addKitPrefix(codebase)
+      : codebaseConfig.prefix || "";
+    build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
@@ -794,9 +827,11 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
   }
 }
 
-// Genkit almost always requires an API key, so warn if the customer is about to deploy
-// a function and doesn't have one. To avoid repetitive nagging, only warn on the first
-// deploy of the function.
+/**
+ * Genkit almost always requires an API key, so warn if the customer is about to deploy
+ * a function and doesn't have one. To avoid repetitive nagging, only warn on the first
+ * deploy of the function.
+ */
 export async function warnIfNewGenkitFunctionIsMissingSecrets(
   have: backend.Backend,
   want: backend.Backend,
@@ -935,4 +970,27 @@ export async function ensureAllRequiredAPIsEnabled(
       /* silent=*/ false,
     );
   }
+}
+
+/**
+ * Divides the environment variables between normal envs and references to a Secret resource.
+ * Secret references begin with FIREBASE_SECRET_REF_ and are not provided directly in process.env,
+ * but the Cloud Secret Manager resource they reference is loaded through SecretEnvVars.
+ */
+export function partitionUserEnvs(allEnvs: Record<string, string>): {
+  userEnvs: Record<string, string>;
+  secretRefs: Record<string, string>;
+} {
+  const [secretRefs, userEnvs] = Object.entries(allEnvs).reduce(
+    (accumulatedSplit, [k, v]) => {
+      if (k.startsWith(build.SECRET_REF_PREFIX)) {
+        accumulatedSplit[0][k.replace(build.SECRET_REF_PREFIX, "")] = v;
+      } else {
+        accumulatedSplit[1][k] = v;
+      }
+      return accumulatedSplit;
+    },
+    [{}, {}] as [Record<string, string>, Record<string, string>],
+  );
+  return { userEnvs: userEnvs, secretRefs: secretRefs };
 }
