@@ -24,7 +24,7 @@ describe("appcheck:services:set", () => {
   let confirmStub: sinon.SinonStub;
 
   beforeEach(() => {
-    (command as unknown as { befores: unknown[] }).befores = []; // bypass auth hook
+    command["befores"] = []; // bypass auth hook, befores is private
     sinon.stub(projectUtils, "needProjectNumber").resolves(PROJECT_NUMBER);
     sinon.stub(utils, "logSuccess");
     getServiceStub = sinon

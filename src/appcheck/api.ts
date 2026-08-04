@@ -1,12 +1,16 @@
 import { appCheckOrigin } from "../api";
 import { Client } from "../apiv2";
-import {
-  DebugToken,
-  EnforcementMode,
-  ListDebugTokensResponse,
-  ListServicesResponse,
-  Service,
-} from "./types";
+import { DebugToken, EnforcementMode, ListDebugTokensResponse, Service } from "./types";
+
+/**
+ * The raw list response. `services` is absent rather than empty when a project
+ * has no service configured, which is why callers get a plain array from
+ * `listServices` instead of this shape.
+ */
+interface ListServicesResponse {
+  services?: Service[];
+  nextPageToken?: string;
+}
 
 const API_VERSION = "v1";
 

@@ -61,7 +61,7 @@ export function displayNameForServiceId(serviceId: string): string {
  * no alias. Listed here only so a full id passes validation instead of being
  * rejected by the CLI before the API can answer.
  */
-const OTHER_SUPPORTED_SERVICE_IDS = new Set([
+const OTHER_SUPPORTED_SERVICE_IDS: ReadonlySet<string> = new Set([
   "maps-backend.googleapis.com",
   "places.googleapis.com",
   "oauth2.googleapis.com",
@@ -74,7 +74,7 @@ const OTHER_SUPPORTED_SERVICE_IDS = new Set([
  * AI Logic is a paid resource that abusers target, so it should never sit
  * unprotected.
  */
-const AUTO_ENFORCED_SERVICE_IDS = new Set(["firebaseml.googleapis.com"]);
+const AUTO_ENFORCED_SERVICE_IDS: ReadonlySet<string> = new Set(["firebaseml.googleapis.com"]);
 
 /**
  * The day App Check enforcement becomes mandatory for Firebase AI Logic.

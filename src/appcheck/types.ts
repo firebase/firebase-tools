@@ -34,11 +34,6 @@ export interface Service {
   etag?: string;
 }
 
-export interface ListServicesResponse {
-  services?: Service[];
-  nextPageToken?: string;
-}
-
 export interface AppCheckServiceOptions extends Options {
   replayProtection?: string;
 }
