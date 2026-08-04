@@ -95,7 +95,7 @@ export const command = new Command("functions:secrets:set <KEY>")
     let haveBackend = await backend.existingBackend({ projectId } as args.Context);
     let endpointsToUpdate = backend
       .allEndpoints(haveBackend)
-      .filter((e) => isFirebaseManaged(e.labels ?? []))
+      .filter((e) => isFirebaseManaged(e.labels ?? {}))
       .filter((e) => secrets.inUse({ projectId, projectNumber }, secret, e));
 
     if (endpointsToUpdate.length === 0) {
@@ -122,23 +122,21 @@ export const command = new Command("functions:secrets:set <KEY>")
       return;
     }
 
-    if (endpointsToUpdate.length > 1) {
-      const choices = endpointsToUpdate.map((e): Choice<string> => {
-        const currentVersion = secrets.getSecretVersions(e)[secret.name];
-        return {
-          name: `${e.id}(${e.region}) - current secret version: ${currentVersion ?? "unknown"}`,
-          value: e.id,
-          checked: true,
-        };
-      });
-      const selectedEndpointIds = await checkbox<string>({
-        message:
-          "Which functions do you want to re-deploy?" +
-          "Press Space to select functions, then Enter to confirm your choices.",
-        choices: choices,
-      });
-      endpointsToUpdate = endpointsToUpdate.filter((e) => selectedEndpointIds.includes(e.id));
-    }
+    const choices = endpointsToUpdate.map((e): Choice<backend.Endpoint> => {
+      const currentVersion = secrets.getSecretVersions(e)[secret.name];
+      return {
+        name: `${e.id}(${e.region}) - current secret version: ${currentVersion ?? "unknown"}`,
+        value: e,
+        checked: true,
+      };
+    });
+    endpointsToUpdate = await checkbox<backend.Endpoint>({
+      message:
+        "Which functions do you want to re-deploy?" +
+        "Press Space to select functions, then Enter to confirm your choices.",
+      choices: choices,
+    });
+
     if (endpointsToUpdate.length === 0) {
       logBullet(`No functions confirmed for automatic re-deployment.`);
       logBullet(
