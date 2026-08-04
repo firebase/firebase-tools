@@ -113,13 +113,20 @@ export async function doSetup(setup: Setup, config: Config, options: Options): P
   backendConfig.rootDir = await input({
     default: "/",
     message: "Specify your app's root directory relative to your firebase.json directory",
+    validate: (input: string) => {
+      const absPath = path.join(config.projectDir, input);
+      if (!existsSync(absPath)) {
+        return `Directory ${absPath} does not exist. Please enter a valid directory.`;
+      }
+      return true;
+    },
   });
 
   upsertAppHostingConfig(backendConfig, config);
   config.writeProjectFile("firebase.json", config.src);
 
   utils.logBullet("Writing default settings to " + clc.bold("apphosting.yaml") + "...");
-  const absRootDir = path.join(process.cwd(), backendConfig.rootDir);
+  const absRootDir = path.join(config.projectDir, backendConfig.rootDir);
   if (!existsSync(absRootDir)) {
     throw new FirebaseError(
       `Failed to write apphosting.yaml file because app root directory ${absRootDir} does not exist. Please try again with a valid directory.`,

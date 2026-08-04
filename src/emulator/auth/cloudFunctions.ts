@@ -1,4 +1,4 @@
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 import { EventContext } from "firebase-functions";
 
@@ -53,7 +53,7 @@ export class AuthCloudFunction {
     userInfoPayload: UserInfoPayload,
   ): CreateEvent {
     return {
-      eventId: uuid.v4(),
+      eventId: randomUUID(),
       eventType: `providers/firebase.auth/eventTypes/user.${action}`,
       resource: {
         name: `projects/${this.projectId}`,

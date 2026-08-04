@@ -73,6 +73,8 @@ export async function addServiceAccountToRoles(
     getIamPolicy(projectId),
   ]);
 
+  projectPolicy.bindings = projectPolicy.bindings || [];
+
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
@@ -117,6 +119,8 @@ export async function serviceAccountHasRoles(
     getIamPolicy(projectId),
   ]);
 
+  projectPolicy.bindings = projectPolicy.bindings || [];
+
   // The way the service account name is formatted in the Policy object
   // https://cloud.google.com/iam/docs/reference/rest/v1/Policy
   // serviceAccount:my-project-id@appspot.gserviceaccount.com
@@ -133,6 +137,61 @@ export async function serviceAccountHasRoles(
       return false;
     }
   }
-
   return true;
 }
+
+/**
+ * Removes the specified IAM roles from a service account in the project policy.
+ */
+export async function removeServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+  rolesToRemove: string[],
+): Promise<Policy> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const bindings = projectPolicy.bindings || [];
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  let updated = false;
+
+  for (let i = bindings.length - 1; i >= 0; i--) {
+    const binding = bindings[i];
+    if (rolesToRemove.includes(binding.role)) {
+      const memberIndex = binding.members.indexOf(memberName);
+      if (memberIndex !== -1) {
+        binding.members.splice(memberIndex, 1);
+        updated = true;
+        if (binding.members.length === 0) {
+          bindings.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  if (updated) {
+    projectPolicy.bindings = bindings;
+    return await setIamPolicy(projectId, projectPolicy, "bindings");
+  }
+  return projectPolicy;
+}
+
+/**
+ * Returns a list of all IAM roles currently granted to the service account in the project policy.
+ */
+export async function getServiceAccountRoles(
+  projectId: string,
+  serviceAccountEmail: string,
+): Promise<string[]> {
+  const projectPolicy = await getIamPolicy(projectId);
+  const memberName = `serviceAccount:${serviceAccountEmail}`;
+  const roles: string[] = [];
+  const bindings = projectPolicy.bindings || [];
+
+  for (const binding of bindings) {
+    if (binding.members.includes(memberName)) {
+      roles.push(binding.role);
+    }
+  }
+  return roles;
+}
+
+export const addServiceAccountRoles = addServiceAccountToRoles;

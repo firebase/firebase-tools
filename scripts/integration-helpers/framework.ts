@@ -1,5 +1,3 @@
-import fetch, { Response } from "node-fetch";
-
 import { CLIProcess } from "./cli";
 import { Emulators } from "../../src/emulator/types";
 

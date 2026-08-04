@@ -495,18 +495,16 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr", "es"]
         .flatMap((locale) => [
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "favicon.ico"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.original.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.csr.html"),
         ])
-        .map(normalize);
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`],
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`],
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
         ])
         .map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));

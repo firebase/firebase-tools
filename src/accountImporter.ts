@@ -10,7 +10,6 @@ const apiClient = new Client({
   urlPrefix: googleOrigin(),
 });
 
-// TODO: support for MFA at runtime was added in PR #3173, but this importer currently ignores `mfaInfo` and loses the data on import.
 const ALLOWED_JSON_KEYS = [
   "localId",
   "email",
@@ -25,6 +24,7 @@ const ALLOWED_JSON_KEYS = [
   "phoneNumber",
   "disabled",
   "customAttributes",
+  "mfaInfo",
 ];
 const ALLOWED_JSON_KEYS_RENAMING = {
   lastSignedInAt: "lastLoginAt",

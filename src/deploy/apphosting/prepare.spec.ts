@@ -16,6 +16,7 @@ import prepare, {
   getBackendConfigs,
   injectEnvVarsFromApphostingConfig,
   injectAutoInitEnvVars,
+  injectAngularEnvVars,
 } from "./prepare";
 import * as localbuilds from "../../apphosting/localbuilds";
 import * as managementApps from "../../management/apps";
@@ -29,6 +30,7 @@ import { Options } from "../../options";
 import { AppHostingSingle } from "../../firebaseConfig";
 import * as fs from "fs";
 import * as fsAsync from "../../fsAsync";
+import * as utils from "../../utils";
 
 const BASE_OPTS = {
   cwd: "/",
@@ -139,6 +141,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -240,8 +243,14 @@ describe("apphosting", () => {
 
       listBackendsStub.onFirstCall().resolves({
         backends: [
-          { name: "projects/my-project/locations/us-central1/backends/backend-prod" },
-          { name: "projects/my-project/locations/us-central1/backends/backend-staging" },
+          {
+            name: "projects/my-project/locations/us-central1/backends/backend-prod",
+            runtime: { value: "nodejs22" },
+          },
+          {
+            name: "projects/my-project/locations/us-central1/backends/backend-staging",
+            runtime: { value: "nodejs22" },
+          },
         ],
       });
 
@@ -298,6 +307,7 @@ describe("apphosting", () => {
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
             appId: "my-app-id",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -357,6 +367,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -432,6 +443,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -466,6 +478,7 @@ describe("apphosting", () => {
         backends: [
           {
             name: "projects/my-project/locations/us-central1/backends/foo",
+            runtime: { value: "nodejs22" },
           },
         ],
       });
@@ -629,6 +642,59 @@ describe("apphosting", () => {
       await prepare(context, opts);
 
       expect(assertEnabledStub).to.not.have.been.calledWith("apphostinglocalbuilds");
+    });
+
+    it("dynamically fetches the backend from the API if it is not found in the pre-fetched list (e.g., newly created)", async () => {
+      const optsWithLocalBuild = {
+        ...opts,
+        config: new Config({
+          apphosting: {
+            backendId: "newly-created-backend",
+            rootDir: "/",
+            ignore: [],
+            localBuild: true,
+          },
+        }),
+      };
+      const context = initializeContext();
+
+      const buildConfig = {
+        runCommand: "npm run build:prod",
+        env: [],
+      };
+      sinon.stub(localbuilds, "localBuild").resolves({
+        outputFiles: ["./next/standalone"],
+        buildConfig,
+      });
+
+      listBackendsStub.onFirstCall().resolves({
+        backends: [],
+      });
+
+      doSetupSourceDeployStub.resolves({ location: "us-central1" });
+      confirmStub.resolves(true);
+      checkboxStub.resolves(["newly-created-backend"]);
+
+      const getBackendStub = sinon.stub(apphosting, "getBackend").resolves({
+        name: "projects/my-project/locations/us-central1/backends/newly-created-backend",
+        runtime: { value: "nodejs22" },
+      } as unknown as apphosting.Backend);
+
+      await prepare(context, optsWithLocalBuild);
+
+      expect(getBackendStub).to.have.been.calledOnceWith(
+        "my-project",
+        "us-central1",
+        "newly-created-backend",
+      );
+      expect(context.backendLocalBuilds["newly-created-backend"]).to.deep.equal({
+        outputFiles: ["./next/standalone"],
+        localBuildScratchDir: path.join(
+          os.tmpdir(),
+          `apphosting-local-build-newly-created-backend-${expectedPathHash}`,
+        ),
+        buildConfig,
+      });
     });
   });
 
@@ -809,6 +875,249 @@ describe("apphosting", () => {
 
       expect(runtimeEnv["foo"]["USER_VAR_1"]?.value).to.equal("user_defined_value");
       expect(runtimeEnv["foo"]["AUTO_VAR_1"]?.value).to.equal("auto1");
+    });
+  });
+
+  describe("injectAngularEnvVars", () => {
+    let existsStub: sinon.SinonStub;
+    let readFileSyncStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      existsStub = fs.existsSync as sinon.SinonStub;
+      readFileSyncStub = sinon.stub(fs, "readFileSync");
+    });
+
+    it("should do nothing for non-Angular applications", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.returns(false);
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(buildEnv["foo"]).to.be.empty;
+      expect(runtimeEnv["foo"]).to.be.empty;
+    });
+
+    it("should inject defaults for Angular applications when headers are missing", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.withArgs(sinon.match("package.json")).returns(
+        JSON.stringify({
+          dependencies: {
+            "@angular/core": "^19.0.0",
+          },
+        }),
+      );
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
+        availability: ["RUNTIME"],
+      });
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value:
+          "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com",
+        availability: ["RUNTIME"],
+      });
+    });
+
+    it("should NOT override user-defined NG_TRUST_PROXY_HEADERS if it is a subset of allowed values", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "x-forwarded-host,x-forwarded-proto",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      const warningSpy = sinon.spy(utils, "logLabeledWarning");
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-proto",
+        availability: ["RUNTIME"],
+      });
+      expect(warningSpy).to.not.have.been.called;
+    });
+
+    it("should throw a FirebaseError if user-defined NG_TRUST_PROXY_HEADERS contains invalid headers", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "x-forwarded-host,invalid-header",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      await expect(
+        injectAngularEnvVars(cfg, "/app-dir", "my-project", "us-central1", buildEnv, runtimeEnv),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /User-defined RUNTIME environment variable NG_TRUST_PROXY_HEADERS contains invalid headers/,
+      );
+    });
+
+    it("should override user-defined NG_TRUST_PROXY_HEADERS but NOT log a warning if defined as BUILD-only variable", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_TRUST_PROXY_HEADERS: {
+            value: "x-forwarded-host,x-forwarded-proto",
+            availability: ["BUILD"],
+          },
+        },
+      };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      const warningSpy = sinon.spy(utils, "logLabeledWarning");
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-port,x-forwarded-proto,x-forwarded-for",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_TRUST_PROXY_HEADERS"]).to.deep.equal({
+        value: "x-forwarded-host,x-forwarded-proto",
+        availability: ["BUILD"],
+      });
+      expect(warningSpy).to.not.have.been.called;
+    });
+
+    it("should NOT inject default NG_ALLOWED_HOSTS if user has defined it as RUNTIME variable", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = { foo: {} };
+      const runtimeEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "MY-CUSTOM-DOMAIN.COM",
+            availability: ["RUNTIME"],
+          },
+        },
+      };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value: "MY-CUSTOM-DOMAIN.COM",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_ALLOWED_HOSTS"]).to.be.undefined;
+    });
+
+    it("should inject default NG_ALLOWED_HOSTS into runtimeEnv if user defined it as a BUILD-only variable", async () => {
+      const cfg: AppHostingSingle = { backendId: "foo", rootDir: "/", ignore: [] };
+      const buildEnv: Record<string, EnvMap> = {
+        foo: {
+          NG_ALLOWED_HOSTS: {
+            value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com",
+            availability: ["BUILD"],
+          },
+        },
+      };
+      const runtimeEnv: Record<string, EnvMap> = { foo: {} };
+
+      existsStub.withArgs(sinon.match("package.json")).returns(true);
+      readFileSyncStub.returns(
+        JSON.stringify({
+          dependencies: { "@angular/core": "^19.0.0" },
+        }),
+      );
+
+      await injectAngularEnvVars(
+        cfg,
+        "/app-dir",
+        "my-project",
+        "us-central1",
+        buildEnv,
+        runtimeEnv,
+      );
+
+      expect(runtimeEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value:
+          "foo-123456789.us-central1.run.app,foo--my-project.us-central1.hosted.app,foo--my-project.web.app,foo--my-project.firebaseapp.com",
+        availability: ["RUNTIME"],
+      });
+      expect(buildEnv["foo"]["NG_ALLOWED_HOSTS"]).to.deep.equal({
+        value: "MY-CUSTOM-DOMAIN.COM,foo-123456789.us-central1.run.app,Another-Domain.com",
+        availability: ["BUILD"],
+      });
     });
   });
 });

@@ -1006,7 +1006,9 @@ export class FirestoreApi {
         pageSize: limit,
       },
     });
-    return res.body;
+    return {
+      operations: res.body?.operations || [],
+    };
   }
 
   /**

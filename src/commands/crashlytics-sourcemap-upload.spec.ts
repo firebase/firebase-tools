@@ -57,7 +57,7 @@ describe("crashlytics:sourcemap:upload", () => {
     execSyncStub.withArgs("git rev-parse HEAD").returns(Buffer.from("a".repeat(40)));
     clientPatchStub = sandbox.stub(Client.prototype, "patch").resolves({
       status: 200,
-      response: {} as unknown as import("node-fetch").Response,
+      response: {} as unknown as Response,
       body: {},
     });
   });

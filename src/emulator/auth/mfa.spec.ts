@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import * as nock from "nock";
+import nock from "../../test/helpers/nock";
 import { describeAuthEmulator, PROJECT_ID } from "./testing/setup";
 import { decode as decodeJwt, JwtHeader } from "jsonwebtoken";
 import {

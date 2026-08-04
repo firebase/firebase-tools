@@ -2,7 +2,7 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as yaml from "yaml";
 import * as sinon from "sinon";
-import * as nock from "nock";
+import nock from "../../../../test/helpers/nock";
 
 import * as api from "../../../../api";
 import { FirebaseError } from "../../../../error";

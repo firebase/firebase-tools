@@ -239,3 +239,18 @@ function cacheEnabledAPI(projectId: string, apiName: string) {
   cache[projectId][apiName] = true;
   configstore.set(API_ENABLEMENT_CACHE_KEY, cache);
 }
+
+/**
+ * Removes a single API from the local "enabled" cache so the next check re-queries the server.
+ * Call this after enabling or disabling an API to keep the cache consistent with the server state.
+ */
+export function uncacheEnabledAPI(projectId: string, apiName: string): void {
+  const cache = (configstore.get(API_ENABLEMENT_CACHE_KEY) || {}) as Record<
+    string,
+    Record<string, true>
+  >;
+  if (cache[projectId]) {
+    delete cache[projectId][apiName];
+    configstore.set(API_ENABLEMENT_CACHE_KEY, cache);
+  }
+}

@@ -1,13 +1,13 @@
-import { createGunzip, createGzip } from "zlib";
+import { createGunzip, gzipSync } from "zlib";
 import { expect } from "chai";
 import * as express from "express";
 import * as http from "http";
-import * as nock from "nock";
+import nock from "../test/helpers/nock";
 import * as portfinder from "portfinder";
 import * as supertest from "supertest";
 
 import { initMiddleware } from "./initMiddleware";
-import { streamToString, stringToStream } from "../utils";
+import { streamToString } from "../utils";
 import { TemplateServerResponse } from "./implicitInit";
 
 const templateServerRes: TemplateServerResponse = {
@@ -133,8 +133,6 @@ describe("initMiddleware", () => {
     // automatically handle compressed data, so a real request against a real
     // server is the easiest way to confirm this behavior.
     const content = "this should be compressed";
-    const contentStream = stringToStream(content);
-    const compressedStream = contentStream?.pipe(createGzip());
 
     const app = express();
     app.use(initMiddleware(templateServerRes));
@@ -154,7 +152,9 @@ describe("initMiddleware", () => {
     it("should return compressed data if it is returned compressed", async () => {
       nock("https://www.gstatic.com")
         .get("/firebasejs/v2.2.2/sample-sdk.js")
-        .reply(200, () => compressedStream, { "content-encoding": "gzip" });
+        .reply(200, () => gzipSync(content), {
+          "content-encoding": "gzip",
+        });
 
       const res = await new Promise<http.IncomingMessage>((resolve, reject) => {
         const req = http.request(

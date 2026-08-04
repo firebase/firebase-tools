@@ -182,6 +182,120 @@ export async function grantEmailsSecretAccess(
 }
 
 /**
+ * Revokes the backend service accounts' access permissions from the provided secret.
+ */
+export async function revokeSecretAccess(
+  projectId: string,
+  secretName: string,
+  accounts: MultiServiceAccounts,
+): Promise<void> {
+  const bindingsToRevoke: iam.Binding[] = [
+    {
+      role: "roles/secretmanager.secretAccessor",
+      members: [...accounts.buildServiceAccounts, ...accounts.runServiceAccounts].map(
+        (sa) => `serviceAccount:${sa}`,
+      ),
+    },
+    {
+      role: "roles/secretmanager.viewer",
+      members: accounts.buildServiceAccounts.map((sa) => `serviceAccount:${sa}`),
+    },
+  ];
+
+  await revokeSecretBindings(projectId, secretName, bindingsToRevoke);
+}
+
+/**
+ * Revokes the following users or groups access from the provided secrets.
+ */
+export async function revokeEmailsSecretAccess(
+  projectId: string,
+  secretNames: string[],
+  emails: string[],
+): Promise<void> {
+  const bindingsToRevoke: iam.Binding[] = [
+    {
+      role: "roles/secretmanager.secretAccessor",
+      members: emails.flatMap((email) => [`user:${email}`, `group:${email}`]),
+    },
+  ];
+
+  for (const secretName of secretNames) {
+    await revokeSecretBindings(projectId, secretName, bindingsToRevoke);
+  }
+}
+
+async function revokeSecretBindings(
+  projectId: string,
+  secretName: string,
+  bindingsToRevoke: iam.Binding[],
+): Promise<void> {
+  let existingBindings: iam.Binding[];
+  try {
+    existingBindings = (await gcsm.getIamPolicy({ projectId, name: secretName })).bindings || [];
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to get IAM bindings on secret: ${secretName}. Ensure you have the permissions to do so and try again.`,
+      { original: getError(err) },
+    );
+  }
+
+  const removalsByRole = new Map<string, Set<string>>();
+
+  for (const binding of bindingsToRevoke) {
+    let members = removalsByRole.get(binding.role);
+    if (!members) {
+      members = new Set<string>();
+      removalsByRole.set(binding.role, members);
+    }
+
+    for (const member of binding.members) {
+      members.add(member);
+    }
+  }
+
+  let updated = false;
+  const bindings: iam.Binding[] = [];
+
+  for (const binding of existingBindings) {
+    const removals = removalsByRole.get(binding.role);
+
+    if (!removals || binding.condition) {
+      bindings.push(binding);
+      continue;
+    }
+
+    const members = binding.members.filter((member) => !removals.has(member));
+    if (members.length !== binding.members.length) {
+      updated = true;
+    }
+
+    if (members.length) {
+      bindings.push({ ...binding, members });
+    } else {
+      updated = true;
+    }
+  }
+
+  if (!updated) {
+    utils.logSuccess(`No matching IAM bindings found on secret ${secretName}.\n`);
+    return;
+  }
+
+  try {
+    await gcsm.setIamPolicy({ projectId, name: secretName }, bindings);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Failed to revoke IAM bindings ${JSON.stringify(bindingsToRevoke)} on secret: ${secretName}. Ensure you have the permissions to do so and try again. ` +
+        "For more information visit https://cloud.google.com/secret-manager/docs/manage-access-to-secrets#required-roles",
+      { original: getError(err) },
+    );
+  }
+
+  utils.logSuccess(`Successfully revoked IAM bindings on secret ${secretName}.\n`);
+}
+
+/**
  * Ensures a secret exists for use with app hosting, optionally locked to a region.
  * If a secret exists, we verify the user is not trying to change the region and verifies a secret
  * is not being used for both functions and app hosting as their garbage collection is incompatible

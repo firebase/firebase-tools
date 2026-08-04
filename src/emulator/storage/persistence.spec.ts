@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { tmpdir } from "os";
 import * as fs from "fs";
 
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID as uuidV4 } from "crypto";
 import { Persistence } from "./persistence";
 
 describe("Persistence", () => {

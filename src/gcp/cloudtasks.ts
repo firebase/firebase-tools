@@ -135,6 +135,24 @@ export async function deleteQueue(name: string): Promise<void> {
   await client.delete(name);
 }
 
+export interface Task {
+  httpRequest: {
+    url: string;
+    httpMethod?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    oidcToken?: {
+      serviceAccountEmail: string;
+      audience?: string;
+    };
+  };
+}
+
+/** Enqueues a task in a Cloud Tasks queue. */
+export async function enqueueTask(queueName: string, task: Task): Promise<void> {
+  await client.post(`${queueName}/tasks`, { task });
+}
+
 /** Set the IAM policy of a given queue. */
 export async function setIamPolicy(name: string, policy: iam.Policy): Promise<iam.Policy> {
   const res = await client.post<{ policy: iam.Policy }, iam.Policy>(`${name}:setIamPolicy`, {

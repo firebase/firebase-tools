@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./utils";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -91,6 +90,12 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: false,
   },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -135,6 +140,14 @@ export const ALL_EXPERIMENTS = experiments({
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
   },
 
   apphosting: {
@@ -215,6 +228,17 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  secretEnvParams: {
+    shortDescription:
+      "Enable writing the backing resource binding for a Functions secret param to .env",
+    default: false,
+    public: false,
+  },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
+    public: true,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
@@ -242,7 +266,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 
