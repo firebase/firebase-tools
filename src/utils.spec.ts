@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import { Readable } from "stream";
 
 import * as utils from "./utils";
 import { FirebaseError } from "./error";
@@ -293,6 +294,19 @@ describe("utils", () => {
     it("should return empty string if stream is undefined or null", async () => {
       await expect(utils.streamToString(undefined)).to.eventually.equal("");
       await expect(utils.streamToString(null)).to.eventually.equal("");
+    });
+
+    it("should decode a multi-byte character split across chunks", async () => {
+      // "café 中文 😀" holds 2-, 3- and 4-byte UTF-8 characters.
+      const text = "caf\u00e9 \u4e2d\u6587 \u{1F600}";
+      const buf = Buffer.from(text, "utf8");
+      const cut = buf.indexOf(Buffer.from("\u00e9", "utf8")) + 1;
+      const stream = new Readable();
+      stream.push(buf.subarray(0, cut));
+      stream.push(buf.subarray(cut));
+      stream.push(null);
+
+      await expect(utils.streamToString(stream)).to.eventually.equal(text);
     });
   });
 
