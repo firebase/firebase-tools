@@ -72,6 +72,31 @@ describe("appcheck buildProviderUpdate", () => {
     ]);
   });
 
+  it("writes the play-integrity booleans when they are turned off", () => {
+    const { update, updateMask } = buildProviderUpdate(
+      "play-integrity",
+      options({ requireLicensed: false, allowUnrecognizedVersion: false }),
+    );
+    expect(update).to.deep.equal({
+      accountDetails: { requireLicensed: false },
+      appIntegrity: { allowUnrecognizedVersion: false },
+    });
+    expect(updateMask).to.have.members([
+      "accountDetails.requireLicensed",
+      "appIntegrity.allowUnrecognizedVersion",
+    ]);
+  });
+
+  it("leaves the play-integrity booleans alone when neither flag is given", () => {
+    const { update, updateMask } = buildProviderUpdate(
+      "play-integrity",
+      options({ minDeviceIntegrity: "basic" }),
+    );
+    expect(update).to.not.have.property("accountDetails");
+    expect(update).to.not.have.property("appIntegrity");
+    expect(updateMask).to.deep.equal(["deviceIntegrity.minDeviceRecognitionLevel"]);
+  });
+
   it("accepts token ttl for every provider, including app-attest", () => {
     const { update, updateMask } = buildProviderUpdate("app-attest", options({ tokenTtl: "2h" }));
     expect(update).to.deep.equal({ tokenTtl: "7200s" });

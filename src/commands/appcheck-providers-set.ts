@@ -34,7 +34,7 @@ Flags per provider:
   recaptcha-enterprise   --site-key <key> --min-score <0.0-1.0>
   recaptcha-v3           --site-secret <value or @file> --min-score <0.0-1.0>
   play-integrity         --min-device-integrity <${Object.keys(DEVICE_INTEGRITY_LEVELS).join("|")}>
-                         --require-licensed --allow-unrecognized-version
+                         --[no-]require-licensed --[no-]allow-unrecognized-version
   app-attest             only --token-ttl
 
 Secrets accept @path to read a file, so a private key does not end up in your shell history.
@@ -58,8 +58,13 @@ For example:
     "--min-device-integrity <level>",
     `play-integrity: minimum device level (${Object.keys(DEVICE_INTEGRITY_LEVELS).join(", ")})`,
   )
+  // Each of these needs its negative form too. Without it a setting can be
+  // turned on and never turned off again, since a flag that is absent means
+  // "leave it alone" and there would be no way to say "set it to false".
   .option("--require-licensed", "play-integrity: require the LICENSED account verdict")
+  .option("--no-require-licensed", "play-integrity: stop requiring the LICENSED verdict")
   .option("--allow-unrecognized-version", "play-integrity: allow unrecognized app versions")
+  .option("--no-allow-unrecognized-version", "play-integrity: reject unrecognized app versions")
   .before(requireAuth)
   .before(requirePermissions, [
     "firebaseappcheck.appAttestConfig.update",
@@ -107,6 +112,15 @@ For example:
     }
     if (result.deviceIntegrity?.minDeviceRecognitionLevel) {
       logger.info(`   Min device:  ${result.deviceIntegrity.minDeviceRecognitionLevel}`);
+    }
+    // These two come back missing rather than false, so `?? false` is what the
+    // app really has. Print them for every play-integrity write, otherwise
+    // turning one off would answer with nothing at all.
+    if (providerType === "play-integrity") {
+      const licensed = result.accountDetails?.requireLicensed ?? false;
+      const unrecognized = result.appIntegrity?.allowUnrecognizedVersion ?? false;
+      logger.info(`   Licensed:    ${licensed ? "required" : "not required"}`);
+      logger.info(`   Unrecognized versions: ${unrecognized ? "allowed" : "not allowed"}`);
     }
     logger.info(`   Token TTL:   ${formatTokenTtl(result.tokenTtl)}`);
 

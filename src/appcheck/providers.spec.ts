@@ -123,11 +123,17 @@ describe("appcheck providers helpers", () => {
       fs.rmSync(path.dirname(file), { recursive: true, force: true });
     });
 
-    it("says which file is missing", () => {
+    it("says which file it could not read", () => {
       expect(() => secret("@/no/such/file.p8")).to.throw(
         FirebaseError,
-        /File not found: \/no\/such\/file\.p8/,
+        /Could not read \/no\/such\/file\.p8/,
       );
+    });
+
+    it("does not read a directory as a secret", () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "appcheck-"));
+      expect(() => secret(`@${dir}`)).to.throw(FirebaseError, /Could not read/);
+      fs.rmSync(dir, { recursive: true, force: true });
     });
   });
 

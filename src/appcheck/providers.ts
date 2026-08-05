@@ -1,6 +1,6 @@
 import * as fs from "fs";
 
-import { FirebaseError } from "../error";
+import { FirebaseError, getErrMsg, getError } from "../error";
 import { ProviderConfig, ProviderFlags, ProviderType } from "./types";
 
 /** The app platforms App Check can attest. */
@@ -180,10 +180,13 @@ function resolveSecretFlag(value: string): string {
     return value;
   }
   const path = value.slice(1);
-  if (!fs.existsSync(path)) {
-    throw new FirebaseError(`File not found: ${path}`);
+  try {
+    return fs.readFileSync(path, "utf8").trim();
+  } catch (err: unknown) {
+    throw new FirebaseError(`Could not read ${path}: ${getErrMsg(err)}`, {
+      original: getError(err),
+    });
   }
-  return fs.readFileSync(path, "utf8").trim();
 }
 
 /** Parses a reCAPTCHA score threshold, which the API takes as 0.0 to 1.0. */

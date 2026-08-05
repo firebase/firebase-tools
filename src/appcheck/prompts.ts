@@ -1,10 +1,50 @@
-import { AppPlatform, listFirebaseApps, selectAppInteractively } from "../management/apps";
+import {
+  AppPlatform,
+  AppMetadata,
+  listFirebaseApps,
+  selectAppInteractively,
+} from "../management/apps";
 import { needProjectId } from "../projectUtils";
 import { detectApps } from "../appUtils";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as clc from "colorette";
 import { AppCheckDebugOptions } from "./types";
+
+/**
+ * Narrows a project's apps down to one, by prompting when there is a choice.
+ *
+ * Apps registered in the directory the user is standing in come first, since
+ * those are the ones they are most likely to mean.
+ */
+async function chooseApp(
+  projectId: string,
+  apps: AppMetadata[],
+  options: AppCheckDebugOptions,
+  message: string,
+): Promise<AppMetadata> {
+  const localApps = await detectApps(options.cwd || process.cwd());
+  const localAppIds = localApps.map((a) => a.appId).filter(Boolean) as string[];
+  const local = localAppIds.length ? apps.filter((app) => localAppIds.includes(app.appId)) : [];
+  const choices = local.length ? local : apps;
+
+  if (choices.length === 1) {
+    return choices[0];
+  }
+  if (options.nonInteractive) {
+    throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
+  }
+  return selectAppInteractively(choices, AppPlatform.ANY, { message });
+}
+
+/** Lists a project's apps, failing with a clear message when it has none. */
+async function listAppsOrThrow(projectId: string): Promise<AppMetadata[]> {
+  const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+  if (!apps.length) {
+    throw new FirebaseError(`There are no apps associated with project ${projectId}.`);
+  }
+  return apps;
+}
 
 /**
  * Gets the appId from options or prompts the user to select an app if multiple exist.
@@ -25,32 +65,8 @@ export async function getOrPromptAppId(
     return { projectId, appId: options.app };
   }
 
-  const projectDir = options.cwd || process.cwd();
-  let apps = await listFirebaseApps(projectId, AppPlatform.ANY);
-  if (!apps.length) {
-    throw new FirebaseError(`There are no apps associated with project ${projectId}.`);
-  }
-
-  const localApps = await detectApps(projectDir);
-  const localAppIds = localApps.map((a) => a.appId).filter(Boolean) as string[];
-  if (localAppIds.length > 0) {
-    const filteredApps = apps.filter((app) => localAppIds.includes(app.appId));
-    if (filteredApps.length > 0) {
-      apps = filteredApps;
-    }
-  }
-
-  if (apps.length === 1) {
-    return { projectId, appId: apps[0].appId };
-  } else if (options.nonInteractive) {
-    throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
-  }
-
-  const selectedApp = await selectAppInteractively(apps, AppPlatform.ANY, {
-    message,
-  });
-
-  return { projectId, appId: selectedApp.appId };
+  const app = await chooseApp(projectId, await listAppsOrThrow(projectId), options, message);
+  return { projectId, appId: app.appId };
 }
 
 export const getOrPromptProjectAndAppId = getOrPromptAppId;
@@ -71,10 +87,7 @@ export async function getOrPromptApp(
 
   logger.info(`Active Project: ${clc.bold(projectId)}`);
 
-  const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
-  if (!apps.length) {
-    throw new FirebaseError(`There are no apps associated with project ${projectId}.`);
-  }
+  const apps = await listAppsOrThrow(projectId);
 
   if (options.app) {
     const app = apps.find((a) => a.appId === options.app);
@@ -84,21 +97,6 @@ export async function getOrPromptApp(
     return { projectId, appId: app.appId, platform: app.platform };
   }
 
-  // Prefer the apps that belong to the directory the user is standing in.
-  const localApps = await detectApps(options.cwd || process.cwd());
-  const localAppIds = localApps.map((a) => a.appId).filter(Boolean) as string[];
-  const candidates = localAppIds.length
-    ? apps.filter((app) => localAppIds.includes(app.appId))
-    : apps;
-  const choices = candidates.length ? candidates : apps;
-
-  if (choices.length === 1) {
-    return { projectId, appId: choices[0].appId, platform: choices[0].platform };
-  }
-  if (options.nonInteractive) {
-    throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
-  }
-
-  const selected = await selectAppInteractively(choices, AppPlatform.ANY, { message });
-  return { projectId, appId: selected.appId, platform: selected.platform };
+  const app = await chooseApp(projectId, apps, options, message);
+  return { projectId, appId: app.appId, platform: app.platform };
 }
