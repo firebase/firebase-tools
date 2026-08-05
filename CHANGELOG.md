@@ -2,3 +2,6 @@
 - Fixed `apps:init` writing `google-services.json` to an `app/app` path when the Android module has no `src` directory, by detecting the module from the directory basename instead of the first path segment (#10863).
 - Fixed authentication refresh issue under Application Default Credentials (ADC) when no project is active (#10880).
 - Added `crashlytics:onboard:web` CLI command to support Crashlytics onboarding for web apps.
+- Added `hidden` source map support to `crashlytics:sourcemap:upload`.
+- Fixed typo in loginPrototyper URL which caused issues during Firebase MCP server firebase_login
+- Added `appcheck:services:list`, `appcheck:services:get` and `appcheck:services:set` to read and change App Check enforcement per service.
