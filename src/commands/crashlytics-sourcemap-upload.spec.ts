@@ -1,6 +1,8 @@
 import * as chai from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import * as path from "path";
+import * as tmp from "tmp";
 
 import { command } from "./crashlytics-sourcemap-upload";
 import * as gcs from "../gcp/storage";
@@ -178,6 +180,73 @@ describe("crashlytics:sourcemap:upload", () => {
 
     expect(apiPayloads[0]).to.equal("/src/test/fixtures/mapping-files-with-js/main.js");
     expect(apiPayloads[1]).to.equal("/src/test/fixtures/mapping-files-with-js/other.js.map");
+  });
+
+  it("should find and upload hidden mapping files without sourceMappingURL in a directory", async () => {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+    const jsFile = path.join(tmpDir.name, "index.js");
+    const mapFile = path.join(tmpDir.name, "index.js.map");
+
+    // No sourceMappingURL comment in JS file
+    fs.writeFileSync(jsFile, "console.log('hidden');");
+    fs.writeFileSync(mapFile, JSON.stringify({ version: 3, file: "index.js", sources: [] }));
+
+    try {
+      await command.runner()(tmpDir.name, {
+        app: "test-app",
+      });
+
+      expect(gcsMock.uploadObject).to.be.calledOnce;
+      const uploadedFiles = gcsMock.uploadObject.getCalls().map((call) => call.args[0].file);
+      expect(uploadedFiles[0]).to.match(/test-app-.*-index\.js\.zip/);
+
+      expect(clientPatchStub).to.be.calledOnce;
+      const apiPayload = clientPatchStub.firstCall.args[1] as SourceMap;
+      expect(apiPayload.obfuscatedFilePath).to.match(/index\.js$/);
+      expect(apiPayload.obfuscatedFilePath).to.not.include(".js.map");
+    } finally {
+      tmpDir.removeCallback();
+    }
+  });
+
+  it("should support mixed directories with traditional, hidden, and unlinked mapping files", async () => {
+    const tmpDir = tmp.dirSync({ unsafeCleanup: true });
+
+    // 1. Traditional sourcemap
+    const tradJs = path.join(tmpDir.name, "trad.js");
+    const tradMap = path.join(tmpDir.name, "trad.js.map");
+    fs.writeFileSync(tradJs, "console.log('trad');\n//# sourceMappingURL=trad.js.map");
+    fs.writeFileSync(tradMap, JSON.stringify({ version: 3, sources: [] }));
+
+    // 2. Hidden sourcemap
+    const hiddenJs = path.join(tmpDir.name, "hidden.js");
+    const hiddenMap = path.join(tmpDir.name, "hidden.js.map");
+    fs.writeFileSync(hiddenJs, "console.log('hidden');");
+    fs.writeFileSync(hiddenMap, JSON.stringify({ version: 3, file: "hidden.js", sources: [] }));
+
+    // 3. Standalone unlinked map file
+    const unlinkedMap = path.join(tmpDir.name, "unlinked.js.map");
+    fs.writeFileSync(unlinkedMap, JSON.stringify({ version: 3, sources: [] }));
+
+    try {
+      await command.runner()(tmpDir.name, {
+        app: "test-app",
+      });
+
+      expect(gcsMock.uploadObject).to.be.calledThrice;
+      expect(clientPatchStub).to.be.calledThrice;
+
+      const apiPayloads = clientPatchStub
+        .getCalls()
+        .map((call) => (call.args[1] as SourceMap).obfuscatedFilePath)
+        .sort();
+
+      expect(apiPayloads.some((p) => p.endsWith("hidden.js"))).to.be.true;
+      expect(apiPayloads.some((p) => p.endsWith("trad.js"))).to.be.true;
+      expect(apiPayloads.some((p) => p.endsWith("unlinked.js.map"))).to.be.true;
+    } finally {
+      tmpDir.removeCallback();
+    }
   });
 
   it("should use the provided app version", async () => {
