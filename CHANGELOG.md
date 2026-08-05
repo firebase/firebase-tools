@@ -1,5 +1,10 @@
-- Add `MCP-Protocol-Version`, `Mcp-Method`, and `Mcp-Name` HTTP headers to `OneMcpServer` requests per the MCP 0728 standard release candidate (https://blog.modelcontextprotocol.io/posts/2026-07-28-release-candidate/ and https://modelcontextprotocol.io/seps/2243-http-standardization).
-- Fixes Storage Emulator to support JSON uploads larger than 100KB without hanging or throwing 413 error (#8355)
-- Add `extdeprecationwarnings` experiment to display phased deprecation notices and guidance across `ext:*` CLI commands.
-- Fixes Data Connect emulator crash when in-flight GraphQL requests are cancelled (#10821)
 - Automatically enable non-interactive mode when an AI agent is detected in the environment to prevent the CLI from hanging on interactive prompts.
+- Added support for a two-phase non-interactive login flow. Initiate this by running `firebase login --non-interactive`, navigate to the printed link to get an authorization code, and complete the login by running `firebase login <auth_code>`.
+- Fixed `apps:init` writing `google-services.json` to an `app/app` path when the Android module has no `src` directory, by detecting the module from the directory basename instead of the first path segment (#10863).
+- Fixed `firestore:locations` failing with a `null` project error when run without an active project (#10881).
+- Fixed authentication refresh issue under Application Default Credentials (ADC) when no project is active (#10880).
+- Added `crashlytics:onboard:web` CLI command to support Crashlytics onboarding for web apps.
+- Added `hidden` source map support to `crashlytics:sourcemap:upload`.
+- Fixed typo in loginPrototyper URL which caused issues during Firebase MCP server firebase_login
+- Added `appcheck:services:list`, `appcheck:services:get` and `appcheck:services:set` to read and change App Check enforcement per service.
+- Fixed unenforced read-only isolation for Native SQL queries for Firebase SQL Connect.

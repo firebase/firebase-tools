@@ -90,6 +90,12 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: false,
   },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -134,6 +140,23 @@ export const ALL_EXPERIMENTS = experiments({
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services` commands for reading and changing App Check " +
+      "enforcement per service. These commands are in preview and may change until the " +
+      "surface is API council approved. The `firebase appcheck:debugtokens` commands are " +
+      "generally available and are not affected by this experiment.",
+  },
+
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
   },
 
   apphosting: {
