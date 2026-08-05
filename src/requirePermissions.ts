@@ -16,13 +16,13 @@ const BASE_PERMISSIONS = ["firebase.projects.get"];
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function requirePermissions(options: any, permissions: string[] = []): Promise<void> {
+  await requireAuth(options);
+
   const projectId = getProjectId(options);
   if (!projectId) {
     return;
   }
   const requiredPermissions = BASE_PERMISSIONS.concat(permissions).sort();
-
-  await requireAuth(options);
 
   logger.debug(
     `[iam] checking project ${projectId} for permissions ${JSON.stringify(requiredPermissions)}`,
