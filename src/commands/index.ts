@@ -34,6 +34,15 @@ export function load(client: CLIClient): CLIClient {
   client.appcheck.debugtokens.create = loadCommand("appcheck-debugtokens-create");
   client.appcheck.debugtokens.list = loadCommand("appcheck-debugtokens-list");
   client.appcheck.debugtokens.delete = loadCommand("appcheck-debugtokens-delete");
+  // Enforcement is gated until the surface is API council approved, since the
+  // shape could still change. The debug token commands above already shipped
+  // and stay generally available.
+  if (experiments.isEnabled("appcheckadmin")) {
+    client.appcheck.services = {};
+    client.appcheck.services.list = loadCommand("appcheck-services-list");
+    client.appcheck.services.get = loadCommand("appcheck-services-get");
+    client.appcheck.services.set = loadCommand("appcheck-services-set");
+  }
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.appdistribution.testers = {};
