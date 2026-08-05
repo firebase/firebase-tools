@@ -3,6 +3,22 @@ import { FirebaseError } from "./error";
 
 export { Separator } from "@inquirer/prompts";
 
+let globalNonInteractive = false;
+
+/**
+ * Set the global non-interactive override.
+ */
+export function setNonInteractive(value: boolean): void {
+  globalNonInteractive = value;
+}
+
+/**
+ * Get the global non-interactive override state.
+ */
+export function isNonInteractive(): boolean {
+  return globalNonInteractive;
+}
+
 /**
  * Common options for all prompts.
  */
@@ -23,7 +39,7 @@ export interface BasicOptions<T> {
 export function guard<T>(
   opts: BasicOptions<T>,
 ): { shouldReturn: true; value: T } | { shouldReturn: false; value: undefined } {
-  if (!opts.nonInteractive) {
+  if (!opts.nonInteractive && !isNonInteractive()) {
     return { shouldReturn: false, value: undefined };
   }
   if (typeof opts.default !== "undefined") {
