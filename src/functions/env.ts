@@ -151,7 +151,7 @@ export function parse(data: string): ParseResult {
   return { envs, errors };
 }
 
-export class KeyValidationError extends Error {
+export class KeyValidationError extends FirebaseError {
   constructor(
     public key: string,
     public message: string,
