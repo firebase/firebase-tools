@@ -37,6 +37,11 @@ execSync(
   { stdio: "inherit", cwd: standaloneDir }
 );
 
+const welcomeSrc = path.join(standaloneDir, "welcome.js");
+if (fs.existsSync(welcomeSrc)) {
+  fs.copyFileSync(welcomeSrc, path.join(distDir, "welcome.js"));
+}
+
 console.log("[build-sea] 2. Packaging vendor directory...");
 const vendorTarPath = path.join(distDir, "vendor.tar.gz");
 
