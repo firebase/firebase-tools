@@ -133,5 +133,45 @@ describe("PythonDelegate", () => {
 
       await shutdown;
     });
+
+    it("returns immediately when the server died before shutdown was called", async () => {
+      fetchStub.rejects(new Error("connect ECONNREFUSED"));
+      const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
+
+      // A server that failed to start, e.g. a venv that could not be activated.
+      // "exit" does not replay, so a listener attached at shutdown time would
+      // never fire and the deploy would stall for SHUTDOWN_TIMEOUT_MS.
+      child.emit("exit", 1);
+
+      const shutdown = killProcess();
+      let settled = false;
+      void shutdown.then(() => (settled = true));
+
+      await clock.tickAsync(0);
+      expect(settled).to.be.true;
+      await shutdown;
+
+      // Nothing left alive, so we must not signal a pid that has been reaped
+      // and possibly recycled.
+      await clock.tickAsync(FORCE_KILL_DELAY_MS);
+      expect(killProcessTreeStub).to.not.have.been.called;
+    });
+
+    it("returns immediately when the child failed to spawn before shutdown was called", async () => {
+      fetchStub.rejects(new Error("connect ECONNREFUSED"));
+      const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
+
+      // A spawn failure leaves exitCode and signalCode null, so checking those
+      // is not enough on its own to notice the process is gone.
+      child.emit("error", new Error("spawn ENOENT"));
+
+      const shutdown = killProcess();
+      let settled = false;
+      void shutdown.then(() => (settled = true));
+
+      await clock.tickAsync(0);
+      expect(settled).to.be.true;
+      await shutdown;
+    });
   });
 });

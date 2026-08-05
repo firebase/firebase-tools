@@ -38,6 +38,16 @@ describe("killProcessTree", () => {
 
     expect(() => killProcessTree(4242)).to.not.throw();
   });
+
+  for (const pid of [0, -1, NaN]) {
+    it(`refuses to signal anything for a pid of ${pid}`, () => {
+      // process.kill(-0, ...) would signal the CLI's own process group, i.e.
+      // kill the very process trying to do the cleanup.
+      killProcessTree(pid);
+
+      expect(killStub).to.not.have.been.called;
+    });
+  }
 });
 
 describe("virtual env child tracking", () => {

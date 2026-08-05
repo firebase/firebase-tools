@@ -192,21 +192,29 @@ export class Delegate implements runtimes.RuntimeDelegate {
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
+    // Attached here rather than in shutdownAdmin() because 'exit' and 'error' do
+    // not replay: a server that dies before shutdown is called (a venv that fails
+    // to activate, a missing interpreter) would otherwise leave a listener that
+    // never fires and stall the whole shutdown until SHUTDOWN_TIMEOUT_MS.
+    const exited = new Promise<void>((resolve) => {
+      childProcess.once("exit", () => resolve());
+      childProcess.once("error", () => resolve());
+    });
     trackVirtualEnvChild(childProcess);
-    return Promise.resolve(() => this.shutdownAdmin(childProcess, port));
+    return Promise.resolve(() => this.shutdownAdmin(childProcess, port, exited));
   }
 
   /**
    * Shut down a discovery admin server, escalating from an HTTP request to a
    * force-kill of its process group, and never blocking indefinitely.
+   *
+   * `exited` must have been attached at spawn time; see serveAdmin().
    */
-  private async shutdownAdmin(childProcess: ChildProcess, port: number): Promise<void> {
-    // Attached before the request below so a process that exits while we are
-    // still waiting on the response cannot be missed.
-    const exited = new Promise<void>((resolve) => {
-      childProcess.once("exit", () => resolve());
-      childProcess.once("error", () => resolve());
-    });
+  private async shutdownAdmin(
+    childProcess: ChildProcess,
+    port: number,
+    exited: Promise<void>,
+  ): Promise<void> {
     try {
       await fetch(`http://127.0.0.1:${port}/__/quitquitquit`, {
         signal: AbortSignal.timeout(QUITQUITQUIT_TIMEOUT_MS),

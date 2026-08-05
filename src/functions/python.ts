@@ -57,6 +57,11 @@ export function runWithVirtualEnv(
  * group) and kill the whole group here instead of a single pid.
  */
 export function killProcessTree(pid: number): void {
+  // Callers already skip an unspawned child, but guard here too: this function is
+  // exported, and process.kill(-0, ...) would signal the CLI's own process group.
+  if (!pid || pid <= 0) {
+    return;
+  }
   if (IS_WINDOWS) {
     // taskkill /T walks the process tree by parent pid, so it doesn't rely on
     // the process group trick used below.
