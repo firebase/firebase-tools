@@ -17,13 +17,6 @@ function getNodeBinaryPath() {
   if (process.env.NODE_BIN && fs.existsSync(process.env.NODE_BIN)) {
     return process.env.NODE_BIN;
   }
-  if (process.execPath && fs.existsSync(process.execPath) && process.execPath.endsWith("node")) {
-    return process.execPath;
-  }
-  const nvmNode26 = "/Users/andrewheard/.nvm/versions/node/v26.6.0/bin/node";
-  if (fs.existsSync(nvmNode26)) {
-    return nvmNode26;
-  }
   return process.execPath;
 }
 

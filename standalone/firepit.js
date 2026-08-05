@@ -69,7 +69,7 @@
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
-const { fork, spawn, execSync } = require("child_process");
+const { fork, spawn, spawnSync, execSync } = require("child_process");
 const homePath = os.homedir();
 const chalk = require("chalk");
 const version = require("./package.json").version;
@@ -87,14 +87,16 @@ const shell = {
     return "";
   },
   cp: (flag, src, dest) => {
+    const actualSrc = dest ? src : flag;
+    const actualDest = dest ? dest : src;
     try {
-      if (typeof src === "string" && src.endsWith("/*")) {
-        const baseSrc = src.slice(0, -2);
+      if (typeof actualSrc === "string" && actualSrc.endsWith("/*")) {
+        const baseSrc = actualSrc.slice(0, -2);
         if (fs.existsSync(baseSrc)) {
-          fs.cpSync(baseSrc, dest, { recursive: true });
+          fs.cpSync(baseSrc, actualDest, { recursive: true });
         }
       } else {
-        fs.cpSync(src, dest, { recursive: true });
+        fs.cpSync(actualSrc, actualDest, { recursive: true });
       }
     } catch (e) {}
     return "";
@@ -104,11 +106,13 @@ const shell = {
     return "";
   },
   ln: (flag, src, dest) => {
+    const actualSrc = dest ? src : flag;
+    const actualDest = dest ? dest : src;
     try {
-      try { fs.unlinkSync(dest); } catch (e) {}
-      fs.symlinkSync(src, dest);
+      try { fs.unlinkSync(actualDest); } catch (e) {}
+      fs.symlinkSync(actualSrc, actualDest);
     } catch (e) {
-      try { fs.copyFileSync(src, dest); } catch (e) {}
+      try { fs.copyFileSync(actualSrc, actualDest); } catch (e) {}
     }
     return "";
   },
@@ -128,10 +132,18 @@ const shell = {
   },
   exec: (cmd) => {
     try {
-      const out = execSync(cmd, { shell: true, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
-      return { code: 0, stdout: out };
+      const result = spawnSync(cmd, { shell: true, stdio: ["ignore", "pipe", "pipe"], encoding: "utf8" });
+      return {
+        code: result.status !== null ? result.status : 1,
+        stdout: result.stdout || "",
+        stderr: result.stderr || ""
+      };
     } catch (e) {
-      return { code: e.status || 1, stdout: e.stdout || "" };
+      return {
+        code: e.status || 1,
+        stdout: e.stdout || "",
+        stderr: e.stderr || ""
+      };
     }
   }
 };
