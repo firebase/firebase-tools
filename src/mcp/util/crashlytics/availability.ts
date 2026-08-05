@@ -128,7 +128,7 @@ async function webAppUsesCrashlytics(appPath: string, projectId?: string): Promi
       }
     }
   } catch {
-    // Ignore API or file reading errors
+    // Return false if the call to the Telemetry API fails
   }
 
   return false;
