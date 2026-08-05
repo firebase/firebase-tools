@@ -54,3 +54,51 @@ export async function getOrPromptAppId(
 }
 
 export const getOrPromptProjectAndAppId = getOrPromptAppId;
+
+/**
+ * Like `getOrPromptAppId`, but also returns the app's platform, and validates
+ * `--app` against the project instead of trusting it.
+ *
+ * Which App Check providers apply depends on the platform, so the provider
+ * commands need it. Resolving the app and its platform in one pass keeps this
+ * to a single apps listing per command.
+ */
+export async function getOrPromptApp(
+  options: AppCheckDebugOptions,
+  message: string,
+): Promise<{ projectId: string; appId: string; platform: string }> {
+  const projectId = needProjectId(options);
+
+  logger.info(`Active Project: ${clc.bold(projectId)}`);
+
+  const apps = await listFirebaseApps(projectId, AppPlatform.ANY);
+  if (!apps.length) {
+    throw new FirebaseError(`There are no apps associated with project ${projectId}.`);
+  }
+
+  if (options.app) {
+    const app = apps.find((a) => a.appId === options.app);
+    if (!app) {
+      throw new FirebaseError(`App ${options.app} was not found in project ${projectId}.`);
+    }
+    return { projectId, appId: app.appId, platform: app.platform };
+  }
+
+  // Prefer the apps that belong to the directory the user is standing in.
+  const localApps = await detectApps(options.cwd || process.cwd());
+  const localAppIds = localApps.map((a) => a.appId).filter(Boolean) as string[];
+  const candidates = localAppIds.length
+    ? apps.filter((app) => localAppIds.includes(app.appId))
+    : apps;
+  const choices = candidates.length ? candidates : apps;
+
+  if (choices.length === 1) {
+    return { projectId, appId: choices[0].appId, platform: choices[0].platform };
+  }
+  if (options.nonInteractive) {
+    throw new FirebaseError(`Project ${projectId} has multiple apps, must specify an app id.`);
+  }
+
+  const selected = await selectAppInteractively(choices, AppPlatform.ANY, { message });
+  return { projectId, appId: selected.appId, platform: selected.platform };
+}

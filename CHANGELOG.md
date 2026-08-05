@@ -3,3 +3,5 @@
 - Added `crashlytics:onboard:web` CLI command to support Crashlytics onboarding for web apps.
 - Fixed typo in loginPrototyper URL which caused issues during Firebase MCP server firebase_login
 - Added `appcheck:services:list`, `appcheck:services:get` and `appcheck:services:set` to read and change App Check enforcement per service.
+- Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
+- Added `appcheck:apps:list` to show every app with its configured App Check providers.
