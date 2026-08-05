@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
+import { ChildProcess } from "child_process";
 
 import * as portfinder from "portfinder";
 
@@ -9,10 +10,28 @@ import * as backend from "../../backend";
 import * as discovery from "../discovery";
 import * as supported from "../supported";
 import { logger } from "../../../../logger";
-import { DEFAULT_VENV_DIR, runWithVirtualEnv, virtualEnvCmd } from "../../../../functions/python";
+import {
+  DEFAULT_VENV_DIR,
+  killProcessTree,
+  runWithVirtualEnv,
+  trackVirtualEnvChild,
+  untrackVirtualEnvChild,
+  virtualEnvCmd,
+} from "../../../../functions/python";
 import { FirebaseError } from "../../../../error";
 import { Build } from "../../build";
 import { assertExhaustive } from "../../../../functional";
+import { IS_WINDOWS } from "../../../../utils";
+
+// How long to wait for the admin server to shut down in response to
+// /__/quitquitquit before force-killing it.
+const FORCE_KILL_DELAY_MS = 10_000;
+// Hard cap on the whole shutdown sequence. A wedged server that survives even
+// SIGKILL of its process group must not be able to hang the deploy.
+const SHUTDOWN_TIMEOUT_MS = 15_000;
+// A server that is bound but not accepting connections will never answer, so the
+// shutdown request needs its own timeout rather than relying on the socket layer.
+const QUITQUITQUIT_TIMEOUT_MS = 5_000;
 
 /**
  * Create a runtime delegate for the Python runtime, if applicable.
@@ -149,7 +168,7 @@ export class Delegate implements runtimes.RuntimeDelegate {
     return Promise.resolve();
   }
 
-  async serveAdmin(port: number, envs: backend.EnvironmentVariables) {
+  async serveAdmin(port: number, envs: backend.EnvironmentVariables): Promise<() => Promise<void>> {
     const modulesDir = await this.modulesDir();
     const envWithAdminPort = {
       ...envs,
@@ -161,30 +180,71 @@ export class Delegate implements runtimes.RuntimeDelegate {
         envWithAdminPort,
       )} in ${this.sourceDir}`,
     );
-    const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort);
+    // detached so the shell runWithVirtualEnv spawns becomes the leader of its
+    // own process group: that lets killProcessTree() force-kill the shell *and*
+    // the Python process underneath it, instead of just the shell.
+    const childProcess = runWithVirtualEnv(args, this.sourceDir, envWithAdminPort, {
+      detached: !IS_WINDOWS,
+    });
     childProcess.stdout?.on("data", (chunk: Buffer) => {
       logger.info(chunk.toString("utf8"));
     });
     childProcess.stderr?.on("data", (chunk: Buffer) => {
       logger.error(chunk.toString("utf8"));
     });
-    return Promise.resolve(async () => {
-      try {
-        await fetch(`http://127.0.0.1:${port}/__/quitquitquit`);
-      } catch (e) {
-        logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
-      }
-      const quitTimeout = setTimeout(() => {
-        if (!childProcess.killed) {
-          childProcess.kill("SIGKILL");
-        }
-      }, 10_000);
-      clearTimeout(quitTimeout);
-      return new Promise<void>((resolve, reject) => {
-        childProcess.once("exit", resolve);
-        childProcess.once("error", reject);
-      });
+    trackVirtualEnvChild(childProcess);
+    return Promise.resolve(() => this.shutdownAdmin(childProcess, port));
+  }
+
+  /**
+   * Shut down a discovery admin server, escalating from an HTTP request to a
+   * force-kill of its process group, and never blocking indefinitely.
+   */
+  private async shutdownAdmin(childProcess: ChildProcess, port: number): Promise<void> {
+    // Attached before the request below so a process that exits while we are
+    // still waiting on the response cannot be missed.
+    const exited = new Promise<void>((resolve) => {
+      childProcess.once("exit", () => resolve());
+      childProcess.once("error", () => resolve());
     });
+    try {
+      await fetch(`http://127.0.0.1:${port}/__/quitquitquit`, {
+        signal: AbortSignal.timeout(QUITQUITQUIT_TIMEOUT_MS),
+      });
+    } catch (e) {
+      logger.debug("Failed to call quitquitquit. This often means the server failed to start", e);
+    }
+    const forceKill = setTimeout(() => {
+      // No childProcess.killed check: that flag only reflects calls to .kill()
+      // on this object, and killProcessTree() is already a no-op for a process
+      // group that has gone away.
+      if (childProcess.pid) {
+        logger.debug(
+          `Discovery admin server on port ${port} did not shut down when asked. Force-killing it.`,
+        );
+        killProcessTree(childProcess.pid);
+      }
+    }, FORCE_KILL_DELAY_MS);
+    let giveUp: NodeJS.Timeout | undefined;
+    const timedOut = new Promise<boolean>((resolve) => {
+      giveUp = setTimeout(() => resolve(false), SHUTDOWN_TIMEOUT_MS);
+    });
+    try {
+      const exitedCleanly = await Promise.race([exited.then(() => true), timedOut]);
+      if (exitedCleanly) {
+        untrackVirtualEnvChild(childProcess);
+      } else {
+        // Deliberately left tracked, so the process-exit handler gets one more
+        // attempt at it when the CLI finishes.
+        logger.debug(
+          `Discovery admin server on port ${port} survived being force-killed. ` +
+            `Continuing without it; it may need to be cleaned up manually.`,
+        );
+      }
+    } finally {
+      clearTimeout(forceKill);
+      clearTimeout(giveUp);
+    }
   }
 
   async discoverBuild(
