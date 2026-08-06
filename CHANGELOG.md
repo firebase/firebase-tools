@@ -1,0 +1,2 @@
+- Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
+- Added `appcheck:apps:list` to show every app with its configured App Check providers.

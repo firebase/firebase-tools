@@ -22,7 +22,7 @@ import { Command } from "../command";
 import { needProjectNumber } from "../projectUtils";
 import { createDebugToken, listDebugTokens, deleteDebugToken } from "../appcheck/api";
 import { DebugToken, AppCheckDebugOptions } from "../appcheck/types";
-import { getOrPromptProjectAndAppId } from "../appcheck/prompts";
+import { getOrPromptProjectAndAppId } from "./appcheck-prompts";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner, logSuccess } from "../utils";
 import { FirebaseError } from "../error";
