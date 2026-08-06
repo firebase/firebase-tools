@@ -59,7 +59,7 @@ export const command = new Command("ext:dev:undeprecate <extensionRef> <versionP
     } else {
       throw new FirebaseError("No extension versions matched the version predicate.");
     }
-    await utils.allSettled(
+    await Promise.allSettled(
       extensionVersions.map(async (extensionVersion) => {
         await undeprecateExtensionVersion(extensionVersion.ref);
       }),
