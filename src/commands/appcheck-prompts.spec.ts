@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { getOrPromptAppId, getOrPromptProjectAndAppId } from "./prompts";
-import { AppCheckDebugOptions } from "./types";
+import { getOrPromptApp, getOrPromptAppId, getOrPromptProjectAndAppId } from "./appcheck-prompts";
+import { AppCheckDebugOptions } from "../appcheck/types";
 import * as apps from "../management/apps";
 import * as appUtils from "../appUtils";
 import * as projectUtils from "../projectUtils";
@@ -95,6 +95,60 @@ describe("appcheck prompts", () => {
 
     expect(selectAppInteractivelyStub.firstCall.args[2]).to.deep.equal({
       message: "Select the app to delete a debug token from:",
+    });
+  });
+
+  describe("getOrPromptApp", () => {
+    const iosApp = { appId: "1:1:ios:ccc", platform: apps.AppPlatform.IOS } as apps.AppMetadata;
+
+    it("returns the platform along with the app", async () => {
+      listFirebaseAppsStub.resolves([iosApp]);
+
+      const result = await getOrPromptApp({} as AppCheckDebugOptions, "Pick one:");
+
+      expect(result).to.deep.equal({
+        projectId,
+        appId: iosApp.appId,
+        platform: apps.AppPlatform.IOS,
+      });
+    });
+
+    it("checks --app against the project instead of trusting it", async () => {
+      listFirebaseAppsStub.resolves([webApp]);
+
+      await expect(
+        getOrPromptApp({ app: "1:1:ios:nope" } as AppCheckDebugOptions, "Pick one:"),
+      ).to.be.rejectedWith(FirebaseError, /was not found in project/);
+    });
+
+    it("looks up the platform of the app given in --app", async () => {
+      listFirebaseAppsStub.resolves([webApp, iosApp]);
+
+      const result = await getOrPromptApp(
+        { app: iosApp.appId } as AppCheckDebugOptions,
+        "Pick one:",
+      );
+
+      expect(result.platform).to.equal(apps.AppPlatform.IOS);
+      expect(selectAppInteractivelyStub.called).to.be.false;
+    });
+
+    it("lists the apps only once", async () => {
+      listFirebaseAppsStub.resolves([webApp, iosApp]);
+      selectAppInteractivelyStub.resolves(iosApp);
+
+      await getOrPromptApp({} as AppCheckDebugOptions, "Pick one:");
+
+      expect(listFirebaseAppsStub.callCount).to.equal(1);
+    });
+
+    it("throws when the project has no apps", async () => {
+      listFirebaseAppsStub.resolves([]);
+
+      await expect(getOrPromptApp({} as AppCheckDebugOptions, "Pick one:")).to.be.rejectedWith(
+        FirebaseError,
+        /no apps associated with project/,
+      );
     });
   });
 });
