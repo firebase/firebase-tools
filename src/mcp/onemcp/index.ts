@@ -2,6 +2,17 @@ import { dataconnectOrigin, developerKnowledgeOrigin, firestoreOrigin } from "..
 import { ServerFeature } from "../types";
 import { OneMcpServer } from "./onemcp_server";
 
+// Workaround to inject Mcp-Param-Location for routing before OneMCP fully supports SEP-2243
+export function dataConnectLocationHeaderInjector(
+  headers: Record<string, string>,
+  _toolName: string,
+  args: Record<string, unknown>,
+): Record<string, string> | undefined {
+  if (typeof args?.location === "string" && args.location && !headers["Mcp-Param-Location"]) {
+    return { "Mcp-Param-Location": args.location };
+  }
+}
+
 export const ONEMCP_SERVERS: Partial<Record<ServerFeature, OneMcpServer>> = {
   dataconnect: new OneMcpServer(
     "dataconnect",
@@ -19,6 +30,7 @@ export const ONEMCP_SERVERS: Partial<Record<ServerFeature, OneMcpServer>> = {
         "generate_query_from_schema",
         "list_locations",
       ],
+      headerOverride: dataConnectLocationHeaderInjector,
     },
   ),
   developerknowledge: new OneMcpServer("developerknowledge", developerKnowledgeOrigin(), {

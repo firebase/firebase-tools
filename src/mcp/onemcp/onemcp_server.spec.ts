@@ -4,8 +4,8 @@ import { OneMcpServer } from "./onemcp_server";
 import { Client } from "../../apiv2";
 import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
-import { ServerFeature } from "../types";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
+import { dataConnectLocationHeaderInjector } from "./index";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
@@ -210,6 +210,111 @@ describe("OneMcpServer", () => {
         "Mcp-Method": "tools/call",
         "Mcp-Name": "test_tool",
       });
+    });
+
+    it("should apply headerOverride when provided in options", async () => {
+      const serverWithOverride = new OneMcpServer(
+        "dataconnect",
+        serverUrl,
+        { requiresAuth: true, requiresProject: true },
+        { headerOverride: dataConnectLocationHeaderInjector },
+      );
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await serverWithOverride.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ location: "us-central1" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.equal(
+        "us-central1",
+      );
+    });
+
+    it("should preserve Mcp-Param-Location header from inputSchema x-mcp-header without duplicate override", async () => {
+      const serverWithOverride = new OneMcpServer(
+        "dataconnect",
+        serverUrl,
+        { requiresAuth: true, requiresProject: true },
+        { headerOverride: dataConnectLocationHeaderInjector },
+      );
+      const mockMcpTool = {
+        name: "execute_graphql",
+        inputSchema: {
+          type: "object",
+          properties: {
+            region: {
+              type: "string",
+              "x-mcp-header": "Location",
+            },
+          },
+        },
+      };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await serverWithOverride.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ region: "asia-east1", location: "us-central1" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.equal(
+        "asia-east1",
+      );
+    });
+
+    it("should not apply headerOverride if not configured on server", async () => {
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ location: "us-central1" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.be.undefined;
+    });
+
+    it("should not include Mcp-Param-Location header when location argument is missing", async () => {
+      const serverWithOverride = new OneMcpServer(
+        "dataconnect",
+        serverUrl,
+        { requiresAuth: true, requiresProject: true },
+        { headerOverride: dataConnectLocationHeaderInjector },
+      );
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await serverWithOverride.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ otherArg: "val" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.be.undefined;
     });
 
     it("should handle remote tool error results", async () => {
