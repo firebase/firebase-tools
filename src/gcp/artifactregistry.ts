@@ -95,3 +95,48 @@ export async function updateRepository(repo: RepositoryInput): Promise<Repositor
   });
   return res.body;
 }
+
+/**
+ * Creates an Artifact Registry repository.
+ */
+export async function createRepository(
+  projectId: string,
+  location: string,
+  repositoryId: string,
+  format = "DOCKER",
+): Promise<Repository> {
+  const res = await client.post<any, any>(
+    `/projects/${projectId}/locations/${location}/repositories`,
+    {
+      format,
+      description: "Cloud Run Source Deploy Repository",
+    },
+    {
+      queryParams: {
+        repositoryId,
+      },
+    },
+  );
+  return res.body;
+}
+
+/**
+ * Ensures an Artifact Registry repository exists, creating it if not.
+ */
+export async function ensureRepository(
+  projectId: string,
+  location: string,
+  repositoryId: string,
+  format = "DOCKER",
+): Promise<void> {
+  const name = `projects/${projectId}/locations/${location}/repositories/${repositoryId}`;
+  try {
+    await getRepository(name);
+  } catch (err: any) {
+    if (err.status === 404) {
+      await createRepository(projectId, location, repositoryId, format);
+    } else {
+      throw err;
+    }
+  }
+}

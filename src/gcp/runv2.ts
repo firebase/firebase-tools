@@ -111,6 +111,7 @@ export interface Service {
   etag: string;
   template: RevisionTemplate;
   invokerIamDisabled?: boolean;
+  ingress?: string;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
@@ -151,7 +152,7 @@ export interface Build {
   functionTarget?: string;
   storageSource: StorageSource;
   imageUri: string;
-  buildpacksBuild: BuildpacksBuild;
+  buildpackBuild: BuildpacksBuild;
 }
 
 export interface SubmitBuildResponse {
@@ -168,19 +169,33 @@ export async function submitBuild(
   projectId: string,
   location: string,
   build: Build,
-): Promise<void> {
+): Promise<Omit<SubmitBuildResponse, "buildOperation">> {
   const res = await client.post<Build, SubmitBuildResponse>(
-    `/projects/${projectId}/locations/${location}/builds`,
+    `/projects/${projectId}/locations/${location}/builds:submit`,
     build,
   );
   if (res.status !== 200) {
     throw new FirebaseError(`Failed to submit build: ${res.status} ${res.body}`);
   }
+  const op: any = res.body.buildOperation;
+  const buildId = op?.metadata?.build?.id;
+  const opName = buildId
+    ? `projects/${projectId}/locations/${location}/operations/${buildId}`
+    : typeof op === "string"
+      ? op
+      : op?.name;
   await pollOperation({
     apiOrigin: cloudbuildOrigin(),
     apiVersion: "v1",
-    operationResourceName: res.body.buildOperation,
+    operationResourceName: opName,
+    masterTimeout: 10 * 60 * 1000,
+    backoff: 1000,
+    maxBackoff: 5000,
   });
+  return {
+    baseImageUri: res.body.baseImageUri,
+    baseImageWarning: res.body.baseImageWarning,
+  };
 }
 
 /**
@@ -188,14 +203,25 @@ export async function submitBuild(
  * Tracks the long-running operation until completion.
  */
 export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
-  const fieldMask = proto.fieldMasks(
-    service,
-    /* doNotRecurseIn...*/ "labels",
-    "annotations",
-    "tags",
-  );
-  // Always update revision name to ensure null generates a new unique revision name.
-  fieldMask.push("template.revision");
+  const fieldMask: string[] = [];
+  if (service.template) {
+    fieldMask.push("template");
+  }
+  if (service.labels) {
+    fieldMask.push("labels");
+  }
+  if (service.annotations) {
+    fieldMask.push("annotations");
+  }
+  if (service.ingress) {
+    fieldMask.push("ingress");
+  }
+  if (service.description) {
+    fieldMask.push("description");
+  }
+  if (fieldMask.length === 0) {
+    fieldMask.push("template");
+  }
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
@@ -209,6 +235,9 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: 10 * 60 * 1000,
+    backoff: 1000,
+    maxBackoff: 5000,
   });
   return svc;
 }
@@ -240,6 +269,9 @@ export async function createService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: 10 * 60 * 1000,
+    backoff: 1000,
+    maxBackoff: 5000,
   });
   return svc;
 }
