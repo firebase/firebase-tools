@@ -16,7 +16,7 @@ import {
   parseProviderType,
   providerHelp,
 } from "../appcheck/providers";
-import { getOrPromptApp } from "../appcheck/prompts";
+import { getOrPromptApp } from "./appcheck-prompts";
 
 export const command = new Command("appcheck:providers:set <provider>")
   .description("configure an App Check attestation provider for an app")

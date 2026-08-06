@@ -9,7 +9,7 @@ import { detectApps } from "../appUtils";
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
 import * as clc from "colorette";
-import { AppCheckDebugOptions } from "./types";
+import { AppCheckDebugOptions } from "../appcheck/types";
 
 /**
  * Narrows a project's apps down to one, by prompting when there is a choice.

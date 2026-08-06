@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
-import { getOrPromptApp, getOrPromptAppId, getOrPromptProjectAndAppId } from "./prompts";
-import { AppCheckDebugOptions } from "./types";
+import { getOrPromptApp, getOrPromptAppId, getOrPromptProjectAndAppId } from "./appcheck-prompts";
+import { AppCheckDebugOptions } from "../appcheck/types";
 import * as apps from "../management/apps";
 import * as appUtils from "../appUtils";
 import * as projectUtils from "../projectUtils";

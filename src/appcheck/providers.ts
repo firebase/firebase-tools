@@ -1,35 +1,19 @@
 import * as fs from "fs";
 
 import { FirebaseError, getErrMsg, getError } from "../error";
-import { ProviderConfig, ProviderFlags, ProviderType } from "./types";
+import { ProviderConfig, ProviderFlags, ProviderMeta, ProviderType } from "./types";
 
-/** The app platforms App Check can attest. */
-type AppCheckPlatform = "IOS" | "ANDROID" | "WEB";
+const TTL_MIN_SECONDS = 30 * 60;
+const TTL_MAX_SECONDS = 7 * 24 * 60 * 60;
 
-interface ProviderMeta {
-  /** The per app config sub resource, for example "appAttestConfig". */
-  configResource: string;
-  /** The app platforms this provider can attest. */
-  platforms: AppCheckPlatform[];
-  /** Human readable name for tables and messages. */
-  label: string;
-}
+/** Play Integrity device levels, as short CLI words. */
+export const DEVICE_INTEGRITY_LEVELS: Record<string, string> = {
+  none: "NO_INTEGRITY",
+  basic: "MEETS_BASIC_INTEGRITY",
+  device: "MEETS_DEVICE_INTEGRITY",
+  strong: "MEETS_STRONG_INTEGRITY",
+};
 
-/**
- * reCAPTCHA is no longer web only.
- *
- * A reCAPTCHA attestation provider for mobile shipped in June 2026: Apple SDK
- * 12.15.0 (`RecaptchaProvider`, which takes an explicit site key since 12.17.0)
- * and Android `firebase-appcheck-recaptcha` 19.0.0 (site key parameter since
- * 19.1.0). Both are in public preview and the release notes say backend support
- * is still rolling out.
- *
- * There is no separate config resource for it: the App Check v1 API exposes the
- * same five configs it always had, and `recaptchaEnterpriseConfig` is the one
- * that holds a site key. That config answers for iOS and Android apps, not just
- * web, so `recaptcha-enterprise` is a provider for all three platforms.
- * reCAPTCHA v3 stays web only.
- */
 export const PROVIDER_META: Record<ProviderType, ProviderMeta> = {
   "app-attest": { configResource: "appAttestConfig", platforms: ["IOS"], label: "App Attest" },
   "device-check": { configResource: "deviceCheckConfig", platforms: ["IOS"], label: "DeviceCheck" },
@@ -38,6 +22,8 @@ export const PROVIDER_META: Record<ProviderType, ProviderMeta> = {
     platforms: ["ANDROID"],
     label: "Play Integrity",
   },
+  // Not web only: the mobile SDKs added a reCAPTCHA attestation provider in
+  // June 2026, and it uses this same config resource.
   "recaptcha-enterprise": {
     configResource: "recaptchaEnterpriseConfig",
     platforms: ["IOS", "ANDROID", "WEB"],
@@ -123,9 +109,6 @@ export function isConfigured(provider: ProviderType, config: ProviderConfig): bo
   }
 }
 
-const TTL_MIN_SECONDS = 30 * 60;
-const TTL_MAX_SECONDS = 7 * 24 * 60 * 60;
-
 /**
  * Turns `30m`, `2h`, `1d` or `3600s` into the seconds string the API wants.
  * The API accepts 30 minutes to 7 days.
@@ -197,14 +180,6 @@ function parseMinScore(value: string): number {
   }
   return score;
 }
-
-/** Play Integrity device levels, as short CLI words. */
-export const DEVICE_INTEGRITY_LEVELS: Record<string, string> = {
-  none: "NO_INTEGRITY",
-  basic: "MEETS_BASIC_INTEGRITY",
-  device: "MEETS_DEVICE_INTEGRITY",
-  strong: "MEETS_STRONG_INTEGRITY",
-};
 
 /** Parses the short device integrity level into the API enum. */
 function parseDeviceIntegrityLevel(level: string): string {

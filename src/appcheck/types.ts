@@ -46,6 +46,19 @@ export type ProviderType =
   | "recaptcha-enterprise"
   | "recaptcha-v3";
 
+/** The app platforms App Check can attest. */
+export type AppCheckPlatform = "IOS" | "ANDROID" | "WEB";
+
+/** What we know about one provider, apart from an app's settings for it. */
+export interface ProviderMeta {
+  /** The per app config sub resource, for example "appAttestConfig". */
+  configResource: string;
+  /** The app platforms this provider can attest. */
+  platforms: AppCheckPlatform[];
+  /** Human readable name for tables and messages. */
+  label: string;
+}
+
 /**
  * One provider config for one app.
  *

@@ -14,7 +14,7 @@ import {
   parseProviderType,
   providerHelp,
 } from "../appcheck/providers";
-import { getOrPromptApp } from "../appcheck/prompts";
+import { getOrPromptApp } from "./appcheck-prompts";
 
 /** The provider specific lines, in the order a reader expects them. */
 function detailLines(provider: ProviderType, config: ProviderConfig): string[] {

@@ -16,7 +16,7 @@ import {
   providersForPlatform,
   summarizeConfig,
 } from "../appcheck/providers";
-import { getOrPromptApp } from "../appcheck/prompts";
+import { getOrPromptApp } from "./appcheck-prompts";
 
 interface ProviderRow {
   provider: ProviderType;
