@@ -1,6 +1,8 @@
 import { expect } from "chai";
-import { inferClientCache } from "./load";
-import { ConnectorYaml } from "./types";
+import { inferClientCache, readFirebaseJson, squashGraphQL } from "./load";
+import { ConnectorYaml, Source } from "./types";
+import { Config } from "../config";
+import * as sinon from "sinon";
 
 describe("dataconnect/load", () => {
   describe("inferClientCache", () => {
@@ -104,6 +106,74 @@ describe("dataconnect/load", () => {
 
       const result = inferClientCache(connectorYaml);
       expect(result).to.be.undefined;
+    });
+  });
+
+  describe("readFirebaseJson", () => {
+    it("should return empty array if config has no dataconnect key", () => {
+      const config = new Config({}, {});
+      const result = readFirebaseJson(config);
+      expect(result).to.deep.equal([]);
+    });
+
+    it("should parse single object dataconnect config", () => {
+      const config = new Config({ dataconnect: { source: "dataconnect" } }, {});
+      const result = readFirebaseJson(config);
+      expect(result).to.deep.equal([{ source: "dataconnect" }]);
+    });
+
+    it("should parse array dataconnect config", () => {
+      const config = new Config({ dataconnect: [{ source: "dir1" }, { source: "dir2" }] }, {});
+      const result = readFirebaseJson(config);
+      expect(result).to.deep.equal([{ source: "dir1" }, { source: "dir2" }]);
+    });
+
+    it("should throw if source is missing", () => {
+      const config = new Config({ dataconnect: { wrong: "key" } }, {});
+      expect(() => readFirebaseJson(config)).to.throw(/requires `source`/);
+    });
+
+    it("should throw if dataconnect is neither object nor array", () => {
+      const config = new Config({}, {});
+      sinon.stub(config, "has").returns(true);
+      sinon.stub(config, "get").returns("invalid string");
+
+      expect(() => readFirebaseJson(config)).to.throw(/should be of the form/);
+    });
+  });
+
+  describe("squashGraphQL", () => {
+    it("should return empty string for empty source", () => {
+      const source: Source = { files: [] };
+      expect(squashGraphQL(source)).to.equal("");
+    });
+
+    it("should return single file content without headers", () => {
+      const source: Source = { files: [{ path: "schema.gql", content: "type User {}" }] };
+      expect(squashGraphQL(source)).to.equal("type User {}");
+    });
+
+    it("should delimit multiple files with comments", () => {
+      const source: Source = {
+        files: [
+          { path: "a.gql", content: "type A {}" },
+          { path: "b.gql", content: "type B {}" },
+        ],
+      };
+      const expected =
+        "### Begin file a.gql\ntype A {}### End file a.gql\n### Begin file b.gql\ntype B {}### End file b.gql\n";
+      expect(squashGraphQL(source)).to.equal(expected);
+    });
+
+    it("should skip empty files during squash", () => {
+      const source: Source = {
+        files: [
+          { path: "a.gql", content: "type A {}" },
+          { path: "b.gql", content: "   " },
+        ],
+      };
+      const expected = "### Begin file a.gql\ntype A {}### End file a.gql\n";
+      expect(squashGraphQL(source)).to.equal(expected);
     });
   });
 });
