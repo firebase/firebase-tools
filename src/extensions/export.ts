@@ -119,7 +119,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   // System params aren't necessarily defined in the spec, but we do respect any defaults
   Object.entries(liveSystemParams).forEach(([sysParamName, sysParamValue]) => {
     const renamed = sysParamName
-      .replace("firebaseextensions.v1beta.function/", "FIREBASE_SYSTEM_")
+      .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
       .toUpperCase();
     envs[renamed] = sysParamValue;
   });
@@ -129,7 +129,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
     }
     if ("default" in specSystemParam) {
       const renamed = specSystemParam.param
-        .replace("firebaseextensions.v1beta.function/", "FIREBASE_SYSTEM_")
+        .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
         .toUpperCase();
       envs[renamed] = specSystemParam.default ?? "";
     }
