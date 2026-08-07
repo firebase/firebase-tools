@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   release:
+    environment: firebase-tools VSCode release
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/run-release') &&
@@ -21,9 +22,16 @@ jobs:
        github.event.issue.author_association == 'MEMBER')
     runs-on: ubuntu-latest
     steps:
+      - name: Generate Token
+        id: generate_token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.FIREBASE_RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.FIREBASE_RELEASE_APP_PEM }}
+          permission-contents: write
       - name: Trigger Kokoro via API
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           PR_NUM="${{ github.event.issue.number }}"
