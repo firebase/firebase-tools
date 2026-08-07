@@ -15,10 +15,22 @@ import {
   chooseBackends,
   getBackendForAmbiguousLocation,
   getBackend,
+  ensureRequiredApisEnabled,
+  createGitRepoLink,
 } from "./backend";
 import * as deploymentTool from "../deploymentTool";
 import { FirebaseError } from "../error";
 import * as experiments from "../experiments";
+import * as ensureApiEnabled from "../ensureApiEnabled";
+import * as githubConnections from "./githubConnections";
+import {
+  developerConnectOrigin,
+  secretManagerOrigin,
+  cloudbuildOrigin,
+  cloudRunApiOrigin,
+  artifactRegistryDomain,
+  iamOrigin,
+} from "../api";
 
 describe("apphosting setup functions", () => {
   const projectId = "projectId";
@@ -35,6 +47,7 @@ describe("apphosting setup functions", () => {
   let createServiceAccountStub: sinon.SinonStub;
   let addServiceAccountToRolesStub: sinon.SinonStub;
   let testResourceIamPermissionsStub: sinon.SinonStub;
+  let ensureStub: sinon.SinonStub;
 
   beforeEach(() => {
     promptStub = sinon.stub(promptImport);
@@ -67,6 +80,7 @@ describe("apphosting setup functions", () => {
     testResourceIamPermissionsStub = sinon
       .stub(iam, "testResourceIamPermissions")
       .throws("Unexpected testResourceIamPermissions call");
+    ensureStub = sinon.stub(ensureApiEnabled, "ensure").resolves();
     sinon.stub(experiments, "isEnabled").returns(false).withArgs("abiu").returns(true);
   });
 
@@ -507,6 +521,70 @@ describe("apphosting setup functions", () => {
       listBackendsStub.resolves({ backends: allBackends });
 
       await expect(getBackend(projectId, "cow")).to.eventually.equal(backendCow);
+    });
+  });
+
+  describe("ensureRequiredApisEnabled", () => {
+    it("should enable all required APIs including developerconnect and secretmanager", async () => {
+      await ensureRequiredApisEnabled(projectId);
+      expect(ensureStub).to.have.been.calledWith(
+        projectId,
+        developerConnectOrigin(),
+        "apphosting",
+        true,
+      );
+      expect(ensureStub).to.have.been.calledWith(
+        projectId,
+        secretManagerOrigin(),
+        "apphosting",
+        true,
+      );
+      expect(ensureStub).to.have.been.calledWith(projectId, cloudbuildOrigin(), "apphosting", true);
+      expect(ensureStub).to.have.been.calledWith(
+        projectId,
+        cloudRunApiOrigin(),
+        "apphosting",
+        true,
+      );
+      expect(ensureStub).to.have.been.calledWith(
+        projectId,
+        artifactRegistryDomain(),
+        "apphosting",
+        true,
+      );
+      expect(ensureStub).to.have.been.calledWith(projectId, iamOrigin(), "apphosting", true);
+    });
+  });
+
+  describe("createGitRepoLink", () => {
+    it("should enable developerconnect, secretmanager and iam APIs", async () => {
+      const linkGitHubRepositoryStub = sinon
+        .stub(githubConnections, "linkGitHubRepository")
+        .resolves();
+      listLocationsStub.resolves([{ name: location, locationId: location }]);
+      try {
+        await createGitRepoLink(projectId, location, "connectionId");
+        expect(ensureStub).to.have.been.calledWith(
+          projectId,
+          developerConnectOrigin(),
+          "apphosting",
+          true,
+        );
+        expect(ensureStub).to.have.been.calledWith(
+          projectId,
+          secretManagerOrigin(),
+          "apphosting",
+          true,
+        );
+        expect(ensureStub).to.have.been.calledWith(projectId, iamOrigin(), "apphosting", true);
+        expect(linkGitHubRepositoryStub).to.have.been.calledWith(
+          projectId,
+          location,
+          "connectionId",
+        );
+      } finally {
+        linkGitHubRepositoryStub.restore();
+      }
     });
   });
 });
