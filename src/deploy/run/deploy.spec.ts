@@ -17,12 +17,11 @@ describe("run deploy", () => {
   let updateServiceStub: sinon.SinonStub;
   let createServiceStub: sinon.SinonStub;
   let ensureRepoStub: sinon.SinonStub;
-  let getProjectNumberStub: sinon.SinonStub;
 
   beforeEach(() => {
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("my-bucket");
     ensureRepoStub = sinon.stub(artifactRegistry, "ensureRepository").resolves();
-    getProjectNumberStub = sinon.stub(getProjectNumberModule, "getProjectNumber").resolves("12345");
+    sinon.stub(getProjectNumberModule, "getProjectNumber").resolves("12345");
     sinon.stub(archiveDirectory, "archiveDirectory").resolves({
       file: "test.zip",
       stream: Readable.from(["mock-data"]),
@@ -80,9 +79,6 @@ describe("run deploy", () => {
 
     await deploy(context, options, payload);
 
-    expect(getProjectNumberStub.calledOnce).to.be.true;
-    expect(upsertBucketStub.calledOnce).to.be.true;
-    expect(upsertBucketStub.args[0][0].req.baseName).to.equal("firebase-run-src-12345-us-central1");
     expect(ensureRepoStub.calledOnce).to.be.true;
     expect(submitBuildStub.calledOnce).to.be.true;
     expect(createServiceStub.calledOnce).to.be.true;
@@ -213,8 +209,10 @@ describe("run deploy", () => {
       runv2.ServiceOutputFields
     >;
 
-    expect(updatedService.template.scaling?.minInstanceCount).to.equal(1);
-    expect(updatedService.template.scaling?.maxInstanceCount).to.equal(10);
+    expect(updateServiceStub.args[0][1]).to.deep.equal(["template", "scaling"]);
+    expect(updatedService.scaling?.minInstanceCount).to.equal(1);
+    expect(updatedService.scaling?.maxInstanceCount).to.equal(10);
+    expect(updatedService.template.scaling).to.be.undefined;
     expect(updatedService.template.maxInstanceRequestConcurrency).to.equal(80);
     expect(updatedService.template.containers?.[0].resources?.limits?.cpu).to.equal("2");
     expect(updatedService.template.containers?.[0].resources?.limits?.memory).to.equal("1024Mi");
@@ -230,7 +228,7 @@ describe("run deploy", () => {
       name: "MY_SECRET",
       valueSource: {
         secretKeyRef: {
-          secret: "secret-name",
+          secret: "projects/my-gcp-project/secrets/secret-name",
           version: "2",
         },
       },
@@ -239,7 +237,7 @@ describe("run deploy", () => {
       name: "MY_FULL_SECRET",
       valueSource: {
         secretKeyRef: {
-          secret: "my-sec",
+          secret: "projects/custom-p/secrets/my-sec",
           version: "latest",
         },
       },
@@ -248,7 +246,7 @@ describe("run deploy", () => {
       name: "MY_VERSIONED_FULL_SECRET",
       valueSource: {
         secretKeyRef: {
-          secret: "my-versioned-sec",
+          secret: "projects/custom-p/secrets/my-versioned-sec",
           version: "3",
         },
       },

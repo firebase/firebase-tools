@@ -9,14 +9,12 @@ import { FirebaseError } from "../../error";
 import { Context, DEFAULT_RUN_IGNORE, Payload, RunConfig, RunServiceSpec } from "./args";
 
 /**
- * Prepares Cloud Run deployment by validating configurations, filtering targeted services,
- * fetching existing services, resolving base images and App Hosting configurations.
+ * Validates CLI flags to ensure incompatible options are not specified simultaneously.
  */
-export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
-  const projectId = needProjectId(options);
-  context.projectId = projectId;
-  await prereqs(options, projectId);
-
+function validateCliFlags(options: Options): {
+  runtimeOpt?: string;
+  clearOpt: boolean;
+} {
   const runtimeOpt = ((options as any).runtime || (options as any).baseImage) as string | undefined;
   const clearOpt = !!((options as any).clearRuntime || (options as any).clearBaseImage);
 
@@ -26,18 +24,25 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     );
   }
 
-  const rawRunConfigs = options.config
-    ? (options.config.get("run") as RunConfig | RunConfig[] | undefined)
-    : undefined;
+  return { runtimeOpt, clearOpt };
+}
 
+/**
+ * Filters the list of configured Cloud Run services based on the `--only run:<serviceId>` flag.
+ */
+function filterTargetConfigs(
+  rawRunConfigs: RunConfig | RunConfig[] | undefined,
+  onlyOpt?: string,
+): RunConfig[] {
   if (!rawRunConfigs || (Array.isArray(rawRunConfigs) && rawRunConfigs.length === 0)) {
     throw new FirebaseError(
       "No Cloud Run services configured in firebase.json. Run 'firebase init run' to set up a service.",
     );
   }
 
-  const onlyOpt = options.only || "";
-  const runFilterTargets = onlyOpt
+  let configs = Array.isArray(rawRunConfigs) ? rawRunConfigs : [rawRunConfigs];
+  const onlyString = onlyOpt || "";
+  const runFilterTargets = onlyString
     .split(",")
     .filter((t) => t.startsWith("run:") || t === "run")
     .map((t) => (t.includes(":") ? t.split(":")[1] : ""));
@@ -45,19 +50,67 @@ export async function prepare(context: Context, options: Options, payload: Paylo
   const hasSpecificServiceFilter = runFilterTargets.some((t) => t.length > 0);
   const targetedServiceIds = new Set(runFilterTargets.filter((t) => t.length > 0));
 
-  let configs = Array.isArray(rawRunConfigs) ? rawRunConfigs : [rawRunConfigs];
-
-  // Filter multi-service configs by --only run:<serviceId>
   if (hasSpecificServiceFilter) {
     const matchedConfigs = configs.filter((c) => targetedServiceIds.has(c.serviceId));
     if (matchedConfigs.length === 0) {
       throw new FirebaseError(
-        `No Cloud Run services in firebase.json match filter '${onlyOpt}'. Configured services: ${configs.map((c) => c.serviceId).join(", ")}`,
+        `No Cloud Run services in firebase.json match filter '${onlyString}'. Configured services: ${configs.map((c) => c.serviceId).join(", ")}`,
       );
     }
     configs = matchedConfigs;
   }
 
+  return configs;
+}
+
+/**
+ * Resolves ABIU base image URI with precedence:
+ * 1. CLI flags (`--clear-runtime` vs `--runtime`)
+ * 2. `firebase.json` configuration
+ * 3. Existing Cloud Run service revision template (stickiness)
+ */
+function resolveBaseImage(
+  config: RunConfig,
+  existingService: runv2.Service | undefined,
+  runtimeOpt?: string,
+  clearOpt?: boolean,
+): { baseImageUri?: string; clearBaseImage: boolean } {
+  if (clearOpt) {
+    return { baseImageUri: undefined, clearBaseImage: true };
+  }
+  if (runtimeOpt) {
+    return { baseImageUri: runtimeOpt, clearBaseImage: false };
+  }
+  if (config.baseImageUri || config.baseImage || config.runtime) {
+    return {
+      baseImageUri: config.baseImageUri || config.baseImage || config.runtime,
+      clearBaseImage: false,
+    };
+  }
+  if (existingService?.template?.containers?.[0]?.baseImageUri) {
+    return {
+      baseImageUri: existingService.template.containers[0].baseImageUri,
+      clearBaseImage: false,
+    };
+  }
+  return { baseImageUri: undefined, clearBaseImage: false };
+}
+
+/**
+ * Prepares Cloud Run deployment by validating configurations, filtering targeted services,
+ * fetching existing services, resolving base images and App Hosting configurations.
+ */
+export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
+  const projectId = needProjectId(options);
+  context.projectId = projectId;
+  await prereqs(options, projectId);
+
+  const { runtimeOpt, clearOpt } = validateCliFlags(options);
+  const rawRunConfigs = options.config
+    ? (options.config.get("run") as RunConfig | RunConfig[] | undefined)
+    : undefined;
+
+  const configs = filterTargetConfigs(rawRunConfigs, options.only);
   const services: RunServiceSpec[] = [];
   payload.run = {
     services,
@@ -68,6 +121,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     if (!serviceId) {
       throw new FirebaseError("Cloud Run serviceId must be specified in firebase.json.");
     }
+
     const region =
       ((options as any).primaryRegion as string | undefined) ||
       ((options as any).region as string | undefined) ||
@@ -85,21 +139,12 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       }
     }
 
-    // ABIU Resolution: CLI flags > config override > sticky existing service
-    let baseImageUri: string | undefined;
-    let clearBaseImage = false;
-
-    if (clearOpt) {
-      clearBaseImage = true;
-      baseImageUri = undefined;
-    } else if (runtimeOpt) {
-      baseImageUri = runtimeOpt;
-    } else if (config.baseImageUri || config.baseImage || config.runtime) {
-      baseImageUri = config.baseImageUri || config.baseImage || config.runtime;
-    } else if (existingService?.template?.containers?.[0]?.baseImageUri) {
-      // Stickiness: reuse existing base image from Cloud Run service
-      baseImageUri = existingService.template.containers[0].baseImageUri;
-    }
+    const { baseImageUri, clearBaseImage } = resolveBaseImage(
+      config,
+      existingService,
+      runtimeOpt,
+      clearOpt,
+    );
 
     const sourceDir = options.config
       ? options.config.path(config.source || config.rootDir || ".")

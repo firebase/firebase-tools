@@ -13,6 +13,7 @@ import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
 import { logger } from "../logger";
 import { partition } from "../functional";
+import * as secretManager from "./secretManager";
 
 export const API_VERSION = "v2";
 
@@ -732,11 +733,13 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     return acc;
   }, {});
   endpoint.secretEnvironmentVariables = secretEnv.map((e) => {
-    const [, /* projects*/ projectId /* secrets*/, , secret] =
-      e.valueSource.secretKeyRef.secret.split("/");
+    const { projectId: secretProjectId, secret } = parseSecretKeyRef(
+      e.valueSource.secretKeyRef.secret,
+      project,
+    );
     return {
       key: e.name,
-      projectId,
+      projectId: secretProjectId,
       secret,
       version: e.valueSource.secretKeyRef.version || "latest",
     };
@@ -748,6 +751,29 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     };
   }
   return endpoint;
+}
+
+/**
+ * Parses a SecretKeyRef secret resource string into its target project ID and short secret name.
+ * Handles full resource names (projects/{project}/secrets/{secret}) via secretManager.parseSecretResourceName
+ * and falls back to the default service project ID for bare secret names.
+ */
+export function parseSecretKeyRef(
+  secretRef: string,
+  defaultProjectId: string,
+): { projectId: string; secret: string } {
+  try {
+    const parsed = secretManager.parseSecretResourceName(secretRef);
+    return {
+      projectId: parsed.projectId,
+      secret: parsed.name,
+    };
+  } catch {
+    return {
+      projectId: defaultProjectId,
+      secret: secretRef,
+    };
+  }
 }
 
 /**

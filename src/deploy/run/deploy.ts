@@ -1,62 +1,159 @@
+import { Context, Payload } from "./args";
 import { Options } from "../../options";
-import { archiveDirectory } from "../../archiveDirectory";
-import * as gcs from "../../gcp/storage";
-import { getProjectNumber } from "../../getProjectNumber";
 import * as runv2 from "../../gcp/runv2";
 import * as artifactregistry from "../../gcp/artifactregistry";
-import { RunConfig, splitEnvVars } from "../../apphosting/config";
-import { getSecretNameParts } from "../../apphosting/secrets";
+import * as gcs from "../../gcp/storage";
 import { EnvMap } from "../../apphosting/yaml";
+import { splitEnvVars, AppHostingRunConfig as RunConfig } from "../../apphosting/config";
+import { getSecretNameParts } from "../../apphosting/secrets";
 import { EnvVar } from "../../gcp/k8s";
-import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
-import { Context, Payload } from "./args";
+
+/**
+ * Formats a secret reference into a canonical GCP Secret Manager resource path.
+ * If already a full resource path (projects/.../secrets/...), returns it directly.
+ * Otherwise, prepends projects/${projectId}/secrets/.
+ */
+export function formatSecretResourcePath(
+  rawSecret: string,
+  projectId: string,
+): {
+  secretPath: string;
+  version: string;
+} {
+  let [secretName, version] = getSecretNameParts(rawSecret);
+  if (secretName.includes("/versions/")) {
+    const parts = secretName.split("/versions/");
+    secretName = parts[0];
+    version = parts[1] || version;
+  }
+  const secretPath = secretName.startsWith("projects/")
+    ? secretName
+    : `projects/${projectId}/secrets/${secretName}`;
+  return { secretPath, version };
+}
+
+/**
+ * Applies runtime environment variables and Secret Manager references to a container.
+ */
+function applyContainerEnv(
+  container: runv2.Container,
+  projectId: string,
+  runtimeEnvMap: EnvMap,
+): void {
+  const newEnv: EnvVar[] = [];
+  for (const [key, val] of Object.entries(runtimeEnvMap)) {
+    if (val.value !== undefined) {
+      newEnv.push({ name: key, value: val.value });
+    } else if (val.secret !== undefined) {
+      const { secretPath, version } = formatSecretResourcePath(String(val.secret), projectId);
+      newEnv.push({
+        name: key,
+        valueSource: {
+          secretKeyRef: {
+            secret: secretPath,
+            version,
+          },
+        },
+      });
+    }
+  }
+
+  // TODO: Environment variables and secrets are currently sticky across deployments
+  // (new configs overlay onto existing container.env without removing absent keys).
+  // Implement a declarative pruning reconciliation mechanism once the deletion lifecycle is finalized.
+  const envMap = new Map<string, EnvVar>();
+  if (container.env) {
+    for (const existingVar of container.env) {
+      envMap.set(existingVar.name, existingVar);
+    }
+  }
+  for (const newVar of newEnv) {
+    envMap.set(newVar.name, newVar);
+  }
+  container.env = Array.from(envMap.values());
+}
+
+/**
+ * Applies CPU and memory limits from apphosting.yaml runConfig to the container.
+ */
+function applyContainerResources(container: runv2.Container, runConfig?: RunConfig): void {
+  if (!runConfig || (runConfig.cpu === undefined && runConfig.memoryMiB === undefined)) {
+    return;
+  }
+  if (!container.resources) container.resources = {};
+  if (!container.resources.limits) container.resources.limits = {};
+  if (runConfig.cpu !== undefined) {
+    container.resources.limits.cpu = String(runConfig.cpu);
+  }
+  if (runConfig.memoryMiB !== undefined) {
+    container.resources.limits.memory = `${runConfig.memoryMiB}Mi`;
+  }
+}
+
+/**
+ * Applies service-level scaling, concurrency, and VPC settings to a Cloud Run service definition.
+ */
+function applyServiceScaling(
+  service: Omit<runv2.Service, runv2.ServiceOutputFields>,
+  runConfig?: RunConfig,
+): void {
+  if (!runConfig) return;
+
+  if (runConfig.minInstances !== undefined || runConfig.maxInstances !== undefined) {
+    if (!service.scaling) service.scaling = {};
+    if (runConfig.minInstances !== undefined) {
+      service.scaling.minInstanceCount = runConfig.minInstances;
+    }
+    if (runConfig.maxInstances !== undefined) {
+      service.scaling.maxInstanceCount = runConfig.maxInstances;
+    }
+  }
+
+  if (runConfig.concurrency !== undefined) {
+    service.template.maxInstanceRequestConcurrency = runConfig.concurrency;
+  }
+  if ((runConfig as any).vpcAccess) {
+    service.template.vpcAccess = (runConfig as any).vpcAccess;
+  }
+}
+
+/**
+ * Maps apphosting.yaml runtime environment variables, Secret Manager secretKeyRef
+ * references, CPU/memory limits, VPC, and service-level instance scaling onto a Cloud Run Service definition.
+ */
+function applyAppHostingConfig(
+  projectId: string,
+  service: Omit<runv2.Service, runv2.ServiceOutputFields>,
+  runtimeEnvMap: EnvMap,
+  runConfig?: RunConfig,
+): void {
+  if (!service.template.containers) {
+    service.template.containers = [];
+  }
+  if (service.template.containers.length === 0) {
+    service.template.containers.push({ name: "worker", image: "" });
+  }
+
+  const container = service.template.containers[0];
+  applyContainerEnv(container, projectId, runtimeEnvMap);
+  applyContainerResources(container, runConfig);
+  applyServiceScaling(service, runConfig);
+}
 
 /**
  * Deploys Cloud Run services by building container images via Cloud Build
- * and creating or updating Cloud Run v2 services.
+ * and creating or updating services in Cloud Run Admin API v2.
  */
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
-  const projectId = context.projectId || needProjectId(options);
-  const projectNumber = await getProjectNumber(options);
+  if (!payload.run || !payload.run.services || payload.run.services.length === 0) {
+    return;
+  }
 
-  if (!payload.run?.services) return;
+  const projectId = context.projectId!;
 
   for (const service of payload.run.services) {
     const region = service.region;
-
-    // Create regional storage bucket
-    const baseName = `firebase-run-src-${projectNumber}-${region}`;
-    const bucketName = await gcs.upsertBucket({
-      product: "run",
-      projectId,
-      createMessage: `Creating Cloud Storage bucket to store Run source code...`,
-      req: {
-        baseName,
-        location: region,
-        purposeLabel: "run-source",
-        lifecycle: { rule: [{ action: { type: "Delete" }, condition: { age: 1 } }] },
-      },
-    });
-
-    // Zip and upload
-    const archive = await archiveDirectory(service.source, {
-      ignore: service.ignore,
-    });
-
-    const uploadRes = await gcs.uploadObject(
-      {
-        file: archive.file,
-        stream: archive.stream,
-      },
-      bucketName,
-    );
-
-    service.storageSource = {
-      bucket: uploadRes.bucket,
-      object: uploadRes.object,
-      generation: uploadRes.generation || undefined,
-    };
 
     try {
       // Ensure Artifact Registry repository exists
@@ -83,7 +180,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
       // Submit build via Cloud Run Build API
       const build: runv2.Build = {
-        storageSource: service.storageSource,
+        storageSource: service.storageSource!,
         imageUri,
         buildpackBuild: {
           enableAutomaticUpdates: hasAbiu,
@@ -101,7 +198,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
         logger.warn(`Cloud Run ABIU warning: ${buildRes.baseImageWarning}`);
       }
 
-      // Deploy via POST or PATCH
+      // Deploy via POST (new service) or PATCH (existing service)
       let existing = service.existingService;
       let newService: Omit<runv2.Service, runv2.ServiceOutputFields>;
 
@@ -152,9 +249,13 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           newService.template.annotations["run.googleapis.com/description"] = revisionDescription;
         }
 
-        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig);
+        applyAppHostingConfig(projectId, newService, runtimeEnvMap, appHostingConfig?.runConfig);
 
-        service.deployResponse = await runv2.updateService(newService, ["template"]);
+        const updateMask = ["template"];
+        if (newService.scaling) {
+          updateMask.push("scaling");
+        }
+        service.deployResponse = await runv2.updateService(newService, updateMask);
       } else {
         const revisionDescription = (service.message || options.message) as string | undefined;
         newService = {
@@ -176,7 +277,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           client: "cli-firebase",
         };
 
-        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig);
+        applyAppHostingConfig(projectId, newService, runtimeEnvMap, appHostingConfig?.runConfig);
 
         service.deployResponse = await runv2.createService(
           projectId,
@@ -191,99 +292,11 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           await gcs.deleteObject(
             `/${service.storageSource.bucket}/${service.storageSource.object}`,
           );
-        } catch (cleanupErr) {
-          logger.debug("Failed to clean up staging archive on deployment failure:", cleanupErr);
+        } catch {
+          // ignore cleanup errors
         }
       }
       throw err;
-    }
-  }
-}
-
-/**
- * Maps apphosting.yaml runtime environment variables, Secret Manager secretKeyRef
- * references, CPU/memory limits, VPC, and instance scaling onto a Cloud Run Service definition.
- */
-function applyAppHostingConfig(
-  service: Omit<runv2.Service, runv2.ServiceOutputFields>,
-  runtimeEnvMap: EnvMap,
-  runConfig?: RunConfig,
-): void {
-  if (!service.template.containers) {
-    service.template.containers = [];
-  }
-  if (service.template.containers.length === 0) {
-    service.template.containers.push({ name: "worker", image: "" });
-  }
-
-  const container = service.template.containers[0];
-
-  // Map runtime and secret env vars
-  const env: EnvVar[] = [];
-  for (const [key, val] of Object.entries(runtimeEnvMap)) {
-    if (val.value !== undefined) {
-      env.push({ name: key, value: val.value });
-    } else if (val.secret !== undefined) {
-      const rawSecret = String(val.secret);
-      let [secretName, version] = getSecretNameParts(rawSecret);
-      if (secretName.includes("/versions/")) {
-        const parts = secretName.split("/versions/");
-        secretName = parts[0];
-        version = parts[1] || version;
-      }
-      if (secretName.includes("/secrets/")) {
-        secretName = secretName.split("/secrets/")[1];
-      } else if (secretName.includes("/")) {
-        const parts = secretName.split("/");
-        secretName = parts[parts.length - 1];
-      }
-      env.push({
-        name: key,
-        valueSource: {
-          secretKeyRef: {
-            secret: secretName,
-            version: version,
-          },
-        },
-      });
-    }
-  }
-
-  // TODO(b/...): Environment variables and secrets are currently sticky across deployments
-  // (new configs overlay onto existing container.env without removing absent keys).
-  // Implement a declarative pruning reconciliation mechanism once the deletion lifecycle is finalized.
-  const envMap = new Map<string, EnvVar>();
-  if (container.env) {
-    for (const existingVar of container.env) {
-      envMap.set(existingVar.name, existingVar);
-    }
-  }
-  for (const newVar of env) {
-    envMap.set(newVar.name, newVar);
-  }
-  container.env = Array.from(envMap.values());
-
-  // Map RunConfig
-  if (runConfig) {
-    if (runConfig.cpu !== undefined || runConfig.memoryMiB !== undefined) {
-      if (!container.resources) container.resources = {};
-      if (!container.resources.limits) container.resources.limits = {};
-      if (runConfig.cpu !== undefined) container.resources.limits.cpu = String(runConfig.cpu);
-      if (runConfig.memoryMiB !== undefined)
-        container.resources.limits.memory = `${runConfig.memoryMiB}Mi`;
-    }
-    if (runConfig.minInstances !== undefined || runConfig.maxInstances !== undefined) {
-      if (!service.template.scaling) service.template.scaling = {};
-      if (runConfig.minInstances !== undefined)
-        service.template.scaling.minInstanceCount = runConfig.minInstances;
-      if (runConfig.maxInstances !== undefined)
-        service.template.scaling.maxInstanceCount = runConfig.maxInstances;
-    }
-    if (runConfig.concurrency !== undefined) {
-      service.template.maxInstanceRequestConcurrency = runConfig.concurrency;
-    }
-    if ((runConfig as any).vpcAccess) {
-      service.template.vpcAccess = (runConfig as any).vpcAccess;
     }
   }
 }

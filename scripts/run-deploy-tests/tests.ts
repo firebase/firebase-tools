@@ -15,11 +15,11 @@ interface MockFirebaseJson {
   hosting?: { public?: string };
 }
 
+import * as os from "os";
+
 const TARGET_PROJECT =
-  process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "aryanf-test";
-const DEFAULT_APP_DIR =
-  process.env.APP_DIR ||
-  path.resolve(__dirname, "../../../firebase-apphosting-canary/apps/nextjs-reference/next-15.3");
+  process.env.FBTOOLS_TARGET_PROJECT || process.env.GCLOUD_PROJECT || "test-project";
+const DEFAULT_APP_DIR = process.env.APP_DIR;
 
 describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
   this.timeout(600_000); // 10 minutes per test for Cloud Build & Cloud Run provisioning
@@ -28,12 +28,12 @@ describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
   let hasAppDir = false;
 
   before(() => {
-    if (fs.existsSync(DEFAULT_APP_DIR)) {
+    if (DEFAULT_APP_DIR && fs.existsSync(DEFAULT_APP_DIR)) {
       workDir = DEFAULT_APP_DIR;
       hasAppDir = true;
     } else {
       // Create isolated temporary workspace for E2E testing
-      workDir = fs.mkdtempSync(path.join(__dirname, "run-e2e-"));
+      workDir = fs.mkdtempSync(path.join(os.tmpdir(), "firebase-run-e2e-"));
       fs.writeFileSync(
         path.join(workDir, "package.json"),
         JSON.stringify(
