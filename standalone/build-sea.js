@@ -140,8 +140,19 @@ async function main() {
     console.log(`[build-sea] --current-only specified. Building target: ${hostTargetName}`);
   }
 
-  // 1. Prepare dist directory
+  // 1. Prepare dist directory and config.js
   fs.mkdirSync(distDir, { recursive: true });
+
+  const repoRootDir = path.resolve(standaloneDir, "..");
+  const repoPkg = JSON.parse(fs.readFileSync(path.join(repoRootDir, "package.json"), "utf8"));
+  const configJsPath = path.join(standaloneDir, "config.js");
+  const configContent = `module.exports = {
+  headless: true,
+  firebase_tools_package: "",
+  firebase_tools_version: "${repoPkg.version}"
+};\n`;
+  fs.writeFileSync(configJsPath, configContent);
+  console.log(`[build-sea] Generated config.js with firebase_tools_version: ${repoPkg.version}`);
 
   // 2. Bundle firepit.js and welcome.js with esbuild
   console.log("[build-sea] Step 1: Bundling JavaScript files with esbuild...");
