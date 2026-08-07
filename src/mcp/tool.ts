@@ -19,10 +19,7 @@ export type ServerToolMeta = {
   };
 };
 
-export interface ServerTool<
-  InputSchema extends ZodTypeAny = z.ZodAny,
-  OutputSchema extends ZodTypeAny = z.ZodAny,
-> {
+export interface ServerTool<InputSchema extends ZodTypeAny = z.ZodAny> {
   mcp: {
     name: string;
     description?: string;
@@ -53,12 +50,12 @@ export interface ServerTool<
 
 export function tool<InputSchema extends ZodTypeAny, OutputSchema extends ZodTypeAny = z.ZodAny>(
   feature: ServerFeature,
-  options: Omit<ServerTool<InputSchema, OutputSchema>["mcp"], "inputSchema" | "outputSchema"> & {
+  options: Omit<ServerTool<InputSchema>["mcp"], "inputSchema" | "outputSchema"> & {
     inputSchema: InputSchema;
     outputSchema?: OutputSchema;
     isAvailable?: (ctx: McpContext) => Promise<boolean>;
   },
-  fn: ServerTool<InputSchema, OutputSchema>["fn"],
+  fn: ServerTool<InputSchema>["fn"],
 ): ServerTool {
   const { isAvailable, ...mcpOptions } = options;
 
