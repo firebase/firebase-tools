@@ -18,7 +18,7 @@ export interface RunInfo {
 }
 
 /**
- *
+ * Prompts the user for Cloud Run service ID, deployment region, source root, and output directory.
  */
 export async function askQuestions(setup: Setup): Promise<void> {
   const projectId = setup.projectId;
@@ -58,7 +58,8 @@ export async function askQuestions(setup: Setup): Promise<void> {
 }
 
 /**
- *
+ * Provisions placeholder Cloud Run service if absent, writes apphosting.yaml template,
+ * and records service configuration in firebase.json.
  */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const runInfo = setup.featureInfo?.run;

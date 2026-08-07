@@ -190,29 +190,49 @@ export async function submitBuild(
   }
   const op = res.body.buildOperation;
   const opName = typeof op === "string" ? op : op?.name || "";
-  const rawId = opName.split("/").pop()?.replace(/^build-/, "") || "";
+  const rawId =
+    opName
+      .split("/")
+      .pop()
+      ?.replace(/^build-/, "") || "";
   const buildId = (op as any)?.metadata?.build?.id || rawId;
   if (buildId) {
-    await pollOperation<{ status: string; images?: string[] }>({
-      apiOrigin: cloudbuildOrigin(),
+    const cloudbuildClient = new Client({
+      urlPrefix: cloudbuildOrigin(),
+      auth: true,
       apiVersion: "v1",
-      operationResourceName: `projects/${projectId}/locations/${location}/builds/${buildId}`,
-      masterTimeout: 15 * 60 * 1000,
-      backoff: 2000,
-      maxBackoff: 10000,
-      doneFn: (b: any) => {
-        if (!b?.status) return false;
-        if (b.status === "WORKING" || b.status === "QUEUED" || b.status === "PENDING") {
-          return false;
+    });
+    const startTime = Date.now();
+    const timeoutMs = 15 * 60 * 1000;
+    while (Date.now() - startTime < timeoutMs) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      try {
+        const buildStatusRes = await cloudbuildClient.get<{
+          status: string;
+          statusDetail?: string;
+        }>(`/projects/${projectId}/locations/${location}/builds/${buildId}`);
+        const status = buildStatusRes.body?.status;
+        if (status === "SUCCESS") {
+          logger.info(`[run:submitBuild] Cloud Build ${buildId} completed with SUCCESS.`);
+          break;
         }
-        if (b.status !== "SUCCESS") {
+        if (
+          status === "FAILURE" ||
+          status === "INTERNAL_ERROR" ||
+          status === "TIMEOUT" ||
+          status === "CANCELLED"
+        ) {
           throw new FirebaseError(
-            `Cloud Build failed with status ${b.status}: ${b.statusDetail || ""}`,
+            `Cloud Build failed with status ${status}: ${buildStatusRes.body?.statusDetail || ""}`,
           );
         }
-        return true;
-      },
-    });
+      } catch (err: any) {
+        if (err instanceof FirebaseError && err.message.startsWith("Cloud Build failed")) {
+          throw err;
+        }
+        logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
+      }
+    }
   }
   return {
     baseImageUri: res.body.baseImageUri,
@@ -252,9 +272,37 @@ export async function updateService(
         (f !== "template.revision" || service.template?.revision !== undefined),
     );
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const {
+    uid,
+    generation,
+    createTime,
+    updateTime,
+    creator,
+    lastModifier,
+    observedGeneration,
+    terminalCondition,
+    conditions,
+    latestReadyRevision,
+    latestCreatedRevision,
+    trafficStatuses,
+    uri,
+    urls,
+    satisfiesPzi,
+    satisfiesPzs,
+    etag,
+    reconciling,
+    ...serviceBody
+  } = service as any;
+
+  if (serviceBody.template) {
+    delete serviceBody.template.revision;
+  }
+
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
-    service,
+    serviceBody,
     {
       queryParams: {
         updateMask: fieldMask.join(","),

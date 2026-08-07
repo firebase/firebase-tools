@@ -164,7 +164,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
         applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
 
-        service.deployResponse = await runv2.updateService(newService, ["template", "client"]);
+        service.deployResponse = await runv2.updateService(newService);
       } else {
         const revisionDescription = (service.message || options.message) as string | undefined;
         newService = {
@@ -210,6 +210,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   }
 }
 
+/**
+ * Maps apphosting.yaml runtime environment variables, Secret Manager secretKeyRef
+ * references, CPU/memory limits, VPC, and instance scaling onto a Cloud Run Service definition.
+ */
 function applyAppHostingConfig(
   service: Omit<runv2.Service, runv2.ServiceOutputFields>,
   runtimeEnvMap: EnvMap,
@@ -284,11 +288,11 @@ function applyAppHostingConfig(
         container.resources.limits.memory = `${runConfig.memoryMiB}Mi`;
     }
     if (runConfig.minInstances !== undefined || runConfig.maxInstances !== undefined) {
-      if (!service.scaling) service.scaling = {};
+      if (!service.template.scaling) service.template.scaling = {};
       if (runConfig.minInstances !== undefined)
-        service.scaling.minInstanceCount = runConfig.minInstances;
+        service.template.scaling.minInstanceCount = runConfig.minInstances;
       if (runConfig.maxInstances !== undefined)
-        service.scaling.maxInstanceCount = runConfig.maxInstances;
+        service.template.scaling.maxInstanceCount = runConfig.maxInstances;
     }
     if (runConfig.concurrency !== undefined) {
       service.template.maxInstanceRequestConcurrency = runConfig.concurrency;
