@@ -33,12 +33,15 @@ describe("tool", () => {
         name: "test_tool",
         description: "A test tool",
         inputSchema: z.object({}),
+        outputSchema: z.object({ result: z.string() }),
       },
       testFn,
     );
 
     expect(testTool.mcp.name).to.equal("test_tool");
     expect(testTool.mcp.description).to.equal("A test tool");
+    expect(testTool.mcp.outputSchema).to.not.be.undefined;
+    expect(testTool.mcp.outputSchema.properties.result.type).to.equal("string");
     expect(testTool.fn).to.equal(testFn);
   });
 
