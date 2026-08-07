@@ -9,8 +9,6 @@ import { EnvMap } from "../../apphosting/yaml";
 import { EnvVar } from "../../gcp/k8s";
 import { needProjectId } from "../../projectUtils";
 import { logger } from "../../logger";
-import * as gcsm from "../../gcp/secretManager";
-import { getSecretNameParts } from "../../apphosting/secrets";
 import { Context, Payload } from "./args";
 
 /**
@@ -69,24 +67,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
       const appHostingConfig = service.appHostingConfig;
       const envRecord = appHostingConfig?.env || {};
       const { build: buildEnvMap, runtime: runtimeEnvMap } = splitEnvVars(envRecord);
-      const firebaseConfigStr = JSON.stringify({
-        projectId,
-        storageBucket: `${projectId}.appspot.com`,
-      });
-      const buildEnv: Record<string, string> = {
-        FIREBASE_CONFIG: firebaseConfigStr,
-      };
+      const buildEnv: Record<string, string> = {};
       for (const [key, val] of Object.entries(buildEnvMap)) {
         if (val.value !== undefined) {
           buildEnv[key] = val.value;
-        } else if (val.secret) {
-          try {
-            const [secretName, version] = getSecretNameParts(val.secret);
-            const secretVal = await gcsm.accessSecretVersion(projectId, secretName, version);
-            buildEnv[key] = secretVal;
-          } catch (err: any) {
-            logger.warn(`Failed to resolve build secret ${key} (${val.secret}): ${err.message}`);
-          }
         }
       }
 
@@ -161,7 +145,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           newService.template.annotations["run.googleapis.com/description"] = revisionDescription;
         }
 
-        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
+        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig);
 
         service.deployResponse = await runv2.updateService(newService, ["template"]);
       } else {
@@ -185,7 +169,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           client: "cli-firebase",
         };
 
-        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
+        applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig);
 
         service.deployResponse = await runv2.createService(
           projectId,
@@ -217,7 +201,6 @@ function applyAppHostingConfig(
   service: Omit<runv2.Service, runv2.ServiceOutputFields>,
   runtimeEnvMap: EnvMap,
   runConfig?: RunConfig,
-  projectId?: string,
 ): void {
   if (!service.template.containers) {
     service.template.containers = [];
@@ -230,15 +213,6 @@ function applyAppHostingConfig(
 
   // Map runtime and secret env vars
   const env: EnvVar[] = [];
-  if (projectId && !runtimeEnvMap["FIREBASE_CONFIG"]) {
-    env.push({
-      name: "FIREBASE_CONFIG",
-      value: JSON.stringify({
-        projectId,
-        storageBucket: `${projectId}.appspot.com`,
-      }),
-    });
-  }
   for (const [key, val] of Object.entries(runtimeEnvMap)) {
     if (val.value !== undefined) {
       env.push({ name: key, value: val.value });
@@ -272,6 +246,9 @@ function applyAppHostingConfig(
     }
   }
 
+  // TODO(b/...): Environment variables and secrets are currently sticky across deployments
+  // (new configs overlay onto existing container.env without removing absent keys).
+  // Implement a declarative pruning reconciliation mechanism once the deletion lifecycle is finalized.
   const envMap = new Map<string, EnvVar>();
   if (container.env) {
     for (const existingVar of container.env) {

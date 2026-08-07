@@ -140,4 +140,57 @@ describe("artifactRegistry", () => {
       );
     });
   });
+
+  describe("createRepository", () => {
+    it("should post new repository and return body", async () => {
+      const repoResponse = {
+        name: REPO_NAME,
+        format: "DOCKER",
+        description: "Cloud Run Source Deploy Repository",
+        done: true,
+      };
+      nock(artifactRegistryDomain())
+        .post(
+          `/${API_VERSION}/projects/${PROJECT_ID}/locations/${REGION}/repositories?repositoryId=${REPO}`,
+        )
+        .reply(200, repoResponse);
+
+      const res = await artifactRegistry.createRepository(PROJECT_ID, REGION, REPO);
+      expect(res).to.deep.equal(repoResponse);
+      expect(nock.isDone()).to.be.true;
+    });
+  });
+
+  describe("ensureRepository", () => {
+    it("should return when repository already exists", async () => {
+      const repo = { name: REPO_NAME, format: "DOCKER" };
+      nock(artifactRegistryDomain()).get(`/${API_VERSION}/${REPO_NAME}`).reply(200, repo);
+
+      await artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should create repository when getRepository returns 404", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(404, { error: { message: "Not found", status: 404 } });
+      nock(artifactRegistryDomain())
+        .post(
+          `/${API_VERSION}/projects/${PROJECT_ID}/locations/${REGION}/repositories?repositoryId=${REPO}`,
+        )
+        .reply(200, { name: REPO_NAME, format: "DOCKER", done: true });
+
+      await artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO);
+      expect(nock.isDone()).to.be.true;
+    });
+
+    it("should rethrow non-404 errors", async () => {
+      nock(artifactRegistryDomain())
+        .get(`/${API_VERSION}/${REPO_NAME}`)
+        .reply(403, { error: { message: "Permission Denied", status: 403 } });
+
+      await expect(artifactRegistry.ensureRepository(PROJECT_ID, REGION, REPO)).to.be.rejected;
+      expect(nock.isDone()).to.be.true;
+    });
+  });
 });

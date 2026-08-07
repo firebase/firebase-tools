@@ -3,6 +3,7 @@ import { artifactRegistryDomain } from "../api";
 import { assertImplements, DeepOmit, RecursiveKeyOf } from "../metaprogramming";
 import * as api from "../ensureApiEnabled";
 import * as proto from "./proto";
+import { pollOperation } from "../operation-poller";
 
 export const API_VERSION = "v1";
 
@@ -117,6 +118,16 @@ export async function createRepository(
       },
     },
   );
+  if (res.body?.name && !res.body.done) {
+    return await pollOperation<Repository>({
+      apiOrigin: artifactRegistryDomain(),
+      apiVersion: API_VERSION,
+      operationResourceName: res.body.name,
+      masterTimeout: 5 * 60 * 1000,
+      backoff: 1000,
+      maxBackoff: 5000,
+    });
+  }
   return res.body;
 }
 

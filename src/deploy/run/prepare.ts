@@ -1,8 +1,10 @@
 import { needProjectId } from "../../projectUtils";
 import { Options } from "../../options";
 import { prereqs } from "./prereqs";
+import * as path from "path";
 import * as runv2 from "../../gcp/runv2";
-import { getAppHostingConfiguration } from "../../apphosting/config";
+import { fileExistsSync } from "../../fsutils";
+import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import { FirebaseError } from "../../error";
 import { Context, DEFAULT_RUN_IGNORE, Payload, RunConfig, RunServiceSpec } from "./args";
 
@@ -117,7 +119,11 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     const sourceDir = options.config
       ? options.config.path(config.source || config.rootDir || ".")
       : process.cwd();
-    const appHostingConfig = await getAppHostingConfiguration(sourceDir);
+    const yamlPath = path.join(sourceDir, "apphosting.yaml");
+    let appHostingConfig: AppHostingYamlConfig | undefined;
+    if (fileExistsSync(yamlPath)) {
+      appHostingConfig = await AppHostingYamlConfig.loadFromFile(yamlPath);
+    }
 
     services.push({
       serviceId,

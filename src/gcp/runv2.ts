@@ -204,6 +204,7 @@ export async function submitBuild(
     });
     const startTime = Date.now();
     const timeoutMs = 15 * 60 * 1000;
+    let buildSuccess = false;
     while (Date.now() - startTime < timeoutMs) {
       await new Promise((resolve) => setTimeout(resolve, 3000));
       try {
@@ -214,6 +215,7 @@ export async function submitBuild(
         const status = buildStatusRes.body?.status;
         if (status === "SUCCESS") {
           logger.info(`[run:submitBuild] Cloud Build ${buildId} completed with SUCCESS.`);
+          buildSuccess = true;
           break;
         }
         if (
@@ -230,8 +232,14 @@ export async function submitBuild(
         if (err instanceof FirebaseError && err.message.startsWith("Cloud Build failed")) {
           throw err;
         }
+        if (err.status && err.status >= 400 && err.status < 500) {
+          throw err;
+        }
         logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
       }
+    }
+    if (!buildSuccess) {
+      throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes.`, { exit: 1 });
     }
   }
   return {
