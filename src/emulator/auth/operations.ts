@@ -1257,6 +1257,17 @@ export function setAccountInfoImpl(
     assert(reqBody.linkProviderUserInfo.rawId, "MISSING_RAW_ID");
   }
 
+  if (reqBody.linkProviderUserInfo) {
+    assert(
+      reqBody.linkProviderUserInfo.providerId && reqBody.linkProviderUserInfo.providerId !== "",
+      "linkProviderUserInfo.providerId of properties argument must be a non-empty string."
+    );
+    assert(
+      reqBody.linkProviderUserInfo.rawId && reqBody.linkProviderUserInfo.rawId !== "",
+      "linkProviderUserInfo.providerId of properties argument must be a non-empty string."
+    );
+  }
+
   user = state.updateUserByLocalId(user.localId, updates, {
     deleteProviders: reqBody.deleteProvider,
     upsertProviders: reqBody.linkProviderUserInfo
