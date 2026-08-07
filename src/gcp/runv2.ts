@@ -189,23 +189,31 @@ export async function submitBuild(
     });
   }
   const op = res.body.buildOperation;
-  let opName: string;
-  if (typeof op === "string") {
-    opName = op;
-  } else {
-    const buildId = op?.metadata?.build?.id;
-    opName = buildId
-      ? `projects/${projectId}/locations/${location}/operations/${buildId}`
-      : op?.name || "";
+  const opName = typeof op === "string" ? op : op?.name || "";
+  const rawId = opName.split("/").pop()?.replace(/^build-/, "") || "";
+  const buildId = (op as any)?.metadata?.build?.id || rawId;
+  if (buildId) {
+    await pollOperation<{ status: string; images?: string[] }>({
+      apiOrigin: cloudbuildOrigin(),
+      apiVersion: "v1",
+      operationResourceName: `projects/${projectId}/locations/${location}/builds/${buildId}`,
+      masterTimeout: 15 * 60 * 1000,
+      backoff: 2000,
+      maxBackoff: 10000,
+      doneFn: (b: any) => {
+        if (!b?.status) return false;
+        if (b.status === "WORKING" || b.status === "QUEUED" || b.status === "PENDING") {
+          return false;
+        }
+        if (b.status !== "SUCCESS") {
+          throw new FirebaseError(
+            `Cloud Build failed with status ${b.status}: ${b.statusDetail || ""}`,
+          );
+        }
+        return true;
+      },
+    });
   }
-  await pollOperation({
-    apiOrigin: cloudbuildOrigin(),
-    apiVersion: "v1",
-    operationResourceName: opName,
-    masterTimeout: 10 * 60 * 1000,
-    backoff: 1000,
-    maxBackoff: 5000,
-  });
   return {
     baseImageUri: res.body.baseImageUri,
     baseImageWarning: res.body.baseImageWarning,

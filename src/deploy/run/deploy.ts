@@ -164,7 +164,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
         applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
 
-        service.deployResponse = await runv2.updateService(newService);
+        service.deployResponse = await runv2.updateService(newService, ["template", "client"]);
       } else {
         const revisionDescription = (service.message || options.message) as string | undefined;
         newService = {
@@ -247,15 +247,15 @@ function applyAppHostingConfig(
         secretName = parts[0];
         version = parts[1] || "latest";
       }
-      const secretPath =
-        secretName.startsWith("projects/") || !projectId
-          ? secretName
-          : `projects/${projectId}/secrets/${secretName}`;
+      if (secretName.includes("/")) {
+        const parts = secretName.split("/");
+        secretName = parts[parts.length - 1];
+      }
       env.push({
         name: key,
         valueSource: {
           secretKeyRef: {
-            secret: secretPath,
+            secret: secretName,
             version: version,
           },
         },

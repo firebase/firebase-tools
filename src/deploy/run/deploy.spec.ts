@@ -226,7 +226,7 @@ describe("run deploy", () => {
       name: "MY_SECRET",
       valueSource: {
         secretKeyRef: {
-          secret: "projects/my-gcp-project/secrets/secret-name",
+          secret: "secret-name",
           version: "2",
         },
       },
@@ -235,7 +235,7 @@ describe("run deploy", () => {
       name: "MY_FULL_SECRET",
       valueSource: {
         secretKeyRef: {
-          secret: "projects/custom-p/secrets/my-sec",
+          secret: "my-sec",
           version: "latest",
         },
       },
