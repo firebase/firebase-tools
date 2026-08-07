@@ -248,6 +248,31 @@ Complete the following steps to run Firebase commands in a CI environment. Find 
 
 To disable access for the service account, [find the service account](https://console.cloud.google.com/projectselector/iam-admin/serviceaccounts) for your project in the Google Cloud Console, and then either remove the key, or disable or delete the service account.
 
+## Machine-readable output
+
+By default, the Firebase CLI prints human-readable output to `stdout`. That
+output is **not** part of the CLI's API — it may change at any time — so
+scripts and CI pipelines should not parse it directly.
+
+For scripting and automation, pass the `--json` flag to any command. With
+`--json`:
+
+- `stdout` receives a single JSON document describing the command's
+  result — parsable regardless of exit code.
+- The shape is stable across versions and intended for programmatic use.
+
+```bash
+# Human output (default) — do not parse this in scripts
+$ firebase hosting:channel:list --project my-project
+
+# Machine output — safe to parse in CI
+$ firebase hosting:channel:list --project my-project --json | jq '.result.channels[].name'
+```
+
+If `--json` isn't enough for your use case (e.g. you need to catch thrown
+errors rather than inspect an exit code), see [Using as a
+Module](#using-as-a-module) below.
+
 ## Using as a Module
 
 The Firebase CLI can also be used programmatically as a standard Node module.
