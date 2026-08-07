@@ -366,6 +366,19 @@ export type AppHostingMultiple = AppHostingSingle[];
 
 export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
+export interface RunSingle extends Deployable {
+  serviceId: string;
+  region?: string;
+  source?: string;
+  output?: string;
+  ignore?: string[];
+  baseImageUri?: string;
+}
+
+export type RunMultiple = RunSingle[];
+
+export type RunConfig = RunSingle | RunMultiple;
+
 export interface AuthConfig {
   providers?: {
     anonymous?: boolean;
@@ -392,4 +405,5 @@ export type FirebaseConfig = {
   dataconnect?: DataConnectConfig;
   apphosting?: AppHostingConfig;
   auth?: AuthConfig;
+  run?: RunConfig;
 };

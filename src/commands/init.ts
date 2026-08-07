@@ -99,6 +99,11 @@ let choices: {
     name: "Authentication: Set up Firebase Authentication",
     checked: false,
   },
+  {
+    value: "run",
+    name: "Cloud Run: Configure a Cloud Run service",
+    checked: false,
+  },
 ];
 
 if (isEnabled("fdcwebhooks")) {

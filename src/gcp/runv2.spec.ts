@@ -7,6 +7,7 @@ import { latest } from "../deploy/functions/runtimes/supported";
 import { CODEBASE_LABEL } from "../functions/constants";
 import { Client } from "../apiv2";
 import { FirebaseError } from "../error";
+import * as operationPoller from "../operation-poller";
 
 describe("runv2", () => {
   const PROJECT_ID = "project-id";
@@ -579,6 +580,236 @@ describe("runv2", () => {
         `/projects/${PROJECT_ID}/locations/-/services`,
         { queryParams: {} },
       );
+    });
+  });
+
+  describe("submitBuild", () => {
+    let sandbox: sinon.SinonSandbox;
+    let postStub: sinon.SinonStub;
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      postStub = sandbox.stub(Client.prototype, "post");
+      getStub = sandbox.stub(Client.prototype, "get");
+      getStub.resolves({ status: 200, body: { status: "SUCCESS" } });
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should submit build and poll operation successfully", async () => {
+      const build: runv2.Build = {
+        storageSource: { bucket: "my-bucket", object: "src.zip" },
+        imageUri: "us-docker.pkg.dev/proj/repo/img:latest",
+        buildpackBuild: {},
+      };
+      postStub.resolves({
+        status: 200,
+        body: {
+          buildOperation: "projects/project-id/locations/us-central1/operations/op123",
+          baseImageUri: "gcr.io/base:latest",
+          baseImageWarning: "warning",
+        },
+      });
+
+      const res = await runv2.submitBuild(PROJECT_ID, LOCATION, build);
+
+      expect(postStub).to.have.been.calledOnceWithExactly(
+        `/projects/${PROJECT_ID}/locations/${LOCATION}/builds:submit`,
+        build,
+      );
+      expect(res.baseImageUri).to.equal("gcr.io/base:latest");
+      expect(res.baseImageWarning).to.equal("warning");
+    });
+
+    it("should handle object buildOperation with build id metadata", async () => {
+      const build: runv2.Build = {
+        storageSource: { bucket: "my-bucket", object: "src.zip" },
+        imageUri: "us-docker.pkg.dev/proj/repo/img:latest",
+        buildpackBuild: {},
+      };
+      postStub.resolves({
+        status: 200,
+        body: {
+          buildOperation: {
+            name: "raw-op-name",
+            metadata: {
+              build: {
+                id: "build-456",
+              },
+            },
+          },
+          baseImageUri: "gcr.io/base:latest",
+        },
+      });
+
+      const res = await runv2.submitBuild(PROJECT_ID, LOCATION, build);
+      expect(res.baseImageUri).to.equal("gcr.io/base:latest");
+    });
+
+    it("should throw FirebaseError on non-200 status", async () => {
+      const build: runv2.Build = {
+        storageSource: { bucket: "my-bucket", object: "src.zip" },
+        imageUri: "us-docker.pkg.dev/proj/repo/img:latest",
+        buildpackBuild: {},
+      };
+      postStub.resolves({ status: 400, body: "Bad request" });
+
+      await expect(runv2.submitBuild(PROJECT_ID, LOCATION, build)).to.be.rejectedWith(
+        FirebaseError,
+        "Failed to submit build: 400",
+      );
+    });
+  });
+
+  describe("updateService", () => {
+    let sandbox: sinon.SinonSandbox;
+    let patchStub: sinon.SinonStub;
+    let pollStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      patchStub = sandbox.stub(Client.prototype, "patch");
+      pollStub = sandbox.stub(operationPoller, "pollOperation");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should patch service with custom updateMask and poll operation", async () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        template: {},
+      };
+      patchStub.resolves({
+        status: 200,
+        body: { name: "operations/op1" },
+      });
+      pollStub.resolves({ ...service, uri: "https://my-service.com" });
+
+      const res = await runv2.updateService(service, ["template", "scaling"]);
+
+      expect(patchStub).to.have.been.calledOnceWith(service.name, service, {
+        queryParams: { updateMask: "template,scaling" },
+      });
+      expect(res.uri).to.equal("https://my-service.com");
+    });
+
+    it("should default updateMask including template.revision if updateMask not provided", async () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        template: {},
+      };
+      patchStub.resolves({
+        status: 200,
+        body: { name: "operations/op1" },
+      });
+      pollStub.resolves({ ...service, uri: "https://my-service.com" });
+
+      await runv2.updateService(service);
+
+      const patchOptions = patchStub.firstCall.args[2] as {
+        queryParams: { updateMask: string };
+      };
+      expect(patchOptions.queryParams.updateMask).to.contain("template");
+    });
+  });
+
+  describe("createService", () => {
+    let sandbox: sinon.SinonSandbox;
+    let postStub: sinon.SinonStub;
+    let pollStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      postStub = sandbox.stub(Client.prototype, "post");
+      pollStub = sandbox.stub(operationPoller, "pollOperation");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should post service without name and query param serviceId", async () => {
+      const service: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+        template: {
+          containers: [{ name: "worker", image: IMAGE_URI }],
+        },
+      };
+      postStub.resolves({
+        status: 200,
+        body: { name: "operations/op2" },
+      });
+      pollStub.resolves({ ...service, uri: "https://created-service.com" });
+
+      const res = await runv2.createService(PROJECT_ID, LOCATION, SERVICE_ID, service);
+
+      expect(postStub).to.have.been.calledOnceWith(
+        `/projects/${PROJECT_ID}/locations/${LOCATION}/services`,
+        { template: service.template },
+        { queryParams: { serviceId: SERVICE_ID } },
+      );
+      expect(res.uri).to.equal("https://created-service.com");
+    });
+  });
+
+  describe("getService", () => {
+    let sandbox: sinon.SinonSandbox;
+    let getStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      getStub = sandbox.stub(Client.prototype, "get");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should get service by resource name", async () => {
+      const mockService = {
+        name: `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+      };
+      getStub.resolves({ status: 200, body: mockService });
+
+      const res = await runv2.getService(PROJECT_ID, LOCATION, SERVICE_ID);
+
+      expect(res).to.deep.equal(mockService);
+      expect(getStub).to.have.been.calledOnceWithExactly(
+        `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+      );
+    });
+  });
+
+  describe("deleteService", () => {
+    let sandbox: sinon.SinonSandbox;
+    let deleteStub: sinon.SinonStub;
+    let pollStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      sandbox = sinon.createSandbox();
+      deleteStub = sandbox.stub(Client.prototype, "delete");
+      pollStub = sandbox.stub(operationPoller, "pollOperation");
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it("should delete service and poll operation", async () => {
+      deleteStub.resolves({ status: 200, body: { name: "operations/op-del" } });
+      pollStub.resolves();
+
+      await runv2.deleteService(PROJECT_ID, LOCATION, SERVICE_ID);
+
+      expect(deleteStub).to.have.been.calledOnceWithExactly(
+        `projects/${PROJECT_ID}/locations/${LOCATION}/services/${SERVICE_ID}`,
+      );
+      expect(pollStub).to.have.been.calledOnce;
     });
   });
 });

@@ -13,6 +13,7 @@ import { EnvVar, mebibytes, PlaintextEnvVar, SecretEnvVar } from "./k8s";
 import { latest, Runtime } from "../deploy/functions/runtimes/supported";
 import { logger } from "../logger";
 import { partition } from "../functional";
+import * as secretManager from "./secretManager";
 
 export const API_VERSION = "v2";
 
@@ -111,6 +112,7 @@ export interface Service {
   etag: string;
   template: RevisionTemplate;
   invokerIamDisabled?: boolean;
+  ingress?: string;
   // Is this redundant with the Build API?
   buildConfig?: BuildConfig;
   uri?: string;
@@ -151,11 +153,20 @@ export interface Build {
   functionTarget?: string;
   storageSource: StorageSource;
   imageUri: string;
-  buildpacksBuild: BuildpacksBuild;
+  buildpackBuild: BuildpacksBuild;
+}
+
+export interface BuildOperationObject {
+  name?: string;
+  metadata?: {
+    build?: {
+      id?: string;
+    };
+  };
 }
 
 export interface SubmitBuildResponse {
-  buildOperation: string;
+  buildOperation: string | BuildOperationObject;
   baseImageUri?: string;
   baseImageWarning?: string;
 }
@@ -168,34 +179,105 @@ export async function submitBuild(
   projectId: string,
   location: string,
   build: Build,
-): Promise<void> {
+): Promise<Omit<SubmitBuildResponse, "buildOperation">> {
   const res = await client.post<Build, SubmitBuildResponse>(
-    `/projects/${projectId}/locations/${location}/builds`,
+    `/projects/${projectId}/locations/${location}/builds:submit`,
     build,
   );
   if (res.status !== 200) {
-    throw new FirebaseError(`Failed to submit build: ${res.status} ${res.body}`);
+    throw new FirebaseError(`Failed to submit build: ${res.status}`, {
+      status: res.status,
+    });
   }
-  await pollOperation({
-    apiOrigin: cloudbuildOrigin(),
-    apiVersion: "v1",
-    operationResourceName: res.body.buildOperation,
-  });
+  const op = res.body.buildOperation;
+  const opName = typeof op === "string" ? op : op?.name || "";
+  const rawId =
+    opName
+      .split("/")
+      .pop()
+      ?.replace(/^build-/, "") || "";
+  const buildId = (op as any)?.metadata?.build?.id || rawId;
+  if (buildId) {
+    const cloudbuildClient = new Client({
+      urlPrefix: cloudbuildOrigin(),
+      auth: true,
+      apiVersion: "v1",
+    });
+    const startTime = Date.now();
+    const timeoutMs = 15 * 60 * 1000;
+    let buildSuccess = false;
+    while (Date.now() - startTime < timeoutMs) {
+      try {
+        const buildStatusRes = await cloudbuildClient.get<{
+          status: string;
+          statusDetail?: string;
+        }>(`/projects/${projectId}/locations/${location}/builds/${buildId}`);
+        const status = buildStatusRes.body?.status;
+        if (status === "SUCCESS") {
+          logger.info(`[run:submitBuild] Cloud Build ${buildId} completed with SUCCESS.`);
+          buildSuccess = true;
+          break;
+        }
+        if (
+          status === "FAILURE" ||
+          status === "INTERNAL_ERROR" ||
+          status === "TIMEOUT" ||
+          status === "CANCELLED"
+        ) {
+          throw new FirebaseError(
+            `Cloud Build failed with status ${status}: ${buildStatusRes.body?.statusDetail || ""}`,
+          );
+        }
+      } catch (err: any) {
+        if (err instanceof FirebaseError && err.message.startsWith("Cloud Build failed")) {
+          throw err;
+        }
+        if (err.status && err.status >= 400 && err.status < 500) {
+          throw err;
+        }
+        logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+    if (!buildSuccess) {
+      throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes.`, { exit: 1 });
+    }
+  }
+  return {
+    baseImageUri: res.body.baseImageUri,
+    baseImageWarning: res.body.baseImageWarning,
+  };
 }
 
 /**
  * Updates an existing Cloud Run service.
  * Tracks the long-running operation until completion.
  */
-export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
-  const fieldMask = proto.fieldMasks(
-    service,
-    /* doNotRecurseIn...*/ "labels",
-    "annotations",
-    "tags",
-  );
-  // Always update revision name to ensure null generates a new unique revision name.
-  fieldMask.push("template.revision");
+export async function updateService(
+  service: Omit<Service, ServiceOutputFields>,
+  updateMask?: string[],
+): Promise<Service> {
+  let fieldMask: string[];
+  if (updateMask) {
+    fieldMask = updateMask;
+  } else {
+    const rawMask = proto.fieldMasks(
+      service,
+      /* doNotRecurseIn...*/
+      "labels",
+      "annotations",
+      "tags",
+      "scaling",
+      "template.labels",
+      "template.annotations",
+      "template.scaling",
+    );
+    fieldMask = rawMask.filter(
+      (f) =>
+        f !== "name" && (f !== "template.revision" || service.template?.revision !== undefined),
+    );
+  }
+
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
     service,
@@ -209,6 +291,9 @@ export async function updateService(service: Omit<Service, ServiceOutputFields>)
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: 10 * 60 * 1000,
+    backoff: 1000,
+    maxBackoff: 5000,
   });
   return svc;
 }
@@ -240,6 +325,9 @@ export async function createService(
     apiOrigin: runOrigin(),
     apiVersion: API_VERSION,
     operationResourceName: res.body.name,
+    masterTimeout: 10 * 60 * 1000,
+    backoff: 1000,
+    maxBackoff: 5000,
   });
   return svc;
 }
@@ -645,11 +733,13 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     return acc;
   }, {});
   endpoint.secretEnvironmentVariables = secretEnv.map((e) => {
-    const [, /* projects*/ projectId /* secrets*/, , secret] =
-      e.valueSource.secretKeyRef.secret.split("/");
+    const { projectId: secretProjectId, secret } = parseSecretKeyRef(
+      e.valueSource.secretKeyRef.secret,
+      project,
+    );
     return {
       key: e.name,
-      projectId,
+      projectId: secretProjectId,
       secret,
       version: e.valueSource.secretKeyRef.version || "latest",
     };
@@ -661,6 +751,29 @@ export function endpointFromService(service: Omit<Service, ServiceOutputFields>)
     };
   }
   return endpoint;
+}
+
+/**
+ * Parses a SecretKeyRef secret resource string into its target project ID and short secret name.
+ * Handles full resource names (projects/{project}/secrets/{secret}) via secretManager.parseSecretResourceName
+ * and falls back to the default service project ID for bare secret names.
+ */
+export function parseSecretKeyRef(
+  secretRef: string,
+  defaultProjectId: string,
+): { projectId: string; secret: string } {
+  try {
+    const parsed = secretManager.parseSecretResourceName(secretRef);
+    return {
+      projectId: parsed.projectId,
+      secret: parsed.name,
+    };
+  } catch {
+    return {
+      projectId: defaultProjectId,
+      secret: secretRef,
+    };
+  }
 }
 
 /**

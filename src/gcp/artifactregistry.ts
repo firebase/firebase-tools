@@ -3,6 +3,7 @@ import { artifactRegistryDomain } from "../api";
 import { assertImplements, DeepOmit, RecursiveKeyOf } from "../metaprogramming";
 import * as api from "../ensureApiEnabled";
 import * as proto from "./proto";
+import { pollOperation } from "../operation-poller";
 
 export const API_VERSION = "v1";
 
@@ -94,4 +95,59 @@ export async function updateRepository(repo: RepositoryInput): Promise<Repositor
     queryParams: { updateMask: updateMask.join(",") },
   });
   return res.body;
+}
+
+/**
+ * Creates an Artifact Registry repository.
+ */
+export async function createRepository(
+  projectId: string,
+  location: string,
+  repositoryId: string,
+  format = "DOCKER",
+): Promise<Repository> {
+  const res = await client.post<any, any>(
+    `/projects/${projectId}/locations/${location}/repositories`,
+    {
+      format,
+      description: "Cloud Run Source Deploy Repository",
+    },
+    {
+      queryParams: {
+        repositoryId,
+      },
+    },
+  );
+  if (res.body?.name && !res.body.done) {
+    return await pollOperation<Repository>({
+      apiOrigin: artifactRegistryDomain(),
+      apiVersion: API_VERSION,
+      operationResourceName: res.body.name,
+      masterTimeout: 5 * 60 * 1000,
+      backoff: 1000,
+      maxBackoff: 5000,
+    });
+  }
+  return res.body;
+}
+
+/**
+ * Ensures an Artifact Registry repository exists, creating it if not.
+ */
+export async function ensureRepository(
+  projectId: string,
+  location: string,
+  repositoryId: string,
+  format = "DOCKER",
+): Promise<void> {
+  const name = `projects/${projectId}/locations/${location}/repositories/${repositoryId}`;
+  try {
+    await getRepository(name);
+  } catch (err: any) {
+    if (err.status === 404) {
+      await createRepository(projectId, location, repositoryId, format);
+    } else {
+      throw err;
+    }
+  }
 }
