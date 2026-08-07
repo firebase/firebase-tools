@@ -721,7 +721,7 @@ describe("runv2", () => {
       const patchOptions = patchStub.firstCall.args[2] as {
         queryParams: { updateMask: string };
       };
-      expect(patchOptions.queryParams.updateMask).to.contain("template.revision");
+      expect(patchOptions.queryParams.updateMask).to.contain("template");
     });
   });
 

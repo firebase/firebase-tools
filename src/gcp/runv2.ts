@@ -220,11 +220,29 @@ export async function updateService(
   service: Omit<Service, ServiceOutputFields>,
   updateMask?: string[],
 ): Promise<Service> {
-  const fieldMask =
-    updateMask || proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags");
-  if (!updateMask) {
-    // Always update revision name to ensure null generates a new unique revision name.
-    fieldMask.push("template.revision");
+  let fieldMask: string[];
+  if (updateMask) {
+    fieldMask = updateMask;
+  } else {
+    const rawMask = proto.fieldMasks(
+      service,
+      /* doNotRecurseIn...*/
+      "labels",
+      "annotations",
+      "tags",
+      "scaling",
+      "template.labels",
+      "template.annotations",
+      "client",
+      "clientVersion",
+    );
+    fieldMask = rawMask.filter(
+      (f) =>
+        f !== "name" &&
+        f !== "template.client" &&
+        f !== "template.clientVersion" &&
+        (f !== "template.revision" || service.template?.revision !== undefined),
+    );
   }
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,

@@ -82,6 +82,7 @@ describe("run deploy", () => {
 
     expect(getProjectNumberStub.calledOnce).to.be.true;
     expect(upsertBucketStub.calledOnce).to.be.true;
+    expect(upsertBucketStub.args[0][0].req.baseName).to.equal("firebase-run-src-12345-us-central1");
     expect(ensureRepoStub.calledOnce).to.be.true;
     expect(submitBuildStub.calledOnce).to.be.true;
     expect(createServiceStub.calledOnce).to.be.true;
@@ -92,7 +93,6 @@ describe("run deploy", () => {
       runv2.ServiceOutputFields
     >;
     expect(createdService.template.containers?.[0].baseImageUri).to.equal("dummy-base-image");
-
     expect(payload.run?.services?.[0].deployResponse?.uri).to.equal("https://my-service.com");
   });
 
@@ -132,7 +132,7 @@ describe("run deploy", () => {
     expect(payload.run?.services?.[0].deployResponse?.uri).to.equal("https://my-service.com");
   });
 
-  it("should map secrets, runtime env vars, and RunConfig scaling", async () => {
+  it("should map secrets, runtime env vars, VPC settings, and RunConfig scaling", async () => {
     const appHostingConfig = AppHostingYamlConfig.empty();
     appHostingConfig.runConfig = {
       cpu: 2,
@@ -141,6 +141,11 @@ describe("run deploy", () => {
       maxInstances: 10,
       concurrency: 80,
     };
+    (appHostingConfig.runConfig as any).vpcAccess = {
+      connector: "projects/my-p/locations/us-central1/connectors/my-conn",
+      egress: "ALL_TRAFFIC",
+    };
+    (appHostingConfig as any).scripts = { build: "npm run build:custom" };
     appHostingConfig.env = {
       MY_VAR: { value: "hello", availability: ["RUNTIME"] },
       MY_SECRET: { secret: "secret-name@2", availability: ["RUNTIME"] },
@@ -173,7 +178,9 @@ describe("run deploy", () => {
               ingress: "INGRESS_TRAFFIC_ALL",
               description: "My Service",
               template: {
-                containers: [],
+                containers: [
+                  { name: "mysvc", image: "old-img", env: [{ name: "OLD_VAR", value: "keep-me" }] },
+                ],
               },
             },
           },
@@ -190,29 +197,30 @@ describe("run deploy", () => {
 
     await deploy(context, options, payload);
 
+    expect(submitBuildStub.calledOnce).to.be.true;
+    const buildArg = submitBuildStub.args[0][2] as runv2.Build;
+    expect(buildArg.buildpackBuild?.environmentVariables?.["GOOGLE_NODE_RUN_SCRIPTS"]).to.equal(
+      "npm run build:custom",
+    );
+
     expect(updateServiceStub.calledOnce).to.be.true;
     const updatedService = updateServiceStub.args[0][0] as Omit<
       runv2.Service,
       runv2.ServiceOutputFields
     >;
-    const updateMask = updateServiceStub.args[0][1] as string[];
-
-    expect(updateMask).to.include.members([
-      "template",
-      "labels",
-      "annotations",
-      "scaling",
-      "ingress",
-      "description",
-    ]);
 
     expect(updatedService.scaling?.minInstanceCount).to.equal(1);
     expect(updatedService.scaling?.maxInstanceCount).to.equal(10);
     expect(updatedService.template.maxInstanceRequestConcurrency).to.equal(80);
     expect(updatedService.template.containers?.[0].resources?.limits?.cpu).to.equal("2");
     expect(updatedService.template.containers?.[0].resources?.limits?.memory).to.equal("1024Mi");
+    expect(updatedService.template.vpcAccess).to.deep.equal({
+      connector: "projects/my-p/locations/us-central1/connectors/my-conn",
+      egress: "ALL_TRAFFIC",
+    });
 
     const containerEnv = updatedService.template.containers?.[0].env;
+    expect(containerEnv).to.deep.include({ name: "OLD_VAR", value: "keep-me" });
     expect(containerEnv).to.deep.include({ name: "MY_VAR", value: "hello" });
     expect(containerEnv).to.deep.include({
       name: "MY_SECRET",
@@ -234,7 +242,8 @@ describe("run deploy", () => {
     });
   });
 
-  it("should delete baseImageUri when service.baseImageUri is undefined on existing service", async () => {
+  it("should delete baseImageUri when service.clearBaseImage is true on existing service", async () => {
+    submitBuildStub.resolves({});
     const payload: Payload = {
       run: {
         services: [
@@ -243,6 +252,7 @@ describe("run deploy", () => {
             region: "us-central1",
             source: ".",
             ignore: [],
+            clearBaseImage: true,
             existingService: {
               name: "projects/project/locations/us-central1/services/mysvc",
               generation: 1,

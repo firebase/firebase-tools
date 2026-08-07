@@ -125,6 +125,117 @@ describe("run prepare", () => {
     expect(payload.run?.services?.[0].baseImageUri).to.equal("override-uri");
   });
 
+  it("should support --runtime flag override", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      runtime: "nodejs22",
+      config: {
+        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        path: (p: string) => p,
+      },
+    } as unknown as Options;
+
+    getServiceStub.resolves({
+      template: {
+        containers: [{ baseImageUri: "old-uri" }],
+      },
+    } as runv2.Service);
+
+    await prepare(context, options, payload);
+
+    expect(payload.run?.services?.[0].baseImageUri).to.equal("nodejs22");
+    expect(payload.run?.services?.[0].clearBaseImage).to.be.false;
+  });
+
+  it("should support --clear-runtime flag", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      clearRuntime: true,
+      config: {
+        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        path: (p: string) => p,
+      },
+    } as unknown as Options;
+
+    getServiceStub.resolves({
+      template: {
+        containers: [{ baseImageUri: "old-uri" }],
+      },
+    } as runv2.Service);
+
+    await prepare(context, options, payload);
+
+    expect(payload.run?.services?.[0].baseImageUri).to.be.undefined;
+    expect(payload.run?.services?.[0].clearBaseImage).to.be.true;
+  });
+
+  it("should throw error if both --runtime and --clear-runtime are specified", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      runtime: "nodejs22",
+      clearRuntime: true,
+      config: {
+        get: () => ({ serviceId: "mysvc", region: "us-central1", source: "." }),
+        path: (p: string) => p,
+      },
+    } as unknown as Options;
+
+    await expect(prepare(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "Cannot specify both --runtime/--base-image and --clear-runtime/--clear-base-image.",
+    );
+  });
+
+  it("should filter multi-service configurations using --only run:<serviceId>", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      only: "run:svc-2",
+      config: {
+        get: () => [
+          { serviceId: "svc-1", region: "us-central1", source: "." },
+          { serviceId: "svc-2", region: "us-east1", source: "." },
+        ],
+        path: (p: string) => p,
+      },
+    } as unknown as Options;
+
+    getServiceStub.resolves(undefined);
+
+    await prepare(context, options, payload);
+
+    expect(payload.run?.services).to.have.length(1);
+    expect(payload.run?.services?.[0].serviceId).to.equal("svc-2");
+  });
+
+  it("should throw FirebaseError when --only filter does not match any configured service", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      only: "run:non-existent",
+      config: {
+        get: () => [
+          { serviceId: "svc-1", region: "us-central1", source: "." },
+          { serviceId: "svc-2", region: "us-east1", source: "." },
+        ],
+        path: (p: string) => p,
+      },
+    } as unknown as Options;
+
+    await expect(prepare(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "No Cloud Run services in firebase.json match filter 'run:non-existent'.",
+    );
+  });
+
   it("should throw FirebaseError if serviceId is missing", async () => {
     const payload: Payload = {};
     const context: Context = {};
