@@ -154,7 +154,7 @@ export const command = new Command("functions:kits:install")
     const configDirPath = path.join("function-kits", kitId, `config-${instanceId}`);
 
     let existingFunctions: ValidatedConfig | [] = [];
-    const configFunctions = options.config.src?.functions;
+    const configFunctions = options.config.src.functions;
     if (configFunctions && (!Array.isArray(configFunctions) || configFunctions.length > 0)) {
       try {
         existingFunctions = normalizeAndValidate(configFunctions);
@@ -220,7 +220,7 @@ export const command = new Command("functions:kits:install")
       try {
         pkgJson = JSON.parse(subbedTemplate) as typeof pkgJson;
       } catch (err: unknown) {
-        logger.debug(`Failed to parse package.nolint.json template: ${getErrMsg(err)}`);
+        throw new FirebaseError("Failed to parse package.nolint.json template: " + getErrMsg(err));
       }
     }
 
