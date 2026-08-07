@@ -150,7 +150,7 @@ export const command = new Command("functions:kits:install")
       nonInteractive: options.nonInteractive,
     });
 
-    const sourcePath = path.join("function-kits", kitId, "src");
+    const sourcePath = path.join("function-kits", kitId);
     const configDirPath = path.join("function-kits", kitId, `config-${instanceId}`);
 
     let existingFunctions: ValidatedConfig | [] = [];
@@ -238,7 +238,7 @@ export const command = new Command("functions:kits:install")
       GITIGNORE_TEMPLATE,
     );
 
-    const relIndexTsPath = path.join(sourcePath, "index.ts");
+    const relIndexTsPath = path.join(sourcePath, "src", "index.ts");
     const absIndexTsPath = options.config.path(relIndexTsPath);
     if (!(await fs.pathExists(absIndexTsPath))) {
       const indexContent = INDEX_KIT_TEMPLATE.replace("{{PACKAGE_NAME}}", packageName);

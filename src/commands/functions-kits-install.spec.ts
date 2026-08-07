@@ -203,16 +203,16 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install"],
-        "/mock/project/function-kits/firestore-bigquery-export/src",
+        "/mock/project/function-kits/firestore-bigquery-export",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
-        "/mock/project/function-kits/firestore-bigquery-export/src",
+        "/mock/project/function-kits/firestore-bigquery-export",
       );
 
       const pkgJsonResult = writtenFiles[
-        "function-kits/firestore-bigquery-export/src/package.json"
+        "function-kits/firestore-bigquery-export/package.json"
       ] as { name?: string; dependencies?: Record<string, string> };
       expect(pkgJsonResult.name).to.equal("firestore-bigquery-export-wrapper");
       expect(pkgJsonResult.dependencies).to.have.property(
@@ -234,7 +234,7 @@ describe("functions:kits:install", () => {
             sourcePackage: {
               id: "@firebase-functions-kits/firestore-bigquery-export",
             },
-            source: "function-kits/firestore-bigquery-export/src",
+            source: "function-kits/firestore-bigquery-export",
             instances: {
               "firestore-bigquery-export":
                 "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
@@ -265,12 +265,12 @@ describe("functions:kits:install", () => {
       expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
         "npm",
         ["install", "--ignore-scripts"],
-        "/mock/project/function-kits/custom-kit/src",
+        "/mock/project/function-kits/custom-kit",
       );
       expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
         "npm",
         ["run", "build"],
-        "/mock/project/function-kits/custom-kit/src",
+        "/mock/project/function-kits/custom-kit",
       );
     });
 
