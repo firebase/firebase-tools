@@ -8,6 +8,7 @@ import { logBullet, logSuccess, logWarning } from "../../utils";
 import { createService, getService } from "../../gcp/runv2";
 import { ensure } from "../../ensureApiEnabled";
 import { readTemplateSync } from "../../templates";
+import { FirebaseError } from "../../error";
 
 export interface RunInfo {
   serviceId: string;
@@ -22,7 +23,7 @@ export interface RunInfo {
 export async function askQuestions(setup: Setup): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
-    throw new Error("Project ID must be set before initializing Cloud Run.");
+    throw new FirebaseError("Project ID must be set before initializing Cloud Run.");
   }
 
   logBullet("Configuring Cloud Run...");
@@ -64,7 +65,10 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   if (!runInfo) {
     return;
   }
-  const projectId = setup.projectId!;
+  const projectId = setup.projectId;
+  if (!projectId) {
+    throw new FirebaseError("Project ID must be set before initializing Cloud Run.");
+  }
 
   const { serviceId, region, rootDir, outputDir } = runInfo;
 
@@ -99,8 +103,8 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
     try {
       await getService(projectId, region, serviceId);
       spinner.succeed(`Cloud Run service ${serviceId} already exists.`);
-    } catch (err: any) {
-      if (err.status === 404) {
+    } catch (err: unknown) {
+      if ((err as { status?: number })?.status === 404) {
         // Does not exist, create placeholder
         await createService(projectId, region, serviceId, {
           name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
@@ -120,13 +124,15 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
         throw err;
       }
     }
-  } catch (err: any) {
-    spinner.fail(`Failed to provision Cloud Run service: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    spinner.fail(`Failed to provision Cloud Run service: ${message}`);
     logWarning("You can still deploy using the CLI, but the initial provisioning failed.");
   }
 
   // Create placeholder apphosting.yaml
-  const absRootDir = path.join(config.projectDir, rootDir);
+  const projectDir = config.projectDir || ".";
+  const absRootDir = path.join(projectDir, rootDir);
   const apphostingYamlPath = path.join(absRootDir, "apphosting.yaml");
   if (!existsSync(apphostingYamlPath)) {
     logBullet(`Creating placeholder apphosting.yaml in ${rootDir}`);

@@ -1,18 +1,21 @@
 import { Options } from "../../options";
-
 import { archiveDirectory } from "../../archiveDirectory";
 import * as gcs from "../../gcp/storage";
 import { getProjectNumber } from "../../getProjectNumber";
 import * as runv2 from "../../gcp/runv2";
 import * as artifactregistry from "../../gcp/artifactregistry";
-import { splitEnvVars } from "../../apphosting/config";
+import { RunConfig, splitEnvVars } from "../../apphosting/config";
+import { EnvMap } from "../../apphosting/yaml";
 import { EnvVar } from "../../gcp/k8s";
+import { needProjectId } from "../../projectUtils";
+import { Context, Payload } from "./args";
 
 /**
- *
+ * Deploys Cloud Run services by building container images via Cloud Build
+ * and creating or updating Cloud Run v2 services.
  */
-export async function deploy(context: any, options: Options, payload: any): Promise<void> {
-  const projectId = context.projectId;
+export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
+  const projectId = context.projectId || needProjectId(options);
   const projectNumber = await getProjectNumber(options);
 
   if (!payload.run?.services) return;
@@ -59,8 +62,9 @@ export async function deploy(context: any, options: Options, payload: any): Prom
     // Construct image URI
     const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:latest`;
 
-    const appHostingConfig = service.appHostingConfig || { env: {} };
-    const { build: buildEnvMap, runtime: runtimeEnvMap } = splitEnvVars(appHostingConfig.env);
+    const appHostingConfig = service.appHostingConfig;
+    const envRecord = appHostingConfig?.env || {};
+    const { build: buildEnvMap, runtime: runtimeEnvMap } = splitEnvVars(envRecord);
     const firebaseConfigStr = JSON.stringify({
       projectId,
       storageBucket: `${projectId}.appspot.com`,
@@ -93,9 +97,14 @@ export async function deploy(context: any, options: Options, payload: any): Prom
     if (existing) {
       newService = {
         name: existing.name,
-        template: JSON.parse(JSON.stringify(existing.template)),
+        template: JSON.parse(JSON.stringify(existing.template)) as runv2.RevisionTemplate,
+        ...(existing.labels ? { labels: existing.labels } : {}),
+        ...(existing.annotations ? { annotations: existing.annotations } : {}),
+        ...(existing.ingress ? { ingress: existing.ingress } : {}),
+        ...(existing.description ? { description: existing.description } : {}),
+        ...(existing.scaling ? { scaling: existing.scaling } : {}),
       };
-      delete (newService.template as any).revision;
+      delete newService.template.revision;
 
       // Mutate template with new image
       if (!newService.template.containers) {
@@ -114,9 +123,16 @@ export async function deploy(context: any, options: Options, payload: any): Prom
         delete newService.template.containers[0].baseImageUri;
       }
 
-      applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig.runConfig, projectId);
+      applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
 
-      service.deployResponse = await runv2.updateService(newService);
+      const updateMask = ["template"];
+      if (newService.labels) updateMask.push("labels");
+      if (newService.annotations) updateMask.push("annotations");
+      if (newService.scaling) updateMask.push("scaling");
+      if (newService.ingress) updateMask.push("ingress");
+      if (newService.description) updateMask.push("description");
+
+      service.deployResponse = await runv2.updateService(newService, updateMask);
     } else {
       newService = {
         name: `projects/${projectId}/locations/${region}/services/${service.serviceId}`,
@@ -132,7 +148,7 @@ export async function deploy(context: any, options: Options, payload: any): Prom
         client: "cli-firebase",
       };
 
-      applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig.runConfig, projectId);
+      applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
 
       service.deployResponse = await runv2.createService(
         projectId,
@@ -146,10 +162,10 @@ export async function deploy(context: any, options: Options, payload: any): Prom
 
 function applyAppHostingConfig(
   service: Omit<runv2.Service, runv2.ServiceOutputFields>,
-  runtimeEnvMap: Record<string, any>,
-  runConfig: any,
+  runtimeEnvMap: EnvMap,
+  runConfig?: RunConfig,
   projectId?: string,
-) {
+): void {
   if (!service.template.containers) {
     service.template.containers = [];
   }
@@ -181,15 +197,19 @@ function applyAppHostingConfig(
         secretName = parts[0];
         version = parts[1] || "latest";
       }
+      const secretPath =
+        secretName.startsWith("projects/") || !projectId
+          ? secretName
+          : `projects/${projectId}/secrets/${secretName}`;
       env.push({
         name: key,
         valueSource: {
           secretKeyRef: {
-            secret: secretName,
+            secret: secretPath,
             version: version,
           },
         },
-      } as any);
+      });
     }
   }
   if (env.length > 0) {
@@ -206,11 +226,11 @@ function applyAppHostingConfig(
         container.resources.limits.memory = `${runConfig.memoryMiB}Mi`;
     }
     if (runConfig.minInstances !== undefined || runConfig.maxInstances !== undefined) {
-      if (!service.template.scaling) service.template.scaling = {};
+      if (!service.scaling) service.scaling = {};
       if (runConfig.minInstances !== undefined)
-        service.template.scaling.minInstanceCount = runConfig.minInstances;
+        service.scaling.minInstanceCount = runConfig.minInstances;
       if (runConfig.maxInstances !== undefined)
-        service.template.scaling.maxInstanceCount = runConfig.maxInstances;
+        service.scaling.maxInstanceCount = runConfig.maxInstances;
     }
     if (runConfig.concurrency !== undefined) {
       service.template.maxInstanceRequestConcurrency = runConfig.concurrency;

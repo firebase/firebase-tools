@@ -155,8 +155,17 @@ export interface Build {
   buildpackBuild: BuildpacksBuild;
 }
 
+export interface BuildOperationObject {
+  name?: string;
+  metadata?: {
+    build?: {
+      id?: string;
+    };
+  };
+}
+
 export interface SubmitBuildResponse {
-  buildOperation: string;
+  buildOperation: string | BuildOperationObject;
   baseImageUri?: string;
   baseImageWarning?: string;
 }
@@ -175,15 +184,20 @@ export async function submitBuild(
     build,
   );
   if (res.status !== 200) {
-    throw new FirebaseError(`Failed to submit build: ${res.status} ${res.body}`);
+    throw new FirebaseError(`Failed to submit build: ${res.status}`, {
+      status: res.status,
+    });
   }
-  const op: any = res.body.buildOperation;
-  const buildId = op?.metadata?.build?.id;
-  const opName = buildId
-    ? `projects/${projectId}/locations/${location}/operations/${buildId}`
-    : typeof op === "string"
-      ? op
-      : op?.name;
+  const op = res.body.buildOperation;
+  let opName: string;
+  if (typeof op === "string") {
+    opName = op;
+  } else {
+    const buildId = op?.metadata?.build?.id;
+    opName = buildId
+      ? `projects/${projectId}/locations/${location}/operations/${buildId}`
+      : op?.name || "";
+  }
   await pollOperation({
     apiOrigin: cloudbuildOrigin(),
     apiVersion: "v1",
@@ -202,25 +216,15 @@ export async function submitBuild(
  * Updates an existing Cloud Run service.
  * Tracks the long-running operation until completion.
  */
-export async function updateService(service: Omit<Service, ServiceOutputFields>): Promise<Service> {
-  const fieldMask: string[] = [];
-  if (service.template) {
-    fieldMask.push("template");
-  }
-  if (service.labels) {
-    fieldMask.push("labels");
-  }
-  if (service.annotations) {
-    fieldMask.push("annotations");
-  }
-  if (service.ingress) {
-    fieldMask.push("ingress");
-  }
-  if (service.description) {
-    fieldMask.push("description");
-  }
-  if (fieldMask.length === 0) {
-    fieldMask.push("template");
+export async function updateService(
+  service: Omit<Service, ServiceOutputFields>,
+  updateMask?: string[],
+): Promise<Service> {
+  const fieldMask =
+    updateMask || proto.fieldMasks(service, /* doNotRecurseIn...*/ "labels", "annotations", "tags");
+  if (!updateMask) {
+    // Always update revision name to ensure null generates a new unique revision name.
+    fieldMask.push("template.revision");
   }
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
