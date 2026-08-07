@@ -710,7 +710,20 @@ export class Fabricator {
     endpoint.uri = resultFunction?.httpsTrigger?.url;
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      const desiredInvoker = endpoint.httpsTrigger.invoker || ["public"];
+      if (!desiredInvoker.includes("private")) {
+        const onlyIfUnset = !endpoint.httpsTrigger.invoker;
+        await this.executor
+          .run(() =>
+            gcf.setInvokerUpdate(
+              endpoint.project,
+              backend.functionName(endpoint),
+              desiredInvoker,
+              onlyIfUnset,
+            ),
+          )
+          .catch(rethrowAs(endpoint, "set invoker"));
+      }
     } else if (backend.isTaskQueueTriggered(endpoint)) {
       invoker = endpoint.taskQueueTrigger.invoker === null ? [] : endpoint.taskQueueTrigger.invoker;
     } else if (
@@ -721,7 +734,9 @@ export class Fabricator {
     }
     if (invoker) {
       await this.executor
-        .run(() => gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!))
+        .run(() =>
+          gcf.setInvokerUpdate(endpoint.project, backend.functionName(endpoint), invoker!, true),
+        )
         .catch(rethrowAs(endpoint, "set invoker"));
     }
   }
@@ -777,7 +792,7 @@ export class Fabricator {
     }
     let invoker: string[] | undefined;
     if (backend.isHttpsTriggered(endpoint)) {
-      invoker = endpoint.httpsTrigger.invoker === null ? ["public"] : endpoint.httpsTrigger.invoker;
+      invoker = endpoint.httpsTrigger.invoker || ["public"];
     } else if (backend.isDataConnectGraphqlTriggered(endpoint)) {
       invoker =
         endpoint.dataConnectGraphqlTrigger.invoker === null
