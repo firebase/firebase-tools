@@ -1,3 +1,4 @@
+import { RunSingle } from "../../firebaseConfig";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import * as runv2 from "../../gcp/runv2";
 
@@ -13,19 +14,15 @@ export const DEFAULT_RUN_IGNORE = [
   "**/*.secret.local",
 ];
 
-export interface RunConfig {
-  serviceId: string;
-  region?: string;
+export interface RunServiceConfig extends RunSingle {
   "primary-region"?: string;
-  source?: string;
   rootDir?: string;
-  output?: string;
   outputDir?: string;
-  ignore?: string[];
-  baseImageUri?: string;
   baseImage?: string;
   runtime?: string;
 }
+
+export type RunConfig = RunServiceConfig;
 
 export interface RunServiceSpec {
   serviceId: string;

@@ -27,13 +27,15 @@ export const APPHOSTING_LOCAL_YAML_FILE = "apphosting.local.yaml";
 
 export const APPHOSTING_YAML_FILE_REGEX = /^apphosting(\.[a-z0-9_]+)?\.yaml$/;
 
-export interface RunConfig {
+export interface AppHostingRunConfig {
   concurrency?: number;
   cpu?: number;
   memoryMiB?: number;
   minInstances?: number;
   maxInstances?: number;
 }
+
+export type RunConfig = AppHostingRunConfig;
 
 /** Where an environment variable can be provided. */
 export type Availability = "BUILD" | "RUNTIME";

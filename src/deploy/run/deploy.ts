@@ -5,6 +5,7 @@ import { getProjectNumber } from "../../getProjectNumber";
 import * as runv2 from "../../gcp/runv2";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import { RunConfig, splitEnvVars } from "../../apphosting/config";
+import { getSecretNameParts } from "../../apphosting/secrets";
 import { EnvMap } from "../../apphosting/yaml";
 import { EnvVar } from "../../gcp/k8s";
 import { needProjectId } from "../../projectUtils";
@@ -92,18 +93,24 @@ export async function deploy(context: Context, options: Options, payload: Payloa
       };
 
       const buildRes = await runv2.submitBuild(projectId, region, build);
-      const resolvedBaseImageUri =
-        buildRes.baseImageUri || (hasAbiu ? service.baseImageUri : undefined);
+      const resolvedBaseImageUri = hasAbiu
+        ? buildRes.baseImageUri || service.baseImageUri
+        : undefined;
 
       if (buildRes.baseImageWarning) {
         logger.warn(`Cloud Run ABIU warning: ${buildRes.baseImageWarning}`);
       }
 
       // Deploy via POST or PATCH
-      const existing = service.existingService;
+      let existing = service.existingService;
       let newService: Omit<runv2.Service, runv2.ServiceOutputFields>;
 
       if (existing) {
+        try {
+          existing = await runv2.getService(projectId, region, service.serviceId);
+        } catch {
+          // If fetch fails, fall back to cached existing service
+        }
         const template = JSON.parse(JSON.stringify(existing.template)) as runv2.RevisionTemplate;
         delete template.revision;
         delete template.scaling;
@@ -125,8 +132,8 @@ export async function deploy(context: Context, options: Options, payload: Payloa
           newService.template.containers[0].image = imageUri;
         }
 
-        // ABIU stickiness handling
-        if (service.clearBaseImage) {
+        // ABIU stickiness handling: only set baseImageUri if explicitly enabled
+        if (service.clearBaseImage || !hasAbiu) {
           delete newService.template.containers[0].baseImageUri;
         } else if (resolvedBaseImageUri) {
           newService.template.containers[0].baseImageUri = resolvedBaseImageUri;
@@ -157,7 +164,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
               {
                 name: service.serviceId,
                 image: imageUri,
-                ...(!service.clearBaseImage && resolvedBaseImageUri
+                ...(!service.clearBaseImage && hasAbiu && resolvedBaseImageUri
                   ? { baseImageUri: resolvedBaseImageUri }
                   : {}),
               },
@@ -217,16 +224,12 @@ function applyAppHostingConfig(
     if (val.value !== undefined) {
       env.push({ name: key, value: val.value });
     } else if (val.secret !== undefined) {
-      let secretName = String(val.secret);
-      let version = "latest";
+      const rawSecret = String(val.secret);
+      let [secretName, version] = getSecretNameParts(rawSecret);
       if (secretName.includes("/versions/")) {
         const parts = secretName.split("/versions/");
         secretName = parts[0];
-        version = parts[1] || "latest";
-      } else if (secretName.includes("@")) {
-        const parts = secretName.split("@");
-        secretName = parts[0];
-        version = parts[1] || "latest";
+        version = parts[1] || version;
       }
       if (secretName.includes("/secrets/")) {
         secretName = secretName.split("/secrets/")[1];

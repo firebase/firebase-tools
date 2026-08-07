@@ -10,9 +10,6 @@ import { Options } from "./options";
  */
 export function filterTargets(options: Options, validTargets: string[]): string[] {
   let targets = validTargets.filter((t) => {
-    if (t === "run" && options.only?.split(",").some((opt) => opt.split(":")[0] === "run")) {
-      return true;
-    }
     return options.config.has(t);
   });
   if (options.only) {

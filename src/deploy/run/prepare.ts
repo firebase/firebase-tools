@@ -26,9 +26,15 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     );
   }
 
-  let rawRunConfigs = options.config
+  const rawRunConfigs = options.config
     ? (options.config.get("run") as RunConfig | RunConfig[] | undefined)
     : undefined;
+
+  if (!rawRunConfigs || (Array.isArray(rawRunConfigs) && rawRunConfigs.length === 0)) {
+    throw new FirebaseError(
+      "No Cloud Run services configured in firebase.json. Run 'firebase init run' to set up a service.",
+    );
+  }
 
   const onlyOpt = options.only || "";
   const runFilterTargets = onlyOpt
@@ -38,27 +44,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
 
   const hasSpecificServiceFilter = runFilterTargets.some((t) => t.length > 0);
   const targetedServiceIds = new Set(runFilterTargets.filter((t) => t.length > 0));
-
-  if (!rawRunConfigs || (Array.isArray(rawRunConfigs) && rawRunConfigs.length === 0)) {
-    const serviceId =
-      (hasSpecificServiceFilter ? Array.from(targetedServiceIds)[0] : undefined) ||
-      ((options as any).service as string | undefined) ||
-      "my-service";
-    const region =
-      ((options as any).primaryRegion as string | undefined) ||
-      ((options as any).region as string | undefined) ||
-      process.env.FIREBASE_RUN_REGION ||
-      "us-central1";
-    rawRunConfigs = [
-      {
-        serviceId,
-        region,
-        source: ".",
-        output: ".run",
-        ignore: DEFAULT_RUN_IGNORE,
-      },
-    ];
-  }
 
   let configs = Array.isArray(rawRunConfigs) ? rawRunConfigs : [rawRunConfigs];
 

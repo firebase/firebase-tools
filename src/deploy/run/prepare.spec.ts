@@ -23,12 +23,29 @@ describe("run prepare", () => {
     sinon.restore();
   });
 
-  it("should initialize default run config if none specified in firebase.json", async () => {
+  it("should throw FirebaseError if no run config is configured in firebase.json", async () => {
     const payload: Payload = {};
     const context: Context = {};
     const options = {
       project: "project",
       config: { get: () => undefined, path: (p: string) => p },
+    } as unknown as Options;
+
+    await expect(prepare(context, options, payload)).to.be.rejectedWith(
+      FirebaseError,
+      "No Cloud Run services configured in firebase.json. Run 'firebase init run' to set up a service.",
+    );
+  });
+
+  it("should load run service configuration from firebase.json", async () => {
+    const payload: Payload = {};
+    const context: Context = {};
+    const options = {
+      project: "project",
+      config: {
+        get: () => ({ serviceId: "my-service", region: "us-central1", source: "." }),
+        path: (p: string) => p,
+      },
     } as unknown as Options;
 
     getServiceStub.resolves(undefined);
@@ -42,29 +59,16 @@ describe("run prepare", () => {
     expect(payload.run?.services?.[0].region).to.equal("us-central1");
   });
 
-  it("should use serviceId from options.only when no config is specified", async () => {
-    const payload: Payload = {};
-    const context: Context = {};
-    const options = {
-      project: "project",
-      only: "run:custom-target",
-      config: { get: () => undefined, path: (p: string) => p },
-    } as unknown as Options;
-
-    getServiceStub.resolves(undefined);
-
-    await prepare(context, options, payload);
-
-    expect(payload.run?.services?.[0].serviceId).to.equal("custom-target");
-  });
-
   it("should respect FIREBASE_RUN_REGION environment variable", async () => {
     process.env.FIREBASE_RUN_REGION = "europe-west1";
     const payload: Payload = {};
     const context: Context = {};
     const options = {
       project: "project",
-      config: { get: () => undefined, path: (p: string) => p },
+      config: {
+        get: () => ({ serviceId: "my-service", source: "." }),
+        path: (p: string) => p,
+      },
     } as unknown as Options;
 
     getServiceStub.resolves(undefined);

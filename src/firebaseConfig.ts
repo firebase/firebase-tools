@@ -368,10 +368,13 @@ export type AppHostingConfig = AppHostingSingle | AppHostingMultiple;
 
 export type RunSingle = {
   serviceId: string;
-  region: string;
-  source: string;
+  region?: string;
+  source?: string;
   output?: string;
   ignore?: string[];
+  baseImageUri?: string;
+  predeploy?: string | string[];
+  postdeploy?: string | string[];
 };
 
 export type RunMultiple = RunSingle[];

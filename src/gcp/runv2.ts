@@ -206,7 +206,6 @@ export async function submitBuild(
     const timeoutMs = 15 * 60 * 1000;
     let buildSuccess = false;
     while (Date.now() - startTime < timeoutMs) {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
       try {
         const buildStatusRes = await cloudbuildClient.get<{
           status: string;
@@ -237,6 +236,7 @@ export async function submitBuild(
         }
         logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
       }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
     if (!buildSuccess) {
       throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes.`, { exit: 1 });

@@ -2,8 +2,6 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as runFeature from "./run";
 import * as prompt from "../../prompt";
-import * as runv2 from "../../gcp/runv2";
-import * as ensureApiEnabled from "../../ensureApiEnabled";
 import * as fs from "fs";
 import { Config } from "../../config";
 import { Setup } from "../index";
@@ -58,15 +56,9 @@ describe("init features run", () => {
   });
 
   describe("actuate", () => {
-    let ensureStub: sinon.SinonStub;
-    let getServiceStub: sinon.SinonStub;
-    let createServiceStub: sinon.SinonStub;
     let existsSyncStub: sinon.SinonStub;
 
     beforeEach(() => {
-      ensureStub = sandbox.stub(ensureApiEnabled, "ensure").resolves();
-      getServiceStub = sandbox.stub(runv2, "getService");
-      createServiceStub = sandbox.stub(runv2, "createService").resolves({} as runv2.Service);
       existsSyncStub = sandbox.stub(fs, "existsSync");
     });
 
@@ -76,7 +68,7 @@ describe("init features run", () => {
 
       await runFeature.actuate(setup, config);
 
-      expect(ensureStub.notCalled).to.be.true;
+      expect(config.src.run).to.be.undefined;
     });
 
     it("should throw FirebaseError if projectId is missing", async () => {
@@ -98,7 +90,7 @@ describe("init features run", () => {
       );
     });
 
-    it("should provision new service and write apphosting.yaml if not existing", async () => {
+    it("should scaffold configuration in firebase.json and write apphosting.yaml if not existing", async () => {
       const setup = createMockSetup({
         projectId: "test-project",
         featureInfo: {
@@ -114,71 +106,13 @@ describe("init features run", () => {
       sandbox.stub(config, "writeProjectFile");
       const askWriteStub = sandbox.stub(config, "askWriteProjectFile").resolves();
 
-      getServiceStub.rejects({ status: 404 });
       existsSyncStub.returns(false);
 
       await runFeature.actuate(setup, config);
 
-      expect(ensureStub.calledOnce).to.be.true;
-      expect(createServiceStub.calledOnce).to.be.true;
       const runConfigs = config.src.run as Array<{ serviceId: string }>;
       expect(runConfigs).to.be.an("array");
       expect(runConfigs[0].serviceId).to.equal("my-svc");
-      expect(askWriteStub.calledOnce).to.be.true;
-    });
-
-    it("should reuse existing service without calling createService", async () => {
-      const setup = createMockSetup({
-        projectId: "test-project",
-        featureInfo: {
-          run: {
-            serviceId: "my-svc",
-            region: "us-central1",
-            rootDir: ".",
-            outputDir: ".run",
-          },
-        },
-      });
-      const config = new Config({}, {});
-      sandbox.stub(config, "writeProjectFile");
-
-      getServiceStub.resolves({
-        name: "projects/test-project/locations/us-central1/services/my-svc",
-      } as runv2.Service);
-      existsSyncStub.returns(true);
-
-      await runFeature.actuate(setup, config);
-
-      expect(ensureStub.calledOnce).to.be.true;
-      expect(createServiceStub.notCalled).to.be.true;
-      const runConfigs = config.src.run as Array<{ serviceId: string }>;
-      expect(runConfigs).to.be.an("array");
-      expect(runConfigs[0].serviceId).to.equal("my-svc");
-    });
-
-    it("should handle getService failure gracefully when non-404 error occurs", async () => {
-      const setup = createMockSetup({
-        projectId: "test-project",
-        featureInfo: {
-          run: {
-            serviceId: "my-svc",
-            region: "us-central1",
-            rootDir: ".",
-            outputDir: ".run",
-          },
-        },
-      });
-      const config = new Config({}, {});
-      sandbox.stub(config, "writeProjectFile");
-      const askWriteStub = sandbox.stub(config, "askWriteProjectFile").resolves();
-
-      getServiceStub.rejects(new Error("Permission denied"));
-      existsSyncStub.returns(false);
-
-      await runFeature.actuate(setup, config);
-
-      expect(ensureStub.calledOnce).to.be.true;
-      expect(createServiceStub.notCalled).to.be.true;
       expect(askWriteStub.calledOnce).to.be.true;
     });
 
@@ -201,7 +135,6 @@ describe("init features run", () => {
         {},
       );
       sandbox.stub(config, "writeProjectFile");
-      getServiceStub.resolves({} as runv2.Service);
       existsSyncStub.returns(true);
 
       await runFeature.actuate(setup, config);

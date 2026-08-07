@@ -1,7 +1,7 @@
 import * as fs from "fs-extra";
 import * as path from "path";
 import { expect } from "chai";
-import * as cli from "./cli";
+import * as cli from "../integration-helpers/cli";
 import * as runv2 from "../../src/gcp/runv2";
 
 interface MockRunConfig {

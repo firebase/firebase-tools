@@ -1,14 +1,13 @@
-import * as ora from "ora";
 import * as path from "path";
 import { existsSync } from "fs";
 import { Setup } from "../index";
 import { Config } from "../../config";
 import { input } from "../../prompt";
-import { logBullet, logSuccess, logWarning } from "../../utils";
-import { createService, getService } from "../../gcp/runv2";
-import { ensure } from "../../ensureApiEnabled";
+import { logBullet, logSuccess } from "../../utils";
 import { readTemplateSync } from "../../templates";
 import { FirebaseError } from "../../error";
+import { DEFAULT_RUN_IGNORE } from "../../deploy/run/args";
+import { RunSingle } from "../../firebaseConfig";
 
 export interface RunInfo {
   serviceId: string;
@@ -58,8 +57,7 @@ export async function askQuestions(setup: Setup): Promise<void> {
 }
 
 /**
- * Provisions placeholder Cloud Run service if absent, writes apphosting.yaml template,
- * and records service configuration in firebase.json.
+ * Scaffolds Cloud Run configuration in firebase.json and creates placeholder apphosting.yaml template.
  */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const runInfo = setup.featureInfo?.run;
@@ -73,63 +71,19 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
 
   const { serviceId, region, rootDir, outputDir } = runInfo;
 
-  logBullet("Setting up Cloud Run service...");
-
-  // Ensure Cloud Run API is enabled
-  await ensure(projectId, "run.googleapis.com", "run", true);
+  logBullet("Setting up Cloud Run configuration...");
 
   // Update firebase.json
-  const runConfig = {
+  const runConfig: RunSingle = {
     serviceId,
     region,
     source: rootDir,
     output: outputDir,
-    ignore: ["node_modules", ".git", ".next", "firebase-debug.log", "firebase-debug.*.log"],
+    ignore: DEFAULT_RUN_IGNORE,
   };
 
-  if (!config.src.run) {
-    config.set("run", [runConfig]);
-  } else if (Array.isArray(config.src.run)) {
-    config.set("run", [...config.src.run, runConfig]);
-  } else {
-    config.set("run", [config.src.run, runConfig]);
-  }
-
+  upsertRunConfig(runConfig, config);
   config.writeProjectFile("firebase.json", config.src);
-
-  const spinner = ora("Provisioning Cloud Run service...").start();
-
-  try {
-    // Try to get service first
-    try {
-      await getService(projectId, region, serviceId);
-      spinner.succeed(`Cloud Run service ${serviceId} already exists.`);
-    } catch (err: unknown) {
-      if ((err as { status?: number })?.status === 404) {
-        // Does not exist, create placeholder
-        await createService(projectId, region, serviceId, {
-          name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
-          description: "Firebase Cloud Run Service",
-          ingress: "INGRESS_TRAFFIC_ALL",
-          template: {
-            containers: [
-              {
-                name: "placeholder",
-                image: "us-docker.pkg.dev/cloudrun/container/hello",
-              },
-            ],
-          },
-        });
-        spinner.succeed(`Successfully provisioned Cloud Run service ${serviceId}`);
-      } else {
-        throw err;
-      }
-    }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    spinner.fail(`Failed to provision Cloud Run service: ${message}`);
-    logWarning("You can still deploy using the CLI, but the initial provisioning failed.");
-  }
 
   // Create placeholder apphosting.yaml
   const projectDir = config.projectDir || ".";
@@ -144,4 +98,17 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   }
 
   logSuccess("Cloud Run initialization complete!");
+}
+
+/** Exported for unit testing. */
+export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
+  if (!config.src.run) {
+    config.set("run", [runConfig]);
+    return;
+  }
+  if (Array.isArray(config.src.run)) {
+    config.set("run", [...config.src.run, runConfig]);
+    return;
+  }
+  config.set("run", [config.src.run, runConfig]);
 }
