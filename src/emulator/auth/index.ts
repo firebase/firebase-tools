@@ -33,7 +33,9 @@ export class AuthEmulator implements EmulatorInstance {
 
   async start(): Promise<void> {
     const { host, port } = this.getInfo();
-    const app = await createApp(this.args.projectId, this.args.singleProjectMode);
+    const app = await createApp(this.args.projectId, this.args.singleProjectMode, undefined, [
+      host,
+    ]);
     const server = app.listen(port, host);
     this.destroyServer = utils.createDestroyer(server);
   }
