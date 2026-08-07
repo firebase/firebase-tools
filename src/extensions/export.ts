@@ -3,6 +3,8 @@ import { humanReadable } from "../deploy/extensions/deploymentSummary";
 import { logger } from "../logger";
 import { parseSecretVersionResourceName, toSecretVersionResourceName } from "../gcp/secretManager";
 import { getActiveSecrets } from "./secretsUtils";
+import { ExtensionInstance } from "./types";
+
 /**
  * parameterizeProject searchs spec.params for any param that include projectId or projectNumber,
  * and replaces it with a parameterized version that can be used on other projects.
@@ -44,6 +46,9 @@ export async function setSecretParamsToLatest(
   return { ...spec, params: newParams };
 }
 
+/**
+ *
+ */
 export function displayExportInfo(
   withRef: DeploymentInstanceSpec[],
   withoutRef: DeploymentInstanceSpec[],
@@ -83,4 +88,60 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
     }
     logger.info("");
   }
+}
+
+/**
+ * Translates a currently deployed Extension instance into a Functions environment.
+ * This includes setting any default params not set in the deployed instance to their
+ * default value, writing any system params under the reserved FIREBASE_SYSTEM_ prefix,
+ * and writing any secret references under the reserved FIREBASE_SECRET_REF_ prefix.
+ */
+export function functionsEnvFromInstance(instance: ExtensionInstance): Record<string, string> {
+  const liveParams = instance.config?.params || {};
+  const liveSystemParams = instance.config?.systemParams || {};
+  const specParams = instance.config?.source?.spec?.params || {};
+  const specSystemParams = instance.config?.source?.spec?.systemParams || {};
+
+  const envs: Record<string, string> = {};
+
+  // Every user param must be available, so we replicate the spec's default behavior if not present
+  specParams.forEach((specParam) => {
+    if (specParam.type === "SECRET") {
+      const renamed = "FIREBASE_SECRET_REF_" + specParam.param;
+      envs[renamed] = liveParams[specParam.param];
+    } else if (specParam.param in liveParams) {
+      envs[specParam.param] = liveParams[specParam.param];
+    } else {
+      envs[specParam.param] = specParam.default ?? "";
+    }
+  });
+
+  // System params aren't necessarily defined in the spec, but we do respect any defaults
+  Object.entries(liveSystemParams).forEach(([sysParamName, sysParamValue]) => {
+    const renamed = sysParamName
+      .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
+      .toUpperCase();
+    envs[renamed] = sysParamValue;
+  });
+  Object.entries(specSystemParams).forEach(([, specSystemParam]) => {
+    if (specSystemParam.param in liveSystemParams) {
+      return;
+    }
+    if ("default" in specSystemParam) {
+      const renamed = specSystemParam.param
+        .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
+        .toUpperCase();
+      envs[renamed] = specSystemParam.default ?? "";
+    }
+  });
+
+  // Also pull in ALLOWED_EVENTS and EVENTARC_CHANNEL
+  if (typeof instance.config.allowedEventTypes !== "undefined") {
+    envs["EXT_SELECTED_EVENTS"] = instance.config.allowedEventTypes.toString();
+  }
+  if (typeof instance.config.eventarcChannel !== "undefined") {
+    envs["EVENTARC_CHANNEL"] = instance.config.eventarcChannel;
+  }
+
+  return envs;
 }
