@@ -121,6 +121,39 @@ function extractZip(zipPath, destDir) {
   }
 }
 
+const RCODESIGN_VERSION = "0.29.0";
+
+async function ensureRcodesignTool(tempDir) {
+  // Check if rcodesign is in PATH
+  try {
+    execSync("rcodesign --version", { stdio: "ignore" });
+    return "rcodesign";
+  } catch (e) {}
+
+  const localRcodesign = path.join(tempDir, "rcodesign");
+  if (fs.existsSync(localRcodesign)) {
+    return localRcodesign;
+  }
+
+  // Download rcodesign binary for Linux or macOS
+  const platform = process.platform === "darwin" ? "apple-darwin" : "unknown-linux-musl";
+  const arch = process.arch === "arm64" ? "aarch64" : "x86_64";
+  const archiveName = `apple-codesign-${RCODESIGN_VERSION}-${arch}-${platform}.tar.gz`;
+  const url = `https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F${RCODESIGN_VERSION}/${archiveName}`;
+  const destTar = path.join(tempDir, archiveName);
+
+  console.log(`[build-sea] Downloading rcodesign tool from ${url}...`);
+  try {
+    await downloadFile(url, destTar);
+    execSync(`tar -xzf "${destTar}" -C "${tempDir}" --strip-components=1`, { stdio: "ignore" });
+    fs.chmodSync(localRcodesign, 0o755);
+    return localRcodesign;
+  } catch (err) {
+    console.warn(`[build-sea] Warning: Could not download rcodesign: ${err.message}`);
+    return null;
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const currentOnly = args.includes("--current-only");
@@ -328,15 +361,29 @@ async function main() {
       fs.chmodSync(outputBinaryPath, 0o755);
     } catch (e) {}
 
-    // Sign macOS binaries if on macOS
-    if (process.platform === "darwin" && target.platform === "darwin") {
-      try {
-        console.log(`[build-sea] Signing ${outputBinaryName}...`);
-        execSync(`codesign --sign - --force "${outputBinaryPath}"`, { stdio: "inherit" });
-      } catch (err) {
-        console.warn(
-          `[build-sea] Warning: codesign failed for ${outputBinaryName}: ${err.message}`
-        );
+    // Sign macOS binaries
+    if (target.platform === "darwin") {
+      if (process.platform === "darwin") {
+        try {
+          console.log(`[build-sea] Signing ${outputBinaryName} with codesign...`);
+          execSync(`codesign --sign - --force "${outputBinaryPath}"`, { stdio: "inherit" });
+        } catch (err) {
+          console.warn(
+            `[build-sea] Warning: codesign failed for ${outputBinaryName}: ${err.message}`
+          );
+        }
+      } else {
+        const rcodesignTool = await ensureRcodesignTool(tempDownloadsDir);
+        if (rcodesignTool) {
+          try {
+            console.log(`[build-sea] Signing ${outputBinaryName} with rcodesign...`);
+            execSync(`"${rcodesignTool}" sign "${outputBinaryPath}"`, { stdio: "inherit" });
+          } catch (err) {
+            console.warn(
+              `[build-sea] Warning: rcodesign failed for ${outputBinaryName}: ${err.message}`
+            );
+          }
+        }
       }
     }
   }
@@ -347,23 +394,38 @@ async function main() {
   const macUniversalBin = path.join(distDir, "firepit-macos");
 
   if (fs.existsSync(macX64Bin) && fs.existsSync(macArm64Bin)) {
+    console.log("[build-sea] Step 5: Creating macOS Universal 2 binary...");
     if (process.platform === "darwin") {
-      console.log("[build-sea] Step 5: Creating macOS Universal 2 binary with lipo...");
       try {
         execSync(`lipo -create -output "${macUniversalBin}" "${macX64Bin}" "${macArm64Bin}"`, {
           stdio: "inherit"
         });
         execSync(`codesign --sign - --force "${macUniversalBin}"`, { stdio: "inherit" });
         fs.chmodSync(macUniversalBin, 0o755);
-        console.log(`[build-sea] Created Universal binary: ${macUniversalBin}`);
+        console.log(`[build-sea] Created and signed Universal binary: ${macUniversalBin}`);
       } catch (err) {
         console.warn(`[build-sea] Warning: Failed to create lipo universal binary: ${err.message}`);
       }
     } else {
-      // On non-macOS hosts, symlink or copy arm64 or x64 to firepit-macos as default
-      console.log("[build-sea] Step 5: Setting default firepit-macos binary...");
-      fs.copyFileSync(macArm64Bin, macUniversalBin);
-      fs.chmodSync(macUniversalBin, 0o755);
+      const rcodesignTool = await ensureRcodesignTool(tempDownloadsDir);
+      if (rcodesignTool) {
+        try {
+          execSync(
+            `"${rcodesignTool}" macho-universal-create --output "${macUniversalBin}" "${macArm64Bin}" "${macX64Bin}"`,
+            { stdio: "inherit" }
+          );
+          execSync(`"${rcodesignTool}" sign "${macUniversalBin}"`, { stdio: "inherit" });
+          fs.chmodSync(macUniversalBin, 0o755);
+          console.log(`[build-sea] Created and signed Universal binary with rcodesign: ${macUniversalBin}`);
+        } catch (err) {
+          console.warn(`[build-sea] Warning: rcodesign macho-universal-create failed: ${err.message}`);
+          fs.copyFileSync(macArm64Bin, macUniversalBin);
+          fs.chmodSync(macUniversalBin, 0o755);
+        }
+      } else {
+        fs.copyFileSync(macArm64Bin, macUniversalBin);
+        fs.chmodSync(macUniversalBin, 0o755);
+      }
     }
   } else if (fs.existsSync(macArm64Bin) && !fs.existsSync(macUniversalBin)) {
     fs.copyFileSync(macArm64Bin, macUniversalBin);
