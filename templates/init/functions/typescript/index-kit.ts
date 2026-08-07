@@ -9,7 +9,7 @@ import {
   defineString,
 } from "firebase-functions/params";
 
-export const regionParam = defineString("FIREBASE_FUNCTION_KIT_REGION", {
+export const regionParam = defineString("FUNCTION_KIT_REGION", {
   description: "Region where functions should be deployed.",
 });
 

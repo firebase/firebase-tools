@@ -116,8 +116,7 @@ export const command = new Command("functions:kits:install")
     }
 
     const { packageName, version } = parsePackageSpecifier(rawPkgName);
-    const kitId = sanitizePackageNameToKitName(packageName);
-    validateKit(kitId);
+    const defaultKitId = sanitizePackageNameToKitName(packageName);
 
     const isThirdParty = isThirdPartyPackage(packageName);
     if (isThirdParty) {
@@ -130,19 +129,26 @@ export const command = new Command("functions:kits:install")
       if (!hasShrinkwrap) {
         logger.warn(
           clc.yellow(
-            `Warning: Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. Dependencies are not locked and may present a security risk.`,
+            `Warning: Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. npm-shrinkwrap guarantees that you deploy the same version of dependencies that the publisher tested against. Since this kit does not have an npm-shrinkwrap, it is possible that deploys or updates may introduce bugs or vulnerabilities in newer dependency versions that the publisher did not test agianst.`,
           ),
         );
       }
       const confirmInstallation = await confirm({
         message: `Are you sure you want to install the third-party kit ${packageName}?`,
-        default: true,
+        default: false,
         nonInteractive: options.nonInteractive,
       });
       if (!confirmInstallation) {
         throw new FirebaseError("Installation cancelled.");
       }
     }
+
+    const kitId = await input({
+      message: "What would you like to name this kit?",
+      default: defaultKitId,
+      nonInteractive: options.nonInteractive,
+    });
+    validateKit(kitId);
 
     const instanceId = await input({
       message: "What would you like to name your first instance of this kit?",

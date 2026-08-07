@@ -14,6 +14,7 @@ import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
 import { Config } from "../config";
 import { FirebaseError } from "../error";
+import * as prompt from "../prompt";
 
 describe("functions:kits:install", () => {
   let assertEnabledStub: sinon.SinonStub;
@@ -238,6 +239,58 @@ describe("functions:kits:install", () => {
             instances: {
               "firestore-bigquery-export":
                 "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
+            },
+            predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          },
+        ],
+      });
+    });
+
+    it("should prompt and allow custom kit ID and instance ID", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      sinon
+        .stub(prompt, "input")
+        .onFirstCall()
+        .resolves("my-custom-kit")
+        .onSecondCall()
+        .resolves("my-instance");
+
+      await command.runner()({
+        npm_package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        cwd: "/mock/project",
+        config: mockConfig,
+      });
+
+      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install"],
+        "/mock/project/function-kits/my-custom-kit",
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "my-custom-kit",
+            sourcePackage: {
+              id: "@firebase-functions-kits/firestore-bigquery-export",
+            },
+            source: "function-kits/my-custom-kit",
+            instances: {
+              "my-instance": "function-kits/my-custom-kit/config-my-instance",
             },
             predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
           },
