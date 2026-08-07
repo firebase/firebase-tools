@@ -299,6 +299,8 @@ describe("functions:kits:install", () => {
     });
 
     it("should run npm install with --ignore-scripts for third-party packages", async () => {
+      sinon.stub(prompt, "confirm").resolves(true);
+
       const mockConfig = {
         projectDir: "/mock/project",
         src: { functions: [] },
