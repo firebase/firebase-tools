@@ -153,6 +153,10 @@ describe("run deploy", () => {
         secret: "projects/custom-p/secrets/my-sec",
         availability: ["RUNTIME"],
       },
+      MY_VERSIONED_FULL_SECRET: {
+        secret: "projects/custom-p/secrets/my-versioned-sec/versions/3",
+        availability: ["RUNTIME"],
+      },
     };
 
     const payload: Payload = {
@@ -209,8 +213,8 @@ describe("run deploy", () => {
       runv2.ServiceOutputFields
     >;
 
-    expect(updatedService.scaling?.minInstanceCount).to.equal(1);
-    expect(updatedService.scaling?.maxInstanceCount).to.equal(10);
+    expect(updatedService.template.scaling?.minInstanceCount).to.equal(1);
+    expect(updatedService.template.scaling?.maxInstanceCount).to.equal(10);
     expect(updatedService.template.maxInstanceRequestConcurrency).to.equal(80);
     expect(updatedService.template.containers?.[0].resources?.limits?.cpu).to.equal("2");
     expect(updatedService.template.containers?.[0].resources?.limits?.memory).to.equal("1024Mi");
@@ -237,6 +241,15 @@ describe("run deploy", () => {
         secretKeyRef: {
           secret: "my-sec",
           version: "latest",
+        },
+      },
+    });
+    expect(containerEnv).to.deep.include({
+      name: "MY_VERSIONED_FULL_SECRET",
+      valueSource: {
+        secretKeyRef: {
+          secret: "my-versioned-sec",
+          version: "3",
         },
       },
     });

@@ -61,8 +61,11 @@ export function exec(
     cli.stderr += s;
   });
 
-  return new Promise((resolve) => {
-    proc.on("exit", (code) => {
+  return new Promise((resolve, reject) => {
+    proc.on("error", (err) => {
+      reject(err);
+    });
+    proc.on("close", (code) => {
       cli.exitCode = code;
       resolve(cli);
     });

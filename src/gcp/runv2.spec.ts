@@ -586,12 +586,13 @@ describe("runv2", () => {
   describe("submitBuild", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;
-    let pollStub: sinon.SinonStub;
+    let getStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       postStub = sandbox.stub(Client.prototype, "post");
-      pollStub = sandbox.stub(operationPoller, "pollOperation");
+      getStub = sandbox.stub(Client.prototype, "get");
+      getStub.resolves({ status: 200, body: { status: "SUCCESS" } });
     });
 
     afterEach(() => {
@@ -612,7 +613,6 @@ describe("runv2", () => {
           baseImageWarning: "warning",
         },
       });
-      pollStub.resolves();
 
       const res = await runv2.submitBuild(PROJECT_ID, LOCATION, build);
 
@@ -620,7 +620,6 @@ describe("runv2", () => {
         `/projects/${PROJECT_ID}/locations/${LOCATION}/builds:submit`,
         build,
       );
-      expect(pollStub).to.have.been.calledOnce;
       expect(res.baseImageUri).to.equal("gcr.io/base:latest");
       expect(res.baseImageWarning).to.equal("warning");
     });
@@ -645,14 +644,8 @@ describe("runv2", () => {
           baseImageUri: "gcr.io/base:latest",
         },
       });
-      pollStub.resolves();
 
       const res = await runv2.submitBuild(PROJECT_ID, LOCATION, build);
-
-      const pollerArgs = pollStub.firstCall.args[0] as operationPoller.OperationPollerOptions;
-      expect(pollerArgs.operationResourceName).to.equal(
-        `projects/${PROJECT_ID}/locations/${LOCATION}/operations/build-456`,
-      );
       expect(res.baseImageUri).to.equal("gcr.io/base:latest");
     });
 

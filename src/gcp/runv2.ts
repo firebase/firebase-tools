@@ -261,48 +261,17 @@ export async function updateService(
       "scaling",
       "template.labels",
       "template.annotations",
-      "client",
-      "clientVersion",
+      "template.scaling",
     );
     fieldMask = rawMask.filter(
       (f) =>
-        f !== "name" &&
-        f !== "template.client" &&
-        f !== "template.clientVersion" &&
-        (f !== "template.revision" || service.template?.revision !== undefined),
+        f !== "name" && (f !== "template.revision" || service.template?.revision !== undefined),
     );
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const {
-    uid,
-    generation,
-    createTime,
-    updateTime,
-    creator,
-    lastModifier,
-    observedGeneration,
-    terminalCondition,
-    conditions,
-    latestReadyRevision,
-    latestCreatedRevision,
-    trafficStatuses,
-    uri,
-    urls,
-    satisfiesPzi,
-    satisfiesPzs,
-    etag,
-    reconciling,
-    ...serviceBody
-  } = service as any;
-
-  if (serviceBody.template) {
-    delete serviceBody.template.revision;
   }
 
   const res = await client.patch<Omit<Service, ServiceOutputFields>, LongRunningOperation<Service>>(
     service.name,
-    serviceBody,
+    service,
     {
       queryParams: {
         updateMask: fieldMask.join(","),

@@ -129,7 +129,6 @@ export async function deploy(context: Context, options: Options, payload: Payloa
         newService = {
           name: existing.name,
           template,
-          client: "cli-firebase",
         };
 
         // Mutate template with new image
@@ -164,7 +163,7 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
         applyAppHostingConfig(newService, runtimeEnvMap, appHostingConfig?.runConfig, projectId);
 
-        service.deployResponse = await runv2.updateService(newService);
+        service.deployResponse = await runv2.updateService(newService, ["template"]);
       } else {
         const revisionDescription = (service.message || options.message) as string | undefined;
         newService = {
@@ -246,12 +245,18 @@ function applyAppHostingConfig(
     } else if (val.secret !== undefined) {
       let secretName = String(val.secret);
       let version = "latest";
-      if (secretName.includes("@")) {
+      if (secretName.includes("/versions/")) {
+        const parts = secretName.split("/versions/");
+        secretName = parts[0];
+        version = parts[1] || "latest";
+      } else if (secretName.includes("@")) {
         const parts = secretName.split("@");
         secretName = parts[0];
         version = parts[1] || "latest";
       }
-      if (secretName.includes("/")) {
+      if (secretName.includes("/secrets/")) {
+        secretName = secretName.split("/secrets/")[1];
+      } else if (secretName.includes("/")) {
         const parts = secretName.split("/");
         secretName = parts[parts.length - 1];
       }
