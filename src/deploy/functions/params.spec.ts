@@ -5,6 +5,8 @@ import * as prompt from "../../prompt";
 import * as params from "./params";
 import * as secretManager from "../../gcp/secretManager";
 import { FirebaseError } from "../../error";
+import * as utils from "../../utils";
+import { logger } from "../../logger";
 
 const expect = chai.expect;
 const fakeConfig = {
@@ -78,20 +80,27 @@ describe("CEL resolution", () => {
 
 describe("resolveParams", () => {
   let input: sinon.SinonStub;
+  let logBulletStub: sinon.SinonStub;
+
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     input = sinon.stub(prompt, "input");
+    logBulletStub = sinon.stub(utils, "logBullet");
+    loggerInfoStub = sinon.stub(logger, "info");
   });
 
   afterEach(() => {
     input.restore();
+    logBulletStub.restore();
+    loggerInfoStub.restore();
   });
 
   it("always contains the precanned internal param values", async () => {
     const paramsToResolve: params.Param[] = [];
     const userEnv: Record<string, params.ParamValue> = {};
     expect(
-      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv, "default")).paramValues,
     ).to.deep.equal(expectedInternalParams);
   });
 
@@ -112,7 +121,7 @@ describe("resolveParams", () => {
       baz: new params.ParamValue("true", false, { string: false, number: false, boolean: true }),
     };
     expect(
-      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv, "default")).paramValues,
     ).to.deep.equal(
       Object.assign(
         {
@@ -139,7 +148,7 @@ describe("resolveParams", () => {
       }),
     };
     expect(
-      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv)).paramValues,
+      (await params.resolveParams(paramsToResolve, fakeConfig, userEnv, "default")).paramValues,
     ).to.deep.equal({
       DATABASE_URL: new params.ParamValue(fakeConfig.databaseURL, true, {
         string: true,
@@ -173,6 +182,7 @@ describe("resolveParams", () => {
           paramsToResolve,
           { locationId: "", projectId: "foo", storageBucket: "", databaseURL: "" },
           userEnv,
+          "default",
         )
       ).paramValues,
     ).to.deep.equal({
@@ -191,7 +201,9 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("bar");
-    expect((await params.resolveParams(paramsToResolve, fakeConfig, {})).paramValues).to.deep.equal(
+    expect(
+      (await params.resolveParams(paramsToResolve, fakeConfig, {}, "default")).paramValues,
+    ).to.deep.equal(
       Object.assign(
         {
           foo: new params.ParamValue("bar", false, { string: true }),
@@ -217,7 +229,7 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
     expect(input.getCall(1).args[0].default).to.eq("baz");
   });
 
@@ -237,7 +249,7 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
     expect(input.getCall(1).args[0].default).to.eq("baz/quox");
   });
 
@@ -263,7 +275,7 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("baz");
-    await params.resolveParams(paramsToResolve, fakeConfig, {});
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, "default");
     expect(input.getCall(0).args[0].default).to.eq("https://foo.firebaseio.com/quox");
     expect(input.getCall(1).args[0].default).to.eq("projectID: foo");
     expect(input.getCall(2).args[0].default).to.eq(
@@ -281,7 +293,8 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, "default")).to.eventually.be
+      .rejected;
   });
 
   it("errors when the default is a CEL expression that resolves to the wrong type", async () => {
@@ -300,7 +313,8 @@ describe("resolveParams", () => {
       },
     ];
     input.resolves("22");
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {})).to.eventually.be.rejected;
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, "default")).to.eventually.be
+      .rejected;
   });
 
   it("does not throw in non-interactive mode if secret exists in cloud", async () => {
@@ -310,7 +324,8 @@ describe("resolveParams", () => {
       secretVersion: { versionId: "1", state: "ENABLED", secret: {} as any },
     });
 
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.fulfilled;
+    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, "default", true)).to.be
+      .fulfilled;
 
     getSecretMetadataStub.restore();
   });
@@ -321,10 +336,9 @@ describe("resolveParams", () => {
       secret: undefined,
     });
 
-    await expect(params.resolveParams(paramsToResolve, fakeConfig, {}, true)).to.be.rejectedWith(
-      FirebaseError,
-      /In non-interactive mode but have no value for the secret/,
-    );
+    await expect(
+      params.resolveParams(paramsToResolve, fakeConfig, {}, "default", true),
+    ).to.be.rejectedWith(FirebaseError, /In non-interactive mode but have no value for the secret/);
 
     getSecretMetadataStub.restore();
   });
@@ -333,9 +347,24 @@ describe("resolveParams", () => {
     const paramsToResolve: params.Param[] = [{ name: "MY_SECRET", type: "secret" }];
     const getSecretMetadataSpy = sinon.spy(secretManager, "getSecretMetadata");
 
-    await params.resolveParams(paramsToResolve, fakeConfig, {}, false, false, true);
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, "default", false, false, true);
     expect(getSecretMetadataSpy.called).to.be.false;
 
     getSecretMetadataSpy.restore();
+  });
+
+  it("should print a header when prompting for a codebase", async () => {
+    const paramsToResolve: params.Param[] = [
+      {
+        name: "foo",
+        type: "string",
+        input: { text: {} },
+      },
+    ];
+    input.resolves("bar");
+    await params.resolveParams(paramsToResolve, fakeConfig, {}, "my-codebase");
+    expect(
+      loggerInfoStub.calledWith(sinon.match(/Prompting for parameters for codebase.*my-codebase/)),
+    ).to.be.true;
   });
 });

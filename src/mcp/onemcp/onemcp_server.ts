@@ -7,6 +7,7 @@ import {
   ListToolsRequest,
   CallToolRequest,
   LATEST_PROTOCOL_VERSION,
+  Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "../../apiv2";
 import { ServerTool, ServerToolMeta } from "../tool";
@@ -96,7 +97,7 @@ export class OneMcpServer {
             [x: string]: unknown;
           },
           ctx: McpContext,
-        ) => this.callTool(mcpTool.name, args, ctx),
+        ) => this.callTool(mcpTool.name, mcpTool.inputSchema, args, ctx),
         isAvailable: () => Promise.resolve(true),
       }));
     } catch (error) {
@@ -111,6 +112,7 @@ export class OneMcpServer {
    */
   private async callTool(
     toolName: string,
+    inputSchema: Tool["inputSchema"] | undefined,
     args: {
       [x: string]: unknown;
     },
@@ -124,6 +126,20 @@ export class OneMcpServer {
       throw new FirebaseError(
         `Tool '${toolName}' is not allowed on remote server for feature '${this.feature}'.`,
       );
+    }
+
+    const paramHeaders: Record<string, string> = {};
+    const props = inputSchema?.properties;
+    if (props && typeof props === "object" && args) {
+      for (const [paramName, propSchema] of Object.entries(props)) {
+        if (propSchema && typeof propSchema === "object" && "x-mcp-header" in propSchema) {
+          const headerName = (propSchema as Record<string, unknown>)["x-mcp-header"];
+          const argValue = args[paramName];
+          if (argValue !== undefined && argValue !== null) {
+            paramHeaders[`Mcp-Param-${headerName}`] = String(argValue);
+          }
+        }
+      }
     }
 
     // TODO: Optimize this to not call ensure on every tool call.
@@ -149,6 +165,7 @@ export class OneMcpServer {
             "Mcp-Method": "tools/call",
             "Mcp-Name": toolName,
             ...(ctx.projectId ? { "x-goog-user-project": ctx.projectId } : {}),
+            ...paramHeaders,
           },
         },
       );

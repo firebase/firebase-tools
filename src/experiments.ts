@@ -142,6 +142,16 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement and attestation providers from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services`, `firebase appcheck:providers` and " +
+      "`firebase appcheck:apps` commands for reading and changing App Check enforcement per " +
+      "service and the attestation providers of each app. These commands are in preview and " +
+      "may change until the surface is API council approved. The `firebase appcheck:debugtokens` " +
+      "commands are generally available and are not affected by this experiment.",
+  },
+
   ailogic: {
     shortDescription: "Manage Firebase AI Logic from the CLI.",
     fullDescription:

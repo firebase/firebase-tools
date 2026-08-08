@@ -6,7 +6,7 @@ import { needProjectNumber } from "../projectUtils";
 
 import { listDebugTokens } from "../appcheck/api";
 import { DebugToken, AppCheckDebugOptions } from "../appcheck/types";
-import { getOrPromptProjectAndAppId } from "../appcheck/prompts";
+import { getOrPromptProjectAndAppId } from "./appcheck-prompts";
 import { requireAuth } from "../requireAuth";
 import { logger } from "../logger";
 import { promiseWithSpinner } from "../utils";
