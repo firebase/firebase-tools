@@ -1247,12 +1247,15 @@ describe("prepare", () => {
 
   describe("discoverSecurityDetails", () => {
     let testIamPermissionsStub: sinon.SinonStub;
+    let generateManagedSANameStub: sinon.SinonStub;
 
     beforeEach(() => {
       testIamPermissionsStub = sinon
         .stub(iam, "testIamPermissions")
         .resolves({ passed: true } as any);
-      sinon.stub(iam, "generateManagedServiceAccountName").resolves("firebase-fn-123");
+      generateManagedSANameStub = sinon
+        .stub(iam, "generateManagedServiceAccountName")
+        .resolves("firebase-fn-123");
       sinon.stub(resourcemanager, "getServiceAccountRoles").resolves([]);
     });
 
@@ -1274,6 +1277,44 @@ describe("prepare", () => {
       expect(result.newEtag).to.be.a("string");
       expect(e.serviceAccount).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(e.labels?.["firebase-declarative-security-etag"]).to.equal(result.newEtag);
+    });
+
+    it("reuses an existing managed service account in the project when no deployed functions reference it (BUG: currently generates a new one)", async () => {
+      // Scenario: a previous deploy created the managed SA and granted it roles, but
+      // function creation failed, so `have` is empty. The project still contains
+      // the managed SA, discoverable via IAM lookup.
+      const preexistingSA = "firebase-fn-1234567890@project.iam.gserviceaccount.com";
+      const getServiceAccountStub = sinon.stub(iam, "getServiceAccount").resolves({
+        name: `projects/project/serviceAccounts/${preexistingSA}`,
+        projectId: "project",
+        uniqueId: "12345",
+        email: preexistingSA,
+        displayName: "Firebase Functions managed service account",
+        etag: "etag",
+        description: "",
+        oauth2ClientId: "",
+        disabled: false,
+      });
+
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      // Desired behavior: reuse the SA that already exists in the project instead
+      // of generating a brand new random name (which orphans the previous SA and
+      // its project-level role grants on every failed deploy).
+      expect(
+        getServiceAccountStub.called || !generateManagedSANameStub.called,
+        "expected discoverSecurityDetails to look up existing managed service accounts " +
+          "in the project instead of unconditionally generating a new random SA name",
+      ).to.be.true;
+      expect(result.managedSA).to.equal(preexistingSA);
+      expect(e.serviceAccount).to.equal(preexistingSA);
     });
 
     it("should reset endpoints to default service account when unenrolling (opting out)", async () => {
