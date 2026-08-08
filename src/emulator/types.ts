@@ -359,8 +359,8 @@ export class EmulatorLog {
 
     EmulatorLog.WAITING_FOR_FLUSH = true;
     if (process.send) {
-      // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
-      // but the node docs assert that it has an optional callback.
+      // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
+      process.send(nextMsg, undefined, {}, (err: Error | null) => {
         if (err) {
           // process.send() hands the callback an Error object, which stream.write()
           // rejects -- writing it directly throws and destroys the original error.
