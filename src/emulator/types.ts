@@ -1,6 +1,8 @@
 import { ChildProcess } from "child_process";
 import { EventEmitter } from "events";
 
+import { getErrStack } from "../error";
+
 export enum Emulators {
   AUTH = "auth",
   HUB = "hub",
@@ -360,9 +362,10 @@ export class EmulatorLog {
       // For some reason our node.d.ts file does not include the version of subprocess.send() with a callback
       // but the node docs assert that it has an optional callback.
       // https://nodejs.org/api/child_process.html#child_process_subprocess_send_message_sendhandle_options_callback
-      (process.send as any)(nextMsg, undefined, {}, (err: any) => {
+      (process.send as any)(nextMsg, undefined, {}, (err: unknown) => {
         if (err) {
-          process.stderr.write(err);
+          // err is an Error, which stream.write() rejects by throwing.
+          process.stderr.write(`${getErrStack(err)}\n`);
         }
 
         EmulatorLog.WAITING_FOR_FLUSH = EmulatorLog.LOG_BUFFER.length > 0;
