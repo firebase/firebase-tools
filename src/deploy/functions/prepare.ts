@@ -292,6 +292,7 @@ export async function prepare(
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
     };
     if (isKitConfig(localCfg) && codebase in localCfg.instances) {
       userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
@@ -321,6 +322,7 @@ export async function prepare(
       build: wantBuild,
       firebaseConfig,
       userEnvs,
+      codebase,
       nonInteractive: options.nonInteractive,
       force: options.force,
       isEmulator: false,
