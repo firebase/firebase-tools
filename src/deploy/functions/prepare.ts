@@ -286,7 +286,11 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(config) ? codebase : undefined,
+    );
     const localCfg = requireLocal(config, "Remote sources are not supported.");
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
@@ -779,7 +783,11 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(codebaseConfig) ? codebase : undefined,
+    );
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,

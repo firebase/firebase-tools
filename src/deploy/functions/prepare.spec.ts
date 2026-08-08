@@ -149,6 +149,54 @@ describe("prepare", () => {
       }
     });
 
+    it("should provide FIREBASE_KIT_INSTANCE_ID to discovery envs only for kit instances", async () => {
+      experiments.setEnabled("kits", true);
+      try {
+        const config: ValidatedConfig = [
+          {
+            kit: "my-kit",
+            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            source: "source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+            runtime: "nodejs22",
+          },
+          { source: "source-default", codebase: "default", runtime: "nodejs22" },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+        expect(discoverBuildStub).to.have.been.calledThrice;
+
+        // Match discovery envs for the first kit instance
+        expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-alpha",
+        });
+
+        // Match discovery envs for the second kit instance
+        expect(discoverBuildStub.secondCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-beta",
+        });
+
+        // Match discovery envs for the default codebase (should NOT include FIREBASE_KIT_INSTANCE_ID)
+        expect(discoverBuildStub.thirdCall.args[1]).to.not.have.property(
+          "FIREBASE_KIT_INSTANCE_ID",
+        );
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
+    });
+
     it("should preserve runtime from codebase config", async () => {
       const config: ValidatedConfig = [
         { source: "source", codebase: "codebase", runtime: "nodejs20" },
