@@ -638,6 +638,7 @@ export async function startAll(
       host: functionsAddr.host,
       port: functionsAddr.port,
       debugPort: inspectFunctions,
+      pythonDisableGunicorn: Boolean(options.pythonDisableGunicorn),
       verbosity: options.logVerbosity,
       projectAlias: options.projectAlias,
       extensionsEmulator: extensionEmulator,
