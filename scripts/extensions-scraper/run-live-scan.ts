@@ -2,6 +2,10 @@ import * as https from "https";
 import * as path from "path";
 import * as fs from "fs";
 import { extractReplacementFromReadme, getRepoUrlForExtension, toRawGithubUrl } from "./index";
+import {
+  ReplacementInfo,
+  ReplacementRegistrySchema,
+} from "../../src/extensions/replacementRegistry";
 
 function fetchUrlContent(url: string, maxRedirects = 5): Promise<string> {
   return new Promise((resolve) => {
@@ -18,7 +22,7 @@ function fetchUrlContent(url: string, maxRedirects = 5): Promise<string> {
             if (redirectUrl) {
               try {
                 const absoluteUrl = new URL(redirectUrl, url).toString();
-                fetchUrlContent(absoluteUrl, maxRedirects - 1).then(resolve);
+                void fetchUrlContent(absoluteUrl, maxRedirects - 1).then(resolve);
               } catch {
                 resolve("");
               }
@@ -31,7 +35,7 @@ function fetchUrlContent(url: string, maxRedirects = 5): Promise<string> {
             return;
           }
           let data = "";
-          res.on("data", (chunk) => (data += chunk));
+          res.on("data", (chunk: string | Buffer) => (data += chunk.toString()));
           res.on("end", () => resolve(data));
         })
         .on("error", () => resolve(""));
@@ -41,19 +45,16 @@ function fetchUrlContent(url: string, maxRedirects = 5): Promise<string> {
   });
 }
 
-async function runLiveScan() {
+async function runLiveScan(): Promise<void> {
   const replacementsPath = path.resolve(__dirname, "../../src/extensions/replacements.json");
   const rawJson = fs.readFileSync(replacementsPath, "utf-8");
-  const registry = JSON.parse(rawJson);
+  const registry: ReplacementRegistrySchema = JSON.parse(rawJson) as ReplacementRegistrySchema;
 
   console.log("\n=======================================================");
   console.log("   LIVE GITHUB SCANNER FOR EXTENSION REPLACEMENTS      ");
   console.log("=======================================================\n");
 
-  const entries = Object.entries(registry.replacements) as [
-    string,
-    { extensionRepositoryUrl?: string },
-  ][];
+  const entries: [string, ReplacementInfo][] = Object.entries(registry.replacements);
   console.log(`[Scraper] Scanning ${entries.length} extensions from GitHub...\n`);
 
   let detectedCount = 0;
@@ -91,4 +92,4 @@ async function runLiveScan() {
   console.log("=======================================================\n");
 }
 
-runLiveScan();
+void runLiveScan();

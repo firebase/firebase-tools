@@ -27,7 +27,9 @@ describe("replacementRegistry", () => {
     it("should format deprecation message when replacement is available", () => {
       const msg = getDeprecationWarningMessage("firebase/firestore-send-email");
       expect(msg).to.include("firebase/firestore-send-email");
-      expect(msg).to.include("Recommended replacement: @firebase-function-kits/firestore-send-email");
+      expect(msg).to.include(
+        "Recommended replacement: @firebase-function-kits/firestore-send-email",
+      );
     });
   });
 });

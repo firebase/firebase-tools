@@ -1,27 +1,32 @@
-import * as fs from "fs";
-import * as path from "path";
+import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 
 export interface ScraperResult {
   extensionRef: string;
   detectedPackage?: string;
-  status: "REPLACEMENT_AVAILABLE" | "CONFIRMED_NO_REPLACEMENT" | "PENDING_PUBLISHER";
+  status: "REPLACEMENT_AVAILABLE" | "PENDING_PUBLISHER";
 }
 
-// Case-insensitive, whitespace-lenient HTML comment tag regex
-export const REPLACEMENT_TAG_REGEX =
-  /<!--\s*FIREBASE_EXTENSION_REPLACEMENT:[\s\S]*?package=["']?([^"'\s>]+)["']?[\s\S]*?-->/i;
-
 /**
- * Extracts replacement package name from raw README markdown string using the machine tag regex.
+ * Extracts replacement npm package name from extension README markdown content.
+ * Checks for machine tag:
+ *   <!-- FIREBASE_EXTENSION_REPLACEMENT: extension="publisher/extension-name" package="@scope/package-name" -->
+ * or single-quoted:
+ *   <!-- FIREBASE_EXTENSION_REPLACEMENT: package='@scope/package-name' -->
  */
 export function extractReplacementFromReadme(readmeContent: string): string | undefined {
   if (!readmeContent) {
     return undefined;
   }
-  const match = REPLACEMENT_TAG_REGEX.exec(readmeContent);
-  if (match && match[1]) {
-    return match[1].trim();
+
+  // Regex matching machine-readable replacement tag
+  const tagRegex =
+    /<!--\s*FIREBASE_EXTENSION_REPLACEMENT:\s*(?:(?:extension=["'][^"']+["']\s*)?package=["']([^"']+)["']|(?:package=["']([^"']+)["']\s*)?extension=["'][^"']+["'])\s*-->/i;
+  const match = tagRegex.exec(readmeContent);
+
+  if (match) {
+    return match[1] || match[2];
   }
+
   return undefined;
 }
 
@@ -73,10 +78,12 @@ export function getRepoUrlForExtension(
  */
 export function processExtensionReadmes(
   readmes: Record<string, string>,
-  registryData: Record<string, any>,
-): { updatedRegistry: Record<string, any>; results: ScraperResult[] } {
+  registryData: ReplacementRegistrySchema,
+): { updatedRegistry: ReplacementRegistrySchema; results: ScraperResult[] } {
   const results: ScraperResult[] = [];
-  const updatedRegistry = JSON.parse(JSON.stringify(registryData));
+  const updatedRegistry: ReplacementRegistrySchema = JSON.parse(
+    JSON.stringify(registryData),
+  ) as ReplacementRegistrySchema;
   if (!updatedRegistry.replacements) {
     updatedRegistry.replacements = {};
   }
@@ -88,6 +95,7 @@ export function processExtensionReadmes(
     if (detectedPackage) {
       status = "REPLACEMENT_AVAILABLE";
       updatedRegistry.replacements[extensionRef] = {
+        ...updatedRegistry.replacements[extensionRef],
         status,
         npmPackage: detectedPackage,
       };
@@ -101,17 +109,4 @@ export function processExtensionReadmes(
   }
 
   return { updatedRegistry, results };
-}
-
-// Main CLI runner if executed directly
-if (require.main === module) {
-  const replacementsPath = path.resolve(__dirname, "../../src/extensions/replacements.json");
-  console.log(`[Scraper] Reading registry asset from ${replacementsPath}...`);
-  if (fs.existsSync(replacementsPath)) {
-    const rawData = fs.readFileSync(replacementsPath, "utf-8");
-    const registry = JSON.parse(rawData);
-    console.log(
-      `[Scraper] Successfully loaded ${Object.keys(registry.replacements).length} extension entries.`,
-    );
-  }
 }

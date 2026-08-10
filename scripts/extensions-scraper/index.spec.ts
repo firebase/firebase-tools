@@ -5,6 +5,7 @@ import {
   processExtensionReadmes,
   toRawGithubUrl,
 } from "./index";
+import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 
 describe("extensions-scraper", () => {
   describe("extractReplacementFromReadme", () => {
@@ -28,7 +29,8 @@ describe("extensions-scraper", () => {
 
   describe("toRawGithubUrl", () => {
     it("should convert github.com tree URLs to raw.githubusercontent.com", () => {
-      const webUrl = "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md";
+      const webUrl =
+        "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md";
       expect(toRawGithubUrl(webUrl)).to.equal(
         "https://raw.githubusercontent.com/firebase/extensions/main/firestore-send-email/README.md",
       );
@@ -67,7 +69,7 @@ describe("extensions-scraper", () => {
         "firebase/firestore-send-email":
           '<!-- FIREBASE_EXTENSION_REPLACEMENT: package="@firebase/firestore-send-email" -->',
       };
-      const initialRegistry = {
+      const initialRegistry: ReplacementRegistrySchema = {
         replacements: {
           "firebase/firestore-send-email": { status: "PENDING_PUBLISHER" },
         },
