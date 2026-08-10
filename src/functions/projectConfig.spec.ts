@@ -398,6 +398,13 @@ describe("projectConfig", () => {
         );
       });
 
+      it("fails validation if validateKitInstances is called standalone with duplicate instance IDs", () => {
+        expect(() => projectConfig.validateKitInstances(["inst1", "inst1"])).to.throw(
+          FirebaseError,
+          /functions kit instance ID must be unique across all kits, but 'inst1' was used more than once/,
+        );
+      });
+
       it("fails validation if instance ID starts with a dash", () => {
         const config = [
           {

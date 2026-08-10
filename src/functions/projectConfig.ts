@@ -241,12 +241,14 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
 
 /**
  * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
+ * @param instanceIds An iterable collection of instance IDs to validate.
+ * @param existingInstanceIds A set of existing instance IDs in the project to check against for duplicates (defaults to a new Set).
  */
 export function validateKitInstances(
-  instances: Record<string, string>,
-  allProjectInstanceIds: Set<string>,
+  instanceIds: Iterable<string>,
+  existingInstanceIds: Set<string> = new Set(),
 ): void {
-  for (const instanceId of Object.keys(instances)) {
+  for (const instanceId of instanceIds) {
     if (
       instanceId.length === 0 ||
       instanceId.length > 40 ||
@@ -257,12 +259,12 @@ export function validateKitInstances(
           "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
       );
     }
-    if (allProjectInstanceIds.has(instanceId)) {
+    if (existingInstanceIds.has(instanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
       );
     }
-    allProjectInstanceIds.add(instanceId);
+    existingInstanceIds.add(instanceId);
   }
 }
 
@@ -275,7 +277,7 @@ function assertUniqueKitInstancesAndCodebases(config: ValidatedConfig): void {
       codebases.add(c.codebase);
     }
     if ("instances" in c && c.instances) {
-      validateKitInstances(c.instances, instanceIds);
+      validateKitInstances(Object.keys(c.instances), instanceIds);
     }
   }
 

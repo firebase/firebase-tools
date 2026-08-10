@@ -5,7 +5,8 @@ import * as fs from "fs-extra";
 
 import {
   command,
-  parsePackageSpecifier,
+  parseNpmPackageSpecifier,
+  validateNpmPackageName,
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
@@ -40,32 +41,107 @@ describe("functions:kits:install", () => {
     sinon.restore();
   });
 
-  describe("parsePackageSpecifier", () => {
+  describe("validateNpmPackageName", () => {
+    it("should accept valid unscoped package names", () => {
+      expect(() => validateNpmPackageName("my-kit")).to.not.throw();
+      expect(() => validateNpmPackageName("firestore-export")).to.not.throw();
+      expect(() => validateNpmPackageName("kit_123.v1")).to.not.throw();
+    });
+
+    it("should accept valid scoped package names with exactly one slash", () => {
+      expect(() =>
+        validateNpmPackageName("@firebase-functions-kits/firestore-bigquery-export"),
+      ).to.not.throw();
+      expect(() => validateNpmPackageName("@invertase/example-kit")).to.not.throw();
+    });
+
+    it("should reject package names with multiple slashes", () => {
+      expect(() => validateNpmPackageName("@scope/pkg/extra")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+      expect(() => validateNpmPackageName("foo/bar/baz")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+    });
+
+    it("should reject unscoped package names containing slashes", () => {
+      expect(() => validateNpmPackageName("foo/bar")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+    });
+
+    it("should reject empty or malformed package names", () => {
+      expect(() => validateNpmPackageName("")).to.throw(FirebaseError, /Invalid NPM package name/);
+      expect(() => validateNpmPackageName("@scope")).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+      expect(() => validateNpmPackageName("a".repeat(215))).to.throw(
+        FirebaseError,
+        /Invalid NPM package name/,
+      );
+    });
+  });
+
+  describe("parseNpmPackageSpecifier", () => {
     it("should parse scoped package with version", () => {
-      const res = parsePackageSpecifier("@firebase-functions-kits/firestore-bigquery-export@1.0.0");
+      const res = parseNpmPackageSpecifier(
+        "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+      );
       expect(res).to.deep.equal({
         packageName: "@firebase-functions-kits/firestore-bigquery-export",
         version: "1.0.0",
       });
     });
 
+    it("should parse scoped package with release candidate version", () => {
+      const res = parseNpmPackageSpecifier(
+        "@firebase-functions-kits/firestore-bigquery-export@1.0.0-rc.1",
+      );
+      expect(res).to.deep.equal({
+        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        version: "1.0.0-rc.1",
+      });
+    });
+
+    it("should parse scoped package with tag", () => {
+      const res = parseNpmPackageSpecifier(
+        "@firebase-functions-kits/firestore-bigquery-export@latest",
+      );
+      expect(res).to.deep.equal({
+        packageName: "@firebase-functions-kits/firestore-bigquery-export",
+        version: "latest",
+      });
+    });
+
     it("should parse scoped package without version", () => {
-      const res = parsePackageSpecifier("@firebase-functions-kits/firestore-bigquery-export");
+      const res = parseNpmPackageSpecifier("@firebase-functions-kits/firestore-bigquery-export");
       expect(res).to.deep.equal({
         packageName: "@firebase-functions-kits/firestore-bigquery-export",
       });
     });
 
     it("should parse non-scoped package with version", () => {
-      const res = parsePackageSpecifier("my-kit@^2.0.0");
+      const res = parseNpmPackageSpecifier("my-kit@^2.0.0");
       expect(res).to.deep.equal({
         packageName: "my-kit",
         version: "^2.0.0",
       });
     });
 
+    it("should parse non-scoped package with tag", () => {
+      const res = parseNpmPackageSpecifier("my-kit@next");
+      expect(res).to.deep.equal({
+        packageName: "my-kit",
+        version: "next",
+      });
+    });
+
     it("should parse non-scoped package without version", () => {
-      const res = parsePackageSpecifier("my-kit");
+      const res = parseNpmPackageSpecifier("my-kit");
       expect(res).to.deep.equal({
         packageName: "my-kit",
       });
@@ -94,10 +170,12 @@ describe("functions:kits:install", () => {
   describe("isThirdPartyPackage", () => {
     it("should return false for packages under @firebase-functions-kits scope", () => {
       expect(isThirdPartyPackage("@firebase-functions-kits/firestore-bigquery-export")).to.be.false;
-      expect(isThirdPartyPackage("@firebase-functions-kits")).to.be.false;
     });
 
     it("should return true for packages outside @firebase-functions-kits scope", () => {
+      expect(isThirdPartyPackage("firebase-functions-kits")).to.be.true;
+      expect(isThirdPartyPackage("@firebase-function-kits-fake/foo")).to.be.true;
+      expect(isThirdPartyPackage("@firebase-functions-kits-fake/foo")).to.be.true;
       expect(isThirdPartyPackage("@other-scope/my-kit")).to.be.true;
       expect(isThirdPartyPackage("third-party-kit")).to.be.true;
     });
@@ -173,6 +251,25 @@ describe("functions:kits:install", () => {
         FirebaseError,
         /set the --npm_package option to a valid NPM package and try again\./,
       );
+    });
+
+    it("should throw an error if --npm_package has an invalid package name", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@scope/pkg/extra@1.0.0",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name/);
     });
 
     it("should successfully install a first-party kit into firebase.json", async () => {
@@ -380,6 +477,85 @@ describe("functions:kits:install", () => {
           nonInteractive: true,
         }),
       ).to.be.rejectedWith(FirebaseError, /must be mutually exclusive/);
+    });
+
+    it("should reject instance ID that collides with another kit instance ID", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [
+            {
+              kit: "other-kit",
+              source: "function-kits/other-kit",
+              instances: {
+                "my-kit": "function-kits/other-kit/config-my-kit",
+              },
+            },
+          ],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@firebase-functions-kits/my-kit",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /functions kit instance ID must be unique across all kits, but 'my-kit' was used more than once/,
+      );
+    });
+
+    it("should prompt confirmation when a first-party kit lacks npm-shrinkwrap.json", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
+      const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@firebase-functions-kits/my-kit",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      expect(confirmStub).to.have.been.calledOnceWith({
+        message:
+          "Are you sure you want to install @firebase-functions-kits/my-kit without locked dependencies?",
+        default: false,
+        nonInteractive: true,
+      });
+    });
+
+    it("should cancel installation if user declines confirmation for missing shrinkwrap", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
+      sinon.stub(prompt, "confirm").resolves(false);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@firebase-functions-kits/my-kit",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
     });
   });
 });

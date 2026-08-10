@@ -29,16 +29,21 @@ const TSCONFIG_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.j
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
 const INDEX_KIT_TEMPLATE = readTemplateSync("init/functions/typescript/index-kit.ts");
 
+const FUNCTION_KITS_DIR = "function-kits";
+
 export interface FunctionsKitsInstallOptions extends Options {
   npm_package?: string;
 }
 
 /**
- * Parses a package specifier string into package name and version.
+ * Parses an npm package specifier string into package name and version/tag.
  * e.g., "@firebase-functions-kits/firestore-bigquery-export@1.0.0" ->
  * { packageName: "@firebase-functions-kits/firestore-bigquery-export", version: "1.0.0" }
  */
-export function parsePackageSpecifier(rawPkg: string): { packageName: string; version?: string } {
+export function parseNpmPackageSpecifier(rawPkg: string): {
+  packageName: string;
+  version?: string;
+} {
   const lastAt = rawPkg.lastIndexOf("@");
   if (lastAt > 0) {
     return {
@@ -50,16 +55,27 @@ export function parsePackageSpecifier(rawPkg: string): { packageName: string; ve
 }
 
 /**
+ * Validates that an npm package name adheres to npm naming conventions.
+ * - Unscoped: 'name' (no slashes)
+ * - Scoped: '@scope/name' (exactly one slash)
+ */
+export function validateNpmPackageName(packageName: string): void {
+  const npmPackageRegex = /^(?:@[a-z0-9_.-]+\/[a-z0-9_.-]+|[a-z0-9_.-]+)$/i;
+  if (!packageName || packageName.length > 214 || !npmPackageRegex.test(packageName)) {
+    throw new FirebaseError(
+      `Invalid NPM package name '${packageName}'. Package names must be valid npm package specifiers (e.g. 'my-kit' or '@scope/my-kit').`,
+    );
+  }
+}
+
+/**
  * Sanitizes an npm package name into a valid kit identifier.
  * e.g., "@firebase-functions-kits/firestore-bigquery-export" -> "firestore-bigquery-export"
  */
 export function sanitizePackageNameToKitName(packageName: string): string {
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
-  const sanitized = nameWithoutScope
-    .toLowerCase()
-    .replace(/^@/, "")
-    .replace(/[^a-z0-9_-]/g, "");
+  const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
   return (sanitized || "kit").slice(0, 40);
 }
 
@@ -67,10 +83,7 @@ export function sanitizePackageNameToKitName(packageName: string): string {
  * Checks if a package name is third-party (outside the @firebase-functions-kits scope).
  */
 export function isThirdPartyPackage(packageName: string): boolean {
-  return (
-    !packageName.startsWith("@firebase-functions-kits/") &&
-    packageName !== "@firebase-functions-kits"
-  );
+  return !packageName.startsWith("@firebase-functions-kits/");
 }
 
 /**
@@ -101,8 +114,8 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 }
 
 export const command = new Command("functions:kits:install")
-  .description("install a Cloud Function kit into your project")
-  .option("--npm_package <package>", "NPM package name or specifier for the function kit")
+  .description("install a function kit into your project")
+  .option("--npm_package <package>", "NPM package name or specifier to install as a function kit")
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
     experiments.assertEnabled("kits", "install a function kit");
 
@@ -115,7 +128,8 @@ export const command = new Command("functions:kits:install")
       throw new FirebaseError("set the --npm_package option to a valid NPM package and try again.");
     }
 
-    const { packageName, version } = parsePackageSpecifier(rawPkgName);
+    const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
+    validateNpmPackageName(packageName);
     const defaultKitId = sanitizePackageNameToKitName(packageName);
 
     const isThirdParty = isThirdPartyPackage(packageName);
@@ -125,16 +139,23 @@ export const command = new Command("functions:kits:install")
           `Warning: Package ${clc.bold(packageName)} is a third-party kit (outside the @firebase-functions-kits scope).`,
         ),
       );
-      const hasShrinkwrap = await self.checkPackageHasShrinkwrap(rawPkgName);
-      if (!hasShrinkwrap) {
-        logger.warn(
-          clc.yellow(
-            `Warning: Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. npm-shrinkwrap guarantees that you deploy the same version of dependencies that the publisher tested against. Since this kit does not have an npm-shrinkwrap, it is possible that deploys or updates may introduce bugs or vulnerabilities in newer dependency versions that the publisher did not test agianst.`,
-          ),
-        );
-      }
+    }
+
+    const hasShrinkwrap = await self.checkPackageHasShrinkwrap(rawPkgName);
+    if (!hasShrinkwrap) {
+      logger.warn(
+        clc.yellow(
+          `Warning: Package ${clc.bold(packageName)} does not have an npm-shrinkwrap.json file. npm-shrinkwrap guarantees that you deploy the same version of dependencies that the publisher tested against. Since this kit does not have an npm-shrinkwrap, it is possible that deploys or updates may introduce bugs or vulnerabilities in newer dependency versions that the publisher did not test against.`,
+        ),
+      );
+    }
+
+    if (isThirdParty || !hasShrinkwrap) {
+      const confirmMessage = isThirdParty
+        ? `Are you sure you want to install the third-party kit ${packageName}?`
+        : `Are you sure you want to install ${packageName} without locked dependencies?`;
       const confirmInstallation = await confirm({
-        message: `Are you sure you want to install the third-party kit ${packageName}?`,
+        message: confirmMessage,
         default: false,
         nonInteractive: options.nonInteractive,
       });
@@ -156,8 +177,8 @@ export const command = new Command("functions:kits:install")
       nonInteractive: options.nonInteractive,
     });
 
-    const sourcePath = path.join("function-kits", kitId);
-    const configDirPath = path.join("function-kits", kitId, `config-${instanceId}`);
+    const sourcePath = path.join(FUNCTION_KITS_DIR, kitId);
+    const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
 
     let existingFunctions: ValidatedConfig | [] = [];
     const configFunctions = options.config.src.functions;
@@ -169,26 +190,26 @@ export const command = new Command("functions:kits:install")
       }
     }
 
-    for (const c of existingFunctions) {
-      if (isKitConfig(c) && c.kit === kitId) {
-        throw new FirebaseError(
-          `functions.kit must be unique but '${kitId}' was used more than once.`,
-        );
-      }
-    }
-
     const existingCodebases = new Set<string>();
     const existingInstanceIds = new Set<string>();
     for (const c of existingFunctions) {
-      if ("codebase" in c && c.codebase) {
+      if (isKitConfig(c)) {
+        if (c.kit === kitId) {
+          throw new FirebaseError(
+            `functions.kit must be unique but '${kitId}' was used more than once.`,
+          );
+        }
+        if (c.instances) {
+          for (const instId of Object.keys(c.instances)) {
+            existingInstanceIds.add(instId);
+          }
+        }
+      } else if (c.codebase) {
         existingCodebases.add(c.codebase);
-      }
-      if ("instances" in c && c.instances) {
-        validateKitInstances(c.instances, existingInstanceIds);
       }
     }
 
-    validateKitInstances({ [instanceId]: configDirPath }, existingInstanceIds);
+    validateKitInstances([instanceId], existingInstanceIds);
 
     if (existingCodebases.has(instanceId)) {
       throw new FirebaseError(
@@ -230,6 +251,7 @@ export const command = new Command("functions:kits:install")
       }
     }
 
+    // Ensure the wrapper package has a unique name and depends on the specified kit package and version.
     pkgJson.name = `${kitId}-wrapper`;
     pkgJson.dependencies = pkgJson.dependencies || {};
     pkgJson.dependencies[packageName] = version || "latest";
