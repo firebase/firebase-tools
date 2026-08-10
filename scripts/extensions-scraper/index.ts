@@ -1,4 +1,7 @@
-import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
+import {
+  ReplacementInfo,
+  ReplacementRegistrySchema,
+} from "../../src/extensions/replacementRegistry";
 
 export interface ScraperResult {
   extensionRef: string;
@@ -8,10 +11,14 @@ export interface ScraperResult {
 
 /**
  * Extracts replacement npm package name from extension README markdown content.
- * Checks for machine tag:
+ *
+ * Supports machine tags:
  *   <!-- FIREBASE_EXTENSION_REPLACEMENT: extension="publisher/extension-name" package="@scope/package-name" -->
- * or single-quoted:
+ *   <!-- FIREBASE_EXTENSION_REPLACEMENT: package="@scope/package-name" -->
  *   <!-- FIREBASE_EXTENSION_REPLACEMENT: package='@scope/package-name' -->
+ *
+ * Note: The `extension="..."` attribute is optional metadata for human readability,
+ * whereas `package="..."` is the required payload containing the replacement npm package.
  */
 export function extractReplacementFromReadme(readmeContent: string): string | undefined {
   if (!readmeContent) {
@@ -74,7 +81,7 @@ export function getRepoUrlForExtension(
 }
 
 /**
- * Scans a list of extension README files or content strings and updates the registry object.
+ * Scans a map of extension README contents and updates the registry data structure in place.
  */
 export function processExtensionReadmes(
   readmes: Record<string, string>,
@@ -84,28 +91,39 @@ export function processExtensionReadmes(
   const updatedRegistry: ReplacementRegistrySchema = JSON.parse(
     JSON.stringify(registryData),
   ) as ReplacementRegistrySchema;
+
   if (!updatedRegistry.replacements) {
     updatedRegistry.replacements = {};
   }
 
   for (const [extensionRef, content] of Object.entries(readmes)) {
     const detectedPackage = extractReplacementFromReadme(content);
-    let status: ScraperResult["status"] = "PENDING_PUBLISHER";
+    const existingEntry = updatedRegistry.replacements[extensionRef];
+    const repoUrl = getRepoUrlForExtension(extensionRef, existingEntry);
 
     if (detectedPackage) {
-      status = "REPLACEMENT_AVAILABLE";
-      updatedRegistry.replacements[extensionRef] = {
-        ...updatedRegistry.replacements[extensionRef],
-        status,
+      const updatedInfo: ReplacementInfo = {
+        status: "REPLACEMENT_AVAILABLE",
         npmPackage: detectedPackage,
+        extensionRepositoryUrl: repoUrl,
       };
+      updatedRegistry.replacements[extensionRef] = updatedInfo;
+      results.push({
+        extensionRef,
+        detectedPackage,
+        status: "REPLACEMENT_AVAILABLE",
+      });
+    } else {
+      const updatedInfo: ReplacementInfo = {
+        status: "PENDING_PUBLISHER",
+        extensionRepositoryUrl: repoUrl,
+      };
+      updatedRegistry.replacements[extensionRef] = updatedInfo;
+      results.push({
+        extensionRef,
+        status: "PENDING_PUBLISHER",
+      });
     }
-
-    results.push({
-      extensionRef,
-      detectedPackage,
-      status,
-    });
   }
 
   return { updatedRegistry, results };

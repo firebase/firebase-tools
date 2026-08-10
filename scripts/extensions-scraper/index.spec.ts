@@ -71,7 +71,11 @@ describe("extensions-scraper", () => {
       };
       const initialRegistry: ReplacementRegistrySchema = {
         replacements: {
-          "firebase/firestore-send-email": { status: "PENDING_PUBLISHER" },
+          "firebase/firestore-send-email": {
+            status: "PENDING_PUBLISHER",
+            extensionRepositoryUrl:
+              "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+          },
         },
       };
 
@@ -80,6 +84,8 @@ describe("extensions-scraper", () => {
       expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.deep.equal({
         status: "REPLACEMENT_AVAILABLE",
         npmPackage: "@firebase/firestore-send-email",
+        extensionRepositoryUrl:
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       });
     });
   });

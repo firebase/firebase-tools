@@ -5,11 +5,22 @@ export type ReplacementStatus =
   | "CONFIRMED_NO_REPLACEMENT"
   | "PENDING_PUBLISHER";
 
-export interface ReplacementInfo {
-  status: ReplacementStatus;
-  npmPackage?: string;
-  extensionRepositoryUrl?: string;
-}
+export type ReplacementInfo =
+  | {
+      status: "REPLACEMENT_AVAILABLE";
+      npmPackage: string;
+      extensionRepositoryUrl: string;
+    }
+  | {
+      status: "CONFIRMED_NO_REPLACEMENT";
+      npmPackage?: never;
+      extensionRepositoryUrl: string;
+    }
+  | {
+      status: "PENDING_PUBLISHER";
+      npmPackage?: never;
+      extensionRepositoryUrl: string;
+    };
 
 export interface ReplacementRegistrySchema {
   replacements: Record<string, ReplacementInfo>;
@@ -41,7 +52,7 @@ export function getDeprecationWarningMessage(extensionRef: string): string | und
     case "REPLACEMENT_AVAILABLE":
       return (
         `Extension '${extensionRef}' is deprecated and will be decommissioned on ${DECOMMISSION_DATE_STR}.\n` +
-        `  Recommended replacement: ${replacement.npmPackage ?? "N/A"}`
+        `  Recommended replacement: ${replacement.npmPackage}`
       );
     case "CONFIRMED_NO_REPLACEMENT":
       return (
@@ -51,9 +62,7 @@ export function getDeprecationWarningMessage(extensionRef: string): string | und
     case "PENDING_PUBLISHER":
       return (
         `Extension '${extensionRef}' is deprecated and will be decommissioned on ${DECOMMISSION_DATE_STR}.\n` +
-        `  Note: No replacement has been announced by the publisher.`
+        `  A replacement package has not yet been announced by the publisher.`
       );
-    default:
-      return undefined;
   }
 }
