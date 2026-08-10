@@ -1,6 +1,14 @@
 import { appCheckOrigin } from "../api";
 import { Client } from "../apiv2";
-import { DebugToken, EnforcementMode, ListDebugTokensResponse, Service } from "./types";
+import {
+  DebugToken,
+  EnforcementMode,
+  ListDebugTokensResponse,
+  ProviderConfig,
+  ProviderType,
+  Service,
+} from "./types";
+import { PROVIDER_META } from "./providers";
 
 /**
  * The raw list response. `services` is absent rather than empty when a project
@@ -10,6 +18,15 @@ import { DebugToken, EnforcementMode, ListDebugTokensResponse, Service } from ".
 interface ListServicesResponse {
   services?: Service[];
   nextPageToken?: string;
+}
+
+/**
+ * The raw batchGet response, which every provider keys as `configs`. The field
+ * is absent rather than empty when no app has that provider configured, which
+ * is why callers get a plain array from `batchGetProviderConfigs`.
+ */
+interface BatchGetConfigsResponse {
+  configs?: ProviderConfig[];
 }
 
 const API_VERSION = "v1";
@@ -123,4 +140,64 @@ export async function updateService(
     { queryParams: { updateMask: updateMask.join(",") } },
   );
   return res.body;
+}
+
+/**
+ * Gets one provider config for one app.
+ *
+ * This always answers 200, even for an app that never used the provider: the
+ * response then carries the API defaults. Callers use `isConfigured` to tell
+ * the two apart where the config has a secret field to look at.
+ */
+export async function getProviderConfig(
+  projectNumber: string,
+  appId: string,
+  provider: ProviderType,
+): Promise<ProviderConfig> {
+  const { configResource } = PROVIDER_META[provider];
+  const res = await client.get<ProviderConfig>(
+    `projects/${projectNumber}/apps/${appId}/${configResource}`,
+  );
+  return res.body;
+}
+
+/**
+ * Writes one provider config for one app.
+ *
+ * The update mask lists only the fields the user asked to change, so setting a
+ * site key does not reset the token TTL that was already there.
+ */
+export async function updateProviderConfig(
+  projectNumber: string,
+  appId: string,
+  provider: ProviderType,
+  update: ProviderConfig,
+  updateMask: string[],
+): Promise<ProviderConfig> {
+  const { configResource } = PROVIDER_META[provider];
+  const res = await client.patch<ProviderConfig, ProviderConfig>(
+    `projects/${projectNumber}/apps/${appId}/${configResource}`,
+    update,
+    { queryParams: { updateMask: updateMask.join(",") } },
+  );
+  return res.body;
+}
+
+/**
+ * Gets one provider config for every app in the project, in one call.
+ *
+ * Used by apps:list so a project with ten apps costs five calls instead of
+ * fifty. The response is empty when no app has that provider configured.
+ */
+export async function batchGetProviderConfigs(
+  projectNumber: string,
+  provider: ProviderType,
+): Promise<ProviderConfig[]> {
+  const { configResource } = PROVIDER_META[provider];
+  const res = await client.get<BatchGetConfigsResponse>(
+    `projects/${projectNumber}/apps/-/${configResource}:batchGet`,
+  );
+  // Every batchGet response uses the same `configs` key, and the body is empty
+  // when no app in the project has that provider configured.
+  return res.body?.configs ?? [];
 }

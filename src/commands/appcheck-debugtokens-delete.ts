@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { needProjectNumber } from "../projectUtils";
 import { deleteDebugToken } from "../appcheck/api";
 import { AppCheckDebugOptions } from "../appcheck/types";
-import { getOrPromptProjectAndAppId } from "../appcheck/prompts";
+import { getOrPromptProjectAndAppId } from "./appcheck-prompts";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner, logSuccess } from "../utils";
 import { confirm } from "../prompt";

@@ -10,6 +10,8 @@ export interface ReportGroup {
   version?: Version;
   device?: Device;
   operatingSystem?: OperatingSystem;
+  browser?: Browser;
+  webMetricsGroup?: WebMetricsGroup;
 }
 
 /** A set of computed metric values for a time interval */
@@ -20,8 +22,10 @@ export interface IntervalMetrics {
   endTime: string;
   /** The total count of events in the interval. */
   eventsCount: number;
-  /** The cardinality of distinct users in the set of events. */
+  /** The number of distinct users in the set of events. */
   impactedUsersCount: number;
+  /** The number of distinct sessions in the set of events. Only computed for web applications. */
+  sessionsCount: number;
 }
 
 /** Application software version. */
@@ -30,7 +34,7 @@ export interface Version {
   displayVersion?: string;
   /** One display_version can have many build_version. */
   buildVersion?: string;
-  /** Compound human-readable string containing both display and build versions. */
+  /** Compound human-readable string containing both display and build versions. Only present for mobile applications. */
   displayName?: string;
   /** Indicates releases which have artifacts that are currently available in the Play Store to the target audience of the track. */
   tracks?: PlayTrack[];
@@ -58,9 +62,9 @@ export interface Issue {
   sampleEvent?: string;
   /** Provides a link to the Issue on the Firebase console. */
   uri?: string;
-  /** The first app display_version in which this issue was seen. */
+  /** Populated for mobile apps only. The first app display_version in which this issue was seen.  */
   firstSeenVersion?: string;
-  /** The most recent app display_version in which this issue was seen. */
+  /** Populated for mobile apps only. The most recent app display_version in which this issue was seen. */
   lastSeenVersion?: string;
   /** Distinctive characteristics assigned by the Crashlytics analyzer. */
   signals?: IssueSignals[];
@@ -72,6 +76,12 @@ export interface Issue {
   name?: string;
   /** The top 12 variants (subgroups) within the issue. */
   variants?: IssueVariant[];
+  /** The time at which the issue state was last changed. */
+  stateUpdateTime?: string;
+  /** The first time this issue was seen. */
+  firstSeenTime?: string;
+  /** The most recent time this issue was seen. */
+  lastSeenTime?: string;
 }
 
 /** A variant is a subgroup of an issue where all events have very similar stack traces. */
@@ -96,7 +106,7 @@ export interface IssueSignals {
 export interface Event {
   /** The name of the event resource. */
   name?: string;
-  /** Mobile platform (Android or iOS). */
+  /** ANDROID, IOS, or WEB. */
   platform?: string;
   /** The bundle name for iOS apps or the package name of Android apps. */
   bundleOrPackage?: string;
@@ -152,6 +162,8 @@ export interface Event {
   issueSubtitle?: string;
   /** Metadata provided by the app's build system, including version control repository info. */
   buildStamp?: string;
+  /** Unique identifier for the Firebase session. */
+  sessionId?: string;
 }
 
 /** Mobile device metadata. */
@@ -170,6 +182,8 @@ export interface Device {
   marketingName?: string;
   /** See FormFactor message */
   formFactor?: FormFactor;
+  /** Web browser information */
+  browser?: Browser;
 }
 
 /** Mobile device memory usage. */
@@ -202,6 +216,22 @@ export interface OperatingSystem {
   deviceType?: string;
   /** Formatted name and version number, suitable for passing to OperatingSystemFilter. */
   displayName?: string;
+}
+
+/** Web browser metadata */
+export interface Browser {
+  /** Browser display version number. */
+  displayVersion?: string;
+  /** Browser name. */
+  browser?: string;
+  /** Formatted name and version number, suitable for passing to BrowserFilter. */
+  displayName?: string;
+}
+
+/** Represents a grouping for metrics specific to web applications */
+export interface WebMetricsGroup {
+  /** The id of the web metrics group */
+  id?: string;
 }
 
 /** Developer-provided end user identifiers. */
@@ -354,6 +384,8 @@ export interface DeviceLog {
   breadcrumb?: Breadcrumb;
   /** The identifier of the event to which this is associated */
   eventId?: string;
+  /** Unique identifier for the Firebase session. */
+  sessionId?: string;
 }
 
 /** Error types. */
@@ -456,6 +488,18 @@ export enum ThreadState {
   THREAD_STATE_NATIVE_WAITING = "THREAD_STATE_NATIVE_WAITING",
 }
 
+// The granularity of time intervals for reports.
+export enum TimeGranularity {
+  /** Time granularity unspecified. */
+  TIME_GRANULARITY_UNSPECIFIED = "TIME_GRANULARITY_UNSPECIFIED",
+  /** Returns a single interval for the requested time range. */
+  TIME_GRANULARITY_NONE = "TIME_GRANULARITY_NONE",
+  /** Hour. */
+  TIME_GRANULARITY_HOUR = "TIME_GRANULARITY_HOUR",
+  /** Day. */
+  TIME_GRANULARITY_DAY = "TIME_GRANULARITY_DAY",
+}
+
 /** Request message for the ListEvents method. */
 export interface ListEventsRequest {
   /** The maximum number of events per page. If omitted, defaults to 10. */
@@ -507,6 +551,8 @@ export interface EventFilters {
   operatingSystem?: OperatingSystemFilter;
   /** Fetch only events from the given device models. */
   device?: DeviceFilter;
+  /** Fetch only events from the given browser */
+  browser?: BrowserFilter;
 }
 
 /** Represents a time interval, encoded as a Timestamp start and end. */
@@ -558,6 +604,29 @@ export interface IssueFilter {
    * This field matches [Issue.signals.signal].
    */
   signals?: Signal[];
+  /**
+   * A space separated list of filter terms matched against the contents of the
+   * issue. Contents include the title and the stack trace.
+   *
+   * Matches must begin at alphanumeric tokens, i.e., 'util.Sorted' matches
+   * 'java.util.SortedSet' but not 'myutil.SortedArray'.
+   *
+   * The filter matches if all filter terms match.  All non-alphanumeric
+   * characters are ignored for matching.
+   *
+   * Filtering is assumed to be prefix-search and order-independent unless
+   * phrases are surrounded by "".  Any terms contained in quotes are searched
+   * using exact-match (given filter term "foo", we will not return "foobar"),
+   * and must appear in the order given exactly.  To get order-dependence
+   * but prefix-search, use a * within the quotes ("abc foo*" will match
+   * "abc foobar", but not "foo abc" "abcd foobar", or "abc xyz foobar").
+   */
+  content?: string;
+  /**
+   * Only includes events for issues with the given issue states.
+   * Only available for `topIssues` reports.
+   */
+  states?: State[];
 }
 
 /**
@@ -608,6 +677,8 @@ export interface GetReportRequest {
   pageSize?: number;
   /** A page token, received from a previous calls. */
   pageToken?: string;
+  /** Returns one data point per time grain, or a single data point for the entire interval if omitted. */
+  granularity?: TimeGranularity;
 }
 
 /** Response message for the GetReport method. */
@@ -643,10 +714,29 @@ export interface ReportFilters {
   operatingSystem?: OperatingSystemFilter;
   /** Count only events from the given device models. */
   device?: DeviceFilter;
+  /** Fetch only events from the given browser */
+  browser?: BrowserFilter;
 }
 
 /** Request message for the UpdateIssue method. */
 export interface UpdateIssueRequest {
   /** Only the "state" field is mutable. */
   state: State;
+}
+
+/**
+ * Browser filters relevant in event reports.
+ * These fields correspond exactly to those in the Browser type.
+ * For best results, use a [Browser.display_name][] obtained from a
+ * topBrowsers report, rather than manually constructing its
+ * display_name.
+ */
+export interface BrowserFilter {
+  /**
+   * Count only events from the given browser.
+   * This string matches [Browser.display_name][].
+   * Format: "name (display_version)" e.g. "Chrome (123)",
+   * or just "name" for all possible versions, e.g. simply "Chrome".
+   */
+  displayNames: string[];
 }

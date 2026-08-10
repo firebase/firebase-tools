@@ -33,6 +33,7 @@ describe("OneMcpServer", () => {
         name: "test_tool",
         description: "A test tool",
         inputSchema: { type: "object", properties: {} },
+        outputSchema: { type: "object", properties: { status: { type: "string" } } },
       };
       clientRequestStub.resolves({
         body: {
@@ -47,6 +48,7 @@ describe("OneMcpServer", () => {
       expect(tools).to.have.length(1);
       expect(tools[0].mcp.name).to.equal("auth_test_tool");
       expect(tools[0].mcp.description).to.equal(mockMcpTool.description);
+      expect(tools[0].mcp.outputSchema).to.deep.equal(mockMcpTool.outputSchema);
       expect(tools[0].mcp._meta).to.deep.equal({
         requiresAuth: false,
         requiresProject: true,
@@ -151,6 +153,44 @@ describe("OneMcpServer", () => {
       });
     });
 
+    it("should include Mcp-Param-X HTTP headers when tool inputSchema defines x-mcp-header", async () => {
+      const mockMcpTool = {
+        name: "execute_sql",
+        inputSchema: {
+          type: "object",
+          properties: {
+            region: {
+              type: "string",
+              "x-mcp-header": "Region",
+            },
+            query: {
+              type: "string",
+            },
+          },
+        },
+      };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ region: "us-west1", query: "SELECT 1" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "execute_sql",
+        "x-goog-user-project": "test-project",
+        "Mcp-Param-Region": "us-west1",
+      });
+    });
+
     it("should proxy tool call without x-goog-user-project header if projectId is missing", async () => {
       const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
       clientRequestStub.onFirstCall().resolves({
@@ -240,7 +280,7 @@ describe("OneMcpServer", () => {
 
       const fn = (serverWithFilter as any).callTool.bind(serverWithFilter);
 
-      await expect(fn("disallowed_tool", {}, mockContext)).to.be.rejectedWith(
+      await expect(fn("disallowed_tool", undefined, {}, mockContext)).to.be.rejectedWith(
         FirebaseError,
         /is not allowed on remote server/,
       );
