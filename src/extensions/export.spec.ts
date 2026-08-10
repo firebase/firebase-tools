@@ -248,8 +248,8 @@ describe("functionsEnvFromInstance", () => {
     };
     const output = functionsEnvFromInstance(instance);
     expect(output).to.deep.equal({
-      FIREBASE_SYSTEM_MEMORY: "256",
-      FIREBASE_SYSTEM_MININSTANCES: "10",
+      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
     });
   });
 
@@ -291,8 +291,8 @@ describe("functionsEnvFromInstance", () => {
     };
     const output = functionsEnvFromInstance(instance);
     expect(output).to.deep.equal({
-      FIREBASE_SYSTEM_MEMORY: "256",
-      FIREBASE_SYSTEM_MININSTANCES: "10",
+      EXT_MIGRATED_SYSTEM_MEMORY: "256",
+      EXT_MIGRATED_SYSTEM_MININSTANCES: "10",
     });
   });
 
