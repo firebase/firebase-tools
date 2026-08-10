@@ -93,7 +93,7 @@ function displaySpecs(specs: DeploymentInstanceSpec[]): void {
 /**
  * Translates a currently deployed Extension instance into a Functions environment.
  * This includes setting any default params not set in the deployed instance to their
- * default value, writing any system params under the reserved FIREBASE_SYSTEM_ prefix,
+ * default value, writing any system params under the reserved EXT_MIGRATED_SYSTEM_ prefix,
  * and writing any secret references under the reserved FIREBASE_SECRET_REF_ prefix.
  */
 export function functionsEnvFromInstance(instance: ExtensionInstance): Record<string, string> {
@@ -117,23 +117,23 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
   });
 
   // System params aren't necessarily defined in the spec, but we do respect any defaults
-  Object.entries(liveSystemParams).forEach(([sysParamName, sysParamValue]) => {
+  for (const [sysParamName, sysParamValue] of Object.entries(liveSystemParams)) {
     const renamed = sysParamName
-      .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
+      .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
       .toUpperCase();
     envs[renamed] = sysParamValue;
-  });
-  Object.entries(specSystemParams).forEach(([, specSystemParam]) => {
+  }
+  for (const specSystemParam of Object.values(specSystemParams)) {
     if (specSystemParam.param in liveSystemParams) {
-      return;
+      continue;
     }
     if ("default" in specSystemParam) {
       const renamed = specSystemParam.param
-        .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "FIREBASE_SYSTEM_")
+        .replace(/^firebaseextensions\.v1beta\.(v2)?function\//, "EXT_MIGRATED_SYSTEM_")
         .toUpperCase();
       envs[renamed] = specSystemParam.default ?? "";
     }
-  });
+  }
 
   // Also pull in ALLOWED_EVENTS and EVENTARC_CHANNEL
   if (typeof instance.config.allowedEventTypes !== "undefined") {

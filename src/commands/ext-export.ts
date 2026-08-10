@@ -18,7 +18,7 @@ import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
 import { requirePermissions } from "../requirePermissions";
-import { listInstances } from "../extensions/extensionsApi";
+import { getInstance } from "../extensions/extensionsApi";
 import { last } from "../utils";
 import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
 import { mkdirSync } from "fs";
@@ -39,7 +39,7 @@ export const command = new Command("ext:export")
   .before(checkMinRequiredVersion, "extMinVersion")
   .withForce()
   .action(async (options: Options) => {
-    if (experiments.isEnabled("internaltesting") && options.mode === "functions") {
+    if (experiments.isEnabled("extMigrationFeatures") && options.mode === "functions") {
       // Functions handler:
       // - writes to <instanceId>/.env-<projectId>
       // - does not parametrize project number and ID (e.g "12345678" instead of "{param:PROJECT_NUMBER}")
@@ -55,7 +55,7 @@ export const command = new Command("ext:export")
     }
   });
 
-async function extHandler(options: Options) {
+async function extHandler(options: Options): Promise<void> {
   const projectId = needProjectId(options);
   const projectNumber = await getProjectNumber(options);
   let have = await Promise.all(await planner.have(projectId));
@@ -129,48 +129,42 @@ async function extHandler(options: Options) {
   saveEtags(options.rc, projectId, have);
 }
 
-async function fnHandler(options: Options) {
+async function fnHandler(options: Options): Promise<void> {
   if (!options.instance) {
-    logger.info(`ext:export must be scoped to a specific instance when exporting to Functions`);
+    logger.info(
+      `ext:export must specify an --instance <instanceId> option when exporting to Functions. Use ext:list to find your instance IDs.`,
+    );
     return;
   }
-
   const projectId = needProjectId(options);
-  const instances = await listInstances(projectId);
-  if (instances.length < 1) {
-    logger.info(`No extension instances installed on ${projectId}, so there is nothing to export.`);
+  const instance = await getInstance(projectId, options.instance as string);
+  if (typeof instance === "undefined") {
+    logger.info(`No extension matching instance ID ${options.instance} found`);
     return;
   }
 
-  let found = false;
-  instances.forEach((instance) => {
-    const instanceId = last(instance.name.split("/")) ?? "";
-    if (instanceId !== options.instance) {
-      return;
-    }
-
-    found = true;
-    const convertedEnv = functionsEnvFromInstance(instance);
-    for (const key of Object.keys(convertedEnv)) {
-      logger.info(`${key}=${convertedEnv[key]}`);
-    }
-    const writeLocationOpts: UserEnvsOpts = {
-      functionsSource: instanceId,
-      configDir: instanceId,
-      projectId: projectId,
-      isEmulator: false,
-    };
-    if (hasUserEnvs(writeLocationOpts)) {
-      logger.info(
-        `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
-      );
-      return;
-    }
-    mkdirSync(instanceId, { recursive: true });
-    writeUserEnvs(convertedEnv, writeLocationOpts);
-    logger.info(`Exported extensions config to /${instanceId}.${projectId}`);
-  });
-  if (!found) {
-    logger.info(`No extensions instances found matching instance ID ${options.instance}`);
+  const instanceId = last(instance.name.split("/")) ?? "";
+  if (instanceId !== options.instance) {
+    return;
   }
+
+  const convertedEnv = functionsEnvFromInstance(instance);
+  for (const key of Object.keys(convertedEnv)) {
+    console.log(`${key}=${convertedEnv[key]}`);
+  }
+  const writeLocationOpts: UserEnvsOpts = {
+    functionsSource: instanceId,
+    configDir: instanceId,
+    projectId: projectId,
+    isEmulator: false,
+  };
+  if (hasUserEnvs(writeLocationOpts)) {
+    logger.info(
+      `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
+    );
+    return;
+  }
+  mkdirSync(instanceId, { recursive: true });
+  writeUserEnvs(convertedEnv, writeLocationOpts);
+  logger.info(`Exported extensions config to /${instanceId}.${projectId}`);
 }

@@ -248,6 +248,12 @@ export const ALL_EXPERIMENTS = experiments({
     default: true,
     public: true,
   },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: false,
+    public: false,
+  },
 });
 
 export type ExperimentName = keyof typeof ALL_EXPERIMENTS;
