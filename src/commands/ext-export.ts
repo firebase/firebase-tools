@@ -22,6 +22,9 @@ import { getInstance } from "../extensions/extensionsApi";
 import { last } from "../utils";
 import { writeUserEnvs, UserEnvsOpts, hasUserEnvs } from "../functions/env";
 import { mkdirSync } from "fs";
+import { join } from "path";
+import { logBullet } from "../utils";
+import * as clc from "colorette";
 import * as experiments from "../experiments";
 
 export const command = new Command("ext:export")
@@ -152,19 +155,36 @@ async function fnHandler(options: Options): Promise<void> {
   for (const key of Object.keys(convertedEnv)) {
     console.log(`${key}=${convertedEnv[key]}`);
   }
-  const writeLocationOpts: UserEnvsOpts = {
-    functionsSource: instanceId,
-    configDir: instanceId,
-    projectId: projectId,
-    isEmulator: false,
-  };
+
+  // Write to firebase root if inside a firebase project dir, otherwise <currentDir>/<instanceId>
+  let writeLocationOpts: UserEnvsOpts;
+  if (typeof options.projectRoot !== "undefined") {
+    writeLocationOpts = {
+      functionsSource: instanceId,
+      configDir: join(options.projectRoot, instanceId),
+      projectId: projectId,
+      isEmulator: false,
+      projectDir: options.projectRoot,
+    };
+  } else {
+    writeLocationOpts = {
+      functionsSource: instanceId,
+      configDir: instanceId,
+      projectId: projectId,
+      isEmulator: false,
+      projectDir: options.cwd ?? process.cwd(),
+    };
+  }
   if (hasUserEnvs(writeLocationOpts)) {
     logger.info(
       `Exported extensions config appears to already exist in /${instanceId}, aborting write.`,
     );
     return;
   }
+  logBullet(
+    clc.cyan(clc.bold("functions: ")) +
+      `Saving exported extensions config as a Function Kits .env file`,
+  );
   mkdirSync(instanceId, { recursive: true });
   writeUserEnvs(convertedEnv, writeLocationOpts);
-  logger.info(`Exported extensions config to /${instanceId}.${projectId}`);
 }
