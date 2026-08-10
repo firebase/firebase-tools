@@ -1,1 +1,2 @@
+- Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
 - [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
