@@ -339,6 +339,7 @@ interface ResolveBackendOpts {
   build: Build;
   firebaseConfig: FirebaseConfig;
   userEnvs: Record<string, string>;
+  codebase: string;
   nonInteractive?: boolean;
   isEmulator?: boolean;
   force?: boolean;
@@ -357,6 +358,7 @@ export async function resolveBackend(opts: ResolveBackendOpts): Promise<{
     opts.build.params,
     opts.firebaseConfig,
     envWithTypes(opts.build.params, opts.userEnvs),
+    opts.codebase,
     opts.nonInteractive,
     opts.force,
     opts.isEmulator,

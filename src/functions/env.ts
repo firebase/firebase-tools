@@ -258,6 +258,7 @@ export interface UserEnvsOpts {
   projectId: string;
   projectAlias?: string;
   isEmulator?: boolean;
+  projectDir: string;
 }
 
 /**
@@ -288,11 +289,13 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
     ? FUNCTIONS_EMULATOR_DOTENV
     : `.env.${envOpts.projectId}`;
   const targetEnvFileExists = allEnvFiles.includes(targetEnvFile);
+  const targetEnvFilePath = path.join(configDir, targetEnvFile);
+  const relativeTargetEnvFilePath = path.relative(envOpts.projectDir, targetEnvFilePath);
   if (!targetEnvFileExists) {
-    fs.writeFileSync(path.join(configDir, targetEnvFile), "", { flag: "wx" });
+    fs.writeFileSync(targetEnvFilePath, "", { flag: "wx" });
     logBullet(
       clc.yellow(clc.bold("functions: ")) +
-        `Created new local file ${targetEnvFile} to store param values. We suggest explicitly adding or excluding this file from version control.`,
+        `Created new local file ${relativeTargetEnvFilePath} to store param values. We suggest explicitly adding or excluding this file from version control.`,
     );
   }
 
@@ -308,7 +311,8 @@ export function writeUserEnvs(toWrite: Record<string, string>, envOpts: UserEnvs
 
   // Write all the keys in a single filesystem access
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Writing new parameter values to disk: ${targetEnvFile}`,
+    clc.cyan(clc.bold("functions: ")) +
+      `Writing new parameter values to disk: ${relativeTargetEnvFilePath}`,
   );
   let lines = "";
   for (const k of Object.keys(toWrite)) {
@@ -405,8 +409,12 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
       });
     }
   }
+  const relativeEnvFiles = envFiles.map((f) =>
+    path.relative(opts.projectDir, path.join(configDir, f)),
+  );
   logBullet(
-    clc.cyan(clc.bold("functions: ")) + `Loaded environment variables from ${envFiles.join(", ")}.`,
+    clc.cyan(clc.bold("functions: ")) +
+      `Loaded environment variables from ${relativeEnvFiles.join(", ")}`,
   );
 
   return envs;
