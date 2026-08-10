@@ -8,6 +8,7 @@ export type ReplacementStatus =
 export interface ReplacementInfo {
   status: ReplacementStatus;
   npmPackage?: string;
+  extensionRepositoryUrl?: string;
 }
 
 export interface ReplacementRegistrySchema {
@@ -40,7 +41,7 @@ export function getDeprecationWarningMessage(extensionRef: string): string | und
     case "REPLACEMENT_AVAILABLE":
       return (
         `Extension '${extensionRef}' is deprecated and will be decommissioned on ${DECOMMISSION_DATE_STR}.\n` +
-        `  Recommended replacement: ${replacement.npmPackage}`
+        `  Recommended replacement: ${replacement.npmPackage ?? "N/A"}`
       );
     case "CONFIRMED_NO_REPLACEMENT":
       return (

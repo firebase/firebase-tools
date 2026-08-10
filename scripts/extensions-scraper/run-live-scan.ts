@@ -3,27 +3,41 @@ import * as path from "path";
 import * as fs from "fs";
 import { extractReplacementFromReadme, getRepoUrlForExtension, toRawGithubUrl } from "./index";
 
-function fetchUrlContent(url: string): Promise<string> {
+function fetchUrlContent(url: string, maxRedirects = 5): Promise<string> {
   return new Promise((resolve) => {
-    https
-      .get(url, (res) => {
-        // Follow redirects if any
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          const redirectUrl = res.headers.location;
-          if (redirectUrl) {
-            fetchUrlContent(redirectUrl).then(resolve);
+    if (maxRedirects < 0) {
+      resolve("");
+      return;
+    }
+    try {
+      https
+        .get(url, (res) => {
+          if (res.statusCode === 301 || res.statusCode === 302) {
+            const redirectUrl = res.headers.location;
+            res.resume();
+            if (redirectUrl) {
+              try {
+                const absoluteUrl = new URL(redirectUrl, url).toString();
+                fetchUrlContent(absoluteUrl, maxRedirects - 1).then(resolve);
+              } catch {
+                resolve("");
+              }
+              return;
+            }
+          }
+          if (res.statusCode !== 200) {
+            res.resume();
+            resolve("");
             return;
           }
-        }
-        if (res.statusCode !== 200) {
-          resolve("");
-          return;
-        }
-        let data = "";
-        res.on("data", (chunk) => (data += chunk));
-        res.on("end", () => resolve(data));
-      })
-      .on("error", () => resolve(""));
+          let data = "";
+          res.on("data", (chunk) => (data += chunk));
+          res.on("end", () => resolve(data));
+        })
+        .on("error", () => resolve(""));
+    } catch {
+      resolve("");
+    }
   });
 }
 
