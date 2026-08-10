@@ -5,6 +5,7 @@ import * as fs from "fs-extra";
 
 import {
   command,
+  generateUniqueId,
   parseNpmPackageSpecifier,
   validateNpmPackageName,
   sanitizePackageNameToKitName,
@@ -83,6 +84,28 @@ describe("functions:kits:install", () => {
         FirebaseError,
         /Invalid NPM package name/,
       );
+    });
+  });
+
+  describe("generateUniqueId", () => {
+    it("should return base ID when it is not in existing IDs", () => {
+      const existing = new Set(["other-kit"]);
+      expect(generateUniqueId("my-kit", existing)).to.equal("my-kit");
+    });
+
+    it("should append random 4-character hex suffix when base ID collides", () => {
+      const existing = new Set(["my-kit"]);
+      const res = generateUniqueId("my-kit", existing);
+      expect(res).to.match(/^my-kit-[a-f0-9]{4}$/);
+      expect(existing.has(res)).to.be.false;
+    });
+
+    it("should truncate long base IDs to ensure total length <= 40", () => {
+      const longBase = "a".repeat(40);
+      const existing = new Set([longBase]);
+      const res = generateUniqueId(longBase, existing);
+      expect(res.length).to.be.at.most(40);
+      expect(res).to.match(/^a{35}-[a-f0-9]{4}$/);
     });
   });
 
@@ -426,7 +449,7 @@ describe("functions:kits:install", () => {
       );
     });
 
-    it("should reject duplicate kit name in firebase.json", async () => {
+    it("should reject duplicate kit name if entered interactively", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
@@ -442,44 +465,93 @@ describe("functions:kits:install", () => {
         },
         path: (p: string) => path.join("/mock/project", p),
         writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
       } as unknown as Config;
+
+      sinon.stub(prompt, "input").onFirstCall().resolves("firestore-bigquery-export");
 
       await expect(
         command.runner()({
           npm_package: "@firebase-functions-kits/firestore-bigquery-export",
           cwd: "/mock/project",
           config: mockConfig,
-          nonInteractive: true,
         }),
       ).to.be.rejectedWith(FirebaseError, /functions.kit must be unique/);
     });
 
-    it("should reject instance ID that collides with codebase name", async () => {
+    it("should auto-generate unique kit ID and instance ID in non-interactive mode on collision", async () => {
+      const writtenFiles: Record<string, unknown> = {};
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
           functions: [
             {
-              codebase: "my-kit",
+              kit: "firestore-bigquery-export",
+              source: "function-kits/firestore-bigquery-export",
+              instances: {
+                inst1: "function-kits/firestore-bigquery-export/config-inst1",
+              },
+            },
+          ],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      const updatedFunctions = (
+        writtenFiles["firebase.json"] as { functions: Array<{ kit?: string }> }
+      ).functions;
+      expect(updatedFunctions).to.have.length(2);
+      const installedKit = updatedFunctions[1];
+      expect(installedKit.kit).to.match(/^firestore-bigquery-export-[a-f0-9]{4}$/);
+    });
+
+    it("should reject instance ID that collides with codebase name if entered interactively", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [
+            {
+              codebase: "my-custom-instance",
               source: "functions",
             },
           ],
         },
         path: (p: string) => path.join("/mock/project", p),
         writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
       } as unknown as Config;
+
+      sinon
+        .stub(prompt, "input")
+        .onFirstCall()
+        .resolves("my-kit")
+        .onSecondCall()
+        .resolves("my-custom-instance");
 
       await expect(
         command.runner()({
           npm_package: "@firebase-functions-kits/my-kit",
           cwd: "/mock/project",
           config: mockConfig,
-          nonInteractive: true,
         }),
       ).to.be.rejectedWith(FirebaseError, /must be mutually exclusive/);
     });
 
-    it("should reject instance ID that collides with another kit instance ID", async () => {
+    it("should reject instance ID that collides with another kit instance ID if entered interactively", async () => {
       const mockConfig = {
         projectDir: "/mock/project",
         src: {
@@ -488,25 +560,32 @@ describe("functions:kits:install", () => {
               kit: "other-kit",
               source: "function-kits/other-kit",
               instances: {
-                "my-kit": "function-kits/other-kit/config-my-kit",
+                "existing-instance": "function-kits/other-kit/config-existing-instance",
               },
             },
           ],
         },
         path: (p: string) => path.join("/mock/project", p),
         writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
       } as unknown as Config;
+
+      sinon
+        .stub(prompt, "input")
+        .onFirstCall()
+        .resolves("my-kit")
+        .onSecondCall()
+        .resolves("existing-instance");
 
       await expect(
         command.runner()({
           npm_package: "@firebase-functions-kits/my-kit",
           cwd: "/mock/project",
           config: mockConfig,
-          nonInteractive: true,
         }),
       ).to.be.rejectedWith(
         FirebaseError,
-        /functions kit instance ID must be unique across all kits, but 'my-kit' was used more than once/,
+        /functions kit instance ID must be unique across all kits, but 'existing-instance' was used more than once/,
       );
     });
 

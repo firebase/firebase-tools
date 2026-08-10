@@ -1,4 +1,5 @@
 import * as clc from "colorette";
+import * as crypto from "crypto";
 import * as path from "path";
 import * as fs from "fs-extra";
 
@@ -33,6 +34,23 @@ const FUNCTION_KITS_DIR = "function-kits";
 
 export interface FunctionsKitsInstallOptions extends Options {
   npm_package?: string;
+}
+
+/**
+ * Generates a unique identifier by appending a random 4-character hex suffix if a collision exists.
+ * Ensures the candidate is truncated so the total length does not exceed 40 characters.
+ */
+export function generateUniqueId(baseId: string, existingIds: Set<string>): string {
+  if (!existingIds.has(baseId)) {
+    return baseId;
+  }
+  const prefix = baseId.slice(0, 35);
+  let candidate = "";
+  do {
+    const randomSuffix = crypto.randomBytes(2).toString("hex");
+    candidate = `${prefix}-${randomSuffix}`;
+  } while (existingIds.has(candidate));
+  return candidate;
 }
 
 /**
@@ -130,7 +148,6 @@ export const command = new Command("functions:kits:install")
 
     const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
     validateNpmPackageName(packageName);
-    const defaultKitId = sanitizePackageNameToKitName(packageName);
 
     const isThirdParty = isThirdPartyPackage(packageName);
     if (isThirdParty) {
@@ -164,22 +181,6 @@ export const command = new Command("functions:kits:install")
       }
     }
 
-    const kitId = await input({
-      message: "What would you like to name this kit?",
-      default: defaultKitId,
-      nonInteractive: options.nonInteractive,
-    });
-    validateKit(kitId);
-
-    const instanceId = await input({
-      message: "What would you like to name your first instance of this kit?",
-      default: kitId,
-      nonInteractive: options.nonInteractive,
-    });
-
-    const sourcePath = path.join(FUNCTION_KITS_DIR, kitId);
-    const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
-
     let existingFunctions: ValidatedConfig | [] = [];
     const configFunctions = options.config.src.functions;
     if (configFunctions && (!Array.isArray(configFunctions) || configFunctions.length > 0)) {
@@ -190,14 +191,13 @@ export const command = new Command("functions:kits:install")
       }
     }
 
+    const existingKitIds = new Set<string>();
     const existingCodebases = new Set<string>();
     const existingInstanceIds = new Set<string>();
     for (const c of existingFunctions) {
       if (isKitConfig(c)) {
-        if (c.kit === kitId) {
-          throw new FirebaseError(
-            `functions.kit must be unique but '${kitId}' was used more than once.`,
-          );
+        if (c.kit) {
+          existingKitIds.add(c.kit);
         }
         if (c.instances) {
           for (const instId of Object.keys(c.instances)) {
@@ -209,13 +209,61 @@ export const command = new Command("functions:kits:install")
       }
     }
 
-    validateKitInstances([instanceId], existingInstanceIds);
+    const baseKitId = sanitizePackageNameToKitName(packageName);
+    const defaultKitId = generateUniqueId(baseKitId, existingKitIds);
 
+    const kitId = await input({
+      message: "What would you like to name this kit?",
+      default: defaultKitId,
+      nonInteractive: options.nonInteractive,
+      validate: (val: string) => {
+        try {
+          validateKit(val);
+        } catch (err: unknown) {
+          return getErrMsg(err);
+        }
+        if (existingKitIds.has(val)) {
+          return `functions.kit must be unique but '${val}' was used more than once.`;
+        }
+        return true;
+      },
+    });
+    validateKit(kitId);
+    if (existingKitIds.has(kitId)) {
+      throw new FirebaseError(
+        `functions.kit must be unique but '${kitId}' was used more than once.`,
+      );
+    }
+
+    const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
+    const defaultInstanceId = generateUniqueId(kitId, instanceCollisions);
+
+    const instanceId = await input({
+      message: "What would you like to name your first instance of this kit?",
+      default: defaultInstanceId,
+      nonInteractive: options.nonInteractive,
+      validate: (val: string) => {
+        try {
+          validateKitInstances([val], existingInstanceIds);
+        } catch (err: unknown) {
+          return getErrMsg(err);
+        }
+        if (existingCodebases.has(val)) {
+          return `functions codebase name and kit instance ID must be mutually exclusive, but '${val}' was used as both a codebase name and a kit instance ID.`;
+        }
+        return true;
+      },
+    });
+
+    validateKitInstances([instanceId], existingInstanceIds);
     if (existingCodebases.has(instanceId)) {
       throw new FirebaseError(
         `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,
       );
     }
+
+    const sourcePath = path.join(FUNCTION_KITS_DIR, kitId);
+    const configDirPath = path.join(FUNCTION_KITS_DIR, kitId, `config-${instanceId}`);
 
     const absSourcePath = options.config.path(sourcePath);
     const absConfigDirPath = options.config.path(configDirPath);
