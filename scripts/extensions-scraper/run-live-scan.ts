@@ -7,7 +7,6 @@ function fetchUrlContent(url: string): Promise<string> {
   return new Promise((resolve) => {
     https
       .get(url, (res) => {
-        let data = "";
         // Follow redirects if any
         if (res.statusCode === 301 || res.statusCode === 302) {
           const redirectUrl = res.headers.location;
@@ -17,32 +16,10 @@ function fetchUrlContent(url: string): Promise<string> {
           }
         }
         if (res.statusCode !== 200) {
-          // If main branch fails or hasn't merged yet, try 'kits' branch
-          if (url.includes("/main/")) {
-            const kitsUrl = url.replace("/main/", "/kits/");
-            https
-              .get(kitsUrl, (kitsRes) => {
-                if (kitsRes.statusCode === 301 || kitsRes.statusCode === 302) {
-                  const redirectUrl = kitsRes.headers.location;
-                  if (redirectUrl) {
-                    fetchUrlContent(redirectUrl).then(resolve);
-                    return;
-                  }
-                }
-                let kitsData = "";
-                if (kitsRes.statusCode !== 200) {
-                  resolve("");
-                  return;
-                }
-                kitsRes.on("data", (chunk) => (kitsData += chunk));
-                kitsRes.on("end", () => resolve(kitsData));
-              })
-              .on("error", () => resolve(""));
-            return;
-          }
           resolve("");
           return;
         }
+        let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => resolve(data));
       })
@@ -70,10 +47,8 @@ async function runLiveScan() {
   for (const [extRef, entry] of entries) {
     const webUrl = getRepoUrlForExtension(extRef, entry);
     const rawUrl = toRawGithubUrl(webUrl);
-    // Support testing against the newly updated kits branch if on main
-    const kitsBranchUrl = rawUrl.replace("/main/", "/kits/");
 
-    const readmeContent = await fetchUrlContent(kitsBranchUrl);
+    const readmeContent = await fetchUrlContent(rawUrl);
     const discoveredPackage = extractReplacementFromReadme(readmeContent);
 
     if (discoveredPackage) {
@@ -85,8 +60,7 @@ async function runLiveScan() {
       };
       console.log(`[✓ DETECTED] ${extRef}`);
       console.log(`  Target Package: ${discoveredPackage}`);
-      console.log(`  Web URL:    ${webUrl}`);
-      console.log(`  Raw URL:    ${kitsBranchUrl}\n`);
+      console.log(`  Web URL:    ${webUrl}\n`);
     } else {
       console.log(`[PENDING] ${extRef}`);
       console.log(`  Web URL:    ${webUrl} (No tag present)\n`);

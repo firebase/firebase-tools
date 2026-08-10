@@ -30,13 +30,19 @@ export function extractReplacementFromReadme(readmeContent: string): string | un
  * into a raw fetchable URL (raw.githubusercontent.com/owner/repo/branch/path).
  */
 export function toRawGithubUrl(url: string): string {
-  if (url.includes("raw.githubusercontent.com")) {
-    return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "raw.githubusercontent.com") {
+      return url;
+    }
+    if (parsed.hostname === "github.com") {
+      const pathname = parsed.pathname.replace(/\/tree\//, "/").replace(/\/blob\//, "/");
+      return `https://raw.githubusercontent.com${pathname}`;
+    }
+  } catch {
+    // Return unchanged if not a valid URL
   }
-  return url
-    .replace(/^https:\/\/github\.com\//, "https://raw.githubusercontent.com/")
-    .replace(/\/tree\//, "/")
-    .replace(/\/blob\//, "/");
+  return url;
 }
 
 /**
@@ -71,6 +77,9 @@ export function processExtensionReadmes(
 ): { updatedRegistry: Record<string, any>; results: ScraperResult[] } {
   const results: ScraperResult[] = [];
   const updatedRegistry = JSON.parse(JSON.stringify(registryData));
+  if (!updatedRegistry.replacements) {
+    updatedRegistry.replacements = {};
+  }
 
   for (const [extensionRef, content] of Object.entries(readmes)) {
     const detectedPackage = extractReplacementFromReadme(content);
