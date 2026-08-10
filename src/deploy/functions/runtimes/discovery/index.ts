@@ -12,8 +12,66 @@ import { FirebaseError } from "../../../../error";
 
 const TIMEOUT_OVERRIDE_ENV_VAR = "FUNCTIONS_DISCOVERY_TIMEOUT";
 
+// How long to wait between polls of the admin server. A tight loop competes for
+// CPU with the very process we are waiting on, which on constrained machines is
+// enough to cause the timeout it is meant to detect.
+const RETRY_DELAY_MS = 100;
+
+// A bare value at or above this is almost certainly milliseconds. The variable is
+// documented in seconds, so 30000 means 8.3 hours, which silently disables the
+// timeout rather than extending it.
+const SUSPICIOUS_SECONDS = 600;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The discovery timeout override, in ms, or 0 if unset.
+ *
+ * A bare number is read as seconds for backwards compatibility. An explicit "s"
+ * or "ms" suffix is also accepted, because the bare form is a common source of
+ * off-by-1000 mistakes.
+ */
 export function getFunctionDiscoveryTimeout(): number {
-  return +(process.env[TIMEOUT_OVERRIDE_ENV_VAR] || 0) * 1000; /* ms */
+  const raw = process.env[TIMEOUT_OVERRIDE_ENV_VAR]?.trim();
+  if (!raw) {
+    return 0;
+  }
+
+  const match = /^(\d+(?:\.\d+)?)\s*(ms|s)?$/i.exec(raw);
+  if (!match) {
+    logger.warn(
+      `Ignoring ${TIMEOUT_OVERRIDE_ENV_VAR}="${raw}": expected a number of seconds, e.g. 60 or 60s.`,
+    );
+    return 0;
+  }
+
+  const value = Number(match[1]);
+  const unit = (match[2] || "s").toLowerCase();
+  if (unit === "ms") {
+    return value;
+  }
+
+  if (value >= SUSPICIOUS_SECONDS) {
+    logger.warn(
+      `${TIMEOUT_OVERRIDE_ENV_VAR}=${raw} is being read as ${value} seconds ` +
+        `(${(value / 3600).toFixed(1)} hours). If you meant milliseconds, write ${raw}ms.`,
+    );
+  }
+  return value * 1000;
+}
+
+/**
+ * The timeout message, which has to carry its own instructions: by the time a
+ * user sees it they have no other signal that a timeout is what happened.
+ */
+function timeoutMessage(timeoutMs: number): string {
+  return (
+    `User code failed to load. Cannot determine backend specification. ` +
+    `Timed out after ${timeoutMs / 1000}s. ` +
+    `If your code is slow to load, set ${TIMEOUT_OVERRIDE_ENV_VAR} to allow more time ` +
+    `(in seconds, e.g. ${TIMEOUT_OVERRIDE_ENV_VAR}=60). ` +
+    `See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization`
+  );
 }
 
 /**
@@ -74,38 +132,48 @@ export async function detectFromPort(
   runtime: Runtime,
   initialDelay = 0,
   timeout = 10_000 /* 10s to boot up */,
+  serverExited?: Promise<never>,
 ): Promise<build.Build> {
   let res: Response;
   const discoveryTimeout = getFunctionDiscoveryTimeout() || timeout;
+  let timer: NodeJS.Timeout | undefined;
   const timedOut = new Promise<never>((resolve, reject) => {
-    setTimeout(() => {
-      const originalError = "User code failed to load. Cannot determine backend specification.";
-      const error = `${originalError} Timeout after ${discoveryTimeout}. See https://firebase.google.com/docs/functions/tips#avoid_deployment_timeouts_during_initialization'`;
-      reject(new FirebaseError(error));
+    timer = setTimeout(() => {
+      reject(new FirebaseError(timeoutMessage(discoveryTimeout)));
     }, discoveryTimeout);
   });
 
-  // Initial delay to wait for admin server to boot.
-  if (initialDelay > 0) {
-    await new Promise((resolve) => setTimeout(resolve, initialDelay));
-  }
+  // A connection refused is ambiguous: the server may still be booting, or it may
+  // have died and never be coming back. Racing its exit lets us report the crash
+  // instead of blaming a timeout for it.
+  const abort: Promise<never>[] = serverExited ? [timedOut, serverExited] : [timedOut];
 
-  const url = `http://127.0.0.1:${port}/__/functions.yaml`;
-  while (true) {
-    try {
-      res = await Promise.race([fetch(url), timedOut]);
-      break;
-    } catch (err: any) {
-      const realErr = err?.cause || err;
-      if (
-        err?.name === "FetchError" ||
-        realErr?.name === "FetchError" ||
-        ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(realErr?.code)
-      ) {
-        continue;
-      }
-      throw err;
+  try {
+    // Initial delay to wait for admin server to boot.
+    if (initialDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, initialDelay));
     }
+
+    const url = `http://127.0.0.1:${port}/__/functions.yaml`;
+    while (true) {
+      try {
+        res = await Promise.race([fetch(url), ...abort]);
+        break;
+      } catch (err: any) {
+        const realErr = err?.cause || err;
+        if (
+          err?.name === "FetchError" ||
+          realErr?.name === "FetchError" ||
+          ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(realErr?.code)
+        ) {
+          await Promise.race([sleep(RETRY_DELAY_MS), ...abort]);
+          continue;
+        }
+        throw err;
+      }
+    }
+  } finally {
+    clearTimeout(timer);
   }
 
   if (res.status !== 200) {
@@ -150,11 +218,7 @@ export async function detectFromOutputPath(
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
-        reject(
-          new FirebaseError(
-            `User code failed to load. Cannot determine backend specification. Timeout after ${discoveryTimeout}ms`,
-          ),
-        );
+        reject(new FirebaseError(timeoutMessage(discoveryTimeout)));
       }
     }, discoveryTimeout);
 

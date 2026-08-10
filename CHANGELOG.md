@@ -1,3 +1,6 @@
 - Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
 - Added `appcheck:apps:list` to show every app with its configured App Check providers.
 - Added web app support for Crashlytics MCP tools and prompts.>>>>>>> main
+- Fixed function discovery reporting a timeout when the discovery server had actually crashed, hiding the underlying error (#7775).
+- Clarified the function discovery timeout error, which now names `FUNCTIONS_DISCOVERY_TIMEOUT` and reports the elapsed time in the same unit the variable accepts.
+- Fixed `FUNCTIONS_DISCOVERY_TIMEOUT` silently accepting a millisecond value as seconds. It now also accepts an explicit `s` or `ms` suffix.
