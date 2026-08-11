@@ -17,7 +17,10 @@ import { FirebaseError } from "../error";
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("--local", "deprecated")
-  .option("--immediate", "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory.")
+  .option(
+    "--immediate",
+    "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory.",
+  )
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
@@ -60,12 +63,10 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
       } catch (err: unknown) {
         throw new FirebaseError(
           `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
-          { original: err instanceof Error ? err : undefined }
+          { original: err instanceof Error ? err : undefined },
         );
-        return;
       }
       logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
-      return;
     }
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
