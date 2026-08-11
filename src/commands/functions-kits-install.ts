@@ -11,7 +11,7 @@ import {
   isKitConfig,
   normalizeAndValidate,
   validateKit,
-  validateKitInstances,
+  validateKitInstanceId,
   ValidatedConfig,
 } from "../functions/projectConfig";
 import * as experiments from "../experiments";
@@ -249,9 +249,12 @@ export const command = new Command("functions:kits:install")
       nonInteractive: options.nonInteractive,
       validate: (val: string) => {
         try {
-          validateKitInstances([val], existingInstanceIds);
+          validateKitInstanceId(val);
         } catch (err: unknown) {
           return getErrMsg(err);
+        }
+        if (existingInstanceIds.has(val)) {
+          return `functions kit instance ID must be unique across all kits, but '${val}' was used more than once.`;
         }
         if (existingCodebases.has(val)) {
           return `functions codebase name and kit instance ID must be mutually exclusive, but '${val}' was used as both a codebase name and a kit instance ID.`;
@@ -260,7 +263,12 @@ export const command = new Command("functions:kits:install")
       },
     });
 
-    validateKitInstances([instanceId], existingInstanceIds);
+    validateKitInstanceId(instanceId);
+    if (existingInstanceIds.has(instanceId)) {
+      throw new FirebaseError(
+        `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
+      );
+    }
     if (existingCodebases.has(instanceId)) {
       throw new FirebaseError(
         `functions codebase name and kit instance ID must be mutually exclusive, but '${instanceId}' was used as both a codebase name and a kit instance ID.`,

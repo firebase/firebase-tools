@@ -240,32 +240,43 @@ function assertUniqueSourcePrefixPair(config: ValidatedConfig): void {
 }
 
 /**
- * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
- * @param instanceIds An iterable collection of instance IDs to validate.
- * @param existingInstanceIds A set of existing instance IDs in the project to check against for duplicates.
+ * Check that the kit instance ID is 40 characters or less and only contains allowed characters.
  */
-export function validateKitInstances(
+export function validateKitInstanceId(instanceId: string): void {
+  if (
+    instanceId.length === 0 ||
+    instanceId.length > 40 ||
+    !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
+  ) {
+    throw new FirebaseError(
+      `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
+        "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
+    );
+  }
+}
+
+/**
+ * Validate each instance ID format and ensure instance IDs are unique across all kit stanzas in the project.
+ * Adds each validated instance ID to `allProjectInstanceIds`.
+ * @param instanceIds An iterable collection of instance IDs to validate.
+ * @param allProjectInstanceIds The set of all instance IDs across the project to check against and update.
+ */
+export function validateAndAddKitInstances(
   instanceIds: Iterable<string>,
-  existingInstanceIds: ReadonlySet<string>,
+  allProjectInstanceIds: Set<string>,
 ): void {
   const seenInBatch = new Set<string>();
   for (const instanceId of instanceIds) {
-    if (
-      instanceId.length === 0 ||
-      instanceId.length > 40 ||
-      !/^[a-z0-9_](?:[a-z0-9_-]*[a-z0-9_])?$/.test(instanceId)
-    ) {
-      throw new FirebaseError(
-        `Invalid kit instance ID '${instanceId}'. Instance ID must be 40 characters or less, ` +
-          "can contain only lowercase letters, numeric characters, underscores, and dashes, and cannot start or end with a dash.",
-      );
-    }
-    if (seenInBatch.has(instanceId) || existingInstanceIds.has(instanceId)) {
+    validateKitInstanceId(instanceId);
+    if (seenInBatch.has(instanceId) || allProjectInstanceIds.has(instanceId)) {
       throw new FirebaseError(
         `functions kit instance ID must be unique across all kits, but '${instanceId}' was used more than once.`,
       );
     }
     seenInBatch.add(instanceId);
+  }
+  for (const instanceId of seenInBatch) {
+    allProjectInstanceIds.add(instanceId);
   }
 }
 
@@ -278,10 +289,7 @@ function assertUniqueKitInstancesAndCodebases(config: ValidatedConfig): void {
       codebases.add(c.codebase);
     }
     if ("instances" in c && c.instances) {
-      validateKitInstances(Object.keys(c.instances), instanceIds);
-      for (const id of Object.keys(c.instances)) {
-        instanceIds.add(id);
-      }
+      validateAndAddKitInstances(Object.keys(c.instances), instanceIds);
     }
   }
 
