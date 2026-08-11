@@ -714,6 +714,62 @@ describe("prepare", () => {
     });
   });
 
+  describe("checkKitForGen1", () => {
+    it("should do nothing for regular codebases with gen1 functions", () => {
+      const localCfg = { source: "src", codebase: "default" };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv1",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should do nothing for kit instances with only gen2 functions", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv2",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should throw a FirebaseError if a kit instance contains a gen1 function", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        validFunc: {
+          platform: "gcfv2",
+          entryPoint: "validFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+        invalidFunc: {
+          platform: "gcfv1",
+          entryPoint: "invalidFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.throw(
+        'Function kit "my-kit" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.',
+      );
+    });
+  });
+
   describe("inferDetailsFromExisting", () => {
     it("merges env vars if .env is not used", () => {
       const oldE = {
