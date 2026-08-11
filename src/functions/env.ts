@@ -431,11 +431,16 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
 export function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
   projectId: string,
+  kitInstanceId?: string,
 ): Record<string, string> {
-  return {
+  const envs: Record<string, string> = {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+  if (kitInstanceId) {
+    envs.FIREBASE_KIT_INSTANCE_ID = kitInstanceId;
+  }
+  return envs;
 }
 
 /**
