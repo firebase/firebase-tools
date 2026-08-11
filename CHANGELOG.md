@@ -1,4 +1,4 @@
-- Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as developer knowledge document search).
+- Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
 - Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
