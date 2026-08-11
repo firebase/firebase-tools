@@ -10,6 +10,7 @@
  */
 
 import { setGlobalOptions } from "firebase-functions";
+import { MemoryOption, VpcEgressSetting, IngressSetting } from "firebase-functions/v2/options";
 import * as params from "firebase-functions/params";
 
 export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
@@ -21,12 +22,12 @@ export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
 // https://firebase.google.com/docs/reference/functions/2nd-gen/node/firebase-functions.globaloptions
 setGlobalOptions({
   region: regionParam,
-  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as any) || undefined,
+  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as MemoryOption) || undefined,
   timeoutSeconds: process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS
     ? Number(process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS)
     : undefined,
   vpcConnectorEgressSettings:
-    (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as any) || undefined,
+    (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting) || undefined,
   vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR || undefined,
   maxInstances: process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES)
@@ -34,7 +35,7 @@ setGlobalOptions({
   minInstances: process.env.EXT_MIGRATED_SYSTEM_MININSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MININSTANCES)
     : undefined,
-  ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as any) || undefined,
+  ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) || undefined,
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
     ? JSON.parse(process.env.EXT_MIGRATED_SYSTEM_LABELS)
     : undefined,
