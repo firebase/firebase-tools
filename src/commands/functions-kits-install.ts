@@ -94,7 +94,7 @@ export function sanitizePackageNameToKitName(packageName: string): string {
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
   const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-  return (sanitized).slice(0, 40);
+  return sanitized.slice(0, 40);
 }
 
 /**
