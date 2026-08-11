@@ -31,4 +31,5 @@ setGlobalOptions({
   maxInstances: 10,
 });
 
+// Exports the functions located in the kit.
 export * from "{{PACKAGE_NAME}}";

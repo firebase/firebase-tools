@@ -29,11 +29,15 @@ const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
 const TSCONFIG_TEMPLATE = readTemplateSync("init/functions/typescript/tsconfig.json");
 const GITIGNORE_TEMPLATE = readTemplateSync("init/functions/typescript/_gitignore");
 const INDEX_KIT_TEMPLATE = readTemplateSync("init/functions/typescript/index-kit.ts");
+const INDEX_KIT_MIGRATION_TEMPLATE = readTemplateSync(
+  "init/functions/typescript/index-kit-migration.ts",
+);
 
 const FUNCTION_KITS_DIR = "function-kits";
 
 export interface FunctionsKitsInstallOptions extends Options {
   npm_package?: string;
+  template?: string;
 }
 
 /**
@@ -134,11 +138,23 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 export const command = new Command("functions:kits:install")
   .description("install a function kit into your project")
   .option("--npm_package <package>", "NPM package name or specifier to install as a function kit")
+  .option(
+    "--template [installation|migration]",
+    "template to use for the kit index file",
+    "installation",
+  )
   .action(async (options: FunctionsKitsInstallOptions): Promise<void> => {
     experiments.assertEnabled("kits", "install a function kit");
 
     if (!options.config) {
       throw new FirebaseError("Not in a Firebase project directory (firebase.json not found).");
+    }
+
+    const templateType = options.template || "installation";
+    if (templateType !== "installation" && templateType !== "migration") {
+      throw new FirebaseError(
+        `Invalid template '${templateType}'. Template must be 'installation' or 'migration'.`,
+      );
     }
 
     const rawPkgName = options.npm_package;
@@ -330,7 +346,9 @@ export const command = new Command("functions:kits:install")
     const relIndexTsPath = path.join(sourcePath, "src", "index.ts");
     const absIndexTsPath = options.config.path(relIndexTsPath);
     if (!(await fs.pathExists(absIndexTsPath))) {
-      const indexContent = INDEX_KIT_TEMPLATE.replace("{{PACKAGE_NAME}}", packageName);
+      const template =
+        templateType === "migration" ? INDEX_KIT_MIGRATION_TEMPLATE : INDEX_KIT_TEMPLATE;
+      const indexContent = template.replace("{{PACKAGE_NAME}}", packageName);
       await options.config.askWriteProjectFile(relIndexTsPath, indexContent);
     }
 
