@@ -1,5 +1,4 @@
-import fetch from "node-fetch";
-import { v4 as uuidV4 } from "uuid";
+import { randomUUID } from "crypto";
 import { getGlobalDefaultAccount } from "./auth";
 
 import { configstore } from "./configstore";
@@ -31,6 +30,7 @@ type cliEventNames =
   | "mcp_list_prompts"
   | "mcp_get_prompt"
   | "mcp_read_resource"
+  | "mcp_list_resources"
   | "firebase_studio_migrate";
 type GA4Property = "cli" | "emulator" | "vscode";
 interface GA4Info {
@@ -345,7 +345,7 @@ function session(propertyName: GA4Property): AnalyticsSession | undefined {
   if (!property.currentSession) {
     let clientId: string | undefined = configstore.get(property.clientIdKey);
     if (!clientId) {
-      clientId = uuidV4();
+      clientId = randomUUID();
       configstore.set(property.clientIdKey, clientId);
     }
     property.currentSession = {

@@ -1,5 +1,8 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
+import * as os from "os";
+import * as path from "path";
+import * as crypto from "crypto";
 import { Config } from "../../config";
 import * as gcs from "../../gcp/storage";
 import { RC } from "../../rc";
@@ -23,6 +26,11 @@ const BASE_OPTS = {
 };
 
 function initializeContext(): Context {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   return {
     backendConfigs: {
       foo: {
@@ -41,15 +49,23 @@ function initializeContext(): Context {
     backendStorageUris: {},
     backendLocalBuilds: {
       fooLocalBuild: {
-        buildDir: "./nextjs/standalone",
+        outputFiles: ["./nextjs/standalone"],
+        localBuildScratchDir: path.join(
+          os.tmpdir(),
+          `apphosting-local-build-fooLocalBuild-${expectedPathHash}`,
+        ),
         buildConfig: {},
-        annotations: {},
       },
     },
   };
 }
 
 describe("apphosting", () => {
+  const expectedPathHash = crypto
+    .createHash("md5")
+    .update(process.cwd())
+    .digest("hex")
+    .substring(0, 8);
   let upsertBucketStub: sinon.SinonStub;
   let uploadObjectStub: sinon.SinonStub;
   let createArchiveStub: sinon.SinonStub;
@@ -72,6 +88,7 @@ describe("apphosting", () => {
     createReadStreamStub = sinon
       .stub(fs, "createReadStream")
       .throws("Unexpected createReadStream call");
+    sinon.stub(os, "tmpdir").returns("/tmp");
     sinon.stub(experiments, "isEnabled").returns(true);
     sinon.stub(experiments, "assertEnabled");
   });
@@ -172,8 +189,8 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
+        ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,
@@ -215,8 +232,8 @@ describe("apphosting", () => {
       );
       expect(createTarArchiveStub).to.be.calledWithExactly(
         context.backendConfigs["fooLocalBuild"],
-        process.cwd(),
-        "./nextjs/standalone",
+        path.join(os.tmpdir(), `apphosting-local-build-fooLocalBuild-${expectedPathHash}`),
+        ["./nextjs/standalone"],
       );
       expect(uploadObjectStub).to.be.calledWithMatch(
         sinon.match.any,

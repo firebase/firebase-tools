@@ -18,7 +18,6 @@ export interface DeployStats {
 
   // deploy.ts
   numServiceCreated: number;
-  numServiceDeleted: number;
 
   // release.ts
   numSchemaMigrated: number;
@@ -36,7 +35,6 @@ export function initDeployStats(): DeployStats {
     numBuildErrors: 0,
     numBuildWarnings: new Map<string, number>(),
     numServiceCreated: 0,
-    numServiceDeleted: 0,
     numSchemaMigrated: 0,
     numConnectorUpdatedBeforeSchema: 0,
     numConnectorUpdatedAfterSchema: 0,
@@ -54,7 +52,6 @@ export function deployStatsParams(stats: DeployStats): AnalyticsParams {
   return {
     missing_billing: (!!stats.missingBilling).toString(),
     num_service_created: stats.numServiceCreated,
-    num_service_deleted: stats.numServiceDeleted,
     num_schema_migrated: stats.numSchemaMigrated,
     num_connector_updated_before_schema: stats.numConnectorUpdatedBeforeSchema,
     num_connector_updated_after_schema: stats.numConnectorUpdatedAfterSchema,

@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import * as fs from "fs";
 import * as fse from "fs-extra";
 import * as path from "path";
-import * as uuid from "uuid";
+import { randomUUID } from "crypto";
 
 /**
  * Helper for disk I/O operations.
@@ -57,7 +57,7 @@ export class Persistence {
   deleteFile(fileName: string, failSilently = false): void {
     try {
       unlinkSync(this.getDiskPath(fileName));
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!failSilently) {
         throw err;
       }
@@ -92,6 +92,6 @@ export class Persistence {
   }
 
   private generateNewDiskName(): string {
-    return uuid.v4();
+    return randomUUID();
   }
 }

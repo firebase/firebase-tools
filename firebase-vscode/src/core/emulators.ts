@@ -45,7 +45,7 @@ export class EmulatorsController implements Disposable {
 
     // Subscription to trigger emulator exports when button is clicked.
     this.subscriptions.push(broker.on("runEmulatorsExport", () => {
-      vscode.commands.executeCommand("firebase.emulators.exportData")
+      vscode.commands.executeCommand("firebase.emulators.exportData");
     }));
   }
 
@@ -172,7 +172,7 @@ export class EmulatorsController implements Disposable {
     const hubClient = this.getHubClient();
     if (hubClient) {
       await hubClient.clearDataConnectData();
-      vscode.window.showInformationMessage(`Data Connect emulator data has been cleared.`);
+      vscode.window.showInformationMessage(`SQL Connect emulator data has been cleared.`);
     }
   }
 
@@ -182,7 +182,7 @@ export class EmulatorsController implements Disposable {
     const hubClient = this.getHubClient();
     if (hubClient) {
       // TODO: Make exportDir configurable
-      await hubClient.postExport({path: exportDir, initiatedBy: "Data Connect VSCode extension"});
+      await hubClient.postExport({path: exportDir, initiatedBy: "SQL Connect VSCode extension"});
       vscode.window.showInformationMessage(`Emulator Data exported to ${exportDir}`);
     }
   }

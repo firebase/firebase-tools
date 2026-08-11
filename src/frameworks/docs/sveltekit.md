@@ -11,6 +11,13 @@ that the functionality might change in backward-incompatible ways. A preview
 release is not subject to any SLA or deprecation policy and may receive limited
 or no support.
 
+Caution: For SvelteKit developers, new participation in the {{hosting}}
+frameworks experiment has been closed permanently. If you're already using the
+frameworks experiment in the Firebase CLI, we recommend "graduating" to
+{{app_hosting}}. With {{app_hosting}}, you'll have a unified solution to manage
+everything from CDN to server-side rendering, along with improved GitHub
+integration.
+
 ## Before you begin
 
 Before you get started deploying your app to Firebase,
@@ -23,23 +30,6 @@ review the following requirements and options:
   (required if you plan to use SSR)
 - An existing SvelteKit project. You can create one with `npm init svelte@latest`.
 
-
-## Initialize Firebase
-
-To get started, initialize Firebase for your framework project.
-Use the Firebase CLI for a new project, or modify `firebase.json` for an
-existing project.
-
-### Initialize a new project
-
-1. In the Firebase CLI, enable the web frameworks preview:
-   <pre class="devsite-terminal">firebase experiments:enable webframeworks</pre>
-1. Run the initialization command from the CLI and then follow the prompts:
-   <pre class="devsite-terminal">firebase init hosting</pre>
-1.  Answer yes to "Do you want to use a web framework? (experimental)"
-1.  Choose your hosting source directory. 
-    If there is an existing SvelteKit codebase,
-    the CLI detects it and the process completes.
 
 ## Serve static content
 

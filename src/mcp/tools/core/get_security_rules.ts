@@ -2,8 +2,9 @@ import { z } from "zod";
 import { Client } from "../../../apiv2";
 import { tool } from "../../tool";
 import { mcpError, toContent } from "../../util";
-import { getLatestRulesetName, getRulesetContent } from "../../../gcp/rules";
+import { getLatestRulesetName, getRulesetContent, listAllReleases } from "../../../gcp/rules";
 import { getDefaultDatabaseInstance } from "../../../getDefaultDatabaseInstance";
+import { streamToString } from "../../../streamUtils";
 
 export const get_security_rules = tool(
   "core",
@@ -42,7 +43,7 @@ export const get_security_rules = tool(
         return mcpError(`Failed to fetch current rules. Code: ${response.status}`);
       }
 
-      const rules = await response.response.text();
+      const rules = await streamToString(response.body);
       return toContent(rules);
     }
 
@@ -52,7 +53,8 @@ export const get_security_rules = tool(
     };
     const { productName, releaseName } = serviceInfo[type];
 
-    const rulesetName = await getLatestRulesetName(projectId, releaseName);
+    const releases = await listAllReleases(projectId);
+    const rulesetName = await getLatestRulesetName(projectId, releaseName, releases);
     if (!rulesetName)
       return mcpError(`No active ${productName} rules were found in project '${projectId}'`);
     const rules = await getRulesetContent(rulesetName);

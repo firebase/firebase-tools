@@ -75,12 +75,14 @@ if [[ $VERSION == "preview" ]]; then
 fi
 echo "Cloned repository."
 
-echo "Making sure there is a changelog..."
-if [ ! -s CHANGELOG.md ]; then
-  echo "CHANGELOG.md is empty. aborting."
-  exit 1
+if [[ $VERSION != "preview" ]]; then
+  echo "Making sure there is a changelog..."
+  if [ ! -s CHANGELOG.md ]; then
+    echo "CHANGELOG.md is empty. aborting."
+    exit 1
+  fi
+  echo "Made sure there is a changelog."
 fi
-echo "Made sure there is a changelog."
 
 echo "Running npm install..."
 npm install

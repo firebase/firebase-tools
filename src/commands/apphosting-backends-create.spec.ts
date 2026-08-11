@@ -23,7 +23,7 @@ describe("apphosting:backends:create", () => {
     sinon.restore();
   });
 
-  it("should fail if ABIU flags are used without experiment enabled", async () => {
+  it("should fail if runtime flag is used without experiment enabled", async () => {
     isEnabledStub.returns(false);
     const options = {
       project: PROJECT_ID,
@@ -34,11 +34,11 @@ describe("apphosting:backends:create", () => {
 
     await expect(command.runner()(options)).to.be.rejectedWith(
       FirebaseError,
-      /The --runtime and --automatic-base-image-updates flags are only available when the 'abiu' experiment is enabled/,
+      /The --runtime flag is only available when the 'abiu' experiment is enabled/,
     );
   });
 
-  it("should default ABIU to enabled and runtime to empty string when experiment is on", async () => {
+  it("should default runtime to undefined when experiment is on and no flag provided", async () => {
     isEnabledStub.returns(true);
     const options = {
       project: PROJECT_ID,
@@ -59,33 +59,6 @@ describe("apphosting:backends:create", () => {
       "us-central1", // primaryRegion
       undefined, // rootDir
       undefined, // expected runtime (doSetup handles the default to 'nodejs')
-      false, // expected default automaticBaseImageUpdatesDisabled (enabled)
-    );
-  });
-
-  it("should pass explicit ABIU disabled flag", async () => {
-    isEnabledStub.returns(true);
-    const options = {
-      project: PROJECT_ID,
-      nonInteractive: true,
-      backend: "test-backend",
-      primaryRegion: "us-central1",
-      serviceAccount: "",
-      automaticBaseImageUpdates: false,
-    };
-
-    await command.runner()(options);
-
-    expect(doSetupStub).to.be.calledWith(
-      PROJECT_ID,
-      true,
-      undefined,
-      "test-backend",
-      "",
-      "us-central1",
-      undefined,
-      undefined,
-      true, // automaticBaseImageUpdatesDisabled should be true
     );
   });
 
@@ -111,7 +84,6 @@ describe("apphosting:backends:create", () => {
       "us-central1",
       undefined,
       "", // explicit empty string should be preserved
-      false,
     );
   });
 
@@ -137,7 +109,6 @@ describe("apphosting:backends:create", () => {
       "us-central1",
       undefined,
       "nodejs22",
-      false, // ABIU defaults to enabled even with explicit runtime
     );
   });
 
@@ -163,7 +134,6 @@ describe("apphosting:backends:create", () => {
       "us-central1",
       undefined,
       undefined, // Should default to undefined, then nodejs in doSetup
-      false,
     );
   });
 });

@@ -19,10 +19,6 @@ to Firebase.
 
 <<_includes/_initialize-firebase.md>>
 
-1. Answer yes to "Do you want to use a web framework? (experimental)"
-1. Choose your hosting source directory; this could be an existing Flutter app.
-1. If prompted, choose Flutter Web.
-
 ### Initialize an existing project
 
 Change your hosting config in `firebase.json` to have a `source` option, rather

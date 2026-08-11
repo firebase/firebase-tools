@@ -402,7 +402,7 @@ describe("webframeworks", function (this) {
             : [
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_buildManifest.js"),
                 join(NEXT_BASE_PATH, "_next", "static", buildId, "_ssgManifest.js"),
-                join(NEXT_BASE_PATH, "_next", "static", buildId, "_clientMiddlewareManifest.json"),
+                join(NEXT_BASE_PATH, "_next", "static", buildId, "_clientMiddlewareManifest.js"),
                 join(NEXT_BASE_PATH, "app", "api", "static"),
                 join(NEXT_BASE_PATH, "app", "image.html"),
                 join(NEXT_BASE_PATH, "app", "ssg.html"),
@@ -422,8 +422,9 @@ describe("webframeworks", function (this) {
 
       const EXPECTED_PATTERNS = [
         [NEXT_BASE_PATH, "_next", "static", "chunks", `turbopack-[^.]+\\.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.js`],
-        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-f0-9]+\\.css`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_.-]+\\.js`],
+        [NEXT_BASE_PATH, "_next", "static", "chunks", `[a-zA-Z0-9~_.-]+\\.css`],
+        [NEXT_BASE_PATH, "_next", "static", "[^/]+", "_clientMiddlewareManifest\\.js"],
       ].map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));
 
       const files = await getFilesListFromDir(`${NEXT_OUTPUT_PATH}/hosting`);
@@ -494,18 +495,16 @@ describe("webframeworks", function (this) {
       const EXPECTED_FILES = ["", "en", "fr", "es"]
         .flatMap((locale) => [
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
           join(I18N_BASE, locale, ANGULAR_BASE_PATH, "favicon.ico"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.original.html"),
-          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "3rdpartylicenses.txt"),
+          join(I18N_BASE, locale, ANGULAR_BASE_PATH, "index.csr.html"),
         ])
-        .map(normalize);
+        .map(normalize)
+        .map((it) => (it.startsWith("/") ? it.substring(1) : it));
 
       const EXPECTED_PATTERNS = ["", "en", "fr", "es"]
         .flatMap((locale) => [
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `main\.[^\.]+\.js`],
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `polyfills\.[^\.]+\.js`],
-          [I18N_BASE, locale, ANGULAR_BASE_PATH, `runtime\.[^\.]+\.js`],
           [I18N_BASE, locale, ANGULAR_BASE_PATH, `styles\.[^\.]+\.css`],
         ])
         .map((it) => new RegExp(it.filter(Boolean).join(PATH_SEPARATOR)));

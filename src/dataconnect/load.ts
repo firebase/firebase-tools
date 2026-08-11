@@ -18,7 +18,7 @@ import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
 import { DataConnectMultiple } from "../firebaseConfig";
 import * as experiments from "../experiments";
 
-/** Picks exactly one Data Connect service based on flags. */
+/** Picks exactly one SQL Connect service based on flags. */
 export async function pickOneService(
   projectId: string,
   config: Config,
@@ -39,7 +39,7 @@ export async function pickOneService(
   return services[0];
 }
 
-/** Picks Data Connect services based on flags. */
+/** Picks SQL Connect services based on flags. */
 export async function pickServices(
   projectId: string,
   config: Config,
@@ -49,8 +49,8 @@ export async function pickServices(
   const serviceInfos = await loadAll(projectId, config);
   if (serviceInfos.length === 0) {
     throw new FirebaseError(
-      "No Data Connect services found in firebase.json. " +
-        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a Data Connect service.`,
+      "No SQL Connect services found in firebase.json. " +
+        `\nYou can run ${clc.bold("firebase init dataconnect")} to add a SQL Connect service.`,
     );
   }
 
@@ -71,7 +71,7 @@ export async function pickServices(
 }
 
 /**
- * Loads all Data Connect service configurations from the firebase.json file.
+ * Loads all SQL Connect service configurations from the firebase.json file.
  */
 export async function loadAll(projectId: string, config: Config): Promise<ServiceInfo[]> {
   const serviceCfgs = readFirebaseJson(config);

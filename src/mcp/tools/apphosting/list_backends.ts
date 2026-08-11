@@ -42,7 +42,7 @@ export const list_backends = tool(
       requiresProject: true,
     },
   },
-  async ({ location } = {}, { projectId }) => {
+  async ({ location }, { projectId }) => {
     projectId = projectId || "";
     if (!location) location = "-";
     const backends = await listBackends(projectId, location);

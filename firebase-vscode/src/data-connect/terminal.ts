@@ -20,7 +20,7 @@ export function runCommand(command: string) {
   const settings = getSettings();
   setTerminalEnvVars(settings.extraEnv ?? {});
   const terminalOptions: TerminalOptions = {
-    name: "Data Connect Terminal",
+    name: "SQL Connect Terminal",
     env: environmentVariables,
   };
   const terminal = vscode.window.createTerminal(terminalOptions);

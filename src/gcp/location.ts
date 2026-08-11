@@ -40,6 +40,20 @@ export const DUAL_REGION_MAPPING: Record<string, string> = {
   "us-east1": "nam4",
 };
 
+/** Firestore dual-region to default function region mapping. */
+export const FIRESTORE_DUAL_REGION_TO_REGION_MAPPING: Record<string, string> = {
+  nam5: "us-central1",
+  nam7: "us-central1",
+  eur3: "europe-west1",
+};
+
+/** Google Cloud Storage multi-region to default function region mapping. */
+export const STORAGE_MULTI_REGION_TO_REGION_MAPPING: Record<string, string> = {
+  us: "us-east1",
+  eu: "europe-west1",
+  asia: "asia-east1",
+};
+
 /**
  * Helper function to determine if the given region is inside the multi-region or dual-region location.
  * This is helpful for determining if a specific region maps to a Google Cloud Storage location.
@@ -56,4 +70,12 @@ export function regionInLocation(region: string, location: string): boolean {
     return true;
   }
   return false;
+}
+
+/**
+ * Helper function to check if a region is a US region.
+ */
+export function isUSRegion(region: string): boolean {
+  const lower = region.toLowerCase();
+  return lower === "us" || lower.startsWith("nam") || lower.startsWith("us-");
 }

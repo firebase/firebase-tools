@@ -11,7 +11,6 @@ import { getPublisherProjectFromName, logPrefix } from "../extensions/extensions
 import { FirebaseError, getErrMsg, getError } from "../error";
 import { logger } from "../logger";
 import { select } from "../prompt";
-import { shortenUrl } from "../shortenUrl";
 
 export const command = new Command("ext:dev:usage <publisherId>")
   .description("get usage statistics for an extension")
@@ -168,6 +167,5 @@ async function buildCloudMonitoringLink(args: {
     `https://console.cloud.google.com/monitoring/metrics-explorer?project=${args.projectNumber}` +
     `&pageState=${JSON.stringify(pageState)}`;
   uri = encodeURI(uri);
-  uri = await shortenUrl(uri);
   return uri;
 }

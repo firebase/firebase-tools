@@ -63,6 +63,10 @@ describe("firestore rules", () => {
         instructions: [],
       };
       const cfg = new config.Config({}, { projectDir: "/", cwd: "/" });
+      const releases: gcp.rules.Release[] = [
+        { rulesetName: "ruleset-name", name: "release-name", createTime: "", updateTime: "" },
+      ];
+      sandbox.stub(gcp.rules, "listAllReleases").resolves(releases);
       const getRulesetNameStub = sandbox
         .stub(gcp.rules, "getLatestRulesetName")
         .resolves("ruleset-name");
@@ -83,7 +87,8 @@ describe("firestore rules", () => {
       };
       await initRules(setup, cfg, info);
 
-      expect(getRulesetNameStub.calledOnceWith("test-project", "cloud.firestore")).to.be.true;
+      expect(getRulesetNameStub.calledOnceWith("test-project", "cloud.firestore", releases)).to.be
+        .true;
       expect(getRulesetContentStub.calledOnceWith("ruleset-name")).to.be.true;
       expect(writeStub.calledOnceWith("firestore.rules", "console rules")).to.be.true;
       expect(info.rules).to.equal("console rules");

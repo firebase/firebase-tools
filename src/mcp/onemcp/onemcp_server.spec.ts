@@ -5,6 +5,7 @@ import { Client } from "../../apiv2";
 import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { ServerFeature } from "../types";
+import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
@@ -32,6 +33,7 @@ describe("OneMcpServer", () => {
         name: "test_tool",
         description: "A test tool",
         inputSchema: { type: "object", properties: {} },
+        outputSchema: { type: "object", properties: { status: { type: "string" } } },
       };
       clientRequestStub.resolves({
         body: {
@@ -46,12 +48,17 @@ describe("OneMcpServer", () => {
       expect(tools).to.have.length(1);
       expect(tools[0].mcp.name).to.equal("auth_test_tool");
       expect(tools[0].mcp.description).to.equal(mockMcpTool.description);
+      expect(tools[0].mcp.outputSchema).to.deep.equal(mockMcpTool.outputSchema);
       expect(tools[0].mcp._meta).to.deep.equal({
         requiresAuth: false,
         requiresProject: true,
         feature: "auth",
       });
       expect(clientRequestStub).to.have.been.calledOnce;
+      expect(clientRequestStub.firstCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/list",
+      });
     });
 
     it("should throw FirebaseError if fetch fails", async () => {
@@ -71,6 +78,30 @@ describe("OneMcpServer", () => {
       });
 
       await expect(server.listTools()).to.be.rejected;
+    });
+
+    it("should filter tools if allowedTools option is provided", async () => {
+      const serverWithFilter = new OneMcpServer(
+        feature,
+        serverUrl,
+        { requiresAuth: false, requiresProject: true },
+        { allowedTools: ["allowed_tool"] },
+      );
+      clientRequestStub.resolves({
+        body: {
+          result: {
+            tools: [
+              { name: "allowed_tool", inputSchema: { type: "object" } },
+              { name: "disallowed_tool", inputSchema: { type: "object" } },
+            ],
+          },
+        },
+      });
+
+      const tools = await serverWithFilter.listTools();
+
+      expect(tools).to.have.length(1);
+      expect(tools[0].mcp.name).to.equal("auth_allowed_tool");
     });
   });
 
@@ -115,7 +146,48 @@ describe("OneMcpServer", () => {
         },
       });
       expect(clientRequestStub.secondCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "test_tool",
         "x-goog-user-project": "test-project",
+      });
+    });
+
+    it("should include Mcp-Param-X HTTP headers when tool inputSchema defines x-mcp-header", async () => {
+      const mockMcpTool = {
+        name: "execute_sql",
+        inputSchema: {
+          type: "object",
+          properties: {
+            region: {
+              type: "string",
+              "x-mcp-header": "Region",
+            },
+            query: {
+              type: "string",
+            },
+          },
+        },
+      };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      await tool.fn({ region: "us-west1", query: "SELECT 1" }, mockContext);
+
+      expect(clientRequestStub.secondCall.args[0].headers).to.deep.include({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "execute_sql",
+        "x-goog-user-project": "test-project",
+        "Mcp-Param-Region": "us-west1",
       });
     });
 
@@ -135,6 +207,11 @@ describe("OneMcpServer", () => {
       await tool.fn({ arg: "val" }, { ...mockContext, projectId: undefined });
 
       expect(clientRequestStub.secondCall.args[0].headers?.["x-goog-user-project"]).to.be.undefined;
+      expect(clientRequestStub.secondCall.args[0].headers).to.deep.equal({
+        "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
+        "Mcp-Method": "tools/call",
+        "Mcp-Name": "test_tool",
+      });
     });
 
     it("should handle remote tool error results", async () => {
@@ -191,6 +268,22 @@ describe("OneMcpServer", () => {
       });
 
       await expect(tool.fn({}, mockContext)).to.be.rejected;
+    });
+
+    it("should throw FirebaseError when calling a tool not in allowedTools", async () => {
+      const serverWithFilter = new OneMcpServer(
+        feature,
+        serverUrl,
+        { requiresAuth: false, requiresProject: true },
+        { allowedTools: ["allowed_tool"] },
+      );
+
+      const fn = (serverWithFilter as any).callTool.bind(serverWithFilter);
+
+      await expect(fn("disallowed_tool", undefined, {}, mockContext)).to.be.rejectedWith(
+        FirebaseError,
+        /is not allowed on remote server/,
+      );
     });
   });
 });

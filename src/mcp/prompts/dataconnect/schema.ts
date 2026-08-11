@@ -5,12 +5,12 @@ import { BUILTIN_SDL, MAIN_INSTRUCTIONS } from "../../util/dataconnect/content";
 import { compileErrors } from "../../util/dataconnect/compile";
 
 function renderServices(fdcServices: ServiceInfo[]) {
-  if (!fdcServices.length) return "Data Connect Status: <UNCONFIGURED>";
+  if (!fdcServices.length) return "SQL Connect Status: <UNCONFIGURED>";
 
   // TODO: Render secondary schemas as well.
-  return `\n\n## Data Connect Schema
+  return `\n\n## SQL Connect Schema
 
-The following is the up-to-date content of existing schema files (their paths are relative to the Data Connect source directory).
+The following is the up-to-date content of existing schema files (their paths are relative to the SQL Connect source directory).
 
 ${mainSchema(fdcServices[0].schemas)
   .source.files?.map((f) => `\`\`\`graphql ${f.path}\n${f.content}\n\`\`\``)
@@ -25,7 +25,7 @@ export const schema = prompt(
   "core",
   {
     name: "schema",
-    description: "Generate or update your Firebase Data Connect schema.",
+    description: "Generate or update your Firebase SQL Connect schema.",
     arguments: [
       {
         name: "prompt",
@@ -35,7 +35,7 @@ export const schema = prompt(
       },
     ],
     annotations: {
-      title: "Generate Data Connect Schema",
+      title: "Generate SQL Connect Schema",
     },
   },
   async ({ prompt }, { config, projectId, accountEmail }) => {
@@ -64,7 +64,7 @@ ${prompt}
 
 ==== TASK INSTRUCTIONS ====
 
-1. If Data Connect is marked as \`<UNCONFIGURED>\`, first run the \`firebase_init\` tool with \`{dataconnect: {}}\` arguments to initialize it.
+1. If SQL Connect is marked as \`<UNCONFIGURED>\`, first run the \`firebase_init\` tool with \`{dataconnect: {}}\` arguments to initialize it.
 2. If there is not an existing schema to work with (or the existing schema is the commented-out default schema about a movie app), follow the user's prompt to generate a robust schema meeting the specified requirements.
 3. If there is already a schema, perform edits to the existing schema file(s) based on the user's instructions. If schema build errors are present and seem relevant to your changes, attempt to fix them.
 4. After you have performed edits on the schema, run the \`dataconnect_compile\` tool to build the schema and see if there are any errors. Fix errors that are related to the user's prompt or your changes.

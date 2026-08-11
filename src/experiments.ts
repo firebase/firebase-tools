@@ -1,9 +1,8 @@
 import { bold, italic } from "colorette";
-import * as leven from "leven";
 import { basename } from "path";
 import { configstore } from "./configstore";
 import { FirebaseError } from "./error";
-import { isRunningInGithubAction } from "./utils";
+import { isRunningInGithubAction, stringDistance } from "./utils";
 
 export interface Experiment {
   shortDescription: string;
@@ -86,6 +85,17 @@ export const ALL_EXPERIMENTS = experiments({
     public: false,
     default: false,
   },
+  dartfunctions: {
+    shortDescription: "Enable Dart Functions.",
+    public: true,
+    default: false,
+  },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -132,6 +142,24 @@ export const ALL_EXPERIMENTS = experiments({
       "without a notice.",
   },
 
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement and attestation providers from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services`, `firebase appcheck:providers` and " +
+      "`firebase appcheck:apps` commands for reading and changing App Check enforcement per " +
+      "service and the attestation providers of each app. These commands are in preview and " +
+      "may change until the surface is API council approved. The `firebase appcheck:debugtokens` " +
+      "commands are generally available and are not affected by this experiment.",
+  },
+
+  ailogic: {
+    shortDescription: "Manage Firebase AI Logic from the CLI.",
+    fullDescription:
+      "Enables the `firebase ailogic` command surface for managing Firebase AI Logic, " +
+      "starting with the Gemini API providers. These commands are in preview and may " +
+      "change until the underlying API is finalized.",
+  },
+
   apphosting: {
     shortDescription: "Allow CLI option for Frameworks",
     default: true,
@@ -143,16 +171,18 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: false,
   },
+
   abiu: {
-    shortDescription: "Enable App Hosting ABIU and runtime selection",
-    default: false,
-    public: false,
+    shortDescription:
+      "Enable Automatic Base Image Updates (ABIU) and runtime selection for App Hosting",
+    default: true,
+    public: true,
   },
 
   // TODO(joehanley): Delete this once weve scrubbed all references to experiment from docs.
   dataconnect: {
-    shortDescription: "Deprecated. Previosuly, enabled Data Connect related features.",
-    fullDescription: "Deprecated. Previously, enabled Data Connect related features.",
+    shortDescription: "Deprecated. Previosuly, enabled SQL Connect related features.",
+    fullDescription: "Deprecated. Previously, enabled SQL Connect related features.",
     public: false,
   },
 
@@ -179,8 +209,13 @@ export const ALL_EXPERIMENTS = experiments({
     default: false,
     public: true,
   },
+  mcpapps: {
+    shortDescription: "Enables MCP Apps features",
+    fullDescription: "Enables MCP Apps features, including returning UI resource URIs.",
+    public: true,
+  },
   fdcift: {
-    shortDescription: "Enable instrumentless trial for Data Connect",
+    shortDescription: "Enable instrumentless trial for SQL Connect",
     default: true,
     public: false,
   },
@@ -189,8 +224,35 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
   },
   fdcwebhooks: {
-    shortDescription: "Enable Firebase Data Connect webhooks feature.",
+    shortDescription: "Enable Firebase SQL Connect webhooks feature.",
     default: true,
+    public: false,
+  },
+  fdcrealtime: {
+    shortDescription: "Enable Firebase SQL Connect realtime feature.",
+    default: true,
+    public: false,
+  },
+  crashlyticsWeb: {
+    shortDescription: "Enable the ability to upload source maps for web apps to Crashlytics.",
+    default: false,
+    public: true,
+  },
+  secretEnvParams: {
+    shortDescription:
+      "Enable writing the backing resource binding for a Functions secret param to .env",
+    default: false,
+    public: false,
+  },
+  extdeprecationwarnings: {
+    shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
+    default: true,
+    public: true,
+  },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: false,
     public: false,
   },
 });
@@ -220,7 +282,7 @@ export function experimentNameAutocorrect(malformed: string): string[] {
   // but this logic matches src/index.ts. I neither want to change something
   // with such potential impact nor to create divergent behavior.
   return Object.keys(ALL_EXPERIMENTS).filter(
-    (name) => leven(name, malformed) < malformed.length * 0.4,
+    (name) => stringDistance(name, malformed) < malformed.length * 0.4,
   );
 }
 

@@ -62,7 +62,7 @@ export function instanceConsoleLink(projectId: string, instanceId: string) {
 }
 
 export type DataConnectLabel = "ft" | "nt";
-export const DEFAULT_DATABASE_VERSION = "POSTGRES_17";
+export const DEFAULT_DATABASE_VERSION = "POSTGRES_18";
 
 export async function createInstance(args: {
   projectId: string;
@@ -105,7 +105,7 @@ export async function createInstance(args: {
 }
 
 /**
- * Update an existing CloudSQL instance to have any required settings for Firebase Data Connect.
+ * Update an existing CloudSQL instance to have any required settings for Firebase SQL Connect.
  */
 export async function updateInstanceForDataConnect(
   instance: Instance,

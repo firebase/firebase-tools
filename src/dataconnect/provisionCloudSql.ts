@@ -88,14 +88,14 @@ async function upsertInstance(
       if (dryRun) {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase SQL Connect. ` +
             `It will be updated on your next deploy.` +
             why,
         );
       } else {
         utils.logLabeledBullet(
           "dataconnect",
-          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase Data Connect. ` +
+          `Cloud SQL instance ${clc.bold(instanceId)} settings are not compatible with Firebase SQL Connect. ` +
             why,
         );
         stats.action = "update";
@@ -170,7 +170,7 @@ export function cloudSQLBeingCreated(
   return (
     `Cloud SQL Instance ${clc.bold(instanceId)} is being created.` +
     (isFreeTrial
-      ? `\nThis instance is provided under the terms of the Data Connect no-cost trial ${freeTrialTermsLink()}`
+      ? `\nThis instance is provided under the terms of the SQL Connect no-cost trial ${freeTrialTermsLink()}`
       : "") +
     `\n
    Meanwhile, your data are saved in a temporary database and will be migrated once complete.` +
@@ -229,7 +229,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
       settings.ipConfiguration?.privateNetwork &&
       !settings.ipConfiguration?.enablePrivatePathForGoogleCloudServices
     ) {
-      // Cloud SQL instances with only private IP must enable PSC for Data Connect backend to connect to it.
+      // Cloud SQL instances with only private IP must enable PSC for SQL Connect backend to connect to it.
       reason += "\n - to enable Private Path for Google Cloud Services.";
     }
   }
@@ -247,7 +247,7 @@ export function getUpdateReason(instance: Instance, requireGoogleMlIntegration: 
     }
   }
 
-  // Cloud SQL instances must have IAM authentication enabled to be used with Firebase Data Connect.
+  // Cloud SQL instances must have IAM authentication enabled to be used with Firebase SQL Connect.
   const isIamEnabled =
     settings.databaseFlags?.some(
       (f) => f.name === "cloudsql.iam_authentication" && f.value === "on",

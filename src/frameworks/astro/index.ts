@@ -49,7 +49,7 @@ export async function ɵcodegenPublicDirectory(root: string, dest: string) {
 export async function ɵcodegenFunctionsDirectory(sourceDir: string, destDir: string) {
   const { outDir } = await getConfig(sourceDir);
   const packageJson = await readJSON(join(sourceDir, "package.json"));
-  await copy(join(sourceDir, outDir, "server"), join(destDir));
+  await copy(join(sourceDir, outDir, "server"), join(destDir, "server"));
   return {
     packageJson,
     bootstrapScript: getBootstrapScript(),

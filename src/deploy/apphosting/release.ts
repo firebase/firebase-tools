@@ -42,25 +42,37 @@ export default async function (context: Context, options: Options): Promise<void
   }
 
   const projectId = needProjectId(options);
-  const rollouts = backendIds.map((backendId) =>
-    // TODO(9114): Add run_command
-    // TODO(914): Set the buildConfig.
-    orchestrateRollout({
+  const rollouts = backendIds.map((backendId) => {
+    const localBuild = context.backendLocalBuilds[backendId];
+    const userStorageUri = context.backendStorageUris[backendId];
+    const rootDirectory = context.backendConfigs[backendId].rootDir;
+
+    const source = localBuild
+      ? {
+          locallyBuilt: {
+            userStorageUri,
+            rootDirectory,
+            runCommand: localBuild.buildConfig?.runCommand,
+            env: localBuild.buildConfig?.env,
+          },
+        }
+      : {
+          archive: {
+            userStorageUri,
+            rootDirectory,
+          },
+        };
+
+    return orchestrateRollout({
       projectId,
       backendId,
       location: context.backendLocations[backendId],
       buildInput: {
-        config: context.backendLocalBuilds[backendId]?.buildConfig,
-        source: {
-          archive: {
-            userStorageUri: context.backendStorageUris[backendId],
-            rootDirectory: context.backendConfigs[backendId].rootDir,
-            locallyBuiltSource: !!context.backendLocalBuilds[backendId],
-          },
-        },
+        config: localBuild?.buildConfig,
+        source,
       },
-    }),
-  );
+    });
+  });
 
   logLabeledBullet(
     "apphosting",
@@ -70,6 +82,7 @@ export default async function (context: Context, options: Options): Promise<void
     `Starting rollout(s) for backend(s) ${backendIds.join(", ")}; this may take a few minutes. It's safe to exit now.\n`,
   ).start();
   const results = await Promise.allSettled(rollouts);
+  rolloutsSpinner.stop();
   let failed = false;
   for (let i = 0; i < results.length; i++) {
     const res = results[i];
@@ -83,7 +96,6 @@ export default async function (context: Context, options: Options): Promise<void
       logLabeledError("apphosting", `${res.reason}`);
     }
   }
-  rolloutsSpinner.stop();
   if (failed) {
     throw new FirebaseError(
       "One or more rollouts failed. Please review the errors above and try again.",

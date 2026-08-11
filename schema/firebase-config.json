@@ -12,9 +12,46 @@
                 "python310",
                 "python311",
                 "python312",
-                "python313"
+                "python313",
+                "python314"
             ],
             "type": "string"
+        },
+        "AiLogicConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "templates": {
+                    "description": "Directory of .prompt files deployed as server prompt templates (default: \"prompts\").",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
         "AuthConfig": {
             "additionalProperties": false,
@@ -300,6 +337,9 @@
         },
         "FunctionConfig": {
             "anyOf": [
+                {
+                    "$ref": "#/definitions/KitFunctionConfig"
+                },
                 {
                     "$ref": "#/definitions/LocalFunctionConfig"
                 },
@@ -908,6 +948,93 @@
             },
             "type": "object"
         },
+        "KitFunctionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "ignore": {
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
+                },
+                "instances": {
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Dictionary mapping instance IDs to their configuration directories",
+                    "type": "object"
+                },
+                "kit": {
+                    "description": "Unique identifier for the functions kit (peer to codebase)",
+                    "type": "string"
+                },
+                "postdeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "predeploy": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "runtime": {
+                    "enum": [
+                        "dart3",
+                        "nodejs18",
+                        "nodejs20",
+                        "nodejs22",
+                        "nodejs24",
+                        "python310",
+                        "python311",
+                        "python312",
+                        "python313",
+                        "python314"
+                    ],
+                    "type": "string"
+                },
+                "source": {
+                    "description": "Local directory containing the kit source code.",
+                    "type": "string"
+                },
+                "sourcePackage": {
+                    "additionalProperties": false,
+                    "description": "Package details when resolved from a package repository.",
+                    "properties": {
+                        "id": {
+                            "description": "Package identifier (e.g., \"@firebase-functions-kits/firestore-bigquery-export\")",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "id"
+                    ],
+                    "type": "object"
+                }
+            },
+            "required": [
+                "instances",
+                "kit",
+                "source"
+            ],
+            "type": "object"
+        },
         "LocalFunctionConfig": {
             "additionalProperties": false,
             "properties": {
@@ -965,7 +1092,8 @@
                         "python310",
                         "python311",
                         "python312",
-                        "python313"
+                        "python313",
+                        "python314"
                     ],
                     "type": "string"
                 },
@@ -1138,6 +1266,9 @@
     "properties": {
         "$schema": {
             "type": "string"
+        },
+        "ailogic": {
+            "$ref": "#/definitions/AiLogicConfig"
         },
         "apphosting": {
             "anyOf": [
@@ -1412,6 +1543,9 @@
                 "firestore": {
                     "additionalProperties": false,
                     "properties": {
+                        "edition": {
+                            "type": "string"
+                        },
                         "host": {
                             "type": "string"
                         },
@@ -1642,6 +1776,9 @@
         },
         "functions": {
             "anyOf": [
+                {
+                    "$ref": "#/definitions/KitFunctionConfig"
+                },
                 {
                     "$ref": "#/definitions/LocalFunctionConfig"
                 },

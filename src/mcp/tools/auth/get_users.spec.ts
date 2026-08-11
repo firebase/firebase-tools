@@ -33,7 +33,7 @@ describe("get_users tool", () => {
       listUsersStub.resolves(users);
       const result = await get_users.fn({}, { projectId } as McpContext);
       expect(listUsersStub).to.be.calledWith(projectId, 100);
-      expect(result).to.deep.equal(toContent(prunedUsers));
+      expect(result).to.deep.equal(toContent({ users: prunedUsers }));
     });
   });
 
@@ -44,7 +44,7 @@ describe("get_users tool", () => {
       const result = await get_users.fn({ uids: ["uid1", "uid2"] }, { projectId } as McpContext);
       expect(findUserStub).to.be.calledWith(projectId, undefined, undefined, "uid1");
       expect(findUserStub).to.be.calledWith(projectId, undefined, undefined, "uid2");
-      expect(result).to.deep.equal(toContent(prunedUsers));
+      expect(result).to.deep.equal(toContent({ users: prunedUsers }));
     });
 
     it("should handle not found users", async () => {
@@ -53,7 +53,7 @@ describe("get_users tool", () => {
       const result = await get_users.fn({ uids: ["uid1", "uid2"] }, { projectId } as McpContext);
       expect(findUserStub).to.be.calledWith(projectId, undefined, undefined, "uid1");
       expect(findUserStub).to.be.calledWith(projectId, undefined, undefined, "uid2");
-      expect(result).to.deep.equal(toContent([prunedUsers[0]]));
+      expect(result).to.deep.equal(toContent({ users: [prunedUsers[0]] }));
     });
   });
 
@@ -66,7 +66,7 @@ describe("get_users tool", () => {
       } as McpContext);
       expect(findUserStub).to.be.calledWith(projectId, "user1@example.com", undefined, undefined);
       expect(findUserStub).to.be.calledWith(projectId, "user2@example.com", undefined, undefined);
-      expect(result).to.deep.equal(toContent(prunedUsers));
+      expect(result).to.deep.equal(toContent({ users: prunedUsers }));
     });
   });
 
@@ -79,7 +79,7 @@ describe("get_users tool", () => {
       } as McpContext);
       expect(findUserStub).to.be.calledWith(projectId, undefined, "+11111111111", undefined);
       expect(findUserStub).to.be.calledWith(projectId, undefined, "+22222222222", undefined);
-      expect(result).to.deep.equal(toContent(prunedUsers));
+      expect(result).to.deep.equal(toContent({ users: prunedUsers }));
     });
   });
 });

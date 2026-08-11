@@ -194,7 +194,7 @@ describe("buildFromV1Alpha", () => {
     });
 
     describe("dataConnectGraphqlTriggers", () => {
-      it("invalid value for Data Connect https trigger key invoker", () => {
+      it("invalid value for SQL Connect https trigger key invoker", () => {
         assertParserError({
           endpoints: {
             func: {
@@ -1100,6 +1100,140 @@ describe("buildFromV1Alpha", () => {
         },
       });
       expect(parsed).to.deep.equal(expected);
+    });
+  });
+
+  describe("lifecycleHooks", () => {
+    it("copies valid task lifecycle hooks", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterFirstDeploy: {
+            task: {
+              function: "myTaskFunc",
+              body: { key: "value" },
+            },
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.lifecycleHooks = {
+        afterFirstDeploy: {
+          task: {
+            function: "myTaskFunc",
+            body: { key: "value" },
+          },
+        },
+      };
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies valid call lifecycle hooks", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterRedeploy: {
+            call: {
+              function: "myCallFunc",
+              params: { foo: "bar" },
+            },
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.lifecycleHooks = {
+        afterRedeploy: {
+          call: {
+            function: "myCallFunc",
+            params: { foo: "bar" },
+          },
+        },
+      };
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("copies valid http lifecycle hooks", () => {
+      const yaml: v1alpha1.WireManifest = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterFirstDeploy: {
+            http: {
+              url: "https://example.com/hook",
+              body: "some-body",
+            },
+          },
+        },
+      };
+
+      const parsed = v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME);
+      const expected: build.Build = build.empty();
+      expected.lifecycleHooks = {
+        afterFirstDeploy: {
+          http: {
+            url: "https://example.com/hook",
+            body: "some-body",
+          },
+        },
+      };
+      expect(parsed).to.deep.equal(expected);
+    });
+
+    it("throws on invalid event type", () => {
+      const yaml = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          invalidHookName: {
+            task: {
+              function: "myTaskFunc",
+            },
+          },
+        },
+      };
+
+      expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
+        FirebaseError,
+        /Invalid eventType "invalidHookName" for lifecycle hook/,
+      );
+    });
+
+    it("throws when target function is missing in task hook", () => {
+      const yaml = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterFirstDeploy: {
+            task: {},
+          },
+        },
+      };
+
+      expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
+        FirebaseError,
+        /Invalid target "" for lifecycle hook "afterFirstDeploy"/,
+      );
+    });
+
+    it("throws when action is missing", () => {
+      const yaml = {
+        specVersion: "v1alpha1",
+        endpoints: {},
+        lifecycleHooks: {
+          afterFirstDeploy: {},
+        },
+      };
+
+      expect(() => v1alpha1.buildFromV1Alpha1(yaml, PROJECT, REGION, RUNTIME)).to.throw(
+        FirebaseError,
+        /No action \(task, call, or http\) specified for lifecycle hook "afterFirstDeploy"/,
+      );
     });
   });
 });

@@ -59,7 +59,11 @@ export function printBackendsTable(backends: apphosting.Backend[]): void {
     ];
     if (abiuEnabled) {
       let abiuStatus = "N/A";
-      if (backend.automaticBaseImageUpdatesDisabled !== undefined) {
+      const runtimeValue = backend.runtime?.value ?? "";
+      // We know these runtimes do not support ABIU
+      if (runtimeValue === "" || runtimeValue === "nodejs") {
+        abiuStatus = "Disabled";
+      } else {
         abiuStatus = backend.automaticBaseImageUpdatesDisabled ? "Disabled" : "Enabled";
       }
       row.push(abiuStatus);

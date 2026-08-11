@@ -2,7 +2,7 @@ import vscode, { Uri } from "vscode";
 import path from "path";
 import * as fs from "fs";
 
-import { dataConnectConfigs } from "./config";
+import { dataConnectConfigs, ResolvedDataConnectConfig } from "./config";
 import { pluginLogger } from "../logger-wrapper";
 
 export async function checkIfFileExists(file: Uri) {
@@ -132,4 +132,72 @@ export async function findGqlFiles(dir: string): Promise<string[]> {
     pluginLogger.error(`Failed to find GQL files: ${error}`);
     return [];
   }
+}
+
+/**
+ * Fetches the schema files and returns them in the format expected by the Gemini API.
+ */
+export async function getSchemas(
+  serviceConfig: ResolvedDataConnectConfig,
+): Promise<any[]> {
+  const schemas: any[] = [];
+  const mainSchemaDir = path.join(
+    serviceConfig.path,
+    serviceConfig.mainSchemaDir,
+  );
+  const secondaryDirs = serviceConfig.secondarySchemaDirs.map((dir) =>
+    path.join(serviceConfig.path, dir),
+  );
+
+  const schemaFiles: string[] = [];
+  schemaFiles.push(...(await findGqlFiles(mainSchemaDir)));
+  for (const dir of secondaryDirs) {
+    schemaFiles.push(...(await findGqlFiles(dir)));
+  }
+
+  const files = await Promise.all(
+    schemaFiles.map(async (file) => {
+      const content = await fs.promises.readFile(file, "utf-8");
+      return {
+        path: path.basename(file),
+        content: content,
+      };
+    }),
+  );
+
+  if (files.length > 0) {
+    schemas.push({
+      source: {
+        files: files,
+      },
+    });
+  }
+
+  return schemas;
+}
+
+
+/**
+ * Checks if a given file is a schema file based on the provided FDCConfig object.
+ * @param fdcConfigs FDCConfig object
+ * @param fileName The path to the file to check.
+ * @returns true if the file is a schema file, false otherwise.
+ */
+export async function isSchemaFile(fdcConfigs: any, fileName: string): Promise<boolean> {
+    if (!fdcConfigs) {
+      return false;
+    }
+    const service = fdcConfigs.findEnclosingServiceForPath(fileName);
+    if (!service) {
+      return false;
+    }
+
+    const mainSchemaDir = path.join(service.path, service.mainSchemaDir);
+    const secondaryDirs = service.secondarySchemaDirs.map((dir: string) => path.join(service.path, dir));
+    
+    // Only provide schema code lenses for files inside the schema directories.
+    // This avoids parsing non-schema files (e.g. query files) which improves performance.
+    return isPathInside(fileName, mainSchemaDir) || 
+                         secondaryDirs.some((dir: string) => isPathInside(fileName, dir));
+
 }

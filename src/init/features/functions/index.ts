@@ -15,6 +15,7 @@ import {
 import { FirebaseError } from "../../../error";
 import { functionsOrigin, runtimeconfigOrigin } from "../../../api";
 import * as supported from "../../../deploy/functions/runtimes/supported";
+import * as experiments from "../../../experiments";
 
 const MAX_ATTEMPTS = 5;
 
@@ -171,16 +172,18 @@ async function languageSetup(setup: any): Promise<void> {
     },
   ];
   if (!setup.featureInfo?.dataconnectResolver) {
-    // Data Connect resolvers do not yet support Python.
+    // SQL Connect resolvers do not yet support Python.
     choices.push({
       name: "Python",
       value: "python",
     });
   }
-  choices.push({
-    name: "Dart",
-    value: "dart",
-  });
+  if (experiments.isEnabled("dartfunctions")) {
+    choices.push({
+      name: "Dart",
+      value: "dart",
+    });
+  }
   const language = await select({
     message: "What language would you like to use to write Cloud Functions?",
     default: "javascript",

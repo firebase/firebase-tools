@@ -69,7 +69,11 @@ export const run_tests = tool(
     const devices = testDevices || defaultDevices;
     const client = new AppDistributionClient();
     const release = await upload(client, toAppName(appId), new Distribution(releaseBinaryFile));
-    return toContent(await client.createReleaseTest(release.name, devices, testCase));
+    return toContent(
+      await client.createReleaseTest(release.name, devices, {
+        aiInstructions: testCase,
+      }),
+    );
   },
 );
 

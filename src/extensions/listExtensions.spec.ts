@@ -14,6 +14,14 @@ const MOCK_INSTANCES = [
       extensionRef: "firebase/image-resizer",
       name: "projects/my-test-proj/instances/image-resizer/configurations/95355951-397f-4821-a5c2-9c9788b2cc63",
       createTime: "2019-05-19T00:20:10.416947Z",
+      params: {
+        IMG_BUCKET: "my-test-proj.firebasestorage.app",
+        IMG_SIZES: "200x200,400x400",
+        DELETE_ORIGINAL_FILE: "false",
+      },
+      systemParams: {
+        "firebaseextensions.v1beta.function/location": "us-central1",
+      },
       source: {
         state: "ACTIVE",
         spec: {
@@ -35,6 +43,14 @@ const MOCK_INSTANCES = [
       extensionRef: "firebase/image-resizer",
       name: "projects/my-test-proj/instances/image-resizer-1/configurations/5b1fb749-764d-4bd1-af60-bb7f22d27860",
       createTime: "2019-06-19T00:21:06.722782Z",
+      params: {
+        IMG_BUCKET: "my-test-proj.firebasestorage.app",
+        IMG_SIZES: "300x300",
+        DELETE_ORIGINAL_FILE: "true",
+      },
+      systemParams: {
+        "firebaseextensions.v1beta.function/location": "us-central1",
+      },
       source: {
         spec: {
           version: "0.1.0",
@@ -78,6 +94,14 @@ describe("listExtensions", () => {
         state: "ACTIVE",
         updateTime: "2019-06-19 00:21:06",
         version: "0.1.0",
+        params: {
+          IMG_BUCKET: "my-test-proj.firebasestorage.app",
+          IMG_SIZES: "300x300",
+          DELETE_ORIGINAL_FILE: "true",
+        },
+        systemParams: {
+          "firebaseextensions.v1beta.function/location": "us-central1",
+        },
       },
       {
         extension: "firebase/image-resizer",
@@ -86,6 +110,14 @@ describe("listExtensions", () => {
         state: "ACTIVE",
         updateTime: "2019-05-19 00:20:10",
         version: "0.1.0",
+        params: {
+          IMG_BUCKET: "my-test-proj.firebasestorage.app",
+          IMG_SIZES: "200x200,400x400",
+          DELETE_ORIGINAL_FILE: "false",
+        },
+        systemParams: {
+          "firebaseextensions.v1beta.function/location": "us-central1",
+        },
       },
     ];
     expect(result).to.eql(expected);

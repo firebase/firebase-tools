@@ -51,7 +51,7 @@ echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Initialized temp directory."
 
 echo "Testing local serve..."
-firebase serve --only hosting --project "${FBTOOLS_TARGET_PROJECT}" --port "${PORT}" &
+firebase serve --only hosting --project "${FBTOOLS_TARGET_PROJECT}" --port "${PORT}" --debug &
 PID="$!"
 sleep 5
 VALUE="$(curl localhost:${PORT}/${TARGET_FILE})"

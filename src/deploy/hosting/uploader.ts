@@ -1,5 +1,4 @@
 import { size } from "lodash";
-import AbortController from "abort-controller";
 import * as clc from "colorette";
 import * as crypto from "crypto";
 import * as fs from "fs";
@@ -12,6 +11,7 @@ import { hostingApiOrigin } from "../../api";
 import { load, dump, HashRecord } from "./hashcache";
 import { logger } from "../../logger";
 import { FirebaseError } from "../../error";
+import { streamToString } from "../../streamUtils";
 
 const MIN_UPLOAD_TIMEOUT = 30000; // 30s
 const MAX_UPLOAD_TIMEOUT = 7200000; // 2h
@@ -233,7 +233,7 @@ export class Uploader {
     const timeout = setTimeout(() => {
       controller.abort();
     }, this.uploadTimeout(this.hashMap[toUpload]));
-    const res = await this.uploadClient.request({
+    const res = await this.uploadClient.request<unknown, NodeJS.ReadableStream>({
       method: "POST",
       path: `/${toUpload}`,
       body: this.zipStream(this.hashMap[toUpload]),
@@ -246,11 +246,11 @@ export class Uploader {
       logger.debug("[hosting][upload]", this.uploadQueue.stats());
     }
     if (res.status !== 200) {
-      const errorMessage = await res.response.text();
+      const errorMessage = await streamToString(res.body);
       logger.debug(
         `[hosting][upload] ${this.hashMap[toUpload]} (${toUpload}) HTTP ERROR ${
           res.status
-        }: headers=${JSON.stringify(res.response.headers.raw())} ${errorMessage}`,
+        }: headers=${JSON.stringify(Object.fromEntries((res.response.headers as any).entries()))} ${errorMessage}`,
       );
       throw new Error(`Unexpected error while uploading file: ${errorMessage}`);
     }

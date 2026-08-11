@@ -15,6 +15,8 @@ import { logout } from "./logout";
 import { get_security_rules } from "./get_security_rules";
 import { validate_security_rules } from "./validate_security_rules";
 import { read_resources } from "./read_resources";
+import { deploy } from "./deploy";
+import { deploy_status } from "./deploy_status";
 
 export const coreTools: ServerTool[] = [
   login,
@@ -32,4 +34,6 @@ export const coreTools: ServerTool[] = [
   init,
   get_security_rules,
   read_resources,
+  deploy,
+  deploy_status,
 ];

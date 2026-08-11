@@ -29,6 +29,26 @@ export function load(client: CLIClient): CLIClient {
 
   const t0 = process.hrtime.bigint();
 
+  client.appcheck = {};
+  client.appcheck.debugtokens = {};
+  client.appcheck.debugtokens.create = loadCommand("appcheck-debugtokens-create");
+  client.appcheck.debugtokens.list = loadCommand("appcheck-debugtokens-list");
+  client.appcheck.debugtokens.delete = loadCommand("appcheck-debugtokens-delete");
+  // Enforcement and attestation providers are gated until the surface is API
+  // council approved, since the shape could still change. The debug token
+  // commands above already shipped and stay generally available.
+  if (experiments.isEnabled("appcheckadmin")) {
+    client.appcheck.services = {};
+    client.appcheck.services.list = loadCommand("appcheck-services-list");
+    client.appcheck.services.get = loadCommand("appcheck-services-get");
+    client.appcheck.services.set = loadCommand("appcheck-services-set");
+    client.appcheck.providers = {};
+    client.appcheck.providers.list = loadCommand("appcheck-providers-list");
+    client.appcheck.providers.get = loadCommand("appcheck-providers-get");
+    client.appcheck.providers.set = loadCommand("appcheck-providers-set");
+    client.appcheck.apps = {};
+    client.appcheck.apps.list = loadCommand("appcheck-apps-list");
+  }
   client.appdistribution = {};
   client.appdistribution.distribute = loadCommand("appdistribution-distribute");
   client.appdistribution.testers = {};
@@ -62,11 +82,17 @@ export function load(client: CLIClient): CLIClient {
   client.auth.export = loadCommand("auth-export");
   client.auth.import = loadCommand("auth-import");
   client.crashlytics = {};
+  client.crashlytics.onboard = {};
+  client.crashlytics.onboard.web = loadCommand("crashlytics-onboard-web");
   client.crashlytics.symbols = {};
   client.crashlytics.symbols.upload = loadCommand("crashlytics-symbols-upload");
   client.crashlytics.mappingfile = {};
   client.crashlytics.mappingfile.generateid = loadCommand("crashlytics-mappingfile-generateid");
   client.crashlytics.mappingfile.upload = loadCommand("crashlytics-mappingfile-upload");
+  if (experiments.isEnabled("crashlyticsWeb")) {
+    client.crashlytics.sourcemap = {};
+    client.crashlytics.sourcemap.upload = loadCommand("crashlytics-sourcemap-upload");
+  }
   client.database = {};
   client.database.get = loadCommand("database-get");
   client.database.import = loadCommand("database-import");
@@ -157,6 +183,9 @@ export function load(client: CLIClient): CLIClient {
   client.functions.log = loadCommand("functions-log");
   client.functions.shell = loadCommand("functions-shell");
   client.functions.list = loadCommand("functions-list");
+  client.functions.lifecycle = {};
+  client.functions.lifecycle.list = loadCommand("functions-lifecycle-list");
+  client.functions.lifecycle.run = loadCommand("functions-lifecycle-run");
   if (experiments.isEnabled("deletegcfartifacts")) {
     client.functions.deletegcfartifacts = loadCommand("functions-deletegcfartifacts");
   }
@@ -169,6 +198,10 @@ export function load(client: CLIClient): CLIClient {
   client.functions.secrets.set = loadCommand("functions-secrets-set");
   client.functions.artifacts = {};
   client.functions.artifacts.setpolicy = loadCommand("functions-artifacts-setpolicy");
+  if (experiments.isEnabled("kits")) {
+    client.functions.kits = {};
+    client.functions.kits.install = loadCommand("functions-kits-install");
+  }
   client.help = loadCommand("help");
   client.hosting = {};
   client.hosting.channel = {};
@@ -201,6 +234,7 @@ export function load(client: CLIClient): CLIClient {
     client.apphosting.backends.delete = loadCommand("apphosting-backends-delete");
     client.apphosting.secrets = {};
     client.apphosting.secrets.set = loadCommand("apphosting-secrets-set");
+    client.apphosting.secrets.revokeaccess = loadCommand("apphosting-secrets-revokeaccess");
     client.apphosting.secrets.grantaccess = loadCommand("apphosting-secrets-grantaccess");
     client.apphosting.secrets.describe = loadCommand("apphosting-secrets-describe");
     client.apphosting.secrets.access = loadCommand("apphosting-secrets-access");
@@ -216,6 +250,25 @@ export function load(client: CLIClient): CLIClient {
       client.apphosting.rollouts.list = loadCommand("apphosting-rollouts-list");
     }
   }
+  // Gated behind the `ailogic` experiment until the underlying API is API-council
+  // approved, since the surface may still change.
+  if (experiments.isEnabled("ailogic")) {
+    client.ailogic = {};
+    client.ailogic.providers = {};
+    client.ailogic.providers.enable = loadCommand("ailogic-providers-enable");
+    client.ailogic.providers.disable = loadCommand("ailogic-providers-disable");
+    client.ailogic.providers.list = loadCommand("ailogic-providers-list");
+    client.ailogic.config = {};
+    client.ailogic.config.get = loadCommand("ailogic-config-get");
+    client.ailogic.config.set = loadCommand("ailogic-config-set");
+    client.ailogic.templates = {};
+    client.ailogic.templates.list = loadCommand("ailogic-templates-list");
+    client.ailogic.templates.get = loadCommand("ailogic-templates-get");
+    client.ailogic.templates.delete = loadCommand("ailogic-templates-delete");
+    client.ailogic.templates.lock = loadCommand("ailogic-templates-lock");
+    client.ailogic.templates.unlock = loadCommand("ailogic-templates-unlock");
+  }
+
   client.login = loadCommand("login");
   client.login.add = loadCommand("login-add");
   client.login.ci = loadCommand("login-ci");

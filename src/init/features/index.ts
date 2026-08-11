@@ -56,3 +56,8 @@ export {
   actuate as aiLogicActuate,
 } from "./ailogic";
 export { askQuestions as authAskQuestions, actuate as authActuate, AuthInfo } from "./auth";
+export {
+  askQuestions as agentSkillsAskQuestions,
+  actuate as agentSkillsActuate,
+  AgentSkillsInfo,
+} from "./agentSkills";

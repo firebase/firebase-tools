@@ -1,5 +1,5 @@
 import * as path from "path";
-import * as spawn from "cross-spawn";
+import { spawn } from "cross-spawn";
 import * as cp from "child_process";
 import { logger } from "../logger";
 import { IS_WINDOWS } from "../utils";
@@ -17,7 +17,7 @@ export function virtualEnvCmd(cwd: string, venvDir: string): { command: string; 
   const venvActivate = `"${path.join(cwd, venvDir, ...activateScriptPath)}"`;
   return {
     command: IS_WINDOWS ? venvActivate : ".",
-    args: [IS_WINDOWS ? "" : venvActivate],
+    args: IS_WINDOWS ? [] : [venvActivate],
   };
 }
 
@@ -38,7 +38,7 @@ export function runWithVirtualEnv(
   return spawn(command, args, {
     shell: true,
     cwd,
-    stdio: [/* stdin= */ "pipe", /* stdout= */ "pipe", /* stderr= */ "pipe", "pipe"],
+    stdio: "pipe",
     ...spawnOpts,
     // Linting disabled since internal types expect NODE_ENV which does not apply to Python runtimes.
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any
