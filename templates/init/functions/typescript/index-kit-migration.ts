@@ -37,7 +37,7 @@ setGlobalOptions({
     : undefined,
   ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) || undefined,
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
-    ? JSON.parse(process.env.EXT_MIGRATED_SYSTEM_LABELS)
+    ? (JSON.parse(process.env.EXT_MIGRATED_SYSTEM_LABELS) as Record<string, string>)
     : undefined,
 });
 
