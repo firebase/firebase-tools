@@ -94,7 +94,7 @@ export function sanitizePackageNameToKitName(packageName: string): string {
   const parts = packageName.split("/");
   const nameWithoutScope = parts[parts.length - 1] || packageName;
   const sanitized = nameWithoutScope.toLowerCase().replace(/[^a-z0-9_-]/g, "");
-  return (sanitized || "kit").slice(0, 40);
+  return (sanitized).slice(0, 40);
 }
 
 /**
@@ -168,9 +168,14 @@ export const command = new Command("functions:kits:install")
     }
 
     if (isThirdParty || !hasShrinkwrap) {
-      const confirmMessage = isThirdParty
-        ? `Are you sure you want to install the third-party kit ${packageName}?`
-        : `Are you sure you want to install ${packageName} without locked dependencies?`;
+      let confirmMessage: string;
+      if (isThirdParty && !hasShrinkwrap) {
+        confirmMessage = `Are you sure you want to install the third-party kit ${packageName} without locked dependencies?`;
+      } else if (isThirdParty) {
+        confirmMessage = `Are you sure you want to install the third-party kit ${packageName}?`;
+      } else {
+        confirmMessage = `Are you sure you want to install ${packageName} without locked dependencies?`;
+      }
       const confirmInstallation = await confirm({
         message: confirmMessage,
         default: false,
@@ -239,7 +244,7 @@ export const command = new Command("functions:kits:install")
     const defaultInstanceId = generateUniqueId(kitId, instanceCollisions);
 
     const instanceId = await input({
-      message: "What would you like to name your first instance of this kit?",
+      message: "What would you like to name this instance?",
       default: defaultInstanceId,
       nonInteractive: options.nonInteractive,
       validate: (val: string) => {

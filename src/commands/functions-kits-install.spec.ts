@@ -197,7 +197,6 @@ describe("functions:kits:install", () => {
 
     it("should return true for packages outside @firebase-functions-kits scope", () => {
       expect(isThirdPartyPackage("firebase-functions-kits")).to.be.true;
-      expect(isThirdPartyPackage("@firebase-function-kits-fake/foo")).to.be.true;
       expect(isThirdPartyPackage("@firebase-functions-kits-fake/foo")).to.be.true;
       expect(isThirdPartyPackage("@other-scope/my-kit")).to.be.true;
       expect(isThirdPartyPackage("third-party-kit")).to.be.true;
@@ -616,7 +615,60 @@ describe("functions:kits:install", () => {
       });
     });
 
-    it("should cancel installation if user declines confirmation for missing shrinkwrap", async () => {
+    it("should prompt confirmation when a third-party kit has npm-shrinkwrap.json", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
+      const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@third-party/custom-kit",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      expect(confirmStub).to.have.been.calledOnceWith({
+        message: "Are you sure you want to install the third-party kit @third-party/custom-kit?",
+        default: false,
+        nonInteractive: true,
+      });
+    });
+
+    it("should prompt confirmation when a third-party kit lacks npm-shrinkwrap.json", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
+      const confirmStub = sinon.stub(prompt, "confirm").resolves(true);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+        askWriteProjectFile: sinon.stub().resolves(),
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@third-party/custom-kit",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      expect(confirmStub).to.have.been.calledOnceWith({
+        message:
+          "Are you sure you want to install the third-party kit @third-party/custom-kit without locked dependencies?",
+        default: false,
+        nonInteractive: true,
+      });
+    });
+
+    it("should cancel installation if user declines confirmation for first-party kit without shrinkwrap", async () => {
       spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
       sinon.stub(prompt, "confirm").resolves(false);
 
@@ -630,6 +682,48 @@ describe("functions:kits:install", () => {
       await expect(
         command.runner()({
           npm_package: "@firebase-functions-kits/my-kit",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
+    });
+
+    it("should cancel installation if user declines confirmation for third-party kit with shrinkwrap", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ hasShrinkwrap: true }]));
+      sinon.stub(prompt, "confirm").resolves(false);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@third-party/custom-kit",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
+    });
+
+    it("should cancel installation if user declines confirmation for third-party kit without shrinkwrap", async () => {
+      spawnWithOutputStub.resolves(JSON.stringify([{ files: [{ path: "package.json" }] }]));
+      sinon.stub(prompt, "confirm").resolves(false);
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: { functions: [] },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: sinon.stub(),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@third-party/custom-kit",
           cwd: "/mock/project",
           config: mockConfig,
           nonInteractive: true,
