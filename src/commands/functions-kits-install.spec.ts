@@ -352,7 +352,7 @@ describe("functions:kits:install", () => {
           {
             kit: "firestore-bigquery-export",
             sourcePackage: {
-              id: "@firebase-functions-kits/firestore-bigquery-export",
+              name: "@firebase-functions-kits/firestore-bigquery-export",
             },
             source: "function-kits/firestore-bigquery-export",
             instances: {
@@ -405,7 +405,7 @@ describe("functions:kits:install", () => {
           {
             kit: "my-custom-kit",
             sourcePackage: {
-              id: "@firebase-functions-kits/firestore-bigquery-export",
+              name: "@firebase-functions-kits/firestore-bigquery-export",
             },
             source: "function-kits/my-custom-kit",
             instances: {

@@ -352,7 +352,7 @@ export const command = new Command("functions:kits:install")
     const newKitConfig: KitFunctionConfig = {
       kit: kitId,
       sourcePackage: {
-        id: packageName,
+        name: packageName,
       },
       source: sourcePath,
       instances: {
