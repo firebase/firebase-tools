@@ -144,6 +144,7 @@ export class Delegate {
 
     const relativeDir = path.relative(this.projectDir, this.sourceDir);
     validate.packageJsonIsValid(relativeDir, this.sourceDir, this.projectDir);
+    validate.warnIfLegacyPeerDepsMismatch(this.sourceDir);
 
     return Promise.resolve();
   }

@@ -151,7 +151,50 @@ export function printErrors(summary: Summary): void {
 
   printIamErrors(errored);
   printQuotaErrors(errored);
+  printLockfileErrors(errored);
   printAbortedErrors(errored);
+}
+
+/** Collects every message in an error's cause chain so we can pattern match on them. */
+function errorMessages(err: unknown): string {
+  const original = (err as DeploymentError)?.original as any;
+  return [
+    (err as Error)?.message,
+    original?.message,
+    original?.original?.message,
+    original?.context?.body?.error?.message,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Print errors for builds that failed because `npm ci` rejected the lockfile. */
+function printLockfileErrors(results: Array<Required<DeployResult>>): void {
+  const hadLockfileError = results.find((r) => {
+    if (!(r.error instanceof DeploymentError)) {
+      return false;
+    }
+    const message = errorMessages(r.error);
+    return message.includes("from lock file") && message.includes("npm ci");
+  });
+  if (!hadLockfileError) {
+    return;
+  }
+
+  logger.info("");
+  logger.info(
+    "The build failed because `npm ci` could not install from your package-lock.json. " +
+      "This usually means the lockfile was resolved with different npm settings than the " +
+      "build server uses, most often legacy-peer-deps.",
+  );
+  logger.info("");
+  logger.info(
+    `Check your setting with ${clc.bold("npm config get legacy-peer-deps")}. If it is ` +
+      `${clc.bold("true")}, either add ${clc.bold("legacy-peer-deps=true")} to an .npmrc in your ` +
+      `functions directory so the build server resolves the same way, or run ` +
+      `${clc.bold("npm config set legacy-peer-deps false")} and regenerate package-lock.json ` +
+      `with ${clc.bold("npm install")}.`,
+  );
 }
 
 /** Print errors for failures to set invoker. */

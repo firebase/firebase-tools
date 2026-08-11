@@ -344,6 +344,71 @@ describe("reporter", () => {
       );
     });
 
+    it("prints lockfile errors", () => {
+      const rawError = new Error(
+        "Build failed: npm ERR! `npm ci` can only install packages when your package.json " +
+          "and package-lock.json are in sync. npm ERR! Missing: jest@29.7.0 from lock file",
+      );
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "could not install from your package-lock.json",
+      );
+      expect(infoStub).to.have.been.calledWithMatch("legacy-peer-deps");
+    });
+
+    it("finds lockfile errors nested in the original error", () => {
+      const rawError = new Error("Deployment failed") as any;
+      rawError.original = {
+        message:
+          "npm ERR! `npm ci` can only install packages when your package.json and " +
+          "package-lock.json are in sync. Missing: p-limit@2.3.0 from lock file",
+      };
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "could not install from your package-lock.json",
+      );
+    });
+
+    it("does not print lockfile errors for unrelated failures", () => {
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", new Error("Build failed")),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.not.have.been.calledWithMatch(
+        "could not install from your package-lock.json",
+      );
+    });
+
     it("prints aborted errors", () => {
       const summary: reporter.Summary = {
         totalTime: 1_000,
