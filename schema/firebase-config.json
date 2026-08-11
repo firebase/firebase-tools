@@ -1017,13 +1017,13 @@
                     "additionalProperties": false,
                     "description": "Package details when resolved from a package repository.",
                     "properties": {
-                        "id": {
+                        "name": {
                             "description": "Package identifier (e.g., \"@firebase-functions-kits/firestore-bigquery-export\")",
                             "type": "string"
                         }
                     },
                     "required": [
-                        "id"
+                        "name"
                     ],
                     "type": "object"
                 }

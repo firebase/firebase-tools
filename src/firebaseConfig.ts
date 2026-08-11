@@ -199,7 +199,7 @@ type CodebaseFunctionConfigBase = FunctionConfigBase & {
 
 export type KitSourcePackage = {
   /** Package identifier (e.g., "@firebase-functions-kits/firestore-bigquery-export") */
-  id: string;
+  name: string;
 };
 
 export type KitFunctionConfig = FunctionConfigBase & {
