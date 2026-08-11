@@ -47,7 +47,7 @@ export const command = new Command("ext:export")
       // - writes to <instanceId>/.env-<projectId>
       // - does not parametrize project number and ID (e.g "12345678" instead of "{param:PROJECT_NUMBER}")
       // - explicitly sets unspecified user params to the empty string instead of leaving them out (and causing a prompt on first deploy)
-      // - coerces system param naming format to be valid .env keys (e.g FIREBASE_SYSTEM_MEMORY=256 instead of firebaseextensions.v1beta.function/memory=256)
+      // - coerces system param naming format to be valid .env keys (e.g EXT_MIGRATED_SYSTEM_MEMORY=256 instead of firebaseextensions.v1beta.function/memory=256)
       // - writes references to secrets in the Functions format (e.g FIREBASE_SECRET_REF_API_KEY=foo:latest instead of API_KEY=projects/${param:PROJECT_NUMBER}/secrets/API_KEY/versions/latest)
       // - makes DeploymentInstanceSpec.eventarcChannel and allowedEventTypes available as FIREBASE_EVENTARC_CHANNEL and EXT_SELECTED_EVENTS
       await fnHandler(options);
