@@ -67,6 +67,7 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
         );
       }
       logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
+      return;
     }
     const config = manifest.loadConfig(options);
     manifest.removeFromManifest(instanceId, config);
