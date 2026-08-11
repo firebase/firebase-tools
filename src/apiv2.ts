@@ -1,9 +1,11 @@
 import { URL, URLSearchParams } from "url";
 import { Readable } from "stream";
-import { ProxyAgent, request } from "undici";
+import { ProxyAgent, request, Agent, buildConnector } from "undici";
 import * as retry from "retry";
 import * as http from "http";
 import * as https from "https";
+import * as net from "net";
+import * as tls from "tls";
 import util from "util";
 
 import * as auth from "./auth";
@@ -144,6 +146,149 @@ export async function getAccessToken(): Promise<string> {
 
   const data = await auth.getAccessToken(refreshToken, []);
   return data.access_token;
+}
+
+let customConnectToAgent: Agent | undefined;
+
+function getCustomConnectToAgent(): Agent | undefined {
+  if (!process.env.GFE_CONNECT_TO) {
+    return undefined;
+  }
+  if (!customConnectToAgent) {
+    const defaultConnector = buildConnector({});
+    customConnectToAgent = new Agent({
+      connect: (options, callback) => {
+        const connectTo = process.env.GFE_CONNECT_TO;
+        if (connectTo) {
+          const parts = connectTo.split(":");
+          if (parts.length === 4) {
+            const reqHost = parts[0].trim();
+            const reqPort = parts[1].trim();
+            const targetHost = parts[2].trim();
+            const targetPort = parts[3].trim();
+
+            const hostMatches = !reqHost || options.hostname === reqHost;
+            const portMatches = !reqPort || options.port === reqPort;
+
+            if (hostMatches && portMatches) {
+              if (!options.servername) {
+                options.servername = options.hostname;
+              }
+              options.hostname = targetHost;
+              if (targetPort) {
+                options.port = targetPort;
+              }
+            }
+          } else if (parts.length === 2) {
+            const targetHost = parts[0].trim();
+            const targetPort = parts[1].trim();
+            if (!options.servername) {
+              options.servername = options.hostname;
+            }
+            options.hostname = targetHost;
+            if (targetPort) {
+              options.port = targetPort;
+            }
+          }
+        }
+        defaultConnector(options, callback);
+      },
+    });
+  }
+  return customConnectToAgent;
+}
+
+const customHttpsAgent = new https.Agent({
+  createConnection: (options: any, callback: any) => {
+    const connectTo = process.env.GFE_CONNECT_TO;
+    const currentHost = options.host || options.hostname;
+    const currentPort = options.port;
+    logger.debug(`[apiv2 customHttpsAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`);
+    if (connectTo) {
+      const parts = connectTo.split(":");
+      if (parts.length === 4) {
+        const reqHost = parts[0].trim();
+        const reqPort = parts[1].trim();
+        const targetHost = parts[2].trim();
+        const targetPort = parts[3].trim();
+
+        const hostMatches = !reqHost || currentHost === reqHost;
+        const portMatches = !reqPort || String(currentPort) === reqPort;
+
+        if (hostMatches && portMatches) {
+          if (!options.servername) {
+            options.servername = currentHost;
+          }
+          options.host = targetHost;
+          options.hostname = targetHost;
+          if (targetPort) {
+            options.port = parseInt(targetPort, 10);
+          }
+          logger.debug(`[apiv2 customHttpsAgent] Redirected to ${targetHost}:${targetPort}`);
+        }
+      } else if (parts.length === 2) {
+        const targetHost = parts[0].trim();
+        const targetPort = parts[1].trim();
+        if (!options.servername) {
+          options.servername = currentHost;
+        }
+        options.host = targetHost;
+        options.hostname = targetHost;
+        if (targetPort) {
+          options.port = parseInt(targetPort, 10);
+        }
+        logger.debug(`[apiv2 customHttpsAgent] Wildcard redirected to ${targetHost}:${targetPort}`);
+      }
+    }
+    return tls.connect(options, callback);
+  },
+} as any);
+
+const customHttpAgent = new http.Agent({
+  createConnection: (options: any, callback: any) => {
+    const connectTo = process.env.GFE_CONNECT_TO;
+    const currentHost = options.host || options.hostname;
+    const currentPort = options.port;
+    logger.debug(`[apiv2 customHttpAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`);
+    if (connectTo) {
+      const parts = connectTo.split(":");
+      if (parts.length === 4) {
+        const reqHost = parts[0].trim();
+        const reqPort = parts[1].trim();
+        const targetHost = parts[2].trim();
+        const targetPort = parts[3].trim();
+
+        const hostMatches = !reqHost || currentHost === reqHost;
+        const portMatches = !reqPort || String(currentPort) === reqPort;
+
+        if (hostMatches && portMatches) {
+          options.host = targetHost;
+          options.hostname = targetHost;
+          if (targetPort) {
+            options.port = parseInt(targetPort, 10);
+          }
+          logger.debug(`[apiv2 customHttpAgent] Redirected to ${targetHost}:${targetPort}`);
+        }
+      } else if (parts.length === 2) {
+        const targetHost = parts[0].trim();
+        const targetPort = parts[1].trim();
+        options.host = targetHost;
+        options.hostname = targetHost;
+        if (targetPort) {
+          options.port = parseInt(targetPort, 10);
+        }
+        logger.debug(`[apiv2 customHttpAgent] Wildcard redirected to ${targetHost}:${targetPort}`);
+      }
+    }
+    return net.connect(options, callback);
+  },
+} as any);
+
+function getCustomConnectToNodeAgent(parsedURL: URL): http.Agent | https.Agent | undefined {
+  if (!process.env.GFE_CONNECT_TO) {
+    return undefined;
+  }
+  return parsedURL.protocol === "https:" ? customHttpsAgent : customHttpAgent;
 }
 
 function proxyURIFromEnv(): string | undefined {
@@ -424,6 +569,18 @@ export class Client {
     const proxyURI = proxyURIFromEnv();
     if (proxyURI) {
       fetchOptions.dispatcher = new ProxyAgent({ uri: proxyURI });
+    } else {
+      const connectToAgent = getCustomConnectToAgent();
+      if (connectToAgent) {
+        logger.debug(`[apiv2] Assigning fetchOptions.dispatcher = customConnectToAgent`);
+        fetchOptions.dispatcher = connectToAgent;
+      }
+      const parsedURL = new URL(fetchURL);
+      const nodeAgent = getCustomConnectToNodeAgent(parsedURL);
+      if (nodeAgent) {
+        logger.debug(`[apiv2] Assigning fetchOptions.agent = nodeAgent (protocol: ${parsedURL.protocol})`);
+        fetchOptions.agent = nodeAgent;
+      }
     }
 
     if (options.signal) {
@@ -522,8 +679,9 @@ export class Client {
                 : thrown instanceof Error
                   ? thrown
                   : new Error(thrown);
+            const logOptions = { ...fetchOptions, agent: undefined, dispatcher: undefined };
             logger.debug(
-              `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(fetchOptions)}): ${err}`,
+              `*** [apiv2] error from fetch(${fetchURL}, ${JSON.stringify(logOptions)}): ${err}`,
             );
             const isAbortError = err.name.includes("AbortError");
             if (isAbortError) {

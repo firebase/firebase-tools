@@ -4,6 +4,7 @@ import * as sinon from "sinon";
 import * as FormData from "form-data";
 import * as auth from "./auth";
 import nock from "./test/helpers/nock";
+import * as nockReal from "nock";
 const proxySetup = require("proxy");
 
 import { Client, CLI_OAUTH_PROJECT_NUMBER } from "./apiv2";
@@ -637,6 +638,74 @@ describe("apiv2", () => {
         });
         expect(r.body).to.deep.equal({ proxied: true });
         expect(nock.isDone()).to.be.true;
+      });
+    });
+
+    describe("with GFE_CONNECT_TO", () => {
+      let targetServer: Server;
+      let lastHeaders: any = {};
+      const targetPort = 52675;
+      let originalGlobalFetch: any;
+
+      before(async () => {
+        nockReal.restore();
+        originalGlobalFetch = (global as any).fetch;
+        (global as any).fetch = require("undici").fetch;
+        targetServer = createServer((req, res) => {
+          lastHeaders = req.headers;
+          res.writeHead(200, { "content-type": "application/json" });
+          res.end(JSON.stringify({ redirected: true, host: req.headers.host }));
+        });
+        await new Promise<void>((resolve) => {
+          targetServer.listen(targetPort, () => resolve());
+        });
+      });
+
+      after(async () => {
+        await new Promise((resolve) => targetServer.close(resolve));
+        (global as any).fetch = originalGlobalFetch;
+        nockReal.activate();
+      });
+
+      beforeEach(() => {
+        lastHeaders = {};
+      });
+
+      afterEach(() => {
+        delete process.env.GFE_CONNECT_TO;
+      });
+
+      it("should redirect all requests with simple wildcard format", async () => {
+        process.env.GFE_CONNECT_TO = `127.0.0.1:${targetPort}`;
+        const c = new Client({ urlPrefix: "http://example.com" });
+        const r = await c.request({
+          method: "GET",
+          path: "/foo",
+        });
+        expect(r.body).to.deep.equal({ redirected: true, host: "example.com" });
+        expect(lastHeaders.host).to.equal("example.com");
+      });
+
+      it("should redirect only matching host/port with curl-style format", async () => {
+        process.env.GFE_CONNECT_TO = `specific-host.com::127.0.0.1:${targetPort}`;
+
+        // 1. Request to matching host should be redirected
+        const client1 = new Client({ urlPrefix: "http://specific-host.com" });
+        const res1 = await client1.request({
+          method: "GET",
+          path: "/foo",
+        });
+        expect(res1.body).to.deep.equal({ redirected: true, host: "specific-host.com" });
+        expect(lastHeaders.host).to.equal("specific-host.com");
+
+        // 2. Request to non-matching host should NOT be redirected (should fail to connect)
+        const client2 = new Client({ urlPrefix: "http://other-host.com" });
+        const res2 = client2.request({
+          method: "GET",
+          path: "/foo",
+          timeout: 100,
+        });
+        await expect(res2).to.eventually.be.rejected;
       });
     });
   });
