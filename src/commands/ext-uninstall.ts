@@ -6,17 +6,18 @@ import {
   logPrefix,
 } from "../extensions/extensionsHelper";
 import { requirePermissions } from "../requirePermissions";
-import { logLabeledBullet, logLabeledWarning, logLabeledSuccess, logLabeledError } from "../utils";
+import { logLabeledBullet, logLabeledWarning, logLabeledSuccess } from "../utils";
 import * as manifest from "../extensions/manifest";
 import { deleteInstance } from "../extensions/extensionsApi";
 import { Options } from "../options";
 import { needProjectId } from "../projectUtils";
 import { confirm } from "../prompt";
+import { FirebaseError } from "../error";
 
 export const command = new Command("ext:uninstall <extensionInstanceId>")
   .description("uninstall an extension that is installed in your Firebase project by instance ID")
   .option("--local", "deprecated")
-  .option("--immediate", "")
+  .option("--immediate", "immediately destroy GCP resources instead of waiting on next deploy. Can be run outside a firebase project directory.")
   .withForce()
   .before(requirePermissions, ["firebaseextensions.instances.delete"])
   .before(ensureExtensionsApiEnabled)
@@ -34,13 +35,13 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
       let config;
       try {
         config = manifest.loadConfig(options);
-      } catch (err: any) {
+      } catch {
         logLabeledBullet(
           logPrefix,
           "No firebase.json found. Proceeding to immediate extension instance teardown.",
         );
       }
-      if (config) {
+      if (config && manifest.instanceExists(instanceId, config)) {
         manifest.removeFromManifest(instanceId, config);
       }
 
@@ -56,10 +57,10 @@ export const command = new Command("ext:uninstall <extensionInstanceId>")
       }
       try {
         await deleteInstance(projectId, instanceId);
-      } catch (err: any) {
-        logLabeledError(
-          logPrefix,
-          `Error when attempting deletion: ${err instanceof Error ? err.message : err.toString()}`,
+      } catch (err: unknown) {
+        throw new FirebaseError(
+          `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
+          { original: err instanceof Error ? err : undefined }
         );
         return;
       }
