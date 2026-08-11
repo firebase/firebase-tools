@@ -6,6 +6,7 @@ import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { dataConnectLocationHeaderInjector } from "./index";
+import { ServerFeature } from "../types";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
