@@ -24,6 +24,7 @@ export interface Changeset {
 
 export interface BaseCodebasePlan {
   regionalChangesets: Record<string, Changeset>;
+  plannedBackend: backend.Backend;
 }
 
 export interface ActiveSecurityPlan {
@@ -230,6 +231,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
     }
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
       rolesToAdd,
       rolesToRemove,
       serviceAccountToCreate,
@@ -238,6 +240,7 @@ export async function createDeploymentPlan(args: PlanArgs): Promise<CodebasePlan
   } else {
     return {
       regionalChangesets,
+      plannedBackend: wantBackend,
       serviceAccountToDelete,
     };
   }

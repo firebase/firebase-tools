@@ -557,6 +557,7 @@ export async function startAll(
             configDir: path.join(projectDir, configDir),
             env: {
               ...options.extDevEnv,
+              FIREBASE_KIT_INSTANCE_ID: instanceId,
             },
             secretEnv: [],
             predefinedTriggers: options.extDevTriggers as ParsedTriggerDefinition[] | undefined,
