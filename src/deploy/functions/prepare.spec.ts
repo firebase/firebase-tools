@@ -155,7 +155,7 @@ describe("prepare", () => {
         const config: ValidatedConfig = [
           {
             kit: "my-kit",
-            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
             source: "source",
             instances: {
               "inst-alpha": "config/inst-alpha",
