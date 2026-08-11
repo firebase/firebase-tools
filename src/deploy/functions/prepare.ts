@@ -49,6 +49,8 @@ import {
   shouldUseRuntimeConfig,
   isKitConfig,
   addKitPrefix,
+  ValidatedLocalSingle,
+  ValidatedKitSingle,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -292,6 +294,9 @@ export async function prepare(
       isKitConfig(config) ? codebase : undefined,
     );
     const localCfg = requireLocal(config, "Remote sources are not supported.");
+
+    checkKitForGen1(localCfg, wantBuild);
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
@@ -1003,4 +1008,22 @@ export function partitionUserEnvs(allEnvs: Record<string, string>): {
     [{}, {}] as [Record<string, string>, Record<string, string>],
   );
   return { userEnvs: userEnvs, secretRefs: secretRefs };
+}
+
+/**
+ * Validates that a function kit codebase does not contain any gen1 functions.
+ * Throws a FirebaseError if a gen1 function is found.
+ */
+export function checkKitForGen1(
+  localCfg: ValidatedLocalSingle | ValidatedKitSingle,
+  wantBuild: build.Build,
+): void {
+  if (
+    isKitConfig(localCfg) &&
+    Object.values(wantBuild.endpoints).some((e) => e.platform === "gcfv1")
+  ) {
+    throw new FirebaseError(
+      `Function kit "${localCfg.kit}" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.`,
+    );
+  }
 }
