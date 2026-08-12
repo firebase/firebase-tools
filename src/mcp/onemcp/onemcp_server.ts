@@ -22,6 +22,11 @@ export interface OneMcpServerOptions {
    * and permitted in callTool().
    */
   allowedTools?: string[];
+  /**
+   * Optional list of tool names (original remote tool name or prefixed name)
+   * that should opt-out of the project requirement.
+   */
+  toolsToOptOutProjectRequirement?: string[];
 }
 
 /**
@@ -86,20 +91,33 @@ export class OneMcpServer {
         );
       });
 
-      return tools.map((mcpTool) => ({
-        mcp: {
-          ...mcpTool,
-          name: `${this.feature}_${mcpTool.name}`,
-          _meta: { ...this.meta, feature: this.feature },
-        },
-        fn: (
-          args: {
-            [x: string]: unknown;
+      const optOutSet = new Set(this.options.toolsToOptOutProjectRequirement || []);
+      return tools.map((mcpTool) => {
+        const isOptedOut =
+          this.meta.requiresProject === false ||
+          optOutSet.has(mcpTool.name) ||
+          optOutSet.has(`${this.feature}_${mcpTool.name}`);
+        const toolRequiresProject = !isOptedOut;
+
+        return {
+          mcp: {
+            ...mcpTool,
+            name: `${this.feature}_${mcpTool.name}`,
+            _meta: {
+              ...this.meta,
+              requiresProject: toolRequiresProject,
+              feature: this.feature,
+            },
           },
-          ctx: McpContext,
-        ) => this.callTool(mcpTool.name, mcpTool.inputSchema, args, ctx),
-        isAvailable: () => Promise.resolve(true),
-      }));
+          fn: (
+            args: {
+              [x: string]: unknown;
+            },
+            ctx: McpContext,
+          ) => this.callTool(mcpTool.name, mcpTool.inputSchema, args, ctx),
+          isAvailable: () => Promise.resolve(true),
+        };
+      });
     } catch (error) {
       throw new FirebaseError(
         "Failed to fetch remote tools for " + this.serverUrl + ": " + JSON.stringify(error),
@@ -143,7 +161,9 @@ export class OneMcpServer {
     }
 
     // TODO: Optimize this to not call ensure on every tool call.
-    await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
+    if (ctx.projectId) {
+      await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
+    }
     try {
       const res = await this.callClient.post<
         JSONRPCRequest & CallToolRequest,
