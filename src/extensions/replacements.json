@@ -1,97 +1,103 @@
 {
   "replacements": {
-    "firebase/firestore-send-email": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-send-email",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md"
-    },
-    "firebase/storage-resize-images": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/storage-resize-images",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/storage-resize-images/README.md"
-    },
-    "firebase/firestore-bigquery-export": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-bigquery-export",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-bigquery-export/README.md"
-    },
     "firebase/bigquery-firestore-export": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/bigquery-firestore-export",
+      "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/bigquery-firestore-export/README.md"
-    },
-    "firebase/firestore-translate-text": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-translate-text",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-translate-text/README.md"
-    },
-    "firebase/firestore-counter": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-counter",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-counter/README.md"
-    },
-    "firebase/rtdb-limit-child-nodes": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/rtdb-limit-child-nodes",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/rtdb-limit-child-nodes/README.md"
     },
     "firebase/delete-user-data": {
       "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/delete-user-data",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/delete-user-data/README.md"
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/delete-user-data/README.md",
+      "npmPackage": "@firebase/delete-user-data"
+    },
+    "firebase/firestore-bigquery-export": {
+      "status": "REPLACEMENT_AVAILABLE",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-bigquery-export/README.md",
+      "npmPackage": "@firebase/firestore-bigquery-export"
     },
     "firebase/firestore-bundle-builder": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-bundle-builder",
+      "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/firebase/firestore-bundle-builder/blob/master/README.md"
     },
-    "firebase/firestore-genai-chatbot": {
+    "firebase/firestore-counter": {
       "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-genai-chatbot",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-counter/README.md",
+      "npmPackage": "@firebase/firestore-counter"
+    },
+    "firebase/firestore-genai-chatbot": {
+      "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-genai-chatbot/README.md"
     },
     "firebase/firestore-incremental-capture": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-incremental-capture",
+      "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-incremental-capture/README.md"
     },
-    "firebase/firestore-vector-search": {
+    "firebase/firestore-send-email": {
       "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/firestore-vector-search",
-      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-vector-search/README.md"
-    },
-    "firebase/speech-to-text": {
-      "status": "REPLACEMENT_AVAILABLE",
-      "npmPackage": "@firebase-function-kits/speech-to-text",
-      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/speech-to-text/README.md"
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+      "npmPackage": "@firebase/firestore-send-email"
     },
     "firebase/firestore-shorten-urls-bitly": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-shorten-urls-bitly/README.md"
     },
-    "googlecloud/storage-extract-image-text": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-extract-image-text/README.md"
+    "firebase/firestore-translate-text": {
+      "status": "REPLACEMENT_AVAILABLE",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-translate-text/README.md",
+      "npmPackage": "@firebase/firestore-translate-text"
     },
-    "googlecloud/storage-label-images": {
+    "firebase/firestore-vector-search": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-label-images/README.md"
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-vector-search/README.md"
     },
-    "googlecloud/text-to-speech": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/text-to-speech/README.md"
+    "firebase/rtdb-limit-child-nodes": {
+      "status": "REPLACEMENT_AVAILABLE",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/rtdb-limit-child-nodes/README.md",
+      "npmPackage": "@firebase/rtdb-limit-child-nodes"
     },
-    "googlecloud/speech-to-text": {
+    "firebase/speech-to-text": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/speech-to-text/README.md"
     },
-    "googlecloud/storage-label-videos": {
+    "firebase/storage-extract-image-text": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-extract-image-text/README.md"
+    },
+    "firebase/storage-label-images": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-label-images/README.md"
+    },
+    "firebase/storage-label-videos": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-label-videos/README.md"
+    },
+    "firebase/storage-resize-images": {
+      "status": "REPLACEMENT_AVAILABLE",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/storage-resize-images/README.md",
+      "npmPackage": "@firebase/storage-resize-images"
+    },
+    "firebase/storage-reverse-image-search": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-reverse-image-search/README.md"
+    },
+    "firebase/storage-transcode-videos": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-transcode-videos/README.md"
+    },
+    "firebase/text-to-speech": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/text-to-speech/README.md"
+    },
+    "googlecloud/bigquery-firestore-export": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/bigquery-firestore-export/README.md"
     },
     "googlecloud/firestore-genai-chatbot": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-genai-chatbot/README.md"
+    },
+    "googlecloud/firestore-incremental-capture": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-incremental-capture/README.md"
     },
     "googlecloud/firestore-multimodal-genai": {
       "status": "PENDING_PUBLISHER",
@@ -101,63 +107,183 @@
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-semantic-search/README.md"
     },
+    "googlecloud/firestore-vector-search": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/firestore-vector-search/README.md"
+    },
+    "googlecloud/speech-to-text": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/speech-to-text/README.md"
+    },
+    "googlecloud/storage-extract-image-text": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-extract-image-text/README.md"
+    },
+    "googlecloud/storage-label-images": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-label-images/README.md"
+    },
+    "googlecloud/storage-label-videos": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-label-videos/README.md"
+    },
     "googlecloud/storage-reverse-image-search": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-reverse-image-search/README.md"
+    },
+    "googlecloud/storage-transcode-videos": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/storage-transcode-videos/README.md"
+    },
+    "googlecloud/text-to-speech": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/GoogleCloudPlatform/firebase-extensions/tree/main/text-to-speech/README.md"
+    },
+    "googlemaps/bigquery-geocode-address": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/googlemaps/google-maps-services-python/blob/master/README.md"
+    },
+    "googlemaps/firestore-geocode-address": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/googlemaps/google-maps-services-python/blob/master/README.md"
+    },
+    "googlemaps/firestore-validate-address": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/googlemaps/google-maps-services-python/blob/master/README.md"
     },
     "googlemapsplatform/firestore-validate-address": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/googlemaps/google-maps-services-python/blob/master/README.md"
     },
-    "stripe/firestore-stripe-payments": {
+    "Web3Auth/web3auth-firebase-extension": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
-    },
-    "stripe/firestore-stripe-invoices": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/stripe/stripe-firebase-extensions/tree/master/firestore-stripe-invoices/README.md"
-    },
-    "invertase/firestore-stripe-payments": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
-    },
-    "invertase/firestore-stripe-invoices": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-invoices/README.md"
-    },
-    "invertase/image-processing-api": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/image-processing-api/README.md"
-    },
-    "invertase/export-user-data": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/export-user-data/README.md"
-    },
-    "invertase/firestore-record-acknowledgments": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/firestore-record-acknowledgments/README.md"
-    },
-    "twilio/send-message": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/send-message/README.md"
-    },
-    "twilio/sendgrid-sync-contacts": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/sendgrid-sync-contacts/README.md"
-    },
-    "twilio/abandoned-cart-emails": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/abandoned-cart-emails/README.md"
+      "extensionRepositoryUrl": "https://github.com/Web3Auth/web3auth-firebase-extension/tree/master/README.md"
     },
     "algolia/firestore-algolia-search": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/algolia/firestore-algolia-search/tree/master/README.md"
     },
-    "typesense/firestore-typesense-search": {
+    "chatkitty/chatkitty": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/typesense/firestore-typesense-search/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/chatkitty/chatkitty-firebase-extension/tree/main/README.md"
+    },
+    "chatkitty/chatkitty-firebase-extension": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/chatkitty/chatkitty-firebase-extension/tree/main/README.md"
+    },
+    "cloudflare/cloudflare-turnstile-app-check-provider": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/cloudflare/turnstile-firebase-app-check-provider/tree/main/README.md"
+    },
+    "customerio/customerio-firebase-extensions": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/customerio/customerio-firebase-extensions/tree/main/sync-customerio/README.md"
+    },
+    "customerio/sync-customerio": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/customerio/customerio-firebase-extensions/tree/main/sync-customerio/README.md"
+    },
+    "elastic/firebase-extensions": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/elastic/app-search-firestore-extension/tree/master/README.md"
+    },
+    "elastic/firestore-elastic-app-search": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/elastic/app-search-firestore-extension/tree/master/README.md"
+    },
+    "elevenlabs/elevenlabs-firebase-extension": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/sgilroy/elevenlabs-tts-firebase-extension/tree/main/README.md"
+    },
+    "elevenlabs/firestore-elevenlabs-tts": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/sgilroy/elevenlabs-tts-firebase-extension/tree/main/README.md"
+    },
+    "htsuruo/trigger-github-issues-from-crashlytics": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/htsuruo/firebase-extensions/tree/main/README.md"
+    },
+    "inqbarna/traceback": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/InQBarna/firebase-traceback-extension/tree/main/README.md"
+    },
+    "invertase/export-user-data": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/export-user-data/README.md"
+    },
+    "invertase/firestore-huggingface-inference-api": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/firestore-huggingface-inference-api/README.md"
+    },
+    "invertase/firestore-record-acknowledgments": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/firestore-record-acknowledgments/README.md"
+    },
+    "invertase/firestore-stripe-invoices": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-invoices/README.md"
+    },
+    "invertase/firestore-stripe-payments": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
+    },
+    "invertase/firestore-stripe-subscriptions": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
+    },
+    "invertase/image-processing-api": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/firebase-extensions/tree/main/extensions/image-processing-api/README.md"
+    },
+    "iproov/auth-iproov": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/iProov/firebase/tree/master/README.md"
+    },
+    "jasurbekergashev/firestore-importer": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/JasurbekErgashev/firestore-importer-extension/tree/main/README.md"
+    },
+    "jauntybrain/storage-detect-objects": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/jauntybrain/firebase-extensions/tree/master/README.md"
+    },
+    "jigsaw-code/perspective-comment-toxicity": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/conversationai/firestore-perspective-toxicity/tree/main/README.md"
+    },
+    "jigsaw/firestore-perspective-toxicity": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/conversationai/firestore-perspective-toxicity/tree/main/README.md"
+    },
+    "justpass-me/justpass-me": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/justpass-me/Passkeys-firebase-ext/tree/main/README.md"
+    },
+    "justpass-me/justpassme-firebase-extension": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/justpass-me/Passkeys-firebase-ext/tree/main/README.md"
+    },
+    "kurtweston/functions-auto-stop-billing": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/deep-rock-development/auto-stop-firebase-ext/tree/master/README.md"
+    },
+    "mailchimp/mailchimp-firebase-sync": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/mailchimp/Firebase/tree/master/README.md"
+    },
+    "mailersend/mailersend-email": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/mailersend/mailersend-firebase/tree/main/README.md"
+    },
+    "mailersend/mailersend-firebase-extension": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/mailersend/mailersend-firebase/tree/main/README.md"
     },
     "meilisearch/firestore-meilisearch": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/meilisearch/firestore-meilisearch/tree/main/README.md"
+    },
+    "meilisearch/meilisearch-firestore": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/meilisearch/firestore-meilisearch/tree/main/README.md"
     },
@@ -165,69 +291,49 @@
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/messagebird/firebase-extensions/blob/master/README.md"
     },
-    "mailchimp/mailchimp-firebase-sync": {
+    "mongodb/firestore-mongodb-sync": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/mailchimp/Firebase/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/mongodb-partners/Firebase-extension-MongoDB-Atlas/tree/main/PREINSTALL.md"
     },
-    "elastic/firestore-elastic-app-search": {
+    "mongodb/firestore-mongodb-vector-search": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/elastic/app-search-firestore-extension/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/mongodb-partners/Firebase-extension-MongoDB-Atlas/tree/main/PREINSTALL.md"
     },
-    "revenuecat/firestore-revenuecat-purchases": {
+    "mongodb/mongodb-functions": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/RevenueCat/firestore-revenuecat-purchases/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/mongodb-partners/Firebase-extension-MongoDB-Atlas/tree/main/PREINSTALL.md"
     },
-    "customerio/sync-customerio": {
+    "msg91/firestore-msg91": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/customerio/customerio-firebase-extensions/tree/main/sync-customerio/README.md"
+      "extensionRepositoryUrl": "https://github.com/Walkover-Web-Solution/MSG91-Firebase/tree/main/README.md"
     },
-    "stream/auth-chat": {
+    "msg91/msg91-send-msg": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/auth-chat/README.md"
+      "extensionRepositoryUrl": "https://github.com/Walkover-Web-Solution/MSG91-Firebase/tree/main/README.md"
     },
-    "stream/auth-activity-feeds": {
+    "nickschaefer/storage-generate-thumbnails": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/auth-activity-feeds/README.md"
+      "extensionRepositoryUrl": "https://github.com/naturalnick/firebase-extension-generate-thumbnails/tree/master/README.md"
     },
-    "stream/firestore-activity-feeds": {
+    "nimbasms/firebase-extension": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/firestore-activity-feeds/README.md"
+      "extensionRepositoryUrl": "https://github.com/nimbasms/nimbasms-firebase/tree/main/README.md"
     },
-    "pdfplum/http-pdf-generator": {
+    "nimbasms/nimbasmsapi": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/pdfplum/pdfplum/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/nimbasms/nimbasms-firebase/tree/main/README.md"
     },
-    "pdfplum/firestore-pdf-generator": {
+    "nushio/historian": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/pdfplum/pdfplum/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/nushio/historian/tree/main/README.md"
     },
-    "mailersend/mailersend-email": {
+    "openfort/firestore-openfort-transactions": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/mailersend/mailersend-firebase/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/openfort-xyz/openfort-firebase-extension/tree/main/README.md"
     },
-    "purchasely/purchasely-in-app-purchases": {
+    "openfort/openfort-firebase-extension": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/purchasely/purchasely-firebase-extension/tree/main/README.md"
-    },
-    "vonage/firebase-vonage-messages": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/Vonage/vonage-firebase-extensions/tree/main/README.md"
-    },
-    "vonage/firestore-vonage-video-express": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/Vonage/vonage-firebase-extensions/tree/main/README.md"
-    },
-    "rowy/rowy-firestore-sync": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/rowyio/rowy/tree/main/README.md"
-    },
-    "shiftescape/firestore-chatgpt-bot": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/shiftEscape/firebase-extensions/tree/main/firestore-chatgpt-bot/README.md"
-    },
-    "jigsaw/firestore-perspective-toxicity": {
-      "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/conversationai/firestore-perspective-toxicity/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/openfort-xyz/openfort-firebase-extension/tree/main/README.md"
     },
     "pangea/firestore-audit-document": {
       "status": "PENDING_PUBLISHER",
@@ -245,45 +351,125 @@
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/pangeacyber/pangea-extensions-firebase/tree/main/storage-file-intel/README.md"
     },
+    "pdfplum/firestore-pdf-generator": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/pdfplum/pdfplum/tree/main/README.md"
+    },
+    "pdfplum/http-pdf-generator": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/pdfplum/pdfplum/tree/main/README.md"
+    },
+    "purchasely/purchasely-firebase-extension": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/purchasely/purchasely-firebase-extension/tree/master/README.md"
+    },
+    "purchasely/purchasely-in-app-purchases": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/purchasely/purchasely-firebase-extension/tree/master/README.md"
+    },
+    "revenuecat/firestore-revenuecat-purchases": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/RevenueCat/firestore-revenuecat-purchases/tree/main/README.md"
+    },
+    "rowy/firestore-user-document": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/buildship-ai/firebase-extensions/tree/main/firestore-user-document/README.md"
+    },
+    "rowy/rowy-firestore-sync": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/rowyio/rowy/tree/main/README.md"
+    },
+    "sendgrid/sendgrid-abandoned-cart": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/abandoned-cart-emails/README.md"
+    },
+    "sendgrid/sendgrid-contacts-sync": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/sendgrid-sync-contacts/README.md"
+    },
+    "shiftescape/firestore-chatgpt-bot": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/shiftEscape/firebase-extensions/tree/main/firestore-chatgpt-bot/README.md"
+    },
     "shipengine/calculate-rates": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/extensions/rates/README.md"
     },
     "shipengine/purchase-labels": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/extensions/purchase-label/README.md"
     },
     "shipengine/track-labels": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/extensions/track-label/README.md"
     },
     "shipengine/validate-addresses": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/ShipEngine/firebase-extensions/tree/master/extensions/validate-address/README.md"
     },
     "snap/snapchat-login": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/Snapchat/snap-kit-firebase-extensions/blob/master/README.md"
+      "extensionRepositoryUrl": "https://github.com/Snapchat/snap-kit-firebase-extensions/blob/master/login-kit/README.md"
     },
     "snap/snapchat-sticker-generator": {
       "status": "PENDING_PUBLISHER",
       "extensionRepositoryUrl": "https://github.com/Snapchat/snap-kit-firebase-extensions/blob/master/README.md"
     },
-    "cloudflare/cloudflare-turnstile-app-check-provider": {
+    "stream/auth-activity-feeds": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/cloudflare/turnstile-firebase-app-check-provider/tree/main/README.md"
+      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/auth-activity-feeds/README.md"
     },
-    "moralis/moralis-streams": {
+    "stream/auth-chat": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://github.com/MoralisWeb3/youtube-tutorials/tree/main/StreamsFrontend"
+      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/auth-chat/README.md"
     },
-    "iproov/auth-iproov": {
+    "stream/firestore-activity-feeds": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://extensions.dev/extensions/iproov/auth-iproov"
+      "extensionRepositoryUrl": "https://github.com/GetStream/stream-firebase-extensions/tree/main/firestore-activity-feeds/README.md"
     },
-    "corbado/authentication-corbado": {
+    "stripe/firestore-stripe-invoices": {
       "status": "PENDING_PUBLISHER",
-      "extensionRepositoryUrl": "https://extensions.dev/extensions/corbado/authentication-corbado"
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-invoices/README.md"
+    },
+    "stripe/firestore-stripe-payments": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
+    },
+    "stripe/firestore-stripe-subscriptions": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/invertase/stripe-firebase-extensions/tree/master/firestore-stripe-payments/README.md"
+    },
+    "timeseal/firebase-timeseal-timestamp": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/vaionex/timeseal-firebase/tree/master/README.md"
+    },
+    "twilio/abandoned-cart-emails": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/abandoned-cart-emails/README.md"
+    },
+    "twilio/send-message": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/send-message/README.md"
+    },
+    "twilio/sendgrid-sync-contacts": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/twilio-labs/twilio-firebase-extensions/tree/main/sendgrid-sync-contacts/README.md"
+    },
+    "typesense/firestore-typesense-search": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/typesense/firestore-typesense-search/tree/master/README.md"
+    },
+    "vonage/firebase-vonage-messages": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/Vonage/vonage-firebase-extensions/tree/main/README.md"
+    },
+    "vonage/firestore-vonage-video-express": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/Vonage/vonage-firebase-extensions/tree/main/video-express/README.md"
+    },
+    "web3auth/web3-wallet-generator": {
+      "status": "PENDING_PUBLISHER",
+      "extensionRepositoryUrl": "https://github.com/Web3Auth/web3auth-firebase-extension/tree/master/README.md"
     }
   }
 }

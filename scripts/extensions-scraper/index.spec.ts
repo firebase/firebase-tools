@@ -1,11 +1,11 @@
 import { expect } from "chai";
+import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 import {
   extractReplacementFromReadme,
   getRepoUrlForExtension,
   processExtensionReadmes,
   toRawGithubUrl,
 } from "./index";
-import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 
 describe("extensions-scraper", () => {
   describe("extractReplacementFromReadme", () => {
@@ -25,6 +25,32 @@ describe("extensions-scraper", () => {
       const pkg = extractReplacementFromReadme(readme);
       expect(pkg).to.equal("@stripe/firestore-stripe-payments");
     });
+
+    it("should return undefined when replacement tag is missing the package attribute", () => {
+      const readme = `
+<!-- FIREBASE_EXTENSION_REPLACEMENT: extension="firebase/firestore-send-email" target="npm" -->
+## Migration Guide
+Check out the replacement guide below.
+      `;
+      const pkg = extractReplacementFromReadme(readme);
+      expect(pkg).to.be.undefined;
+    });
+
+    it("should return undefined for unrelated HTML comments in README", () => {
+      const readme = `
+<!-- TODO: update configuration instructions before v2 release -->
+<!-- markdownlint-disable MD013 -->
+# Firestore Extension
+Standard documentation and configuration details.
+      `;
+      const pkg = extractReplacementFromReadme(readme);
+      expect(pkg).to.be.undefined;
+    });
+
+    it("should return undefined for empty or whitespace content", () => {
+      expect(extractReplacementFromReadme("")).to.be.undefined;
+      expect(extractReplacementFromReadme("   \n\t  ")).to.be.undefined;
+    });
   });
 
   describe("toRawGithubUrl", () => {
@@ -42,23 +68,29 @@ describe("extensions-scraper", () => {
         "https://raw.githubusercontent.com/firebase/firestore-bundle-builder/master/README.md",
       );
     });
-  });
 
-  describe("getRepoUrlForExtension", () => {
-    it("should resolve 1P firebase extensions to github.com repo tree", () => {
-      const url = getRepoUrlForExtension("firebase/firestore-send-email");
-      expect(url).to.equal(
-        "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+    it("should throw error for non-GitHub hosts", () => {
+      expect(() => toRawGithubUrl("https://gitlab.com/owner/repo/README.md")).to.throw(
+        "Unsupported host",
       );
     });
 
-    it("should resolve 2P partner extensions using explicit extensionRepositoryUrl", () => {
-      const url = getRepoUrlForExtension("stripe/firestore-stripe-payments", {
+    it("should throw error for malformed URLs", () => {
+      expect(() => toRawGithubUrl("not-a-valid-url")).to.throw(
+        "Failed to convert to raw GitHub URL",
+      );
+    });
+  });
+
+  describe("getRepoUrlForExtension", () => {
+    it("should return the mandatory extensionRepositoryUrl from the entry", () => {
+      const url = getRepoUrlForExtension({
+        status: "PENDING_PUBLISHER",
         extensionRepositoryUrl:
-          "https://github.com/stripe/stripe-firebase-extensions/tree/main/firestore-stripe-payments/README.md",
+          "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       });
       expect(url).to.equal(
-        "https://github.com/stripe/stripe-firebase-extensions/tree/main/firestore-stripe-payments/README.md",
+        "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       );
     });
   });
@@ -67,7 +99,7 @@ describe("extensions-scraper", () => {
     it("should update registry when valid replacement tags are found", () => {
       const readmes = {
         "firebase/firestore-send-email":
-          '<!-- FIREBASE_EXTENSION_REPLACEMENT: package="@firebase/firestore-send-email" -->',
+          '<!-- FIREBASE_EXTENSION_REPLACEMENT: package="@firebase-function-kits/firestore-send-email" -->',
       };
       const initialRegistry: ReplacementRegistrySchema = {
         replacements: {
@@ -83,7 +115,7 @@ describe("extensions-scraper", () => {
       expect(results[0].status).to.equal("REPLACEMENT_AVAILABLE");
       expect(updatedRegistry.replacements["firebase/firestore-send-email"]).to.deep.equal({
         status: "REPLACEMENT_AVAILABLE",
-        npmPackage: "@firebase/firestore-send-email",
+        npmPackage: "@firebase-function-kits/firestore-send-email",
         extensionRepositoryUrl:
           "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
       });

@@ -1,142 +1,130 @@
-import * as https from "https";
-import * as path from "path";
 import * as fs from "fs";
-import { getRepoUrlForExtension, processExtensionReadmes, toRawGithubUrl } from "./index";
-import {
-  ReplacementInfo,
-  ReplacementRegistrySchema,
-} from "../../src/extensions/replacementRegistry";
+import * as path from "path";
+import { extractReplacementFromReadme, getRepoUrlForExtension, toRawGithubUrl } from "./index";
+import { ReplacementRegistrySchema } from "../../src/extensions/replacementRegistry";
 
 interface FetchResult {
-  content: string;
+  ok: boolean;
   statusCode?: number;
+  text: string;
   error?: string;
 }
 
-function fetchUrlContent(url: string, maxRedirects = 5): Promise<FetchResult> {
-  return new Promise((resolve) => {
-    if (maxRedirects < 0) {
-      resolve({ content: "", error: "Exceeded maximum redirect limit (5)" });
-      return;
+async function fetchUrlContent(url: string): Promise<FetchResult> {
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(10000),
+      redirect: "follow",
+    });
+    if (!res.ok) {
+      return { ok: false, statusCode: res.status, text: "", error: `HTTP ${res.status}` };
     }
-    try {
-      const req = https.get(url, { timeout: 10000 }, (res) => {
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          const redirectUrl = res.headers.location;
-          res.resume();
-          if (redirectUrl) {
-            try {
-              const absoluteUrl = new URL(redirectUrl, url).toString();
-              void fetchUrlContent(absoluteUrl, maxRedirects - 1).then(resolve);
-            } catch (err: unknown) {
-              resolve({
-                content: "",
-                error: `Invalid redirect URL: ${String(err)}`,
-              });
-            }
-            return;
-          }
-        }
-        if (res.statusCode !== 200) {
-          res.resume();
-          resolve({
-            content: "",
-            statusCode: res.statusCode,
-            error: `HTTP ${res.statusCode ?? "unknown"}`,
-          });
-          return;
-        }
-        let data = "";
-        res.on("data", (chunk: string | Buffer) => (data += chunk.toString()));
-        res.on("end", () => resolve({ content: data, statusCode: 200 }));
-      });
-
-      req.on("timeout", () => {
-        req.destroy();
-        resolve({ content: "", error: "Request timed out (10s)" });
-      });
-
-      req.on("error", (err) => {
-        resolve({ content: "", error: err.message });
-      });
-    } catch (err: unknown) {
-      resolve({ content: "", error: String(err) });
-    }
-  });
+    const text = await res.text();
+    return { ok: true, statusCode: res.status, text };
+  } catch (err: unknown) {
+    return { ok: false, text: "", error: String(err) };
+  }
 }
 
 async function runLiveScan(): Promise<void> {
   const replacementsPath = path.resolve(__dirname, "../../src/extensions/replacements.json");
   const rawJson = fs.readFileSync(replacementsPath, "utf-8");
-  const registry: ReplacementRegistrySchema = JSON.parse(rawJson) as ReplacementRegistrySchema;
+  const registry = JSON.parse(rawJson) as ReplacementRegistrySchema;
 
   console.log("\n=======================================================");
-  console.log("   LIVE GITHUB SCANNER FOR EXTENSION REPLACEMENTS      ");
-  console.log("=======================================================\n");
+  console.log("   FIREBASE EXTENSIONS REPLACEMENTS LIVE SCANNER       ");
+  console.log("=======================================================");
 
-  const entries: [string, ReplacementInfo][] = Object.entries(registry.replacements);
-  console.log(`[Scraper] Scanning ${entries.length} extensions from GitHub...\n`);
-
-  const fetchedReadmes: Record<string, string> = {};
-  const scanErrors: Array<{ extensionRef: string; url: string; error: string }> = [];
-
-  for (const [extRef, entry] of entries) {
-    const webUrl = getRepoUrlForExtension(extRef, entry);
-    const rawUrl = toRawGithubUrl(webUrl);
-
-    const result = await fetchUrlContent(rawUrl);
-
-    if (result.error) {
-      scanErrors.push({ extensionRef: extRef, url: webUrl, error: result.error });
-      console.log(`[⚠ FAILED] ${extRef}`);
-      console.log(`  Reason:  ${result.error}`);
-      console.log(`  Web URL: ${webUrl}\n`);
-    } else {
-      fetchedReadmes[extRef] = result.content;
-    }
-  }
-
-  // Use processExtensionReadmes from index.ts to update registry
-  const { updatedRegistry, results } = processExtensionReadmes(fetchedReadmes, registry);
+  const entries = Object.entries(registry.replacements);
+  console.log(`\n[Scraper] Starting live scan for ${entries.length} extensions...\n`);
 
   let detectedCount = 0;
   let pendingCount = 0;
+  const failedExtensions: Array<{ extRef: string; url: string; reason: string }> = [];
 
-  for (const item of results) {
-    const webUrl = getRepoUrlForExtension(
-      item.extensionRef,
-      registry.replacements[item.extensionRef],
-    );
-    if (item.status === "REPLACEMENT_AVAILABLE" && item.detectedPackage) {
+  for (const [extRef, entry] of entries) {
+    const webUrl = getRepoUrlForExtension(entry);
+    let rawUrl: string;
+
+    try {
+      rawUrl = toRawGithubUrl(webUrl);
+    } catch (err: unknown) {
+      failedExtensions.push({
+        extRef,
+        url: webUrl,
+        reason: `Invalid URL format: ${String(err)}`,
+      });
+      console.log(`[✗ ERROR] ${extRef}`);
+      console.log(`  Reason:  Invalid URL (${webUrl})\n`);
+      continue;
+    }
+
+    const fetchResult = await fetchUrlContent(rawUrl);
+    let discoveredPackage = extractReplacementFromReadme(fetchResult.text);
+    let sourceBranch = "main";
+
+    // Support pre-merge testing against 'kits' branch if 'main' doesn't have the tag yet
+    if (!discoveredPackage && rawUrl.includes("/main/")) {
+      const kitsBranchUrl = rawUrl.replace("/main/", "/kits/");
+      const kitsFetch = await fetchUrlContent(kitsBranchUrl);
+      const kitsPackage = extractReplacementFromReadme(kitsFetch.text);
+      if (kitsPackage) {
+        discoveredPackage = kitsPackage;
+        sourceBranch = "kits (pre-merge)";
+      }
+    }
+
+    if (discoveredPackage) {
       detectedCount++;
-      console.log(`[✓ DETECTED] ${item.extensionRef}`);
-      console.log(`  Target Package: ${item.detectedPackage}`);
-      console.log(`  Web URL:        ${webUrl}\n`);
-    } else if (!scanErrors.some((e) => e.extensionRef === item.extensionRef)) {
+      registry.replacements[extRef] = {
+        ...registry.replacements[extRef],
+        status: "REPLACEMENT_AVAILABLE",
+        npmPackage: discoveredPackage,
+      };
+      console.log(`[✓ DETECTED] ${extRef}`);
+      console.log(`  Package: ${discoveredPackage}`);
+      console.log(`  Branch:  ${sourceBranch}`);
+      console.log(`  Web URL: ${webUrl}\n`);
+    } else if (!fetchResult.ok && failedExtensions.length < 50) {
+      const errReason =
+        fetchResult.error ??
+        (fetchResult.statusCode ? `HTTP ${fetchResult.statusCode}` : "Unreachable");
+      failedExtensions.push({
+        extRef,
+        url: webUrl,
+        reason: errReason,
+      });
+      console.log(`[✗ UNREACHABLE] ${extRef}`);
+      console.log(`  Web URL: ${webUrl}`);
+      console.log(`  Error:   ${errReason}\n`);
+    } else {
       pendingCount++;
-      console.log(`[PENDING] ${item.extensionRef}`);
-      console.log(`  Web URL: ${webUrl} (No tag present)\n`);
+      console.log(`[• PENDING] ${extRef}`);
+      console.log(`  Web URL: ${webUrl} (README active, no replacement tag yet)\n`);
     }
   }
 
   if (detectedCount > 0) {
-    fs.writeFileSync(replacementsPath, JSON.stringify(updatedRegistry, null, 2) + "\n");
-    console.log(`[Scraper] Saved updated registry to ${replacementsPath}\n`);
+    fs.writeFileSync(replacementsPath, JSON.stringify(registry, null, 2) + "\n");
+    console.log(`[Scraper] Successfully updated ${replacementsPath}\n`);
   }
 
   console.log("=======================================================");
-  console.log(`   SCAN SUMMARY:`);
-  console.log(`   - Detected Replacements: ${detectedCount}`);
-  console.log(`   - Pending Notices:       ${pendingCount}`);
-  console.log(`   - Failed / Errors:       ${scanErrors.length}`);
+  console.log("   SCAN SUMMARY                                        ");
+  console.log("=======================================================");
+  console.log(`   Total Extensions Scanned: ${entries.length}`);
+  console.log(`   ✓ Replacements Available: ${detectedCount}`);
+  console.log(`   • Pending Publisher Tags: ${pendingCount}`);
+  console.log(`   ✗ Unreachable / Errors:   ${failedExtensions.length}`);
   console.log("=======================================================\n");
 
-  if (scanErrors.length > 0) {
-    console.log("Failed Scans Detail:");
-    for (const err of scanErrors) {
-      console.log(` - ${err.extensionRef}: ${err.error} (${err.url})`);
+  if (failedExtensions.length > 0) {
+    console.log("⚠️ FAILED / UNREACHABLE EXTENSIONS:");
+    for (const f of failedExtensions) {
+      console.log(`  - ${f.extRef}`);
+      console.log(`    URL:    ${f.url}`);
+      console.log(`    Reason: ${f.reason}\n`);
     }
-    console.log("");
   }
 }
 
