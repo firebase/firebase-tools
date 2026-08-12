@@ -162,6 +162,12 @@ ${[...featureNames]
 
 export const command = new Command("init [feature]")
   .description("interactively configure the current directory as a Firebase project directory")
+  .option("-s, --service <serviceId>", "Cloud Run service ID")
+  .option("--service-id <serviceId>", "Cloud Run service ID")
+  .option("--primary-region <region>", "primary region for Cloud Run")
+  .option("--region <region>", "region for Cloud Run")
+  .option("--root-dir <rootDir>", "root directory for source code")
+  .option("--output-dir <outputDir>", "output directory for built artifacts")
   .help(HELP)
   .action(initAction);
 

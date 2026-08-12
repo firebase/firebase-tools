@@ -114,6 +114,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
       logBullet(`Creating placeholder Cloud Run service ${serviceId} in ${region}...`);
       try {
         const placeholderService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          name: `projects/${projectId}/locations/${region}/services/${serviceId}`,
           template: {
             containers: [
               {
@@ -121,12 +122,6 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
               },
             ],
           },
-          traffic: [
-            {
-              type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
-              percent: 0,
-            },
-          ],
           invokerIamDisabled: true,
         };
 

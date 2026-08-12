@@ -125,12 +125,6 @@ describe("init features run", () => {
       expect(createdService.template.containers?.[0].image).to.equal(
         "us-docker.pkg.dev/cloudrun/container/hello",
       );
-      expect(createdService.traffic).to.deep.equal([
-        {
-          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
-          percent: 0,
-        },
-      ]);
       expect(createdService.invokerIamDisabled).to.be.true;
       expect(setup.instructions).to.include("Your Cloud Run service URL is: https://my-svc.a.run.app");
 
