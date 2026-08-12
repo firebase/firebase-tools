@@ -40,9 +40,17 @@ async function runLiveScan(): Promise<void> {
 
   let detectedCount = 0;
   let pendingCount = 0;
+  let noReplacementCount = 0;
   const failedExtensions: Array<{ extRef: string; url: string; reason: string }> = [];
 
   for (const [extRef, entry] of entries) {
+    if (entry.status === "CONFIRMED_NO_REPLACEMENT") {
+      noReplacementCount++;
+      console.log(`[⊘ NO REPLACEMENT] ${extRef}`);
+      console.log(`  Status:  Confirmed no replacement planned\n`);
+      continue;
+    }
+
     const webUrl = getRepoUrlForExtension(entry);
     let rawUrl: string;
 
@@ -112,10 +120,11 @@ async function runLiveScan(): Promise<void> {
   console.log("=======================================================");
   console.log("   SCAN SUMMARY                                        ");
   console.log("=======================================================");
-  console.log(`   Total Extensions Scanned: ${entries.length}`);
-  console.log(`   ✓ Replacements Available: ${detectedCount}`);
-  console.log(`   • Pending Publisher Tags: ${pendingCount}`);
-  console.log(`   ✗ Unreachable / Errors:   ${failedExtensions.length}`);
+  console.log(`   Total Extensions Cataloged:   ${entries.length}`);
+  console.log(`   ✓ Replacements Available:     ${detectedCount}`);
+  console.log(`   • Pending Publisher Tags:     ${pendingCount}`);
+  console.log(`   ⊘ Confirmed No Replacement:   ${noReplacementCount}`);
+  console.log(`   ✗ Unreachable / Errors:       ${failedExtensions.length}`);
   console.log("=======================================================\n");
 
   if (failedExtensions.length > 0) {
