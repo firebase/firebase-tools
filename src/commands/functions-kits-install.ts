@@ -155,7 +155,7 @@ export function getProjectIdentifiers(options: Options): Set<string> {
     ids.add(options.project);
   }
   if (options.rc) {
-    const rcProjects = options.rc.projects;
+    const rcProjects = options.rc.projects || {};
     for (const [alias, pid] of Object.entries(rcProjects)) {
       if (ids.has(alias) || ids.has(pid)) {
         ids.add(alias);
@@ -262,36 +262,22 @@ export const command = new Command("functions:kits:install")
       }
     }
 
-    const matchingKits = existingFunctions.filter(
+    const existingKit = existingFunctions.find(
       (c): c is ValidatedKitSingle => isKitConfig(c) && c.sourcePackage?.name === packageName,
     );
 
-    if (matchingKits.length > 0) {
-      let targetKit: ValidatedKitSingle = matchingKits[0];
-      if (matchingKits.length > 1) {
-        if (!options.nonInteractive) {
-          const chosenKitId = await select<string>({
-            message: `Multiple kits found for package ${packageName}. Which kit would you like to configure?`,
-            choices: matchingKits.map((k) => ({ name: k.kit, value: k.kit })),
-          });
-          const foundKit = matchingKits.find((k) => k.kit === chosenKitId);
-          if (foundKit) {
-            targetKit = foundKit;
-          }
-        }
-      }
-
+    if (existingKit) {
       const projectIdentifiers = getProjectIdentifiers(options);
       const hasCurrentProjectEnv = hasDotenvForProject(
         options.config,
-        targetKit,
+        existingKit,
         projectIdentifiers,
       );
 
       let action: "addInstance" | "addEnv";
       if (!hasCurrentProjectEnv && !options.nonInteractive) {
         action = await select<"addInstance" | "addEnv">({
-          message: `Package ${clc.bold(packageName)} is already installed for kit ${clc.bold(targetKit.kit)}. What would you like to do?`,
+          message: `Package ${clc.bold(packageName)} is already installed for kit ${clc.bold(existingKit.kit)}. What would you like to do?`,
           choices: [
             {
               name: "Add an instance to the existing kit",
@@ -309,7 +295,7 @@ export const command = new Command("functions:kits:install")
 
       if (action === "addInstance") {
         const instanceCollisions = new Set([...existingInstanceIds, ...existingCodebases]);
-        const defaultInstanceId = generateUniqueId(targetKit.kit, instanceCollisions);
+        const defaultInstanceId = generateUniqueId(existingKit.kit, instanceCollisions);
 
         const instanceId = await input({
           message: "What would you like to name this instance?",
@@ -343,7 +329,7 @@ export const command = new Command("functions:kits:install")
           );
         }
 
-        const configDirPath = path.join(FUNCTION_KITS_DIR, targetKit.kit, `config-${instanceId}`);
+        const configDirPath = path.join(FUNCTION_KITS_DIR, existingKit.kit, `config-${instanceId}`);
         const absConfigDirPath = options.config.path(configDirPath);
         await fs.ensureDir(absConfigDirPath);
 
@@ -352,7 +338,7 @@ export const command = new Command("functions:kits:install")
           | KitFunctionConfig[]
           | undefined;
         if (Array.isArray(functionsRaw)) {
-          const rawKit = functionsRaw.find((f) => f.kit === targetKit.kit);
+          const rawKit = functionsRaw.find((f) => f.kit === existingKit.kit);
           if (rawKit) {
             rawKit.instances = rawKit.instances || {};
             rawKit.instances[instanceId] = configDirPath;
@@ -360,7 +346,7 @@ export const command = new Command("functions:kits:install")
         } else if (
           functionsRaw &&
           typeof functionsRaw === "object" &&
-          functionsRaw.kit === targetKit.kit
+          functionsRaw.kit === existingKit.kit
         ) {
           functionsRaw.instances = functionsRaw.instances || {};
           functionsRaw.instances[instanceId] = configDirPath;
@@ -369,16 +355,16 @@ export const command = new Command("functions:kits:install")
         options.config.writeProjectFile("firebase.json", configSrc);
         logger.info(
           clc.green(
-            `✔ Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(targetKit.kit)}.`,
+            `✔ Function kit instance ${clc.bold(instanceId)} successfully added to kit ${clc.bold(existingKit.kit)}.`,
           ),
         );
         return;
       }
 
       if (action === "addEnv") {
-        const instanceIds: string[] = Object.keys(targetKit.instances);
+        const instanceIds: string[] = Object.keys(existingKit.instances);
         if (instanceIds.length === 0) {
-          throw new FirebaseError(`Kit '${targetKit.kit}' has no instances configured.`);
+          throw new FirebaseError(`Kit '${existingKit.kit}' has no instances configured.`);
         }
 
         let selectedInstanceId = instanceIds[0];
