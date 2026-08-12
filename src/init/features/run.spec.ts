@@ -49,10 +49,14 @@ describe("init features run", () => {
 
     it("should throw FirebaseError if projectId is missing", async () => {
       const setup = createMockSetup();
-      await expect(runFeature.askQuestions(setup)).to.be.rejectedWith(
-        FirebaseError,
-        "Project ID must be set before initializing Cloud Run.",
-      );
+      try {
+        await runFeature.askQuestions(setup);
+        expect.fail("Expected askQuestions to throw");
+      } catch (err: any) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err.message).to.equal("Project ID must be set before initializing Cloud Run.");
+        expect(err.exit).to.equal(1);
+      }
     });
   });
 
@@ -90,10 +94,14 @@ describe("init features run", () => {
       });
       const config = new Config({}, {});
 
-      await expect(runFeature.actuate(setup, config)).to.be.rejectedWith(
-        FirebaseError,
-        "Project ID must be set before initializing Cloud Run.",
-      );
+      try {
+        await runFeature.actuate(setup, config);
+        expect.fail("Expected actuate to throw");
+      } catch (err: any) {
+        expect(err).to.be.instanceOf(FirebaseError);
+        expect(err.message).to.equal("Project ID must be set before initializing Cloud Run.");
+        expect(err.exit).to.equal(1);
+      }
     });
 
     it("should create placeholder service with 0% traffic when service does not exist in GCP", async () => {
