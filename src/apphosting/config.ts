@@ -33,6 +33,15 @@ export interface AppHostingRunConfig {
   memoryMiB?: number;
   minInstances?: number;
   maxInstances?: number;
+  vpcAccess?: {
+    connector?: string;
+    egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }>;
+  };
 }
 
 export type RunConfig = AppHostingRunConfig;

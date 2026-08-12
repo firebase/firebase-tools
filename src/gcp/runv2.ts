@@ -203,62 +203,42 @@ export async function submitBuild(
     });
   }
   const op = res.body.buildOperation;
-  const opName = typeof op === "string" ? op : op?.name || "";
-  const rawId =
-    opName
-      .split("/")
-      .pop()
-      ?.replace(/^build-/, "") || "";
-  const buildId = (op as any)?.metadata?.build?.id || rawId;
+  const buildId =
+    (typeof op === "object" && op?.metadata?.build?.id) ||
+    (typeof op === "string" ? op.split("/").pop()?.replace(/^build-/, "") : "");
   if (buildId) {
-    const cloudbuildClient = new Client({
-      urlPrefix: cloudbuildOrigin(),
-      auth: true,
+    const buildResult = await pollOperation<{
+      status: string;
+      statusDetail?: string;
+      logUrl?: string;
+    }>({
+      pollerName: "Cloud Build Poller",
+      apiOrigin: cloudbuildOrigin(),
       apiVersion: "v1",
-    });
-    const startTime = Date.now();
-    const timeoutMs = 15 * 60 * 1000;
-    let buildSuccess = false;
-    const logUrl = `https://console.cloud.google.com/cloud-build/builds;region=${location}/${buildId}?project=${projectId}`;
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        const buildStatusRes = await cloudbuildClient.get<{
-          status: string;
-          statusDetail?: string;
-          logUrl?: string;
-        }>(`/projects/${projectId}/locations/${location}/builds/${buildId}`);
-        const status = buildStatusRes.body?.status;
-        if (status === "SUCCESS") {
-          logger.info(`[run:submitBuild] Cloud Build ${buildId} completed with SUCCESS.`);
-          buildSuccess = true;
-          break;
-        }
-        if (
+      operationResourceName: `projects/${projectId}/locations/${location}/builds/${buildId}`,
+      masterTimeout: 15 * 60 * 1000,
+      backoff: 2000,
+      maxBackoff: 10000,
+      doneFn: (buildRes: any) => {
+        const status = buildRes?.status;
+        return (
+          status === "SUCCESS" ||
           status === "FAILURE" ||
           status === "INTERNAL_ERROR" ||
           status === "TIMEOUT" ||
           status === "CANCELLED"
-        ) {
-          const detail = buildStatusRes.body?.statusDetail ? `: ${buildStatusRes.body.statusDetail}` : "";
-          const consoleLink = buildStatusRes.body?.logUrl || logUrl;
-          throw new FirebaseError(
-            `Cloud Build failed with status ${status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
-          );
-        }
-      } catch (err: any) {
-        if (err instanceof FirebaseError && err.message.includes("Cloud Build failed")) {
-          throw err;
-        }
-        // Tolerate 404 Not Found during initial propagation / eventual consistency lag
-        if (err.status && err.status >= 400 && err.status < 500 && err.status !== 404) {
-          throw err;
-        }
-        logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
-      }
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    }
-    if (!buildSuccess) {
-      throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes. View logs at: ${logUrl}`, { exit: 1 });
+        );
+      },
+    });
+
+    if (buildResult.status !== "SUCCESS") {
+      const detail = buildResult.statusDetail ? `: ${buildResult.statusDetail}` : "";
+      const consoleLink =
+        buildResult.logUrl ||
+        `https://console.cloud.google.com/cloud-build/builds;region=${location}/${buildId}?project=${projectId}`;
+      throw new FirebaseError(
+        `Cloud Build failed with status ${buildResult.status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
+      );
     }
   }
   return {

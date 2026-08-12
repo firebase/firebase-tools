@@ -1,5 +1,4 @@
-import { Context, Payload, RunServiceSpec } from "./args";
-import { Options } from "../../options";
+import { Context, Payload, RunDeployOptions, RunServiceSpec } from "./args";
 import * as runv2 from "../../gcp/runv2";
 import * as artifactregistry from "../../gcp/artifactregistry";
 import * as gcs from "../../gcp/storage";
@@ -88,8 +87,8 @@ function applyServiceScaling(
   if (runConfig.concurrency !== undefined) {
     service.template.maxInstanceRequestConcurrency = runConfig.concurrency;
   }
-  if ((runConfig as any).vpcAccess) {
-    service.template.vpcAccess = (runConfig as any).vpcAccess;
+  if (runConfig.vpcAccess) {
+    service.template.vpcAccess = runConfig.vpcAccess;
   }
 }
 
@@ -126,7 +125,7 @@ async function packageAndUploadSource(
   projectId: string,
   region: string,
   service: RunServiceSpec,
-  options: Options,
+  options: RunDeployOptions,
 ): Promise<runv2.StorageSource> {
   const archive = await archiveDirectory(service.source, {
     ignore: service.ignore,
@@ -349,7 +348,7 @@ function buildNewServiceDefinition(
  */
 async function deployService(
   context: Context,
-  options: Options,
+  options: RunDeployOptions,
   service: RunServiceSpec,
 ): Promise<void> {
   const projectId = context.projectId!;
@@ -364,7 +363,8 @@ async function deployService(
     service.storageSource = await packageAndUploadSource(projectId, region, service, options);
 
     // 3. Construct target image URI & submit Cloud Build
-    const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:latest`;
+    const imageTag = `${Date.now()}`;
+    const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:${imageTag}`;
     const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(projectId, region, service, imageUri);
 
     // 4. Create or update Cloud Run service
@@ -426,7 +426,7 @@ async function deployService(
  * Deploys Cloud Run services by building container images via Cloud Build
  * and creating or updating services in Cloud Run Admin API v2.
  */
-export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
+export async function deploy(context: Context, options: RunDeployOptions, payload: Payload): Promise<void> {
   const services = payload.run?.services;
   if (!services || services.length === 0) {
     return;

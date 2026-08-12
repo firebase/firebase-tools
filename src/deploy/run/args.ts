@@ -1,6 +1,7 @@
 import { RunSingle } from "../../firebaseConfig";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import * as runv2 from "../../gcp/runv2";
+import { Options } from "../../options";
 
 export const DEFAULT_RUN_IGNORE = [
   "node_modules",
@@ -13,6 +14,16 @@ export const DEFAULT_RUN_IGNORE = [
   "apphosting.local.yaml",
   "**/*.secret.local",
 ];
+
+export interface RunDeployOptions extends Options {
+  runtime?: string;
+  baseImage?: string;
+  clearRuntime?: boolean;
+  clearBaseImage?: boolean;
+  primaryRegion?: string;
+  region?: string;
+  serviceAccount?: string;
+}
 
 export interface RunServiceConfig extends RunSingle {
   "primary-region"?: string;
@@ -47,3 +58,4 @@ export interface Payload {
 export interface Context {
   projectId?: string;
 }
+

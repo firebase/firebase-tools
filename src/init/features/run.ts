@@ -22,7 +22,7 @@ export interface RunInfo {
 export async function askQuestions(setup: Setup, config?: Config, options?: any): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
-    throw new FirebaseError("Project ID must be set before initializing Cloud Run.");
+    throw new FirebaseError("Project ID must be set before initializing Cloud Run.", { exit: 1 });
   }
 
   logBullet("Configuring Cloud Run...");
@@ -33,16 +33,13 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
     path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9-]/g, "-") ||
     "my-service";
 
-  const serviceId = options?.service || options?.serviceId || (await input({
-    message: "What should be the ID of your Cloud Run service?",
-    default: defaultServiceId,
-    validate: (val: string) => {
-      if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(val)) {
-        return "Service ID must be lowercase alphanumeric and hyphens, max 63 characters.";
-      }
-      return true;
-    },
-  }));
+  const serviceId =
+    options?.service ||
+    options?.serviceId ||
+    (await input({
+      message: "What should be the ID of your Cloud Run service?",
+      default: defaultServiceId,
+    }));
 
   const defaultRegion =
     options?.primaryRegion ||
@@ -94,7 +91,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   }
   const projectId = setup.projectId;
   if (!projectId) {
-    throw new FirebaseError("Project ID must be set before initializing Cloud Run.");
+    throw new FirebaseError("Project ID must be set before initializing Cloud Run.", { exit: 1 });
   }
 
   const { serviceId, region, rootDir, outputDir } = runInfo;

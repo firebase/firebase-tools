@@ -586,13 +586,12 @@ describe("runv2", () => {
   describe("submitBuild", () => {
     let sandbox: sinon.SinonSandbox;
     let postStub: sinon.SinonStub;
-    let getStub: sinon.SinonStub;
+    let pollStub: sinon.SinonStub;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       postStub = sandbox.stub(Client.prototype, "post");
-      getStub = sandbox.stub(Client.prototype, "get");
-      getStub.resolves({ status: 200, body: { status: "SUCCESS" } });
+      pollStub = sandbox.stub(operationPoller, "pollOperation").resolves({ status: "SUCCESS" });
     });
 
     afterEach(() => {
@@ -620,6 +619,7 @@ describe("runv2", () => {
         `/projects/${PROJECT_ID}/locations/${LOCATION}/builds:submit`,
         build,
       );
+      expect(pollStub).to.have.been.calledOnce;
       expect(res.baseImageUri).to.equal("gcr.io/base:latest");
       expect(res.baseImageWarning).to.equal("warning");
     });
@@ -647,6 +647,7 @@ describe("runv2", () => {
 
       const res = await runv2.submitBuild(PROJECT_ID, LOCATION, build);
       expect(res.baseImageUri).to.equal("gcr.io/base:latest");
+      expect(pollStub).to.have.been.calledOnce;
     });
 
     it("should throw FirebaseError on non-200 status", async () => {
@@ -660,6 +661,31 @@ describe("runv2", () => {
       await expect(runv2.submitBuild(PROJECT_ID, LOCATION, build)).to.be.rejectedWith(
         FirebaseError,
         "Failed to submit build: 400",
+      );
+    });
+
+    it("should throw FirebaseError when build status is not SUCCESS", async () => {
+      postStub.resolves({
+        status: 200,
+        body: {
+          buildOperation: {
+            metadata: {
+              build: { id: "build-123" },
+            },
+          },
+        },
+      });
+      pollStub.resolves({ status: "FAILURE", statusDetail: "Buildpack compile error" });
+
+      const build: runv2.Build = {
+        imageUri: "us-central1-docker.pkg.dev/proj/repo/service:123",
+        storageSource: { bucket: "bucket", object: "obj.zip" },
+        buildpackBuild: {},
+      };
+
+      await expect(runv2.submitBuild(PROJECT_ID, LOCATION, build)).to.be.rejectedWith(
+        FirebaseError,
+        /Cloud Build failed with status FAILURE/,
       );
     });
   });

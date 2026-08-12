@@ -1,22 +1,28 @@
 import { needProjectId } from "../../projectUtils";
-import { Options } from "../../options";
 import { prereqs } from "./prereqs";
 import * as path from "path";
 import * as runv2 from "../../gcp/runv2";
 import { fileExistsSync } from "../../fsutils";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
 import { FirebaseError } from "../../error";
-import { Context, DEFAULT_RUN_IGNORE, Payload, RunConfig, RunServiceSpec } from "./args";
+import {
+  Context,
+  DEFAULT_RUN_IGNORE,
+  Payload,
+  RunConfig,
+  RunDeployOptions,
+  RunServiceSpec,
+} from "./args";
 
 /**
  * Validates CLI flags to ensure incompatible options are not specified simultaneously.
  */
-function validateCliFlags(options: Options): {
+function validateCliFlags(options: RunDeployOptions): {
   runtimeOpt?: string;
   clearOpt: boolean;
 } {
-  const runtimeOpt = ((options as any).runtime || (options as any).baseImage) as string | undefined;
-  const clearOpt = !!((options as any).clearRuntime || (options as any).clearBaseImage);
+  const runtimeOpt = options.runtime || options.baseImage;
+  const clearOpt = !!(options.clearRuntime || options.clearBaseImage);
 
   if (runtimeOpt !== undefined && runtimeOpt !== "" && clearOpt) {
     throw new FirebaseError(
@@ -93,7 +99,7 @@ function resolveBaseImage(
  * Prepares Cloud Run deployment by validating configurations, filtering targeted services,
  * fetching existing services, resolving base images and App Hosting configurations.
  */
-export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
+export async function prepare(context: Context, options: RunDeployOptions, payload: Payload): Promise<void> {
   const projectId = needProjectId(options);
   context.projectId = projectId;
 
@@ -118,8 +124,8 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     }
 
     const region =
-      ((options as any).primaryRegion as string | undefined) ||
-      ((options as any).region as string | undefined) ||
+      options.primaryRegion ||
+      options.region ||
       process.env.FIREBASE_RUN_REGION ||
       config.region ||
       config["primary-region"] ||
@@ -140,9 +146,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       clearOpt,
     );
 
-    const sourceDir = options.config
-      ? options.config.path(config.source || config.rootDir || ".")
-      : process.cwd();
+    const sourceDir = options.config.path(config.source || config.rootDir || ".");
     const yamlPath = path.join(sourceDir, "apphosting.yaml");
     let appHostingConfig: AppHostingYamlConfig | undefined;
     if (fileExistsSync(yamlPath)) {
@@ -159,7 +163,7 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       clearBaseImage,
       appHostingConfig,
       message: options.message as string | undefined,
-      serviceAccount: ((options as any).serviceAccount as string | undefined) || config.serviceAccount,
+      serviceAccount: options.serviceAccount || config.serviceAccount,
     });
   }
 }
