@@ -18,7 +18,7 @@ function validateCliFlags(options: Options): {
   const runtimeOpt = ((options as any).runtime || (options as any).baseImage) as string | undefined;
   const clearOpt = !!((options as any).clearRuntime || (options as any).clearBaseImage);
 
-  if (runtimeOpt && clearOpt) {
+  if (runtimeOpt !== undefined && runtimeOpt !== "" && clearOpt) {
     throw new FirebaseError(
       "Cannot specify both --runtime/--base-image and --clear-runtime/--clear-base-image.",
     );
@@ -51,13 +51,14 @@ function filterTargetConfigs(
   const targetedServiceIds = new Set(runFilterTargets.filter((t) => t.length > 0));
 
   if (hasSpecificServiceFilter) {
-    const matchedConfigs = configs.filter((c) => targetedServiceIds.has(c.serviceId));
-    if (matchedConfigs.length === 0) {
+    const configuredServiceIds = new Set(configs.map((c) => c.serviceId));
+    const missingServiceIds = Array.from(targetedServiceIds).filter((id) => !configuredServiceIds.has(id));
+    if (missingServiceIds.length > 0) {
       throw new FirebaseError(
-        `No Cloud Run services in firebase.json match filter '${onlyString}'. Configured services: ${configs.map((c) => c.serviceId).join(", ")}`,
+        `Cloud Run service(s) '${missingServiceIds.join(", ")}' not found in firebase.json. Configured services: ${Array.from(configuredServiceIds).join(", ")}`,
       );
     }
-    configs = matchedConfigs;
+    configs = configs.filter((c) => targetedServiceIds.has(c.serviceId));
   }
 
   return configs;
@@ -75,10 +76,10 @@ function resolveBaseImage(
   runtimeOpt?: string,
   clearOpt?: boolean,
 ): { baseImageUri?: string; clearBaseImage: boolean } {
-  if (clearOpt) {
+  if (clearOpt || runtimeOpt === "") {
     return { baseImageUri: undefined, clearBaseImage: true };
   }
-  if (runtimeOpt) {
+  if (runtimeOpt !== undefined) {
     return { baseImageUri: runtimeOpt, clearBaseImage: false };
   }
   if (config.baseImageUri || config.baseImage || config.runtime) {
@@ -103,7 +104,6 @@ function resolveBaseImage(
 export async function prepare(context: Context, options: Options, payload: Payload): Promise<void> {
   const projectId = needProjectId(options);
   context.projectId = projectId;
-  await prereqs(options, projectId);
 
   const { runtimeOpt, clearOpt } = validateCliFlags(options);
   const rawRunConfigs = options.config
@@ -111,6 +111,9 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     : undefined;
 
   const configs = filterTargetConfigs(rawRunConfigs, options.only);
+
+  await prereqs(options, projectId);
+
   const services: RunServiceSpec[] = [];
   payload.run = {
     services,
@@ -159,12 +162,13 @@ export async function prepare(context: Context, options: Options, payload: Paylo
       serviceId,
       region,
       source: sourceDir,
-      ignore: config.ignore || DEFAULT_RUN_IGNORE,
+      ignore: Array.from(new Set([...DEFAULT_RUN_IGNORE, ...(config.ignore || [])])),
       existingService,
       baseImageUri,
       clearBaseImage,
       appHostingConfig,
       message: options.message as string | undefined,
+      serviceAccount: ((options as any).serviceAccount as string | undefined) || config.serviceAccount,
     });
   }
 }

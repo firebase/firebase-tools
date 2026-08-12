@@ -19,7 +19,7 @@ export interface RunInfo {
 /**
  * Prompts the user for Cloud Run service ID, deployment region, source root, and output directory.
  */
-export async function askQuestions(setup: Setup): Promise<void> {
+export async function askQuestions(setup: Setup, config?: Config, options?: any): Promise<void> {
   const projectId = setup.projectId;
   if (!projectId) {
     throw new FirebaseError("Project ID must be set before initializing Cloud Run.");
@@ -27,25 +27,49 @@ export async function askQuestions(setup: Setup): Promise<void> {
 
   logBullet("Configuring Cloud Run...");
 
-  const serviceId = await input({
+  const defaultServiceId =
+    options?.service ||
+    options?.serviceId ||
+    path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9-]/g, "-") ||
+    "my-service";
+
+  const serviceId = options?.service || options?.serviceId || (await input({
     message: "What should be the ID of your Cloud Run service?",
-    default: "my-service",
-  });
+    default: defaultServiceId,
+    validate: (val: string) => {
+      if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(val)) {
+        return "Service ID must be lowercase alphanumeric and hyphens, max 63 characters.";
+      }
+      return true;
+    },
+  }));
 
-  const region = await input({
+  const defaultRegion =
+    options?.primaryRegion ||
+    options?.region ||
+    process.env.FIREBASE_RUN_REGION ||
+    "us-central1";
+
+  const region = options?.primaryRegion || options?.region || (await input({
     message: "Which region should this service be deployed to?",
-    default: "us-central1",
-  });
+    default: defaultRegion,
+    validate: (val: string) => {
+      if (!/^[a-z0-9-]+$/.test(val)) {
+        return "Region must be a valid GCP region string (e.g. us-central1).";
+      }
+      return true;
+    },
+  }));
 
-  const rootDir = await input({
+  const rootDir = options?.rootDir || options?.source || (await input({
     message: "What is the root directory of your source code? (relative to firebase.json)",
     default: ".",
-  });
+  }));
 
-  const outputDir = await input({
+  const outputDir = options?.outputDir || options?.output || (await input({
     message: "Where should the built artifacts be output? (e.g. for --prebuilt)",
     default: ".run",
-  });
+  }));
 
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.run = {
@@ -106,9 +130,13 @@ export function upsertRunConfig(runConfig: RunSingle, config: Config): void {
     config.set("run", [runConfig]);
     return;
   }
-  if (Array.isArray(config.src.run)) {
-    config.set("run", [...config.src.run, runConfig]);
-    return;
+  const existing = Array.isArray(config.src.run) ? config.src.run : [config.src.run];
+  const idx = existing.findIndex((s) => s.serviceId === runConfig.serviceId);
+  if (idx >= 0) {
+    const updated = [...existing];
+    updated[idx] = { ...updated[idx], ...runConfig };
+    config.set("run", updated);
+  } else {
+    config.set("run", [...existing, runConfig]);
   }
-  config.set("run", [config.src.run, runConfig]);
 }

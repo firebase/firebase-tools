@@ -64,6 +64,11 @@ export interface RevisionTemplate {
   vpcAccess?: {
     connector?: string;
     egress?: "ALL_TRAFFIC" | "PRIVATE_RANGES_ONLY";
+    networkInterfaces?: Array<{
+      network?: string;
+      subnetwork?: string;
+      tags?: string[];
+    }>;
     networkinterfaces?: Array<{
       network?: string;
       subnetwork?: string;
@@ -206,11 +211,13 @@ export async function submitBuild(
     const startTime = Date.now();
     const timeoutMs = 15 * 60 * 1000;
     let buildSuccess = false;
+    const logUrl = `https://console.cloud.google.com/cloud-build/builds;region=${location}/${buildId}?project=${projectId}`;
     while (Date.now() - startTime < timeoutMs) {
       try {
         const buildStatusRes = await cloudbuildClient.get<{
           status: string;
           statusDetail?: string;
+          logUrl?: string;
         }>(`/projects/${projectId}/locations/${location}/builds/${buildId}`);
         const status = buildStatusRes.body?.status;
         if (status === "SUCCESS") {
@@ -224,15 +231,18 @@ export async function submitBuild(
           status === "TIMEOUT" ||
           status === "CANCELLED"
         ) {
+          const detail = buildStatusRes.body?.statusDetail ? `: ${buildStatusRes.body.statusDetail}` : "";
+          const consoleLink = buildStatusRes.body?.logUrl || logUrl;
           throw new FirebaseError(
-            `Cloud Build failed with status ${status}: ${buildStatusRes.body?.statusDetail || ""}`,
+            `Cloud Build failed with status ${status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
           );
         }
       } catch (err: any) {
-        if (err instanceof FirebaseError && err.message.startsWith("Cloud Build failed")) {
+        if (err instanceof FirebaseError && err.message.includes("Cloud Build failed")) {
           throw err;
         }
-        if (err.status && err.status >= 400 && err.status < 500) {
+        // Tolerate 404 Not Found during initial propagation / eventual consistency lag
+        if (err.status && err.status >= 400 && err.status < 500 && err.status !== 404) {
           throw err;
         }
         logger.debug(`[run:submitBuild] Polling retry on transient error: ${err.message}`);
@@ -240,7 +250,7 @@ export async function submitBuild(
       await new Promise((resolve) => setTimeout(resolve, 3000));
     }
     if (!buildSuccess) {
-      throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes.`, { exit: 1 });
+      throw new FirebaseError(`Cloud Build ${buildId} timed out after 15 minutes. View logs at: ${logUrl}`, { exit: 1 });
     }
   }
   return {

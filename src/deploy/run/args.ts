@@ -20,6 +20,7 @@ export interface RunServiceConfig extends RunSingle {
   outputDir?: string;
   baseImage?: string;
   runtime?: string;
+  serviceAccount?: string;
 }
 
 export type RunConfig = RunServiceConfig;
@@ -36,6 +37,7 @@ export interface RunServiceSpec {
   storageSource?: runv2.StorageSource;
   deployResponse?: runv2.Service;
   message?: string;
+  serviceAccount?: string;
 }
 
 export interface Payload {

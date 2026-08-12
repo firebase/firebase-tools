@@ -145,7 +145,16 @@ export async function ensureRepository(
     await getRepository(name);
   } catch (err: any) {
     if (err.status === 404) {
-      await createRepository(projectId, location, repositoryId, format);
+      try {
+        await createRepository(projectId, location, repositoryId, format);
+      } catch (createErr: any) {
+        if (createErr.status === 409) {
+          return;
+        }
+        throw createErr;
+      }
+    } else if (err.status === 409) {
+      return;
     } else {
       throw err;
     }

@@ -1265,10 +1265,28 @@
                 "region": {
                     "type": "string"
                 },
+                "primary-region": {
+                    "type": "string"
+                },
                 "serviceId": {
                     "type": "string"
                 },
                 "source": {
+                    "type": "string"
+                },
+                "rootDir": {
+                    "type": "string"
+                },
+                "outputDir": {
+                    "type": "string"
+                },
+                "baseImage": {
+                    "type": "string"
+                },
+                "runtime": {
+                    "type": "string"
+                },
+                "serviceAccount": {
                     "type": "string"
                 }
             },

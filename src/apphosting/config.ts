@@ -48,10 +48,21 @@ export type Env = {
   availability?: Availability[];
 };
 
+export interface ScriptsConfig {
+  build?: string;
+  run?: string;
+}
+
+export interface BuildConfig {
+  buildCommand?: string;
+}
+
 /** Schema for apphosting.yaml. */
 export interface Config {
   runConfig?: RunConfig;
   env?: Env[];
+  scripts?: ScriptsConfig;
+  buildConfig?: BuildConfig;
 }
 
 /**

@@ -1,6 +1,6 @@
 import { basename, dirname } from "path";
 import { readFileFromDirectory, wrappedSafeLoad } from "../utils";
-import { Config, Env, store, RunConfig } from "./config";
+import { Config, Env, store, RunConfig, ScriptsConfig, BuildConfig } from "./config";
 import * as yaml from "yaml";
 import * as jsYaml from "js-yaml";
 import * as path from "path";
@@ -19,6 +19,8 @@ export class AppHostingYamlConfig {
   public filename: string | undefined;
   public env: EnvMap = {};
   public runConfig?: RunConfig;
+  public scripts?: ScriptsConfig;
+  public buildConfig?: BuildConfig;
 
   /**
    * Reads in the App Hosting yaml file found in filePath, parses the secrets and
@@ -40,6 +42,12 @@ export class AppHostingYamlConfig {
     }
     if (loadedAppHostingYaml.runConfig) {
       config.runConfig = loadedAppHostingYaml.runConfig;
+    }
+    if (loadedAppHostingYaml.scripts) {
+      config.scripts = loadedAppHostingYaml.scripts;
+    }
+    if (loadedAppHostingYaml.buildConfig) {
+      config.buildConfig = loadedAppHostingYaml.buildConfig;
     }
 
     return config;
@@ -80,6 +88,20 @@ export class AppHostingYamlConfig {
         ...other.runConfig,
       };
     }
+
+    if (other.scripts) {
+      this.scripts = {
+        ...this.scripts,
+        ...other.scripts,
+      };
+    }
+
+    if (other.buildConfig) {
+      this.buildConfig = {
+        ...this.buildConfig,
+        ...other.buildConfig,
+      };
+    }
   }
 
   /**
@@ -97,6 +119,12 @@ export class AppHostingYamlConfig {
     yamlConfigToWrite.env = toEnvList(this.env);
     if (this.runConfig) {
       yamlConfigToWrite.runConfig = this.runConfig;
+    }
+    if (this.scripts) {
+      yamlConfigToWrite.scripts = this.scripts;
+    }
+    if (this.buildConfig) {
+      yamlConfigToWrite.buildConfig = this.buildConfig;
     }
 
     store(filePath, yaml.parseDocument(jsYaml.dump(yamlConfigToWrite)));
