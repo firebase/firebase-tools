@@ -11,17 +11,24 @@ import {
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
+  getProjectIdentifiers,
+  hasDotenvForProject,
 } from "./functions-kits-install";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
+import { logger } from "../logger";
+import { Options } from "../options";
+import { ValidatedKitSingle } from "../functions/projectConfig";
+import { RC } from "../rc";
 
 describe("functions:kits:install", () => {
   let assertEnabledStub: sinon.SinonStub;
   let wrapSpawnStub: sinon.SinonStub;
   let spawnWithOutputStub: sinon.SinonStub;
+  let loggerInfoStub: sinon.SinonStub;
 
   beforeEach(() => {
     (command as unknown as { befores: unknown[] }).befores = [];
@@ -36,6 +43,8 @@ describe("functions:kits:install", () => {
     sinon.stub(fs, "readJson").resolves({});
     sinon.stub(fs, "writeJson").resolves();
     sinon.stub(fs, "writeFile").resolves();
+    loggerInfoStub = sinon.stub(logger, "info");
+    sinon.stub(logger, "warn");
   });
 
   afterEach(() => {
@@ -226,6 +235,81 @@ describe("functions:kits:install", () => {
       spawnWithOutputStub.rejects(new Error("npm pack error"));
       const res = await checkPackageHasShrinkwrap("@firebase-functions-kits/my-kit");
       expect(res).to.be.false;
+    });
+  });
+
+  describe("getProjectIdentifiers", () => {
+    it("should return empty set when no project is provided", () => {
+      const ids = getProjectIdentifiers({} as unknown as Options);
+      expect(ids.size).to.equal(0);
+    });
+
+    it("should include options.project and options.projectId", () => {
+      const ids = getProjectIdentifiers({
+        project: "my-alias",
+        projectId: "my-project-id",
+      } as unknown as Options);
+      expect(Array.from(ids)).to.include.members(["my-alias", "my-project-id"]);
+    });
+
+    it("should resolve project aliases from options.rc", () => {
+      const ids = getProjectIdentifiers({
+        project: "staging",
+        rc: new RC(undefined, {
+          projects: {
+            staging: "my-staging-project-123",
+            prod: "my-prod-project-456",
+          },
+        }),
+      } as unknown as Options);
+      expect(Array.from(ids)).to.include.members(["staging", "my-staging-project-123"]);
+      expect(Array.from(ids)).to.not.include("prod");
+    });
+  });
+
+  describe("hasDotenvForProject", () => {
+    it("should return false when projectIdentifiers is empty", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: { inst: "function-kits/test-kit/config-inst" },
+      } as unknown as ValidatedKitSingle;
+      expect(hasDotenvForProject(mockConfig, kit, new Set())).to.be.false;
+    });
+
+    it("should return true when a matching .env.<projectId> file exists in instance configDir", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: { inst: "function-kits/test-kit/config-inst" },
+      } as unknown as ValidatedKitSingle;
+      sinon.stub(fs, "existsSync").returns(true);
+      sinon
+        .stub(fs, "readdirSync")
+        .returns([".env", ".env.local", ".env.my-target-proj"] as unknown as ReturnType<
+          typeof fs.readdirSync
+        >);
+
+      expect(hasDotenvForProject(mockConfig, kit, new Set(["my-target-proj"]))).to.be.true;
+    });
+
+    it("should return false when only non-matching dotenv files exist", () => {
+      const mockConfig = { path: (p: string) => `/mock/${p}` };
+      const kit = {
+        kit: "test-kit",
+        source: "function-kits/test-kit",
+        instances: { inst: "function-kits/test-kit/config-inst" },
+      } as unknown as ValidatedKitSingle;
+      sinon.stub(fs, "existsSync").returns(true);
+      sinon
+        .stub(fs, "readdirSync")
+        .returns([".env", ".env.local", ".env.other-proj"] as unknown as ReturnType<
+          typeof fs.readdirSync
+        >);
+
+      expect(hasDotenvForProject(mockConfig, kit, new Set(["my-target-proj"]))).to.be.false;
     });
   });
 
@@ -826,6 +910,402 @@ describe("functions:kits:install", () => {
           nonInteractive: true,
         }),
       ).to.be.rejectedWith(FirebaseError, "Installation cancelled.");
+    });
+
+    describe("subsequent (2+) installs for already installed package", () => {
+      it("should add an instance in non-interactive mode when no current project dotenv exists", async () => {
+        const writtenFiles: Record<string, unknown> = {};
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "firestore-bigquery-export":
+                    "function-kits/firestore-bigquery-export/config-firestore-bigquery-export",
+                },
+                predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+          },
+          askWriteProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+            return Promise.resolve();
+          },
+        } as unknown as Config;
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+          project: "my-target-proj",
+        });
+
+        // NPM install and build should NOT run on subsequent install
+        expect(wrapSpawnStub).to.not.have.been.called;
+
+        const updatedFunctions = (
+          writtenFiles["firebase.json"] as {
+            functions: Array<{
+              kit?: string;
+              instances?: Record<string, string>;
+            }>;
+          }
+        ).functions;
+        expect(updatedFunctions).to.have.length(1);
+        const instances = updatedFunctions[0].instances || {};
+        const instanceKeys = Object.keys(instances);
+        expect(instanceKeys).to.have.length(2);
+        expect(instanceKeys[0]).to.equal("firestore-bigquery-export");
+        expect(instanceKeys[1]).to.match(/^firestore-bigquery-export-[a-f0-9]{4}$/);
+        expect(instances[instanceKeys[1]]).to.equal(
+          `function-kits/firestore-bigquery-export/config-${instanceKeys[1]}`,
+        );
+      });
+
+      it("should add an instance interactively with a custom name when no current project dotenv exists", async () => {
+        const writtenFiles: Record<string, unknown> = {};
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                },
+                predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+          },
+          askWriteProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+            return Promise.resolve();
+          },
+        } as unknown as Config;
+
+        const selectStub = sinon.stub(prompt, "select").resolves("addInstance");
+        sinon.stub(prompt, "input").resolves("custom-instance-2");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+          project: "my-target-proj",
+        });
+
+        expect(wrapSpawnStub).to.not.have.been.called;
+        expect(selectStub).to.have.been.calledOnce;
+
+        const updatedFunctions = (
+          writtenFiles["firebase.json"] as {
+            functions: Array<{
+              kit?: string;
+              instances?: Record<string, string>;
+            }>;
+          }
+        ).functions;
+        const instances = updatedFunctions[0].instances || {};
+        expect(instances).to.deep.equal({
+          "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+          "custom-instance-2": "function-kits/firestore-bigquery-export/config-custom-instance-2",
+        });
+      });
+
+      it("should directly add an instance without prompting action or logging deploy suggestion when current project dotenv already exists", async () => {
+        const writtenFiles: Record<string, unknown> = {};
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+          },
+          askWriteProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+            return Promise.resolve();
+          },
+        } as unknown as Config;
+
+        sinon.stub(fs, "existsSync").returns(true);
+        sinon
+          .stub(fs, "readdirSync")
+          .returns([".env.my-target-proj"] as unknown as ReturnType<typeof fs.readdirSync>);
+
+        const selectStub = sinon.stub(prompt, "select");
+        sinon.stub(prompt, "input").resolves("inst-2");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+          project: "my-target-proj",
+        });
+
+        // select should NOT be called to ask addInstance vs addEnv
+        expect(selectStub).to.not.have.been.called;
+
+        const updatedFunctions = (
+          writtenFiles["firebase.json"] as {
+            functions: Array<{
+              kit?: string;
+              instances?: Record<string, string>;
+            }>;
+          }
+        ).functions;
+        const instances = updatedFunctions[0].instances || {};
+        expect(instances).to.deep.equal({
+          "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+          "inst-2": "function-kits/firestore-bigquery-export/config-inst-2",
+        });
+
+        // Should not log deploy suggestion when already configured for project
+        expect(loggerInfoStub).to.not.have.been.calledWith(
+          sinon.match(/To create a new instance in this project, deploy/),
+        );
+      });
+
+      it("should reject duplicate instance ID when adding instance interactively", async () => {
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: sinon.stub(),
+        } as unknown as Config;
+
+        sinon.stub(prompt, "select").resolves("addInstance");
+        sinon.stub(prompt, "input").resolves("inst-1");
+
+        await expect(
+          command.runner()({
+            npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+            cwd: "/mock/project",
+            config: mockConfig,
+          }),
+        ).to.be.rejectedWith(
+          FirebaseError,
+          /functions kit instance ID must be unique across all kits/,
+        );
+      });
+
+      it("should suggest deploy command when configuring single instance with active project", async () => {
+        const writeProjectFileStub = sinon.stub();
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: writeProjectFileStub,
+        } as unknown as Config;
+
+        sinon.stub(prompt, "select").resolves("addEnv");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+          project: "my-staging-project",
+        });
+
+        expect(writeProjectFileStub).to.not.have.been.called;
+        expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/firebase deploy --only functions:inst-1 --project my-staging-project/),
+        );
+      });
+
+      it("should suggest deploy command with placeholder when no active project is configured", async () => {
+        const writeProjectFileStub = sinon.stub();
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: writeProjectFileStub,
+        } as unknown as Config;
+
+        sinon.stub(prompt, "select").resolves("addEnv");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+        });
+
+        expect(writeProjectFileStub).to.not.have.been.called;
+        expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/firebase deploy --only functions:inst-1 --project <project-name>/),
+        );
+      });
+
+      it("should prompt to select instance when multiple instances exist for configuring instance in project", async () => {
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "firestore-bigquery-export",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/firestore-bigquery-export",
+                instances: {
+                  "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
+                  "inst-2": "function-kits/firestore-bigquery-export/config-inst-2",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: sinon.stub(),
+        } as unknown as Config;
+
+        const selectStub = sinon.stub(prompt, "select");
+        selectStub.onFirstCall().resolves("addEnv");
+        selectStub.onSecondCall().resolves("inst-2");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+          project: "prod-project",
+        });
+
+        expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/firebase deploy --only functions:inst-2 --project prod-project/),
+        );
+      });
+
+      it("should allow choosing target kit if multiple kits have the same package name", async () => {
+        const writtenFiles: Record<string, unknown> = {};
+        const mockConfig = {
+          projectDir: "/mock/project",
+          src: {
+            functions: [
+              {
+                kit: "kit-one",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/kit-one",
+                instances: {
+                  "inst-a": "function-kits/kit-one/config-inst-a",
+                },
+              },
+              {
+                kit: "kit-two",
+                sourcePackage: {
+                  name: "@firebase-functions-kits/firestore-bigquery-export",
+                },
+                source: "function-kits/kit-two",
+                instances: {
+                  "inst-b": "function-kits/kit-two/config-inst-b",
+                },
+              },
+            ],
+          },
+          path: (p: string) => path.join("/mock/project", p),
+          writeProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+          },
+          askWriteProjectFile: (file: string, content: unknown) => {
+            writtenFiles[file] = content;
+            return Promise.resolve();
+          },
+        } as unknown as Config;
+
+        const selectStub = sinon.stub(prompt, "select");
+        selectStub.onFirstCall().resolves("kit-two");
+        selectStub.onSecondCall().resolves("addInstance");
+
+        sinon.stub(prompt, "input").resolves("inst-b-2");
+
+        await command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          cwd: "/mock/project",
+          config: mockConfig,
+        });
+
+        const updatedFunctions = (
+          writtenFiles["firebase.json"] as {
+            functions: Array<{
+              kit?: string;
+              instances?: Record<string, string>;
+            }>;
+          }
+        ).functions;
+        expect(updatedFunctions[1].instances).to.deep.equal({
+          "inst-b": "function-kits/kit-two/config-inst-b",
+          "inst-b-2": "function-kits/kit-two/config-inst-b-2",
+        });
+      });
     });
   });
 });
