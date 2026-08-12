@@ -155,11 +155,21 @@ export function printErrors(summary: Summary): void {
   printAbortedErrors(errored);
 }
 
+/**
+ * The shape a build failure arrives in once it has been wrapped for reporting.
+ * Every level is optional because the nesting depends on which layer failed.
+ */
+interface NestedError {
+  message?: string;
+  original?: NestedError;
+  context?: { body?: { error?: { message?: string } } };
+}
+
 /** Collects every message in an error's cause chain so we can pattern match on them. */
-function errorMessages(err: unknown): string {
-  const original = (err as DeploymentError)?.original as any;
+function errorMessages(err: DeploymentError): string {
+  const original = err.original as NestedError | undefined;
   return [
-    (err as Error)?.message,
+    err.message,
     original?.message,
     original?.original?.message,
     original?.context?.body?.error?.message,

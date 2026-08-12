@@ -368,7 +368,7 @@ describe("reporter", () => {
     });
 
     it("finds lockfile errors nested in the original error", () => {
-      const rawError = new Error("Deployment failed") as any;
+      const rawError = new Error("Deployment failed") as Error & { original?: unknown };
       rawError.original = {
         message:
           "npm ERR! `npm ci` can only install packages when your package.json and " +
