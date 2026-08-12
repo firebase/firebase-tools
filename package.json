@@ -170,7 +170,7 @@
     "triple-beam": "^1.3.0",
     "universal-analytics": "^0.5.3",
     "update-notifier-cjs": "^5.1.6",
-    "undici": "^6.19.0",
+    "undici": "^6.28.0",
     "winston": "^3.0.0",
     "winston-transport": "^4.4.0",
     "ws": "^8.21.1",
@@ -228,7 +228,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^5.9.0",
     "@typescript-eslint/parser": "^5.9.0",
-    "astro": "^2.2.3",
+    "astro": "2.2.3",
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "deep-equal-in-any-order": "^2.0.6",
@@ -245,7 +245,7 @@
     "googleapis": "^105.0.0",
     "mocha": "^11.7.1",
     "mock-fs": "5.2.0",
-    "next": "^14.1.0",
+    "next": "14.1.0",
     "nock": "^13.0.5",
     "node-mocks-http": "^1.11.0",
     "nyc": "^15.1.0",
@@ -300,6 +300,14 @@
     },
     "@google-cloud/cloud-sql-connector": {
       "uuid": "^11.1.1"
-    }
+    },
+    "ws": "^8.21.1",
+    "uuid": "^11.1.1",
+    "postcss": "^8.5.3",
+    "tar-fs": "^3.0.8",
+    "undici": "^6.28.0",
+    "re2": "^1.26.1",
+    "gaxios": "^6.7.0",
+    "google-auth-library": "^9.11.0"
   }
 }

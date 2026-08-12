@@ -1,3 +1,4 @@
+- Audited dependencies, remediated CVEs, and updated legacy URL parsing (DEP0169).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
 - Skip functions lifecycle hooks during partial (filtered) deployments, and print instructions for running them manually.

@@ -4,7 +4,6 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as opn from "open";
 import * as portfinder from "portfinder";
-import * as url from "url";
 
 import * as apiv2 from "./apiv2";
 import { configstore } from "./configstore";
@@ -607,9 +606,9 @@ async function loginWithLocalhost<ResultType>(
 ): Promise<ResultType> {
   return new Promise<ResultType>((resolve, reject) => {
     const server = http.createServer(async (req, res) => {
-      const query = url.parse(`${req.url}`, true).query || {};
-      const queryState = query.state;
-      const queryCode = query.code;
+      const reqUrl = new URL(req.url || "", "http://localhost");
+      const queryState = reqUrl.searchParams.get("state");
+      const queryCode = reqUrl.searchParams.get("code");
 
       if (queryState !== _nonce || typeof queryCode !== "string") {
         const html = await readTemplate("loginFailure.html");
