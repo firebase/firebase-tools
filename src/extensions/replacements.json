@@ -2,12 +2,12 @@
   "replacements": {
     "firebase/delete-user-data": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/delete-user-data/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/delete-user-data/README.md",
       "npmPackage": "@firebase/delete-user-data"
     },
     "firebase/firestore-bigquery-export": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-bigquery-export/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-bigquery-export/README.md",
       "npmPackage": "@firebase/firestore-bigquery-export"
     },
     "firebase/firestore-bundle-builder": {
@@ -16,12 +16,12 @@
     },
     "firebase/firestore-counter": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-counter/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-counter/README.md",
       "npmPackage": "@firebase/firestore-counter"
     },
     "firebase/firestore-send-email": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-send-email/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-send-email/README.md",
       "npmPackage": "@firebase/firestore-send-email"
     },
     "firebase/firestore-shorten-urls-bitly": {
@@ -31,17 +31,17 @@
     },
     "firebase/firestore-translate-text": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/firestore-translate-text/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/firestore-translate-text/README.md",
       "npmPackage": "@firebase/firestore-translate-text"
     },
     "firebase/rtdb-limit-child-nodes": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/rtdb-limit-child-nodes/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/rtdb-limit-child-nodes/README.md",
       "npmPackage": "@firebase/rtdb-limit-child-nodes"
     },
     "firebase/storage-resize-images": {
       "status": "REPLACEMENT_AVAILABLE",
-      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/main/storage-resize-images/README.md",
+      "extensionRepositoryUrl": "https://github.com/firebase/extensions/tree/kits/storage-resize-images/README.md",
       "npmPackage": "@firebase/storage-resize-images"
     },
     "googlecloud/bigquery-firestore-export": {

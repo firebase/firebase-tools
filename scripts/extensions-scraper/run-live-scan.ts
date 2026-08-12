@@ -68,19 +68,7 @@ async function runLiveScan(): Promise<void> {
     }
 
     const fetchResult = await fetchUrlContent(rawUrl);
-    let discoveredPackage = extractReplacementFromReadme(fetchResult.text);
-    let sourceBranch = "main";
-
-    // Support pre-merge testing against 'kits' branch if 'main' doesn't have the tag yet
-    if (!discoveredPackage && rawUrl.includes("/main/")) {
-      const kitsBranchUrl = rawUrl.replace("/main/", "/kits/");
-      const kitsFetch = await fetchUrlContent(kitsBranchUrl);
-      const kitsPackage = extractReplacementFromReadme(kitsFetch.text);
-      if (kitsPackage) {
-        discoveredPackage = kitsPackage;
-        sourceBranch = "kits (pre-merge)";
-      }
-    }
+    const discoveredPackage = extractReplacementFromReadme(fetchResult.text);
 
     if (discoveredPackage) {
       detectedCount++;
@@ -91,7 +79,6 @@ async function runLiveScan(): Promise<void> {
       };
       console.log(`[✓ DETECTED] ${extRef}`);
       console.log(`  Package: ${discoveredPackage}`);
-      console.log(`  Branch:  ${sourceBranch}`);
       console.log(`  Web URL: ${webUrl}\n`);
     } else if (!fetchResult.ok && failedExtensions.length < 50) {
       const errReason =
