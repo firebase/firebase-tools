@@ -149,6 +149,19 @@ describe("functionsDeployHelper", () => {
       expect(helper.endpointMatchesFilter(undefinedFunc, filter)).to.be.false;
     });
 
+    it("should match a specific function in a specific codebase when multiple codebases have functions with the same name", () => {
+      const funcInCodebaseA = { ...ENDPOINT, id: "foo", codebase: "codebaseA" };
+      const funcInCodebaseB = { ...ENDPOINT, id: "foo", codebase: "codebaseB" };
+
+      const filter: EndpointFilter = {
+        codebase: "codebaseA",
+        idChunks: ["foo"],
+      };
+
+      expect(helper.endpointMatchesFilter(funcInCodebaseA, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(funcInCodebaseB, filter)).to.be.false;
+    });
+
     it("should not match overlapping codebase names", () => {
       const instance1Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery" };
       const instance2Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery-abcd" };
@@ -265,6 +278,20 @@ describe("functionsDeployHelper", () => {
           {
             codebase: "node",
             idChunks: ["g1", "func"],
+          },
+        ],
+      },
+      {
+        desc: "parses codebase-qualified selector (codebase:func)",
+        selector: "codebaseA:foo",
+        config: [
+          { source: "functions", codebase: "codebaseA" },
+          { source: "other", codebase: "codebaseB" },
+        ] as ValidatedConfig,
+        expected: [
+          {
+            codebase: "codebaseA",
+            idChunks: ["foo"],
           },
         ],
       },
