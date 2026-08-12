@@ -333,24 +333,23 @@ export const command = new Command("functions:kits:install")
         const absConfigDirPath = options.config.path(configDirPath);
         await fs.ensureDir(absConfigDirPath);
 
-        const functionsRaw = configSrc.functions as
-          | KitFunctionConfig
-          | KitFunctionConfig[]
-          | undefined;
-        if (Array.isArray(functionsRaw)) {
-          const rawKit = functionsRaw.find((f) => f.kit === existingKit.kit);
-          if (rawKit) {
-            rawKit.instances = rawKit.instances || {};
-            rawKit.instances[instanceId] = configDirPath;
-          }
-        } else if (
-          functionsRaw &&
-          typeof functionsRaw === "object" &&
-          functionsRaw.kit === existingKit.kit
-        ) {
-          functionsRaw.instances = functionsRaw.instances || {};
-          functionsRaw.instances[instanceId] = configDirPath;
+        const functionsList = Array.isArray(configSrc.functions)
+          ? configSrc.functions
+          : configSrc.functions
+            ? [configSrc.functions]
+            : [];
+        const rawKit = functionsList.find(
+          (f): f is KitFunctionConfig =>
+            typeof f === "object" && f !== null && "kit" in f && f.kit === existingKit.kit,
+        );
+        if (!rawKit) {
+          throw new FirebaseError(
+            `Could not find kit '${existingKit.kit}' in firebase.json configuration.`,
+          );
         }
+
+        rawKit.instances = rawKit.instances || {};
+        rawKit.instances[instanceId] = configDirPath;
 
         options.config.writeProjectFile("firebase.json", configSrc);
         logger.info(
