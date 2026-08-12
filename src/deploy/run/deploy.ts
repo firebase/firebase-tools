@@ -9,7 +9,6 @@ import { splitEnvVars, AppHostingRunConfig as RunConfig } from "../../apphosting
 import { toCanonicalSecretResourcePath } from "../../apphosting/secrets";
 import { EnvVar } from "../../gcp/k8s";
 import { logger } from "../../logger";
-import { logLabeledWarning } from "../../utils";
 
 /**
  * Applies runtime environment variables and Secret Manager references to a container.
@@ -185,11 +184,6 @@ function prepareBuildEnvironment(service: RunServiceSpec): Record<string, string
   for (const [key, val] of Object.entries(buildEnvMap)) {
     if (val.value !== undefined) {
       buildEnv[key] = val.value;
-    } else if (val.secret !== undefined) {
-      logLabeledWarning(
-        "run",
-        `Secret '${key}' has availability: [BUILD], which is not currently supported for Cloud Run container image builds. It will only be available at runtime.`,
-      );
     }
   }
 

@@ -53,7 +53,46 @@ describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
     }
   });
 
-  after(() => {
+  const createdServices: Array<{ serviceId: string; region: string }> = [];
+
+  function trackCreatedServices(): void {
+    const fbJson = path.join(workDir, "firebase.json");
+    if (fs.existsSync(fbJson)) {
+      try {
+        const config = fs.readJsonSync(fbJson) as MockFirebaseJson;
+        if (config.run) {
+          const runConfigs = Array.isArray(config.run) ? config.run : [config.run];
+          for (const rc of runConfigs) {
+            if (rc.serviceId) {
+              const region = rc.region || "us-central1";
+              if (
+                !createdServices.some(
+                  (s) => s.serviceId === rc.serviceId && s.region === region,
+                )
+              ) {
+                createdServices.push({ serviceId: rc.serviceId, region });
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore parse errors
+      }
+    }
+  }
+
+  after(async () => {
+    trackCreatedServices();
+
+    // Clean up created Cloud Run services from GCP
+    for (const svc of createdServices) {
+      try {
+        await runv2.deleteService(TARGET_PROJECT, svc.region, svc.serviceId);
+      } catch (err: unknown) {
+        // Ignore 404 Not Found or unauthenticated errors in local/mock environments
+      }
+    }
+
     if (!hasAppDir && workDir && fs.existsSync(workDir)) {
       fs.removeSync(workDir);
     }
