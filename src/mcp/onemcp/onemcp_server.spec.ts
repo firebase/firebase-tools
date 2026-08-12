@@ -6,11 +6,13 @@ import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { ServerFeature } from "../types";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
+import * as ensureRoleBound from "../../ensureRoleBound";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
   let clientRequestStub: sinon.SinonStub;
   let ensureStub: sinon.SinonStub;
+  let ensureRoleStub: sinon.SinonStub;
 
   const feature = "auth" as ServerFeature;
   const serverUrl = "https://example.com";
@@ -20,6 +22,7 @@ describe("OneMcpServer", () => {
     sandbox = sinon.createSandbox();
     clientRequestStub = sandbox.stub(Client.prototype, "request");
     ensureStub = sandbox.stub(ensureModule, "ensure").resolves();
+    ensureRoleStub = sandbox.stub(ensureRoleBound, "ensureRole").resolves();
     server = new OneMcpServer(feature, serverUrl, { requiresAuth: false });
   });
 
@@ -366,6 +369,33 @@ describe("OneMcpServer", () => {
       await expect(fn("disallowed_tool", undefined, {}, mockContext)).to.be.rejectedWith(
         FirebaseError,
         /is not allowed on remote server/,
+      );
+    });
+
+    it("should call ensureRole when projectId and accountEmail are present in context", async () => {
+      const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
+      clientRequestStub.onFirstCall().resolves({
+        body: { result: { tools: [mockMcpTool] } },
+      });
+
+      const tools = await server.listTools();
+      const tool = tools[0];
+
+      clientRequestStub.onSecondCall().resolves({
+        body: { result: { content: [] } },
+      });
+
+      const contextWithAuth = {
+        projectId: "test-project",
+        accountEmail: "user@example.com",
+      };
+
+      await tool.fn({}, contextWithAuth as any);
+
+      expect(ensureRoleStub).to.have.been.calledOnceWith(
+        "test-project",
+        "user@example.com",
+        "roles/mcp.toolUser",
       );
     });
   });

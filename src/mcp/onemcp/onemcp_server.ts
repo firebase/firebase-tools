@@ -14,6 +14,7 @@ import { ServerTool, ServerToolMeta } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
+import { ensureRole } from "../../ensureRoleBound";
 
 export interface OneMcpServerOptions {
   /**
@@ -160,6 +161,15 @@ export class OneMcpServer {
       }
     }
 
+    if (ctx.projectId && ctx.accountEmail) {
+      await ensureRole(
+        ctx.projectId,
+        ctx.accountEmail,
+        "roles/mcp.toolUser",
+        false,
+        ctx.host?.logger,
+      );
+    }
     // TODO: Optimize this to not call ensure on every tool call.
     if (ctx.projectId) {
       await ensure(ctx.projectId, this.serverUrl, this.feature, /* silent=*/ true);
