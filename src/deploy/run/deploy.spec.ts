@@ -10,6 +10,7 @@ import * as getProjectNumberModule from "../../getProjectNumber";
 import { Options } from "../../options";
 import { Context, Payload } from "./args";
 import { AppHostingYamlConfig } from "../../apphosting/yaml";
+import * as utils from "../../utils";
 
 describe("run deploy", () => {
   let upsertBucketStub: sinon.SinonStub;
@@ -300,5 +301,35 @@ describe("run deploy", () => {
       runv2.ServiceOutputFields
     >;
     expect(updatedService.template.containers?.[0].baseImageUri).to.be.undefined;
+  });
+
+  it("should warn when build-available secrets are specified in apphosting.yaml", async () => {
+    const logWarningStub = sinon.stub(utils, "logLabeledWarning");
+    const appHostingConfig = AppHostingYamlConfig.empty();
+    appHostingConfig.env = {
+      BUILD_SECRET: { secret: "my-build-sec", availability: ["BUILD"] },
+    };
+
+    const payload: Payload = {
+      run: {
+        services: [
+          {
+            serviceId: "mysvc",
+            region: "us-central1",
+            source: ".",
+            ignore: [],
+            appHostingConfig,
+          },
+        ],
+      },
+    };
+    const context: Context = { projectId: "project" };
+    const options = { project: "project" } as unknown as Options;
+
+    await deploy(context, options, payload);
+
+    expect(logWarningStub.calledOnce).to.be.true;
+    expect(logWarningStub.args[0][0]).to.equal("run");
+    expect(logWarningStub.args[0][1]).to.include("BUILD_SECRET");
   });
 });
