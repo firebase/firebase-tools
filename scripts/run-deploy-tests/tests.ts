@@ -112,6 +112,7 @@ describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
   });
 
   afterEach(() => {
+    trackCreatedServices();
     // Restore backup configs
     const fbJson = path.join(workDir, "firebase.json");
     const fbRc = path.join(workDir, ".firebaserc");
