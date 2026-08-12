@@ -33,6 +33,11 @@ const INDEX_KIT_MIGRATION_TEMPLATE = readTemplateSync(
   "init/functions/typescript/index-kit-migration.ts",
 );
 
+const TEMPLATES = {
+  installation: INDEX_KIT_TEMPLATE,
+  migration: INDEX_KIT_MIGRATION_TEMPLATE,
+};
+
 const FUNCTION_KITS_DIR = "function-kits";
 
 export interface FunctionsKitsInstallOptions extends Options {
@@ -151,7 +156,7 @@ export const command = new Command("functions:kits:install")
     }
 
     const templateType = options.template || "installation";
-    if (templateType !== "installation" && templateType !== "migration") {
+    if (!(templateType in TEMPLATES)) {
       throw new FirebaseError(
         `Invalid template '${templateType}'. Template must be 'installation' or 'migration'.`,
       );

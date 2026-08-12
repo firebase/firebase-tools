@@ -11,10 +11,14 @@
 
 import { setGlobalOptions } from "firebase-functions";
 import { MemoryOption, VpcEgressSetting, IngressSetting } from "firebase-functions/v2/options";
-import * as params from "firebase-functions/params";
+import { defineString } from "firebase-functions/params";
 
-export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
-  description: "Region where functions should be deployed.",
+// This is how you create a "param". A param is a placeholder for a value
+// which is determined at install/deploy time. Use a param whenever you want
+// the value to differ. Learn more at
+// https://firebase.google.com/docs/functions/config-env#params
+export const regionParam = defineString("FUNCTION_DEFAULT_REGION", {
+  description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
 // This allows you to set default options that apply to all functions in this
@@ -22,20 +26,20 @@ export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
 // https://firebase.google.com/docs/reference/functions/2nd-gen/node/firebase-functions.globaloptions
 setGlobalOptions({
   region: regionParam,
-  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as MemoryOption) || undefined,
+  memory: (process.env.EXT_MIGRATED_SYSTEM_MEMORY as MemoryOption) ?? undefined,
   timeoutSeconds: process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS
     ? Number(process.env.EXT_MIGRATED_SYSTEM_TIMEOUTSECONDS)
     : undefined,
   vpcConnectorEgressSettings:
-    (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting) || undefined,
-  vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR || undefined,
+    (process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOREGRESSSETTINGS as VpcEgressSetting) ?? undefined,
+  vpcConnector: process.env.EXT_MIGRATED_SYSTEM_VPCCONNECTOR ?? undefined,
   maxInstances: process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MAXINSTANCES)
     : undefined,
   minInstances: process.env.EXT_MIGRATED_SYSTEM_MININSTANCES
     ? Number(process.env.EXT_MIGRATED_SYSTEM_MININSTANCES)
     : undefined,
-  ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) || undefined,
+  ingressSettings: (process.env.EXT_MIGRATED_SYSTEM_INGRESSSETTINGS as IngressSetting) ?? undefined,
   labels: process.env.EXT_MIGRATED_SYSTEM_LABELS
     ? (JSON.parse(process.env.EXT_MIGRATED_SYSTEM_LABELS) as Record<string, string>)
     : undefined,
