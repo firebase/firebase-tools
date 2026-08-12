@@ -251,7 +251,7 @@ describe("projectConfig", () => {
       const VALID_KIT_CONFIG = {
         kit: "firestore-bigquery-export",
         sourcePackage: {
-          id: "@firebase-functions-kits/firestore-bigquery-export",
+          name: "@firebase-functions-kits/firestore-bigquery-export",
         },
         instances: {
           "firestore-bigquery-export": "config/bq-instance-1",
@@ -396,6 +396,32 @@ describe("projectConfig", () => {
           FirebaseError,
           /Invalid kit instance ID/,
         );
+      });
+
+      it("fails validation if validateKitInstanceId is called with invalid ID format", () => {
+        expect(() => projectConfig.validateKitInstanceId("Invalid_Instance!")).to.throw(
+          FirebaseError,
+          /Invalid kit instance ID/,
+        );
+        expect(() => projectConfig.validateKitInstanceId("-invalid")).to.throw(
+          FirebaseError,
+          /Invalid kit instance ID.*cannot start or end with a dash/,
+        );
+      });
+
+      it("fails validation if validateAndAddKitInstances is called with duplicate instance IDs", () => {
+        expect(() =>
+          projectConfig.validateAndAddKitInstances(["inst1", "inst1"], new Set()),
+        ).to.throw(
+          FirebaseError,
+          /functions kit instance ID must be unique across all kits, but 'inst1' was used more than once/,
+        );
+      });
+
+      it("adds instance IDs to the provided set when validateAndAddKitInstances succeeds", () => {
+        const set = new Set(["existing-inst"]);
+        projectConfig.validateAndAddKitInstances(["inst1", "inst2"], set);
+        expect(Array.from(set)).to.deep.equal(["existing-inst", "inst1", "inst2"]);
       });
 
       it("fails validation if instance ID starts with a dash", () => {
@@ -605,7 +631,7 @@ describe("projectConfig", () => {
         const cfg = projectConfig.validate([
           {
             kit: "my-kit",
-            sourcePackage: { id: "@firebase-functions-kits/my-kit" },
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
             source: "kit-source",
             instances: {
               "inst-alpha": "config/inst-alpha",

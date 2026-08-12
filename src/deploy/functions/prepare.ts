@@ -50,6 +50,8 @@ import {
   shouldUseRuntimeConfig,
   isKitConfig,
   addKitPrefix,
+  ValidatedLocalSingle,
+  ValidatedKitSingle,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -287,8 +289,15 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(config) ? codebase : undefined,
+    );
     const localCfg = requireLocal(config, "Remote sources are not supported.");
+
+    checkKitForGen1(localCfg, wantBuild);
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
@@ -785,7 +794,11 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(codebaseConfig) ? codebase : undefined,
+    );
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
@@ -1001,4 +1014,22 @@ export function partitionUserEnvs(allEnvs: Record<string, string>): {
     [{}, {}] as [Record<string, string>, Record<string, string>],
   );
   return { userEnvs: userEnvs, secretRefs: secretRefs };
+}
+
+/**
+ * Validates that a function kit codebase does not contain any gen1 functions.
+ * Throws a FirebaseError if a gen1 function is found.
+ */
+export function checkKitForGen1(
+  localCfg: ValidatedLocalSingle | ValidatedKitSingle,
+  wantBuild: build.Build,
+): void {
+  if (
+    isKitConfig(localCfg) &&
+    Object.values(wantBuild.endpoints).some((e) => e.platform === "gcfv1")
+  ) {
+    throw new FirebaseError(
+      `Function kit "${localCfg.kit}" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.`,
+    );
+  }
 }
