@@ -278,11 +278,10 @@ export async function prepare(
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
     const extPayload: ExtPayload = {};
-    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
-    // prepareDynamicExtensions returns without touching the payload when there is
-    // nothing to deploy and nothing to delete. Only hand the extensions stages a
-    // plan when it actually made one, otherwise they run against an empty payload.
-    if (Object.keys(extPayload).length) {
+    // Every codebase reports an extensions record, empty when it declares none, so
+    // reaching here does not mean there is anything to deploy. Only hand the
+    // extensions stages a plan when one was actually prepared.
+    if (await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds)) {
       context.extensions = extContext;
       payload.extensions = extPayload;
     }

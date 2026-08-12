@@ -21,9 +21,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   const instancesToConfigure = payload.instancesToConfigure ?? [];
   const instancesToDelete = payload.instancesToDelete ?? [];
 
-  // Nothing to do. `release` already guards this way; without the same guard here
-  // a functions deploy that declares no extensions still reaches the billing check
-  // below, because the SDK always emits an (empty) extensions record.
+  // Nothing to do. A functions deploy reaches this stage even when the codebase
+  // declares no extensions, since every codebase reports an extensions record and
+  // it is empty in that case. Without this guard such a deploy would go on to
+  // require the Cloud Billing API below.
   if (
     !instancesToCreate.length &&
     !instancesToUpdate.length &&
@@ -34,13 +35,8 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   }
 
   const projectId = needProjectId(options);
-
-  // First, check that billing is enabled. Creating, updating or configuring an
-  // instance requires the Blaze plan; deleting one does not, so a delete-only
-  // deploy doesn't need the Cloud Billing API.
-  if (instancesToCreate.length || instancesToUpdate.length || instancesToConfigure.length) {
-    await checkBilling(projectId, options.nonInteractive);
-  }
+  // First, check that billing is enabled
+  await checkBilling(projectId, options.nonInteractive);
 
   // Then, check that required products are provisioned.
   await bulkCheckProductsProvisioned(projectId, [

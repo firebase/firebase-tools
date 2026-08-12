@@ -52,10 +52,23 @@ describe("Extensions prepare", () => {
       await expect(prepareDynamicExtensions(context, options, payload, builds)).to.not.be.rejected;
     });
 
-    it("should leave the payload untouched when nothing is defined and nothing exists", async () => {
-      // functions/prepare relies on this to tell "no extensions" apart from a real
-      // plan, so that the deploy and release stages are skipped entirely.
-      const context: Context = {};
+    it("should report no plan if the extensions API is down", async () => {
+      haveDynamicStub.rejects(new Error("Extensions API is having an outage"));
+
+      const options: any = {
+        config: {
+          src: { functions: { source: "functions" } },
+        },
+      };
+
+      const prepared = await prepareDynamicExtensions({}, options, {}, {});
+
+      expect(prepared).to.be.false;
+    });
+
+    it("should report no plan when nothing is defined and nothing exists", async () => {
+      // functions/prepare uses this to tell "no extensions" apart from a real plan,
+      // so that the deploy and release stages are skipped entirely.
       const payload: Payload = {};
       const options: any = {
         config: {
@@ -63,8 +76,9 @@ describe("Extensions prepare", () => {
         },
       };
 
-      await prepareDynamicExtensions(context, options, payload, {});
+      const prepared = await prepareDynamicExtensions({}, options, payload, {});
 
+      expect(prepared).to.be.false;
       expect(payload).to.deep.equal({});
     });
 
@@ -101,6 +115,45 @@ describe("Extensions prepare", () => {
 
       // Expect successful completion
       await expect(prepareDynamicExtensions(context, options, payload, builds)).to.not.be.rejected;
+
+      wantDynamicStub.restore();
+      v2apistub.restore();
+      tosStub.restore();
+    });
+
+    it("should report a plan when an existing instance needs deleting", async () => {
+      haveDynamicStub.resolves([
+        {
+          instanceId: "test-extension",
+          ref: { publisherId: "test", extensionId: "test", version: "0.1.0" },
+          params: {},
+          systemParams: {},
+          labels: { codebase: "default" },
+        },
+      ]);
+
+      const payload: Payload = {};
+      const options: any = {
+        config: {
+          get: () => [],
+          src: { functions: { source: "functions" } },
+        },
+        rc: { getEtags: () => [] },
+        dryRun: true,
+      };
+
+      const wantDynamicStub: sinon.SinonStub = sinon.stub(planner, "wantDynamic").resolves([]);
+      const v2apistub: sinon.SinonStub = sinon
+        .stub(v2FunctionHelper, "ensureNecessaryV2ApisAndRoles")
+        .resolves();
+      const tosStub: sinon.SinonStub = sinon
+        .stub(tos, "getAppDeveloperTOSStatus")
+        .resolves({ lastAcceptedVersion: "1.0.0" } as any);
+
+      const prepared = await prepareDynamicExtensions({}, options, payload, {});
+
+      expect(prepared).to.be.true;
+      expect(payload.instancesToDelete).to.have.length(1);
 
       wantDynamicStub.restore();
       v2apistub.restore();

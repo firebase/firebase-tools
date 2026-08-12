@@ -161,13 +161,15 @@ async function prepareHelper(
  * @param options The prepare options
  * @param payload The prepare payload
  * @param builds firebase functions builds
+ * @return Whether a deployment plan was prepared. False means the context and
+ * payload were left untouched, so there is nothing for the caller to deploy.
  */
 export async function prepareDynamicExtensions(
   context: Context,
   options: DeployOptions,
   payload: Payload,
   builds: Record<string, Build>,
-): Promise<void> {
+): Promise<boolean> {
   const functionsConfig = normalizeAndValidate(options.config.src.functions);
   const filters = getEndpointFilters(options, functionsConfig);
   const extensions = extractExtensionsFromBuilds(builds, filters);
@@ -189,12 +191,12 @@ export async function prepareDynamicExtensions(
       "Failed to fetch the list of extensions. Assuming for now that there are no existing extensions. " +
         "If you are trying to install an extension through Firebase Functions this may fail later.",
     );
-    return;
+    return false;
   }
 
   if (Object.keys(extensions).length === 0 && haveExtensions.length === 0) {
     // Nothing defined, and nothing to delete
-    return;
+    return false;
   }
 
   const dynamicWant = await planner.wantDynamic({
@@ -203,14 +205,8 @@ export async function prepareDynamicExtensions(
     extensions,
   });
 
-  return prepareHelper(
-    context,
-    options,
-    payload,
-    dynamicWant,
-    haveExtensions,
-    true /* isDynamic */,
-  );
+  await prepareHelper(context, options, payload, dynamicWant, haveExtensions, true /* isDynamic */);
+  return true;
 }
 
 /**
