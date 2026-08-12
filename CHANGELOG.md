@@ -1,5 +1,5 @@
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
-- Added a warning when a functions `package-lock.json` was resolved with `legacy-peer-deps` enabled but the setting will not reach the build server, and a clearer message when a build fails because `npm ci` rejected the lockfile (#5673).
+- Added a warning when a functions lockfile omits peer dependencies that the Cloud Functions build server expects, and a clearer message when a build fails because `npm ci` rejected the lockfile (#5673).
 - Added `outputSchema` support for local MCP tools.
 - Skip functions lifecycle hooks during partial (filtered) deployments, and print instructions for running them manually.
 - Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.

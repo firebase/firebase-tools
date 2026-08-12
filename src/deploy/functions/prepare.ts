@@ -789,7 +789,7 @@ export async function loadCodebases(
     if (runtimeDelegate.language === "nodejs") {
       // Deploy-only: warns about how the build server will resolve the uploaded
       // lockfile, so it has no meaning on the emulator's validate() path.
-      nodeValidate.warnIfLegacyPeerDepsMismatch(sourceDir);
+      nodeValidate.warnIfLockfileOmitsPeerDeps(sourceDir, codebaseConfig.ignore ?? []);
     }
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();

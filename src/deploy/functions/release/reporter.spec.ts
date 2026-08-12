@@ -362,7 +362,7 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        "could not install from your package-lock.json",
+        "your lockfile is out of sync with package.json",
       );
       expect(infoStub).to.have.been.calledWithMatch("legacy-peer-deps");
     });
@@ -387,7 +387,63 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.have.been.calledWithMatch(
-        "could not install from your package-lock.json",
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
+    it("matches the invalid-version shape of the same failure", () => {
+      const rawError = new Error(
+        "Build failed: npm error `npm ci` can only install packages when your package.json " +
+          "and package-lock.json are in sync. npm error Invalid: lock file's ms@2.1.2 does " +
+          "not satisfy ms@2.1.3",
+      );
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
+    it("finds lockfile errors however deeply the build failure is wrapped", () => {
+      const rawError = new Error("Deployment failed") as Error & { original?: unknown };
+      rawError.original = {
+        original: {
+          context: {
+            body: {
+              error: {
+                message:
+                  "Build failed: npm error `npm ci` can only install packages when your " +
+                  "package.json and package-lock.json are in sync. Missing: jest@29.7.0 " +
+                  "from lock file",
+              },
+            },
+          },
+        },
+      };
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
       );
     });
 
@@ -405,7 +461,7 @@ describe("reporter", () => {
 
       reporter.printErrors(summary);
       expect(infoStub).to.not.have.been.calledWithMatch(
-        "could not install from your package-lock.json",
+        "your lockfile is out of sync with package.json",
       );
     });
 

@@ -1,13 +1,17 @@
 import * as path from "path";
 import * as fs from "fs";
-import * as spawn from "cross-spawn";
+import * as minimatch from "minimatch";
 
 import { FirebaseError } from "../../../../error";
 import { logger } from "../../../../logger";
 import * as fsutils from "../../../../fsutils";
 import * as utils from "../../../../utils";
 
-const NPM_COMMAND_TIMEOUT_MILLIES = 10000;
+// `npm ci` accepts either, so either can be the artifact that fails the build.
+const LOCKFILES = ["package-lock.json", "npm-shrinkwrap.json"];
+
+// Enough to identify the problem without printing a wall of names.
+const MAX_REPORTED_PEERS = 5;
 
 // have to require this because no @types/cjson available
 // tslint:disable-next-line
@@ -59,90 +63,146 @@ export function packageJsonIsValid(
   }
 }
 
+/** The subset of a lockfile's `packages` map that we care about. */
+interface LockfileEntry {
+  peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+}
+
+interface Lockfile {
+  packages?: Record<string, LockfileEntry>;
+}
+
 /**
- * Returns true if the source dir ships an .npmrc that pins legacy-peer-deps.
- *
- * .npmrc is not ignored when we package the source, so a project-level setting
- * travels with the upload and the build server's npm honors it.
+ * Reads the effective value of legacy-peer-deps from .npmrc contents.
+ * @param contents Raw text of an .npmrc file.
+ * @return The configured value, or undefined if the file does not set it.
  */
-function shipsLegacyPeerDepsSetting(sourceDir: string): boolean {
+export function parseLegacyPeerDeps(contents: string): boolean | undefined {
+  let value: boolean | undefined;
+  for (const line of contents.split("\n")) {
+    // npm treats both ; and # as comment markers.
+    const setting = line.split(/[;#]/)[0];
+    const match = /^\s*legacy-peer-deps\s*=\s*(\S+)\s*$/.exec(setting);
+    if (match) {
+      // Last assignment wins, as it does in npm.
+      value = match[1] === "true";
+    }
+  }
+  return value;
+}
+
+/**
+ * Returns true if the source dir ships an .npmrc turning legacy-peer-deps on.
+ *
+ * Such an .npmrc travels with the upload and the build server's npm honors it,
+ * so the build resolves the same way the developer's install did.
+ * @param sourceDir Absolute path of the functions source directory.
+ * @param ignore The codebase's configured ignore globs, which may exclude .npmrc.
+ */
+function shipsLegacyPeerDeps(sourceDir: string, ignore: string[]): boolean {
+  if (ignore.some((glob) => minimatch(".npmrc", glob))) {
+    // Configured out of the upload, so whatever it says never reaches the build.
+    return false;
+  }
   const npmrc = path.join(sourceDir, ".npmrc");
   if (!fsutils.fileExistsSync(npmrc)) {
     return false;
   }
-  try {
-    return /^\s*legacy-peer-deps\s*=/m.test(fs.readFileSync(npmrc, "utf8"));
-  } catch (e: any) {
-    logger.debug("Failed to read .npmrc in functions source directory:", e.message);
-    return false;
-  }
+  return parseLegacyPeerDeps(fs.readFileSync(npmrc, "utf8")) === true;
 }
 
 /**
- * process.env with npm's own config exports removed.
+ * Finds peer dependencies the lockfile requires but does not contain.
  *
- * Running under `npm run` or `npx` exports the outer project's resolved config
- * (npm_config_legacy_peer_deps, npm_config_local_prefix and friends) into our
- * environment. Those beat cwd in a child npm, so in a monorepo the root .npmrc
- * would answer for the functions directory. Drop them and let the child resolve
- * from sourceDir alone.
+ * npm satisfies a peer by walking up node_modules from the dependent, so we
+ * resolve each peer the same way against the lockfile's `packages` map.
+ * @param lockfile Parsed package-lock.json or npm-shrinkwrap.json.
+ * @return Sorted names of missing peers. Empty when the lockfile is complete.
  */
-function envWithoutNpmConfig(): NodeJS.ProcessEnv {
-  const env = { ...process.env };
-  for (const key of Object.keys(env)) {
-    if (key.toLowerCase().startsWith("npm_config_")) {
-      delete env[key];
+export function findMissingPeerDeps(lockfile: Lockfile): string[] {
+  const packages = lockfile.packages;
+  if (!packages) {
+    // lockfileVersion 1 has no package metadata to check.
+    return [];
+  }
+  const missing = new Set<string>();
+  for (const [dir, entry] of Object.entries(packages)) {
+    for (const peer of Object.keys(entry?.peerDependencies ?? {})) {
+      if (entry.peerDependenciesMeta?.[peer]?.optional) {
+        continue;
+      }
+      let prefix = dir;
+      let found = false;
+      for (;;) {
+        const candidate = prefix ? `${prefix}/node_modules/${peer}` : `node_modules/${peer}`;
+        if (packages[candidate]) {
+          found = true;
+          break;
+        }
+        if (!prefix) {
+          break;
+        }
+        const parent = prefix.lastIndexOf("/node_modules/");
+        prefix = parent === -1 ? "" : prefix.slice(0, parent);
+      }
+      if (!found) {
+        missing.add(peer);
+      }
     }
   }
-  return env;
+  return [...missing].sort();
 }
 
 /**
- * Warns when a lockfile was resolved with legacy-peer-deps but the setting won't
- * reach the build server.
+ * Warns when the lockfile we are about to upload omits peer dependencies.
  *
- * The Cloud Functions builder runs `npm ci` with npm's default
- * legacy-peer-deps=false. A lockfile written with the setting on omits the peer
- * dependencies npm would otherwise install, so the build fails with
- * "Missing: <package> from lock file" even though the local install succeeded.
+ * The build server runs `npm ci` with npm's default legacy-peer-deps=false. A
+ * lockfile resolved with the setting on omits the peers npm would otherwise
+ * install, so the build fails with "Missing: <package> from lock file" even
+ * though the local install succeeded. Reading the lockfile catches this however
+ * the setting was applied, including a one-off `npm install --legacy-peer-deps`
+ * that leaves no trace in npm's config.
  *
- * Only reads persisted npm config, so it cannot see a one-off
- * `npm install --legacy-peer-deps`, which leaves a lockfile in the same state.
- * Deploy-path only: this describes the build server, so it has no bearing on
- * the emulator.
+ * Advisory only: never throws, so it can never fail a deploy that would
+ * otherwise have worked.
  * @param sourceDir Absolute path of the functions source directory.
+ * @param ignore The codebase's configured ignore globs.
  */
-export function warnIfLegacyPeerDepsMismatch(sourceDir: string): void {
-  if (!fsutils.fileExistsSync(path.join(sourceDir, "package-lock.json"))) {
-    // Without a lockfile the builder falls back to `npm install` and resolves remotely.
-    return;
-  }
-  if (shipsLegacyPeerDepsSetting(sourceDir)) {
-    return;
-  }
+export function warnIfLockfileOmitsPeerDeps(sourceDir: string, ignore: string[] = []): void {
+  try {
+    const lockfilePath = LOCKFILES.map((f) => path.join(sourceDir, f)).find((f) =>
+      fsutils.fileExistsSync(f),
+    );
+    if (!lockfilePath) {
+      // Without a lockfile the builder falls back to `npm install` and resolves remotely.
+      return;
+    }
 
-  const child = spawn.sync("npm", ["config", "get", "legacy-peer-deps"], {
-    cwd: sourceDir,
-    encoding: "utf8",
-    timeout: NPM_COMMAND_TIMEOUT_MILLIES,
-    env: envWithoutNpmConfig(),
-  });
-  if (child.error || child.status !== 0) {
-    logger.debug("Unable to read npm's legacy-peer-deps setting:", child.error?.message);
-    return;
-  }
-  if (child.stdout?.trim() !== "true") {
-    return;
-  }
+    const missing = findMissingPeerDeps(JSON.parse(fs.readFileSync(lockfilePath, "utf8")));
+    if (missing.length === 0) {
+      return;
+    }
+    if (shipsLegacyPeerDeps(sourceDir, ignore)) {
+      // The build server will resolve the same way the lockfile was written.
+      return;
+    }
 
-  utils.logLabeledWarning(
-    "functions",
-    "Your npm is configured with legacy-peer-deps=true, but the Cloud Functions " +
-      "build server is not. Your package-lock.json omits peer dependencies that the " +
-      "build server expects, so `npm ci` may fail there with " +
-      '"Missing: <package> from lock file".\n' +
-      "To keep both resolving the same way, either add legacy-peer-deps=true to " +
-      `${path.join(sourceDir, ".npmrc")}, or run \`npm config set legacy-peer-deps false\` ` +
-      "and regenerate package-lock.json with `npm install`.",
-  );
+    const named = missing.slice(0, MAX_REPORTED_PEERS).join(", ");
+    const rest = missing.length - MAX_REPORTED_PEERS;
+    utils.logLabeledWarning(
+      "functions",
+      `${path.basename(lockfilePath)} is missing peer dependencies that the Cloud Functions ` +
+        `build server expects: ${named}${rest > 0 ? `, and ${rest} more` : ""}.\n` +
+        "This usually means it was resolved with legacy-peer-deps enabled, which the build " +
+        'server does not use, so `npm ci` may fail there with "Missing: <package> from lock ' +
+        'file".\n' +
+        "To fix it, regenerate the lockfile with `npm install` and legacy-peer-deps off. To " +
+        "keep resolving this way instead, add an .npmrc to your functions directory containing " +
+        "only legacy-peer-deps=true, since that file is uploaded with your source.",
+    );
+  } catch (err: unknown) {
+    // A warning is never worth failing a deploy over.
+    logger.debug("Unable to check the functions lockfile for missing peer dependencies:", err);
+  }
 }

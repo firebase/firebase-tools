@@ -161,18 +161,26 @@ export function printErrors(summary: Summary): void {
  */
 interface NestedError {
   message?: string;
-  original?: NestedError;
+  original?: unknown;
+  cause?: unknown;
   context?: { body?: { error?: { message?: string } } };
 }
 
-/** Collects every message in an error's cause chain so we can pattern match on them. */
-function errorMessages(err: DeploymentError): string {
-  const original = err.original as NestedError | undefined;
+/**
+ * Collects every message in an error's cause chain so we can pattern match on them.
+ *
+ * Walks rather than reaching into fixed paths, since how deeply a build failure
+ * is wrapped depends on which layer reported it.
+ */
+function errorMessages(err: NestedError, depth = 0): string {
+  if (!err || depth > 5) {
+    return "";
+  }
   return [
     err.message,
-    original?.message,
-    original?.original?.message,
-    original?.context?.body?.error?.message,
+    err.context?.body?.error?.message,
+    errorMessages(err.original as NestedError, depth + 1),
+    errorMessages(err.cause as NestedError, depth + 1),
   ]
     .filter(Boolean)
     .join(" ");
@@ -185,7 +193,12 @@ function printLockfileErrors(results: Array<Required<DeployResult>>): void {
       return false;
     }
     const message = errorMessages(r.error);
-    return message.includes("from lock file") && message.includes("npm ci");
+    if (!message.includes("npm ci")) {
+      return false;
+    }
+    // "Missing: x from lock file" and "Invalid: lock file's x does not satisfy y"
+    // are the two shapes npm uses for the same out-of-sync failure.
+    return message.includes("from lock file") || message.includes("lock file's");
   });
   if (!hadLockfileError) {
     return;
@@ -193,17 +206,18 @@ function printLockfileErrors(results: Array<Required<DeployResult>>): void {
 
   logger.info("");
   logger.info(
-    "The build failed because `npm ci` could not install from your package-lock.json. " +
-      "This usually means the lockfile was resolved with different npm settings than the " +
-      "build server uses, most often legacy-peer-deps.",
+    "The build failed because your lockfile is out of sync with package.json, so " +
+      "`npm ci` refused to install. Run " +
+      `${clc.bold("npm install")} in your functions directory and commit the updated lockfile.`,
   );
   logger.info("");
   logger.info(
-    `Check your setting with ${clc.bold("npm config get legacy-peer-deps")}. If it is ` +
-      `${clc.bold("true")}, either add ${clc.bold("legacy-peer-deps=true")} to an .npmrc in your ` +
-      `functions directory so the build server resolves the same way, or run ` +
-      `${clc.bold("npm config set legacy-peer-deps false")} and regenerate package-lock.json ` +
-      `with ${clc.bold("npm install")}.`,
+    "If the lockfile already looks up to date, it was most likely resolved with " +
+      `${clc.bold("legacy-peer-deps")} enabled, which the build server does not use, so peer ` +
+      `dependencies it expects are absent. Check with ` +
+      `${clc.bold("npm config get legacy-peer-deps")} and regenerate the lockfile with the ` +
+      "setting off, or add an .npmrc to your functions directory containing only " +
+      `${clc.bold("legacy-peer-deps=true")} so the build server resolves the same way you do.`,
   );
 }
 

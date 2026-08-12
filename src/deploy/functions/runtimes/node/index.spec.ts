@@ -147,7 +147,7 @@ describe("NodeDelegate", () => {
       sandbox.stub(versioning, "getFunctionsSDKVersion").returns("4.0.0");
       sandbox.stub(versioning, "checkFunctionsSDKVersion");
       packageJsonIsValidStub = sandbox.stub(validate, "packageJsonIsValid");
-      legacyPeerDepsStub = sandbox.stub(validate, "warnIfLegacyPeerDepsMismatch");
+      legacyPeerDepsStub = sandbox.stub(validate, "warnIfLockfileOmitsPeerDeps");
     });
 
     afterEach(() => {
