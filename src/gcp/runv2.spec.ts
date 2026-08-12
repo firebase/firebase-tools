@@ -591,7 +591,12 @@ describe("runv2", () => {
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       postStub = sandbox.stub(Client.prototype, "post");
-      pollStub = sandbox.stub(operationPoller, "pollOperation").resolves({ status: "SUCCESS" });
+      pollStub = sandbox.stub(operationPoller, "pollOperation").callsFake(async (opts: any) => {
+        if (opts.onPoll) {
+          opts.onPoll({ status: "SUCCESS" });
+        }
+        return { status: "SUCCESS" };
+      });
     });
 
     afterEach(() => {
@@ -675,7 +680,12 @@ describe("runv2", () => {
           },
         },
       });
-      pollStub.resolves({ status: "FAILURE", statusDetail: "Buildpack compile error" });
+      pollStub.callsFake(async (opts: any) => {
+        if (opts.onPoll) {
+          opts.onPoll({ status: "FAILURE", statusDetail: "Buildpack compile error" });
+        }
+        return { status: "FAILURE", statusDetail: "Buildpack compile error" };
+      });
 
       const build: runv2.Build = {
         imageUri: "us-central1-docker.pkg.dev/proj/repo/service:123",

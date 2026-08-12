@@ -207,11 +207,8 @@ export async function submitBuild(
     (typeof op === "object" && op?.metadata?.build?.id) ||
     (typeof op === "string" ? op.split("/").pop()?.replace(/^build-/, "") : "");
   if (buildId) {
-    const buildResult = await pollOperation<{
-      status: string;
-      statusDetail?: string;
-      logUrl?: string;
-    }>({
+    let latestBuild: { status?: string; statusDetail?: string; logUrl?: string } | undefined;
+    await pollOperation<any>({
       pollerName: "Cloud Build Poller",
       apiOrigin: cloudbuildOrigin(),
       apiVersion: "v1",
@@ -219,6 +216,9 @@ export async function submitBuild(
       masterTimeout: 15 * 60 * 1000,
       backoff: 2000,
       maxBackoff: 10000,
+      onPoll: (res: any) => {
+        latestBuild = res;
+      },
       doneFn: (buildRes: any) => {
         const status = buildRes?.status;
         return (
@@ -231,13 +231,13 @@ export async function submitBuild(
       },
     });
 
-    if (buildResult.status !== "SUCCESS") {
-      const detail = buildResult.statusDetail ? `: ${buildResult.statusDetail}` : "";
+    if (latestBuild && latestBuild.status !== "SUCCESS") {
+      const detail = latestBuild.statusDetail ? `: ${latestBuild.statusDetail}` : "";
       const consoleLink =
-        buildResult.logUrl ||
+        latestBuild.logUrl ||
         `https://console.cloud.google.com/cloud-build/builds;region=${location}/${buildId}?project=${projectId}`;
       throw new FirebaseError(
-        `Cloud Build failed with status ${buildResult.status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
+        `Cloud Build failed with status ${latestBuild.status}${detail}\nView Cloud Build logs at: ${consoleLink}`,
       );
     }
   }
