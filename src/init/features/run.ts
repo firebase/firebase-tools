@@ -80,8 +80,12 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
   };
 }
 
+import * as runv2 from "../../gcp/runv2";
+import { logger } from "../../logger";
+
 /**
- * Scaffolds Cloud Run configuration in firebase.json and creates placeholder apphosting.yaml template.
+ * Scaffolds Cloud Run configuration in firebase.json, creates placeholder Cloud Run service in GCP,
+ * and creates placeholder apphosting.yaml template.
  */
 export async function actuate(setup: Setup, config: Config): Promise<void> {
   const runInfo = setup.featureInfo?.run;
@@ -97,7 +101,52 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
 
   logBullet("Setting up Cloud Run configuration...");
 
-  // Update firebase.json
+  // 1. Check or create placeholder Cloud Run service in GCP (0% traffic)
+  let serviceUrl: string | undefined;
+  try {
+    const existing = await runv2.getService(projectId, region, serviceId);
+    if (existing) {
+      serviceUrl = existing.uri;
+      logBullet(`Cloud Run service ${serviceId} already exists at ${serviceUrl}`);
+    }
+  } catch (err: unknown) {
+    if ((err as { status?: number })?.status === 404) {
+      logBullet(`Creating placeholder Cloud Run service ${serviceId} in ${region}...`);
+      try {
+        const placeholderService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+          template: {
+            containers: [
+              {
+                image: "us-docker.pkg.dev/cloudrun/container/hello",
+              },
+            ],
+          },
+          traffic: [
+            {
+              type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+              percent: 0,
+            },
+          ],
+          invokerIamDisabled: true,
+        };
+
+        const created = await runv2.createService(projectId, region, serviceId, placeholderService);
+        serviceUrl = created.uri;
+        logSuccess(`Reserved Cloud Run service URL: ${serviceUrl}`);
+      } catch (createErr: unknown) {
+        logger.debug(`Failed to create placeholder Cloud Run service ${serviceId}:`, createErr);
+        logBullet(`Note: Cloud Run service will be created on first deploy.`);
+      }
+    } else {
+      logger.debug(`Failed to query Cloud Run service ${serviceId}:`, err);
+    }
+  }
+
+  if (serviceUrl && setup.instructions) {
+    setup.instructions.push(`Your Cloud Run service URL is: ${serviceUrl}`);
+  }
+
+  // 2. Update firebase.json
   const runConfig: RunSingle = {
     serviceId,
     region,
@@ -109,7 +158,7 @@ export async function actuate(setup: Setup, config: Config): Promise<void> {
   upsertRunConfig(runConfig, config);
   config.writeProjectFile("firebase.json", config.src);
 
-  // Create placeholder apphosting.yaml
+  // 3. Create placeholder apphosting.yaml
   const projectDir = config.projectDir || ".";
   const absRootDir = path.join(projectDir, rootDir);
   const apphostingYamlPath = path.join(absRootDir, "apphosting.yaml");

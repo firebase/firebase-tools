@@ -459,6 +459,29 @@ export function getSecretNameParts(secret: string): [string, string] {
 }
 
 /**
+ * Formats a secret reference into a canonical GCP Secret Manager resource path and version.
+ * Handles "mySecret", "mySecret@2", "projects/.../secrets/mySecret", and "projects/.../secrets/mySecret/versions/2".
+ */
+export function toCanonicalSecretResourcePath(
+  rawSecret: string,
+  projectId: string,
+): {
+  secretPath: string;
+  version: string;
+} {
+  let [secretName, version] = getSecretNameParts(rawSecret);
+  if (secretName.includes("/versions/")) {
+    const parts = secretName.split("/versions/");
+    secretName = parts[0];
+    version = parts[1] || version;
+  }
+  const secretPath = secretName.startsWith("projects/")
+    ? secretName
+    : `projects/${projectId}/secrets/${secretName}`;
+  return { secretPath, version };
+}
+
+/**
  * Action for the apphosting:secrets:set command.
  */
 export async function apphostingSecretsSetAction(

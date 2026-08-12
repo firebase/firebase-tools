@@ -1,4 +1,4 @@
-import { Context, Payload } from "./args";
+import { Context, Payload, RunServiceSpec } from "./args";
 import { Options } from "../../options";
 import * as runv2 from "../../gcp/runv2";
 import * as artifactregistry from "../../gcp/artifactregistry";
@@ -7,33 +7,9 @@ import { archiveDirectory } from "../../archiveDirectory";
 import { getProjectNumber } from "../../getProjectNumber";
 import { EnvMap } from "../../apphosting/yaml";
 import { splitEnvVars, AppHostingRunConfig as RunConfig } from "../../apphosting/config";
-import { getSecretNameParts } from "../../apphosting/secrets";
+import { toCanonicalSecretResourcePath } from "../../apphosting/secrets";
 import { EnvVar } from "../../gcp/k8s";
 import { logger } from "../../logger";
-
-/**
- * Formats a secret reference into a canonical GCP Secret Manager resource path.
- * If already a full resource path (projects/.../secrets/...), returns it directly.
- * Otherwise, prepends projects/${projectId}/secrets/.
- */
-export function formatSecretResourcePath(
-  rawSecret: string,
-  projectId: string,
-): {
-  secretPath: string;
-  version: string;
-} {
-  let [secretName, version] = getSecretNameParts(rawSecret);
-  if (secretName.includes("/versions/")) {
-    const parts = secretName.split("/versions/");
-    secretName = parts[0];
-    version = parts[1] || version;
-  }
-  const secretPath = secretName.startsWith("projects/")
-    ? secretName
-    : `projects/${projectId}/secrets/${secretName}`;
-  return { secretPath, version };
-}
 
 /**
  * Applies runtime environment variables and Secret Manager references to a container.
@@ -48,7 +24,7 @@ function applyContainerEnv(
     if (val.value !== undefined) {
       newEnv.push({ name: key, value: val.value });
     } else if (val.secret !== undefined) {
-      const { secretPath, version } = formatSecretResourcePath(String(val.secret), projectId);
+      const { secretPath, version } = toCanonicalSecretResourcePath(String(val.secret), projectId);
       newEnv.push({
         name: key,
         valueSource: {
@@ -144,224 +120,319 @@ function applyAppHostingConfig(
 }
 
 /**
+ * 1. Packages local source and uploads to the regional staging bucket.
+ */
+async function packageAndUploadSource(
+  projectId: string,
+  region: string,
+  service: RunServiceSpec,
+  options: Options,
+): Promise<runv2.StorageSource> {
+  const archive = await archiveDirectory(service.source, {
+    ignore: service.ignore,
+    supportGitIgnore: true,
+  });
+
+  const projectNumber = await getProjectNumber(options);
+  const baseName = `firebase-run-src-${projectNumber}-${region.toLowerCase()}`;
+  const bucketName = await gcs.upsertBucket({
+    product: "run",
+    createMessage: `Creating Cloud Storage bucket in ${region} to store Cloud Run source code uploads at ${baseName}...`,
+    projectId,
+    req: {
+      baseName,
+      purposeLabel: `run-source-${region.toLowerCase()}`,
+      location: region,
+      lifecycle: {
+        rule: [
+          {
+            action: {
+              type: "Delete",
+            },
+            condition: {
+              age: 30,
+            },
+          },
+        ],
+      },
+    },
+  });
+
+  const uploadRes = await gcs.uploadObject(
+    {
+      file: archive.file,
+      stream: archive.stream,
+    },
+    bucketName,
+  );
+
+  return {
+    bucket: uploadRes.bucket,
+    object: uploadRes.object,
+    generation: uploadRes.generation || undefined,
+  };
+}
+
+/**
+ * 2. Prepares build-time environment variables and custom build scripts.
+ */
+function prepareBuildEnvironment(service: RunServiceSpec): Record<string, string> {
+  const appHostingConfig = service.appHostingConfig;
+  const envRecord = appHostingConfig?.env || {};
+  const { build: buildEnvMap } = splitEnvVars(envRecord);
+  const buildEnv: Record<string, string> = {};
+
+  for (const [key, val] of Object.entries(buildEnvMap)) {
+    if (val.value !== undefined) {
+      buildEnv[key] = val.value;
+    }
+  }
+
+  if (appHostingConfig?.scripts?.build || appHostingConfig?.buildConfig?.buildCommand) {
+    buildEnv["GOOGLE_NODE_RUN_SCRIPTS"] = (appHostingConfig.scripts?.build || appHostingConfig.buildConfig?.buildCommand)!;
+  }
+
+  return buildEnv;
+}
+
+/**
+ * 3. Submits the container build to Cloud Build and resolves the base image URI.
+ */
+async function submitServiceBuild(
+  projectId: string,
+  region: string,
+  service: RunServiceSpec,
+  imageUri: string,
+): Promise<{ resolvedBaseImageUri?: string; hasAbiu: boolean }> {
+  const hasAbiu = !service.clearBaseImage && !!service.baseImageUri;
+  const buildEnv = prepareBuildEnvironment(service);
+
+  const build: runv2.Build = {
+    storageSource: service.storageSource!,
+    imageUri,
+    buildpackBuild: {
+      enableAutomaticUpdates: hasAbiu,
+      environmentVariables: buildEnv,
+      ...(hasAbiu ? { baseImage: service.baseImageUri } : {}),
+    },
+  };
+
+  const buildRes = await runv2.submitBuild(projectId, region, build);
+  if (buildRes.baseImageWarning) {
+    logger.warn(`Cloud Run ABIU warning: ${buildRes.baseImageWarning}`);
+  }
+
+  return {
+    hasAbiu,
+    resolvedBaseImageUri: hasAbiu ? buildRes.baseImageUri || service.baseImageUri : undefined,
+  };
+}
+
+/**
+ * 4. Reconciles existing service revision template with new image, labels, and apphosting configs.
+ */
+function buildUpdatedServiceDefinition(
+  existing: runv2.Service,
+  service: RunServiceSpec,
+  projectId: string,
+  imageUri: string,
+  hasAbiu: boolean,
+  resolvedBaseImageUri?: string,
+  message?: string,
+): { newService: Omit<runv2.Service, runv2.ServiceOutputFields>; updateMask: string[] } {
+  const template = JSON.parse(JSON.stringify(existing.template)) as runv2.RevisionTemplate;
+  delete template.revision;
+  delete template.scaling;
+  delete (template as any).client;
+  delete (template as any).clientVersion;
+
+  const newService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: existing.name,
+    template,
+  };
+
+  if (service.serviceAccount) {
+    newService.template.serviceAccount = service.serviceAccount;
+  }
+
+  if (!newService.template.containers) {
+    newService.template.containers = [];
+  }
+  let container = newService.template.containers.find((c) => c.name === service.serviceId);
+  if (!container) {
+    if (newService.template.containers.length === 0) {
+      container = { name: service.serviceId, image: imageUri };
+      newService.template.containers.push(container);
+    } else {
+      container = newService.template.containers[0];
+    }
+  }
+  container.image = imageUri;
+
+  if (service.clearBaseImage || !hasAbiu) {
+    delete container.baseImageUri;
+  } else if (resolvedBaseImageUri) {
+    container.baseImageUri = resolvedBaseImageUri;
+  }
+
+  if (!newService.template.labels) newService.template.labels = {};
+  newService.template.labels["client.knative.dev/nonce"] = Math.random()
+    .toString(36)
+    .substring(2, 12);
+  if (!newService.template.annotations) newService.template.annotations = {};
+  newService.template.annotations["client.knative.dev/user-image"] = imageUri;
+  newService.template.annotations["run.googleapis.com/deployed-at"] = new Date().toISOString();
+  if (message) {
+    newService.template.annotations["run.googleapis.com/description"] = message;
+  }
+
+  const runtimeEnvMap = splitEnvVars(service.appHostingConfig?.env || {}).runtime;
+  applyAppHostingConfig(projectId, newService, runtimeEnvMap, service.appHostingConfig?.runConfig, service.serviceId);
+
+  newService.traffic = [
+    {
+      type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+      percent: 100,
+    },
+  ];
+
+  const updateMask = ["template", "traffic"];
+  if (newService.scaling) {
+    updateMask.push("scaling");
+  }
+
+  return { newService, updateMask };
+}
+
+/**
+ * 5. Constructs a new Cloud Run service definition with public ingress.
+ */
+function buildNewServiceDefinition(
+  projectId: string,
+  region: string,
+  service: RunServiceSpec,
+  imageUri: string,
+  hasAbiu: boolean,
+  resolvedBaseImageUri?: string,
+  message?: string,
+): Omit<runv2.Service, runv2.ServiceOutputFields> {
+  const newService: Omit<runv2.Service, runv2.ServiceOutputFields> = {
+    name: `projects/${projectId}/locations/${region}/services/${service.serviceId}`,
+    template: {
+      containers: [
+        {
+          name: service.serviceId,
+          image: imageUri,
+          ...(!service.clearBaseImage && hasAbiu && resolvedBaseImageUri
+            ? { baseImageUri: resolvedBaseImageUri }
+            : {}),
+        },
+      ],
+      annotations: message
+        ? { "run.googleapis.com/description": message }
+        : {},
+      ...(service.serviceAccount ? { serviceAccount: service.serviceAccount } : {}),
+    },
+    client: "cli-firebase",
+    invokerIamDisabled: true,
+    ingress: "INGRESS_TRAFFIC_ALL",
+  };
+
+  const runtimeEnvMap = splitEnvVars(service.appHostingConfig?.env || {}).runtime;
+  applyAppHostingConfig(projectId, newService, runtimeEnvMap, service.appHostingConfig?.runConfig, service.serviceId);
+
+  return newService;
+}
+
+/**
+ * Deploys a single Cloud Run service from source.
+ */
+async function deployService(
+  context: Context,
+  options: Options,
+  service: RunServiceSpec,
+): Promise<void> {
+  const projectId = context.projectId!;
+  const region = service.region;
+  const message = (service.message || options.message) as string | undefined;
+
+  try {
+    // 1. Ensure Artifact Registry repository exists
+    await artifactregistry.ensureRepository(projectId, region, "cloud-run-source-deploy");
+
+    // 2. Package source & upload to GCS staging bucket
+    service.storageSource = await packageAndUploadSource(projectId, region, service, options);
+
+    // 3. Construct target image URI & submit Cloud Build
+    const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:latest`;
+    const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(projectId, region, service, imageUri);
+
+    // 4. Create or update Cloud Run service
+    let existing = service.existingService;
+    if (existing) {
+      try {
+        const fresh = await runv2.getService(projectId, region, service.serviceId);
+        if (fresh) {
+          existing = fresh;
+        }
+      } catch (err: unknown) {
+        if ((err as { status?: number })?.status !== 404) {
+          logger.debug(`Failed to fetch latest service state for ${service.serviceId}:`, err);
+        }
+      }
+
+      const { newService, updateMask } = buildUpdatedServiceDefinition(
+        existing,
+        service,
+        projectId,
+        imageUri,
+        hasAbiu,
+        resolvedBaseImageUri,
+        message,
+      );
+      service.deployResponse = await runv2.updateService(newService, updateMask);
+    } else {
+      const newService = buildNewServiceDefinition(
+        projectId,
+        region,
+        service,
+        imageUri,
+        hasAbiu,
+        resolvedBaseImageUri,
+        message,
+      );
+      service.deployResponse = await runv2.createService(
+        projectId,
+        region,
+        service.serviceId,
+        newService,
+      );
+    }
+  } catch (err) {
+    if (service.storageSource) {
+      try {
+        await gcs.deleteObject(
+          `/${service.storageSource.bucket}/${service.storageSource.object}`,
+        );
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+    throw err;
+  }
+}
+
+/**
  * Deploys Cloud Run services by building container images via Cloud Build
  * and creating or updating services in Cloud Run Admin API v2.
  */
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
-  if (!payload.run || !payload.run.services || payload.run.services.length === 0) {
+  const services = payload.run?.services;
+  if (!services || services.length === 0) {
     return;
   }
 
-  const projectId = context.projectId!;
-
-  for (const service of payload.run.services) {
-    const region = service.region;
-
-    try {
-      // 1. Ensure Artifact Registry repository exists
-      await artifactregistry.ensureRepository(projectId, region, "cloud-run-source-deploy");
-
-      // 2. Package source directory
-      const archive = await archiveDirectory(service.source, {
-        ignore: service.ignore,
-        supportGitIgnore: true,
-      });
-
-      // 3. Upload to regional staging bucket
-      const projectNumber = await getProjectNumber(options);
-      const baseName = `firebase-run-src-${projectNumber}-${region.toLowerCase()}`;
-      const bucketName = await gcs.upsertBucket({
-        product: "run",
-        createMessage: `Creating Cloud Storage bucket in ${region} to store Cloud Run source code uploads at ${baseName}...`,
-        projectId,
-        req: {
-          baseName,
-          purposeLabel: `run-source-${region.toLowerCase()}`,
-          location: region,
-          lifecycle: {
-            rule: [
-              {
-                action: {
-                  type: "Delete",
-                },
-                condition: {
-                  age: 30,
-                },
-              },
-            ],
-          },
-        },
-      });
-
-      const uploadRes = await gcs.uploadObject(
-        {
-          file: archive.file,
-          stream: archive.stream,
-        },
-        bucketName,
-      );
-
-      service.storageSource = {
-        bucket: uploadRes.bucket,
-        object: uploadRes.object,
-        generation: uploadRes.generation || undefined,
-      };
-
-      // 4. Construct image URI
-      const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:latest`;
-
-      const appHostingConfig = service.appHostingConfig;
-      const envRecord = appHostingConfig?.env || {};
-      const { build: buildEnvMap, runtime: runtimeEnvMap } = splitEnvVars(envRecord);
-      const buildEnv: Record<string, string> = {};
-      for (const [key, val] of Object.entries(buildEnvMap)) {
-        if (val.value !== undefined) {
-          buildEnv[key] = val.value;
-        }
-      }
-
-      if (appHostingConfig?.scripts?.build || appHostingConfig?.buildConfig?.buildCommand) {
-        buildEnv["GOOGLE_NODE_RUN_SCRIPTS"] = (appHostingConfig.scripts?.build || appHostingConfig.buildConfig?.buildCommand)!;
-      }
-
-      const hasAbiu = !service.clearBaseImage && !!service.baseImageUri;
-
-      // 5. Submit build via Cloud Run Build API
-      const build: runv2.Build = {
-        storageSource: service.storageSource,
-        imageUri,
-        buildpackBuild: {
-          enableAutomaticUpdates: hasAbiu,
-          environmentVariables: buildEnv,
-          ...(hasAbiu ? { baseImage: service.baseImageUri } : {}),
-        },
-      };
-
-      const buildRes = await runv2.submitBuild(projectId, region, build);
-      const resolvedBaseImageUri = hasAbiu
-        ? buildRes.baseImageUri || service.baseImageUri
-        : undefined;
-
-      if (buildRes.baseImageWarning) {
-        logger.warn(`Cloud Run ABIU warning: ${buildRes.baseImageWarning}`);
-      }
-
-      // 6. Deploy via POST (new service) or PATCH (existing service)
-      let existing = service.existingService;
-      let newService: Omit<runv2.Service, runv2.ServiceOutputFields>;
-
-      if (existing) {
-        try {
-          const fresh = await runv2.getService(projectId, region, service.serviceId);
-          if (fresh) {
-            existing = fresh;
-          }
-        } catch (err: unknown) {
-          if ((err as { status?: number })?.status !== 404) {
-            logger.debug(`Failed to fetch latest service state for ${service.serviceId}:`, err);
-          }
-        }
-        const template = JSON.parse(JSON.stringify(existing.template)) as runv2.RevisionTemplate;
-        delete template.revision;
-        delete template.scaling;
-        delete (template as any).client;
-        delete (template as any).clientVersion;
-
-        newService = {
-          name: existing.name,
-          template,
-        };
-
-        if (service.serviceAccount) {
-          newService.template.serviceAccount = service.serviceAccount;
-        }
-
-        // Mutate template with new image for the matching container
-        if (!newService.template.containers) {
-          newService.template.containers = [];
-        }
-        let container = newService.template.containers.find((c) => c.name === service.serviceId);
-        if (!container) {
-          if (newService.template.containers.length === 0) {
-            container = { name: service.serviceId, image: imageUri };
-            newService.template.containers.push(container);
-          } else {
-            container = newService.template.containers[0];
-          }
-        }
-        container.image = imageUri;
-
-        // ABIU stickiness handling: only set baseImageUri if explicitly enabled
-        if (service.clearBaseImage || !hasAbiu) {
-          delete container.baseImageUri;
-        } else if (resolvedBaseImageUri) {
-          container.baseImageUri = resolvedBaseImageUri;
-        }
-
-        if (!newService.template.labels) newService.template.labels = {};
-        newService.template.labels["client.knative.dev/nonce"] = Math.random()
-          .toString(36)
-          .substring(2, 12);
-        if (!newService.template.annotations) newService.template.annotations = {};
-        newService.template.annotations["client.knative.dev/user-image"] = imageUri;
-        newService.template.annotations["run.googleapis.com/deployed-at"] =
-          new Date().toISOString();
-        const revisionDescription = (service.message || options.message) as string | undefined;
-        if (revisionDescription) {
-          newService.template.annotations["run.googleapis.com/description"] = revisionDescription;
-        }
-
-        applyAppHostingConfig(projectId, newService, runtimeEnvMap, appHostingConfig?.runConfig, service.serviceId);
-
-        const updateMask = ["template"];
-        if (newService.scaling) {
-          updateMask.push("scaling");
-        }
-        service.deployResponse = await runv2.updateService(newService, updateMask);
-      } else {
-        const revisionDescription = (service.message || options.message) as string | undefined;
-        newService = {
-          name: `projects/${projectId}/locations/${region}/services/${service.serviceId}`,
-          template: {
-            containers: [
-              {
-                name: service.serviceId,
-                image: imageUri,
-                ...(!service.clearBaseImage && hasAbiu && resolvedBaseImageUri
-                  ? { baseImageUri: resolvedBaseImageUri }
-                  : {}),
-              },
-            ],
-            annotations: revisionDescription
-              ? { "run.googleapis.com/description": revisionDescription }
-              : {},
-            ...(service.serviceAccount ? { serviceAccount: service.serviceAccount } : {}),
-          },
-          client: "cli-firebase",
-          invokerIamDisabled: true,
-          ingress: "INGRESS_TRAFFIC_ALL",
-        };
-
-        applyAppHostingConfig(projectId, newService, runtimeEnvMap, appHostingConfig?.runConfig, service.serviceId);
-
-        service.deployResponse = await runv2.createService(
-          projectId,
-          region,
-          service.serviceId,
-          newService,
-        );
-      }
-    } catch (err) {
-      if (service.storageSource) {
-        try {
-          await gcs.deleteObject(
-            `/${service.storageSource.bucket}/${service.storageSource.object}`,
-          );
-        } catch {
-          // ignore cleanup errors
-        }
-      }
-      throw err;
-    }
+  for (const service of services) {
+    await deployService(context, options, service);
   }
 }

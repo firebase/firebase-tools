@@ -212,7 +212,13 @@ describe("run deploy", () => {
       runv2.ServiceOutputFields
     >;
 
-    expect(updateServiceStub.args[0][1]).to.deep.equal(["template", "scaling"]);
+    expect(updateServiceStub.args[0][1]).to.deep.equal(["template", "traffic", "scaling"]);
+    expect(updatedService.traffic).to.deep.equal([
+      {
+        type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+        percent: 100,
+      },
+    ]);
     expect(updatedService.scaling?.minInstanceCount).to.equal(1);
     expect(updatedService.scaling?.maxInstanceCount).to.equal(10);
     expect(updatedService.template.scaling).to.be.undefined;

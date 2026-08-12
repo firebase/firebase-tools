@@ -6,6 +6,7 @@ import * as fs from "fs";
 import { Config } from "../../config";
 import { Setup } from "../index";
 import { FirebaseError } from "../../error";
+import * as runv2 from "../../gcp/runv2";
 
 function createMockSetup(overrides: Partial<Setup> = {}): Setup {
   return {
@@ -57,9 +58,13 @@ describe("init features run", () => {
 
   describe("actuate", () => {
     let existsSyncStub: sinon.SinonStub;
+    let getServiceStub: sinon.SinonStub;
+    let createServiceStub: sinon.SinonStub;
 
     beforeEach(() => {
       existsSyncStub = sandbox.stub(fs, "existsSync");
+      getServiceStub = sandbox.stub(runv2, "getService");
+      createServiceStub = sandbox.stub(runv2, "createService");
     });
 
     it("should do nothing if featureInfo.run is not present", async () => {
@@ -69,6 +74,7 @@ describe("init features run", () => {
       await runFeature.actuate(setup, config);
 
       expect(config.src.run).to.be.undefined;
+      expect(getServiceStub.notCalled).to.be.true;
     });
 
     it("should throw FirebaseError if projectId is missing", async () => {
@@ -90,7 +96,7 @@ describe("init features run", () => {
       );
     });
 
-    it("should scaffold configuration in firebase.json and write apphosting.yaml if not existing", async () => {
+    it("should create placeholder service with 0% traffic when service does not exist in GCP", async () => {
       const setup = createMockSetup({
         projectId: "test-project",
         featureInfo: {
@@ -107,13 +113,56 @@ describe("init features run", () => {
       const askWriteStub = sandbox.stub(config, "askWriteProjectFile").resolves();
 
       existsSyncStub.returns(false);
+      const notFoundErr = new Error("Not Found") as any;
+      notFoundErr.status = 404;
+      getServiceStub.rejects(notFoundErr);
+      createServiceStub.resolves({ uri: "https://my-svc.a.run.app" });
 
       await runFeature.actuate(setup, config);
+
+      expect(createServiceStub.calledOnce).to.be.true;
+      const createdService = createServiceStub.args[0][3] as runv2.Service;
+      expect(createdService.template.containers?.[0].image).to.equal(
+        "us-docker.pkg.dev/cloudrun/container/hello",
+      );
+      expect(createdService.traffic).to.deep.equal([
+        {
+          type: "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST",
+          percent: 0,
+        },
+      ]);
+      expect(createdService.invokerIamDisabled).to.be.true;
+      expect(setup.instructions).to.include("Your Cloud Run service URL is: https://my-svc.a.run.app");
 
       const runConfigs = config.src.run as Array<{ serviceId: string }>;
       expect(runConfigs).to.be.an("array");
       expect(runConfigs[0].serviceId).to.equal("my-svc");
       expect(askWriteStub.calledOnce).to.be.true;
+    });
+
+    it("should not create service if service already exists in GCP", async () => {
+      const setup = createMockSetup({
+        projectId: "test-project",
+        featureInfo: {
+          run: {
+            serviceId: "my-svc",
+            region: "us-central1",
+            rootDir: ".",
+            outputDir: ".run",
+          },
+        },
+      });
+      const config = new Config({}, {});
+      sandbox.stub(config, "writeProjectFile");
+      existsSyncStub.returns(true);
+      getServiceStub.resolves({ uri: "https://existing-svc.a.run.app" });
+
+      await runFeature.actuate(setup, config);
+
+      expect(createServiceStub.notCalled).to.be.true;
+      expect(setup.instructions).to.include(
+        "Your Cloud Run service URL is: https://existing-svc.a.run.app",
+      );
     });
 
     it("should append to existing run configs array in firebase.json", async () => {
@@ -136,6 +185,7 @@ describe("init features run", () => {
       );
       sandbox.stub(config, "writeProjectFile");
       existsSyncStub.returns(true);
+      getServiceStub.resolves({ uri: "https://second-svc.a.run.app" });
 
       await runFeature.actuate(setup, config);
 

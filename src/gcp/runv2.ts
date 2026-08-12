@@ -32,7 +32,7 @@ export interface Scaling {
 }
 
 export interface Container {
-  name: string;
+  name?: string;
   image: string;
   command?: string[];
   args?: string[];
@@ -90,6 +90,13 @@ export interface BuildConfig {
   serviceAccount?: string;
 }
 
+export interface TrafficTarget {
+  type?: string;
+  revision?: string;
+  percent?: number;
+  tag?: string;
+}
+
 // NOTE: This is a minmal copy of Cloud Run needed for our current API usage.
 // Add more as needed.
 // TODO: Can consider a helper where we have a second RecursiveKeysOf field for
@@ -116,6 +123,7 @@ export interface Service {
 
   etag: string;
   template: RevisionTemplate;
+  traffic?: TrafficTarget[];
   invokerIamDisabled?: boolean;
   ingress?: string;
   // Is this redundant with the Build API?
