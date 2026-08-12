@@ -446,7 +446,7 @@ export async function prepare(
         : "zip";
 
       const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
-      const executablePaths = isDart ? ["bin/server"] : [];
+      const executablePaths = isDart ? ["build/cli/linux_x64/bundle/bin/server"] : [];
 
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
