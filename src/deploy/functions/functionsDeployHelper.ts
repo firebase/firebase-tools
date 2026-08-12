@@ -1,5 +1,10 @@
 import * as backend from "./backend";
-import { DEFAULT_CODEBASE, ValidatedConfig, isKitConfig } from "../../functions/projectConfig";
+import {
+  DEFAULT_CODEBASE,
+  ValidatedConfig,
+  ValidatedSingle,
+  isKitConfig,
+} from "../../functions/projectConfig";
 import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
@@ -27,37 +32,35 @@ export function endpointMatchesAnyFilter(
 
 /**
  * Returns true if endpoint matches the given filter.
+ * Supports filtering by codebase, exact function name, or hierarchical function group.
  */
 export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: EndpointFilter): boolean {
-  // Only enforce codebase-based filtering when both the endpoint and filter provides them.
-  // This allows us to filter using idChunks across all codebases.
+  // Only enforce codebase-based filtering when both the endpoint and filter provide them.
+  // This allows us to filter using idChunks across all codebases or target a specific codebase.
   if (endpoint.codebase && filter.codebase) {
     if (endpoint.codebase !== filter.codebase) {
       return false;
     }
   }
 
-  if (!filter.idChunks) {
-    // If idChunks is not provided, we match all functions.
+  // If idChunks is not provided or empty, the filter matches all functions within the targeted codebase.
+  if (!filter.idChunks || filter.idChunks.length === 0) {
+    if (filter.codebase) {
+      return (endpoint.codebase || DEFAULT_CODEBASE) === filter.codebase;
+    }
     return true;
   }
 
-  const idChunks = endpoint.id.split("-");
-  if (idChunks.length < filter.idChunks.length) {
-    return false;
-  }
-  for (let i = 0; i < filter.idChunks.length; i += 1) {
-    if (idChunks[i] !== filter.idChunks[i]) {
-      return false;
-    }
-  }
-  return true;
+  // Exact function match (e.g. 'myFunc') or hierarchical group match (e.g. 'groupA' matches 'groupA-func1').
+  // Enforces a strict hyphen boundary so 'app' does not match 'apple-pay'.
+  const filterPrefix = filter.idChunks.join("-");
+  return endpoint.id === filterPrefix || endpoint.id.startsWith(`${filterPrefix}-`);
 }
 
 /**
  * Returns all codebase names and kit instance IDs defined in the configuration.
  */
-export function getCodebasesFromConfig(config: ValidatedConfig): string[] {
+export function getCodebasesFromConfig(config: ValidatedSingle[] = []): string[] {
   return [
     ...new Set(config.flatMap((c) => (isKitConfig(c) ? Object.keys(c.instances) : [c.codebase]))),
   ];
@@ -66,7 +69,10 @@ export function getCodebasesFromConfig(config: ValidatedConfig): string[] {
 /**
  * Returns list of filters after parsing selector.
  */
-export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
+export function parseFunctionSelector(
+  selector: string,
+  config: ValidatedSingle[] = [],
+): EndpointFilter[] {
   const fragments = selector.split(":");
   const target = fragments[0];
 
@@ -241,6 +247,6 @@ export function isCodebaseFiltered(codebase: string, filters: EndpointFilter[]):
 }
 
 /** Checks if a function should be filtered given a list of endpoints. */
-export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]) {
+export function isEndpointFiltered(endpoint: backend.Endpoint, filters: EndpointFilter[]): boolean {
   return filters.some((filter) => endpointMatchesFilter(endpoint, filter));
 }

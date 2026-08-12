@@ -12,6 +12,7 @@ import * as args from "../deploy/functions/args";
 import * as helper from "../deploy/functions/functionsDeployHelper";
 import * as utils from "../utils";
 import * as backend from "../deploy/functions/backend";
+import * as projectConfig from "../functions/projectConfig";
 import * as planner from "../deploy/functions/release/planner";
 import * as fabricator from "../deploy/functions/release/fabricator";
 import * as executor from "../deploy/functions/release/executor";
@@ -19,7 +20,7 @@ import * as reporter from "../deploy/functions/release/reporter";
 import { getProjectNumber } from "../getProjectNumber";
 
 export const command = new Command("functions:delete [filters...]")
-  .description("delete one or more Cloud Functions by name or group name.")
+  .description("delete one or more Cloud Functions by name, group name, or codebase.")
   .option(
     "--region <region>",
     "Specify region of the function to be deleted. " +
@@ -32,17 +33,25 @@ export const command = new Command("functions:delete [filters...]")
       return utils.reject("Must supply at least function or group name.");
     }
 
+    // Normalize project configuration to discover all registered codebases.
+    // Gracefully fall back to an empty configuration if running outside a Firebase directory or without functions.
+    // Parse filters using parseFunctionSelector for 1:1 syntax parity with `firebase deploy --only functions:...`.
+    const config = options.config?.src?.functions
+      ? projectConfig.normalizeAndValidate(options.config.src.functions)
+      : [];
+    const parsedFilters = filters.flatMap((f) => helper.parseFunctionSelector(f, config));
+
     const context: args.Context = {
       projectId: needProjectId(options),
-      filters: filters.map((f) => ({ idChunks: f.split(/[-.]/) })),
+      filters: parsedFilters,
     };
 
-    const [config, existingBackend] = await Promise.all([
+    const [firebaseConfig, existingBackend] = await Promise.all([
       functionsConfig.getFirebaseConfig(options),
       backend.existingBackend(context),
     ]);
     await backend.checkAvailability(context, /* want=*/ backend.empty());
-    const appEngineLocation = functionsConfig.getAppEngineLocation(config);
+    const appEngineLocation = functionsConfig.getAppEngineLocation(firebaseConfig);
 
     if (options.region) {
       existingBackend.endpoints = { [options.region]: existingBackend.endpoints[options.region] };
@@ -65,6 +74,30 @@ export const command = new Command("functions:delete [filters...]")
           context.projectId,
         )}.`,
       );
+    }
+
+    // Inform the user when a name collision exists between a codebase name and a function name in default.
+    // Codebase deletion takes precedence by design, but we provide the explicit 'default:<name>' workaround.
+    const codebaseNames = config.map((c) => c.codebase);
+    const defaultEndpoints = backend
+      .allEndpoints(existingBackend)
+      .filter((ep) => !ep.codebase || ep.codebase === projectConfig.DEFAULT_CODEBASE);
+
+    for (const f of filters) {
+      if (!f.includes(":") && codebaseNames.includes(f)) {
+        const hasDefaultCollision = defaultEndpoints.some(
+          (ep) => ep.id === f || ep.id.startsWith(`${f}-`),
+        );
+        if (hasDefaultCollision) {
+          utils.logLabeledBullet(
+            "functions",
+            `Target '${clc.bold(f)}' matches both a codebase and a function. Codebase deletion takes precedence. ` +
+              `(To delete the function in the default codebase instead, run: ${clc.bold(
+                `firebase functions:delete default:${f}`,
+              )})`,
+          );
+        }
+      }
     }
 
     const deleteList = allEpToDelete.map((func) => `\t${helper.getFunctionLabel(func)}`).join("\n");
@@ -104,7 +137,7 @@ export const command = new Command("functions:delete [filters...]")
 
       await reporter.logAndTrackDeployStats(summary);
       reporter.printErrors(summary);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw new FirebaseError("Failed to delete functions", {
         original: err as Error,
         exit: 1,

@@ -135,6 +135,44 @@ describe("functionsDeployHelper", () => {
         }),
       ).to.be.true;
     });
+
+    it("should match all functions in a codebase when idChunks is not provided", () => {
+      const func1 = { ...ENDPOINT, id: "func1", codebase: "my-codebase" };
+      const func2 = { ...ENDPOINT, id: "func2", codebase: "my-codebase" };
+      const otherFunc = { ...ENDPOINT, id: "func3", codebase: "other-codebase" };
+      const undefinedFunc = { ...ENDPOINT, id: "func4", codebase: undefined };
+
+      const filter: EndpointFilter = { codebase: "my-codebase" };
+      expect(helper.endpointMatchesFilter(func1, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(func2, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(otherFunc, filter)).to.be.false;
+      expect(helper.endpointMatchesFilter(undefinedFunc, filter)).to.be.false;
+    });
+
+    it("should not match overlapping codebase names", () => {
+      const instance1Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery" };
+      const instance2Func = { ...ENDPOINT, id: "foo", codebase: "kit-firestore-to-bigquery-abcd" };
+
+      const filter: EndpointFilter = {
+        codebase: "kit-firestore-to-bigquery",
+      };
+
+      expect(helper.endpointMatchesFilter(instance1Func, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(instance2Func, filter)).to.be.false;
+    });
+
+    it("should not match functions with overlapping word prefixes", () => {
+      const appFunc = { ...ENDPOINT, id: "app-render" };
+      const appleFunc = { ...ENDPOINT, id: "apple-pay" };
+
+      const filter: EndpointFilter = {
+        codebase: DEFAULT_CODEBASE,
+        idChunks: ["app"],
+      };
+
+      expect(helper.endpointMatchesFilter(appFunc, filter)).to.be.true;
+      expect(helper.endpointMatchesFilter(appleFunc, filter)).to.be.false;
+    });
   });
 
   describe("endpointMatchesAnyFilters", () => {
