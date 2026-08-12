@@ -17,6 +17,7 @@ describe("ensureRole", () => {
     getIamPolicyStub = sandbox.stub(resourceManager, "getIamPolicy");
     setIamPolicyStub = sandbox.stub(resourceManager, "setIamPolicy");
     sandbox.stub(utils, "sleep").resolves();
+    sandbox.stub(Date, "now").returns(1710000000000);
 
     cacheStore = {};
     sandbox.stub(configstore, "get").callsFake((key: string) => cacheStore[key]);
@@ -45,13 +46,33 @@ describe("ensureRole", () => {
     expect(cacheStore["iamRoleCache"]).to.deep.equal({
       "test-project": {
         "test@example.com": {
-          "roles/mcp.toolUser": true,
+          "roles/mcp.toolUser": {
+            valid: true,
+            timestamp: 1710000000000,
+          },
         },
       },
     });
   });
 
-  it("should skip API call and succeed if role is cached", async () => {
+  it("should skip API call and succeed if role is cached and not expired", async () => {
+    cacheStore["iamRoleCache"] = {
+      "test-project": {
+        "test@example.com": {
+          "roles/mcp.toolUser": {
+            valid: true,
+            timestamp: 1710000000000,
+          },
+        },
+      },
+    };
+
+    await ensureRole("test-project", "test@example.com", "roles/mcp.toolUser");
+
+    expect(getIamPolicyStub).to.not.have.been.called;
+  });
+
+  it("should skip API call and succeed if legacy boolean role is cached", async () => {
     cacheStore["iamRoleCache"] = {
       "test-project": {
         "test@example.com": {
@@ -65,11 +86,41 @@ describe("ensureRole", () => {
     expect(getIamPolicyStub).to.not.have.been.called;
   });
 
+  it("should query API if cached role has expired", async () => {
+    const now = 1710000000000;
+    const oneDayAgo = now - 24 * 60 * 60 * 1000 - 1000; // expired by 1 second
+    cacheStore["iamRoleCache"] = {
+      "test-project": {
+        "test@example.com": {
+          "roles/mcp.toolUser": {
+            valid: true,
+            timestamp: oneDayAgo,
+          },
+        },
+      },
+    };
+    getIamPolicyStub.resolves({
+      bindings: [
+        {
+          role: "roles/mcp.toolUser",
+          members: ["user:test@example.com"],
+        },
+      ],
+    });
+
+    await ensureRole("test-project", "test@example.com", "roles/mcp.toolUser");
+
+    expect(getIamPolicyStub).to.have.been.calledOnceWith("test-project");
+  });
+
   it("should query API even if cached when force is true", async () => {
     cacheStore["iamRoleCache"] = {
       "test-project": {
         "test@example.com": {
-          "roles/mcp.toolUser": true,
+          "roles/mcp.toolUser": {
+            valid: true,
+            timestamp: 1710000000000,
+          },
         },
       },
     };
@@ -104,7 +155,10 @@ describe("ensureRole", () => {
     expect(cacheStore["iamRoleCache"]).to.deep.equal({
       "test-project": {
         "test@example.com": {
-          "roles/mcp.toolUser": true,
+          "roles/mcp.toolUser": {
+            valid: true,
+            timestamp: 1710000000000,
+          },
         },
       },
     });
