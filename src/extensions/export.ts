@@ -169,6 +169,9 @@ export async function ejectSecretsFromInstance(instance: ExtensionInstance): Pro
     }
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
+    if (!resourceName) {
+      throw new FirebaseError(`Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`);
+    }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {
       throw new FirebaseError(`Invalid secret version resource name [${resourceName}].`);

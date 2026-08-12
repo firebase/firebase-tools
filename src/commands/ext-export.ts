@@ -160,10 +160,9 @@ async function fnHandler(options: Options): Promise<void> {
     return;
   }
   if (instance.state !== "ACTIVE" && !options.force) {
-    logger.error(
+    throw new FirebaseError(
       `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
     );
-    return;
   }
 
   const instanceId = last(instance.name.split("/")) ?? "";
