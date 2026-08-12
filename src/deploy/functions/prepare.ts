@@ -279,8 +279,13 @@ export async function prepare(
     const extContext: ExtContext = {};
     const extPayload: ExtPayload = {};
     await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
-    context.extensions = extContext;
-    payload.extensions = extPayload;
+    // prepareDynamicExtensions returns without touching the payload when there is
+    // nothing to deploy and nothing to delete. Only hand the extensions stages a
+    // plan when it actually made one, otherwise they run against an empty payload.
+    if (Object.keys(extPayload).length) {
+      context.extensions = extContext;
+      payload.extensions = extPayload;
+    }
   }
 
   // == Phase 2. Resolve build to backend.

@@ -52,6 +52,22 @@ describe("Extensions prepare", () => {
       await expect(prepareDynamicExtensions(context, options, payload, builds)).to.not.be.rejected;
     });
 
+    it("should leave the payload untouched when nothing is defined and nothing exists", async () => {
+      // functions/prepare relies on this to tell "no extensions" apart from a real
+      // plan, so that the deploy and release stages are skipped entirely.
+      const context: Context = {};
+      const payload: Payload = {};
+      const options: any = {
+        config: {
+          src: { functions: { source: "functions" } },
+        },
+      };
+
+      await prepareDynamicExtensions(context, options, payload, {});
+
+      expect(payload).to.deep.equal({});
+    });
+
     it("should proceed normally if extensions API is healthy", async () => {
       haveDynamicStub.resolves([
         {
