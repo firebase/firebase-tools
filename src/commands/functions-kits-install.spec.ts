@@ -294,6 +294,103 @@ describe("functions:kits:install", () => {
       ).to.be.rejectedWith(FirebaseError, /Invalid NPM package name/);
     });
 
+    it("should throw an error if --template has an invalid template name", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+      } as unknown as Config;
+
+      await expect(
+        command.runner()({
+          npm_package: "@firebase-functions-kits/firestore-bigquery-export",
+          template: "invalid-template",
+          cwd: "/mock/project",
+          config: mockConfig,
+          nonInteractive: true,
+        }),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        "Invalid template 'invalid-template'. Template must be 'installation' or 'migration'.",
+      );
+    });
+
+    it("should use the migration template when --template migration is specified", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        template: "migration",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      const indexContent = writtenFiles[
+        "function-kits/firestore-bigquery-export/src/index.ts"
+      ] as string;
+      expect(indexContent).to.be.a("string");
+      expect(indexContent).to.include("EXT_MIGRATED_SYSTEM_MEMORY");
+      expect(indexContent).to.include(
+        'export * from "@firebase-functions-kits/firestore-bigquery-export";',
+      );
+      expect(indexContent).to.not.include("{{PACKAGE_NAME}}");
+    });
+
+    it("should use the installation template by default or when explicitly specified", async () => {
+      const writtenFiles: Record<string, unknown> = {};
+
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => path.join("/mock/project", p),
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+        askWriteProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+          return Promise.resolve();
+        },
+      } as unknown as Config;
+
+      await command.runner()({
+        npm_package: "@firebase-functions-kits/firestore-bigquery-export@1.0.0",
+        template: "installation",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+      });
+
+      const indexContent = writtenFiles[
+        "function-kits/firestore-bigquery-export/src/index.ts"
+      ] as string;
+      expect(indexContent).to.be.a("string");
+      expect(indexContent).to.include("maxInstances: 10");
+      expect(indexContent).to.include(
+        'export * from "@firebase-functions-kits/firestore-bigquery-export";',
+      );
+      expect(indexContent).to.not.include("{{PACKAGE_NAME}}");
+    });
+
     it("should successfully install a first-party kit into firebase.json", async () => {
       const writtenFiles: Record<string, unknown> = {};
 
