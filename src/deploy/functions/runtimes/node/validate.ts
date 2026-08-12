@@ -79,6 +79,25 @@ function shipsLegacyPeerDepsSetting(sourceDir: string): boolean {
 }
 
 /**
+ * process.env with npm's own config exports removed.
+ *
+ * Running under `npm run` or `npx` exports the outer project's resolved config
+ * (npm_config_legacy_peer_deps, npm_config_local_prefix and friends) into our
+ * environment. Those beat cwd in a child npm, so in a monorepo the root .npmrc
+ * would answer for the functions directory. Drop them and let the child resolve
+ * from sourceDir alone.
+ */
+function envWithoutNpmConfig(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase().startsWith("npm_config_")) {
+      delete env[key];
+    }
+  }
+  return env;
+}
+
+/**
  * Warns when a lockfile was resolved with legacy-peer-deps but the setting won't
  * reach the build server.
  *
@@ -86,6 +105,11 @@ function shipsLegacyPeerDepsSetting(sourceDir: string): boolean {
  * legacy-peer-deps=false. A lockfile written with the setting on omits the peer
  * dependencies npm would otherwise install, so the build fails with
  * "Missing: <package> from lock file" even though the local install succeeded.
+ *
+ * Only reads persisted npm config, so it cannot see a one-off
+ * `npm install --legacy-peer-deps`, which leaves a lockfile in the same state.
+ * Deploy-path only: this describes the build server, so it has no bearing on
+ * the emulator.
  * @param sourceDir Absolute path of the functions source directory.
  */
 export function warnIfLegacyPeerDepsMismatch(sourceDir: string): void {
@@ -101,6 +125,7 @@ export function warnIfLegacyPeerDepsMismatch(sourceDir: string): void {
     cwd: sourceDir,
     encoding: "utf8",
     timeout: NPM_COMMAND_TIMEOUT_MILLIES,
+    env: envWithoutNpmConfig(),
   });
   if (child.error || child.status !== 0) {
     logger.debug("Unable to read npm's legacy-peer-deps setting:", child.error?.message);

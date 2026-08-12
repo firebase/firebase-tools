@@ -93,6 +93,26 @@ describe("validate", () => {
       expect(warnStub).to.have.been.calledWithMatch("functions", "legacy-peer-deps=true");
     });
 
+    it("asks npm from the functions directory, ignoring inherited npm config", () => {
+      process.env.npm_config_legacy_peer_deps = "true";
+      process.env.npm_config_local_prefix = "/somewhere/else";
+      try {
+        validate.warnIfLegacyPeerDepsMismatch("sourceDir");
+      } finally {
+        delete process.env.npm_config_legacy_peer_deps;
+        delete process.env.npm_config_local_prefix;
+      }
+
+      expect(spawnStub).to.have.been.calledWith("npm", ["config", "get", "legacy-peer-deps"]);
+      const opts = spawnStub.firstCall.args[2] as { cwd: string; env: NodeJS.ProcessEnv };
+      expect(opts.cwd).to.equal("sourceDir");
+      // Running under `npm run` or `npx` leaks the outer project's config, which
+      // would otherwise decide the answer for the functions directory.
+      expect(Object.keys(opts.env)).to.not.include("npm_config_legacy_peer_deps");
+      expect(Object.keys(opts.env)).to.not.include("npm_config_local_prefix");
+      expect(opts.env.PATH).to.equal(process.env.PATH);
+    });
+
     it("does not warn when there is no lockfile", () => {
       fileExistsStub.withArgs(LOCKFILE).returns(false);
 

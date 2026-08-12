@@ -33,6 +33,7 @@ import {
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import * as nodeValidate from "./runtimes/node/validate";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -776,6 +777,11 @@ export async function loadCodebases(
       supported.guardVersionSupport(runtimeDelegate.runtime);
     }
     await runtimeDelegate.validate();
+    if (runtimeDelegate.language === "nodejs") {
+      // Deploy-only: warns about how the build server will resolve the uploaded
+      // lockfile, so it has no meaning on the emulator's validate() path.
+      nodeValidate.warnIfLegacyPeerDepsMismatch(sourceDir);
+    }
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
