@@ -14,7 +14,7 @@ import { ServerTool, ServerToolMeta } from "../tool";
 import { McpContext, ServerFeature } from "../types";
 import { FirebaseError } from "../../error";
 import { ensure } from "../../ensureApiEnabled";
-import { ensureRole } from "../../ensureRoleBound";
+import { ensurePermissionsThenSetRole } from "../../ensureRoleBound";
 
 export interface OneMcpServerOptions {
   /**
@@ -162,9 +162,10 @@ export class OneMcpServer {
     }
 
     if (ctx.projectId && ctx.accountEmail) {
-      await ensureRole(
+      await ensurePermissionsThenSetRole(
         ctx.projectId,
         ctx.accountEmail,
+        ["mcp.tools.call", "resourcemanager.projects.get", "resourcemanager.projects.list"],
         "roles/mcp.toolUser",
         false,
         ctx.host?.logger,

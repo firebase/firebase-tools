@@ -2,11 +2,11 @@ import { bold } from "colorette";
 import { FirebaseError, getError } from "./error";
 import { getIamPolicy, setIamPolicy } from "./gcp/resourceManager";
 import { configstore } from "./configstore";
-import { mergeBindings } from "./gcp/iam";
+import { mergeBindings, testIamPermissions } from "./gcp/iam";
 import { logger } from "./logger";
 import { sleep, logBullet } from "./utils";
 
-const ROLE_CACHE_KEY = "iamRoleCache";
+const PERMISSION_CACHE_KEY = "iamPermissionCache";
 const IAM_PROPAGATION_DELAY_MS = 10000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -15,58 +15,96 @@ interface CacheEntry {
   timestamp: number;
 }
 
-type RoleCache = Record<string, Record<string, Record<string, CacheEntry | boolean>>>;
+type PermissionCache = Record<string, Record<string, Record<string, CacheEntry>>>;
 
-function checkRoleCache(projectId: string, email: string, role: string): boolean {
-  const cache = configstore.get(ROLE_CACHE_KEY) as RoleCache | undefined;
-  const entry = cache?.[projectId]?.[email]?.[role];
-  if (!entry) {
-    return false;
+function checkPermissionCache(projectId: string, email: string, permissions: string[]): boolean {
+  const cache = configstore.get(PERMISSION_CACHE_KEY) as PermissionCache | undefined;
+  for (const perm of permissions) {
+    const entry = cache?.[projectId]?.[email]?.[perm];
+    if (!entry) {
+      return false;
+    }
+    if (typeof entry === "boolean") {
+      if (!entry) return false;
+      continue;
+    }
+    if (Date.now() - entry.timestamp >= CACHE_TTL_MS) {
+      return false;
+    }
   }
-  if (typeof entry === "boolean") {
-    return entry;
-  }
-  return Date.now() - entry.timestamp < CACHE_TTL_MS;
+  return true;
 }
 
-function cacheRole(projectId: string, email: string, role: string): void {
-  const cache = (configstore.get(ROLE_CACHE_KEY) || {}) as RoleCache;
+function cachePermissions(projectId: string, email: string, permissions: string[]): void {
+  const cache = (configstore.get(PERMISSION_CACHE_KEY) || {}) as PermissionCache;
   if (!cache[projectId]) {
     cache[projectId] = {};
   }
   if (!cache[projectId][email]) {
     cache[projectId][email] = {};
   }
-  cache[projectId][email][role] = {
-    valid: true,
-    timestamp: Date.now(),
-  };
-  configstore.set(ROLE_CACHE_KEY, cache);
+  for (const perm of permissions) {
+    cache[projectId][email][perm] = {
+      valid: true,
+      timestamp: Date.now(),
+    };
+  }
+  configstore.set(PERMISSION_CACHE_KEY, cache);
 }
 
 /**
- * Assures that the authenticating account holds the specified IAM role on the given project.
+ * Assures that the authenticating account holds the specified IAM permissions on the given project.
+ * If not, it attempts to bind the specified IAM role to the user.
  * Uses local configstore cache to avoid RM API query latency, unless force is true.
  */
-export async function ensureRole(
+export async function ensurePermissionsThenSetRole(
   projectId: string,
   accountEmail: string,
+  permissions: string[],
   role: string,
   force = false,
   customLogger?: { debug: (message: string) => void },
 ): Promise<void> {
   const log = customLogger || logger;
   log.debug(
-    `[iam] ensureRole called for project: ${projectId}, account: ${accountEmail}, role: ${role}, force: ${String(
-      force,
-    )}`,
+    `[iam] ensurePermissionsThenSetRole called for project: ${projectId}, account: ${accountEmail}, permissions: ${JSON.stringify(
+      permissions,
+    )}, role: ${role}, force: ${String(force)}`,
   );
-  if (!force && checkRoleCache(projectId, accountEmail, role)) {
+
+  if (!force && checkPermissionCache(projectId, accountEmail, permissions)) {
     log.debug(
-      `[iam] ensureRole early out: role ${role} is cached for project ${projectId} and account ${accountEmail}`,
+      `[iam] ensurePermissionsThenSetRole early out: permissions ${JSON.stringify(
+        permissions,
+      )} are cached for project ${projectId} and account ${accountEmail}`,
     );
     return;
   }
+
+  log.debug(
+    `[iam] Checking permissions ${JSON.stringify(permissions)} on project ${projectId} for ${accountEmail}`,
+  );
+  const iamResult = await testIamPermissions(projectId, permissions);
+  if (iamResult.passed) {
+    log.debug(
+      `[iam] Account ${accountEmail} already has all required permissions: ${JSON.stringify(
+        permissions,
+      )}`,
+    );
+    log.debug(
+      `[iam] Caching positive permissions check validation for project: ${projectId}, account: ${accountEmail}, permissions: ${JSON.stringify(
+        permissions,
+      )}`,
+    );
+    cachePermissions(projectId, accountEmail, permissions);
+    return;
+  }
+
+  log.debug(
+    `[iam] Account ${accountEmail} is missing permissions: ${JSON.stringify(
+      iamResult.missing,
+    )}. Attempting to bind role ${role}`,
+  );
 
   const policy = await getIamPolicy(projectId);
   const memberName = accountEmail.endsWith(".gserviceaccount.com")
@@ -103,9 +141,11 @@ export async function ensureRole(
       const error = getError(err);
       log.debug(`[iam] setIamPolicy failed: ${error.message}`);
       throw new FirebaseError(
-        `Authorization failed. Account ${bold(accountEmail)} is missing the required IAM role ${bold(
+        `Authorization failed. Account ${bold(accountEmail)} is missing the required IAM permissions on project ${bold(
+          projectId,
+        )}. Attempted to automatically bind the role ${bold(
           role,
-        )} on project ${bold(projectId)}. Attempted to automatically bind the role but failed (error: ${error.message}).\n\n` +
+        )} but failed (error: ${error.message}).\n\n` +
           `Please ask a project owner to grant you the role. They can do this either in the Google Cloud Console:\n` +
           `https://console.cloud.google.com/iam-admin/iam?project=${projectId}\n\n` +
           `Or by running the following command:\n` +
@@ -118,7 +158,9 @@ export async function ensureRole(
   }
 
   log.debug(
-    `[iam] Caching positive role check validation for project: ${projectId}, account: ${accountEmail}, role: ${role}`,
+    `[iam] Caching positive permissions check validation for project: ${projectId}, account: ${accountEmail}, permissions: ${JSON.stringify(
+      permissions,
+    )}`,
   );
-  cacheRole(projectId, accountEmail, role);
+  cachePermissions(projectId, accountEmail, permissions);
 }
