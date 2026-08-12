@@ -200,6 +200,25 @@ describe("ensureRole", () => {
     expect(getIamPolicyStub).to.have.been.calledOnce;
   });
 
+  it("should resolve user prefix correctly even if email contains gserviceaccount.com as a substring", async () => {
+    getIamPolicyStub.resolves({
+      bindings: [
+        {
+          role: "roles/mcp.toolUser",
+          members: ["user:sa@proj.iam.gserviceaccount.com.fake.com"],
+        },
+      ],
+    });
+
+    await ensureRole(
+      "test-project",
+      "sa@proj.iam.gserviceaccount.com.fake.com",
+      "roles/mcp.toolUser",
+    );
+
+    expect(getIamPolicyStub).to.have.been.calledOnce;
+  });
+
   it("should use customLogger for debugging if provided", async () => {
     getIamPolicyStub.resolves({
       bindings: [

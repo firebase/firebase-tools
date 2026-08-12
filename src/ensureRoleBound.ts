@@ -69,7 +69,7 @@ export async function ensureRole(
   }
 
   const policy = await getIamPolicy(projectId);
-  const memberName = accountEmail.includes("gserviceaccount.com")
+  const memberName = accountEmail.endsWith(".gserviceaccount.com")
     ? `serviceAccount:${accountEmail}`
     : `user:${accountEmail}`;
 
