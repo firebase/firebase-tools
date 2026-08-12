@@ -1,3 +1,4 @@
+- Fixed an issue where managed service accounts for declarative security were not deleted when all functions in a codebase were deleted, or caused IAM permission errors on empty codebase deploys.
 - Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
