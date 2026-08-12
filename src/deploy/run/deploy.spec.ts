@@ -22,6 +22,7 @@ describe("run deploy", () => {
     upsertBucketStub = sinon.stub(gcs, "upsertBucket").resolves("my-bucket");
     ensureRepoStub = sinon.stub(artifactRegistry, "ensureRepository").resolves();
     sinon.stub(getProjectNumberModule, "getProjectNumber").resolves("12345");
+    sinon.stub(runv2, "getService").resolves();
     sinon.stub(archiveDirectory, "archiveDirectory").resolves({
       file: "test.zip",
       stream: Readable.from(["mock-data"]),
@@ -79,6 +80,7 @@ describe("run deploy", () => {
 
     await deploy(context, options, payload);
 
+    expect(upsertBucketStub.calledOnce).to.be.true;
     expect(ensureRepoStub.calledOnce).to.be.true;
     expect(submitBuildStub.calledOnce).to.be.true;
     expect(createServiceStub.calledOnce).to.be.true;
@@ -122,6 +124,7 @@ describe("run deploy", () => {
 
     await deploy(context, options, payload);
 
+    expect(upsertBucketStub.calledOnce).to.be.true;
     expect(ensureRepoStub.calledOnce).to.be.true;
     expect(updateServiceStub.calledOnce).to.be.true;
     expect(createServiceStub.notCalled).to.be.true;

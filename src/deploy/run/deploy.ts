@@ -252,7 +252,10 @@ export async function deploy(context: Context, options: Options, payload: Payloa
 
       if (existing) {
         try {
-          existing = await runv2.getService(projectId, region, service.serviceId);
+          const fresh = await runv2.getService(projectId, region, service.serviceId);
+          if (fresh) {
+            existing = fresh;
+          }
         } catch (err: unknown) {
           if ((err as { status?: number })?.status !== 404) {
             logger.debug(`Failed to fetch latest service state for ${service.serviceId}:`, err);

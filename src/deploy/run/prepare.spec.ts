@@ -102,17 +102,17 @@ describe("run prepare", () => {
     expect(payload.run?.services?.[0].baseImageUri).to.equal("some-uri");
   });
 
-  it("should override existing base image if specified in firebase.json", async () => {
+  it("should override existing base image if --base-image flag is specified", async () => {
     const payload: Payload = {};
     const context: Context = {};
     const options = {
       project: "project",
+      baseImage: "override-uri",
       config: {
         get: () => ({
           serviceId: "mysvc",
           region: "us-central1",
           source: ".",
-          baseImageUri: "override-uri",
         }),
         path: (p: string) => p,
       },
@@ -236,7 +236,7 @@ describe("run prepare", () => {
 
     await expect(prepare(context, options, payload)).to.be.rejectedWith(
       FirebaseError,
-      "No Cloud Run services in firebase.json match filter 'run:non-existent'.",
+      "Cloud Run service(s) 'non-existent' not found in firebase.json.",
     );
   });
 

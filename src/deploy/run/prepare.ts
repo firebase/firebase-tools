@@ -66,12 +66,10 @@ function filterTargetConfigs(
 
 /**
  * Resolves ABIU base image URI with precedence:
- * 1. CLI flags (`--clear-runtime` vs `--runtime`)
- * 2. `firebase.json` configuration
- * 3. Existing Cloud Run service revision template (stickiness)
+ * 1. CLI flags (`--clear-runtime` / `--clear-base-image` vs `--runtime` / `--base-image`)
+ * 2. Existing Cloud Run service revision template (gcloud-style stickiness)
  */
 function resolveBaseImage(
-  config: RunConfig,
   existingService: runv2.Service | undefined,
   runtimeOpt?: string,
   clearOpt?: boolean,
@@ -81,12 +79,6 @@ function resolveBaseImage(
   }
   if (runtimeOpt !== undefined) {
     return { baseImageUri: runtimeOpt, clearBaseImage: false };
-  }
-  if (config.baseImageUri || config.baseImage || config.runtime) {
-    return {
-      baseImageUri: config.baseImageUri || config.baseImage || config.runtime,
-      clearBaseImage: false,
-    };
   }
   if (existingService?.template?.containers?.[0]?.baseImageUri) {
     return {
@@ -143,7 +135,6 @@ export async function prepare(context: Context, options: Options, payload: Paylo
     }
 
     const { baseImageUri, clearBaseImage } = resolveBaseImage(
-      config,
       existingService,
       runtimeOpt,
       clearOpt,

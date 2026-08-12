@@ -18,8 +18,6 @@ export interface RunServiceConfig extends RunSingle {
   "primary-region"?: string;
   rootDir?: string;
   outputDir?: string;
-  baseImage?: string;
-  runtime?: string;
   serviceAccount?: string;
 }
 

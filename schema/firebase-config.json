@@ -1224,9 +1224,6 @@
         "RunSingle": {
             "additionalProperties": false,
             "properties": {
-                "baseImageUri": {
-                    "type": "string"
-                },
                 "ignore": {
                     "items": {
                         "type": "string"
@@ -1278,12 +1275,6 @@
                     "type": "string"
                 },
                 "outputDir": {
-                    "type": "string"
-                },
-                "baseImage": {
-                    "type": "string"
-                },
-                "runtime": {
                     "type": "string"
                 },
                 "serviceAccount": {

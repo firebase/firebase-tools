@@ -375,9 +375,6 @@ export interface RunSingle extends Deployable {
   output?: string;
   outputDir?: string;
   ignore?: string[];
-  baseImageUri?: string;
-  baseImage?: string;
-  runtime?: string;
   serviceAccount?: string;
 }
 
