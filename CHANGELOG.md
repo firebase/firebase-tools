@@ -1,6 +1,7 @@
 - Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
+- Skip functions lifecycle hooks during partial (filtered) deployments, and print instructions for running them manually.
 - Added `appcheck:providers:list`, `appcheck:providers:get` and `appcheck:providers:set` to configure App Check attestation providers for an app.
 - Added `appcheck:apps:list` to show every app with its configured App Check providers.
 - Added web app support for Crashlytics MCP tools and prompts.

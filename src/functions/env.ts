@@ -10,7 +10,11 @@ import { logBullet, logWarning } from "../utils";
 const FUNCTIONS_EMULATOR_DOTENV = ".env.local";
 
 const RESERVED_PREFIXES = ["X_GOOGLE_", "FIREBASE_", "EXT_", "KIT_"];
-const RESERVED_PREFIX_ALLOWLIST = ["FIREBASE_SECRET_REF_"];
+const RESERVED_PREFIX_ALLOWLIST = [
+  "FIREBASE_SECRET_REF_",
+  "EXT_MIGRATED_SYSTEM_",
+  "EXT_SELECTED_EVENTS",
+];
 const RESERVED_KEYS = [
   // Cloud Functions for Firebase
   "FIREBASE_CONFIG",
@@ -189,7 +193,7 @@ export function validateKey(key: string): void {
 }
 
 /**
- * @returns true if the key begins with a prefix on the reserved list and is not a known usage.
+ * @return true if the key begins with a prefix on the reserved list and is not a known usage.
  */
 function keyConflictsWithReservedPrefixes(key: string): boolean {
   return RESERVED_PREFIXES.some(
@@ -427,11 +431,16 @@ export function loadUserEnvs(opts: UserEnvsOpts): Record<string, string> {
 export function loadFirebaseEnvs(
   firebaseConfig: Record<string, any>,
   projectId: string,
+  kitInstanceId?: string,
 ): Record<string, string> {
-  return {
+  const envs: Record<string, string> = {
     FIREBASE_CONFIG: JSON.stringify(firebaseConfig),
     GCLOUD_PROJECT: projectId,
   };
+  if (kitInstanceId) {
+    envs.FIREBASE_KIT_INSTANCE_ID = kitInstanceId;
+  }
+  return envs;
 }
 
 /**
