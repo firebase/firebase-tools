@@ -57,7 +57,7 @@ function cachePermissions(projectId: string, email: string, permissions: string[
  * If not, it attempts to bind the specified IAM role to the user.
  * Uses local configstore cache to avoid RM API query latency, unless force is true.
  */
-export async function ensurePermissionsThenSetRole(
+export async function ensurePermissionsOrSetRole(
   projectId: string,
   accountEmail: string,
   permissions: string[],
@@ -67,14 +67,14 @@ export async function ensurePermissionsThenSetRole(
 ): Promise<void> {
   const log = customLogger || logger;
   log.debug(
-    `[iam] ensurePermissionsThenSetRole called for project: ${projectId}, account: ${accountEmail}, permissions: ${JSON.stringify(
+    `[iam] ensurePermissionsOrSetRole called for project: ${projectId}, account: ${accountEmail}, permissions: ${JSON.stringify(
       permissions,
     )}, role: ${role}, force: ${String(force)}`,
   );
 
   if (!force && checkPermissionCache(projectId, accountEmail, permissions)) {
     log.debug(
-      `[iam] ensurePermissionsThenSetRole early out: permissions ${JSON.stringify(
+      `[iam] ensurePermissionsOrSetRole early out: permissions ${JSON.stringify(
         permissions,
       )} are cached for project ${projectId} and account ${accountEmail}`,
     );

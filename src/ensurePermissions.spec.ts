@@ -4,10 +4,10 @@ import { FirebaseError } from "./error";
 import { configstore } from "./configstore";
 import * as resourceManager from "./gcp/resourceManager";
 import * as iam from "./gcp/iam";
-import { ensurePermissionsThenSetRole } from "./ensureRoleBound";
+import { ensurePermissionsOrSetRole } from "./ensurePermissions";
 import * as utils from "./utils";
 
-describe("ensurePermissionsThenSetRole", () => {
+describe("ensurePermissionsOrSetRole", () => {
   let sandbox: sinon.SinonSandbox;
   let getIamPolicyStub: sinon.SinonStub;
   let setIamPolicyStub: sinon.SinonStub;
@@ -47,12 +47,7 @@ describe("ensurePermissionsThenSetRole", () => {
       missing: [],
     });
 
-    await ensurePermissionsThenSetRole(
-      "test-project",
-      "test@example.com",
-      mockPermissions,
-      mockRole,
-    );
+    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
 
     expect(testIamPermissionsStub).to.have.been.calledOnceWith("test-project", mockPermissions);
     expect(getIamPolicyStub).to.not.have.been.called;
@@ -78,12 +73,7 @@ describe("ensurePermissionsThenSetRole", () => {
       },
     };
 
-    await ensurePermissionsThenSetRole(
-      "test-project",
-      "test@example.com",
-      mockPermissions,
-      mockRole,
-    );
+    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
 
     expect(testIamPermissionsStub).to.not.have.been.called;
     expect(getIamPolicyStub).to.not.have.been.called;
@@ -100,12 +90,7 @@ describe("ensurePermissionsThenSetRole", () => {
       },
     };
 
-    await ensurePermissionsThenSetRole(
-      "test-project",
-      "test@example.com",
-      mockPermissions,
-      mockRole,
-    );
+    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
 
     expect(testIamPermissionsStub).to.not.have.been.called;
   });
@@ -128,12 +113,7 @@ describe("ensurePermissionsThenSetRole", () => {
       missing: [],
     });
 
-    await ensurePermissionsThenSetRole(
-      "test-project",
-      "test@example.com",
-      mockPermissions,
-      mockRole,
-    );
+    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
 
     expect(testIamPermissionsStub).to.have.been.calledOnceWith("test-project", mockPermissions);
   });
@@ -154,7 +134,7 @@ describe("ensurePermissionsThenSetRole", () => {
       missing: [],
     });
 
-    await ensurePermissionsThenSetRole(
+    await ensurePermissionsOrSetRole(
       "test-project",
       "test@example.com",
       mockPermissions,
@@ -181,12 +161,7 @@ describe("ensurePermissionsThenSetRole", () => {
     });
     setIamPolicyStub.resolves({} as any);
 
-    await ensurePermissionsThenSetRole(
-      "test-project",
-      "test@example.com",
-      mockPermissions,
-      mockRole,
-    );
+    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
 
     expect(setIamPolicyStub).to.have.been.calledOnce;
     expect(cacheStore["iamPermissionCache"]).to.deep.equal({
@@ -217,7 +192,7 @@ describe("ensurePermissionsThenSetRole", () => {
     setIamPolicyStub.rejects(new Error("Permission denied"));
 
     await expect(
-      ensurePermissionsThenSetRole("test-project", "test@example.com", mockPermissions, mockRole),
+      ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole),
     ).to.be.rejectedWith(
       FirebaseError,
       /Attempted to automatically bind the role roles\/mcp\.toolUser but failed/,
@@ -241,7 +216,7 @@ describe("ensurePermissionsThenSetRole", () => {
       ],
     });
 
-    await ensurePermissionsThenSetRole(
+    await ensurePermissionsOrSetRole(
       "test-project",
       "sa@proj.iam.gserviceaccount.com",
       mockPermissions,
@@ -267,7 +242,7 @@ describe("ensurePermissionsThenSetRole", () => {
       ],
     });
 
-    await ensurePermissionsThenSetRole(
+    await ensurePermissionsOrSetRole(
       "test-project",
       "sa@proj.iam.gserviceaccount.com.fake.com",
       mockPermissions,
@@ -288,7 +263,7 @@ describe("ensurePermissionsThenSetRole", () => {
       debug: sandbox.stub(),
     };
 
-    await ensurePermissionsThenSetRole(
+    await ensurePermissionsOrSetRole(
       "test-project",
       "test@example.com",
       mockPermissions,
@@ -298,7 +273,7 @@ describe("ensurePermissionsThenSetRole", () => {
     );
 
     expect(customLogger.debug).to.have.been.calledWith(
-      sinon.match(/ensurePermissionsThenSetRole called/),
+      sinon.match(/ensurePermissionsOrSetRole called/),
     );
     expect(customLogger.debug).to.have.been.calledWith(
       sinon.match(/Caching positive permissions check/),

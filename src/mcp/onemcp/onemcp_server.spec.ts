@@ -6,13 +6,13 @@ import * as ensureModule from "../../ensureApiEnabled";
 import { FirebaseError } from "../../error";
 import { ServerFeature } from "../types";
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
-import * as ensureRoleBound from "../../ensureRoleBound";
+import * as ensurePermissions from "../../ensurePermissions";
 
 describe("OneMcpServer", () => {
   let sandbox: sinon.SinonSandbox;
   let clientRequestStub: sinon.SinonStub;
   let ensureStub: sinon.SinonStub;
-  let ensurePermissionsThenSetRoleStub: sinon.SinonStub;
+  let ensurePermissionsOrSetRoleStub: sinon.SinonStub;
 
   const feature = "auth" as ServerFeature;
   const serverUrl = "https://example.com";
@@ -22,8 +22,8 @@ describe("OneMcpServer", () => {
     sandbox = sinon.createSandbox();
     clientRequestStub = sandbox.stub(Client.prototype, "request");
     ensureStub = sandbox.stub(ensureModule, "ensure").resolves();
-    ensurePermissionsThenSetRoleStub = sandbox
-      .stub(ensureRoleBound, "ensurePermissionsThenSetRole")
+    ensurePermissionsOrSetRoleStub = sandbox
+      .stub(ensurePermissions, "ensurePermissionsOrSetRole")
       .resolves();
     server = new OneMcpServer(feature, serverUrl, { requiresAuth: false });
   });
@@ -374,7 +374,7 @@ describe("OneMcpServer", () => {
       );
     });
 
-    it("should call ensurePermissionsThenSetRole when projectId and accountEmail are present in context", async () => {
+    it("should call ensurePermissionsOrSetRole when projectId and accountEmail are present in context", async () => {
       const mockMcpTool = { name: "test_tool", inputSchema: { type: "object", properties: {} } };
       clientRequestStub.onFirstCall().resolves({
         body: { result: { tools: [mockMcpTool] } },
@@ -394,7 +394,7 @@ describe("OneMcpServer", () => {
 
       await tool.fn({}, contextWithAuth as any);
 
-      expect(ensurePermissionsThenSetRoleStub).to.have.been.calledOnceWith(
+      expect(ensurePermissionsOrSetRoleStub).to.have.been.calledOnceWith(
         "test-project",
         "user@example.com",
         ["mcp.tools.call", "resourcemanager.projects.get", "resourcemanager.projects.list"],
