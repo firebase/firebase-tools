@@ -89,15 +89,13 @@ export async function discoverSecurityDetails(
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
   // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
   // fabricator cleans up the unreferenced service account so no orphaned SA remains.
-  const firstHave = backend.allEndpoints(have)[0];
-  let existingManagedSA: string | undefined;
-  let haveRolesEtag: string | undefined;
-  if (firstHave) {
-    haveRolesEtag = firstHave.labels?.["firebase-declarative-security-etag"];
-    existingManagedSA = firstHave.serviceAccount?.startsWith("firebase-fn-")
-      ? firstHave.serviceAccount
-      : undefined;
-  }
+  const haveEndpoints = backend.allEndpoints(have);
+  const existingManagedSA = haveEndpoints.find(
+    (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+  )?.serviceAccount;
+  const haveRolesEtag = haveEndpoints.find(
+    (e) => e.labels?.["firebase-declarative-security-etag"],
+  )?.labels?.["firebase-declarative-security-etag"];
 
   const isPartiallyFiltered = !!(
     filters &&
@@ -113,6 +111,16 @@ export async function discoverSecurityDetails(
       "To ensure a whole codebase is migrated cleanly, you may not deploy only part of a " +
         "codebase when opting into or out of declarative security (starting or no longer using `requireRoles`)",
     );
+  }
+
+  if (backend.allEndpoints(want).length === 0) {
+    if (existingManagedSA && haveRolesEtag) {
+      return {
+        haveRolesEtag,
+        existingManagedSA,
+      };
+    }
+    return {};
   }
 
   if (!requiredRoles && (!existingManagedSA || !haveRolesEtag)) {

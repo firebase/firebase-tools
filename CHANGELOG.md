@@ -1,3 +1,4 @@
+- Fixed an issue where managed service accounts for declarative security were not deleted when all functions in a codebase were deleted, or caused IAM permission errors on empty codebase deploys.
 - Audited dependencies, remediated CVEs, and updated legacy URL parsing (DEP0169).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.
