@@ -344,10 +344,15 @@ describe("reporter", () => {
       );
     });
 
+    // Captured verbatim from a failed Cloud Functions deploy, so the matcher is
+    // tested against the shape the Functions API actually returns.
     it("prints lockfile errors", () => {
       const rawError = new Error(
-        "Build failed: npm ERR! `npm ci` can only install packages when your package.json " +
-          "and package-lock.json are in sync. npm ERR! Missing: jest@29.7.0 from lock file",
+        "Build failed: npm error code EUSAGE\nnpm error\nnpm error `npm ci` can only install " +
+          "packages when your package.json and package-lock.json or npm-shrinkwrap.json are in " +
+          "sync. Please update your lock file with `npm install` before continuing.\nnpm error\n" +
+          "npm error Missing: jest@29.7.0 from lock file\nnpm error Missing: @jest/core@29.7.0 " +
+          "from lock file",
       );
       const summary: reporter.Summary = {
         totalTime: 1_000,

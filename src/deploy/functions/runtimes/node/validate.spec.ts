@@ -86,6 +86,22 @@ describe("validate", () => {
       expect(validate.parseLegacyPeerDeps("legacy-peer-deps=true\nlegacy-peer-deps=false\n")).to.be
         .false;
     });
+
+    // ini strips quotes and reads a bare key as true, so all of these are on as
+    // far as npm is concerned.
+    it("reads the forms ini accepts", () => {
+      expect(validate.parseLegacyPeerDeps('legacy-peer-deps="true"\n')).to.be.true;
+      expect(validate.parseLegacyPeerDeps("legacy-peer-deps='true'\n")).to.be.true;
+      expect(validate.parseLegacyPeerDeps("legacy-peer-deps\n")).to.be.true;
+      expect(validate.parseLegacyPeerDeps("legacy-peer-deps = TRUE\n")).to.be.true;
+      expect(validate.parseLegacyPeerDeps('legacy-peer-deps="false"\n')).to.be.false;
+      expect(validate.parseLegacyPeerDeps("legacy-peer-deps=\n")).to.be.false;
+    });
+
+    it("does not confuse a different setting for this one", () => {
+      expect(validate.parseLegacyPeerDeps("not-legacy-peer-deps=true\n")).to.be.undefined;
+      expect(validate.parseLegacyPeerDeps("legacy-peer-deps-x=true\n")).to.be.undefined;
+    });
   });
 
   describe("findMissingPeerDeps", () => {
@@ -157,6 +173,56 @@ describe("validate", () => {
 
     it("returns nothing for a lockfileVersion 1 lockfile", () => {
       expect(validate.findMissingPeerDeps({ dependencies: {} } as any)).to.deep.equal([]);
+    });
+
+    it("resolves a peer provided by a workspace sibling", () => {
+      const lockfile = {
+        packages: {
+          "": {},
+          "packages/api": {},
+          "node_modules/api": { link: true } as never,
+          "packages/api/node_modules/plugin": { peerDependencies: { host: "*" } },
+          "packages/api/node_modules/host": {},
+        },
+      };
+
+      expect(validate.findMissingPeerDeps(lockfile)).to.deep.equal([]);
+    });
+
+    it("resolves a peer in a non-node_modules parent directory", () => {
+      const lockfile = {
+        packages: {
+          "": {},
+          "apps/web": { peerDependencies: { react: "*" } },
+          "apps/node_modules/react": {},
+        },
+      };
+
+      expect(validate.findMissingPeerDeps(lockfile)).to.deep.equal([]);
+    });
+
+    it("handles scoped peer names", () => {
+      const lockfile = {
+        packages: {
+          "": {},
+          "node_modules/@scope/pkg": { peerDependencies: { "@scope/peer": "*" } },
+        },
+      };
+
+      expect(validate.findMissingPeerDeps(lockfile)).to.deep.equal(["@scope/peer"]);
+    });
+
+    it("does not treat a null entry as a present package", () => {
+      const lockfile = {
+        packages: {
+          "": {},
+          "node_modules/pkg": { peerDependencies: { peer: "*" } },
+          "node_modules/peer": null as never,
+        },
+      };
+
+      // The name is present as a key, which is all npm needs to resolve it.
+      expect(validate.findMissingPeerDeps(lockfile)).to.deep.equal([]);
     });
   });
 
@@ -253,9 +319,23 @@ describe("validate", () => {
       readFileStub.withArgs(NPMRC, "utf8").returns("legacy-peer-deps=true\n");
 
       // The setting never reaches the build server if the file is not uploaded.
-      validate.warnIfLockfileOmitsPeerDeps("sourceDir", ["node_modules", ".npmrc"]);
+      for (const glob of [".npmrc", "**/.npmrc", ".*", "*"]) {
+        warnStub.resetHistory();
+        validate.warnIfLockfileOmitsPeerDeps("sourceDir", ["node_modules", glob]);
+        expect(warnStub, `ignoring ${glob} should not suppress the warning`).to.have.been.called;
+      }
+    });
 
-      expect(warnStub).to.have.been.called;
+    it("truncates a long list of missing peers", () => {
+      const packages: Record<string, unknown> = { "": {} };
+      for (let i = 0; i < 8; i++) {
+        packages[`node_modules/pkg${i}`] = { peerDependencies: { [`peer${i}`]: "*" } };
+      }
+      readFileStub.withArgs(LOCKFILE, "utf8").returns(JSON.stringify({ packages }));
+
+      validate.warnIfLockfileOmitsPeerDeps("sourceDir");
+
+      expect(warnStub).to.have.been.calledWithMatch("functions", "and 3 more");
     });
 
     it("stays quiet on an unreadable lockfile rather than failing the deploy", () => {

@@ -415,6 +415,14 @@ export async function prepare(
         "functions",
         `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
+      // Describes how the build server will treat the lockfile we are about to
+      // upload, so it belongs here rather than anywhere shared with the emulator
+      // or with commands that only inspect the source.
+      if (
+        backend.someEndpoint(wantBackend, (e) => supported.runtimeIsLanguage(e.runtime, "nodejs"))
+      ) {
+        nodeValidate.warnIfLockfileOmitsPeerDeps(sourceDir, localCfg.ignore);
+      }
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {
@@ -786,11 +794,6 @@ export async function loadCodebases(
       supported.guardVersionSupport(runtimeDelegate.runtime);
     }
     await runtimeDelegate.validate();
-    if (runtimeDelegate.language === "nodejs") {
-      // Deploy-only: warns about how the build server will resolve the uploaded
-      // lockfile, so it has no meaning on the emulator's validate() path.
-      nodeValidate.warnIfLockfileOmitsPeerDeps(sourceDir, codebaseConfig.ignore ?? []);
-    }
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 

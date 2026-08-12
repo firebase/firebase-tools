@@ -4,7 +4,6 @@ import * as path from "path";
 
 import * as node from ".";
 import * as versioning from "./versioning";
-import * as validate from "./validate";
 import * as utils from "../../../../utils";
 import { FirebaseError } from "../../../../error";
 import { Runtime } from "../supported";
@@ -135,39 +134,6 @@ describe("NodeDelegate", () => {
       );
       await delegate.discoverBuild({}, {});
       expect(detectFromYamlMock).to.have.been.called;
-    });
-  });
-
-  describe("validate", () => {
-    const sandbox: sinon.SinonSandbox = sinon.createSandbox();
-    let packageJsonIsValidStub: sinon.SinonStub;
-    let legacyPeerDepsStub: sinon.SinonStub;
-
-    beforeEach(() => {
-      sandbox.stub(versioning, "getFunctionsSDKVersion").returns("4.0.0");
-      sandbox.stub(versioning, "checkFunctionsSDKVersion");
-      packageJsonIsValidStub = sandbox.stub(validate, "packageJsonIsValid");
-      legacyPeerDepsStub = sandbox.stub(validate, "warnIfLockfileOmitsPeerDeps");
-    });
-
-    afterEach(() => {
-      sandbox.restore();
-    });
-
-    // validate() also runs on the emulator's trigger discovery, which re-runs on
-    // every file change. Deploy-time build server warnings belong in prepare.
-    it("does not warn about the build server's lockfile handling", async () => {
-      const delegate = new node.Delegate(
-        PROJECT_ID,
-        PROJECT_DIR,
-        SOURCE_DIR,
-        "nodejs16" as Runtime,
-      );
-
-      await delegate.validate();
-
-      expect(packageJsonIsValidStub).to.have.been.called;
-      expect(legacyPeerDepsStub).to.not.have.been.called;
     });
   });
 });

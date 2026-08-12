@@ -83,11 +83,15 @@ export function parseLegacyPeerDeps(contents: string): boolean | undefined {
   for (const line of contents.split("\n")) {
     // npm treats both ; and # as comment markers.
     const setting = line.split(/[;#]/)[0];
-    const match = /^\s*legacy-peer-deps\s*=\s*(\S+)\s*$/.exec(setting);
-    if (match) {
-      // Last assignment wins, as it does in npm.
-      value = match[1] === "true";
+    const match = /^\s*legacy-peer-deps\s*(?:=\s*(.*?))?\s*$/.exec(setting);
+    if (!match) {
+      continue;
     }
+    // ini reads a bare key as true, and strips quotes around a value.
+    const raw = (match[1] ?? "true").replace(/^(["'])(.*)\1$/, "$2").toLowerCase();
+    // Last assignment wins, as it does in npm, which coerces anything that is
+    // neither empty nor "false" to true.
+    value = raw !== "" && raw !== "false";
   }
   return value;
 }
@@ -101,7 +105,9 @@ export function parseLegacyPeerDeps(contents: string): boolean | undefined {
  * @param ignore The codebase's configured ignore globs, which may exclude .npmrc.
  */
 function shipsLegacyPeerDeps(sourceDir: string, ignore: string[]): boolean {
-  if (ignore.some((glob) => minimatch(".npmrc", glob))) {
+  // Same options the packaging code matches ignore globs with, so we agree with
+  // it about whether the file is actually uploaded.
+  if (ignore.some((glob) => minimatch(".npmrc", glob, { matchBase: true, dot: true }))) {
     // Configured out of the upload, so whatever it says never reaches the build.
     return false;
   }
@@ -117,8 +123,12 @@ function shipsLegacyPeerDeps(sourceDir: string, ignore: string[]): boolean {
  *
  * npm satisfies a peer by walking up node_modules from the dependent, so we
  * resolve each peer the same way against the lockfile's `packages` map.
+ * Names only, so it does not check that a present peer satisfies the required
+ * range, and it only walks peers of packages the lockfile already contains.
+ * Both are fine for an advisory warning, which does not aim to reproduce
+ * `npm ci`.
  * @param lockfile Parsed package-lock.json or npm-shrinkwrap.json.
- * @return Sorted names of missing peers. Empty when the lockfile is complete.
+ * @return Sorted names of missing peers, empty if none were found.
  */
 export function findMissingPeerDeps(lockfile: Lockfile): string[] {
   const packages = lockfile.packages;
@@ -136,14 +146,15 @@ export function findMissingPeerDeps(lockfile: Lockfile): string[] {
       let found = false;
       for (;;) {
         const candidate = prefix ? `${prefix}/node_modules/${peer}` : `node_modules/${peer}`;
-        if (packages[candidate]) {
+        if (candidate in packages) {
           found = true;
           break;
         }
         if (!prefix) {
           break;
         }
-        const parent = prefix.lastIndexOf("/node_modules/");
+        // Walk one directory up, whether or not it is a node_modules boundary.
+        const parent = prefix.lastIndexOf("/");
         prefix = parent === -1 ? "" : prefix.slice(0, parent);
       }
       if (!found) {
