@@ -12,7 +12,7 @@ import * as params from "firebase-functions/params";
 // the value to differ. Learn more at
 // https://firebase.google.com/docs/functions/config-env#params
 export const regionParam = params.defineString("FUNCTION_DEFAULT_REGION", {
-  description: "Region where functions should be deployed.",
+  description: "Global default region where functions should be deployed. Can be overriden per-function.",
 });
 
 
@@ -31,4 +31,5 @@ setGlobalOptions({
   maxInstances: 10,
 });
 
+// Exports the functions located in the kit.
 export * from "{{PACKAGE_NAME}}";

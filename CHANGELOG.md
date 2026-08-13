@@ -1,3 +1,4 @@
+- Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added a warning when a functions lockfile omits peer dependencies that the Cloud Functions build server expects, and a clearer message when a build fails because `npm ci` rejected the lockfile (#5673).
 - Added `outputSchema` support for local MCP tools.
