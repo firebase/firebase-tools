@@ -203,7 +203,9 @@ const customHttpsAgent = new https.Agent({
     const connectTo = process.env.GFE_CONNECT_TO;
     const currentHost = options.host || options.hostname;
     const currentPort = options.port;
-    logger.debug(`[apiv2 customHttpsAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`);
+    logger.debug(
+      `[apiv2 customHttpsAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`,
+    );
     if (connectTo) {
       const parts = connectTo.split(":");
       if (parts.length === 4) {
@@ -249,7 +251,9 @@ const customHttpAgent = new http.Agent({
     const connectTo = process.env.GFE_CONNECT_TO;
     const currentHost = options.host || options.hostname;
     const currentPort = options.port;
-    logger.debug(`[apiv2 customHttpAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`);
+    logger.debug(
+      `[apiv2 customHttpAgent] connecting to host: ${options.host}, hostname: ${options.hostname}, port: ${options.port}, servername: ${options.servername}`,
+    );
     if (connectTo) {
       const parts = connectTo.split(":");
       if (parts.length === 4) {
@@ -578,7 +582,9 @@ export class Client {
       const parsedURL = new URL(fetchURL);
       const nodeAgent = getCustomConnectToNodeAgent(parsedURL);
       if (nodeAgent) {
-        logger.debug(`[apiv2] Assigning fetchOptions.agent = nodeAgent (protocol: ${parsedURL.protocol})`);
+        logger.debug(
+          `[apiv2] Assigning fetchOptions.agent = nodeAgent (protocol: ${parsedURL.protocol})`,
+        );
         fetchOptions.agent = nodeAgent;
       }
     }
