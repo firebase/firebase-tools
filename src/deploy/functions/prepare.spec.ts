@@ -36,6 +36,22 @@ describe("partition env helper", () => {
   });
 });
 
+describe("getExecutablePaths", () => {
+  it("returns the dart bundle executable path for a dart runtime", () => {
+    expect(prepare.getExecutablePaths(latest("dart"))).to.deep.equal([
+      "build/cli/linux_x64/bundle/bin/server",
+    ]);
+  });
+
+  it("returns no executable paths for a non-dart runtime", () => {
+    expect(prepare.getExecutablePaths(latest("nodejs"))).to.deep.equal([]);
+  });
+
+  it("returns no executable paths when the runtime is undefined", () => {
+    expect(prepare.getExecutablePaths(undefined)).to.deep.equal([]);
+  });
+});
+
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
     platform: "gcfv2",
