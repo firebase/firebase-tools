@@ -7,3 +7,4 @@
 - Added web app support for Crashlytics MCP tools and prompts.
 - Added support for forwarding custom HTTP headers (`Mcp-Param-*`) to remote MCP tools when defined in tool parameter input schemas (`x-mcp-header`), per [SEP-2243](https://modelcontextprotocol.io/seps/2243-http-standardization).
 - Improved function parameter prompting clarity for multi-codebase deploys (#10897)
+- Fixed a bug where deploying functions from a codebase with no extensions still required the Cloud Billing API to be enabled. (#7584)

@@ -278,9 +278,13 @@ export async function prepare(
   if (Object.values(wantBuilds).some((b) => b.extensions)) {
     const extContext: ExtContext = {};
     const extPayload: ExtPayload = {};
-    await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds);
-    context.extensions = extContext;
-    payload.extensions = extPayload;
+    // Every codebase reports an extensions record, empty when it declares none, so
+    // reaching here does not mean there is anything to deploy. Only hand the
+    // extensions stages a plan when one was actually prepared.
+    if (await prepareDynamicExtensions(extContext, options, extPayload, wantBuilds)) {
+      context.extensions = extContext;
+      payload.extensions = extPayload;
+    }
   }
 
   // == Phase 2. Resolve build to backend.

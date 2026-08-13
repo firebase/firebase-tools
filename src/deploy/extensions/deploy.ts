@@ -16,15 +16,33 @@ import { checkBilling } from "./validate";
  * @param payload The deploy payload
  */
 export async function deploy(context: Context, options: Options, payload: Payload): Promise<void> {
+  const instancesToCreate = payload.instancesToCreate ?? [];
+  const instancesToUpdate = payload.instancesToUpdate ?? [];
+  const instancesToConfigure = payload.instancesToConfigure ?? [];
+  const instancesToDelete = payload.instancesToDelete ?? [];
+
+  // Nothing to do. A functions deploy reaches this stage even when the codebase
+  // declares no extensions, since every codebase reports an extensions record and
+  // it is empty in that case. Without this guard such a deploy would go on to
+  // require the Cloud Billing API below.
+  if (
+    !instancesToCreate.length &&
+    !instancesToUpdate.length &&
+    !instancesToConfigure.length &&
+    !instancesToDelete.length
+  ) {
+    return;
+  }
+
   const projectId = needProjectId(options);
   // First, check that billing is enabled
   await checkBilling(projectId, options.nonInteractive);
 
   // Then, check that required products are provisioned.
   await bulkCheckProductsProvisioned(projectId, [
-    ...(payload.instancesToCreate ?? []),
-    ...(payload.instancesToUpdate ?? []),
-    ...(payload.instancesToConfigure ?? []),
+    ...instancesToCreate,
+    ...instancesToUpdate,
+    ...instancesToConfigure,
   ]);
 
   if (context.have) {
@@ -43,17 +61,17 @@ export async function deploy(context: Context, options: Options, payload: Payloa
   // Validate all creates, updates and configures.
   // Skip validating local extensions, since doing so requires us to create a new source.
   // No need to validate deletes.
-  for (const create of payload.instancesToCreate?.filter((i) => !!i.ref) ?? []) {
+  for (const create of instancesToCreate.filter((i) => !!i.ref)) {
     const task = tasks.createExtensionInstanceTask(projectId, create, /* validateOnly=*/ true);
     void validationQueue.run(task);
   }
 
-  for (const update of payload.instancesToUpdate?.filter((i) => !!i.ref) ?? []) {
+  for (const update of instancesToUpdate.filter((i) => !!i.ref)) {
     const task = tasks.updateExtensionInstanceTask(projectId, update, /* validateOnly=*/ true);
     void validationQueue.run(task);
   }
 
-  for (const configure of payload.instancesToConfigure?.filter((i) => !!i.ref) ?? []) {
+  for (const configure of instancesToConfigure.filter((i) => !!i.ref)) {
     const task = tasks.configureExtensionInstanceTask(
       projectId,
       configure,
