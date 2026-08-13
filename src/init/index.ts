@@ -145,6 +145,13 @@ const featuresList: Feature[] = [
 
 const featureMap = new Map(featuresList.map((feature) => [feature.name, feature]));
 
+/**
+ * Recursively runs question and actuate phases for each selected feature during project setup.
+ * @param setup The initialization setup state holding the feature queue and config.
+ * @param config The project configuration.
+ * @param options Command-line options and flags.
+ * @return The final setup result.
+ */
 export async function init(setup: Setup, config: Config, options: any): Promise<any> {
   const nextFeature = setup.features?.shift();
   if (nextFeature) {

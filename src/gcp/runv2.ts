@@ -205,7 +205,12 @@ export async function submitBuild(
   const op = res.body.buildOperation;
   const buildId =
     (typeof op === "object" && op?.metadata?.build?.id) ||
-    (typeof op === "string" ? op.split("/").pop()?.replace(/^build-/, "") : "");
+    (typeof op === "string"
+      ? op
+          .split("/")
+          .pop()
+          ?.replace(/^build-/, "")
+      : "");
   if (buildId) {
     let latestBuild: { status?: string; statusDetail?: string; logUrl?: string } | undefined;
     await pollOperation<any>({

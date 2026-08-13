@@ -411,6 +411,13 @@ export async function overrideChosenEnv(
   return newEnv;
 }
 
+/**
+ * Generates a suggested Secret Manager secret name for testing based on an environment variable name.
+ * Converts underscores to hyphens and prepends a "test-" prefix.
+ *
+ * @param variable The environment variable name (e.g. API_KEY).
+ * @return The suggested test secret key name (e.g. test-api-key).
+ */
 export function suggestedTestKeyName(variable: string): string {
   return "test-" + variable.replace(/_/g, "-").toLowerCase();
 }

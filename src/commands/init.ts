@@ -172,11 +172,6 @@ export const command = new Command("init [feature]")
   .action(initAction);
 
 /**
- * Init command action
- * @param feature Feature to init (e.g., hosting, functions)
- * @param options Command options
- */
-/**
  * Collects warning messages based on project initialization directory location.
  */
 function getDirectoryWarnings(
@@ -335,6 +330,12 @@ export async function initAction(feature: string, options: Options): Promise<voi
   }
 }
 
+/**
+ * Persists initialization configuration by writing firebase.json, .firebaserc, and .gitignore.
+ *
+ * @param setup The initialization setup state.
+ * @param config The project configuration.
+ */
 export async function postInitSaves(setup: Setup, config: Config): Promise<void> {
   logger.info();
   config.writeProjectFile("firebase.json", setup.config);

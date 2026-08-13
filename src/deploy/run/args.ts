@@ -58,4 +58,3 @@ export interface Payload {
 export interface Context {
   projectId?: string;
 }
-

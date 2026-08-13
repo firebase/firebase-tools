@@ -134,7 +134,9 @@ describe("init features run", () => {
         "us-docker.pkg.dev/cloudrun/container/hello",
       );
       expect(createdService.invokerIamDisabled).to.be.true;
-      expect(setup.instructions).to.include("Your Cloud Run service URL is: https://my-svc.a.run.app");
+      expect(setup.instructions).to.include(
+        "Your Cloud Run service URL is: https://my-svc.a.run.app",
+      );
 
       const runConfigs = config.src.run as Array<{ serviceId: string }>;
       expect(runConfigs).to.be.an("array");

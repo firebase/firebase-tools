@@ -58,7 +58,9 @@ function filterTargetConfigs(
 
   if (hasSpecificServiceFilter) {
     const configuredServiceIds = new Set(configs.map((c) => c.serviceId));
-    const missingServiceIds = Array.from(targetedServiceIds).filter((id) => !configuredServiceIds.has(id));
+    const missingServiceIds = Array.from(targetedServiceIds).filter(
+      (id) => !configuredServiceIds.has(id),
+    );
     if (missingServiceIds.length > 0) {
       throw new FirebaseError(
         `Cloud Run service(s) '${missingServiceIds.join(", ")}' not found in firebase.json. Configured services: ${Array.from(configuredServiceIds).join(", ")}`,
@@ -99,7 +101,11 @@ function resolveBaseImage(
  * Prepares Cloud Run deployment by validating configurations, filtering targeted services,
  * fetching existing services, resolving base images and App Hosting configurations.
  */
-export async function prepare(context: Context, options: RunDeployOptions, payload: Payload): Promise<void> {
+export async function prepare(
+  context: Context,
+  options: RunDeployOptions,
+  payload: Payload,
+): Promise<void> {
   const projectId = needProjectId(options);
   context.projectId = projectId;
 

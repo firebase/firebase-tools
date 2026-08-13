@@ -189,6 +189,13 @@ function getReleventConfigs(target: string, options: Options) {
   }
 }
 
+/**
+ * Returns a deployment lifecycle hook function for the specified target and hook phase (e.g. predeploy, postdeploy).
+ *
+ * @param target The deployment target name (e.g. hosting, functions, run).
+ * @param hook The lifecycle hook name (e.g. predeploy, postdeploy).
+ * @return An async function that executes all configured lifecycle commands for matching targets.
+ */
 export function lifecycleHooks(
   target: string,
   hook: string,

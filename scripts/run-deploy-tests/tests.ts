@@ -66,9 +66,7 @@ describe("Cloud Run Deployment E2E Test Suite", function (this: Mocha.Suite) {
             if (rc.serviceId) {
               const region = rc.region || "us-central1";
               if (
-                !createdServices.some(
-                  (s) => s.serviceId === rc.serviceId && s.region === region,
-                )
+                !createdServices.some((s) => s.serviceId === rc.serviceId && s.region === region)
               ) {
                 createdServices.push({ serviceId: rc.serviceId, region });
               }

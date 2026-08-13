@@ -13,6 +13,12 @@ const client = new Client({
   apiVersion: API_VERSION,
 });
 
+/**
+ * Ensures that the Artifact Registry API is enabled for the specified project.
+ *
+ * @param projectId The GCP project ID.
+ * @return A promise that resolves when the API is confirmed enabled.
+ */
 export function ensureApiEnabled(projectId: string): Promise<void> {
   return api.ensure(projectId, artifactRegistryDomain(), "artifactregistry", true);
 }

@@ -188,7 +188,8 @@ function prepareBuildEnvironment(service: RunServiceSpec): Record<string, string
   }
 
   if (appHostingConfig?.scripts?.build || appHostingConfig?.buildConfig?.buildCommand) {
-    buildEnv["GOOGLE_NODE_RUN_SCRIPTS"] = (appHostingConfig.scripts?.build || appHostingConfig.buildConfig?.buildCommand)!;
+    buildEnv["GOOGLE_NODE_RUN_SCRIPTS"] = (appHostingConfig.scripts?.build ||
+      appHostingConfig.buildConfig?.buildCommand)!;
   }
 
   return buildEnv;
@@ -286,7 +287,13 @@ function buildUpdatedServiceDefinition(
   }
 
   const runtimeEnvMap = splitEnvVars(service.appHostingConfig?.env || {}).runtime;
-  applyAppHostingConfig(projectId, newService, runtimeEnvMap, service.appHostingConfig?.runConfig, service.serviceId);
+  applyAppHostingConfig(
+    projectId,
+    newService,
+    runtimeEnvMap,
+    service.appHostingConfig?.runConfig,
+    service.serviceId,
+  );
 
   newService.traffic = [
     {
@@ -327,9 +334,7 @@ function buildNewServiceDefinition(
             : {}),
         },
       ],
-      annotations: message
-        ? { "run.googleapis.com/description": message }
-        : {},
+      annotations: message ? { "run.googleapis.com/description": message } : {},
       ...(service.serviceAccount ? { serviceAccount: service.serviceAccount } : {}),
     },
     client: "cli-firebase",
@@ -338,7 +343,13 @@ function buildNewServiceDefinition(
   };
 
   const runtimeEnvMap = splitEnvVars(service.appHostingConfig?.env || {}).runtime;
-  applyAppHostingConfig(projectId, newService, runtimeEnvMap, service.appHostingConfig?.runConfig, service.serviceId);
+  applyAppHostingConfig(
+    projectId,
+    newService,
+    runtimeEnvMap,
+    service.appHostingConfig?.runConfig,
+    service.serviceId,
+  );
 
   return newService;
 }
@@ -365,7 +376,12 @@ async function deployService(
     // 3. Construct target image URI & submit Cloud Build
     const imageTag = `${Date.now()}`;
     const imageUri = `${region}-docker.pkg.dev/${projectId}/cloud-run-source-deploy/${service.serviceId}:${imageTag}`;
-    const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(projectId, region, service, imageUri);
+    const { hasAbiu, resolvedBaseImageUri } = await submitServiceBuild(
+      projectId,
+      region,
+      service,
+      imageUri,
+    );
 
     // 4. Create or update Cloud Run service
     let existing = service.existingService;
@@ -411,9 +427,7 @@ async function deployService(
   } catch (err) {
     if (service.storageSource) {
       try {
-        await gcs.deleteObject(
-          `/${service.storageSource.bucket}/${service.storageSource.object}`,
-        );
+        await gcs.deleteObject(`/${service.storageSource.bucket}/${service.storageSource.object}`);
       } catch {
         // ignore cleanup errors
       }
@@ -426,7 +440,11 @@ async function deployService(
  * Deploys Cloud Run services by building container images via Cloud Build
  * and creating or updating services in Cloud Run Admin API v2.
  */
-export async function deploy(context: Context, options: RunDeployOptions, payload: Payload): Promise<void> {
+export async function deploy(
+  context: Context,
+  options: RunDeployOptions,
+  payload: Payload,
+): Promise<void> {
   const services = payload.run?.services;
   if (!services || services.length === 0) {
     return;

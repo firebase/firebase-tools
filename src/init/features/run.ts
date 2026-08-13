@@ -30,7 +30,10 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
   const defaultServiceId =
     options?.service ||
     options?.serviceId ||
-    path.basename(process.cwd()).toLowerCase().replace(/[^a-z0-9-]/g, "-") ||
+    path
+      .basename(process.cwd())
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, "-") ||
     "my-service";
 
   const serviceId =
@@ -42,31 +45,37 @@ export async function askQuestions(setup: Setup, config?: Config, options?: any)
     }));
 
   const defaultRegion =
+    options?.primaryRegion || options?.region || process.env.FIREBASE_RUN_REGION || "us-central1";
+
+  const region =
     options?.primaryRegion ||
     options?.region ||
-    process.env.FIREBASE_RUN_REGION ||
-    "us-central1";
+    (await input({
+      message: "Which region should this service be deployed to?",
+      default: defaultRegion,
+      validate: (val: string) => {
+        if (!/^[a-z0-9-]+$/.test(val)) {
+          return "Region must be a valid GCP region string (e.g. us-central1).";
+        }
+        return true;
+      },
+    }));
 
-  const region = options?.primaryRegion || options?.region || (await input({
-    message: "Which region should this service be deployed to?",
-    default: defaultRegion,
-    validate: (val: string) => {
-      if (!/^[a-z0-9-]+$/.test(val)) {
-        return "Region must be a valid GCP region string (e.g. us-central1).";
-      }
-      return true;
-    },
-  }));
+  const rootDir =
+    options?.rootDir ||
+    options?.source ||
+    (await input({
+      message: "What is the root directory of your source code? (relative to firebase.json)",
+      default: ".",
+    }));
 
-  const rootDir = options?.rootDir || options?.source || (await input({
-    message: "What is the root directory of your source code? (relative to firebase.json)",
-    default: ".",
-  }));
-
-  const outputDir = options?.outputDir || options?.output || (await input({
-    message: "Where should the built artifacts be output? (e.g. for --prebuilt)",
-    default: ".run",
-  }));
+  const outputDir =
+    options?.outputDir ||
+    options?.output ||
+    (await input({
+      message: "Where should the built artifacts be output? (e.g. for --prebuilt)",
+      default: ".run",
+    }));
 
   setup.featureInfo = setup.featureInfo || {};
   setup.featureInfo.run = {

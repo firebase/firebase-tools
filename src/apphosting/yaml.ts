@@ -64,8 +64,8 @@ export class AppHostingYamlConfig {
   /**
    * Merges this AppHostingYamlConfig with another config, the incoming config
    * has precedence if there are any conflicting configurations.
-   * */
-  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext: boolean = true) {
+   */
+  merge(other: AppHostingYamlConfig, allowSecretsToBecomePlaintext = true) {
     if (!allowSecretsToBecomePlaintext) {
       const wereSecrets = Object.entries(this.env)
         .filter(([, env]) => env.secret)
@@ -132,6 +132,12 @@ export class AppHostingYamlConfig {
 }
 
 // TODO: generalize into a utility function and remove the key from the array type.
+/**
+ * Converts a list of environment variable objects into an environment variable map keyed by variable name.
+ *
+ * @param envs List of environment variables.
+ * @return Map of environment variables keyed by variable name.
+ */
 export function toEnvMap(envs: Env[]): EnvMap {
   return Object.fromEntries(
     envs.map((env) => {
@@ -141,6 +147,12 @@ export function toEnvMap(envs: Env[]): EnvMap {
   );
 }
 
+/**
+ * Converts an environment variable map keyed by variable name into an array of environment variable objects.
+ *
+ * @param envs Map of environment variables.
+ * @return Array of environment variable objects with variable property.
+ */
 export function toEnvList(envs: EnvMap): Env[] {
   return Object.entries(envs).map(([variable, env]) => {
     return { ...env, variable };
