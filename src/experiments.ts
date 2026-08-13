@@ -90,6 +90,12 @@ export const ALL_EXPERIMENTS = experiments({
     public: true,
     default: false,
   },
+  kits: {
+    shortDescription: "Enable Functions Kits.",
+    fullDescription: "Adds support for Function Kits.",
+    public: false,
+    default: false,
+  },
 
   // Emulator experiments
   emulatoruisnapshot: {
@@ -134,6 +140,16 @@ export const ALL_EXPERIMENTS = experiments({
       "Exposes Firebase CLI commands intended for internal testing purposes. " +
       "These commands are not meant for public consumption and may break or disappear " +
       "without a notice.",
+  },
+
+  appcheckadmin: {
+    shortDescription: "Manage App Check enforcement and attestation providers from the CLI.",
+    fullDescription:
+      "Enables the `firebase appcheck:services`, `firebase appcheck:providers` and " +
+      "`firebase appcheck:apps` commands for reading and changing App Check enforcement per " +
+      "service and the attestation providers of each app. These commands are in preview and " +
+      "may change until the surface is API council approved. The `firebase appcheck:debugtokens` " +
+      "commands are generally available and are not affected by this experiment.",
   },
 
   ailogic: {
@@ -232,6 +248,12 @@ export const ALL_EXPERIMENTS = experiments({
     shortDescription: "Show deprecation warnings for Firebase Extensions CLI commands.",
     default: true,
     public: true,
+  },
+  extMigrationFeatures: {
+    shortDescription:
+      "Enable features intended to assist with the migration of Extension instances to Kits.",
+    default: false,
+    public: false,
   },
 });
 

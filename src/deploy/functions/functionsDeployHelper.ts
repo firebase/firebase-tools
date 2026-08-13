@@ -1,5 +1,5 @@
 import * as backend from "./backend";
-import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
+import { DEFAULT_CODEBASE, ValidatedConfig, isKitConfig } from "../../functions/projectConfig";
 import { assertExhaustive } from "../../functional";
 
 export interface EndpointFilter {
@@ -55,22 +55,35 @@ export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: Endpoi
 }
 
 /**
+ * Returns all codebase names and kit instance IDs defined in the configuration.
+ */
+export function getCodebasesFromConfig(config: ValidatedConfig): string[] {
+  return [
+    ...new Set(config.flatMap((c) => (isKitConfig(c) ? Object.keys(c.instances) : [c.codebase]))),
+  ];
+}
+
+/**
  * Returns list of filters after parsing selector.
  */
 export function parseFunctionSelector(selector: string, config: ValidatedConfig): EndpointFilter[] {
   const fragments = selector.split(":");
+  const target = fragments[0];
+
+  // Check if target matches a known codebase name or kit instance ID
+  const codebaseNames = getCodebasesFromConfig(config);
+
+  if (codebaseNames.includes(target)) {
+    return [
+      {
+        codebase: target,
+        ...(fragments.length > 1 ? { idChunks: fragments[1].split(/[-.]/) } : {}),
+      },
+    ];
+  }
+
   if (fragments.length < 2) {
-    // This is a plain selector w/o codebase prefix (e.g. "abc" not "abc:efg") .
-    // This could mean 2 things:
-    //
-    //   1. Codebase selector (i.e. "abc" refers to a codebase).
-    //   2. Id filter for the DEFAULT codebase (i.e. "abc" refers to a function in the default codebase).
-    const codebaseNames = config.map((c) => c.codebase);
-    if (codebaseNames.includes(fragments[0])) {
-      // It's a known codebase name
-      return [{ codebase: fragments[0] }];
-    }
-    // It's not a codebase name, assume it is a function id in default codebase
+    // It's not a codebase or kit instance name, assume it is a function id in default codebase
     return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
   }
   return [
@@ -158,26 +171,20 @@ export function getFunctionLabel(fn: backend.TargetIds & { codebase?: string }):
  * Returns list of codebases specified in firebase.json filtered by --only filters if present.
  */
 export function targetCodebases(config: ValidatedConfig, filters?: EndpointFilter[]): string[] {
-  const codebasesFromConfig = [...new Set(Object.values(config).map((c) => c.codebase))];
+  const codebasesFromConfig = getCodebasesFromConfig(config);
   if (!filters) {
     return [...codebasesFromConfig];
   }
 
   const codebasesFromFilters = [
-    ...new Set(filters.map((f) => f.codebase).filter((c) => c !== undefined)),
+    ...new Set(filters.map((f) => f.codebase).filter((c): c is string => c !== undefined)),
   ];
 
   if (codebasesFromFilters.length === 0) {
     return [...codebasesFromConfig];
   }
 
-  const intersections: string[] = [];
-  for (const codebase of codebasesFromConfig) {
-    if (codebasesFromFilters.includes(codebase)) {
-      intersections.push(codebase);
-    }
-  }
-  return intersections;
+  return codebasesFromConfig.filter((codebase) => codebasesFromFilters.includes(codebase));
 }
 
 /**
