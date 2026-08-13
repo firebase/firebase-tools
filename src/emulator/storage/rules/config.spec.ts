@@ -92,20 +92,20 @@ describe("Storage Rules Config", () => {
     expect(result[2].rules.content).to.contain("allow read, write: if request.auth!=null");
   });
 
-  it("should throw FirebaseError when storage config is missing", () => {
+  it("should use default config when storage config is missing", () => {
     const config = getOptions({ data: {}, path: resolvePath });
-    expect(() => getStorageRulesConfig(PROJECT_ID, config)).to.throw(
-      FirebaseError,
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
-    );
+    const result = getStorageRulesConfig(PROJECT_ID, config) as SourceFile;
+
+    expect(result.name).to.contain("templates/emulators/default_storage.rules");
+    expect(result.content).to.contain("allow read, write;");
   });
 
-  it("should throw FirebaseError when rules file is missing", () => {
+  it("should use default config when rules file is missing", () => {
     const config = getOptions({ data: { storage: {} }, path: resolvePath });
-    expect(() => getStorageRulesConfig(PROJECT_ID, config)).to.throw(
-      FirebaseError,
-      "Cannot start the Storage emulator without rules file specified in firebase.json: run 'firebase init' and set up your Storage configuration",
-    );
+    const result = getStorageRulesConfig(PROJECT_ID, config) as SourceFile;
+
+    expect(result.name).to.contain("templates/emulators/default_storage.rules");
+    expect(result.content).to.contain("allow read, write;");
   });
 
   it("should throw FirebaseError when rules file is invalid", () => {

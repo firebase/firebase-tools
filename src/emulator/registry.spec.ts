@@ -43,6 +43,17 @@ describe("EmulatorRegistry", () => {
     expect(EmulatorRegistry.isRunning(name)).to.be.false;
   });
 
+  it("should not be running if emulator start fails", async () => {
+    const name = Emulators.FUNCTIONS;
+    const emu = await FakeEmulator.create(name);
+    emu.start = () => Promise.reject(new Error("Failed to start"));
+
+    expect(EmulatorRegistry.isRunning(name)).to.be.false;
+    await expect(EmulatorRegistry.start(emu)).to.be.rejectedWith("Failed to start");
+    expect(EmulatorRegistry.isRunning(name)).to.be.false;
+    expect(EmulatorRegistry.get(name)).to.be.undefined;
+  });
+
   describe("#url", () => {
     // Only run IPv4 / IPv6 tests if supported respectively.
     let ipv4Supported = false;
