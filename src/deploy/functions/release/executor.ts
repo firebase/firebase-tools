@@ -8,20 +8,9 @@ export interface Executor {
   run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T>;
 }
 
-export interface RunOptions {
-  retryCodes?: number[];
-}
+export type RetryPredicate = (err: any) => boolean;
 
-interface Operation {
-  func: () => any;
-  retryCodes: number[];
-  result?: any;
-  error?: any;
-}
-
-export const DEFAULT_RETRY_CODES = [429, 409, 503];
-
-function parseErrorCode(err: any): number {
+export function parseErrorCode(err: any): number {
   return (
     err.status ||
     err.code ||
@@ -31,43 +20,101 @@ function parseErrorCode(err: any): number {
   );
 }
 
+export function hasErrorCode(...codes: number[]): RetryPredicate {
+  return (err: any): boolean => codes.includes(parseErrorCode(err));
+}
+
+export const isQuotaExhaustion: RetryPredicate = (err: any): boolean => parseErrorCode(err) === 429;
+export const isConflict: RetryPredicate = (err: any): boolean => parseErrorCode(err) === 409;
+export const isServiceUnavailable: RetryPredicate = (err: any): boolean =>
+  parseErrorCode(err) === 503;
+
+export const isTransientError: RetryPredicate = (err: any): boolean =>
+  isQuotaExhaustion(err) || isConflict(err) || isServiceUnavailable(err);
+
+export const isServiceAccount404: RetryPredicate = (err: any): boolean => {
+  if (parseErrorCode(err) !== 404) {
+    return false;
+  }
+  let message = "";
+  try {
+    message = [
+      err?.message,
+      err?.original?.message,
+      err?.context?.body?.error?.message,
+      String(err),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  } catch {
+    message = String(err).toLowerCase();
+  }
+  return (
+    message.includes("serviceaccount") ||
+    message.includes("service account") ||
+    /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.gserviceaccount\.com\b/i.test(message) ||
+    /\bgserviceaccount\.com\b/i.test(message)
+  );
+};
+
+export const isCloudRunResourceExhausted: RetryPredicate = (err: any): boolean =>
+  parseErrorCode(err) === 8;
+
+export interface RunOptions {
+  retryPredicates?: RetryPredicate[];
+}
+
+interface Operation {
+  func: () => any;
+  retryPredicates: RetryPredicate[];
+  result?: any;
+  error?: any;
+}
+
 async function handler(op: Operation): Promise<void> {
   try {
     op.result = await op.func();
   } catch (err: any) {
     // Throw retry functions back to the queue where they will be retried
-    // with backoffs. To do this we cast a wide net for possible error codes.
-    // These can be either TOO MANY REQUESTS (429) errors or CONFLICT (409)
-    // errors. This can be a raw error with the correct HTTP code, a raw
-    // error with the HTTP code stashed where GCP puts it, or a FirebaseError
-    // wrapping either of the previous two cases.
-    const code = parseErrorCode(err);
-    if (op.retryCodes.includes(code)) {
+    // with backoffs.
+    const shouldRetry = op.retryPredicates.some((predicate) => predicate(err));
+    if (shouldRetry) {
       throw err;
     }
-    err.code = code;
+    err.code = parseErrorCode(err);
     op.error = err;
   }
   return;
 }
 
+export interface QueueExecutorOptions extends Omit<ThrottlerOptions<Operation, void>, "handler"> {
+  defaultRetryPredicates?: RetryPredicate[];
+}
+
 /**
  * A QueueExecutor implements the executor interface on top of a throttler queue.
- * Any 429 will be retried within the ThrottlerOptions parameters, but all
- * other errors are rethrown.
+ * Transient errors (429, 409, 503) will be retried within the ThrottlerOptions parameters by default,
+ * but all other errors are rethrown unless custom retryPredicates are supplied.
  */
 export class QueueExecutor implements Executor {
   private readonly queue: Queue<Operation, void>;
-  constructor(options: Omit<ThrottlerOptions<Operation, void>, "handler">) {
-    this.queue = new Queue({ ...options, handler });
+  private readonly defaultRetryPredicates: RetryPredicate[];
+
+  constructor(options: QueueExecutorOptions) {
+    const { defaultRetryPredicates, ...throttlerOptions } = options;
+    this.defaultRetryPredicates = defaultRetryPredicates || [isTransientError];
+    this.queue = new Queue({ ...throttlerOptions, handler });
   }
 
   async run<T>(func: () => Promise<T>, opts?: RunOptions): Promise<T> {
-    const retryCodes = opts?.retryCodes || DEFAULT_RETRY_CODES;
+    const retryPredicates: RetryPredicate[] = opts?.retryPredicates
+      ? [...opts.retryPredicates]
+      : [...this.defaultRetryPredicates];
 
     const op: Operation = {
       func,
-      retryCodes,
+      retryPredicates,
     };
     await this.queue.run(op);
     if (op.error) {
@@ -81,7 +128,7 @@ export class QueueExecutor implements Executor {
  * Inline executors run their functions right away.
  * Useful for testing.
  */
-export class InlineExecutor {
+export class InlineExecutor implements Executor {
   run<T>(func: () => Promise<T>): Promise<T> {
     return func();
   }

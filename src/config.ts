@@ -33,6 +33,7 @@ export class Config {
     "dataconnect",
     "apphosting",
     "auth",
+    "ailogic",
   ];
 
   public options: any;
