@@ -55,6 +55,9 @@ const MIN_DART_SDK_VERSION = "3.13.0";
 /** Default entry point for Dart functions projects. */
 export const DART_ENTRY_POINT = "bin/server.dart";
 
+/** Path to the executable produced by `dart build cli` for a linux-x64 target. */
+export const DART_BUNDLE_EXECUTABLE_PATH = "build/cli/linux_x64/bundle/bin/server";
+
 export class Delegate implements runtimes.RuntimeDelegate {
   public readonly language = "dart";
   public readonly bin = "dart";

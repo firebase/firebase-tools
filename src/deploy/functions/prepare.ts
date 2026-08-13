@@ -32,6 +32,7 @@ import {
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import { DART_BUNDLE_EXECUTABLE_PATH } from "./runtimes/dart";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -445,8 +446,7 @@ export async function prepare(
         ? "tar.gz"
         : "zip";
 
-      const isDart = supported.runtimeIsLanguage(wantBuilds[codebase].runtime, "dart");
-      const executablePaths = isDart ? ["build/cli/linux_x64/bundle/bin/server"] : [];
+      const executablePaths = getExecutablePaths(wantBuilds[codebase].runtime);
 
       const packagedSource = await prepareFunctionsUpload(
         options.config.projectDir,
@@ -868,6 +868,14 @@ function warnIfDartBackendHasUnsupportedTriggers(want: backend.Backend): void {
         "See https://github.com/firebase/firebase-functions-dart for current trigger support.",
     );
   }
+}
+
+/**
+ * Returns the executable paths to mark as executable when packaging a codebase's source,
+ * relative to the runtime in use.
+ */
+export function getExecutablePaths(runtime: supported.Runtime | undefined): string[] {
+  return supported.runtimeIsLanguage(runtime, "dart") ? [DART_BUNDLE_EXECUTABLE_PATH] : [];
 }
 
 /**
