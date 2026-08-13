@@ -47,6 +47,10 @@ import {
   ValidatedConfig,
   requireLocal,
   shouldUseRuntimeConfig,
+  isKitConfig,
+  addKitPrefix,
+  ValidatedLocalSingle,
+  ValidatedKitSingle,
 } from "../../functions/projectConfig";
 import { AUTH_BLOCKING_EVENTS } from "../../functions/events/v1";
 import { generateServiceIdentity } from "../../gcp/serviceusage";
@@ -81,6 +85,10 @@ export async function discoverSecurityDetails(
   newEtag?: string;
 }> {
   const requiredRoles = want.requiredRoles;
+  // Note: On partial first rollouts (where at least one function successfully deployed),
+  // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
+  // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
+  // fabricator cleans up the unreferenced service account so no orphaned SA remains.
   const firstHave = backend.allEndpoints(have)[0];
   let existingManagedSA: string | undefined;
   let haveRolesEtag: string | undefined;
@@ -240,7 +248,12 @@ export async function prepare(
   // ===Phase 1. Load codebases from source with optional runtime config.
   let runtimeConfig: Record<string, unknown> = { firebase: firebaseConfig };
 
-  const targetedCodebaseConfigs = context.config.filter((cfg) => codebases.includes(cfg.codebase));
+  const targetedCodebaseConfigs = context.config.filter((cfg) => {
+    if (isKitConfig(cfg)) {
+      return cfg.instances && Object.keys(cfg.instances).some((inst) => codebases.includes(inst));
+    }
+    return cfg.codebase && codebases.includes(cfg.codebase);
+  });
 
   // Load runtime config if API is enabled and at least one targeted codebase uses it
   if (checkAPIsEnabled[1] && targetedCodebaseConfigs.some(shouldUseRuntimeConfig)) {
@@ -275,14 +288,26 @@ export async function prepare(
   const wantBackends: Record<string, backend.Backend> = {};
   for (const [codebase, wantBuild] of Object.entries(wantBuilds)) {
     const config = configForCodebase(context.config, codebase);
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(config) ? codebase : undefined,
+    );
     const localCfg = requireLocal(config, "Remote sources are not supported.");
+
+    checkKitForGen1(localCfg, wantBuild);
+
     const userEnvOpt: functionsEnv.UserEnvsOpts = {
       functionsSource: options.config.path(localCfg.source),
       projectId: projectId,
       projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
     };
-    proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
+      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
+    } else {
+      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
     const { userEnvs: userEnvs, secretRefs: secretRefs } = partitionUserEnvs(rawUserEnvs);
@@ -306,6 +331,7 @@ export async function prepare(
       build: wantBuild,
       firebaseConfig,
       userEnvs,
+      codebase,
       nonInteractive: options.nonInteractive,
       force: options.force,
       isEmulator: false,
@@ -762,7 +788,11 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
-    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(firebaseConfig, projectId);
+    const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
+      firebaseConfig,
+      projectId,
+      isKitConfig(codebaseConfig) ? codebase : undefined,
+    );
     logLabeledBullet(
       "functions",
       `Loading and analyzing source code for codebase ${codebase} to determine what to deploy`,
@@ -780,7 +810,10 @@ export async function loadCodebases(
       GOOGLE_CLOUD_QUOTA_PROJECT: projectId,
     });
     discoveredBuild.runtime = codebaseConfig.runtime;
-    build.applyPrefix(discoveredBuild, codebaseConfig.prefix || "");
+    const prefix = isKitConfig(codebaseConfig)
+      ? addKitPrefix(codebase)
+      : codebaseConfig.prefix || "";
+    build.applyPrefix(discoveredBuild, prefix);
     wantBuilds[codebase] = discoveredBuild;
   }
   return wantBuilds;
@@ -975,4 +1008,22 @@ export function partitionUserEnvs(allEnvs: Record<string, string>): {
     [{}, {}] as [Record<string, string>, Record<string, string>],
   );
   return { userEnvs: userEnvs, secretRefs: secretRefs };
+}
+
+/**
+ * Validates that a function kit codebase does not contain any gen1 functions.
+ * Throws a FirebaseError if a gen1 function is found.
+ */
+export function checkKitForGen1(
+  localCfg: ValidatedLocalSingle | ValidatedKitSingle,
+  wantBuild: build.Build,
+): void {
+  if (
+    isKitConfig(localCfg) &&
+    Object.values(wantBuild.endpoints).some((e) => e.platform === "gcfv1")
+  ) {
+    throw new FirebaseError(
+      `Function kit "${localCfg.kit}" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.`,
+    );
+  }
 }
