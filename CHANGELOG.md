@@ -1,4 +1,4 @@
-- Validate task queue function names at deploy time, and allow deletion of task queue functions whose name is not a legal Cloud Tasks queue ID (#7365).
+- Deploying a task queue function whose name is not a legal Cloud Tasks queue ID (for example one containing an underscore) now fails validation instead of silently leaving the function without a queue, and such functions can now be deleted (#10834).
 - Configured OneMCP server tools to require a Firebase project by default, with options to opt-out specific tools (such as Developer Knowledge document search).
 - Fixed a bug where deploying functions with the `dartfunctions` experiment enabled could incorrectly prompt to delete existing GCF v2 functions.
 - Added `outputSchema` support for local MCP tools.

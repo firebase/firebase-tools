@@ -344,9 +344,10 @@ export function taskQueueFunctionNamesAreValid(endpoints: backend.Endpoint[]): v
     .filter((ep) => !cloudtasks.isValidQueueId(ep.id));
   if (invalidIds.length !== 0) {
     const msg =
-      `${invalidIds.map((f) => f.id).join(", ")} task queue function name(s) can only contain ` +
-      `letters, numbers, and hyphens (no underscores). This is because the function's name is ` +
-      `used as the Cloud Tasks queue ID.`;
+      `Task queue function name(s) ${invalidIds.map((f) => f.id).join(", ")} cannot be used as ` +
+      `Cloud Tasks queue IDs, so their queues were never created. Rename each function to use ` +
+      `only letters, numbers, and hyphens. Python function names cannot contain hyphens, so use ` +
+      `a name with no separator at all.`;
     throw new FirebaseError(msg);
   }
 }
