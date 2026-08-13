@@ -1014,6 +1014,12 @@ describe("functions:kits:install", () => {
 
         expect(wrapSpawnStub).to.not.have.been.called;
         expect(selectStub).to.have.been.calledOnce;
+        expect(selectStub).to.have.been.calledWith(
+          sinon.match({
+            message:
+              "The following instances already exist, but are not configured for this project: inst-1. What would you like to do?",
+          }),
+        );
 
         const updatedFunctions = (
           writtenFiles["firebase.json"] as {
@@ -1089,6 +1095,14 @@ describe("functions:kits:install", () => {
           "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
           "inst-2": "function-kits/firestore-bigquery-export/config-inst-2",
         });
+
+        // Should log info message that package is already installed as kit
+        expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/functions:/),
+          sinon.match(
+            /This package is already installed as kit firestore-bigquery-export, creating a new instance\./,
+          ),
+        );
 
         // Should not log deploy suggestion when already configured for project
         expect(loggerInfoStub).to.not.have.been.calledWith(
@@ -1284,6 +1298,12 @@ describe("functions:kits:install", () => {
           project: "prod-project",
         });
 
+        expect(selectStub.firstCall).to.have.been.calledWith(
+          sinon.match({
+            message:
+              "The following instances already exist, but are not configured for this project: inst-1, inst-2. What would you like to do?",
+          }),
+        );
         expect(loggerInfoStub).to.have.been.calledWith(
           sinon.match(/firebase deploy --only functions:inst-2 --project prod-project/),
         );

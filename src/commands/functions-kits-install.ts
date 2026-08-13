@@ -7,6 +7,7 @@ import { Command } from "../command";
 import { FirebaseError, getErrMsg } from "../error";
 import { FunctionsConfig, KitFunctionConfig } from "../firebaseConfig";
 import { getProjectId } from "../projectUtils";
+import { logLabeledBullet } from "../utils";
 
 import {
   isKitConfig,
@@ -276,8 +277,9 @@ export const command = new Command("functions:kits:install")
 
       let action: "addInstance" | "addEnv";
       if (!hasCurrentProjectEnv && !options.nonInteractive) {
+        const existingInstances = Object.keys(existingKit.instances || {}).join(", ");
         action = await select<"addInstance" | "addEnv">({
-          message: `Package ${clc.bold(packageName)} is already installed for kit ${clc.bold(existingKit.kit)}. What would you like to do?`,
+          message: `The following instances already exist, but are not configured for this project: ${existingInstances}. What would you like to do?`,
           choices: [
             {
               name: "Add an instance to the existing kit",
@@ -290,6 +292,12 @@ export const command = new Command("functions:kits:install")
           ],
         });
       } else {
+        if (hasCurrentProjectEnv) {
+          logLabeledBullet(
+            "functions",
+            `This package is already installed as kit ${existingKit.kit}, creating a new instance.`,
+          );
+        }
         action = "addInstance";
       }
 
