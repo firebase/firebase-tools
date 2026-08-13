@@ -173,6 +173,18 @@ describe("validate", () => {
       expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(/GCF gen 1/);
     });
 
+    it("rejects task queue function names that are not legal queue ids", () => {
+      const ep: backend.Endpoint = {
+        ...ENDPOINT_BASE,
+        id: "dummy_function",
+        taskQueueTrigger: {},
+      };
+      expect(() => validate.endpointsAreValid(backend.of(ep))).to.throw(
+        FirebaseError,
+        /dummy_function/,
+      );
+    });
+
     it("Disallows concurrency for low-CPU gen 2", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,

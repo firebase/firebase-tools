@@ -1226,10 +1226,8 @@ describe("Fabricator", () => {
     });
 
     it("skips ids that cannot be queue ids", async () => {
-      const ep = endpoint({
-        taskQueueTrigger: {},
-      }) as backend.Endpoint & backend.TaskQueueTriggered;
-      ep.id = "dummy_function";
+      const ep = endpoint({ taskQueueTrigger: {} }, { id: "dummy_function" }) as backend.Endpoint &
+        backend.TaskQueueTriggered;
       await fab.disableTaskQueue(ep);
       expect(tasks.updateQueue).to.not.have.been.called;
     });

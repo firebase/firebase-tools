@@ -41,8 +41,13 @@ describe("CloudTasks", () => {
       expect(cloudtasks.isValidQueueId("dummy_function")).to.be.false;
     });
 
+    it("accepts uppercase", () => {
+      expect(cloudtasks.isValidQueueId("MyQueue")).to.be.true;
+    });
+
     it("rejects empty and over-long ids", () => {
       expect(cloudtasks.isValidQueueId("")).to.be.false;
+      expect(cloudtasks.isValidQueueId("a".repeat(100))).to.be.true;
       expect(cloudtasks.isValidQueueId("a".repeat(101))).to.be.false;
     });
   });
