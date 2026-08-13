@@ -21,6 +21,7 @@ describe("CloudTasks", () => {
   beforeEach(() => {
     ct = sinon.stub(cloudtasks);
     ct.queueNameForEndpoint.restore();
+    ct.isValidQueueId.restore();
     ct.queueFromEndpoint.restore();
     ct.triggerFromQueue.restore();
     ct.setEnqueuer.restore();
@@ -29,6 +30,21 @@ describe("CloudTasks", () => {
 
   afterEach(() => {
     sinon.verifyAndRestore();
+  });
+
+  describe("isValidQueueId", () => {
+    it("accepts letters, numbers and hyphens", () => {
+      expect(cloudtasks.isValidQueueId("my-queue-2")).to.be.true;
+    });
+
+    it("rejects underscores", () => {
+      expect(cloudtasks.isValidQueueId("dummy_function")).to.be.false;
+    });
+
+    it("rejects empty and over-long ids", () => {
+      expect(cloudtasks.isValidQueueId("")).to.be.false;
+      expect(cloudtasks.isValidQueueId("a".repeat(101))).to.be.false;
+    });
   });
 
   describe("queueFromEndpoint", () => {

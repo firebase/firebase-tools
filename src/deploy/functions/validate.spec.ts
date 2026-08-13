@@ -115,15 +115,14 @@ describe("validate", () => {
   });
 
   describe("taskQueueFunctionNamesAreValid", () => {
-    const ENDPOINT_BASE: backend.Endpoint = {
+    const ENDPOINT_BASE = {
       platform: "gcfv2",
       id: "id",
       region: "us-east1",
       project: "project",
       entryPoint: "id",
       runtime: "nodejs16",
-      httpsTrigger: {},
-    };
+    } as const;
 
     it("should not throw on hyphenated task queue function names", () => {
       const endpoints: backend.Endpoint[] = [
@@ -144,7 +143,9 @@ describe("validate", () => {
     });
 
     it("should ignore underscores in non-task-queue function names", () => {
-      const endpoints: backend.Endpoint[] = [{ ...ENDPOINT_BASE, id: "dummy_function" }];
+      const endpoints: backend.Endpoint[] = [
+        { ...ENDPOINT_BASE, id: "dummy_function", httpsTrigger: {} },
+      ];
       expect(() => {
         validate.taskQueueFunctionNamesAreValid(endpoints);
       }).to.not.throw();

@@ -3,6 +3,7 @@ import * as clc from "colorette";
 
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
+import * as cloudtasks from "../../gcp/cloudtasks";
 import { logger } from "../../logger";
 import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
@@ -338,15 +339,14 @@ export function functionIdsAreValid(functions: { id: string; platform: string }[
  * @throws { FirebaseError } Task queue function names must be valid Cloud Tasks queue IDs.
  */
 export function taskQueueFunctionNamesAreValid(endpoints: backend.Endpoint[]): void {
-  const queueId = /^[a-zA-Z0-9-]{1,100}$/;
   const invalidIds = endpoints
     .filter(backend.isTaskQueueTriggered)
-    .filter((ep) => !queueId.test(ep.id));
+    .filter((ep) => !cloudtasks.isValidQueueId(ep.id));
   if (invalidIds.length !== 0) {
     const msg =
       `${invalidIds.map((f) => f.id).join(", ")} task queue function name(s) can only contain ` +
-      `letters, numbers, and hyphens (no underscores), and not exceed 100 characters in length. ` +
-      `This is because the function's name is used as the Cloud Tasks queue ID.`;
+      `letters, numbers, and hyphens (no underscores). This is because the function's name is ` +
+      `used as the Cloud Tasks queue ID.`;
     throw new FirebaseError(msg);
   }
 }
