@@ -47,7 +47,7 @@ export async function handleSecretParams(
 }
 
 /**
- *
+ * @returns true if the InstanceSpec defines any Secret params
  */
 export async function checkSpecForSecrets(i: InstanceSpec): Promise<boolean> {
   const extensionSpec = await getExtensionSpec(i);

@@ -158,7 +158,7 @@ export function functionsEnvFromInstance(instance: ExtensionInstance): Record<st
 /**
  * Removes the Extensions label from all secrets in an ExtensionInstance and replaces them
  * them with the Functions label.
- * @returns a list of all secrets that were modified
+ * @return a list of all secrets that were modified
  */
 export async function ejectSecretsFromInstance(instance: ExtensionInstance): Promise<string[]> {
   const secretsChanged: string[] = [];
@@ -170,7 +170,9 @@ export async function ejectSecretsFromInstance(instance: ExtensionInstance): Pro
     const secretName = specParam.param;
     const resourceName = liveParams[secretName];
     if (!resourceName) {
-      throw new FirebaseError(`Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`);
+      throw new FirebaseError(
+        `Secret ${secretName} was defined in the extension spec, but is missing in live deployed secrets.`,
+      );
     }
     const match = resourceName.match(SECRET_VERSION_NAME_REGEX);
     if (!match?.groups) {

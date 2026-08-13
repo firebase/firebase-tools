@@ -34,19 +34,19 @@ export const command = new Command("ext:export")
   .description("export Extension instances installed on a project to a local Firebase directory")
   .option(
     `--mode <target>`,
-    `experimental: controls the target system of the export (supports "extensions", "functions", "kits" as an alias for functions)`,
+    `experimental: controls the target system of the export (supports "extensions", "functions")`,
   )
   .option(
-    `--instance <instanceId>`,
+    `-e`, `--extension-instance <instanceId>`,
     `scope the export to the single instance with the specified instance id`,
   )
   .option(
-    "--kit <kitId>",
-    "write the .env export from --mode functions to the config path for a kit currently defined in firebase.json",
+    `-k`, "---kit-instance <kitId>",
+    `write the .env export from --mode functions to the config path for a kit instance currently defined in firebase.json`,
   )
   .option(
-    "--outputDir <path>",
-    "override the .env export from --mode functions to a specific arbitrary path",
+    `--outputDir <path>`,
+    `override the .env export from --mode functions to a specific arbitrary path`,
   )
   .before(requirePermissions, ["firebaseextensions.instances.list"])
   .before(ensureExtensionsApiEnabled)
@@ -81,11 +81,11 @@ async function extHandler(options: Options): Promise<void> {
     logger.info(`No extension instances installed on ${projectId}, so there is nothing to export.`);
     return;
   }
-  if (options.instance) {
-    have = have.filter((s) => s.instanceId === options.instance);
+  if (options.extensionInstance) {
+    have = have.filter((s) => s.instanceId === options.extensionInstance);
     if (have.length === 0) {
       logger.info(
-        `No extension instances installed on ${projectId} match specified instance ID ${options.instance}.`,
+        `No extension instances installed on ${projectId} match specified instance ID ${options.extensionInstance}.`,
       );
       return;
     }
@@ -147,26 +147,26 @@ async function extHandler(options: Options): Promise<void> {
 }
 
 async function fnHandler(options: Options): Promise<void> {
-  if (!options.instance) {
+  if (!options.extensionInstance) {
     logger.info(
       `ext:export must specify an --instance <instanceId> option when exporting to Functions. Use ext:list to find your instance IDs.`,
     );
     return;
   }
   const projectId = needProjectId(options);
-  const instance = await getInstance(projectId, options.instance as string);
+  const instance = await getInstance(projectId, options.extensionInstance as string);
   if (typeof instance === "undefined") {
-    logger.info(`No extension matching instance ID ${options.instance} found`);
+    logger.info(`No extension matching instance ID ${options.extensionInstance} found`);
     return;
   }
   if (instance.state !== "ACTIVE" && !options.force) {
     throw new FirebaseError(
-      `Extension ${options.instance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
+      `Extension ${options.extensionInstance} is in state ${instance.state}. To export a non-ACTIVE extension, use the --force option.`,
     );
   }
 
   const instanceId = last(instance.name.split("/")) ?? "";
-  if (instanceId !== options.instance) {
+  if (instanceId !== options.extensionInstance) {
     return;
   }
 
@@ -198,7 +198,7 @@ async function fnHandler(options: Options): Promise<void> {
   if (secretCount > 0) {
     if (
       !(await confirm({
-        message: `${secretCount} Cloud Secret Manager resources found in export. Transfer control of secrets from Extensions to Kits?`,
+        message: `${secretCount} Cloud Secret Manager resources found in export. Remove from Extensions lifecycle management?\nThis is necessary to prevent extension uninstall from deleting potentially migrated secrets.`,
         nonInteractive: options.nonInteractive,
         force: options.force,
         default: true,
@@ -218,7 +218,7 @@ async function fnHandler(options: Options): Promise<void> {
  * @return A forged UserEnvsOpts that will cause writeUserEnvs to write an
  * exported Kits environment to a sensible location:
  * 1) --outputDir command line argument if provided
- * 2) the corresponding kit config directory from firebase.json if --kit is provided
+ * 2) the corresponding kit instance directory from firebase.json if --kit-instance is provided
  * 3) <Firebase root>/<instanceId>/ if inside a Firebase directory
  * 4) <cwd>/<instanceId>/ as a fallback
  */
@@ -233,10 +233,10 @@ function kitExportTarget(instanceId: string, projectId: string, options: Options
       projectDir: options.cwd ?? process.cwd(),
     };
   }
-  if (typeof options.kit !== "undefined") {
+  if (typeof options.kitInstance !== "undefined") {
     if (!firebaseConfig) {
       throw new FirebaseError(
-        "--kit option was provided but no firebase.json available to look in for kit definitions.",
+        "--kit-instance option was provided but no firebase.json available to look in for kit definitions.",
       );
     }
     const functionsConfig = firebaseConfig.get("functions");
@@ -246,7 +246,7 @@ function kitExportTarget(instanceId: string, projectId: string, options: Options
         continue;
       }
       for (const [kitId, kitPath] of Object.entries(fn.instances)) {
-        if (kitId === options.kit) {
+        if (kitId === options.kitInstance) {
           return {
             functionsSource: instanceId,
             configDir: String(kitPath),
