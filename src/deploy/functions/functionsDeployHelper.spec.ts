@@ -5,6 +5,7 @@ import * as helper from "./functionsDeployHelper";
 import { Options } from "../../options";
 import { DEFAULT_CODEBASE, ValidatedConfig } from "../../functions/projectConfig";
 import { EndpointFilter, parseFunctionSelector } from "./functionsDeployHelper";
+import * as experiments from "../../experiments";
 
 describe("functionsDeployHelper", () => {
   const ENDPOINT: backend.Endpoint = {
@@ -321,6 +322,21 @@ describe("functionsDeployHelper", () => {
         .be.undefined;
     });
 
+    it("should create codebase filter when selector matches kit instance ID", () => {
+      experiments.setEnabled("kits", true);
+      const config = [
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "inst-1": "cfg1", "inst-2": "cfg2" },
+        },
+      ] as ValidatedConfig;
+
+      const filters = helper.getEndpointFilters({ only: "functions:inst-1" }, config);
+      expect(filters).to.deep.equal([{ codebase: "inst-1" }]);
+      experiments.setEnabled("kits", null);
+    });
+
     it("should create only codebase filter when selector matches codebase name", () => {
       const config: ValidatedConfig = [
         { source: "functions", codebase: DEFAULT_CODEBASE },
@@ -397,6 +413,24 @@ describe("functionsDeployHelper", () => {
         },
       ];
       expect(helper.targetCodebases(config, filters)).to.have.members(["default", "foobar"]);
+    });
+
+    it("returns kit instance IDs as targeted codebases", () => {
+      experiments.setEnabled("kits", true);
+      const kitConfig: ValidatedConfig = [
+        {
+          kit: "my-kit",
+          source: "kits/my-kit",
+          instances: { "inst-1": "c1", "inst-2": "c2" },
+        } as ValidatedConfig[number],
+        {
+          source: "foo",
+          codebase: "default",
+        },
+      ];
+      const filters: EndpointFilter[] = [{ codebase: "inst-1" }];
+      expect(helper.targetCodebases(kitConfig, filters)).to.have.members(["inst-1"]);
+      experiments.setEnabled("kits", null);
     });
   });
 
