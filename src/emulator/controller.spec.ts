@@ -117,5 +117,27 @@ describe("EmulatorController", () => {
       });
       expect(shouldStart(options, Emulators.DATACONNECT)).to.be.true;
     });
+
+    it("should not start extensions emulator if no extensions are configured and functions cannot start", () => {
+      const options = createMockOptions("extensions", {
+        extensions: undefined,
+        functions: {},
+      });
+      expect(shouldStart(options, Emulators.EXTENSIONS)).to.be.false;
+    });
+
+    it("should start extensions emulator if extensions are configured in firebase.json", () => {
+      const options = createMockOptions("extensions", {
+        extensions: { "my-ext": "firebase/storage-resize-images@0.1.18" },
+      });
+      expect(shouldStart(options, Emulators.EXTENSIONS)).to.be.true;
+    });
+
+    it("should start extensions emulator if functions emulator can start", () => {
+      const options = createMockOptions("extensions,functions", {
+        functions: { source: "functions" },
+      });
+      expect(shouldStart(options, Emulators.EXTENSIONS)).to.be.true;
+    });
   });
 }).timeout(2000);

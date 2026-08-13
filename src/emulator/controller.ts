@@ -213,6 +213,15 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     return false;
   }
 
+  if (
+    name === Emulators.EXTENSIONS &&
+    emulatorInTargets &&
+    !options.config.has("extensions") &&
+    !shouldStart(options, Emulators.FUNCTIONS)
+  ) {
+    return false;
+  }
+
   return emulatorInTargets;
 }
 
@@ -597,10 +606,6 @@ export async function startAll(
     }
   }
 
-  if (extensionEmulator) {
-    await startEmulator(extensionEmulator);
-  }
-
   const account = getProjectDefaultAccount(options.projectRoot);
 
   if (emulatableBackends.length) {
@@ -657,6 +662,10 @@ export async function startAll(
       extensionsEmulator: extensionEmulator,
     });
     await startEmulator(functionsEmulator);
+
+    if (extensionEmulator) {
+      await startEmulator(extensionEmulator);
+    }
 
     const eventarcAddr = legacyGetFirstAddr(Emulators.EVENTARC);
     const eventarcEmulator = new EventarcEmulator({
