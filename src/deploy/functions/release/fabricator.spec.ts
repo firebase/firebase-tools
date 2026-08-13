@@ -1644,7 +1644,10 @@ describe("Fabricator", () => {
       updateEndpoint.callsFake(fakeUpsert);
 
       await fab.applyPlan({
-        default: { regionalChangesets: { "us-central1": changes } },
+        default: {
+          plannedBackend: backend.of(ep1, ep2, ep3),
+          regionalChangesets: { "us-central1": changes },
+        },
       });
     });
 
@@ -1659,7 +1662,10 @@ describe("Fabricator", () => {
       };
 
       const summary = await fab.applyPlan({
-        default: { regionalChangesets: { "us-central1": changes } },
+        default: {
+          plannedBackend: backend.of(ep),
+          regionalChangesets: { "us-central1": changes },
+        },
       });
 
       const results = summary.results;
@@ -1715,7 +1721,10 @@ describe("Fabricator", () => {
     };
 
     const summary = await fab.applyPlan({
-      default: { regionalChangesets: { "us-central1": changes } },
+      default: {
+        plannedBackend: backend.of(createEP),
+        regionalChangesets: { "us-central1": changes },
+      },
     });
 
     const results = summary.results;
@@ -1745,7 +1754,10 @@ describe("Fabricator", () => {
     deleteEndpoint.resolves();
 
     const summary = await fab.applyPlan({
-      default: { regionalChangesets: { "us-central1": changes } },
+      default: {
+        plannedBackend: backend.of(createEP, updateEP, skipEP),
+        regionalChangesets: { "us-central1": changes },
+      },
     });
 
     const results = summary.results;
@@ -1766,6 +1778,7 @@ describe("Fabricator", () => {
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1" });
       const plan: planner.DeploymentPlan = {
         default: {
+          plannedBackend: backend.of(ep1),
           regionalChangesets: {
             "us-central1": {
               endpointsToCreate: [ep1],
@@ -1799,6 +1812,7 @@ describe("Fabricator", () => {
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1", id: "B" });
       const plan: planner.DeploymentPlan = {
         default: {
+          plannedBackend: backend.of(ep1),
           regionalChangesets: {
             "us-central1": {
               endpointsToCreate: [ep1],
@@ -1850,6 +1864,7 @@ describe("Fabricator", () => {
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B", region: "us-west1" });
       const plan: planner.DeploymentPlan = {
         default: {
+          plannedBackend: backend.of(ep1, ep2),
           regionalChangesets: {
             "us-central1": {
               endpointsToCreate: [ep1],
@@ -2088,6 +2103,7 @@ describe("Fabricator", () => {
 
     it("should create SA and grant roles in grantNewRoles", async () => {
       const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
         regionalChangesets: {},
         serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
         managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
@@ -2112,6 +2128,7 @@ describe("Fabricator", () => {
 
     it("should remove roles or delete SA in removeOldRoles", async () => {
       const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
         regionalChangesets: {},
         managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
         rolesToRemove: ["roles/oldRole"],
@@ -2128,6 +2145,7 @@ describe("Fabricator", () => {
 
     it("should delete SA if serviceAccountToDelete is set in removeOldRoles", async () => {
       const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
         regionalChangesets: {},
         serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
       };
@@ -2144,6 +2162,7 @@ describe("Fabricator", () => {
       addServiceAccountRolesStub.rejects(new Error("Permission denied"));
 
       const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
         regionalChangesets: {},
         serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
         managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
@@ -2171,6 +2190,7 @@ describe("Fabricator", () => {
 
       const deploymentPlan: planner.DeploymentPlan = {
         default: {
+          plannedBackend: backend.of(endpoint),
           regionalChangesets: {
             "us-central1": {
               endpointsToCreate: [endpoint],
@@ -2226,6 +2246,7 @@ describe("Fabricator", () => {
 
       const deploymentPlan: planner.DeploymentPlan = {
         default: {
+          plannedBackend: backend.of(endpoint1, endpoint2),
           regionalChangesets: {
             "us-central1": {
               endpointsToCreate: [endpoint1, endpoint2],

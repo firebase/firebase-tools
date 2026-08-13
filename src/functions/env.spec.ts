@@ -1000,4 +1000,23 @@ FOO=foo
       expect(logBulletStub.firstCall.args[0]).to.include(expectedPath);
     });
   });
+
+  describe("loadFirebaseEnvs", () => {
+    it("should return basic firebase envs when no kitInstanceId is provided", () => {
+      const result = env.loadFirebaseEnvs({ foo: "bar" }, "my-project");
+      expect(result).to.deep.equal({
+        FIREBASE_CONFIG: '{"foo":"bar"}',
+        GCLOUD_PROJECT: "my-project",
+      });
+    });
+
+    it("should return kit instance id when kitInstanceId is provided", () => {
+      const result = env.loadFirebaseEnvs({ foo: "bar" }, "my-project", "my-kit-instance");
+      expect(result).to.deep.equal({
+        FIREBASE_CONFIG: '{"foo":"bar"}',
+        GCLOUD_PROJECT: "my-project",
+        FIREBASE_KIT_INSTANCE_ID: "my-kit-instance",
+      });
+    });
+  });
 });

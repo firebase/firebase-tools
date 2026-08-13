@@ -3,11 +3,17 @@ import { ServerFeature } from "../types";
 import { OneMcpServer } from "./onemcp_server";
 
 export const ONEMCP_SERVERS: Partial<Record<ServerFeature, OneMcpServer>> = {
-  developerknowledge: new OneMcpServer("developerknowledge", developerKnowledgeOrigin(), {
-    requiresAuth: true,
-  }),
+  developerknowledge: new OneMcpServer(
+    "developerknowledge",
+    developerKnowledgeOrigin(),
+    {
+      requiresAuth: true,
+    },
+    {
+      toolsToOptOutProjectRequirement: ["search_documents", "get_documents"],
+    },
+  ),
   firestore: new OneMcpServer("firestore", firestoreOrigin(), {
     requiresAuth: true,
-    requiresProject: true,
   }),
 };
