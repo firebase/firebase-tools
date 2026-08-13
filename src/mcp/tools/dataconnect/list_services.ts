@@ -29,6 +29,8 @@ export const list_services = tool(
   {
     name: "list_services",
     description: "Use this to list existing local and backend Firebase SQL Connect services",
+    humanReadableDescription:
+      "List local and deployed Firebase SQL Connect services, schemas, and connectors.",
     inputSchema: z.object({}),
     annotations: {
       title: "List existing Firebase SQL Connect services",

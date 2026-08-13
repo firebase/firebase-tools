@@ -61,6 +61,8 @@ export const login = tool(
 }
 \`\`\`
 `,
+    humanReadableDescription:
+      "Sign the user into the Firebase CLI and MCP server or check current authentication status.",
     inputSchema: LoginInputSchema,
     _meta: {
       requiresAuth: false,

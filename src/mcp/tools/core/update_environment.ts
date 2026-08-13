@@ -11,6 +11,8 @@ export const update_environment = tool(
     name: "update_environment",
     description:
       "Use this to update environment config for the Firebase CLI and Firebase MCP server, such as project directory, active project, active user account, accept terms of service, and more. Use `firebase_get_environment` to see the currently configured environment.",
+    humanReadableDescription:
+      "Update environment settings such as project directory, active project, or active user account.",
     inputSchema: z.object({
       project_dir: z
         .string()

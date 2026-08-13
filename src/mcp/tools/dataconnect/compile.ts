@@ -29,6 +29,8 @@ Resolves service directories defined in the project's \`firebase.json\` under \`
   "error_filter": "schema"
 }
 \`\`\``,
+    humanReadableDescription:
+      "Compile Firebase SQL Connect schemas, operations, and connectors to validate syntax and types.",
     inputSchema: z.object({
       error_filter: z
         .enum(["all", "schema", "operations"])

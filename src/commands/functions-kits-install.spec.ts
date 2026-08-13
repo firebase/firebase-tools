@@ -7,13 +7,16 @@ import * as experiments from "../experiments";
 import { Config } from "../config";
 import { FirebaseError } from "../error";
 import { RC } from "../rc";
+import { requireAuth } from "../requireAuth";
+import { requireConfig } from "../requireConfig";
 
 describe("functions:kits:install", () => {
+  const originalBefores = [...(command["befores"] || [])];
   let assertEnabledStub: sinon.SinonStub;
   let installKitOrInstanceStub: sinon.SinonStub;
 
   beforeEach(() => {
-    (command as unknown as { befores: unknown[] }).befores = [];
+    command["befores"] = [];
     sinon.stub(command, "prepare").resolves();
     assertEnabledStub = sinon.stub(experiments, "assertEnabled");
     installKitOrInstanceStub = sinon.stub(kits, "installKitOrInstance").resolves({
@@ -24,7 +27,17 @@ describe("functions:kits:install", () => {
   });
 
   afterEach(() => {
+    command["befores"] = [...originalBefores];
     sinon.restore();
+  });
+
+  describe("command configuration", () => {
+    it("should have requireConfig and requireAuth as before hooks", () => {
+      expect(originalBefores).to.deep.equal([
+        { fn: requireConfig, args: [] },
+        { fn: requireAuth, args: [] },
+      ]);
+    });
   });
 
   describe("command action", () => {
@@ -143,6 +156,8 @@ describe("functions:kits:install", () => {
         directory: undefined,
         template: "migration",
         nonInteractive: true,
+        force: undefined,
+        configure: undefined,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc,
@@ -167,6 +182,7 @@ describe("functions:kits:install", () => {
         cwd: "/mock/project",
         config: mockConfig,
         nonInteractive: true,
+        force: true,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc as unknown as RC,
@@ -178,6 +194,46 @@ describe("functions:kits:install", () => {
         directory: "./my-local-kit",
         template: undefined,
         nonInteractive: true,
+        force: true,
+        configure: undefined,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc,
+      });
+    });
+
+    it("should pass configure: false when --no-configure is provided", async () => {
+      const mockConfig = {
+        projectDir: "/mock/project",
+        src: {
+          functions: [],
+        },
+        path: (p: string) => `/mock/project/${p}`,
+      } as unknown as Config;
+
+      const mockRc = {
+        hasProjects: true,
+      };
+
+      await command.runner()({
+        package: "@firebase-function-kits/firestore-bigquery-export",
+        cwd: "/mock/project",
+        config: mockConfig,
+        nonInteractive: true,
+        configure: false,
+        project: "my-project",
+        projectId: "my-project",
+        rc: mockRc as unknown as RC,
+      });
+
+      expect(installKitOrInstanceStub).to.have.been.calledOnceWith({
+        config: mockConfig,
+        package: "@firebase-function-kits/firestore-bigquery-export",
+        directory: undefined,
+        template: undefined,
+        nonInteractive: true,
+        force: undefined,
+        configure: false,
         project: "my-project",
         projectId: "my-project",
         rc: mockRc,

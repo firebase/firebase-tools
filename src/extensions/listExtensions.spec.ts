@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "util";
 import { expect } from "chai";
 import * as sinon from "sinon";
 
@@ -63,6 +64,16 @@ const MOCK_INSTANCES = [
   },
 ];
 
+// Locates the table log call and strips ANSI styling so row parsing
+// works consistently in both TTY and non-TTY test runners.
+function findTableOutput(stub: sinon.SinonStub): string {
+  const call = stub.args.find(
+    (args) => typeof args[0] === "string" && args[0].includes("Extension"),
+  );
+  expect(call).to.not.be.undefined;
+  return typeof call?.[0] === "string" ? stripVTControlCharacters(call[0]) : "";
+}
+
 const PROJECT_ID = "my-test-proj";
 
 describe("listExtensions", () => {
@@ -119,7 +130,7 @@ describe("listExtensions", () => {
       await listExtensions(PROJECT_ID);
 
       expect(loggerInfoStub.called).to.be.true;
-      const tableString = String(loggerInfoStub.secondCall.args[0]);
+      const tableString = findTableOutput(loggerInfoStub);
 
       const rows = tableString
         .split("\n")
@@ -195,7 +206,7 @@ describe("listExtensions", () => {
       await listExtensions(PROJECT_ID);
 
       expect(loggerInfoStub.called).to.be.true;
-      const tableString = String(loggerInfoStub.secondCall.args[0]);
+      const tableString = findTableOutput(loggerInfoStub);
 
       // Extract each row between the '│' boundaries
       const rows = tableString

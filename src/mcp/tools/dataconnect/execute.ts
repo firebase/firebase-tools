@@ -36,6 +36,8 @@ Grants access to run queries and mutations on the local emulator.
 }
 \`\`\`
 `,
+    humanReadableDescription:
+      "Execute a GraphQL query or mutation against a Firebase SQL Connect service or emulator.",
     inputSchema: z.object({
       query: z.string().describe(`A Firebase SQL Connect GraphQL query or mutation to execute.
 Example SQL Connect schema and example queries can be found in files ending in \`.graphql\` or \`.gql\`.

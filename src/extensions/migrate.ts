@@ -3,18 +3,31 @@ import * as Table from "cli-table3";
 
 import { FirebaseError } from "../error";
 import { logger } from "../logger";
-import { last, logLabeledBullet } from "../utils";
+import {
+  last,
+  logLabeledBullet,
+  logLabeledError,
+  logLabeledSuccess,
+  logLabeledWarning,
+} from "../utils";
 import { logPrefix } from "./extensionsHelper";
-import { listInstances } from "./extensionsApi";
-import { ExtensionInstance } from "./types";
-import { select } from "../prompt";
+import { confirm, select } from "../prompt";
+import * as extensionsApi from "./extensionsApi";
+import * as refs from "./refs";
+import * as paramHelper from "./paramHelper";
+import * as updateHelper from "./updateHelper";
+import { ExtensionInstance, ExtensionSpec } from "./types";
 import * as replacements from "./replacements.json";
+import { ejectSecretsFromInstance, secretsNeedingEjection } from "./export";
+import * as manifest from "./manifest";
+import { Options } from "../options";
 
 export interface MigrateOptions {
   package?: string;
   extInstance?: string;
   extension?: string;
   nonInteractive?: boolean;
+  force?: boolean;
 }
 
 export interface ExtensionTableRow {
@@ -171,7 +184,7 @@ export async function createMigrationPlan(
   projectId: string,
   options: MigrateOptions,
 ): Promise<ExtensionMigrationPlan> {
-  const instances = await listInstances(projectId);
+  const instances = await extensionsApi.listInstances(projectId);
 
   if (options.extInstance) {
     const foundInstance = instances.find((inst) => getInstanceId(inst) === options.extInstance);
@@ -271,4 +284,251 @@ export async function createMigrationPlan(
   }
 
   return promptInstanceSelection(migratable, options.nonInteractive);
+}
+
+async function fetchOldSpec(
+  instance: ExtensionInstance,
+  rawRef: string,
+): Promise<ExtensionSpec | undefined> {
+  if (instance.config.source?.spec) {
+    return instance.config.source.spec;
+  }
+  if (!rawRef) {
+    return undefined;
+  }
+  try {
+    const oldVersion = instance.config.extensionVersion;
+    const oldVersionRef = rawRef.includes("@")
+      ? rawRef
+      : oldVersion
+        ? `${rawRef}@${oldVersion}`
+        : rawRef;
+    logger.debug(`[ensureInstanceUpToDate] Fetching oldSpec for ${oldVersionRef}...`);
+    const oldExtVersion = await extensionsApi.getExtensionVersion(oldVersionRef);
+    return oldExtVersion.spec;
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch old spec for ${rawRef}:`, err);
+    return undefined;
+  }
+}
+
+async function getLatestExtensionVersionNumber(baseRef: string): Promise<string | undefined> {
+  try {
+    const extInfo = await extensionsApi.getExtension(baseRef);
+    return extInfo.latestApprovedVersion || extInfo.latestVersion;
+  } catch (err: unknown) {
+    logger.debug(`Could not fetch extension details for ${baseRef}:`, err);
+    return undefined;
+  }
+}
+
+/**
+ * Ensures an extension instance is up to date by automatically upgrading it if a newer version exists.
+ */
+export async function ensureInstanceUpToDate(
+  projectId: string,
+  instance: ExtensionInstance,
+  options?: MigrateOptions,
+): Promise<ExtensionInstance> {
+  const instanceId = getInstanceId(instance);
+  logLabeledBullet(
+    logPrefix,
+    `Checking whether extension instance ${clc.bold(instanceId)} is up to date...`,
+  );
+
+  const rawRef = getExtensionRef(instance);
+  if (!rawRef) {
+    return instance;
+  }
+
+  let baseRef: string;
+  let currentVersion: string | undefined;
+
+  try {
+    const parsed = refs.parse(rawRef);
+    baseRef = refs.toExtensionRef(parsed);
+    currentVersion = parsed.version || instance.config.source?.spec?.version;
+  } catch (err: unknown) {
+    logger.debug(`[ensureInstanceUpToDate] Could not parse extension reference '${rawRef}':`, err);
+    logLabeledWarning(
+      logPrefix,
+      `Unable to parse extension reference ${clc.bold(rawRef)} to check for available updates.`,
+    );
+    const shouldContinue = await confirm({
+      message: `Do you want to proceed with migrating instance ${clc.bold(instanceId)} using its current configuration?`,
+      default: true,
+      nonInteractive: options?.nonInteractive,
+      force: options?.force,
+    });
+    if (!shouldContinue) {
+      throw new FirebaseError("Migration cancelled.");
+    }
+    return instance;
+  }
+
+  if (!currentVersion) {
+    return instance;
+  }
+
+  const latestVersion = await getLatestExtensionVersionNumber(baseRef);
+  if (!latestVersion || currentVersion === latestVersion) {
+    return instance;
+  }
+
+  logLabeledBullet(
+    logPrefix,
+    `Upgrading extension instance ${clc.bold(instanceId)} from version ${clc.bold(currentVersion)} to ${clc.bold(latestVersion)} to ensure a smooth migration...`,
+  );
+
+  const targetRef = `${baseRef}@${latestVersion}`;
+  let finalParams: Record<string, string> = {
+    ...instance.config.params,
+    ...(instance.config.systemParams ?? {}),
+  };
+
+  const newExtensionVersion = await extensionsApi.getExtensionVersion(targetRef);
+  const oldSpec = await fetchOldSpec(instance, rawRef);
+
+  if (oldSpec) {
+    logger.debug(
+      `[ensureInstanceUpToDate] Comparing oldSpec (${oldSpec.version}) with newSpec (${newExtensionVersion.spec.version})...`,
+    );
+    const paramBindings = await paramHelper.promptForNewParams({
+      spec: oldSpec,
+      newSpec: newExtensionVersion.spec,
+      currentParams: finalParams ?? {},
+      projectId,
+      instanceId,
+    });
+    finalParams = paramHelper.getBaseParamBindings(paramBindings);
+    logger.debug(
+      `[ensureInstanceUpToDate] Resulting finalParams:`,
+      JSON.stringify(finalParams, null, 2),
+    );
+  } else {
+    logger.debug(
+      `[ensureInstanceUpToDate] WARNING: Could not resolve oldSpec for instance ${instanceId}`,
+    );
+  }
+
+  if (finalParams["LOCATION"] && !finalParams["firebaseextensions.v1beta.function/location"]) {
+    finalParams["firebaseextensions.v1beta.function/location"] = finalParams["LOCATION"];
+  }
+
+  const { params, systemParams } = paramHelper.partitionParams(finalParams);
+
+  logLabeledBullet(logPrefix, `Updating instance ${clc.bold(instanceId)}...`);
+
+  try {
+    await updateHelper.update({
+      projectId,
+      instanceId,
+      extRef: targetRef,
+      canEmitEvents: Boolean(instance.config.allowedEventTypes?.length),
+      allowedEventTypes: instance.config.allowedEventTypes,
+      eventarcChannel: instance.config.eventarcChannel,
+      params,
+      systemParams,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new FirebaseError(
+      `Failed to automatically upgrade extension instance ${instanceId} to version ${latestVersion}: ${message}. Please upgrade your extension instance manually using 'firebase ext:update ${instanceId}' before attempting migration.`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+
+  const updatedInstance = await extensionsApi.getInstance(projectId, instanceId);
+  return updatedInstance ?? instance;
+}
+
+/**
+ * Migrates secrets for an extension instance to Functions management if secrets are present.
+ * If no secrets are defined in the extension spec or already migrated, exits early without logging.
+ */
+export async function migrateSecrets(
+  instance: ExtensionInstance,
+  options?: { force?: boolean },
+): Promise<string[]> {
+  const secrets = await secretsNeedingEjection(instance);
+  if (secrets.length === 0) {
+    return [];
+  }
+
+  const instanceId = getInstanceId(instance);
+  logLabeledBullet(
+    logPrefix,
+    `Transferring secrets for instance ${clc.bold(instanceId)} to Functions management...`,
+  );
+
+  const results = await ejectSecretsFromInstance(instance);
+  if (results.success.length > 0) {
+    logLabeledSuccess(
+      logPrefix,
+      `Successfully transferred secrets to Functions management: ${results.success.join(", ")}`,
+    );
+  }
+  if (results.fail.length > 0) {
+    const resultMsg = `${results.fail.length} secrets failed to update: ${results.fail.join(", ")}.`;
+    logLabeledError("functions", resultMsg);
+    logLabeledError(
+      "functions",
+      "Ensure you have Secret Manager Admin (roles/secretmanager.admin) permissions to transfer secrets.",
+    );
+    if (!options?.force) {
+      throw new FirebaseError("Secret migration failed.", { exit: 1 });
+    }
+    logLabeledWarning(
+      "functions",
+      "Proceeding after secret migration failure in --force mode. Manually remove the 'firebase-extensions-managed' label from the secrets before running ext:uninstall, or risk permanent data loss.",
+    );
+  }
+  return results.success;
+}
+
+/**
+ * Uninstalls an extension instance immediately by removing it from the local manifest (if present)
+ * and deleting the GCP instance resources.
+ */
+export async function uninstallExtension(
+  projectId: string,
+  instanceId: string,
+  options: Options,
+  skipConfirm = false,
+): Promise<void> {
+  if (
+    !skipConfirm &&
+    !(await confirm({
+      message: `About to delete Extensions instance ${projectId}/${instanceId}, its associated resources, and service account. Continue?`,
+      nonInteractive: options.nonInteractive,
+      force: options.force,
+      default: true,
+    }))
+  ) {
+    return;
+  }
+
+  let config;
+  try {
+    config = manifest.loadConfig(options);
+  } catch {
+    logLabeledBullet(
+      logPrefix,
+      "No firebase.json found. Proceeding to immediate extension instance teardown.",
+    );
+  }
+  if (config && manifest.instanceExists(instanceId, config)) {
+    manifest.removeFromManifest(instanceId, config);
+  }
+
+  logLabeledBullet(logPrefix, `Uninstalling extension instance ${clc.bold(instanceId)}...`);
+  try {
+    await extensionsApi.deleteInstance(projectId, instanceId);
+  } catch (err: unknown) {
+    throw new FirebaseError(
+      `Error when attempting deletion: ${err instanceof Error ? err.message : String(err)}`,
+      { original: err instanceof Error ? err : undefined },
+    );
+  }
+  logLabeledSuccess(logPrefix, `Deleted Extensions instance ${projectId}/${instanceId}.`);
 }

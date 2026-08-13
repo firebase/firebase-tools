@@ -9,6 +9,8 @@ export const get_template = tool(
     name: "get_template",
     description:
       "Use this to retrieve the specified Firebase Remote Config template from the currently active Firebase Project.",
+    humanReadableDescription:
+      "Retrieve the active or specified version of the Firebase Remote Config template.",
     inputSchema: z.object({
       version_number: z
         .string()

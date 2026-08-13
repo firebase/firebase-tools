@@ -32,6 +32,7 @@ describe("tool", () => {
       {
         name: "test_tool",
         description: "A test tool",
+        humanReadableDescription: "A short human readable description.",
         inputSchema: z.object({}),
         outputSchema: z.object({ result: z.string() }),
       },
@@ -40,6 +41,7 @@ describe("tool", () => {
 
     expect(testTool.mcp.name).to.equal("test_tool");
     expect(testTool.mcp.description).to.equal("A test tool");
+    expect(testTool.mcp.humanReadableDescription).to.equal("A short human readable description.");
     expect(testTool.mcp.outputSchema).to.not.be.undefined;
     expect(testTool.mcp.outputSchema.properties.result.type).to.equal("string");
     expect(testTool.fn).to.equal(testFn);

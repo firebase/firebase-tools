@@ -15,6 +15,7 @@ export const logout = tool(
   {
     name: "logout",
     description: "Use this to sign the user out of the Firebase CLI and Firebase MCP server.",
+    humanReadableDescription: "Sign the user out of the Firebase CLI and MCP server.",
     inputSchema: z.object({
       email: z
         .string()

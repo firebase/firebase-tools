@@ -167,7 +167,16 @@ export type CheckboxOptions<Value> = BasicOptions<Value[]> & {
  * Can accept a generic type for enum values.
  */
 export async function checkbox<Value>(opts: CheckboxOptions<Value>): Promise<Value[]> {
-  const { shouldReturn, value } = guard(opts);
+  let optsWithDefault = opts;
+  if (opts.default === undefined && Array.isArray(opts.choices)) {
+    const checkedValues = (opts.choices as Choice<Value>[])
+      .filter((c) => c && typeof c === "object" && "checked" in c && c.checked)
+      .map((c) => c.value);
+    if (checkedValues.length > 0) {
+      optsWithDefault = { ...opts, default: checkedValues };
+    }
+  }
+  const { shouldReturn, value } = guard(optsWithDefault);
   if (shouldReturn) {
     return value;
   }
