@@ -4,7 +4,12 @@ import * as clc from "colorette";
 import { FirebaseError } from "../../error";
 import { getSecretVersion, SecretVersion } from "../../gcp/secretManager";
 import { logger } from "../../logger";
-import { EndpointFilter, endpointMatchesFilter, getFunctionLabel } from "./functionsDeployHelper";
+import {
+  EndpointFilter,
+  endpointMatchesFilter,
+  generationDowngradeMessage,
+  getFunctionLabel,
+} from "./functionsDeployHelper";
 import { serviceForEndpoint } from "./services";
 import * as fsutils from "../../fsutils";
 import * as backend from "./backend";
@@ -89,11 +94,11 @@ export function endpointsAreValid(
   existingBackend?: backend.Backend,
 ): void {
   validateLifecycleHooks(wantBackend, existingBackend);
+  const endpoints = backend.allEndpoints(wantBackend);
+  functionIdsAreValid(endpoints);
   if (existingBackend) {
     noGenerationDowngrades(wantBackend, existingBackend);
   }
-  const endpoints = backend.allEndpoints(wantBackend);
-  functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
   for (const ep of endpoints) {
     validateScheduledTimeout(ep);
@@ -136,8 +141,8 @@ export function endpointsAreValid(
 }
 
 /**
- * Rejects a gcfv2 function being redeployed as gcfv1. The release planner enforces this
- * too, but only after the source has been packaged and uploaded.
+ * Rejects an existing gcfv2 function or Cloud Run service being redeployed as gcfv1. The
+ * release planner enforces this too, but only after the source has been uploaded.
  */
 function noGenerationDowngrades(
   wantBackend: backend.Backend,
@@ -145,10 +150,9 @@ function noGenerationDowngrades(
 ): void {
   for (const want of backend.allEndpoints(wantBackend)) {
     const have = existingBackend.endpoints[want.region]?.[want.id];
-    if (have && want.platform === "gcfv1" && have.platform === "gcfv2") {
-      throw new FirebaseError(
-        `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
-      );
+    const msg = have && generationDowngradeMessage(want, have);
+    if (msg) {
+      throw new FirebaseError(msg);
     }
   }
 }

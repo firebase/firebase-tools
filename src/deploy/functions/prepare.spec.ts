@@ -911,23 +911,32 @@ describe("prepare", () => {
       expect(want.timeoutSeconds).to.equal(120);
     });
 
-    it("inherits cpu across gcfv2 and run platforms", () => {
-      const have: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        platform: "run",
-        httpsTrigger: {},
-        cpu: 2,
-      };
-      const want: backend.Endpoint = {
-        ...ENDPOINT_BASE,
-        platform: "gcfv2",
-        httpsTrigger: {},
-      };
+    for (const [havePlatform, wantPlatform] of [
+      ["run", "gcfv2"],
+      ["gcfv2", "run"],
+    ] as const) {
+      it(`inherits cpu from ${havePlatform} onto ${wantPlatform}`, () => {
+        const have: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: havePlatform,
+          httpsTrigger: {},
+          cpu: 2,
+        };
+        const want: backend.Endpoint = {
+          ...ENDPOINT_BASE,
+          platform: wantPlatform,
+          httpsTrigger: {},
+        };
 
-      prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
+        prepare.inferDetailsFromExisting(
+          backend.of(want),
+          backend.of(have),
+          /* usedDotEnv= */ false,
+        );
 
-      expect(want.cpu).to.equal(2);
-    });
+        expect(want.cpu).to.equal(2);
+      });
+    }
 
     it("downgrades concurrency if necessary (explicit)", () => {
       const have: backend.Endpoint = {

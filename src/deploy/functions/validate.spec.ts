@@ -134,6 +134,15 @@ describe("validate", () => {
       );
     });
 
+    it("rejects redeploying an existing Cloud Run service as gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "run", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from Cloud Run to GCFv1/,
+      );
+    });
+
     it("allows a gcfv1 function that does not exist yet", () => {
       const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
 
