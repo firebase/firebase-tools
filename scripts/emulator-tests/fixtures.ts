@@ -1,7 +1,7 @@
 import { findModuleRoot, FunctionsRuntimeBundle } from "../../src/emulator/functionsEmulatorShared";
 
-export const TIMEOUT_LONG = 10000;
-export const TIMEOUT_MED = 5000;
+export const TIMEOUT_LONG = process.platform === "win32" ? 30000 : 10000;
+export const TIMEOUT_MED = process.platform === "win32" ? 15000 : 5000;
 
 export const MODULE_ROOT = findModuleRoot("firebase-tools", __dirname);
 export const FunctionRuntimeBundles: { [key: string]: FunctionsRuntimeBundle } = {
