@@ -65,11 +65,17 @@ import * as iam from "../../gcp/iam";
 import * as resourcemanager from "../../gcp/resourceManager";
 
 export const EVENTARC_SOURCE_ENV = "EVENTARC_CLOUD_EVENT_SOURCE";
+export const DECLARATIVE_SECURITY_ETAG_LABEL = "firebase-declarative-security-etag";
 
 /**
  * Discovers and coordinates declarative security details for a codebase.
- * Mutates want Backend to populate managed service account and etag labels.
- * Returns existing discovered roles, or undefined if no security changes needed.
+ * Mutates `want` Backend to populate managed service account and etag labels.
+ *
+ * Returns security metadata based on deployment state:
+ * - **Enrolling / Active**: Returns `{ haveRoles, haveRolesEtag, existingManagedSA, managedSA, newEtag }`.
+ * - **Unenrolling (Opting Out)**: Returns `{ existingManagedSA, haveRolesEtag }` so planner can schedule role revocation.
+ * - **Deleting All Functions**: Returns `{ existingManagedSA, ...(haveRolesEtag ? { haveRolesEtag } : {}) }` so planner can delete the SA.
+ * - **Inactive**: Returns `{}` when declarative security is not used in `want` or `have`.
  */
 export async function discoverSecurityDetails(
   codebase: string,
@@ -96,8 +102,8 @@ export async function discoverSecurityDetails(
     )?.serviceAccount ?? undefined;
   const haveRolesEtag = backend.findEndpoint(
     have,
-    (e) => !!e.labels?.["firebase-declarative-security-etag"],
-  )?.labels?.["firebase-declarative-security-etag"];
+    (e) => !!e.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL],
+  )?.labels?.[DECLARATIVE_SECURITY_ETAG_LABEL];
 
   const isPartiallyFiltered = !!(
     filters &&
@@ -168,7 +174,7 @@ export async function discoverSecurityDetails(
   for (const endpoint of backend.allEndpoints(want)) {
     endpoint.serviceAccount = managedSA;
     endpoint.labels = endpoint.labels || {};
-    endpoint.labels["firebase-declarative-security-etag"] = newEtag;
+    endpoint.labels[DECLARATIVE_SECURITY_ETAG_LABEL] = newEtag;
   }
 
   if (haveRolesEtag && haveRolesEtag === newEtag) {
