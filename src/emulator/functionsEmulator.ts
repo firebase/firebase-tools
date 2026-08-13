@@ -1741,7 +1741,6 @@ export class FunctionsEmulator implements EmulatorInstance {
       port: 8081 + randomInt(0, 1000), // Add a small jitter to avoid race condition.
     });
     const childProcess = runWithVirtualEnv(args, backend.functionsDir, {
-      ...process.env,
       ...envs,
       // Required to flush stdout/stderr immediately to the piped channels.
       PYTHONUNBUFFERED: "1",
