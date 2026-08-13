@@ -319,12 +319,12 @@ describe("OneMcpServer", () => {
 
       await tool.fn({ location: "us-central1" }, mockContext);
 
-      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.equal(
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Region"]).to.equal(
         "us-central1",
       );
     });
 
-    it("should preserve Mcp-Param-Location header from inputSchema x-mcp-header without duplicate override", async () => {
+    it("should preserve Mcp-Param-Region header from inputSchema x-mcp-header without duplicate override", async () => {
       const serverWithOverride = new OneMcpServer(
         "dataconnect",
         serverUrl,
@@ -338,7 +338,7 @@ describe("OneMcpServer", () => {
           properties: {
             region: {
               type: "string",
-              "x-mcp-header": "Location",
+              "x-mcp-header": "Region",
             },
           },
         },
@@ -356,7 +356,7 @@ describe("OneMcpServer", () => {
 
       await tool.fn({ region: "asia-east1", location: "us-central1" }, mockContext);
 
-      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.equal(
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Region"]).to.equal(
         "asia-east1",
       );
     });
@@ -376,10 +376,10 @@ describe("OneMcpServer", () => {
 
       await tool.fn({ location: "us-central1" }, mockContext);
 
-      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.be.undefined;
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Region"]).to.be.undefined;
     });
 
-    it("should not include Mcp-Param-Location header when location argument is missing", async () => {
+    it("should not include Mcp-Param-Region header when location argument is missing", async () => {
       const serverWithOverride = new OneMcpServer(
         "dataconnect",
         serverUrl,
@@ -400,7 +400,7 @@ describe("OneMcpServer", () => {
 
       await tool.fn({ otherArg: "val" }, mockContext);
 
-      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Location"]).to.be.undefined;
+      expect(clientRequestStub.secondCall.args[0].headers?.["Mcp-Param-Region"]).to.be.undefined;
     });
 
     it("should handle remote tool error results", async () => {
