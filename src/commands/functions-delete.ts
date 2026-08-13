@@ -78,7 +78,7 @@ export const command = new Command("functions:delete [filters...]")
 
     // Inform the user when a name collision exists between a codebase name and a function name in default.
     // Codebase deletion takes precedence by design, but we provide the explicit 'default:<name>' workaround.
-    const codebaseNames = config.map((c) => c.codebase);
+    const codebaseNames = helper.getCodebasesFromConfig(config);
     const defaultEndpoints = backend
       .allEndpoints(existingBackend)
       .filter((ep) => !ep.codebase || ep.codebase === projectConfig.DEFAULT_CODEBASE);
