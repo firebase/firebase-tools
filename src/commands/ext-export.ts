@@ -37,11 +37,13 @@ export const command = new Command("ext:export")
     `experimental: controls the target system of the export (supports "extensions", "functions")`,
   )
   .option(
-    `-e`, `--extension-instance <instanceId>`,
+    `-e`,
+    `--extension-instance <instanceId>`,
     `scope the export to the single instance with the specified instance id`,
   )
   .option(
-    `-k`, "---kit-instance <kitId>",
+    `-k`,
+    "---kit-instance <kitId>",
     `write the .env export from --mode functions to the config path for a kit instance currently defined in firebase.json`,
   )
   .option(
