@@ -89,6 +89,9 @@ export function endpointsAreValid(
   existingBackend?: backend.Backend,
 ): void {
   validateLifecycleHooks(wantBackend, existingBackend);
+  if (existingBackend) {
+    noGenerationDowngrades(wantBackend, existingBackend);
+  }
   const endpoints = backend.allEndpoints(wantBackend);
   functionIdsAreValid(endpoints);
   validateTimeoutConfig(endpoints);
@@ -130,6 +133,24 @@ export function endpointsAreValid(
     throw new FirebaseError(msg);
   }
   cpuConfigIsValid(endpoints);
+}
+
+/**
+ * Rejects a gcfv2 function being redeployed as gcfv1. The release planner enforces this
+ * too, but only after the source has been packaged and uploaded.
+ */
+function noGenerationDowngrades(
+  wantBackend: backend.Backend,
+  existingBackend: backend.Backend,
+): void {
+  for (const want of backend.allEndpoints(wantBackend)) {
+    const have = existingBackend.endpoints[want.region]?.[want.id];
+    if (have && want.platform === "gcfv1" && have.platform === "gcfv2") {
+      throw new FirebaseError(
+        `[${getFunctionLabel(want)}] Functions cannot be downgraded from GCFv2 to GCFv1`,
+      );
+    }
+  }
 }
 
 /**

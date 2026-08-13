@@ -125,6 +125,21 @@ describe("validate", () => {
       httpsTrigger: {},
     };
 
+    it("rejects downgrading an existing gcfv2 function to gcfv1", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+      const have = backend.of({ ...ENDPOINT_BASE, platform: "gcfv2", cpu: 1 });
+
+      expect(() => validate.endpointsAreValid(want, have)).to.throw(
+        /cannot be downgraded from GCFv2 to GCFv1/,
+      );
+    });
+
+    it("allows a gcfv1 function that does not exist yet", () => {
+      const want = backend.of({ ...ENDPOINT_BASE, platform: "gcfv1" });
+
+      expect(() => validate.endpointsAreValid(want, backend.empty())).to.not.throw();
+    });
+
     it("disallows concurrency for GCF gen 1", () => {
       const ep: backend.Endpoint = {
         ...ENDPOINT_BASE,

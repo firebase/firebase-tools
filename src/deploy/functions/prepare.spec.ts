@@ -886,11 +886,10 @@ describe("prepare", () => {
       expect(want.timeoutSeconds).to.equal(120);
     });
 
-    it("does not inherit cpu/memory/timeout when the platform changes", () => {
-      // Downgrading an existing gcfv2 function to gcfv1 (e.g. redeploying a name
-      // as a v1 blocking auth trigger). cpu is a gcfv2-only concept, so inheriting
-      // it onto the v1 endpoint would fail CPU validation and mask the real
-      // "cannot be downgraded" error. See issue #5461.
+    it("does not inherit cpu onto a gcfv1 endpoint", () => {
+      // Redeploying an existing gcfv2 function as gcfv1 (e.g. as a v1 blocking auth
+      // trigger). Inheriting cpu here fails CPU validation and masks the real
+      // "cannot be downgraded" error. Memory and timeout exist on both generations.
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,
         platform: "gcfv2",
@@ -908,14 +907,14 @@ describe("prepare", () => {
       prepare.inferDetailsFromExisting(backend.of(want), backend.of(have), /* usedDotEnv= */ false);
 
       expect(want.cpu).to.be.undefined;
-      expect(want.availableMemoryMb).to.be.undefined;
-      expect(want.timeoutSeconds).to.be.undefined;
+      expect(want.availableMemoryMb).to.equal(512);
+      expect(want.timeoutSeconds).to.equal(120);
     });
 
-    it("inherits cpu when the platform is unchanged", () => {
+    it("inherits cpu across gcfv2 and run platforms", () => {
       const have: backend.Endpoint = {
         ...ENDPOINT_BASE,
-        platform: "gcfv2",
+        platform: "run",
         httpsTrigger: {},
         cpu: 2,
       };

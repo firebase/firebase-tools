@@ -612,27 +612,23 @@ export function inferDetailsFromExisting(
       };
     }
 
-    // Only inherit infrastructure fields when the platform is unchanged. When a
-    // function is being switched between generations (e.g. downgraded from gcfv2
-    // to gcfv1), fields like cpu are meaningless on the target platform and would
-    // fail validation (e.g. "Cannot set CPU on ... because they are GCF gen 1"),
-    // masking the more accurate downgrade error raised later in the release plan.
-    if (wantE.platform === haveE.platform) {
-      // If the instance size is set out of bounds or was previously set and is now
-      // unset we still need to remember it so that the min instance price estimator
-      // is accurate. If, on the other hand, we have a null value for availableMemoryMb
-      // we need to keep that null (meaning "use defaults").
-      if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
-        wantE.availableMemoryMb = haveE.availableMemoryMb;
-      }
+    // If the instance size is set out of bounds or was previously set and is now
+    // unset we still need to remember it so that the min instance price estimator
+    // is accurate. If, on the other hand, we have a null value for availableMemoryMb
+    // we need to keep that null (meaning "use defaults").
+    if (typeof wantE.availableMemoryMb === "undefined" && haveE.availableMemoryMb) {
+      wantE.availableMemoryMb = haveE.availableMemoryMb;
+    }
 
-      if (typeof wantE.cpu === "undefined" && haveE.cpu) {
-        wantE.cpu = haveE.cpu;
-      }
+    // cpu does not exist on gcfv1. Inheriting it from an existing gcfv2 function onto
+    // a gcfv1 endpoint fails CPU validation and masks the accurate "cannot be
+    // downgraded" error.
+    if (typeof wantE.cpu === "undefined" && haveE.cpu && wantE.platform !== "gcfv1") {
+      wantE.cpu = haveE.cpu;
+    }
 
-      if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
-        wantE.timeoutSeconds = haveE.timeoutSeconds;
-      }
+    if (typeof wantE.timeoutSeconds === "undefined" && haveE.timeoutSeconds) {
+      wantE.timeoutSeconds = haveE.timeoutSeconds;
     }
 
     // N.B. concurrency has different defaults based on CPU. If the customer
