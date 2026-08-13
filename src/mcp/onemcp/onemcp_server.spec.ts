@@ -397,7 +397,7 @@ describe("OneMcpServer", () => {
       expect(ensurePermissionsOrSetRoleStub).to.have.been.calledOnceWith(
         "test-project",
         "user@example.com",
-        ["mcp.tools.call", "resourcemanager.projects.get", "resourcemanager.projects.list"],
+        ["mcp.tools.call"],
         "roles/mcp.toolUser",
       );
     });
