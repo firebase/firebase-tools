@@ -89,10 +89,11 @@ export async function discoverSecurityDetails(
   // haveBackend contains all active endpoints in GCP from list calls. firstHave.serviceAccount
   // will identify existingManagedSA on subsequent deploys. On 100% deployment failures,
   // fabricator cleans up the unreferenced service account so no orphaned SA remains.
-  const existingManagedSA = backend.findEndpoint(
-    have,
-    (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
-  )?.serviceAccount;
+  const existingManagedSA =
+    backend.findEndpoint(
+      have,
+      (e) => typeof e.serviceAccount === "string" && e.serviceAccount.startsWith("firebase-fn-"),
+    )?.serviceAccount ?? undefined;
   const haveRolesEtag = backend.findEndpoint(
     have,
     (e) => !!e.labels?.["firebase-declarative-security-etag"],
