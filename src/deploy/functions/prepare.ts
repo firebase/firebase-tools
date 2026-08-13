@@ -33,6 +33,7 @@ import {
 } from "./functionsDeployHelper";
 import { logLabeledBullet, logLabeledWarning } from "../../utils";
 import { isDartEndpoint, classifyNonProductionEndpoints } from "./runtimes/dart/triggerSupport";
+import * as nodeValidate from "./runtimes/node/validate";
 import { getFunctionsConfig, prepareFunctionsUpload } from "./prepareFunctionsUpload";
 import { promptForFailurePolicies, promptForMinInstances } from "./prompts";
 import { needProjectId, needProjectNumber } from "../../projectUtils";
@@ -414,6 +415,14 @@ export async function prepare(
         "functions",
         `preparing ${clc.bold(sourceDirName)} directory for uploading...`,
       );
+      // Describes how the build server will treat the lockfile we are about to
+      // upload, so it belongs here rather than anywhere shared with the emulator
+      // or with commands that only inspect the source.
+      if (
+        backend.someEndpoint(wantBackend, (e) => supported.runtimeIsLanguage(e.runtime, "nodejs"))
+      ) {
+        nodeValidate.warnIfLockfileOmitsPeerDeps(sourceDir, localCfg.ignore);
+      }
     }
 
     if (backend.someEndpoint(wantBackend, (e) => e.platform === "gcfv2" || e.platform === "run")) {

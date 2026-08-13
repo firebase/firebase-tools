@@ -151,7 +151,74 @@ export function printErrors(summary: Summary): void {
 
   printIamErrors(errored);
   printQuotaErrors(errored);
+  printLockfileErrors(errored);
   printAbortedErrors(errored);
+}
+
+/**
+ * The shape a build failure arrives in once it has been wrapped for reporting.
+ * Every level is optional because the nesting depends on which layer failed.
+ */
+interface NestedError {
+  message?: string;
+  original?: unknown;
+  cause?: unknown;
+  context?: { body?: { error?: { message?: string } } };
+}
+
+/**
+ * Collects every message in an error's cause chain so we can pattern match on them.
+ *
+ * Walks rather than reaching into fixed paths, since how deeply a build failure
+ * is wrapped depends on which layer reported it.
+ */
+function errorMessages(err: NestedError, depth = 0): string {
+  if (!err || depth > 5) {
+    return "";
+  }
+  return [
+    err.message,
+    err.context?.body?.error?.message,
+    errorMessages(err.original as NestedError, depth + 1),
+    errorMessages(err.cause as NestedError, depth + 1),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** Print errors for builds that failed because `npm ci` rejected the lockfile. */
+function printLockfileErrors(results: Array<Required<DeployResult>>): void {
+  const hadLockfileError = results.find((r) => {
+    if (!(r.error instanceof DeploymentError)) {
+      return false;
+    }
+    const message = errorMessages(r.error);
+    if (!message.includes("npm ci")) {
+      return false;
+    }
+    // "Missing: x from lock file" and "Invalid: lock file's x does not satisfy y"
+    // are the two shapes npm uses for the same out-of-sync failure.
+    return message.includes("from lock file") || message.includes("lock file's");
+  });
+  if (!hadLockfileError) {
+    return;
+  }
+
+  logger.info("");
+  logger.info(
+    "The build failed because your lockfile is out of sync with package.json, so " +
+      "`npm ci` refused to install. Run " +
+      `${clc.bold("npm install")} in your functions directory and commit the updated lockfile.`,
+  );
+  logger.info("");
+  logger.info(
+    "If the lockfile already looks up to date, it was most likely resolved with " +
+      `${clc.bold("legacy-peer-deps")} enabled, which the build server does not use, so peer ` +
+      `dependencies it expects are absent. Check with ` +
+      `${clc.bold("npm config get legacy-peer-deps")} and regenerate the lockfile with the ` +
+      "setting off, or add an .npmrc to your functions directory containing only " +
+      `${clc.bold("legacy-peer-deps=true")} so the build server resolves the same way you do.`,
+  );
 }
 
 /** Print errors for failures to set invoker. */

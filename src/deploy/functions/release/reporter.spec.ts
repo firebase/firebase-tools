@@ -344,6 +344,132 @@ describe("reporter", () => {
       );
     });
 
+    // Captured verbatim from a failed Cloud Functions deploy, so the matcher is
+    // tested against the shape the Functions API actually returns.
+    it("prints lockfile errors", () => {
+      const rawError = new Error(
+        "Build failed: npm error code EUSAGE\nnpm error\nnpm error `npm ci` can only install " +
+          "packages when your package.json and package-lock.json or npm-shrinkwrap.json are in " +
+          "sync. Please update your lock file with `npm install` before continuing.\nnpm error\n" +
+          "npm error Missing: jest@29.7.0 from lock file\nnpm error Missing: @jest/core@29.7.0 " +
+          "from lock file",
+      );
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+      expect(infoStub).to.have.been.calledWithMatch("legacy-peer-deps");
+    });
+
+    it("finds lockfile errors nested in the original error", () => {
+      const rawError = new Error("Deployment failed") as Error & { original?: unknown };
+      rawError.original = {
+        message:
+          "npm ERR! `npm ci` can only install packages when your package.json and " +
+          "package-lock.json are in sync. Missing: p-limit@2.3.0 from lock file",
+      };
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
+    it("matches the invalid-version shape of the same failure", () => {
+      const rawError = new Error(
+        "Build failed: npm error `npm ci` can only install packages when your package.json " +
+          "and package-lock.json are in sync. npm error Invalid: lock file's ms@2.1.2 does " +
+          "not satisfy ms@2.1.3",
+      );
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
+    it("finds lockfile errors however deeply the build failure is wrapped", () => {
+      const rawError = new Error("Deployment failed") as Error & { original?: unknown };
+      rawError.original = {
+        original: {
+          context: {
+            body: {
+              error: {
+                message:
+                  "Build failed: npm error `npm ci` can only install packages when your " +
+                  "package.json and package-lock.json are in sync. Missing: jest@29.7.0 " +
+                  "from lock file",
+              },
+            },
+          },
+        },
+      };
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", rawError),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
+    it("does not print lockfile errors for unrelated failures", () => {
+      const summary: reporter.Summary = {
+        totalTime: 1_000,
+        results: [
+          {
+            endpoint: ENDPOINT,
+            durationMs: 1_000,
+            error: new reporter.DeploymentError(ENDPOINT, "create", new Error("Build failed")),
+          },
+        ],
+      };
+
+      reporter.printErrors(summary);
+      expect(infoStub).to.not.have.been.calledWithMatch(
+        "your lockfile is out of sync with package.json",
+      );
+    });
+
     it("prints aborted errors", () => {
       const summary: reporter.Summary = {
         totalTime: 1_000,
