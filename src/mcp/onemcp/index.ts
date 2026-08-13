@@ -19,7 +19,6 @@ export const ONEMCP_SERVERS: Partial<Record<ServerFeature, OneMcpServer>> = {
     dataconnectOrigin(),
     {
       requiresAuth: true,
-      requiresProject: true,
     },
     {
       allowedTools: [
