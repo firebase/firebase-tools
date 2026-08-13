@@ -4,7 +4,7 @@ import { Command } from "../command";
 import { needProjectNumber } from "../projectUtils";
 import { deleteDebugToken } from "../appcheck/api";
 import { AppCheckDebugOptions } from "../appcheck/types";
-import { getOrPromptProjectAndAppId } from "../appcheck/prompts";
+import { getOrPromptProjectAndAppId } from "./appcheck-prompts";
 import { requireAuth } from "../requireAuth";
 import { promiseWithSpinner, logSuccess } from "../utils";
 import { confirm } from "../prompt";
@@ -16,7 +16,10 @@ export const command = new Command("appcheck:debugtokens:delete <debugTokenId>")
   .option("--force", "attempt to delete debug token without prompting for confirmation")
   .before(requireAuth)
   .action(async (debugTokenId: string, options: AppCheckDebugOptions): Promise<void> => {
-    const { appId } = await getOrPromptProjectAndAppId(options);
+    const { appId } = await getOrPromptProjectAndAppId(
+      options,
+      "Select the app to delete a debug token from:",
+    );
     const projectNumber = await needProjectNumber(options);
 
     let debugTokenName = debugTokenId;

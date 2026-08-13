@@ -2,6 +2,7 @@ import * as mockfs from "mock-fs";
 import { expect } from "chai";
 import * as sinon from "sinon";
 import * as fs from "fs";
+import * as path from "path";
 import nock from "../test/helpers/nock";
 
 import * as api from "../api";
@@ -741,7 +742,7 @@ describe("App management", () => {
         desc: "Root of Android project",
         folderName: "android/",
         folderItems: { app: {} },
-        output: "android/app",
+        output: path.join("android", "app"),
       },
       {
         desc: "Inside app folder",
@@ -750,10 +751,16 @@ describe("App management", () => {
         output: "android/app",
       },
       {
+        desc: "Inside app folder without a src directory",
+        folderName: "android/app",
+        folderItems: { libs: {}, "build.gradle": "" },
+        output: "android/app",
+      },
+      {
         desc: "Folder with many modules",
         folderName: "android/",
         folderItems: { module1: {}, module2: {}, module3: {} },
-        output: "android/app",
+        output: path.join("android", "app"),
       },
     ];
     for (const c of cases) {
@@ -782,7 +789,7 @@ describe("App management", () => {
         desc: "Root of ios project with xcodeproj files",
         folderName: "ios/",
         folderItems: { "abc.xcodeproj": "Contents", abc: {} },
-        output: "ios/abc",
+        output: path.join("ios", "abc"),
       },
       {
         desc: "Folder with Info.plist",
