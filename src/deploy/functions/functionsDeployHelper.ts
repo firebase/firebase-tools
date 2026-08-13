@@ -35,19 +35,17 @@ export function endpointMatchesAnyFilter(
  * Supports filtering by codebase, exact function name, or hierarchical function group.
  */
 export function endpointMatchesFilter(endpoint: backend.Endpoint, filter: EndpointFilter): boolean {
-  // Only enforce codebase-based filtering when both the endpoint and filter provide them.
-  // This allows us to filter using idChunks across all codebases or target a specific codebase.
-  if (endpoint.codebase && filter.codebase) {
-    if (endpoint.codebase !== filter.codebase) {
+  // If the filter targets a specific codebase, verify that the endpoint belongs to it.
+  // Endpoints without an explicit codebase label default to the default codebase.
+  if (filter.codebase) {
+    const endpointCodebase = endpoint.codebase || DEFAULT_CODEBASE;
+    if (endpointCodebase !== filter.codebase) {
       return false;
     }
   }
 
   // If idChunks is not provided or empty, the filter matches all functions within the targeted codebase.
   if (!filter.idChunks || filter.idChunks.length === 0) {
-    if (filter.codebase) {
-      return (endpoint.codebase || DEFAULT_CODEBASE) === filter.codebase;
-    }
     return true;
   }
 
@@ -72,6 +70,7 @@ export function getCodebasesFromConfig(config: ValidatedSingle[] = []): string[]
 export function parseFunctionSelector(
   selector: string,
   config: ValidatedSingle[] = [],
+  defaultCodebase?: string,
 ): EndpointFilter[] {
   const fragments = selector.split(":");
   const target = fragments[0];
@@ -89,8 +88,14 @@ export function parseFunctionSelector(
   }
 
   if (fragments.length < 2) {
-    // It's not a codebase or kit instance name, assume it is a function id in default codebase
-    return [{ codebase: DEFAULT_CODEBASE, idChunks: fragments[0].split(/[-.]/) }];
+    // If not a known codebase name and no codebase prefix provided,
+    // apply defaultCodebase if specified (e.g. for deploy --only).
+    return [
+      {
+        ...(defaultCodebase ? { codebase: defaultCodebase } : {}),
+        idChunks: fragments[0].split(/[-.]/),
+      },
+    ];
   }
   return [
     {
@@ -137,7 +142,7 @@ export function getEndpointFilters(
     if (selector.startsWith("functions:")) {
       selector = selector.replace("functions:", "");
       if (selector.length > 0) {
-        filters.push(...parseFunctionSelector(selector, config));
+        filters.push(...parseFunctionSelector(selector, config, DEFAULT_CODEBASE));
       }
     }
   }

@@ -39,7 +39,9 @@ export const command = new Command("functions:delete [filters...]")
     const config = options.config?.src?.functions
       ? projectConfig.normalizeAndValidate(options.config.src.functions)
       : [];
-    const parsedFilters = filters.flatMap((f) => helper.parseFunctionSelector(f, config));
+    const parsedFilters = filters.flatMap((f) =>
+      helper.parseFunctionSelector(f, config, /* defaultCodebase= */ undefined),
+    );
 
     const context: args.Context = {
       projectId: needProjectId(options),

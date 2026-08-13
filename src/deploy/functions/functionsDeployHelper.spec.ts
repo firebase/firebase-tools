@@ -95,19 +95,26 @@ describe("functionsDeployHelper", () => {
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
-          codebase: "my-codebase",
+          codebase: DEFAULT_CODEBASE,
           idChunks: ["group", "subgroup", "func"],
         }),
       ).to.be.true;
       expect(
         helper.endpointMatchesFilter(func, {
           ...BASE_FILTER,
-          codebase: "my-codebase",
+          codebase: DEFAULT_CODEBASE,
           idChunks: ["group", "subgroup"],
         }),
       ).to.be.true;
       expect(helper.endpointMatchesFilter(func, { ...BASE_FILTER, idChunks: ["group"] })).to.be
         .true;
+      expect(
+        helper.endpointMatchesFilter(func, {
+          ...BASE_FILTER,
+          codebase: "non-default-codebase",
+          idChunks: ["group", "subgroup", "func"],
+        }),
+      ).to.be.false;
     });
 
     it("should match function matching ids given no codebase", () => {
@@ -220,6 +227,7 @@ describe("functionsDeployHelper", () => {
       desc: string;
       selector: string;
       config: ValidatedConfig;
+      defaultCodebase?: string;
       expected: EndpointFilter[];
     }
 
@@ -228,6 +236,7 @@ describe("functionsDeployHelper", () => {
         desc: "parses selector without codebase (not a codebase name)",
         selector: "func",
         config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
+        defaultCodebase: DEFAULT_CODEBASE,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
@@ -242,6 +251,7 @@ describe("functionsDeployHelper", () => {
           { source: "functions", codebase: DEFAULT_CODEBASE },
           { source: "other", codebase: "func" },
         ] as ValidatedConfig,
+        defaultCodebase: DEFAULT_CODEBASE,
         expected: [
           {
             codebase: "func",
@@ -252,6 +262,7 @@ describe("functionsDeployHelper", () => {
         desc: "parses group selector (with '.') without codebase",
         selector: "g1.func",
         config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
+        defaultCodebase: DEFAULT_CODEBASE,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
@@ -263,6 +274,7 @@ describe("functionsDeployHelper", () => {
         desc: "parses group selector (with '-') without codebase",
         selector: "g1-func",
         config: [{ source: "functions", codebase: DEFAULT_CODEBASE }] as ValidatedConfig,
+        defaultCodebase: DEFAULT_CODEBASE,
         expected: [
           {
             codebase: DEFAULT_CODEBASE,
@@ -295,11 +307,25 @@ describe("functionsDeployHelper", () => {
           },
         ],
       },
+      {
+        desc: "parses bare selector without default codebase",
+        selector: "foo",
+        config: [
+          { source: "functions", codebase: "codebaseA" },
+          { source: "other", codebase: "codebaseB" },
+        ] as ValidatedConfig,
+        defaultCodebase: undefined,
+        expected: [
+          {
+            idChunks: ["foo"],
+          },
+        ],
+      },
     ];
 
     for (const tc of testcases) {
       it(tc.desc, () => {
-        const actual = parseFunctionSelector(tc.selector, tc.config);
+        const actual = parseFunctionSelector(tc.selector, tc.config, tc.defaultCodebase);
 
         expect(actual.length).to.equal(tc.expected.length);
         expect(actual).to.deep.include.members(tc.expected);
