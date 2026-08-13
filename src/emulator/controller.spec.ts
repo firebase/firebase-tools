@@ -10,6 +10,7 @@ function createMockOptions(
   configValues: { [key: string]: any },
 ): Options {
   const config = {
+    projectDir: ".",
     get: (key: string) => configValues[key],
     has: (key: string) => !!configValues[key],
     src: {
@@ -20,6 +21,7 @@ function createMockOptions(
   return {
     only,
     config,
+    cwd: process.cwd(),
     project: "test-project",
   } as any;
 }
@@ -138,6 +140,20 @@ describe("EmulatorController", () => {
         functions: { source: "functions" },
       });
       expect(shouldStart(options, Emulators.EXTENSIONS)).to.be.true;
+    });
+
+    it("should not start apphosting emulator if start command is not set and no lockfile exists", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { rootDirectory: "./nonexistent-dir" },
+      });
+      expect(shouldStart(options, Emulators.APPHOSTING)).to.be.false;
+    });
+
+    it("should start apphosting emulator if startCommand is configured", () => {
+      const options = createMockOptions("apphosting", {
+        apphosting: { startCommand: "npm run dev" },
+      });
+      expect(shouldStart(options, Emulators.APPHOSTING)).to.be.true;
     });
   });
 }).timeout(2000);

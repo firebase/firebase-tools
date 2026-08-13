@@ -222,6 +222,36 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     return false;
   }
 
+  if (name === Emulators.APPHOSTING && emulatorInTargets) {
+    const apphostingEmulatorConfig = options.config.src.emulators?.[Emulators.APPHOSTING];
+    const startCommand =
+      apphostingEmulatorConfig?.startCommand || apphostingEmulatorConfig?.startCommandOverride;
+    if (!startCommand) {
+      const rootDirectory = apphostingEmulatorConfig?.rootDirectory;
+      let backendRoot: string;
+      try {
+        backendRoot = resolveProjectPath(options, rootDirectory ?? "./");
+      } catch {
+        backendRoot = path.resolve(
+          options.config?.projectDir || options.cwd || process.cwd(),
+          rootDirectory ?? "./",
+        );
+      }
+      const hasLockfile =
+        fs.existsSync(path.join(backendRoot, "package-lock.json")) ||
+        fs.existsSync(path.join(backendRoot, "yarn.lock")) ||
+        fs.existsSync(path.join(backendRoot, "pnpm-lock.yaml"));
+      if (!hasLockfile) {
+        EmulatorLogger.forEmulator(Emulators.APPHOSTING).logLabeled(
+          "ERROR",
+          Emulators.APPHOSTING,
+          "Failed to start App Hosting emulator: Failed to auto-detect your project's start command. Consider manually setting the start command by setting `firebase.json#emulators.apphosting.startCommand`",
+        );
+        return false;
+      }
+    }
+  }
+
   return emulatorInTargets;
 }
 
@@ -987,6 +1017,11 @@ export async function startAll(
         const dataConnectEmulator = new DataConnectEmulator(args);
         await startEmulator(dataConnectEmulator);
       } catch (err: unknown) {
+        try {
+          await EmulatorRegistry.stop(Emulators.DATACONNECT);
+        } catch {
+          // Ignore errors stopping failed instance
+        }
         dataconnectLogger.logLabeled(
           "ERROR",
           "dataconnect",
@@ -1077,6 +1112,11 @@ export async function startAll(
     try {
       await startEmulator(apphostingEmulator);
     } catch (err: unknown) {
+      try {
+        await EmulatorRegistry.stop(Emulators.APPHOSTING);
+      } catch {
+        // Ignore errors stopping failed instance
+      }
       apphostingLogger.logLabeled(
         "ERROR",
         Emulators.APPHOSTING,
