@@ -91,10 +91,13 @@ export async function cloudBuildEnabled(projectId: string): Promise<void> {
 async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<string, Set<string>>> {
   const secretsToSa: Record<string, Set<string>> = {};
   for (const e of backend.allEndpoints(b)) {
+    if (!e.secretEnvironmentVariables || e.secretEnvironmentVariables.length === 0) {
+      continue;
+    }
     // BUG BUG BUG? Test whether we've resolved e.serviceAccount to be project-relative
     // by this point.
     const sa = e.serviceAccount || ((await module.exports.defaultServiceAccount(e)) as string);
-    for (const s of e.secretEnvironmentVariables || []) {
+    for (const s of e.secretEnvironmentVariables) {
       const serviceAccounts = secretsToSa[s.secret] || new Set();
       serviceAccounts.add(sa);
       secretsToSa[s.secret] = serviceAccounts;
@@ -104,51 +107,18 @@ async function secretsToServiceAccounts(b: backend.Backend): Promise<Record<stri
 }
 
 /**
- * Ensures that runtime service account has access to the secrets.
- *
- * To avoid making more than one simultaneous call to setIamPolicy calls per secret, the function batches all
- * service account that requires access to it.
+ * Returns a mapping of secret names to service account emails that require access to them.
  */
-export async function secretAccess(
-  projectId: string,
-  wantBackend: backend.Backend,
-  haveBackend: backend.Backend,
-  dryRun?: boolean,
-) {
-  const ensureAccess = async (secret: string, serviceAccounts: string[]) => {
-    logLabeledBullet(
-      "functions",
-      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
-    );
-    if (dryRun) {
-      const check = await checkServiceAgentRole(
-        { name: secret, projectId },
-        serviceAccounts,
-        "roles/secretmanager.secretAccessor",
-      );
-      if (check.length) {
-        logLabeledBullet(
-          "functions",
-          `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
-        );
-      }
-    } else {
-      await ensureServiceAgentRole(
-        { name: secret, projectId },
-        serviceAccounts,
-        "roles/secretmanager.secretAccessor",
-      );
-    }
-    logLabeledSuccess(
-      "functions",
-      `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
-    );
-  };
-
+export async function secretsAccessDelta(args: {
+  projectId: string;
+  wantBackend: backend.Backend;
+  haveBackend: backend.Backend;
+}): Promise<Record<string, string[]>> {
+  const { wantBackend, haveBackend } = args;
   const wantSecrets = await secretsToServiceAccounts(wantBackend);
   const haveSecrets = await secretsToServiceAccounts(haveBackend);
 
-  // Remove secret/service account pairs that already exists to avoid unnecessary IAM calls.
+  // Remove secret/service account pairs that already exist to avoid unnecessary IAM calls.
   for (const [secret, serviceAccounts] of Object.entries(haveSecrets)) {
     for (const serviceAccount of serviceAccounts) {
       wantSecrets[secret]?.delete(serviceAccount);
@@ -158,9 +128,61 @@ export async function secretAccess(
     }
   }
 
-  const ensure = [];
+  const delta: Record<string, string[]> = {};
   for (const [secret, serviceAccounts] of Object.entries(wantSecrets)) {
-    ensure.push(ensureAccess(secret, Array.from(serviceAccounts)));
+    if (serviceAccounts.size > 0) {
+      delta[secret] = Array.from(serviceAccounts);
+    }
   }
-  await Promise.all(ensure);
+  return delta;
+}
+
+/**
+ * Checks secret access in dry run mode and logs messages for permissions to be granted.
+ */
+export async function checkSecretAccess(
+  projectId: string,
+  secretAccessDelta: Record<string, string[]>,
+): Promise<void> {
+  for (const [secret, serviceAccounts] of Object.entries(secretAccessDelta)) {
+    logLabeledBullet(
+      "functions",
+      `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
+    );
+    const check = await checkServiceAgentRole(
+      { name: secret, projectId },
+      serviceAccounts,
+      "roles/secretmanager.secretAccessor",
+    );
+    if (check.length) {
+      logLabeledBullet(
+        "functions",
+        `On your next deploy, ${clc.bold(serviceAccounts.join(", "))} will be granted access to secret ${clc.bold(secret)}.`,
+      );
+    }
+  }
+}
+
+/**
+ * Grants secret access for a single secret to specified service accounts.
+ */
+export async function grantSecretAccess(args: {
+  projectId: string;
+  secret: string;
+  serviceAccounts: string[];
+}): Promise<void> {
+  const { projectId, secret, serviceAccounts } = args;
+  logLabeledBullet(
+    "functions",
+    `ensuring ${clc.bold(serviceAccounts.join(", "))} access to secret ${clc.bold(secret)}.`,
+  );
+  await ensureServiceAgentRole(
+    { name: secret, projectId },
+    serviceAccounts,
+    "roles/secretmanager.secretAccessor",
+  );
+  logLabeledSuccess(
+    "functions",
+    `ensured ${clc.bold(serviceAccounts.join(", "))} access to ${clc.bold(secret)}.`,
+  );
 }
