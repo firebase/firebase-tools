@@ -206,11 +206,9 @@ export function shouldStart(options: Options, name: Emulators): boolean {
     !readFirebaseJson(options.config).length
   ) {
     EmulatorLogger.forEmulator(Emulators.DATACONNECT).logLabeled(
-      "WARN",
+      "ERROR",
       "dataconnect",
-      `The Data Connect emulator is configured but there is no Data Connect configuration in firebase.json. Have you run ${clc.bold(
-        "firebase init dataconnect",
-      )}?`,
+      `Failed to start Data Connect emulator: No valid Data Connect configuration detected in firebase.json`,
     );
     return false;
   }
@@ -912,11 +910,9 @@ export async function startAll(
     const config = readFirebaseJson(options.config);
     if (!config.length) {
       dataconnectLogger.logLabeled(
-        "WARN",
+        "ERROR",
         "dataconnect",
-        `No SQL Connect service found in firebase.json. Have you run ${clc.bold(
-          "firebase init dataconnect",
-        )}? Skipping Data Connect emulator startup.`,
+        `Failed to start Data Connect emulator: No valid Data Connect configuration detected in firebase.json`,
       );
     } else {
       if (config.length > 1) {
@@ -983,9 +979,9 @@ export async function startAll(
         await startEmulator(dataConnectEmulator);
       } catch (err: unknown) {
         dataconnectLogger.logLabeled(
-          "WARN",
+          "ERROR",
           "dataconnect",
-          `Failed to start Data Connect emulator: ${getErrMsg(err)}. Skipping Data Connect emulator.`,
+          `Failed to start Data Connect emulator: ${getErrMsg(err)}`,
         );
       }
     }
@@ -1073,9 +1069,9 @@ export async function startAll(
       await startEmulator(apphostingEmulator);
     } catch (err: unknown) {
       apphostingLogger.logLabeled(
-        "WARN",
+        "ERROR",
         Emulators.APPHOSTING,
-        `Failed to start App Hosting emulator: ${getErrMsg(err)}. Skipping App Hosting emulator.`,
+        `Failed to start App Hosting emulator: ${getErrMsg(err)}`,
       );
     }
   }
