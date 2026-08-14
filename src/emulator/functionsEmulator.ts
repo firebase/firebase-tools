@@ -616,8 +616,8 @@ export class FunctionsEmulator implements EmulatorInstance {
       };
       const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
       const discoveredBuild = await runtimeDelegate.discoverBuild(runtimeConfig, {
-        ...environment,
         ...userEnvs,
+        ...environment,
       });
       if (discoveredBuild.extensions && this.args.extensionsEmulator) {
         await this.args.extensionsEmulator.addDynamicExtensions(
