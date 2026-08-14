@@ -43,10 +43,21 @@ export async function getInternalIac(
   logger.debug(`Building ${runtimeDelegate.language} source`);
   await runtimeDelegate.build();
 
+  const userEnvOpt: functionsEnv.UserEnvsOpts = {
+    functionsSource: options.config.path(codebase.source),
+    projectId,
+    projectAlias: options.projectAlias,
+    projectDir: options.config.projectDir,
+  };
+  const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
   logger.debug(`Discovering ${runtimeDelegate.language} source`);
   const build = await runtimeDelegate.discoverBuild(
     {}, // Assume empty runtimeConfig
-    firebaseEnvs,
+    {
+      ...userEnvs,
+      ...firebaseEnvs,
+    },
   );
 
   return {

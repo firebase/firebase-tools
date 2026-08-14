@@ -804,6 +804,21 @@ export async function loadCodebases(
     logger.debug(`Building ${runtimeDelegate.language} source`);
     await runtimeDelegate.build();
 
+    const userEnvOpt: functionsEnv.UserEnvsOpts = {
+      functionsSource: sourceDir,
+      projectId: projectId,
+      projectAlias: options.projectAlias,
+      projectDir: options.config.projectDir,
+    };
+    if (isKitConfig(codebaseConfig) && codebase in codebaseConfig.instances) {
+      userEnvOpt.configDir = options.config.path(codebaseConfig.instances[codebase]);
+    } else {
+      proto.convertIfPresent(userEnvOpt, codebaseConfig, "configDir", (cd) =>
+        options.config.path(cd),
+      );
+    }
+    const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
+
     const firebaseEnvs = functionsEnv.loadFirebaseEnvs(
       firebaseConfig,
       projectId,
@@ -819,6 +834,7 @@ export async function loadCodebases(
       : { firebase: firebaseConfig };
 
     const discoveredBuild = await runtimeDelegate.discoverBuild(codebaseRuntimeConfig, {
+      ...userEnvs,
       ...firebaseEnvs,
       // Quota project is required when using GCP's Client-based APIs
       // Some GCP client SDKs, like Vertex AI, requires appropriate quota project setup
