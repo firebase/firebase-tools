@@ -12,6 +12,9 @@ import {
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
   isKitConfiguredForProject,
+  extractExistingFunctionsInfo,
+  addKitToConfig,
+  buildAndInstallKit,
 } from "./functions-kits-install";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
@@ -278,6 +281,195 @@ describe("functions:kits:install", () => {
         .returns(true);
 
       expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.true;
+    });
+  });
+
+  describe("extractExistingFunctionsInfo", () => {
+    it("should return empty sets when configFunctions is undefined or empty", () => {
+      const resUndefined = extractExistingFunctionsInfo(undefined);
+      expect(resUndefined.existingFunctions).to.deep.equal([]);
+      expect(resUndefined.existingKitIds.size).to.equal(0);
+      expect(resUndefined.existingCodebases.size).to.equal(0);
+      expect(resUndefined.existingInstanceIds.size).to.equal(0);
+
+      const resEmpty = extractExistingFunctionsInfo([]);
+      expect(resEmpty.existingFunctions).to.deep.equal([]);
+      expect(resEmpty.existingKitIds.size).to.equal(0);
+      expect(resEmpty.existingCodebases.size).to.equal(0);
+      expect(resEmpty.existingInstanceIds.size).to.equal(0);
+    });
+
+    it("should extract kit IDs, instance IDs, and codebases correctly", () => {
+      const functionsConfig = [
+        {
+          codebase: "my-codebase",
+          source: "functions",
+        },
+        {
+          kit: "my-kit",
+          source: "function-kits/my-kit",
+          instances: {
+            "inst-1": "function-kits/my-kit/config-inst-1",
+            "inst-2": "function-kits/my-kit/config-inst-2",
+          },
+        },
+      ];
+
+      const res = extractExistingFunctionsInfo(functionsConfig);
+      expect(res.existingCodebases.has("my-codebase")).to.be.true;
+      expect(res.existingKitIds.has("my-kit")).to.be.true;
+      expect(res.existingInstanceIds.has("inst-1")).to.be.true;
+      expect(res.existingInstanceIds.has("inst-2")).to.be.true;
+    });
+  });
+
+  describe("addKitToConfig", () => {
+    it("should add kit to empty config functions", () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const mockConfig = {
+        src: {},
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      addKitToConfig(
+        mockConfig,
+        "new-kit",
+        "new-instance",
+        "@scope/pkg",
+        "function-kits/new-kit",
+        "function-kits/new-kit/config-new-instance",
+      );
+
+      expect(writtenFiles["firebase.json"]).to.deep.equal({
+        functions: [
+          {
+            kit: "new-kit",
+            sourcePackage: { name: "@scope/pkg" },
+            source: "function-kits/new-kit",
+            instances: {
+              "new-instance": "function-kits/new-kit/config-new-instance",
+            },
+            predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+          },
+        ],
+      });
+    });
+
+    it("should append kit when functions is already an array", () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const existingEntry = {
+        codebase: "default",
+        source: "functions",
+      };
+      const mockConfig = {
+        src: {
+          functions: [existingEntry],
+        },
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      addKitToConfig(
+        mockConfig,
+        "new-kit",
+        "new-instance",
+        "@scope/pkg",
+        "function-kits/new-kit",
+        "function-kits/new-kit/config-new-instance",
+      );
+
+      const functions = (writtenFiles["firebase.json"] as { functions: unknown[] }).functions;
+      expect(functions).to.have.length(2);
+      expect(functions[0]).to.deep.equal(existingEntry);
+      expect(functions[1]).to.deep.equal({
+        kit: "new-kit",
+        sourcePackage: { name: "@scope/pkg" },
+        source: "function-kits/new-kit",
+        instances: {
+          "new-instance": "function-kits/new-kit/config-new-instance",
+        },
+        predeploy: ['npm --prefix "$RESOURCE_DIR" run build'],
+      });
+    });
+
+    it("should convert single object functions config to array and append", () => {
+      const writtenFiles: Record<string, unknown> = {};
+      const existingEntry = {
+        source: "functions",
+      };
+      const mockConfig = {
+        src: {
+          functions: existingEntry,
+        },
+        writeProjectFile: (file: string, content: unknown) => {
+          writtenFiles[file] = content;
+        },
+      } as unknown as Config;
+
+      addKitToConfig(
+        mockConfig,
+        "new-kit",
+        "new-instance",
+        "@scope/pkg",
+        "function-kits/new-kit",
+        "function-kits/new-kit/config-new-instance",
+      );
+
+      const functions = (writtenFiles["firebase.json"] as { functions: unknown[] }).functions;
+      expect(functions).to.have.length(2);
+      expect(functions[0]).to.deep.equal(existingEntry);
+    });
+  });
+
+  describe("buildAndInstallKit", () => {
+    it("should run npm install and npm run build without --ignore-scripts for first-party kit", async () => {
+      await buildAndInstallKit("/abs/path", false);
+
+      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith("npm", ["install"], "/abs/path");
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["run", "build"],
+        "/abs/path",
+      );
+    });
+
+    it("should run npm install with --ignore-scripts for third-party kit", async () => {
+      await buildAndInstallKit("/abs/path", true);
+
+      expect(wrapSpawnStub).to.have.been.calledTwice;
+      expect(wrapSpawnStub.firstCall).to.have.been.calledWith(
+        "npm",
+        ["install", "--ignore-scripts"],
+        "/abs/path",
+      );
+      expect(wrapSpawnStub.secondCall).to.have.been.calledWith(
+        "npm",
+        ["run", "build"],
+        "/abs/path",
+      );
+    });
+
+    it("should throw FirebaseError if npm install fails", async () => {
+      wrapSpawnStub.onFirstCall().rejects(new Error("npm install error"));
+
+      await expect(buildAndInstallKit("/abs/path", false)).to.be.rejectedWith(
+        FirebaseError,
+        /NPM install failed: npm install error/,
+      );
+    });
+
+    it("should throw FirebaseError if typescript build fails", async () => {
+      wrapSpawnStub.onFirstCall().resolves();
+      wrapSpawnStub.onSecondCall().rejects(new Error("tsc build error"));
+
+      await expect(buildAndInstallKit("/abs/path", false)).to.be.rejectedWith(
+        FirebaseError,
+        /TypeScript build failed: tsc build error/,
+      );
     });
   });
 
@@ -1144,6 +1336,7 @@ describe("functions:kits:install", () => {
 
         expect(writeProjectFileStub).to.not.have.been.called;
         expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/functions:/),
           sinon.match(/firebase deploy --only functions:inst-1 --project my-staging-project/),
         );
       });
@@ -1180,6 +1373,7 @@ describe("functions:kits:install", () => {
 
         expect(writeProjectFileStub).to.not.have.been.called;
         expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/functions:/),
           sinon.match(/firebase deploy --only functions:inst-1 --project <project-name>/),
         );
       });
@@ -1224,6 +1418,7 @@ describe("functions:kits:install", () => {
           }),
         );
         expect(loggerInfoStub).to.have.been.calledWith(
+          sinon.match(/functions:/),
           sinon.match(/firebase deploy --only functions:inst-2 --project prod-project/),
         );
       });
