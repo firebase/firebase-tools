@@ -625,7 +625,10 @@ function ImitateNode() {
   }
 
   return new Promise(resolve => {
-    const target = path.resolve(nodeArgs[0]);
+    let target = path.resolve(nodeArgs[0]);
+    if (!fs.existsSync(target) && fs.existsSync(target + ".js")) {
+      target = target + ".js";
+    }
     const cmd = fork(target, nodeArgs.slice(1), {
       stdio: "inherit",
       env: process.env
@@ -633,6 +636,10 @@ function ImitateNode() {
     cmd.on("close", code => {
       debug(`faux-node done.`);
       resolve(code);
+    });
+    cmd.on("error", err => {
+      console.error(err);
+      resolve(1);
     });
   });
 }
@@ -676,17 +683,17 @@ async function createRuntimeBinaries() {
   const runtimeBins = {
     /* Linux / OSX */
     firebase: `#!/bin/sh\nexec "${safeNodePath}" "$@"`,
-    node: `#!/bin/sh\nexec "${safeNodePath}" "${runtimeBinsPath}/node.js" "$@"`,
+    node: `#!/bin/sh\nexec "${safeNodePath}" is:node "$@"`,
     npm: `#!/bin/sh\nexec "${safeNodePath}" "${npmCliPath}" ${npmArgs.join(" ")} "$@"`,
-    shell: `#!/bin/sh\nexec "${safeNodePath}" "${runtimeBinsPath}/shell.js" "$@"`,
+    shell: `#!/bin/sh\nPATH="${runtimeBinsPath}:${installPath}/lib/node_modules/.bin:\$PWD/node_modules/.bin:\$PATH"\nexport PATH\nexec /bin/sh "$@"`,
 
     /* Windows */
     "firebase.bat": `@echo off\n"${safeNodePath}" %*`,
-    "node.bat": `@echo off\n"${safeNodePath}" ${runtimeBinsPath}\\node.js %*`,
+    "node.bat": `@echo off\n"${safeNodePath}" is:node %*`,
     "npm.bat": `@echo off\n"${safeNodePath}" "${npmCliPath}" ${npmArgs.join(
       " "
     )} %*`,
-    "shell.bat": `@echo off\n"${safeNodePath}" ${runtimeBinsPath}\\shell.js %*`,
+    "shell.bat": `@echo off\nset "PATH=${runtimeBinsPath};${installPath}\\lib\\node_modules\\.bin;%CD%\\node_modules\\.bin;%PATH%"\nif "%~1"=="" goto interactive\ncmd.exe /d /s /c %*\nexit /b %ERRORLEVEL%\n:interactive\ncmd.exe /k`,
 
     /* Runtime scripts */
     "shell.js": `${APPEND_TO_PATH_SRV}\n${GET_SAFE_PATH_SRV}\n(${runtime.Script_ShellJS.toString()})()`,

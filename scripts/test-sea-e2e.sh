@@ -252,6 +252,39 @@ EOF
     assert_contains "$out" "emulators:exec"
 '
 
+# Test 3.16: Runtime Node Wrapper Executions
+run_test "Runtime Node Binary Wrapper (is:node via runtime/node)" '
+    out=$("$HOME/.cache/firebase/runtime/node" -e "console.log(\"NODE_WRAPPER_TEST_OK\")")
+    assert_contains "$out" "NODE_WRAPPER_TEST_OK"
+'
+
+# Test 3.17: Runtime Shell Execution with npm -c -- format
+run_test "Runtime Shell Wrapper -c -- Command Handling" '
+    out=$("$HOME/.cache/firebase/runtime/shell" -c -- "node -e \"console.log(\\\"SHELL_DASH_DASH_OK\\\")\"")
+    assert_contains "$out" "SHELL_DASH_DASH_OK"
+'
+
+# Test 3.18: NPM Predeploy & Lifecycle Script Execution
+run_test "NPM Lifecycle & Predeploy Script Execution" '
+    tmp_lifecycle=$(mktemp -d /tmp/fb-lifecycle-test-XXXXXX)
+    cd "$tmp_lifecycle"
+    cat << "EOF" > package.json
+{
+  "name": "lifecycle-test",
+  "scripts": {
+    "lint": "node -e \"console.log(\\\"LINT_SUCCESS\\\")\"",
+    "build": "node -e \"console.log(\\\"BUILD_SUCCESS\\\")\""
+  }
+}
+EOF
+    lint_out=$("$HOME/.cache/firebase/runtime/npm" run lint)
+    build_out=$("$HOME/.cache/firebase/runtime/npm" run build)
+    cd /
+    rm -rf "$tmp_lifecycle"
+    assert_contains "$lint_out" "LINT_SUCCESS" && \
+    assert_contains "$build_out" "BUILD_SUCCESS"
+'
+
 # ==============================================================================
 # Summary
 # ==============================================================================
