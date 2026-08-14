@@ -5,7 +5,7 @@ import * as fs from "fs-extra";
 
 import { Command } from "../command";
 import { FirebaseError, getErrMsg } from "../error";
-import { FunctionsConfig, KitFunctionConfig } from "../firebaseConfig";
+import { KitFunctionConfig } from "../firebaseConfig";
 import { getProjectId } from "../projectUtils";
 import { logLabeledBullet } from "../utils";
 
@@ -188,19 +188,12 @@ export const command = new Command("functions:kits:install")
     const { packageName, version } = parseNpmPackageSpecifier(rawPkgName);
     validateNpmPackageName(packageName);
 
-    let existingFunctions: ValidatedSingle[] = [];
-    const configSrc = options.config.src as unknown as {
-      functions?: FunctionsConfig;
-      [key: string]: unknown;
-    };
+    const configSrc = options.config.src;
     const configFunctions = configSrc.functions;
-    if (configFunctions && (!Array.isArray(configFunctions) || configFunctions.length > 0)) {
-      try {
-        existingFunctions = normalizeAndValidate(configFunctions);
-      } catch (err: unknown) {
-        throw new FirebaseError(`Invalid existing functions configuration: ${getErrMsg(err)}`);
-      }
-    }
+    const existingFunctions: ValidatedSingle[] =
+      configFunctions && (!Array.isArray(configFunctions) || configFunctions.length > 0)
+        ? normalizeAndValidate(configFunctions)
+        : [];
 
     const existingKitIds = new Set<string>();
     const existingCodebases = new Set<string>();
