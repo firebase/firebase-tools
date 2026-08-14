@@ -418,9 +418,27 @@ describe("Fabricator", () => {
       const ep = endpoint();
 
       await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
-      expect(gcf.setInvokerUpdate).to.have.been.calledWith(ep.project, backend.functionName(ep), [
-        "public",
-      ]);
+      expect(gcf.setInvokerUpdate).to.have.been.calledWith(
+        ep.project,
+        backend.functionName(ep),
+        ["public"],
+        true,
+      );
+    });
+
+    it("writes an explicit private invoker on update", async () => {
+      gcf.updateFunction.resolves({ name: "op", type: "update", done: false });
+      poller.pollOperation.resolves();
+      gcf.setInvokerUpdate.resolves();
+      const ep = endpoint({ httpsTrigger: { invoker: ["private"] } });
+
+      await fab.updateV1Function(ep, new scraper.SourceTokenScraper());
+      expect(gcf.setInvokerUpdate).to.have.been.calledWith(
+        ep.project,
+        backend.functionName(ep),
+        ["private"],
+        false,
+      );
     });
 
     it("doesn't set invoker on non-http functions", async () => {
@@ -914,7 +932,12 @@ describe("Fabricator", () => {
       );
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["custom@"]);
+      expect(run.setInvokerUpdate).to.have.been.calledWith(
+        ep.project,
+        "service",
+        ["custom@"],
+        false,
+      );
     });
 
     it("sets invoker to private on Node updates when explicitly configured as private", async () => {
@@ -988,7 +1011,7 @@ describe("Fabricator", () => {
       const ep = endpoint({ httpsTrigger: {} }, { platform: "gcfv2" });
 
       await fab.updateV2Function(ep, new scraper.SourceTokenScraper());
-      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"]);
+      expect(run.setInvokerUpdate).to.have.been.calledWith(ep.project, "service", ["public"], true);
     });
 
     it("updates invoker to public on Node updates when explicitly null", async () => {
@@ -2000,7 +2023,7 @@ describe("Fabricator", () => {
       ]);
     });
 
-    it("does not update invoker for HTTPS functions when invoker is omitted (undefined)", async () => {
+    it("heals a missing invoker for HTTPS functions when invoker is omitted (undefined)", async () => {
       runv2.updateService.resolves({ uri: "https://service", name: "service" } as any);
       run.setInvokerUpdate.resolves();
 
@@ -2009,7 +2032,12 @@ describe("Fabricator", () => {
 
       await fab.updateRunFunction(update);
 
-      expect(run.setInvokerUpdate).to.not.have.been.called;
+      expect(run.setInvokerUpdate).to.have.been.calledWith(
+        ep.project,
+        sinon.match.string,
+        ["public"],
+        true,
+      );
     });
 
     it("updates invoker for HTTPS functions to private when explicitly configured as private", async () => {
