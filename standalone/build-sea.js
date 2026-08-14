@@ -71,10 +71,12 @@ function downloadFile(url, dest) {
       https
         .get(currentUrl, response => {
           if (response.statusCode === 301 || response.statusCode === 302) {
+            response.resume();
             get(response.headers.location);
             return;
           }
           if (response.statusCode !== 200) {
+            response.resume();
             reject(new Error(`Failed to download ${currentUrl}: HTTP ${response.statusCode}`));
             return;
           }
@@ -150,7 +152,7 @@ async function ensureRcodesignTool(tempDir) {
     return localRcodesign;
   } catch (err) {
     console.warn(`[build-sea] Warning: Could not download rcodesign: ${err.message}`);
-    return null;
+    return undefined;
   }
 }
 
@@ -221,9 +223,7 @@ async function main() {
   if (fs.existsSync(path.join(vendorDir, "node_modules"))) {
     // Production release pipeline mode
     console.log("[build-sea] Using vendor/node_modules from pipeline...");
-    execSync(
-      `cp -R "${path.join(vendorDir, "node_modules")}"/* "${targetNodeModules}/"`
-    );
+    fs.cpSync(path.join(vendorDir, "node_modules"), targetNodeModules, { recursive: true });
   } else {
     // Clean production package mode for local dev builds
     console.log("[build-sea] Preparing clean production bundle from local repo...");
@@ -249,9 +249,9 @@ async function main() {
         );
         const prodNodeModules = path.join(tmpPackDir, "node_modules");
         if (fs.existsSync(prodNodeModules)) {
-          execSync(
-            `cp -R "${prodNodeModules}"/* "${targetNodeModules}/" 2>/dev/null || true`
-          );
+          try {
+            fs.cpSync(prodNodeModules, targetNodeModules, { recursive: true });
+          } catch (e) {}
         }
       }
     } finally {
@@ -261,9 +261,9 @@ async function main() {
     // Also include standalone runtime dependencies (like chalk, npm)
     const rootNodeModules = path.join(standaloneDir, "node_modules");
     if (fs.existsSync(rootNodeModules)) {
-      execSync(
-        `cp -R "${rootNodeModules}"/* "${targetNodeModules}/" 2>/dev/null || true`
-      );
+      try {
+        fs.cpSync(rootNodeModules, targetNodeModules, { recursive: true });
+      } catch (e) {}
     }
   }
 
@@ -282,7 +282,20 @@ async function main() {
   }
 
   try {
-    execSync(`find "${assetsLibDir}" -name "*.node" -delete 2>/dev/null || true`, { stdio: "ignore" });
+    const removeNativeAddons = (dir) => {
+      if (!fs.existsSync(dir)) return;
+      const list = fs.readdirSync(dir);
+      for (const file of list) {
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+          removeNativeAddons(fullPath);
+        } else if (file.endsWith(".node")) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+    };
+    removeNativeAddons(assetsLibDir);
   } catch (e) {}
 
   execSync(

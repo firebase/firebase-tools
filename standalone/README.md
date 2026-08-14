@@ -50,18 +50,23 @@ flowchart TD
 ## Quick Start (Local Development)
 
 ### 1. Install Dependencies
+
 Inside the `standalone/` directory:
+
 ```bash
 npm install
 ```
 
 ### 2. Build Executable for Current Machine
+
 To quickly build a standalone binary for your current OS and architecture:
+
 ```bash
 npm run build:sea -- --current-only
 ```
 
 ### 3. Test the Compiled Binary
+
 ```bash
 # On Linux
 ./dist/firepit-linux --version
@@ -87,6 +92,7 @@ npm run build:sea
 ```
 
 Output directory: `dist/`
+
 - `dist/firepit-linux` (Linux x86_64 ELF)
 - `dist/firepit-macos-x64` (Intel Mach-O)
 - `dist/firepit-macos-arm64` (Apple Silicon Mach-O)
@@ -94,7 +100,9 @@ Output directory: `dist/`
 - `dist/firepit-win.exe` (Windows x86_64 PE)
 
 ### Customizing Node Binary or Version
+
 You can pass custom environment variables to `build-sea.js`:
+
 ```bash
 # Use a specific Node 26 executable as the compiler
 NODE_BIN=/path/to/node26/bin/node node build-sea.js
@@ -129,12 +137,12 @@ file dist/firebase-tools-macos
 
 Firepit embeds runtime scripts allowing `firebase-tools` to shell out to Node and NPM:
 
-* **`firebase is:node [script.js | -e <code> | -v]`**:
+- **`firebase is:node [script.js | -e <code> | -v]`**:
   Executes Node.js scripts or evaluates inline expressions using the embedded SEA Node engine.
   ```bash
   ./dist/firepit-linux is:node -e "console.log(process.version)"
   ```
-* **`firebase is:npm [npm args...]`**:
+- **`firebase is:npm [npm args...]`**:
   Executes npm commands using the embedded npm CLI tools.
   ```bash
   ./dist/firepit-linux is:npm --version

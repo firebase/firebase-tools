@@ -367,9 +367,10 @@ debug(`Welcome to firepit v${version}!`);
       if (spliceIndex === 2) {
         process.argv.splice(1, 1);
       }
+      process.argv[1] = resolvedScriptPath;
       try {
-        const scriptRequire = createRequire(resolvedScriptPath);
-        scriptRequire(resolvedScriptPath);
+        const Module = require("module");
+        Module.runMain();
       } catch (err) {
         console.error(err);
         process.exit(1);
@@ -625,13 +626,36 @@ function ImitateNode() {
   }
 
   return new Promise(resolve => {
-    let target = path.resolve(nodeArgs[0]);
-    if (!fs.existsSync(target) && fs.existsSync(target + ".js")) {
+    const execArgv = [];
+    let scriptIndex = 0;
+    while (scriptIndex < nodeArgs.length) {
+      const arg = nodeArgs[scriptIndex];
+      if (arg.startsWith("-")) {
+        execArgv.push(arg);
+        if (
+          (arg === "-r" || arg === "--require" || arg === "--import") &&
+          scriptIndex + 1 < nodeArgs.length
+        ) {
+          execArgv.push(nodeArgs[scriptIndex + 1]);
+          scriptIndex += 2;
+        } else {
+          scriptIndex += 1;
+        }
+      } else {
+        break;
+      }
+    }
+
+    const scriptPath = nodeArgs[scriptIndex];
+    const scriptArgs = nodeArgs.slice(scriptIndex + 1);
+    let target = scriptPath ? path.resolve(scriptPath) : "";
+    if (target && !fs.existsSync(target) && fs.existsSync(target + ".js")) {
       target = target + ".js";
     }
-    const cmd = fork(target, nodeArgs.slice(1), {
+    const cmd = fork(target, scriptArgs, {
       stdio: "inherit",
-      env: process.env
+      env: process.env,
+      execArgv
     });
     cmd.on("close", code => {
       debug(`faux-node done.`);
