@@ -83,9 +83,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
   it("should throw 403 if API key is not provided", async () => {
     await authApi()
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
-      .query({
-        /* no API "key" */
-      })
+      .query({/* no API "key" */})
       .send({ returnSecureToken: true })
       .then((res) => {
         expectStatusCode(403, res);
@@ -120,9 +118,7 @@ describeAuthEmulator("authentication", ({ authApi }) => {
       .post("/identitytoolkit.googleapis.com/v1/accounts:signUp")
       // This has no effect on the request handling, since it is not Bearer.
       .set("Authorization", "Basic YWxhZGRpbjpvcGVuc2VzYW1l")
-      .query({
-        /* no API "key" */
-      })
+      .query({/* no API "key" */})
       .send({ returnSecureToken: true })
       .then((res) => {
         expectStatusCode(403, res);

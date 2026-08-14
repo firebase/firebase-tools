@@ -94,11 +94,7 @@ export interface Config {
         useCustomDomain: boolean;
         pendingCustomDomain: string;
         customDomainState:
-          | "VERIFICATION_STATE_UNSPECIFIED"
-          | "NOT_STARTED"
-          | "IN_PROGRESS"
-          | "FAILED"
-          | "SUCCEEDED";
+          "VERIFICATION_STATE_UNSPECIFIED" | "NOT_STARTED" | "IN_PROGRESS" | "FAILED" | "SUCCEEDED";
         domainVerificationRequestTime: string;
       };
       revertSecondFactorAdditionTemplate: EmailTemplate;

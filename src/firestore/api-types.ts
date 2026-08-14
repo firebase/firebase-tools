@@ -282,9 +282,7 @@ type CustomerManagedEncryptionOptions = {
   kmsKeyName: string;
 };
 export type EncryptionConfig =
-  | UseCustomerManagedEncryption
-  | UseSourceEncryption
-  | UseGoogleDefaultEncryption;
+  UseCustomerManagedEncryption | UseSourceEncryption | UseGoogleDefaultEncryption;
 
 export interface PITRSnapshot {
   database: string;

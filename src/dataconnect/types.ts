@@ -86,11 +86,7 @@ export interface Diff {
 }
 
 export type WarningLevel =
-  | "LOG_ONLY"
-  | "INTERACTIVE_ACK"
-  | "REQUIRE_ACK"
-  | "REQUIRE_FORCE"
-  | "ALWAYS_REQUIRED";
+  "LOG_ONLY" | "INTERACTIVE_ACK" | "REQUIRE_ACK" | "REQUIRE_FORCE" | "ALWAYS_REQUIRED";
 
 export interface Workaround {
   description: string;

@@ -286,11 +286,7 @@ export interface RolloutPolicy {
 }
 
 export type RolloutProgression =
-  | "PROGRESSION_UNSPECIFIED"
-  | "IMMEDIATE"
-  | "LINEAR"
-  | "EXPONENTIAL"
-  | "PAUSE";
+  "PROGRESSION_UNSPECIFIED" | "IMMEDIATE" | "LINEAR" | "EXPONENTIAL" | "PAUSE";
 
 export interface RolloutStage {
   progression: RolloutProgression;
@@ -406,10 +402,7 @@ interface RpcStatus {
 }
 
 type CustomDomainState =
-  | "CUSTOM_DOMAIN_STATE_UNSPECIFIED"
-  | "HOST_STATE"
-  | "OWNERSHIP_STATE"
-  | "CERT_STATE";
+  "CUSTOM_DOMAIN_STATE_UNSPECIFIED" | "HOST_STATE" | "OWNERSHIP_STATE" | "CERT_STATE";
 
 type HostState =
   | "HOST_STATE_UNSPECIFIED"

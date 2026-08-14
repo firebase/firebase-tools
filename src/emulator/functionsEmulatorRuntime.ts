@@ -232,9 +232,12 @@ async function resolveDeveloperNodeModule(name: string): Promise<ModuleResolutio
 
 async function assertResolveDeveloperNodeModule(name: string): Promise<SuccessfulModuleResolution> {
   const resolution = await resolveDeveloperNodeModule(name);
-  if (
-    !(resolution.installed && resolution.declared && resolution.resolution && resolution.version)
-  ) {
+  if (!(
+    resolution.installed &&
+    resolution.declared &&
+    resolution.resolution &&
+    resolution.version
+  )) {
     throw new Error(
       `Assertion failure: could not fully resolve ${name}: ${JSON.stringify(resolution)}`,
     );

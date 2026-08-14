@@ -506,9 +506,7 @@ describeAuthEmulator("accounts:query", ({ authApi }) => {
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:query`)
       .set("Authorization", "Bearer owner")
-      .send({
-        /* returnUserInfo is true by default */
-      })
+      .send({/* returnUserInfo is true by default */})
       .then((res) => {
         expectStatusCode(200, res);
         expect(res.body.recordsCount).to.equal("2"); // string (int64 format)

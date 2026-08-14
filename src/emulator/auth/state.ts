@@ -525,9 +525,7 @@ export abstract class ProjectState {
   }
 
   queryUsers(
-    filter: {
-      /* no filter supported yet */
-    },
+    filter: {/* no filter supported yet */},
     options: {
       order: "ASC" | "DESC";
       sortByField: "localId";

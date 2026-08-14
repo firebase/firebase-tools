@@ -67,11 +67,7 @@ export interface SecretVolume {
 }
 
 export type CloudFunctionStatus =
-  | "ACTIVE"
-  | "OFFLINE"
-  | "DEPLOY_IN_PROGRESS"
-  | "DELETE_IN_PROGRESS"
-  | "UNKNOWN";
+  "ACTIVE" | "OFFLINE" | "DEPLOY_IN_PROGRESS" | "DELETE_IN_PROGRESS" | "UNKNOWN";
 export type SecurityLevel = "SECURE_ALWAYS" | "SECURE_OPTIONAL";
 
 export interface FailurePolicy {

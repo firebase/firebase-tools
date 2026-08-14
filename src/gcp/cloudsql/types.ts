@@ -16,9 +16,7 @@ export interface IpConfiguration {
   }[];
   allocatedIpRange?: string;
   sslMode?:
-    | "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
-    | "ENCRYPTED_ONLY"
-    | "TRUSTED_CLIENT_CERTIFICATE_REQUIRED";
+    "ALLOW_UNENCRYPTED_AND_ENCRYPTED" | "ENCRYPTED_ONLY" | "TRUSTED_CLIENT_CERTIFICATE_REQUIRED";
   pscConfig?: {
     allowedConsumerProjects: string[];
     pscEnabled: boolean;

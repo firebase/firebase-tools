@@ -22,13 +22,7 @@ export function expr(string: string): Expression {
  * Valid types for HCL attributes.
  */
 export type Value =
-  | string
-  | number
-  | boolean
-  | null
-  | Expression
-  | Value[]
-  | { [key: string]: Value };
+  string | number | boolean | null | Expression | Value[] | { [key: string]: Value };
 
 /**
  * Represents a generic HCL block.

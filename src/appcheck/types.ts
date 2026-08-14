@@ -40,11 +40,7 @@ export interface AppCheckServiceOptions extends Options {
 
 /** The ways an app can prove it is real. */
 export type ProviderType =
-  | "app-attest"
-  | "device-check"
-  | "play-integrity"
-  | "recaptcha-enterprise"
-  | "recaptcha-v3";
+  "app-attest" | "device-check" | "play-integrity" | "recaptcha-enterprise" | "recaptcha-v3";
 
 /** The app platforms App Check can attest. */
 export type AppCheckPlatform = "IOS" | "ANDROID" | "WEB";

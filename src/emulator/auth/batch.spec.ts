@@ -237,9 +237,7 @@ describeAuthEmulator("accounts:batchCreate", ({ authApi }) => {
     await authApi()
       .post(`/identitytoolkit.googleapis.com/v1/projects/${PROJECT_ID}/accounts:batchCreate`)
       .set("Authorization", "Bearer owner")
-      .send({
-        /* no users */
-      })
+      .send({/* no users */})
       .then((res) => {
         expectStatusCode(400, res);
         expect(res.body.error).to.have.property("message").equals("MISSING_USER_ACCOUNT");

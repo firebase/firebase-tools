@@ -117,12 +117,7 @@ export interface Service {
 }
 
 export type ServiceOutputFields =
-  | "generation"
-  | "createTime"
-  | "updateTime"
-  | "creator"
-  | "lastModifier"
-  | "etag";
+  "generation" | "createTime" | "updateTime" | "creator" | "lastModifier" | "etag";
 
 assertImplements<ServiceOutputFields, RecursiveKeyOf<Service>>();
 

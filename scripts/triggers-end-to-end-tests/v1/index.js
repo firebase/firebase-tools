@@ -34,41 +34,41 @@ const PUBSUB_TOPIC = "test-topic";
 
 admin.initializeApp();
 
-exports.firestoreReaction = functions.firestore
-  .document(START_DOCUMENT_NAME)
-  .onWrite(async (/* change, ctx */) => {
-    console.log(FIRESTORE_FUNCTION_LOG);
-    /*
-     * Write back a completion timestamp to the firestore emulator. The test
-     * driver program checks for this by querying the firestore emulator
-     * directly.
-     */
-    const ref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_firestore");
-    await ref.set({ done: new Date().toISOString() });
+exports.firestoreReaction = functions.firestore.document(START_DOCUMENT_NAME).onWrite(async (
+  /* change, ctx */
+) => {
+  console.log(FIRESTORE_FUNCTION_LOG);
+  /*
+   * Write back a completion timestamp to the firestore emulator. The test
+   * driver program checks for this by querying the firestore emulator
+   * directly.
+   */
+  const ref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_firestore");
+  await ref.set({ done: new Date().toISOString() });
 
-    /*
-     * Write a completion marker to the firestore emulator. This exercise
-     * cross-emulator communication.
-     */
-    const dbref = admin.database().ref(END_DOCUMENT_NAME + "_from_firestore");
-    await dbref.set({ done: new Date().toISOString() });
+  /*
+   * Write a completion marker to the firestore emulator. This exercise
+   * cross-emulator communication.
+   */
+  const dbref = admin.database().ref(END_DOCUMENT_NAME + "_from_firestore");
+  await dbref.set({ done: new Date().toISOString() });
 
-    return true;
-  });
+  return true;
+});
 
-exports.rtdbReaction = functions.database
-  .ref(START_DOCUMENT_NAME)
-  .onWrite(async (/* change, ctx */) => {
-    console.log(RTDB_FUNCTION_LOG);
+exports.rtdbReaction = functions.database.ref(START_DOCUMENT_NAME).onWrite(async (
+  /* change, ctx */
+) => {
+  console.log(RTDB_FUNCTION_LOG);
 
-    const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
-    await ref.set({ done: new Date().toISOString() });
+  const ref = admin.database().ref(END_DOCUMENT_NAME + "_from_database");
+  await ref.set({ done: new Date().toISOString() });
 
-    const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
-    await firestoreref.set({ done: new Date().toISOString() });
+  const firestoreref = admin.firestore().doc(END_DOCUMENT_NAME + "_from_database");
+  await firestoreref.set({ done: new Date().toISOString() });
 
-    return true;
-  });
+  return true;
+});
 
 exports.pubsubReaction = functions.pubsub.topic(PUBSUB_TOPIC).onPublish((msg /* , ctx */) => {
   console.log(PUBSUB_FUNCTION_LOG);
