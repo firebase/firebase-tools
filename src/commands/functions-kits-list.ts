@@ -7,7 +7,6 @@ import * as Table from "cli-table3";
 
 export const command = new Command("functions:kits:list")
   .description("list all the kits that are installed in your firebase.json")
-  .option("--only-deployed", "unimplemented")
   .action((options: Options) => {
     const firebaseConfig = options.config;
     const validatedConfig = firebaseConfig.src;
