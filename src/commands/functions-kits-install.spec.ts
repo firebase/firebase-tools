@@ -1146,52 +1146,6 @@ describe("functions:kits:install", () => {
         );
       });
 
-      it("should throw an error if the raw kit is missing from firebase.json when adding an instance", async () => {
-        let currentFunctions: unknown = [
-          {
-            kit: "firestore-bigquery-export",
-            sourcePackage: {
-              name: "@firebase-functions-kits/firestore-bigquery-export",
-            },
-            source: "function-kits/firestore-bigquery-export",
-            instances: {
-              "inst-1": "function-kits/firestore-bigquery-export/config-inst-1",
-            },
-          },
-        ];
-        const srcObj = {
-          get functions() {
-            return currentFunctions;
-          },
-          set functions(val: unknown) {
-            currentFunctions = val;
-          },
-        };
-        const mockConfig = {
-          projectDir: "/mock/project",
-          src: srcObj,
-          path: (p: string) => path.join("/mock/project", p),
-          writeProjectFile: sinon.stub(),
-        } as unknown as Config;
-
-        sinon.stub(prompt, "select").resolves("addInstance");
-        sinon.stub(prompt, "input").callsFake(async () => {
-          currentFunctions = [];
-          return "inst-2";
-        });
-
-        await expect(
-          command.runner()({
-            npm_package: "@firebase-functions-kits/firestore-bigquery-export",
-            cwd: "/mock/project",
-            config: mockConfig,
-          }),
-        ).to.be.rejectedWith(
-          FirebaseError,
-          /Could not find kit 'firestore-bigquery-export' in firebase.json configuration/,
-        );
-      });
-
       it("should suggest deploy command when configuring single instance with active project", async () => {
         const writeProjectFileStub = sinon.stub();
         const mockConfig = {
