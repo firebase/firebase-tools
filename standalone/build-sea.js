@@ -267,6 +267,14 @@ async function main() {
     }
   }
 
+  // Explicitly ensure all template files (including .ts templates) are bundled
+  const repoTemplatesDir = path.join(repoRootDir, "templates");
+  const targetPkgTemplates = path.join(targetNodeModules, "firebase-tools", "templates");
+  if (fs.existsSync(repoTemplatesDir) && fs.existsSync(path.join(targetNodeModules, "firebase-tools"))) {
+    fs.cpSync(repoTemplatesDir, targetPkgTemplates, { recursive: true });
+    console.log("[build-sea] Explicitly synced templates into packaged firebase-tools");
+  }
+
   // Clean build-only / dev tools from packaged assets
   if (fs.existsSync(targetNodeModules)) {
     fs.rmSync(path.join(targetNodeModules, "esbuild"), { recursive: true, force: true });
@@ -278,7 +286,7 @@ async function main() {
   } catch (e) {}
 
   execSync(
-    `tar -czf "${assetsTarPath}" --exclude="*.map" --exclude="*.md" --exclude="*.ts" --exclude="*.d.ts" --exclude="test" --exclude="tests" --exclude="docs" -C "${assetsDir}" lib`,
+    `tar -czf "${assetsTarPath}" --exclude="*.map" --exclude="*.md" --exclude="*.d.ts" --exclude="test" --exclude="tests" --exclude="docs" -C "${assetsDir}" lib`,
     { stdio: "inherit" }
   );
   fs.rmSync(assetsDir, { recursive: true, force: true });

@@ -306,27 +306,59 @@ debug(`Welcome to firepit v${version}!`);
       });
     }
 
+    function isJsScript(filePath) {
+      if (!filePath) return false;
+      try {
+        const resolved = path.resolve(filePath);
+        if (resolved === path.resolve(process.execPath)) return false;
+        if (!fs.existsSync(resolved)) return false;
+        const stat = fs.statSync(resolved);
+        if (!stat.isFile()) return false;
+
+        const ext = path.extname(resolved).toLowerCase();
+        const base = path.basename(resolved).toLowerCase();
+        if (base === "firebase" || base === "firebase.exe") return false;
+        if ([".js", ".cjs", ".mjs"].includes(ext)) return true;
+
+        // Check for binary headers (ELF, Mach-O, Windows PE)
+        const fd = fs.openSync(resolved, "r");
+        const buf = Buffer.alloc(4);
+        fs.readSync(fd, buf, 0, 4, 0);
+        fs.closeSync(fd);
+
+        if (buf[0] === 0x7f && buf.toString("ascii", 1, 4) === "ELF") return false;
+        if (buf.toString("ascii", 0, 2) === "MZ") return false;
+        const magic32 = buf.readUInt32BE(0);
+        if (
+          magic32 === 0xfeedface ||
+          magic32 === 0xfeedfacf ||
+          magic32 === 0xcafebabe ||
+          magic32 === 0xcefaedfe ||
+          magic32 === 0xcffaedfe
+        ) {
+          return false;
+        }
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+
     let resolvedScriptPath;
     let spliceIndex;
     const { createRequire } = require("module");
     const fsRequire = createRequire(process.execPath);
 
-    if (process.argv[1] && path.resolve(process.argv[1]) !== path.resolve(process.execPath)) {
+    if (process.argv[1] && isJsScript(process.argv[1])) {
       try {
-        const p = path.resolve(process.argv[1]);
-        if (fs.existsSync(p) && fs.statSync(p).isFile()) {
-          resolvedScriptPath = fsRequire.resolve(p);
-          spliceIndex = 1;
-        }
+        resolvedScriptPath = fsRequire.resolve(path.resolve(process.argv[1]));
+        spliceIndex = 1;
       } catch (err) {}
     }
-    if (!resolvedScriptPath && process.argv[2]) {
+    if (!resolvedScriptPath && process.argv[2] && isJsScript(process.argv[2])) {
       try {
-        const p = path.resolve(process.argv[2]);
-        if (fs.existsSync(p) && fs.statSync(p).isFile()) {
-          resolvedScriptPath = fsRequire.resolve(p);
-          spliceIndex = 2;
-        }
+        resolvedScriptPath = fsRequire.resolve(path.resolve(process.argv[2]));
+        spliceIndex = 2;
       } catch (err) {}
     }
 
@@ -637,17 +669,21 @@ async function createRuntimeBinaries() {
     `--globalconfig=${path.join(runtimeBinsPath, "npmrc")}`
   ];
 
+  const npmCliPath =
+    FindTool("npm/bin/npm-cli")[0] ||
+    path.join(installPath, "lib/node_modules/npm/bin/npm-cli.js");
+
   const runtimeBins = {
     /* Linux / OSX */
-    firebase: `"${safeNodePath}" "$@"`,
-    node: `"${safeNodePath}" ${runtimeBinsPath}/node.js "$@"`,
-    npm: `"${safeNodePath}" "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(" ")} "$@"`,
-    shell: `"${safeNodePath}" ${runtimeBinsPath}/shell.js "$@"`,
+    firebase: `#!/bin/sh\nexec "${safeNodePath}" "$@"`,
+    node: `#!/bin/sh\nexec "${safeNodePath}" "${runtimeBinsPath}/node.js" "$@"`,
+    npm: `#!/bin/sh\nexec "${safeNodePath}" "${npmCliPath}" ${npmArgs.join(" ")} "$@"`,
+    shell: `#!/bin/sh\nexec "${safeNodePath}" "${runtimeBinsPath}/shell.js" "$@"`,
 
     /* Windows */
     "firebase.bat": `@echo off\n"${safeNodePath}" %*`,
     "node.bat": `@echo off\n"${safeNodePath}" ${runtimeBinsPath}\\node.js %*`,
-    "npm.bat": `@echo off\n"${safeNodePath}" "${FindTool("npm/bin/npm-cli")[0]}" ${npmArgs.join(
+    "npm.bat": `@echo off\n"${safeNodePath}" "${npmCliPath}" ${npmArgs.join(
       " "
     )} %*`,
     "shell.bat": `@echo off\n"${safeNodePath}" ${runtimeBinsPath}\\shell.js %*`,
@@ -716,6 +752,7 @@ async function SetupFirebaseTools() {
         fs.unlinkSync(tarballPath);
       } catch (e) {}
       debug("Embedded assets extracted successfully.");
+      await createRuntimeBinaries();
     } else {
       debug("Using embedded cache for quick install...");
       shell.cp("-R", path.join(__dirname, "vendor/*"), nodeModulesPath);
