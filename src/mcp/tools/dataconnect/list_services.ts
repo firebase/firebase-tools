@@ -57,7 +57,7 @@ export const list_services = tool(
           client.listSchemas(`projects/${projectId}/locations/-/services/-`),
           client.listConnectors(`projects/${projectId}/locations/-/services/-`),
         ]);
-        host.logger.debug(`${services}\n${schemas}\n${connectors}`);
+        host.logger.debug(JSON.stringify({ services, schemas, connectors }));
 
         for (const s of services) {
           const k = s.name.split("/").slice(2, 6).join("/");
