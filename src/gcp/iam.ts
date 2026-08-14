@@ -103,8 +103,11 @@ export async function getServiceAccount(
   projectId: string,
   serviceAccountName: string,
 ): Promise<ServiceAccount> {
+  const email = serviceAccountName.includes("@")
+    ? serviceAccountName
+    : `${serviceAccountName}@${projectId}.iam.gserviceaccount.com`;
   const response = await apiClient.get<ServiceAccount>(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com`,
+    `/projects/${projectId}/serviceAccounts/${email}`,
   );
   return response.body;
 }
@@ -116,16 +119,16 @@ export async function createServiceAccountKey(
   projectId: string,
   serviceAccountName: string,
 ): Promise<ServiceAccountKey> {
+  const email = serviceAccountName.includes("@")
+    ? serviceAccountName
+    : `${serviceAccountName}@${projectId}.iam.gserviceaccount.com`;
   const response = await apiClient.post<
     { keyAlgorithm: string; privateKeyType: string },
     ServiceAccountKey
-  >(
-    `/projects/${projectId}/serviceAccounts/${serviceAccountName}@${projectId}.iam.gserviceaccount.com/keys`,
-    {
-      keyAlgorithm: "KEY_ALG_UNSPECIFIED",
-      privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
-    },
-  );
+  >(`/projects/${projectId}/serviceAccounts/${email}/keys`, {
+    keyAlgorithm: "KEY_ALG_UNSPECIFIED",
+    privateKeyType: "TYPE_GOOGLE_CREDENTIALS_FILE",
+  });
   return response.body;
 }
 

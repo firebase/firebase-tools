@@ -2,6 +2,7 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as build from "./build";
 import * as prepare from "./prepare";
+import * as experiments from "../../experiments";
 import * as runtimes from "./runtimes";
 import * as backend from "./backend";
 import * as ensureApiEnabled from "../../ensureApiEnabled";
@@ -21,6 +22,18 @@ import { Options } from "../../options";
 import { ValidatedConfig } from "../../functions/projectConfig";
 import { BEFORE_CREATE_EVENT, BEFORE_SIGN_IN_EVENT } from "../../functions/events/v1";
 import { latest } from "./runtimes/supported";
+
+describe("partition env helper", () => {
+  it("splits a Record into two based on which keys begin with FIREBASE_SECRET_REF", () => {
+    const input = {
+      foo: "bar",
+      FIREBASE_SECRET_REF_baz: "quux",
+    } as Record<string, string>;
+    const { userEnvs: userEnvs, secretRefs: secretRefs } = prepare.partitionUserEnvs(input);
+    expect(userEnvs).to.deep.equal({ foo: "bar" });
+    expect(secretRefs).to.deep.equal({ baz: "quux" });
+  });
+});
 
 describe("prepare", () => {
   const ENDPOINT_BASE: Omit<backend.Endpoint, "httpsTrigger"> = {
@@ -88,6 +101,100 @@ describe("prepare", () => {
       const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
 
       expect(Object.keys(builds.codebase.endpoints)).to.deep.equal(["my-prefix-test"]);
+    });
+
+    it("should automatically apply the kit instance ID as the prefix for kit function builds", async () => {
+      experiments.setEnabled("kits", true);
+      discoverBuildStub.callsFake(() =>
+        Promise.resolve(
+          build.of({
+            test: {
+              platform: "gcfv2",
+              entryPoint: "test",
+              project: "project",
+              runtime: latest("nodejs"),
+              httpsTrigger: {},
+            },
+          }),
+        ),
+      );
+      try {
+        const config: ValidatedConfig = [
+          {
+            kit: "my-kit",
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            source: "source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+            runtime: "nodejs22",
+          },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        const builds = await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+        expect(Object.keys(builds["inst-alpha"].endpoints)).to.deep.equal(["kit-inst-alpha-test"]);
+        expect(Object.keys(builds["inst-beta"].endpoints)).to.deep.equal(["kit-inst-beta-test"]);
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
+    });
+
+    it("should provide FIREBASE_KIT_INSTANCE_ID to discovery envs only for kit instances", async () => {
+      experiments.setEnabled("kits", true);
+      try {
+        const config: ValidatedConfig = [
+          {
+            kit: "my-kit",
+            sourcePackage: { name: "@firebase-functions-kits/my-kit" },
+            source: "source",
+            instances: {
+              "inst-alpha": "config/inst-alpha",
+              "inst-beta": "config/inst-beta",
+            },
+            runtime: "nodejs22",
+          },
+          { source: "source-default", codebase: "default", runtime: "nodejs22" },
+        ];
+        const options = {
+          config: {
+            path: (p: string) => p,
+          },
+          projectId: "project",
+        } as unknown as Options;
+        const firebaseConfig = { projectId: "project" };
+        const runtimeConfig = {};
+
+        await prepare.loadCodebases(config, options, firebaseConfig, runtimeConfig);
+
+        expect(discoverBuildStub).to.have.been.calledThrice;
+
+        // Match discovery envs for the first kit instance
+        expect(discoverBuildStub.firstCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-alpha",
+        });
+
+        // Match discovery envs for the second kit instance
+        expect(discoverBuildStub.secondCall.args[1]).to.deep.include({
+          FIREBASE_KIT_INSTANCE_ID: "inst-beta",
+        });
+
+        // Match discovery envs for the default codebase (should NOT include FIREBASE_KIT_INSTANCE_ID)
+        expect(discoverBuildStub.thirdCall.args[1]).to.not.have.property(
+          "FIREBASE_KIT_INSTANCE_ID",
+        );
+      } finally {
+        experiments.setEnabled("kits", null);
+      }
     });
 
     it("should preserve runtime from codebase config", async () => {
@@ -604,6 +711,62 @@ describe("prepare", () => {
 
       expect(want.endpoints["firestoreTrigger"].region).to.deep.equal(["us-central1"]);
       expect(want.endpoints["storageTrigger"].region).to.deep.equal(["us-central1"]);
+    });
+  });
+
+  describe("checkKitForGen1", () => {
+    it("should do nothing for regular codebases with gen1 functions", () => {
+      const localCfg = { source: "src", codebase: "default" };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv1",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should do nothing for kit instances with only gen2 functions", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        test: {
+          platform: "gcfv2",
+          entryPoint: "test",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.not.throw();
+    });
+
+    it("should throw a FirebaseError if a kit instance contains a gen1 function", () => {
+      const localCfg = { source: "src", kit: "my-kit", instances: { "my-kit-instance": "dir" } };
+      const wantBuild = build.of({
+        validFunc: {
+          platform: "gcfv2",
+          entryPoint: "validFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+        invalidFunc: {
+          platform: "gcfv1",
+          entryPoint: "invalidFunc",
+          project: "project",
+          runtime: latest("nodejs"),
+          httpsTrigger: {},
+        },
+      });
+
+      expect(() => prepare.checkKitForGen1(localCfg, wantBuild)).to.throw(
+        'Function kit "my-kit" contains gen1 functions, which are not supported in kits. Please remove this kit or upgrade these functions to gen2.',
+      );
     });
   });
 
@@ -1204,7 +1367,6 @@ describe("prepare", () => {
     it("should mutate endpoints to use managed service account when enrolling in declarative security", async () => {
       const e: backend.Endpoint = {
         ...ENDPOINT,
-        serviceAccount: "default",
       };
       const want = backend.of(e);
       want.requiredRoles = ["roles/viewer"];
@@ -1236,8 +1398,39 @@ describe("prepare", () => {
 
       expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
       expect(result.haveRolesEtag).to.equal("salt-etag");
-      expect(e.serviceAccount).to.equal("default");
+      expect(e.serviceAccount).to.be.null;
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
+    });
+
+    it("should return existingManagedSA without checking permissions when wantBackend is empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
+    it("should return empty security object and not create SA when both want and have backends are empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result).to.deep.equal({});
+      expect(testIamPermissionsStub).to.not.have.been.called;
     });
 
     it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {
@@ -1269,7 +1462,7 @@ describe("prepare", () => {
       await prepare.discoverSecurityDetails("default", want, have, "project");
 
       expect(eCustom.serviceAccount).to.equal("custom-sa@project.iam.gserviceaccount.com");
-      expect(eManaged.serviceAccount).to.equal("default");
+      expect(eManaged.serviceAccount).to.be.null;
     });
 
     it("should throw error if user combines custom SA and declarative security", async () => {
@@ -1296,7 +1489,6 @@ describe("prepare", () => {
       });
       const e: backend.Endpoint = {
         ...ENDPOINT,
-        serviceAccount: "default",
       };
       const want = backend.of(e);
       want.requiredRoles = ["roles/viewer"];
@@ -1304,6 +1496,48 @@ describe("prepare", () => {
 
       await expect(prepare.discoverSecurityDetails("default", want, have, "project")).to.be
         .rejected;
+    });
+
+    it("should throw error if attempting to enroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+      };
+      const want = backend.of(e);
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
+    });
+
+    it("should throw error if attempting to unenroll during a partially filtered deploy", async () => {
+      const e: backend.Endpoint = {
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      };
+      const want = backend.of(e);
+      const have = backend.of({
+        ...e,
+        labels: { ...e.labels },
+      });
+
+      await expect(
+        prepare.discoverSecurityDetails("default", want, have, "project", [
+          { codebase: "default", idChunks: ["myFunc"] },
+        ]),
+      ).to.be.rejectedWith(
+        FirebaseError,
+        /To ensure a whole codebase is migrated cleanly, you may not deploy only part of a codebase when opting into or out of declarative security/,
+      );
     });
   });
 });

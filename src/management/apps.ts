@@ -207,26 +207,42 @@ export function checkForApps(apps: AppMetadata[], appPlatform: AppPlatform): voi
     );
   }
 }
-async function selectAppInteractively(
+/**
+ * Interactively prompts the user to select a Firebase App from a list.
+ */
+export async function selectAppInteractively(
   apps: AppMetadata[],
-  appPlatform: AppPlatform,
+  appPlatform: AppPlatform = AppPlatform.ANY,
+  options?: {
+    message?: string;
+  },
 ): Promise<AppMetadata> {
   checkForApps(apps, appPlatform);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const choices = apps.map((app: any) => {
+  const choices = apps.map((app) => {
+    let displayText = app.displayName || app.appId;
+
+    if (!app.displayName) {
+      if (app.platform === AppPlatform.IOS && "bundleId" in app) {
+        displayText = (app as IosAppMetadata).bundleId;
+      } else if (app.platform === AppPlatform.ANDROID && "packageName" in app) {
+        displayText = (app as AndroidAppMetadata).packageName;
+      }
+    }
+
     return {
-      name:
-        `${app.displayName || app.bundleId || app.packageName}` +
-        ` - ${app.appId} (${app.platform})`,
+      name: `${displayText} - ${app.appId} (${app.platform})`,
       value: app,
     };
   });
 
-  return await select({
-    message:
-      `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
-      "app to get the configuration data:",
+  const message =
+    options?.message ??
+    `Select the ${appPlatform === AppPlatform.ANY ? "" : appPlatform + " "}` +
+      "app to get the configuration data:";
+
+  return await select<AppMetadata>({
+    message,
     choices,
   });
 }
@@ -776,9 +792,8 @@ export async function findIntelligentPathForAndroid(appDir: string, options: App
    * android/build.gradle // if it's this, choose app
    * android/app/build.gradle // if it's this, choose current dir.
    */
-  const paths = appDir.split("/");
   // For when app/build.gradle is found
-  if (paths[0] === "app") {
+  if (path.basename(appDir) === "app") {
     return appDir;
   } else {
     const currentFiles: fs.Dirent[] = await fs.readdir(appDir, { withFileTypes: true });

@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import * as sinon from "sinon";
 
+import { FirebaseError } from "../../../error";
 import * as fabricator from "./fabricator";
 import * as reporter from "./reporter";
 import * as executor from "./executor";
@@ -23,6 +24,8 @@ import * as identityPlatformNS from "../../../gcp/identityPlatform";
 import { AuthBlockingService } from "../services/auth";
 import { deepCopy } from "@angular-devkit/core";
 import * as gce from "../../../gcp/computeEngine";
+import * as iam from "../../../gcp/iam";
+import * as resourcemanager from "../../../gcp/resourceManager";
 
 describe("Fabricator", () => {
   // Stub all GCP APIs to make sure this test is hermetic
@@ -124,7 +127,9 @@ describe("Fabricator", () => {
     },
     appEngineLocation: "us-central1",
     projectNumber: "1234567",
+    projectId: "test-project",
   };
+
   let fab: fabricator.Fabricator;
   beforeEach(() => {
     fab = new fabricator.Fabricator(ctorArgs);
@@ -1602,7 +1607,12 @@ describe("Fabricator", () => {
       const updateEndpoint = sinon.stub(fab, "updateEndpoint");
       updateEndpoint.callsFake(fakeUpsert);
 
-      await fab.applyPlan({ "us-central1": changes });
+      await fab.applyPlan({
+        default: {
+          plannedBackend: backend.of(ep1, ep2, ep3),
+          regionalChangesets: { "us-central1": changes },
+        },
+      });
     });
 
     it("handles errors and wraps them in results", async () => {
@@ -1615,7 +1625,13 @@ describe("Fabricator", () => {
         endpointsToSkip: [],
       };
 
-      const summary = await fab.applyPlan({ "us-central1": changes });
+      const summary = await fab.applyPlan({
+        default: {
+          plannedBackend: backend.of(ep),
+          regionalChangesets: { "us-central1": changes },
+        },
+      });
+
       const results = summary.results;
       expect(results[0].error).to.be.instanceOf(reporter.DeploymentError);
       expect(results[0].error?.message).to.match(/create function/);
@@ -1668,7 +1684,13 @@ describe("Fabricator", () => {
       endpointsToSkip: [],
     };
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: {
+        plannedBackend: backend.of(createEP),
+        regionalChangesets: { "us-central1": changes },
+      },
+    });
+
     const results = summary.results;
     const result = results.find((r) => r.endpoint.id === deleteEP.id);
     expect(result?.error).to.be.instanceOf(reporter.AbortedDeploymentError);
@@ -1695,7 +1717,13 @@ describe("Fabricator", () => {
     const deleteEndpoint = sinon.stub(fab, "deleteEndpoint");
     deleteEndpoint.resolves();
 
-    const summary = await fab.applyPlan({ "us-central1": changes });
+    const summary = await fab.applyPlan({
+      default: {
+        plannedBackend: backend.of(createEP, updateEP, skipEP),
+        regionalChangesets: { "us-central1": changes },
+      },
+    });
+
     const results = summary.results;
     expect(createEndpoint).to.have.been.calledWithMatch(createEP);
     expect(updateEndpoint).to.have.been.calledWithMatch(update);
@@ -1713,17 +1741,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1742,17 +1775,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { region: "us-central1", id: "A" });
       const ep2 = endpoint({ httpsTrigger: {} }, { region: "us-west1", id: "B" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [],
-          endpointsToUpdate: [],
-          endpointsToDelete: [ep2],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [],
+              endpointsToUpdate: [],
+              endpointsToDelete: [ep2],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -1789,17 +1827,22 @@ describe("Fabricator", () => {
       const ep1 = endpoint({ httpsTrigger: {} }, { id: "A", region: "us-central1" });
       const ep2 = endpoint({ httpsTrigger: {} }, { id: "B", region: "us-west1" });
       const plan: planner.DeploymentPlan = {
-        "us-central1": {
-          endpointsToCreate: [ep1],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
-        },
-        "us-west1": {
-          endpointsToCreate: [ep2],
-          endpointsToUpdate: [],
-          endpointsToDelete: [],
-          endpointsToSkip: [],
+        default: {
+          plannedBackend: backend.of(ep1, ep2),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [ep1],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+            "us-west1": {
+              endpointsToCreate: [ep2],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
         },
       };
 
@@ -2003,6 +2046,196 @@ describe("Fabricator", () => {
       await fab.deleteRunFunction(ep);
 
       expect(runv2.deleteService).to.have.been.called;
+    });
+  });
+
+  describe("declarative security phases", () => {
+    let createServiceAccountStub: sinon.SinonStub;
+    let addServiceAccountRolesStub: sinon.SinonStub;
+    let removeServiceAccountRolesStub: sinon.SinonStub;
+    let deleteServiceAccountStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      createServiceAccountStub = sinon.stub(iam, "createServiceAccount").resolves();
+      addServiceAccountRolesStub = sinon.stub(resourcemanager, "addServiceAccountRoles").resolves();
+      removeServiceAccountRolesStub = sinon
+        .stub(resourcemanager, "removeServiceAccountRoles")
+        .resolves();
+      deleteServiceAccountStub = sinon.stub(iam, "deleteServiceAccount").resolves();
+      sinon.stub(iam, "testIamPermissions").resolves({ passed: true } as any);
+    });
+
+    it("should create SA and grant roles in grantNewRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+
+      await fab.grantNewRoles(plan, "default");
+
+      expect(createServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123",
+        "Managed by Firebase CLI for codebase default",
+        "Firebase Functions default",
+      );
+      expect(addServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/viewer"],
+        true,
+      );
+    });
+
+    it("should remove roles or delete SA in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToRemove: ["roles/oldRole"],
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(removeServiceAccountRolesStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        ["roles/oldRole"],
+      );
+    });
+
+    it("should delete SA if serviceAccountToDelete is set in removeOldRoles", async () => {
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToDelete: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      };
+
+      await fab.removeOldRoles(plan, "default");
+
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should clean up newly created SA if role assignment fails in grantNewRoles", async () => {
+      addServiceAccountRolesStub.rejects(new Error("Permission denied"));
+
+      const plan: planner.CodebasePlan = {
+        plannedBackend: backend.empty(),
+        regionalChangesets: {},
+        serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        rolesToAdd: ["roles/viewer"],
+      };
+
+      await expect(fab.grantNewRoles(plan, "default")).to.be.rejectedWith(FirebaseError);
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should clean up newly created SA on 100% deployment failure", async () => {
+      const endpoint: backend.Endpoint = {
+        id: "fn1",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn1",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+
+      const deploymentPlan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(endpoint),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [endpoint],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+          serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+          managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        },
+      };
+
+      // Stub applyUpserts to simulate a failed deployment for fn1
+      sinon.stub(fab, "applyUpserts").resolves([
+        {
+          endpoint,
+          durationMs: 100,
+          error: new Error("Deploy failed"),
+        },
+      ]);
+
+      const summary = await fab.applyPlan(deploymentPlan);
+
+      expect(summary.results.some((r) => r.error)).to.be.true;
+      expect(deleteServiceAccountStub).to.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
+    });
+
+    it("should NOT clean up SA on partial deployment success", async () => {
+      const endpoint1: backend.Endpoint = {
+        id: "fn1",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn1",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+      const endpoint2: backend.Endpoint = {
+        id: "fn2",
+        region: "us-central1",
+        project: "test-project",
+        platform: "gcfv1",
+        runtime: "nodejs18",
+        entryPoint: "fn2",
+        httpsTrigger: {},
+        codebase: "default",
+      };
+
+      const deploymentPlan: planner.DeploymentPlan = {
+        default: {
+          plannedBackend: backend.of(endpoint1, endpoint2),
+          regionalChangesets: {
+            "us-central1": {
+              endpointsToCreate: [endpoint1, endpoint2],
+              endpointsToUpdate: [],
+              endpointsToDelete: [],
+              endpointsToSkip: [],
+            },
+          },
+          serviceAccountToCreate: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+          managedServiceAccount: "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+        },
+      };
+
+      // Stub applyUpserts so endpoint1 succeeds and endpoint2 fails
+      sinon.stub(fab, "applyUpserts").resolves([
+        { endpoint: endpoint1, durationMs: 100 },
+        { endpoint: endpoint2, durationMs: 100, error: new Error("Deploy failed") },
+      ]);
+
+      await fab.applyPlan(deploymentPlan);
+
+      expect(deleteServiceAccountStub).to.not.have.been.calledWith(
+        "test-project",
+        "firebase-fn-123@my-proj.iam.gserviceaccount.com",
+      );
     });
   });
 });
