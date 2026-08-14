@@ -111,6 +111,9 @@ export async function ensurePermissionsOrSetRole(
     )}. Attempting to bind role ${role}`,
   );
   revokePermissions(projectId, accountEmail, iamResult.missing);
+  if (iamResult.allowed && iamResult.allowed.length > 0) {
+    cachePermissions(projectId, accountEmail, iamResult.allowed);
+  }
 
   const policy = await getIamPolicy(projectId);
   const memberName = accountEmail.endsWith(".gserviceaccount.com")

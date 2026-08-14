@@ -309,4 +309,35 @@ describe("ensurePermissionsOrSetRole", () => {
       ],
     ).to.equal(1710000000000);
   });
+
+  it("should cache allowed permissions even if testIamPermissions fails and setIamPolicy fails", async () => {
+    testIamPermissionsStub.resolves({
+      passed: false,
+      allowed: ["resourcemanager.projects.get"],
+      missing: ["mcp.tools.call", "resourcemanager.projects.list"],
+    });
+    getIamPolicyStub.resolves({
+      bindings: [
+        {
+          role: "roles/viewer",
+          members: ["user:test@example.com"],
+        },
+      ],
+    });
+    setIamPolicyStub.rejects(new Error("Permission denied"));
+
+    await expect(
+      ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole),
+    ).to.be.rejectedWith(FirebaseError);
+
+    // allowed permission should be cached
+    expect(
+      cacheStore["iamPermissionCache"]["test-project"]["test@example.com"][
+        "resourcemanager.projects.get"
+      ],
+    ).to.equal(1710000000000);
+    // missing permissions should not be cached
+    expect(cacheStore["iamPermissionCache"]["test-project"]["test@example.com"]["mcp.tools.call"])
+      .to.be.undefined;
+  });
 });
