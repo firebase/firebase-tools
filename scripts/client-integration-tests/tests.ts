@@ -57,7 +57,7 @@ describe("deployHosting", () => {
   }).timeout(20 * 1e3); // Deploying takes several steps.
 });
 
-describe("apps:list", function (this) {
+describe("apps:list", function (this: Mocha.Suite) {
   this.timeout(15 * 1000);
   this.retries(2);
 
@@ -79,7 +79,7 @@ describe("apps:list", function (this) {
   });
 });
 
-describe("apps:sdkconfig", function (this) {
+describe("apps:sdkconfig", function (this: Mocha.Suite) {
   this.timeout(15 * 1000);
   this.retries(2);
 

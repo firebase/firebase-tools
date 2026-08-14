@@ -78,13 +78,23 @@ export class CLIProcess {
     }
 
     if (process.platform === "win32" && p.pid) {
+      const stopped = new Promise<void>((resolve) => {
+        if (p.exitCode !== null || p.signalCode !== null) {
+          resolve();
+          return;
+        }
+        p.once("exit", () => resolve());
+      }).then(() => {
+        this.process = undefined;
+      });
+
       try {
         execSync(`taskkill /pid ${p.pid} /T /F`);
       } catch {
-        // ignore if process already exited
+        this.process = undefined;
+        return Promise.resolve();
       }
-      this.process = undefined;
-      return Promise.resolve();
+      return stopped;
     }
 
     const stopped = new Promise<void>((resolve) => {
