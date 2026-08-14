@@ -1,4 +1,4 @@
-import { ChildProcess } from "child_process";
+import { ChildProcess, execSync } from "child_process";
 import * as spawn from "cross-spawn";
 
 export class CLIProcess {
@@ -74,6 +74,16 @@ export class CLIProcess {
   stop(): Promise<void> {
     const p = this.process;
     if (!p) {
+      return Promise.resolve();
+    }
+
+    if (process.platform === "win32" && p.pid) {
+      try {
+        execSync(`taskkill /pid ${p.pid} /T /F`);
+      } catch {
+        // ignore if process already exited
+      }
+      this.process = undefined;
       return Promise.resolve();
     }
 

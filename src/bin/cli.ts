@@ -94,7 +94,9 @@ export function cli(pkg: any) {
   logger.debug("-".repeat(70));
   logger.debug();
 
-  fetchMOTD();
+  if (!process.env.CI) {
+    fetchMOTD();
+  }
 
   process.on("exit", (code) => {
     code = typeof process.exitCode === "number" ? process.exitCode : code;

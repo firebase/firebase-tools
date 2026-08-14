@@ -299,6 +299,10 @@ jobs:
           - node-version: "24.18"
             script: "npm run test:functions-discover"
     steps:
+      - name: Disable Windows Defender for workspace
+        run: Set-MpPreference -ExclusionPath "${{ github.workspace }}"
+        shell: powershell
+
       - name: Setup Java JDK
         uses: actions/setup-java@860f60056505705214d223b91ed7a30f173f6142 # ratchet:actions/setup-java@v3.3.0
         with:
@@ -329,7 +333,8 @@ jobs:
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        run: dir "*.log" /s/b | type
+        shell: cmd
+        run: dir "*debug.log" /s /b 2>nul && (for /f "delims=" %f in ('dir "*debug.log" /s /b') do @type "%f") || echo No debug logs found.
 
   check-package-lock:
     runs-on: ubuntu-latest
