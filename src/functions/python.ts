@@ -79,16 +79,20 @@ export function killProcessTree(pid: number): void {
 /**
  * Signals that should trigger cleanup of tracked children. SIGTERM is what CI
  * runners send on job cancellation or timeout, which is the case that used to
- * leave orphaned admin servers behind.
+ * leave orphaned admin servers behind. SIGINT and SIGQUIT are terminal-generated
+ * and so only reach the foreground process group: a detached child never sees
+ * them on its own.
  */
-const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP"];
+const CLEANUP_SIGNALS: NodeJS.Signals[] = ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"];
 
 const trackedChildren = new Set<cp.ChildProcess>();
 const signalHandlers = new Map<NodeJS.Signals, () => void>();
 
 function killAllTrackedChildren(): void {
   for (const child of trackedChildren) {
-    if (child.pid) {
+    // A child that has already exited may have had its pid reaped and recycled
+    // as the leader of some unrelated process group by now.
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
       killProcessTree(child.pid);
     }
   }

@@ -59,7 +59,8 @@ describe("virtual env child tracking", () => {
     sandbox = sinon.createSandbox();
     killStub = sandbox.stub(process, "kill");
     child = new EventEmitter() as ChildProcess;
-    Object.assign(child, { pid: 4242 });
+    // A live ChildProcess reports null for both, not undefined.
+    Object.assign(child, { pid: 4242, exitCode: null, signalCode: null });
   });
 
   afterEach(() => {
@@ -89,6 +90,36 @@ describe("virtual env child tracking", () => {
     // Once for the child's process group, once to re-raise on ourselves.
     expect(killStub).to.have.been.calledWithExactly(-4242, "SIGKILL");
     expect(killStub).to.have.been.calledWithExactly(process.pid, "SIGTERM");
+  });
+
+  itPosix("force-kills tracked children on SIGQUIT", () => {
+    // Ctrl-\ reaches the foreground process group only, and a detached child is
+    // in its own group, so nothing kills it unless this handler does.
+    const coListener = (): void => undefined;
+    process.on("SIGQUIT", coListener);
+    try {
+      trackVirtualEnvChild(child);
+      process.emit("SIGQUIT", "SIGQUIT");
+
+      expect(killStub).to.have.been.calledOnceWithExactly(-4242, "SIGKILL");
+    } finally {
+      process.removeListener("SIGQUIT", coListener);
+    }
+  });
+
+  itPosix("does not signal a child that has already exited", () => {
+    const coListener = (): void => undefined;
+    process.on("SIGTERM", coListener);
+    try {
+      trackVirtualEnvChild(child);
+      // Reaped by now, so the pid may belong to an unrelated process group.
+      Object.assign(child, { exitCode: 0 });
+      process.emit("SIGTERM", "SIGTERM");
+
+      expect(killStub).to.not.have.been.calledWith(-4242);
+    } finally {
+      process.removeListener("SIGTERM", coListener);
+    }
   });
 
   it("restores default signal behaviour once nothing is left to clean up", () => {

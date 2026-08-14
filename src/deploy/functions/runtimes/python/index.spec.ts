@@ -52,12 +52,25 @@ describe("PythonDelegate", () => {
     let runWithVirtualEnvStub: sinon.SinonStub;
     let killProcessTreeStub: sinon.SinonStub;
     let fetchStub: sinon.SinonStub;
+    let destroyStdoutStub: sinon.SinonStub;
+    let destroyStderrStub: sinon.SinonStub;
+    let unrefStub: sinon.SinonStub;
     let delegate: python.Delegate;
 
     beforeEach(() => {
       sandbox = sinon.createSandbox();
       child = new EventEmitter() as ChildProcess;
-      Object.assign(child, { pid: 4242 });
+      destroyStdoutStub = sandbox.stub();
+      destroyStderrStub = sandbox.stub();
+      unrefStub = sandbox.stub();
+      Object.assign(child, {
+        pid: 4242,
+        exitCode: null,
+        signalCode: null,
+        stdout: Object.assign(new EventEmitter(), { destroy: destroyStdoutStub }),
+        stderr: Object.assign(new EventEmitter(), { destroy: destroyStderrStub }),
+        unref: unrefStub,
+      });
       runWithVirtualEnvStub = sandbox.stub(pythonUtils, "runWithVirtualEnv").returns(child);
       killProcessTreeStub = sandbox.stub(pythonUtils, "killProcessTree");
       // Tracking installs real process-level signal handlers; not under test here.
@@ -122,6 +135,21 @@ describe("PythonDelegate", () => {
       await shutdown;
 
       expect(settled).to.be.true;
+    });
+
+    it("releases the surviving child's handles so it cannot hold the CLI open", async () => {
+      fetchStub.rejects(Object.assign(new Error("connect ETIMEDOUT"), { code: "ETIMEDOUT" }));
+      const killProcess = await delegate.serveAdmin(ADMIN_PORT, {});
+
+      const shutdown = killProcess();
+      await clock.tickAsync(SHUTDOWN_TIMEOUT_MS);
+      await shutdown;
+
+      // A detached child and its pipes each keep the event loop alive, which
+      // would move the hang from the deploy to process exit rather than fix it.
+      expect(destroyStdoutStub).to.have.been.called;
+      expect(destroyStderrStub).to.have.been.called;
+      expect(unrefStub).to.have.been.called;
     });
 
     it("does not reject when the child errors, so the real discovery error survives", async () => {

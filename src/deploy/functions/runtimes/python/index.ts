@@ -26,8 +26,9 @@ import { IS_WINDOWS } from "../../../../utils";
 // How long to wait for the admin server to shut down in response to
 // /__/quitquitquit before force-killing it.
 const FORCE_KILL_DELAY_MS = 10_000;
-// Hard cap on the whole shutdown sequence. A wedged server that survives even
-// SIGKILL of its process group must not be able to hang the deploy.
+// Cap on how long to keep waiting for the child once the shutdown request has
+// settled. A wedged server that survives even SIGKILL of its process group must
+// not be able to hang the deploy.
 const SHUTDOWN_TIMEOUT_MS = 15_000;
 // A server that is bound but not accepting connections will never answer, so the
 // shutdown request needs its own timeout rather than relying on the socket layer.
@@ -206,7 +207,8 @@ export class Delegate implements runtimes.RuntimeDelegate {
 
   /**
    * Shut down a discovery admin server, escalating from an HTTP request to a
-   * force-kill of its process group, and never blocking indefinitely.
+   * force-kill of its process group. Bounded by QUITQUITQUIT_TIMEOUT_MS followed
+   * by SHUTDOWN_TIMEOUT_MS, since the timers only start once the request settles.
    *
    * `exited` must have been attached at spawn time; see serveAdmin().
    */
@@ -242,8 +244,13 @@ export class Delegate implements runtimes.RuntimeDelegate {
       if (exitedCleanly) {
         untrackVirtualEnvChild(childProcess);
       } else {
-        // Deliberately left tracked, so the process-exit handler gets one more
-        // attempt at it when the CLI finishes.
+        // A detached child and its pipes both hold the CLI's event loop open, so
+        // leaving it alive would hang the deploy at process exit instead of here.
+        // Releasing them is also what lets the 'exit' handler run at all, and the
+        // child stays tracked so that handler gets one last attempt at it.
+        childProcess.stdout?.destroy();
+        childProcess.stderr?.destroy();
+        childProcess.unref();
         logger.debug(
           `Discovery admin server on port ${port} survived being force-killed. ` +
             `Continuing without it; it may need to be cleaned up manually.`,
