@@ -54,9 +54,9 @@ describe("ensurePermissionsOrSetRole", () => {
     expect(cacheStore["iamPermissionCache"]).to.deep.equal({
       "test-project": {
         "test@example.com": {
-          "mcp.tools.call": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.get": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.list": { valid: true, timestamp: 1710000000000 },
+          "mcp.tools.call": 1710000000000,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
         },
       },
     });
@@ -66,9 +66,9 @@ describe("ensurePermissionsOrSetRole", () => {
     cacheStore["iamPermissionCache"] = {
       "test-project": {
         "test@example.com": {
-          "mcp.tools.call": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.get": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.list": { valid: true, timestamp: 1710000000000 },
+          "mcp.tools.call": 1710000000000,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
         },
       },
     };
@@ -79,31 +79,15 @@ describe("ensurePermissionsOrSetRole", () => {
     expect(getIamPolicyStub).to.not.have.been.called;
   });
 
-  it("should skip API call and succeed if legacy boolean permissions are cached", async () => {
-    cacheStore["iamPermissionCache"] = {
-      "test-project": {
-        "test@example.com": {
-          "mcp.tools.call": true,
-          "resourcemanager.projects.get": true,
-          "resourcemanager.projects.list": true,
-        },
-      },
-    };
-
-    await ensurePermissionsOrSetRole("test-project", "test@example.com", mockPermissions, mockRole);
-
-    expect(testIamPermissionsStub).to.not.have.been.called;
-  });
-
   it("should query API if cached permissions have expired", async () => {
     const now = 1710000000000;
     const oneDayAgo = now - 24 * 60 * 60 * 1000 - 1000; // expired by 1 second
     cacheStore["iamPermissionCache"] = {
       "test-project": {
         "test@example.com": {
-          "mcp.tools.call": { valid: true, timestamp: oneDayAgo },
-          "resourcemanager.projects.get": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.list": { valid: true, timestamp: 1710000000000 },
+          "mcp.tools.call": oneDayAgo,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
         },
       },
     };
@@ -122,9 +106,9 @@ describe("ensurePermissionsOrSetRole", () => {
     cacheStore["iamPermissionCache"] = {
       "test-project": {
         "test@example.com": {
-          "mcp.tools.call": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.get": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.list": { valid: true, timestamp: 1710000000000 },
+          "mcp.tools.call": 1710000000000,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
         },
       },
     };
@@ -167,9 +151,9 @@ describe("ensurePermissionsOrSetRole", () => {
     expect(cacheStore["iamPermissionCache"]).to.deep.equal({
       "test-project": {
         "test@example.com": {
-          "mcp.tools.call": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.get": { valid: true, timestamp: 1710000000000 },
-          "resourcemanager.projects.list": { valid: true, timestamp: 1710000000000 },
+          "mcp.tools.call": 1710000000000,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
         },
       },
     });
@@ -278,5 +262,51 @@ describe("ensurePermissionsOrSetRole", () => {
     expect(customLogger.debug).to.have.been.calledWith(
       sinon.match(/Caching positive permissions check/),
     );
+  });
+
+  it("should revoke/remove missing permissions from cache if check fails", async () => {
+    cacheStore["iamPermissionCache"] = {
+      "test-project": {
+        "test@example.com": {
+          "mcp.tools.call": 1710000000000,
+          "resourcemanager.projects.get": 1710000000000,
+          "resourcemanager.projects.list": 1710000000000,
+        },
+      },
+    };
+    testIamPermissionsStub.resolves({
+      passed: false,
+      allowed: [],
+      missing: ["mcp.tools.call"],
+    });
+    getIamPolicyStub.resolves({
+      bindings: [
+        {
+          role: "roles/viewer",
+          members: ["user:test@example.com"],
+        },
+      ],
+    });
+    setIamPolicyStub.rejects(new Error("Permission denied"));
+
+    await expect(
+      ensurePermissionsOrSetRole(
+        "test-project",
+        "test@example.com",
+        mockPermissions,
+        mockRole,
+        true, // force to query API even though they are cached
+      ),
+    ).to.be.rejectedWith(FirebaseError);
+
+    // mcp.tools.call should be removed from cache since it was reported missing
+    expect(cacheStore["iamPermissionCache"]["test-project"]["test@example.com"]["mcp.tools.call"])
+      .to.be.undefined;
+    // other permissions that weren't reported missing should remain
+    expect(
+      cacheStore["iamPermissionCache"]["test-project"]["test@example.com"][
+        "resourcemanager.projects.get"
+      ],
+    ).to.equal(1710000000000);
   });
 });

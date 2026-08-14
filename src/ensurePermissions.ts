@@ -10,25 +10,16 @@ const PERMISSION_CACHE_KEY = "iamPermissionCache";
 const IAM_PROPAGATION_DELAY_MS = 10000;
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-interface CacheEntry {
-  valid: boolean;
-  timestamp: number;
-}
-
-type PermissionCache = Record<string, Record<string, Record<string, CacheEntry>>>;
+type PermissionCache = Record<string, Record<string, Record<string, number>>>;
 
 function checkPermissionCache(projectId: string, email: string, permissions: string[]): boolean {
   const cache = configstore.get(PERMISSION_CACHE_KEY) as PermissionCache | undefined;
   for (const perm of permissions) {
-    const entry = cache?.[projectId]?.[email]?.[perm];
-    if (!entry) {
+    const timestamp = cache?.[projectId]?.[email]?.[perm];
+    if (!timestamp) {
       return false;
     }
-    if (typeof entry === "boolean") {
-      if (!entry) return false;
-      continue;
-    }
-    if (Date.now() - entry.timestamp >= CACHE_TTL_MS) {
+    if (Date.now() - timestamp >= CACHE_TTL_MS) {
       return false;
     }
   }
@@ -44,12 +35,26 @@ function cachePermissions(projectId: string, email: string, permissions: string[
     cache[projectId][email] = {};
   }
   for (const perm of permissions) {
-    cache[projectId][email][perm] = {
-      valid: true,
-      timestamp: Date.now(),
-    };
+    cache[projectId][email][perm] = Date.now();
   }
   configstore.set(PERMISSION_CACHE_KEY, cache);
+}
+
+function revokePermissions(projectId: string, email: string, permissions: string[]): void {
+  const cache = configstore.get(PERMISSION_CACHE_KEY) as PermissionCache | undefined;
+  if (!cache?.[projectId]?.[email]) {
+    return;
+  }
+  let updated = false;
+  for (const perm of permissions) {
+    if (cache[projectId][email][perm] !== undefined) {
+      delete cache[projectId][email][perm];
+      updated = true;
+    }
+  }
+  if (updated) {
+    configstore.set(PERMISSION_CACHE_KEY, cache);
+  }
 }
 
 /**
@@ -105,6 +110,7 @@ export async function ensurePermissionsOrSetRole(
       iamResult.missing,
     )}. Attempting to bind role ${role}`,
   );
+  revokePermissions(projectId, accountEmail, iamResult.missing);
 
   const policy = await getIamPolicy(projectId);
   const memberName = accountEmail.endsWith(".gserviceaccount.com")
