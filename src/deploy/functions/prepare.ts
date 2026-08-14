@@ -1,7 +1,6 @@
 import * as clc from "colorette";
 
 import * as args from "./args";
-import * as proto from "../../gcp/proto";
 import * as backend from "./backend";
 import * as build from "./build";
 import * as experiments from "../../experiments";
@@ -49,6 +48,7 @@ import {
   shouldUseRuntimeConfig,
   isKitConfig,
   addKitPrefix,
+  resolveConfigDir,
   ValidatedLocalSingle,
   ValidatedKitSingle,
 } from "../../functions/projectConfig";
@@ -319,10 +319,9 @@ export async function prepare(
       projectAlias: options.projectAlias,
       projectDir: options.config.projectDir,
     };
-    if (isKitConfig(localCfg) && codebase in localCfg.instances) {
-      userEnvOpt.configDir = options.config.path(localCfg.instances[codebase]);
-    } else {
-      proto.convertIfPresent(userEnvOpt, localCfg, "configDir", (cd) => options.config.path(cd));
+    const configDir = resolveConfigDir(localCfg, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
     }
 
     const rawUserEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
@@ -810,12 +809,9 @@ export async function loadCodebases(
       projectAlias: options.projectAlias,
       projectDir: options.config.projectDir,
     };
-    if (isKitConfig(codebaseConfig) && codebase in codebaseConfig.instances) {
-      userEnvOpt.configDir = options.config.path(codebaseConfig.instances[codebase]);
-    } else {
-      proto.convertIfPresent(userEnvOpt, codebaseConfig, "configDir", (cd) =>
-        options.config.path(cd),
-      );
+    const configDir = resolveConfigDir(codebaseConfig, codebase);
+    if (configDir) {
+      userEnvOpt.configDir = options.config.path(configDir);
     }
     const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
 

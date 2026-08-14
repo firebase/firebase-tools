@@ -49,6 +49,10 @@ export async function getInternalIac(
     projectAlias: options.projectAlias,
     projectDir: options.config.projectDir,
   };
+  const configDir = projectConfig.resolveConfigDir(codebase, codebase.codebase);
+  if (configDir) {
+    userEnvOpt.configDir = options.config.path(configDir);
+  }
   const userEnvs = functionsEnv.loadUserEnvs(userEnvOpt);
 
   logger.debug(`Discovering ${runtimeDelegate.language} source`);

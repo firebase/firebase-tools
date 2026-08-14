@@ -1,1 +1,1 @@
-- Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
+- [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
