@@ -12,7 +12,7 @@ export const command = new Command("functions:kits:list")
     const validatedConfig = firebaseConfig.src;
     const kitConfigs = listKitConfigs(validatedConfig);
     if (kitConfigs.length < 1) {
-      logLabeledBullet("kits", `there are no kits in firebase.json`);
+      logLabeledBullet("functions", `there are no kits in firebase.json`);
       return;
     }
 
