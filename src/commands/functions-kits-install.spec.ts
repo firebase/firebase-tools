@@ -11,8 +11,7 @@ import {
   sanitizePackageNameToKitName,
   isThirdPartyPackage,
   checkPackageHasShrinkwrap,
-  getProjectIdentifiers,
-  hasDotenvForProject,
+  isKitConfiguredForProject,
 } from "./functions-kits-install";
 import * as experiments from "../experiments";
 import * as initSpawn from "../init/spawn";
@@ -20,9 +19,8 @@ import { Config } from "../config";
 import { FirebaseError } from "../error";
 import * as prompt from "../prompt";
 import { logger } from "../logger";
-import { Options } from "../options";
 import { ValidatedKitSingle } from "../functions/projectConfig";
-import { RC } from "../rc";
+import * as env from "../functions/env";
 
 describe("functions:kits:install", () => {
   let assertEnabledStub: sinon.SinonStub;
@@ -238,78 +236,48 @@ describe("functions:kits:install", () => {
     });
   });
 
-  describe("getProjectIdentifiers", () => {
-    it("should return empty set when no project is provided", () => {
-      const ids = getProjectIdentifiers({} as unknown as Options);
-      expect(ids.size).to.equal(0);
+  describe("isKitConfiguredForProject", () => {
+    let hasProjectEnvStub: sinon.SinonStub;
+
+    beforeEach(() => {
+      hasProjectEnvStub = sinon.stub(env, "hasProjectEnv");
     });
 
-    it("should include options.project and options.projectId", () => {
-      const ids = getProjectIdentifiers({
-        project: "my-alias",
-        projectId: "my-project-id",
-      } as unknown as Options);
-      expect(Array.from(ids)).to.include.members(["my-alias", "my-project-id"]);
-    });
-
-    it("should resolve project aliases from options.rc", () => {
-      const ids = getProjectIdentifiers({
-        project: "staging",
-        rc: new RC(undefined, {
-          projects: {
-            staging: "my-staging-project-123",
-            prod: "my-prod-project-456",
-          },
-        }),
-      } as unknown as Options);
-      expect(Array.from(ids)).to.include.members(["staging", "my-staging-project-123"]);
-      expect(Array.from(ids)).to.not.include("prod");
-    });
-  });
-
-  describe("hasDotenvForProject", () => {
-    it("should return false when projectIdentifiers is empty", () => {
+    it("should return false when no instance has project env", () => {
       const mockConfig = { path: (p: string) => `/mock/${p}` };
       const kit = {
         kit: "test-kit",
         source: "function-kits/test-kit",
         instances: { inst: "function-kits/test-kit/config-inst" },
       } as unknown as ValidatedKitSingle;
-      expect(hasDotenvForProject(mockConfig, kit, new Set())).to.be.false;
+      hasProjectEnvStub.returns(false);
+
+      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj")).to.be.false;
+      expect(hasProjectEnvStub).to.have.been.calledWith(
+        "/mock/function-kits/test-kit/config-inst",
+        "my-target-proj",
+        undefined,
+      );
     });
 
-    it("should return true when a matching .env.<projectId> file exists in instance configDir", () => {
+    it("should return true when any instance has project env", () => {
       const mockConfig = { path: (p: string) => `/mock/${p}` };
       const kit = {
         kit: "test-kit",
         source: "function-kits/test-kit",
-        instances: { inst: "function-kits/test-kit/config-inst" },
+        instances: {
+          inst1: "function-kits/test-kit/config-inst1",
+          inst2: "function-kits/test-kit/config-inst2",
+        },
       } as unknown as ValidatedKitSingle;
-      sinon.stub(fs, "existsSync").returns(true);
-      sinon
-        .stub(fs, "readdirSync")
-        .returns([".env", ".env.local", ".env.my-target-proj"] as unknown as ReturnType<
-          typeof fs.readdirSync
-        >);
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst1", "my-target-proj", "staging")
+        .returns(false);
+      hasProjectEnvStub
+        .withArgs("/mock/function-kits/test-kit/config-inst2", "my-target-proj", "staging")
+        .returns(true);
 
-      expect(hasDotenvForProject(mockConfig, kit, new Set(["my-target-proj"]))).to.be.true;
-    });
-
-    it("should return false when only non-matching dotenv files exist", () => {
-      const mockConfig = { path: (p: string) => `/mock/${p}` };
-      const kit = {
-        kit: "test-kit",
-        source: "function-kits/test-kit",
-        instances: { inst: "function-kits/test-kit/config-inst" },
-      } as unknown as ValidatedKitSingle;
-      sinon.stub(fs, "existsSync").returns(true);
-      sinon
-        .stub(fs, "readdirSync")
-        .returns([".env", ".env.local", ".env.other-proj"] as unknown as ReturnType<
-          typeof fs.readdirSync
-        >);
-
-      expect(hasDotenvForProject(mockConfig, kit, new Set(["my-target-proj"]))).to.be.false;
+      expect(isKitConfiguredForProject(mockConfig, kit, "my-target-proj", "staging")).to.be.true;
     });
   });
 
@@ -1064,10 +1032,7 @@ describe("functions:kits:install", () => {
           },
         } as unknown as Config;
 
-        sinon.stub(fs, "existsSync").returns(true);
-        sinon
-          .stub(fs, "readdirSync")
-          .returns([".env.my-target-proj"] as unknown as ReturnType<typeof fs.readdirSync>);
+        sinon.stub(env, "hasProjectEnv").returns(true);
 
         const selectStub = sinon.stub(prompt, "select");
         sinon.stub(prompt, "input").resolves("inst-2");

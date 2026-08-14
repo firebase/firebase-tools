@@ -24,6 +24,7 @@ import { confirm, input, select } from "../prompt";
 import { spawnWithOutput, wrapSpawn } from "../init/spawn";
 import { readTemplateSync } from "../templates";
 import * as supported from "../deploy/functions/runtimes/supported";
+import { hasProjectEnv } from "../functions/env";
 import * as self from "./functions-kits-install";
 
 const PACKAGE_NO_LINTING_TEMPLATE = readTemplateSync(
@@ -144,61 +145,17 @@ export async function checkPackageHasShrinkwrap(rawPkgName: string): Promise<boo
 }
 
 /**
- * Resolves all project identifiers (project ID, project alias) for the active command context.
- */
-export function getProjectIdentifiers(options: Options): Set<string> {
-  const ids = new Set<string>();
-  const projectId = getProjectId(options);
-  if (projectId) {
-    ids.add(projectId);
-  }
-  if (options.project) {
-    ids.add(options.project);
-  }
-  if (options.rc) {
-    const rcProjects = options.rc.projects || {};
-    for (const [alias, pid] of Object.entries(rcProjects)) {
-      if (ids.has(alias) || ids.has(pid)) {
-        ids.add(alias);
-        ids.add(pid);
-      }
-    }
-  }
-  return ids;
-}
-
-/**
  * Checks if any of the kit's instance configuration directories contain a dotenv file for the current project.
- * A dotenv file is for the current project if its filename is `.env.<projectId>` where `<projectId>`
- * matches one of the active project identifiers.
  */
-export function hasDotenvForProject(
+export function isKitConfiguredForProject(
   config: { path: (p: string) => string },
   kit: ValidatedKitSingle,
-  projectIdentifiers: Set<string>,
+  projectId?: string,
+  projectAlias?: string,
 ): boolean {
-  if (projectIdentifiers.size === 0) {
-    return false;
-  }
-  for (const configDirPath of Object.values(kit.instances || {})) {
-    const absDir = config.path(configDirPath);
-    if (fs.existsSync(absDir)) {
-      try {
-        const files = fs.readdirSync(absDir);
-        for (const file of files) {
-          if (file.startsWith(".env.")) {
-            const suffix = file.slice(".env.".length);
-            if (projectIdentifiers.has(suffix)) {
-              return true;
-            }
-          }
-        }
-      } catch (err: unknown) {
-        logger.debug(`Failed to read directory ${absDir}: ${getErrMsg(err)}`);
-      }
-    }
-  }
-  return false;
+  return Object.values(kit.instances || {}).some((configDir) =>
+    hasProjectEnv(config.path(configDir), projectId, projectAlias),
+  );
 }
 
 export const command = new Command("functions:kits:install")
@@ -268,15 +225,20 @@ export const command = new Command("functions:kits:install")
     );
 
     if (existingKit) {
-      const projectIdentifiers = getProjectIdentifiers(options);
-      const hasCurrentProjectEnv = hasDotenvForProject(
+      const projectId = getProjectId(options);
+      const projectAlias =
+        options.rc?.hasProjects && options.project && options.rc.hasProjectAlias(options.project)
+          ? options.project
+          : undefined;
+      const isConfiguredForProject = isKitConfiguredForProject(
         options.config,
         existingKit,
-        projectIdentifiers,
+        projectId,
+        projectAlias,
       );
 
       let action: "addInstance" | "addEnv";
-      if (!hasCurrentProjectEnv && !options.nonInteractive) {
+      if (!isConfiguredForProject && !options.nonInteractive) {
         const existingInstances = Object.keys(existingKit.instances || {}).join(", ");
         action = await select<"addInstance" | "addEnv">({
           message: `The following instances already exist, but are not configured for this project: ${existingInstances}. What would you like to do?`,
@@ -292,7 +254,7 @@ export const command = new Command("functions:kits:install")
           ],
         });
       } else {
-        if (hasCurrentProjectEnv) {
+        if (isConfiguredForProject) {
           logLabeledBullet(
             "functions",
             `This package is already installed as kit ${existingKit.kit}, creating a new instance.`,
