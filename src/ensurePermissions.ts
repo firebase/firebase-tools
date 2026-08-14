@@ -4,7 +4,7 @@ import { getIamPolicy, setIamPolicy } from "./gcp/resourceManager";
 import { configstore } from "./configstore";
 import { mergeBindings, testIamPermissions } from "./gcp/iam";
 import { logger } from "./logger";
-import { sleep, logBullet } from "./utils";
+import { sleep } from "./utils";
 
 const PERMISSION_CACHE_KEY = "iamPermissionCache";
 const IAM_PROPAGATION_DELAY_MS = 10000;
@@ -141,9 +141,6 @@ export async function ensurePermissionsOrSetRole(
       // It usually takes few seconds to few minutes to propagate. Wait ${IAM_PROPAGATION_DELAY_MS}ms here to be safe.
       log.debug(
         `[iam] Successfully updated IAM policy. Waiting ${IAM_PROPAGATION_DELAY_MS}ms for propagation...`,
-      );
-      logBullet(
-        `Successfully updated IAM policy. Waiting ${IAM_PROPAGATION_DELAY_MS / 1000}s for propagation...`,
       );
       await sleep(IAM_PROPAGATION_DELAY_MS);
     } catch (err: unknown) {
