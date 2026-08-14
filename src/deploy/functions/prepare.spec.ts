@@ -1454,6 +1454,37 @@ describe("prepare", () => {
       expect(e.labels?.["firebase-declarative-security-etag"]).to.be.undefined;
     });
 
+    it("should return existingManagedSA without checking permissions when wantBackend is empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.of({
+        ...ENDPOINT,
+        serviceAccount: "firebase-fn-123@project.iam.gserviceaccount.com",
+        labels: {
+          "firebase-declarative-security-etag": "salt-etag",
+        },
+      });
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result.existingManagedSA).to.equal("firebase-fn-123@project.iam.gserviceaccount.com");
+      expect(result.haveRolesEtag).to.equal("salt-etag");
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
+    it("should return empty security object and not create SA when both want and have backends are empty", async () => {
+      testIamPermissionsStub.rejects(new Error("Should not be called"));
+      const want = backend.empty();
+      want.requiredRoles = ["roles/viewer"];
+      const have = backend.empty();
+
+      const result = await prepare.discoverSecurityDetails("default", want, have, "project");
+
+      expect(result).to.deep.equal({});
+      expect(testIamPermissionsStub).to.not.have.been.called;
+    });
+
     it("should keep explicit custom service accounts and not reset to default when unenrolling from declarative security", async () => {
       const eCustom: backend.Endpoint = {
         ...ENDPOINT,
