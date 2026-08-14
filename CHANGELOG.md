@@ -1,0 +1,1 @@
+- Fixed issues in the default TypeScript functions template.
