@@ -68,10 +68,18 @@ cat > ".firebaserc" <<- EOM
 {
   "projects": {
     "default": "${FBTOOLS_TARGET_PROJECT}"
+  },
+  "targets": {
+    "${FBTOOLS_TARGET_PROJECT}": {
+      "storage": {
+        "storage-target": [
+          "${FBTOOLS_TARGET_PROJECT}.appspot.com"
+        ]
+      }
+    }
   }
 }
 EOM
-firebase target:apply --non-interactive storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com"
 echo "Updated config for targets."
 
 echo "Testing storage deployment with invalid target..."

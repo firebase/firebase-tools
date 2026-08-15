@@ -131,10 +131,18 @@ cat > ".firebaserc" <<- EOM
 {
   "projects": {
     "default": "${FBTOOLS_TARGET_PROJECT}"
+  },
+  "targets": {
+    "${FBTOOLS_TARGET_PROJECT}": {
+      "hosting": {
+        "customtarget": [
+          "${FBTOOLS_TARGET_PROJECT}"
+        ]
+      }
+    }
   }
 }
 EOM
-firebase target:apply --non-interactive hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
 echo "Set targets."
 echo "Initialized second temp directory."
 
