@@ -50,6 +50,24 @@ touch "public/${TARGET_FILE}"
 echo "${DATE}" > "public/${TARGET_FILE}"
 echo "Initialized temp directory."
 
+function kill_port() {
+  local PORT_NUM="$1"
+  if command -v lsof &> /dev/null; then
+    local pids=$(lsof -t -i:"$PORT_NUM" 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+      kill -9 $pids 2>/dev/null || true
+    fi
+  fi
+  if command -v netstat &> /dev/null; then
+    local pids=$(netstat -ano | grep ":$PORT_NUM " | awk '{print $5}' | sort -u || true)
+    for p in $pids; do
+      if [ "$p" != "0" ] && [ -n "$p" ]; then
+        taskkill //pid "$p" //T //F 2>/dev/null || true
+      fi
+    done
+  fi
+}
+
 echo "Testing local serve..."
 firebase serve --only hosting --project "${FBTOOLS_TARGET_PROJECT}" --port "${PORT}" --debug &
 PID="$!"
@@ -60,6 +78,7 @@ kill "$PID" 2>/dev/null || true
 if command -v taskkill &> /dev/null; then
   taskkill //pid "$PID" //T //F 2>/dev/null || true
 fi
+kill_port "${PORT}"
 echo "Tested local serve."
 
 echo "Testing local hosting emulator..."
@@ -81,6 +100,8 @@ kill "$PID" 2>/dev/null || true
 if command -v taskkill &> /dev/null; then
   taskkill //pid "$PID" //T //F 2>/dev/null || true
 fi
+kill_port "${PORT}"
+kill_port "5000"
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
@@ -155,7 +176,7 @@ echo "Initialized second temp directory."
 # echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
-firebase hosting:channel:deploy mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --non-interactive --json | tee output.json
+firebase hosting:channel:deploy "targetchannel-${GITHUB_RUN_NUMBER}" --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --non-interactive --json | tee output.json
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
 sleep 12
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
