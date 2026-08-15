@@ -300,7 +300,7 @@ jobs:
             script: "npm run test:functions-discover"
     steps:
       - name: Disable Windows Defender for workspace
-        run: Set-MpPreference -ExclusionPath "${{ github.workspace }}"
+        run: Set-MpPreference -ExclusionPath @("${{ github.workspace }}", "$env:LocalAppData\npm-cache", "$env:AppData\npm")
         shell: powershell
 
       - name: Setup Java JDK
@@ -329,7 +329,7 @@ jobs:
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
       - run: npm i -g npm@9.5
-      - run: npm ci
+      - run: npm ci --prefer-offline --no-audit
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
