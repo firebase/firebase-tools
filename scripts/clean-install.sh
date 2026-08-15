@@ -23,3 +23,4 @@ echo "Packaged firebase-tools to $PACKED."
 echo "Installing clean-packaged firebase-tools..."
 npm install -g $PACKED
 echo "Installed clean-packaged firebase-tools."
+cd "$ROOT_DIR"

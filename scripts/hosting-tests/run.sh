@@ -84,7 +84,7 @@ fi
 echo "Tested local hosting emulator."
 
 echo "Testing hosting deployment..."
-firebase hosting:channel:deploy --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "${GITHUB_RUN_NUMBER}" | tee channeldeploy.json
+firebase hosting:channel:deploy --non-interactive --expires 1h --project "${FBTOOLS_TARGET_PROJECT}" --json "${GITHUB_RUN_NUMBER}" | tee channeldeploy.json
 URL=$(cat channeldeploy.json | jq -r ".result.\"${FBTOOLS_TARGET_PROJECT}\".url")
 sleep 12
 VALUE="$(curl $URL/${TARGET_FILE})"
@@ -134,7 +134,7 @@ cat > ".firebaserc" <<- EOM
   }
 }
 EOM
-firebase target:apply hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
+firebase target:apply --non-interactive hosting customtarget "${FBTOOLS_TARGET_PROJECT}"
 echo "Set targets."
 echo "Initialized second temp directory."
 
