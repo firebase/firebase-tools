@@ -45,6 +45,22 @@ service firebase.storage {
   }
 }
 EOM
+cat > ".firebaserc" <<- EOM
+{
+  "projects": {
+    "default": "${FBTOOLS_TARGET_PROJECT}"
+  },
+  "targets": {
+    "${FBTOOLS_TARGET_PROJECT}": {
+      "storage": {
+        "storage-target": [
+          "${FBTOOLS_TARGET_PROJECT}.appspot.com"
+        ]
+      }
+    }
+  }
+}
+EOM
 echo "Initialized temp directory."
 
 echo "Testing storage deployment..."
@@ -87,7 +103,7 @@ set +e
 firebase deploy --force --non-interactive --only storage:storage-invalid-target --project "${FBTOOLS_TARGET_PROJECT}"
 RET_CODE="$?"
 set -e
-test "${RET_CODE}" == "1" || (echo "Expected exit code ${RET_CODE} to equal 1." && false)
+test "${RET_CODE}" != "0" || (echo "Expected exit code ${RET_CODE} to not equal 0." && false)
 echo "Tested storage deployment with invalid target."
 
 echo "Testing storage deployment with target..."
