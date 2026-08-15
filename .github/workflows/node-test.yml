@@ -328,7 +328,6 @@ jobs:
 
       - run: echo ${{ secrets.service_account_json_base64 }} > tmp.txt
       - run: certutil -decode tmp.txt scripts/service-account.json
-      - run: npm i -g npm@9.5
       - run: npm ci --prefer-offline --no-audit
       - run: ${{ matrix.script }}
       - name: Print debug logs
