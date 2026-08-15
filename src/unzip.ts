@@ -97,7 +97,7 @@ const extractEntriesFromBuffer = async (data: Buffer, outputDir: string): Promis
       logger.debug(`[unzip] mkdir: ${outputFilePath}`);
       await fs.promises.mkdir(outputFilePath, { recursive: true });
     } else {
-      const parentDir = outputFilePath.substring(0, outputFilePath.lastIndexOf(path.sep));
+      const parentDir = path.dirname(outputFilePath);
       logger.debug(`[unzip] else mkdir: ${parentDir}`);
       await fs.promises.mkdir(parentDir, { recursive: true });
 
@@ -128,8 +128,20 @@ function isChildDir(parentDir: string, potentialChild: string): boolean {
     // 1. Resolve and normalize both paths to absolute paths
     const resolvedParent = path.resolve(parentDir);
     const resolvedChild = path.resolve(potentialChild);
+    if (process.platform === "win32") {
+      const lowerParent = resolvedParent.toLowerCase();
+      const lowerChild = resolvedChild.toLowerCase();
+      return (
+        (lowerChild.startsWith(lowerParent + path.sep) || lowerChild.startsWith(lowerParent)) &&
+        lowerChild !== lowerParent
+      );
+    }
     // The child path must start with the parent path and not be the same path.
-    return resolvedChild.startsWith(resolvedParent) && resolvedChild !== resolvedParent;
+    return (
+      (resolvedChild.startsWith(resolvedParent + path.sep) ||
+        resolvedChild.startsWith(resolvedParent)) &&
+      resolvedChild !== resolvedParent
+    );
   } catch (error) {
     // If either path does not exist, an error will be thrown.
     // In this case, the potential child cannot be a subdirectory.
