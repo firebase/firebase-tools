@@ -333,8 +333,7 @@ jobs:
       - run: ${{ matrix.script }}
       - name: Print debug logs
         if: failure()
-        shell: cmd
-        run: dir "*debug.log" /s /b 2>nul && (for /f "delims=" %f in ('dir "*debug.log" /s /b') do @type "%f") || echo No debug logs found.
+        run: Get-ChildItem -Path . -Filter "*debug.log" -Recurse | ForEach-Object { Get-Content $_.FullName }
 
   check-package-lock:
     runs-on: ubuntu-latest

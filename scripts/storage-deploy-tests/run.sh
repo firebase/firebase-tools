@@ -64,7 +64,13 @@ cat > "firebase.json" <<- EOM
   ]
 }
 EOM
-firebase use "${FBTOOLS_TARGET_PROJECT}"
+cat > ".firebaserc" <<- EOM
+{
+  "projects": {
+    "default": "${FBTOOLS_TARGET_PROJECT}"
+  }
+}
+EOM
 firebase target:apply storage storage-target "${FBTOOLS_TARGET_PROJECT}.appspot.com"
 echo "Updated config for targets."
 
