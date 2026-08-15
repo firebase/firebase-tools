@@ -47,4 +47,3 @@ export const ONEMCP_SERVERS: Partial<Record<ServerFeature, OneMcpServer>> = {
     requiresAuth: true,
   }),
 };
-

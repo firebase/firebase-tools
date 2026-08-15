@@ -1,2 +1,5 @@
 - Added extensions replacement registry and scraper tool to track migrations for deprecated extensions ahead of the March 2027 decommission date.
 - [Added] Loads existing `.env` files and passes environment variables to functions discovery in `runtimeDelegate`.
+- Repurposed the local `dataconnect_execute` tool as `dataconnect_execute_in_emulator` to run GraphQL queries and mutations on the local SQL Connect emulator.
+- Configured the SQL Connect (Data Connect) OneMCP proxy server in `ONEMCP_SERVERS` with a selection of remote tools.
+- Configured the `Mcp-Param-Location` HTTP header workaround in `OneMcpServer` for MCP routing support.
