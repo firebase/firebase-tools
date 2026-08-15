@@ -155,7 +155,7 @@ echo "Initialized second temp directory."
 # echo "Tested hosting deployment by target."
 
 echo "Testing hosting channel deployment by target..."
-firebase hosting:channel:deploy mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --json | tee output.json
+firebase hosting:channel:deploy --non-interactive --force mychannel --only customtarget --project "${FBTOOLS_TARGET_PROJECT}" --json | tee output.json
 CHANNEL_URL=$(cat output.json | jq -r ".result.customtarget.url")
 sleep 12
 VALUE="$(curl ${CHANNEL_URL}/${TARGET_FILE})"
